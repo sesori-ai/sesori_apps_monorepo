@@ -286,7 +286,7 @@ void main() {
       expect(sessionDao.bulkReadCount, 2);
     });
 
-    test("enrichSession merges stored archive and selected PR metadata", () async {
+    test("enrichSessions merges stored archive and selected PR metadata", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
 
@@ -392,87 +392,40 @@ void main() {
         ),
       );
 
-      final result = await repository.enrichSession(
-        session: const Session(
-          branchName: null,
-          id: "s1",
-          pluginId: "fake",
-          projectID: "p1",
-          directory: "/tmp/project",
-          parentID: null,
-          title: "Live plugin title",
-          time: SessionTime(created: 1, updated: 2, archived: null),
-          pullRequest: null,
-          promptDefaults: null,
-          lastUserActivityAt: null,
-        ),
+      final result = await repository.enrichSessions(
+        sessions: const [
+          Session(
+            branchName: null,
+            id: "s1",
+            pluginId: "fake",
+            projectID: "p1",
+            directory: "/tmp/project",
+            parentID: null,
+            title: "Live plugin title",
+            time: SessionTime(created: 1, updated: 2, archived: null),
+            pullRequest: null,
+            promptDefaults: null,
+            lastUserActivityAt: null,
+          ),
+        ],
         verifiedGithubLogin: _octocatLogin,
       );
+      final session = result.single;
 
-      expect(result.time?.created, equals(1));
-      expect(result.pluginId, equals(plugin.id));
-      expect(result.time?.updated, equals(2));
-      expect(result.time?.archived, isNull);
-      expect(result.title, "Catalog title");
-      expect(result.branchName, equals("feature/one"));
-      expect(result.hasWorktree, isTrue);
-      expect(result.promptDefaults?.agent, equals("agent-1"));
-      expect(result.promptDefaults?.model?.providerID, equals("provider-1"));
-      expect(result.promptDefaults?.model?.modelID, equals("model-1"));
-      expect(result.promptDefaults?.model?.variant, equals("variant-1"));
-      expect(result.pullRequest?.number, equals(11));
-      expect(result.pullRequest?.state, equals(PrState.open));
-      expect(result.lastUserActivityAt, 1234);
-    });
-
-    test("enrichSession leaves promptDefaults null when stored defaults are all null", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-
-      final repository = singlePluginSessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-
-      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
-      await db.sessionDao.insertSession(
-        pluginId: plugin.id,
-        sessionId: "s1",
-        backendSessionId: "s1",
-        projectId: "p1",
-        isDedicated: false,
-        createdAt: 10,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        baseCommit: null,
-
-        lastAgent: null,
-        lastAgentModel: null,
-      );
-
-      final result = await repository.enrichSession(
-        session: const Session(
-          branchName: null,
-          id: "s1",
-          pluginId: "fake",
-          projectID: "p1",
-          directory: "/tmp/project",
-          parentID: null,
-          title: "session",
-          time: null,
-          pullRequest: null,
-          promptDefaults: null,
-          lastUserActivityAt: null,
-        ),
-        verifiedGithubLogin: null,
-      );
-
-      expect(result.promptDefaults, isNull);
-      expect(result.hasWorktree, isFalse);
+      expect(session.time?.created, equals(1));
+      expect(session.pluginId, equals(plugin.id));
+      expect(session.time?.updated, equals(2));
+      expect(session.time?.archived, isNull);
+      expect(session.title, "Catalog title");
+      expect(session.branchName, equals("feature/one"));
+      expect(session.hasWorktree, isTrue);
+      expect(session.promptDefaults?.agent, equals("agent-1"));
+      expect(session.promptDefaults?.model?.providerID, equals("provider-1"));
+      expect(session.promptDefaults?.model?.modelID, equals("model-1"));
+      expect(session.promptDefaults?.model?.variant, equals("variant-1"));
+      expect(session.pullRequest?.number, equals(11));
+      expect(session.pullRequest?.state, equals(PrState.open));
+      expect(session.lastUserActivityAt, 1234);
     });
 
     test("enrichSessions clears incoming PR data without a freshly visible selection", () async {
@@ -974,7 +927,7 @@ void main() {
       expect(row.lastAgentModel?.variant, isNull);
     });
 
-    test("renameSession delegates to plugin and maps its shared session", () async {
+    test("renameSession delegates to plugin", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
 
@@ -1019,23 +972,10 @@ void main() {
           createdAt: 1,
         ),
       );
-      plugin.renameSessionResult = const PluginSession(
-        id: "backend-s1",
-        projectID: "p1",
-        directory: "/tmp/worktree",
-        parentID: null,
-        title: "Renamed",
-        time: PluginSessionTime(created: 1, updated: 2, archived: null),
-      );
-
-      final result = await repository.renameSession(sessionId: "s1", title: "Renamed");
+      await repository.renameSession(sessionId: "s1", title: "Renamed");
 
       expect(plugin.lastRenameSessionId, equals("backend-s1"));
       expect(plugin.lastRenameSessionTitle, equals("Renamed"));
-      expect(result.pluginId, equals(plugin.id));
-      expect(result.title, equals("Renamed"));
-      expect(result.hasWorktree, isFalse);
-      expect(result.pullRequest, isNull);
     });
 
     test("findProjectIdForSession returns stored project id without scanning plugin", () async {
@@ -1090,6 +1030,151 @@ void main() {
       expect(result, isNull);
       expect(plugin.getProjectsCalls, isZero);
       expect(plugin.getSessionsCalls, isZero);
+    });
+
+    test("createSession returns committed canonical facts and is immediately queryable", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      plugin.createSessionResult = const PluginSession(
+        id: "backend-created",
+        projectID: "plugin-project",
+        directory: "/plugin/directory",
+        parentID: null,
+        title: "Backend title",
+        time: PluginSessionTime(created: 10, updated: 20, archived: 30),
+      );
+      final committed = repository.bindingCommits.first.then(
+        (commit) async => (
+          commit: commit,
+          session: await repository.getCatalogSession(
+            sessionId: (await db.sessionDao.getSessionByBinding(
+              pluginId: plugin.id,
+              backendSessionId: "backend-created",
+            ))!.sessionId,
+          ),
+        ),
+      );
+      const lastAgentModel = AgentModel(
+        providerID: "provider",
+        modelID: "model",
+        variant: "high",
+      );
+
+      final created = await repository.createSession(
+        pluginId: plugin.id,
+        projectId: "stable-project",
+        directory: "/repo/.worktrees/blue-otter",
+        parentSessionId: null,
+        parts: const [PromptPart.text(text: "Ship it")],
+        userVisibleText: "Ship it",
+        variant: null,
+        agent: "agent",
+        model: const PromptModel(providerID: "provider", modelID: "model"),
+        isDedicated: true,
+        worktreePath: "/repo/.worktrees/blue-otter",
+        branchName: "blue-otter",
+        baseBranch: "main",
+        baseCommit: "abc123",
+        lastAgent: "agent",
+        lastAgentModel: lastAgentModel,
+      );
+      final publication = await committed;
+      final row = await db.sessionDao.getSession(sessionId: created.id);
+      final detail = await repository.getSessionForProject(
+        projectId: "stable-project",
+        sessionId: created.id,
+        verifiedGithubLogin: null,
+      );
+
+      expect(created.id, startsWith("ses_"));
+      expect(created.pluginId, plugin.id);
+      expect(created.projectID, "stable-project");
+      expect(created.directory, "/repo/.worktrees/blue-otter");
+      expect(created.parentID, isNull);
+      expect(created.title, "Backend title");
+      expect(created.time, const SessionTime(created: 10, updated: 20, archived: null));
+      expect(created.branchName, isNull);
+      expect(created.hasWorktree, isTrue);
+      expect(created.promptDefaults, const SessionPromptDefaults(agent: "agent", model: lastAgentModel));
+      expect(row?.backendSessionId, "backend-created");
+      expect(row?.branchName, "blue-otter");
+      expect(row?.baseBranch, "main");
+      expect(row?.baseCommit, "abc123");
+      expect(publication.commit.kind, SessionBindingCommitKind.sessionCreation);
+      expect(publication.session, created);
+      expect(detail, created);
+    });
+
+    test("createSession preserves stable identity and bridge title precedence", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["stable-project"]);
+      await db.sessionDao.insertSession(
+        sessionId: "stable-session",
+        backendSessionId: "created-session",
+        projectId: "stable-project",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: plugin.id,
+      );
+      await db.sessionDao.setTitle(
+        sessionId: "stable-session",
+        title: "Bridge title",
+        updatedAt: 2,
+        projectionUpdatedAt: 2,
+      );
+      plugin.createSessionResult = const PluginSession(
+        id: "created-session",
+        projectID: "plugin-project",
+        directory: "/plugin/directory",
+        parentID: null,
+        title: "Backend title",
+        time: PluginSessionTime(created: 10, updated: 20, archived: null),
+      );
+
+      final created = await repository.createSession(
+        pluginId: plugin.id,
+        projectId: "stable-project",
+        directory: "/stable/project",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+        isDedicated: false,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+
+      expect(created.id, "stable-session");
+      expect(created.title, "Bridge title");
+      expect((await db.sessionDao.getSession(sessionId: "stable-session"))?.catalogTitle, "Backend title");
+      expect(await repository.getCatalogSession(sessionId: "stable-session"), created);
     });
 
     test("createSession passes variant directly to plugin", () async {
@@ -2196,6 +2281,59 @@ void main() {
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "My rename");
     });
 
+    test("setGeneratedSessionTitleIfAbsent returns only its successful conditional update", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final plugin = _FakeDerivedPlugin(launchDirectory: "p1", allSessions: const []);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await repository.insertStoredSession(
+        sessionId: "s1",
+        backendSessionId: "backend-s1",
+        pluginId: plugin.id,
+        projectId: "p1",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+      await db.sessionDao.updateObservedSessionProjection(
+        sessionId: "s1",
+        directory: "p1",
+        catalogTitle: "Catalog title",
+        updateCatalogTitle: true,
+        updatedAt: 2,
+        projectionUpdatedAt: 2,
+      );
+
+      final updated = await repository.setGeneratedSessionTitleIfAbsent(
+        sessionId: "s1",
+        title: "Generated title",
+      );
+      final blocked = await repository.setGeneratedSessionTitleIfAbsent(
+        sessionId: "s1",
+        title: "Replacement title",
+      );
+      final deleted = await repository.setGeneratedSessionTitleIfAbsent(
+        sessionId: "missing",
+        title: "Missing title",
+      );
+
+      expect(updated?.title, "Generated title");
+      expect(blocked, isNull);
+      expect(deleted, isNull);
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Generated title");
+    });
+
     test("renameSession rejects a tombstoned session before plugin access", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -2530,7 +2668,6 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
     title: null,
     time: null,
   );
-  PluginSession? renameSessionResult;
   String? lastRenameSessionId;
   String? lastRenameSessionTitle;
   String? lastCreateSessionVariant;
@@ -2595,7 +2732,14 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   Future<PluginSession> renameSession({required String sessionId, required String title}) async {
     lastRenameSessionId = sessionId;
     lastRenameSessionTitle = title;
-    return renameSessionResult!;
+    return PluginSession(
+      id: sessionId,
+      projectID: "",
+      directory: "",
+      parentID: null,
+      title: title,
+      time: null,
+    );
   }
 
   @override

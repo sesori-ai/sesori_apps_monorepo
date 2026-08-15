@@ -57,6 +57,24 @@ void main() {
       expect((await repository.getChildSessions(sessionId: "root")).map((session) => session.id), ["child"]);
     });
 
+    test("resolves the top imported parent and owning worktree project", () async {
+      final repository = PiSessionCatalogRepository(
+        storageApi: _FakeStorageApi(
+          sessions: [
+            _metadata(id: "root", cwd: "/repo", updated: 30),
+            _metadata(id: "child", cwd: "/repo/worktree", updated: 20, parentId: "root"),
+            _metadata(id: "leaf", cwd: "/repo/worktree", updated: 10, parentId: "child"),
+          ],
+        ),
+      );
+
+      final scope = await repository.resolveDisplayScope(sessionId: "leaf");
+
+      expect(scope?.displaySessionId, "root");
+      expect(scope?.projectId, normalizeProjectDirectory(directory: "/repo/worktree"));
+      expect(await repository.resolveDisplayScope(sessionId: "missing"), isNull);
+    });
+
     test("retains primed attribution as a scan root after metadata appears", () async {
       final api = _FakeStorageApi(sessions: const []);
       final repository = PiSessionCatalogRepository(storageApi: api);
@@ -126,4 +144,7 @@ final class _FakeStorageApi({required List<PiSessionMetadata> sessions, final Ob
 
   @override
   Future<String?> resolveSessionPath({required String sessionId, required Set<String> knownDirectories}) async => null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

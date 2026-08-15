@@ -117,7 +117,7 @@ void main() {
 
     unawaited(
       router.push<void>(
-        const AppRoute.sessions(projectId: "p1", projectName: null, supportsDedicatedWorktrees: null).buildPath(),
+        const AppRoute.sessions(projectId: "p1", projectName: null).buildPath(),
       ),
     );
     await tester.pumpAndSettle();

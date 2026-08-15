@@ -1,3 +1,5 @@
+import "dart:typed_data";
+
 import "package:cryptography/cryptography.dart";
 
 import "crypto_service.dart";
@@ -10,7 +12,7 @@ class SessionEncryptor({
 }) {
   /// Encrypts plaintext bytes using the session encryption key.
   /// Returns: [24 bytes nonce][ciphertext + 16 byte auth tag]
-  Future<List<int>> encrypt(List<int> plaintext) {
+  Future<Uint8List> encrypt(List<int> plaintext) {
     return _cryptoService.encrypt(plaintext, key: _encryptionKey);
   }
 

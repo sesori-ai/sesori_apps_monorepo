@@ -74,7 +74,7 @@ void main() {
   /// The fixed pumps carry the cubit's load future through to a rendered list.
   Future<void> pumpList(
     WidgetTester tester, {
-    required List<Project> projects,
+    required List<ProjectSummary> projects,
     Map<String, int> activeSessions = const {},
     void Function(String projectId)? onSessionsRoute,
   }) async {
@@ -113,10 +113,7 @@ void main() {
     await tester.pump();
   }
 
-  Color titleColour(WidgetTester tester, String name) => tester.widget<Text>(find.text(name)).style!.color!;
-
-  FontWeight? titleWeight(WidgetTester tester, String name) =>
-      tester.widget<Text>(find.text(name)).style!.fontWeight;
+  FontWeight? titleWeight(WidgetTester tester, String name) => tester.widget<Text>(find.text(name)).style!.fontWeight;
 
   /// Whether the row's sparkle is twinkling. `tester.hasRunningAnimations` is
   /// no use here — the router's own page transition keeps it true — so the
@@ -126,7 +123,7 @@ void main() {
 
   group("a project an agent is working in", () {
     testWidgets("marks itself Running with a twinkling sparkle", (tester) async {
-      final project = testProject(id: "p1", name: "my-app");
+      final project = testProjectSummary(id: "p1", name: "my-app");
 
       await pumpList(tester, projects: [project], activeSessions: {"p1": 1});
 
@@ -136,7 +133,7 @@ void main() {
     });
 
     testWidgets("counts the sessions when more than one is live", (tester) async {
-      final project = testProject(id: "p1", name: "my-app");
+      final project = testProjectSummary(id: "p1", name: "my-app");
 
       await pumpList(tester, projects: [project], activeSessions: {"p1": 2});
 
@@ -146,7 +143,7 @@ void main() {
 
   group("a project with activity the user hasn't opened", () {
     testWidgets("marks itself New activity, without moving", (tester) async {
-      final project = testProject(id: "p1", name: "my-app").copyWith(hasUnseenChanges: true);
+      final project = testProjectSummary(id: "p1", name: "my-app").copyWith(hasUnseenChanges: true);
 
       await pumpList(tester, projects: [project]);
 
@@ -161,8 +158,8 @@ void main() {
       await pumpList(
         tester,
         projects: [
-          testProject(id: "p1", name: "unread").copyWith(hasUnseenChanges: true),
-          testProject(id: "p2", name: "read"),
+          testProjectSummary(id: "p1", name: "unread").copyWith(hasUnseenChanges: true),
+          testProjectSummary(id: "p2", name: "read"),
         ],
       );
 
@@ -174,7 +171,7 @@ void main() {
   testWidgets("a running project that is also unseen reports the live turn, not the backlog", (tester) async {
     // Both are true; the slot holds one. A turn in flight is the more useful
     // thing to say, and the title's weight still carries the unopened state.
-    final project = testProject(id: "p1", name: "my-app").copyWith(hasUnseenChanges: true);
+    final project = testProjectSummary(id: "p1", name: "my-app").copyWith(hasUnseenChanges: true);
 
     await pumpList(tester, projects: [project], activeSessions: {"p1": 1});
 
@@ -184,7 +181,7 @@ void main() {
   });
 
   testWidgets("a read, idle project says only when it last changed", (tester) async {
-    final project = testProject(id: "p1", name: "my-app").copyWith(
+    final project = testProjectSummary(id: "p1", name: "my-app").copyWith(
       time: ProjectTime(created: 0, updated: DateTime.now().millisecondsSinceEpoch),
     );
 
@@ -196,48 +193,14 @@ void main() {
     expect(find.text("just now"), findsOneWidget);
   });
 
-  group("a project whose folder is gone", () {
-    Project missingProject() => testProject(id: "p1", path: "/gone/my-app", name: "my-app").copyWith(
-      directoryMissing: true,
-      time: ProjectTime(created: 0, updated: DateTime.now().millisecondsSinceEpoch),
-    );
-
-    testWidgets("recedes, and says why", (tester) async {
-      await pumpList(tester, projects: [missingProject()]);
-
-      expect(find.text("Unavailable"), findsOneWidget);
-      expect(titleColour(tester, "my-app"), PregoColorsLight.textDisabled);
-      // When the folder is gone, when it last changed is noise.
-      expect(find.text("just now"), findsNothing);
-      expect(find.byType(PregoAiLoader), findsNothing);
-    });
-
-    testWidgets("refuses to open, and explains instead", (tester) async {
-      var navigated = false;
-
-      await pumpList(
-        tester,
-        projects: [missingProject()],
-        onSessionsRoute: (_) => navigated = true,
-      );
-
-      await tester.tap(find.text("my-app"));
-      await tester.pump();
-      await tester.pump();
-
-      expect(navigated, isFalse);
-      expect(find.textContaining("no longer exists"), findsOneWidget);
-    });
-  });
-
   group("the list's pitch", () {
     testWidgets("every row is the same height", (tester) async {
       await pumpList(
         tester,
         projects: [
-          testProject(id: "p1", name: "running"),
-          testProject(id: "p2", name: "unseen").copyWith(hasUnseenChanges: true),
-          testProject(id: "p3", name: "idle"),
+          testProjectSummary(id: "p1", name: "running"),
+          testProjectSummary(id: "p2", name: "unseen").copyWith(hasUnseenChanges: true),
+          testProjectSummary(id: "p3", name: "idle"),
         ],
         activeSessions: {"p1": 1},
       );
@@ -251,7 +214,7 @@ void main() {
       // COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges omit Project.time, so the
       // row has no status and nothing to date. Its line box stays open anyway —
       // a short row here would knock the whole list off its pitch.
-      final project = Project.fromJson({"id": "p1", "name": "my-app", "path": "/x/my-app", "time": null});
+      final project = ProjectSummary.fromJson({"id": "p1", "name": "my-app", "path": "/x/my-app", "time": null});
 
       await pumpList(tester, projects: [project]);
 
@@ -265,7 +228,7 @@ void main() {
     /// scaffold's sake. [width] is the logical screen width.
     Future<void> pumpScaledTile(
       WidgetTester tester, {
-      required Project project,
+      required ProjectSummary project,
       required double width,
       int activeSessions = 0,
       bool unseen = false,
@@ -293,7 +256,7 @@ void main() {
     }
 
     testWidgets("the status line grows with the text instead of cropping it to the 1x line box", (tester) async {
-      final project = testProject(id: "p1", name: "my-app");
+      final project = testProjectSummary(id: "p1", name: "my-app");
 
       await pumpScaledTile(tester, project: project, width: 520, activeSessions: 1);
 
@@ -303,7 +266,7 @@ void main() {
     });
 
     testWidgets("the status label yields to the timestamp instead of overflowing the row", (tester) async {
-      final project = testProject(id: "p1", name: "my-app").copyWith(
+      final project = testProjectSummary(id: "p1", name: "my-app").copyWith(
         time: ProjectTime(created: 0, updated: DateTime.now().millisecondsSinceEpoch),
       );
 
@@ -342,7 +305,7 @@ void main() {
     // InkWell contributes the actions but not the role, and leaves the row's
     // lines as separate nodes to swipe past one at a time.
     final handle = tester.ensureSemantics();
-    final project = testProject(id: "p1", path: "/work/my-app", name: "my-app").copyWith(
+    final project = testProjectSummary(id: "p1", path: "/work/my-app", name: "my-app").copyWith(
       time: ProjectTime(created: 0, updated: DateTime.now().millisecondsSinceEpoch),
     );
 

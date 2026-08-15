@@ -68,7 +68,7 @@ void main() {
   /// received.
   Future<void> pumpScreen(
     WidgetTester tester, {
-    required List<Project> projects,
+    required List<ProjectSummary> projects,
     required void Function(String projectId) onSessionsRoute,
   }) async {
     when(() => mockProjectRepository.listProjects()).thenAnswer(
@@ -106,7 +106,7 @@ void main() {
     tester,
   ) async {
     // A moved project: the stable id points where the folder used to be.
-    final project = testProject(id: "/projects/my-app", path: "/moved/my-app");
+    final project = testProjectSummary(id: "/projects/my-app", path: "/moved/my-app");
     String? pushedProjectId;
 
     await pumpScreen(
@@ -131,7 +131,7 @@ void main() {
   testWidgets("tile derives the name from a Windows bridge path", (tester) async {
     // Paths come from the bridge's host platform — a Windows bridge sends
     // backslash-separated directories that the phone must still parse.
-    final project = testProject(id: r"C:\dev\win-app", path: r"C:\dev\win-app");
+    final project = testProjectSummary(id: r"C:\dev\win-app", path: r"C:\dev\win-app");
 
     await pumpScreen(tester, projects: [project], onSessionsRoute: (_) {});
 
@@ -140,7 +140,7 @@ void main() {
 
   testWidgets("tile falls back to the id when an older bridge sends no path", (tester) async {
     // Older bridges omit `path`; there the id IS the directory.
-    final project = Project.fromJson({
+    final project = ProjectSummary.fromJson({
       "id": "/home/user/legacy-app",
       "name": null,
       "time": {"created": 1700000000000, "updated": 1700000000000},

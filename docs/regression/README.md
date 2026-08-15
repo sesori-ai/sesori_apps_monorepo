@@ -146,6 +146,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Bridge installation and updates](bridge-installation-and-updates.md)
 - [Design catalog](design-catalog.md)
 - [Diffs and source control](diffs-and-source-control.md)
+- [Navigation transitions](navigation-transitions.md)
 - [Notifications](notifications.md)
 - [Permission auto-approval](permission-auto-approval.md)
 - [Plugin runtime installation](plugin-runtime-installation.md)

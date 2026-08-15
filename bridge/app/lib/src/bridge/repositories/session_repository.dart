@@ -155,24 +155,6 @@ class SessionRepository({
     );
   }
 
-  Future<Session> enrichSession({
-    required Session session,
-    required VerifiedGithubLogin? verifiedGithubLogin,
-  }) async {
-    final enrichedSessions = await enrichSessions(
-      sessions: [session],
-      verifiedGithubLogin: verifiedGithubLogin,
-    );
-    return enrichedSessions.single;
-  }
-
-  Future<Session> enrichPluginSession({required String pluginId, required PluginSession pluginSession}) {
-    return enrichSession(
-      session: pluginSession.toSharedSession(pluginId: pluginId),
-      verifiedGithubLogin: null,
-    );
-  }
-
   Future<Session> createSession({
     required String pluginId,
     required String projectId,
@@ -212,8 +194,7 @@ class SessionRepository({
         final projectionUpdatedAt = captureProjectionTimestamp();
         final createdAt = created.time?.created ?? projectionUpdatedAt;
         final updatedAt = created.time?.updated ?? createdAt;
-        late String sessionId;
-        await _sessionDao.attachedDatabase.transaction(() async {
+        final committedRow = await _sessionDao.attachedDatabase.transaction(() async {
           final existingBinding = await _sessionDao.getSessionByBinding(
             pluginId: pluginId,
             backendSessionId: created.id,
@@ -225,7 +206,7 @@ class SessionRepository({
               message: "backend session ${created.id} is already bound as a child session",
             );
           }
-          sessionId = existingBinding?.sessionId ?? await _allocateSessionId();
+          final sessionId = existingBinding?.sessionId ?? await _allocateSessionId();
           await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
           await _sessionDao.insertSession(
             sessionId: sessionId,
@@ -249,8 +230,9 @@ class SessionRepository({
             updatedAt: updatedAt,
             projectionUpdatedAt: projectionUpdatedAt,
           );
+          return (await _sessionDao.getSession(sessionId: sessionId))!;
         });
-        return (created: created, sessionId: sessionId, generation: generation);
+        return (row: committedRow, backendSessionId: created.id, generation: generation);
       },
     );
     _publishBindingsCommitted(
@@ -258,27 +240,31 @@ class SessionRepository({
       projectId: projectId,
       generation: result.generation,
       kind: SessionBindingCommitKind.sessionCreation,
-      backendSessionIds: [result.created.id],
+      backendSessionIds: [result.backendSessionId],
     );
-    return result.created.toSharedSessionWithId(sessionId: result.sessionId, pluginId: pluginId);
+    return _sessionCatalogMapper.map(
+      row: result.row,
+      pullRequest: null,
+      unseen: _unseenCalculator.isUnseen(
+        activity: result.row.lastActivityAt,
+        userMessage: result.row.lastUserMessageAt,
+        seen: result.row.lastSeenAt,
+      ),
+    );
   }
 
-  Future<Session> renameSession({required String sessionId, required String title}) async {
+  Future<void> renameSession({required String sessionId, required String title}) async {
     final binding = await _requireBinding(
       sessionId: sessionId,
       operation: SessionOperation.renameSession,
     );
-    final updated = await _runtime.use(
+    await _runtime.use(
       pluginId: binding.pluginId,
       operation: SessionOperation.renameSession,
       body: (plugin) {
         _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
         return plugin.renameSession(sessionId: binding.backendSessionId, title: title);
       },
-    );
-    return updated.toSharedSessionWithId(
-      sessionId: binding.sessionId,
-      pluginId: binding.pluginId,
     );
   }
 
@@ -392,6 +378,16 @@ class SessionRepository({
       projectionUpdatedAt: captureProjectionTimestamp(),
     );
     return true;
+  }
+
+  Future<Session?> setGeneratedSessionTitleIfAbsent({required String sessionId, required String title}) async {
+    final updated = await _sessionDao.setTitleIfNull(
+      sessionId: sessionId,
+      title: title,
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+      projectionUpdatedAt: captureProjectionTimestamp(),
+    );
+    return updated ? await getCatalogSession(sessionId: sessionId) : null;
   }
 
   Future<bool> isSessionTombstoned({required String sessionId}) async {

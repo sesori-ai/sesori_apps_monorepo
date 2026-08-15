@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan slug:** `pi-harness`
-- **Implementation base:** current `origin/main` with Step 10 merged
-- **Series state:** Step 10/21 merged; Step 11/21 ready for PR
-- **Current step:** 11/21, Pi session history replay
+- **Implementation base:** current `origin/main` with Step 14 merged
+- **Series state:** Step 14/21 merged; Step 15/21 in PR
+- **Current step:** 15/21, Pi models and commands under review
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
@@ -17,7 +17,12 @@
 - **Step 8 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/862
 - **Step 9 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/866
 - **Step 10 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/884
-- **Next action:** open and monitor the Step 11 PR, then start Step 12 locally
+- **Step 11 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/892
+- **Step 12 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/905
+- **Step 13 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/910
+- **Step 14 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/914
+- **Step 15 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/920
+- **Next action:** monitor the Step 15 PR while starting Step 16 locally
 
 ## Locked Decisions
 
@@ -54,11 +59,11 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 8/21 | `🚧 [pi-harness] feat(runtime): install direct binary assets [step 8/21]` | 900-1,300 | Merged as PR #862; dependency merged as PR #857 |
 | [x] | 9/21 | `🚧 [pi-harness] feat(omp): add managed runtime and lifecycle [step 9/21]` | 1,000-1,400 | Merged as PR #866 |
 | [x] | 10/21 | `🚧 [pi-harness] feat(pi): enumerate persisted sessions [step 10/21]` | 1,000-1,400 (recorded overage) | Merged as PR #884 |
-| [ ] | 11/21 | `⚙️ [pi-harness] feat(pi): replay Pi session history [step 11/21]` | 1,100-1,500 (recorded overage) | Ready for PR |
-| [ ] | 12/21 | `🚧 [pi-harness] feat(pi): map live messages and tools [step 12/21]` | 1,200-1,500 | Not started |
-| [ ] | 13/21 | `⚙️ [pi-harness] feat(pi): bridge extension dialogs [step 13/21]` | 900-1,300 | Not started |
-| [ ] | 14/21 | `🚧 [pi-harness] feat(pi): manage session residency and turns [step 14/21]` | 1,200-1,500 | Not started |
-| [ ] | 15/21 | `⚙️ [pi-harness] feat(pi): expose models and commands [step 15/21]` | 900-1,300 | Not started |
+| [x] | 11/21 | `⚙️ [pi-harness] feat(pi): replay Pi session history [step 11/21]` | 1,100-1,500 (recorded overage) | Merged as PR #892 |
+| [x] | 12/21 | `🚧 [pi-harness] feat(pi): map live messages and tools [step 12/21]` | 1,200-1,500 (recorded overage) | Merged as PR #905 |
+| [x] | 13/21 | `⚙️ [pi-harness] feat(pi): bridge extension dialogs [step 13/21]` | 900-1,300 | Merged as PR #910 |
+| [x] | 14/21 | `🚧 [pi-harness] feat(pi): manage session residency and turns [step 14/21]` | 1,200-1,500 (recorded overage) | Merged as PR #914 |
+| [ ] | 15/21 | `⚙️ [pi-harness] feat(pi): expose models and commands [step 15/21]` | 900-1,300 | PR #920 open |
 | [ ] | 16/21 | `🚧 [pi-harness] feat(pi): implement the plugin API [step 16/21]` | 1,100-1,500 | Not started |
 | [ ] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | Not started; runtime dependency merged |
 | [ ] | 18/21 | `⚙️ [pi-harness] feat(bridge): register Pi and OMP [step 18/21]` | 800-1,200 | Not started |
@@ -365,6 +370,123 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - Recorded overage: generated closed history unions, RPC/file normalization,
   privacy-safe mapping, and focused regression tests are one replay seam;
   splitting would publish incomplete history or live-parity contracts.
+
+### Step 12/21
+
+- Added `PiEventDispatcher` and `PiToolTracker` for content-index text/reasoning
+  streaming, authoritative assistant finals, pending/running/terminal tools,
+  cumulative output replacement, retry/status/compaction events, edit/write
+  diff invalidation, and `agent_settled` completion.
+- Shared repository-owned identity hydration keeps resumed live IDs aligned with
+  replay, including equal-timestamp assistants and prior compactions. Final
+  reconciliation removes provisional parts absent from the authoritative final.
+- Reused canonical replay mapping for assistant envelopes, bounded tool results,
+  unfinished failed tools, and visible compaction cards; raw Pi payload decoding
+  remains below the Layer-3 dispatcher.
+- `dart test` (160 tests), `dart analyze --fatal-infos`, and
+  `git diff --check`: pass.
+- Architecture implementation review ran twice. The user approved applying the
+  remaining second-pass findings without a third review; identity hydration,
+  stale-part reconciliation, tracker placement, and decoding ownership were
+  corrected.
+- No user-visible, database, persisted-data mutation, analytics, or client-UI
+  change; Pi remains app-invisible until Step 18.
+- Diff after review feedback: +2,035/-146 = 2,181 changed lines;
+  generated lines: 0; tests run: 160.
+- Recorded overage: review fixes for transactional identity hydration,
+  concurrent live allocations, overlapping-read ordering, and active-branch
+  rebasing, authoritative part ordering/omission, direct bash/custom and
+  top-level custom-entry and user-final parity, diagnostic context,
+  malformed-final/tool cleanup, retry-aware compaction/status recovery,
+  tracker package alignment, and the pre-residency hydration invariant complete
+  the same live-mapping seam; splitting them would preserve known replay
+  divergence or diagnostic gaps.
+
+### Step 13/21
+
+- Added `PiExtensionUiTracker` and `PiExtensionUiService` for select, confirm,
+  input, and editor questions; exact value/confirmation/cancellation replies;
+  bounded editor prefill and notifications; and explicit decorative-UI
+  degradation.
+- Pending dialogs are indexed by owner, top imported display root, and normalized
+  owning project. Upstream timeouts retire mirrored cards, the plugin owns editor
+  expiry, and owner generation fencing prevents abort/replacement cleanup from
+  racing a catalog lookup and recreating stale state.
+- Response sending remains an injected operation until Step 14 owns resident Pi
+  clients. The user explicitly approved that temporary seam after architecture
+  review; answer translation remains service-owned and notification severity
+  stays typed. Owner cleanup and disposal cancel process-local dialogs and emit
+  typed rejection lifecycle events; Pi permissions remain unsupported.
+- Review fixes cancel dialogs when scope resolution fails, count catalog lookup
+  time against upstream expiry, retire failed writes, accept replies from the
+  display root, bound rune allocation, and keep pending-question mapping single.
+- `dart test` (170 tests), `dart analyze --fatal-infos`, and
+  `git diff --check`: pass.
+- No current user-visible, database, persisted-data, analytics, or registered
+  plugin impact; Pi remains app-invisible until Step 18.
+- Diff: +1,003/-7 = 1,010 changed lines; generated lines: 0; tests run: 170.
+
+### Step 14/21
+
+- Added persistent pending-new markers, secure caller-owned IDs, one
+  generation-fenced resident RPC client per active session, replay hydration
+  before frame attachment, merged tagged frame/exit streams, and resident or
+  transient history/rename leases.
+- Added per-session prompt lanes with immediate admission, selection-before-
+  prompt ordering, same-session FIFO and cross-session concurrency, dialog-first
+  command acceptance, correlated response/event settlement, no-run state
+  barriers, failed-response/exit settlement, abort teardown, idle reap, and
+  idempotent disposal.
+- Added strict bounded inline image validation and visible privacy-safe rejection
+  of paths, URLs, non-image data, malformed base64, and oversized collections.
+- Architecture implementation review approved direct resident-repository
+  response ownership. Validated PR review fixes then added CR/LF-safe pending
+  markers, pre-start best-effort stale-marker cleanup, connecting-client and
+  globally monotonic generation fencing, generation-safe extension dialogs,
+  exact slash-command dispatch with privacy-safe presentation, ambiguous-timeout
+  teardown with old-dialog retirement, and disposal waiting for active idle-reap
+  teardown.
+- Full package tests pass (211 tests); fatal analysis and diff checks pass. The
+  pinned formatter still crashes on the pre-existing Dart 3.13
+  primary-constructor enum in `pi_session_storage_api.dart`; every other changed
+  Dart file formats cleanly.
+- No generated files, database schema, client/bridge wire contract, analytics,
+  or registered plugin change. Pi composition/catalog exposure remain Steps
+  15-16; Pi remains app-invisible until Step 18. Cold replay cannot recover
+  `userVisibleArguments` from Pi's persisted raw command without new persistence,
+  so cold replay conservatively displays only the slash-command token for both
+  API commands and manually typed slash prompts, never hidden raw arguments;
+  live API-command presentation retains exact `userVisibleArguments`.
+- Diff: +3,202/-101 = 3,303 changed lines; generated lines: 0; tests run: 211.
+  Review-fix working-tree delta excluding this tracker evidence: +586/-85 =
+  671 changed lines. Recorded overage:
+  persistence, residency, replay hydration, turn settlement, attachment
+  validation, and focused concurrency/lifecycle tests form one required Step 14
+  seam; splitting would leave resident processes without their owning lane or
+  required fencing evidence.
+
+### Step 15/21
+
+- Added generated Pi catalog DTOs plus exact `--mode rpc --no-session --approve`
+  launch support. Project-scoped probes capture initial model identity, dedupe
+  provider/model IDs without splitting, hydrate bounded reasoning variants,
+  map command sources, cancel probe dialogs, preserve diagnostics, and always
+  tear down their single process lease.
+- Added normalized-project `PiCatalogTracker` and `PiCatalogService` reuse,
+  refresh, same-project coalescing, cross-project concurrency,
+  complete/partial/failed classification, and last-good retention. Pi uses the
+  backend-neutral discovery result and synthesizes one primary `pi` agent.
+- Generated catalog outputs refreshed with package codegen. Focused catalog and
+  launch tests pass (17 tests); full Pi package tests pass (222 tests); fatal
+  analysis and `git diff --check` pass.
+- Diff: +1,925/-17 = 1,942 changed lines; generated lines: 841; non-generated
+  changed lines: 1,101, within the step estimate; tests run: 222.
+- Formatter passes for the touched Dart files except the pinned formatter bug
+  on the valid primary-constructor catalog enum. No shared image-capability
+  field exists, so Pi image input support is parsed but not exposed through an
+  invented backend-neutral field.
+- No database, persisted-data, client/bridge wire-contract, analytics, or
+  registered-plugin impact. Step 14 merged as PR #914; Step 15 is in PR #920.
 
 ## Findings And Plan Deltas
 

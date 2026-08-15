@@ -66,6 +66,23 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     );
   }
 
+  Future<bool> setTitleIfNull({
+    required String sessionId,
+    required String title,
+    required int updatedAt,
+    required int projectionUpdatedAt,
+  }) async {
+    final updatedRows =
+        await (update(sessionTable)..where((table) => table.sessionId.equals(sessionId) & table.title.isNull())).write(
+          SessionTableCompanion(
+            title: Value(title),
+            updatedAt: Value(updatedAt),
+            projectionUpdatedAt: Value(projectionUpdatedAt),
+          ),
+        );
+    return updatedRows == 1;
+  }
+
   /// Records a delete tombstone for [backendSessionId]. Idempotent — re-deleting an
   /// already-tombstoned session keeps the original timestamp.
   Future<void> insertSessionTombstone({

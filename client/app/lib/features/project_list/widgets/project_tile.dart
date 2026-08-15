@@ -13,17 +13,11 @@ import "../../../core/routing/app_router.dart";
 import "../../../l10n/app_localizations.dart";
 import "../rename_project_dialog.dart";
 
-/// The user-facing directory of [project]: its live path on disk, falling
-/// back to the id for payloads from older bridges that don't send a path
-/// (there the id is the directory).
-// COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges may omit Project.path. Remove this fallback when the shared path default is removed.
-String projectDisplayPath(Project project) => project.path.isEmpty ? project.id : project.path;
-
 /// The last segment of [project]'s directory, used as the display-name
 /// fallback when the project has no stored name. The directory comes from the
 /// bridge's host platform, not the phone's, so both separator styles must
 /// parse — the platform-local basename would return a Windows path unchanged.
-String projectDirectoryBasename(Project project) => p.posix.basename(_toPosix(projectDisplayPath(project)));
+String projectDirectoryBasename(ProjectSummary project) => p.posix.basename(_toPosix(project.path));
 
 /// [project]'s directory, shortened to the part that tells projects apart.
 ///
@@ -32,8 +26,8 @@ String projectDirectoryBasename(Project project) => p.posix.basename(_toPosix(pr
 /// leave every row reading `/Users/someone/workspace/clien…`. So the head is
 /// dropped instead of the tail: the last two segments survive, marked with a
 /// leading ellipsis when anything was actually removed.
-String projectShortPath(Project project) {
-  final segments = _toPosix(projectDisplayPath(project)).split("/").where((s) => s.isNotEmpty).toList();
+String projectShortPath(ProjectSummary project) {
+  final segments = _toPosix(project.path).split("/").where((s) => s.isNotEmpty).toList();
   if (segments.length <= _shortPathSegments) return segments.join("/");
   return "…/${segments.sublist(segments.length - _shortPathSegments).join("/")}";
 }
@@ -63,7 +57,7 @@ String _toPosix(String path) => path.replaceAll(r"\", "/");
 /// dependency for every realised row of the list.
 class const ProjectTile({
   super.key,
-  required final Project project,
+  required final ProjectSummary project,
 
   /// How many of the project's sessions an agent is working in right now.
   required final int activeSessions,
@@ -136,13 +130,6 @@ class const ProjectTile({
     final loc = context.loc;
     final prego = context.prego;
     final displayName = project.name ?? _fallbackName(loc: loc);
-    // The project's folder was moved or deleted on disk. Surface it as
-    // unavailable and block navigation so we don't drive into a dead path;
-    // Hide/Rename stay available via long-press.
-    final missing = project.directoryMissing;
-    // An unavailable project's whole row recedes; the status line stays a shade
-    // darker than the rest so the reason is still legible.
-    final dimmed = missing ? prego.colors.textDisabled : null;
 
     return PregoSwipeActions(
       showBottomHairline: true,
@@ -162,7 +149,7 @@ class const ProjectTile({
           child: Semantics(
             button: true,
             child: InkWell(
-              onTap: () => _open(context: context, displayName: displayName, missing: missing),
+              onTap: () => _open(context: context, displayName: displayName),
               onLongPress: openMenu,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -176,11 +163,11 @@ class const ProjectTile({
                         crossAxisAlignment: CrossAxisAlignment.start,
                         spacing: PregoSpacing.xs,
                         children: [
-                          _titleRow(prego: prego, displayName: displayName, dimmed: dimmed),
+                          _titleRow(prego: prego, displayName: displayName),
                           Text(
                             projectShortPath(project),
                             style: prego.textTheme.textSm.regular.copyWith(
-                              color: dimmed ?? prego.colors.textSecondary,
+                              color: prego.colors.textSecondary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -193,7 +180,7 @@ class const ProjectTile({
                       child: Icon(
                         TablerLight.chevron_right,
                         size: _chevronSize,
-                        color: dimmed ?? prego.colors.textSecondary,
+                        color: prego.colors.textSecondary,
                       ),
                     ),
                   ],
@@ -272,7 +259,6 @@ class const ProjectTile({
   Widget _titleRow({
     required PregoDesignSystem prego,
     required String displayName,
-    required Color? dimmed,
   }) {
     return Row(
       spacing: PregoSpacing.sm,
@@ -281,7 +267,7 @@ class const ProjectTile({
           child: Icon(
             TablerSolid.folder,
             size: _folderSize,
-            color: dimmed ?? prego.colors.textSecondary,
+            color: prego.colors.textSecondary,
           ),
         ),
         Expanded(
@@ -289,7 +275,7 @@ class const ProjectTile({
             displayName,
             // Unopened activity leans on weight rather than a badge.
             style: (unseen ? prego.textTheme.textMd.medium : prego.textTheme.textMd.regular).copyWith(
-              color: dimmed ?? prego.colors.textPrimary,
+              color: prego.colors.textPrimary,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -304,20 +290,12 @@ class const ProjectTile({
     return lastSegment.isNotEmpty ? lastSegment : loc.projectListDefaultName;
   }
 
-  void _open({required BuildContext context, required String displayName, required bool missing}) {
-    if (missing) {
-      PregoPopupAlertPresenter.of(context).show(
-        title: context.loc.projectFolderMissingMessage,
-        variant: PregoPopupAlertsNotificationsVariant.warning,
-      );
-      return;
-    }
+  void _open({required BuildContext context, required String displayName}) {
     context.read<ProjectListCubit>().setActiveProject(project);
     context.pushRoute(
       AppRoute.sessions(
         projectId: project.id,
         projectName: displayName,
-        supportsDedicatedWorktrees: project.supportsDedicatedWorktrees,
       ),
     );
   }
@@ -329,7 +307,7 @@ class const ProjectTile({
 /// and unseen; a live turn is the more informative of the two, so it wins, and
 /// the unseen state still shows through the title's weight.
 class const _StatusRow({
-  required final Project project,
+  required final ProjectSummary project,
   required final int activeSessions,
   required final bool unseen,
 }) extends StatelessWidget {
@@ -337,7 +315,6 @@ class const _StatusRow({
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
-    final missing = project.directoryMissing;
     // COMPATIBILITY 2026-07-11 (v1.4.1): Old bridges may omit Project.time, leaving a project with no timestamp to show. Remove the null branch when the shared field becomes non-null.
     final updatedAt = project.time?.updated;
 
@@ -353,14 +330,7 @@ class const _StatusRow({
           // The label yields and ellipsizes when the line runs out of width —
           // a narrow screen under a large text size — so it can't push the
           // timestamp out of the row.
-          if (missing)
-            Flexible(
-              child: _StatusLabel(
-                icon: const Icon(TablerRegular.circle_x, size: _statusIconSize),
-                label: loc.projectFolderMissing,
-              ),
-            )
-          else if (activeSessions > 0)
+          if (activeSessions > 0)
             Flexible(
               child: _StatusLabel(
                 icon: PregoAiLoader(phase: PregoAiLoader.phaseFor(project.id)),
@@ -377,8 +347,7 @@ class const _StatusRow({
                 emphasis: true,
               ),
             ),
-          // An unavailable project's timestamp is noise — the folder is gone.
-          if (!missing && updatedAt != null)
+          if (updatedAt != null)
             Text(
               context.formatTimestamp(updatedAt),
               style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
@@ -490,7 +459,6 @@ const double _statusLineHeight = 20;
 
 const double _folderSize = 16;
 const double _chevronSize = 16;
-const double _statusIconSize = 16;
 
 /// The status icon sits in a fixed slot so the labels of the different statuses
 /// line up with each other down the list.

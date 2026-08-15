@@ -1,3 +1,5 @@
+import "dart:typed_data";
+
 import "package:cryptography/cryptography.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -48,12 +50,19 @@ void main() {
 
     test("encrypt/decrypt round-trip returns original plaintext", () async {
       final key = SecretKey(List<int>.generate(32, (i) => i));
-      final plaintext =
-          "hello, world! this is a test message for XChaCha20-Poly1305"
-              .codeUnits;
+      final plaintext = "hello, world! this is a test message for XChaCha20-Poly1305".codeUnits;
 
       final ciphertext = await crypto.encrypt(plaintext, key: key);
+      expect(ciphertext, isA<Uint8List>());
+      expect(ciphertext, hasLength(24 + plaintext.length + 16));
       expect(ciphertext, isNot(equals(plaintext)));
+
+      final secretBox = SecretBox(
+        Uint8List.sublistView(ciphertext, 24, ciphertext.length - 16),
+        nonce: Uint8List.sublistView(ciphertext, 0, 24),
+        mac: Mac(Uint8List.sublistView(ciphertext, ciphertext.length - 16)),
+      );
+      expect(await Xchacha20.poly1305Aead().decrypt(secretBox, secretKey: key), equals(plaintext));
 
       final decrypted = await crypto.decrypt(ciphertext, key: key);
       expect(decrypted, equals(plaintext));
@@ -75,6 +84,7 @@ void main() {
       final plaintext = "session encryptor round-trip test".codeUnits;
 
       final ciphertext = await encryptor.encrypt(plaintext);
+      expect(ciphertext, isA<Uint8List>());
       final decrypted = await encryptor.decrypt(ciphertext);
 
       expect(decrypted, equals(plaintext));

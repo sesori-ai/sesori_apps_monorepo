@@ -1513,6 +1513,12 @@ abstract class AppLocalizations {
   /// **'Session'**
   String get sessionDetailTitle;
 
+  /// No description provided for @sessionDetailLoadingSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading session'**
+  String get sessionDetailLoadingSemantics;
+
   /// No description provided for @sessionDetailEmpty.
   ///
   /// In en, this message translates to:
@@ -2839,6 +2845,18 @@ abstract class AppLocalizations {
   /// **'Refresh the model list'**
   String get newSessionOptionsRefresh;
 
+  /// No description provided for @newSessionProjectRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry project check'**
+  String get newSessionProjectRefresh;
+
+  /// No description provided for @newSessionProjectUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t verify whether this project supports dedicated workspaces. Try again before creating the session.'**
+  String get newSessionProjectUnavailable;
+
   /// No description provided for @newSessionOptionsCached.
   ///
   /// In en, this message translates to:
@@ -3100,20 +3118,26 @@ abstract class AppLocalizations {
   /// No description provided for @newSessionLoadingMessage1.
   ///
   /// In en, this message translates to:
-  /// **'Warming up the engines…'**
+  /// **'Getting everything ready…'**
   String get newSessionLoadingMessage1;
 
   /// No description provided for @newSessionLoadingMessage2.
   ///
   /// In en, this message translates to:
-  /// **'Generating session telemetry…'**
+  /// **'Connecting the pieces…'**
   String get newSessionLoadingMessage2;
 
   /// No description provided for @newSessionLoadingMessage3.
   ///
   /// In en, this message translates to:
-  /// **'Preparing for takeoff…'**
+  /// **'Almost ready…'**
   String get newSessionLoadingMessage3;
+
+  /// No description provided for @newSessionCreationDuplicateWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori couldn\'t confirm whether a session was created. It may still appear in the session list, and sending again may create a duplicate.'**
+  String get newSessionCreationDuplicateWarning;
 
   /// No description provided for @newSessionLaunchingInBackground.
   ///

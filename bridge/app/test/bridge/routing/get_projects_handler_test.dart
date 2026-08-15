@@ -102,6 +102,7 @@ void main() {
       );
 
       final project = response.data[0];
+      expect(project, isA<ProjectSummary>());
       expect(project.id, equals("p1"));
       expect(project.name, equals("My Project"));
       expect(plugin.getProjectsCallCount, 0);

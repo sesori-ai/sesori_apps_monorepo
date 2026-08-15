@@ -7,7 +7,6 @@ import "package:sesori_bridge/src/bridge/services/session_cleanup_result.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
@@ -76,6 +75,8 @@ void main() {
         ..releaseRename = releaseRename.future;
       await insertSession();
 
+      final mutations = <LocalSessionMutation>[];
+      final subscription = dispatcher.mutations.listen(mutations.add);
       final rename = dispatcher.renameSession(sessionId: "s1", title: "Stored title");
       await renameStarted.future;
       var completed = false;
@@ -84,30 +85,101 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         expect(completed, isFalse);
         expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Stored title");
+        expect(
+          mutations.single,
+          isA<SessionTitleUpdated>().having((mutation) => mutation.session.title, "title", "Stored title"),
+        );
       } finally {
         releaseRename.complete();
       }
       expect((await rename).title, "Stored title");
       expect(operationDispatcher.activeLaneCount, isZero);
+      await subscription.cancel();
     });
 
-    test("keeps the stored title when plugin propagation fails", () async {
+    test("generated title emits before propagation and catalogTitle does not block", () async {
+      final renameStarted = Completer<void>();
+      final releaseRename = Completer<void>();
+      plugin
+        ..renameStarted = renameStarted
+        ..releaseRename = releaseRename.future;
+      await insertSession();
+      await db.sessionDao.updateObservedSessionProjection(
+        sessionId: "s1",
+        directory: "/repo",
+        catalogTitle: "Catalog title",
+        updateCatalogTitle: true,
+        updatedAt: 2,
+        projectionUpdatedAt: 2,
+      );
+      final mutations = <LocalSessionMutation>[];
+      final subscription = dispatcher.mutations.listen(mutations.add);
+
+      final update = dispatcher.applyGeneratedTitle(sessionId: "s1", title: "Generated title");
+      await renameStarted.future;
+
+      expect(
+        mutations.single,
+        isA<SessionTitleUpdated>().having((mutation) => mutation.session.title, "title", "Generated title"),
+      );
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Generated title");
+      releaseRename.complete();
+      expect((await update)?.title, "Generated title");
+      await subscription.cancel();
+    });
+
+    test("generated title does not propagate after user rename wins", () async {
+      await insertSession();
+      await dispatcher.renameSession(sessionId: "s1", title: "User title");
+      final mutations = <LocalSessionMutation>[];
+      final subscription = dispatcher.mutations.listen(mutations.add);
+
+      final updated = await dispatcher.applyGeneratedTitle(sessionId: "s1", title: "Generated title");
+
+      expect(updated, isNull);
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "User title");
+      expect(plugin.renameCalls, 1);
+      expect(mutations, isEmpty);
+      await subscription.cancel();
+    });
+
+    test("generated title does not propagate when deletion wins", () async {
+      await insertSession();
+      await dispatcher.deleteSession(
+        sessionId: "s1",
+        cleanup: () async => CleanupSuccess(),
+        onDeleted: (_) async {},
+      );
+      final mutations = <LocalSessionMutation>[];
+      final subscription = dispatcher.mutations.listen(mutations.add);
+
+      await expectLater(
+        dispatcher.applyGeneratedTitle(sessionId: "s1", title: "Generated title"),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+
+      expect(plugin.renameCalls, isZero);
+      expect(mutations, isEmpty);
+      await subscription.cancel();
+    });
+
+    test("keeps the generated title when plugin propagation fails", () async {
       plugin.renameError = StateError("rename failed");
       await insertSession();
 
-      final renamed = await dispatcher.renameSession(sessionId: "s1", title: "Stored title");
+      final renamed = await dispatcher.applyGeneratedTitle(sessionId: "s1", title: "Generated title");
 
-      expect(renamed.title, "Stored title");
-      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Stored title");
+      expect(renamed?.title, "Generated title");
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "Generated title");
       expect(plugin.renameCalls, 1);
     });
 
-    test("owns repository deletion and deleted session events", () async {
+    test("owns repository deletion and typed deleted mutations", () async {
       await insertSession();
       final events = expectLater(
-        dispatcher.deletedSessions,
+        dispatcher.mutations,
         emitsInOrder([
-          isA<Session>().having((session) => session.id, "id", "s1"),
+          isA<SessionDeleted>().having((mutation) => mutation.session.id, "id", "s1"),
           emitsDone,
         ]),
       );

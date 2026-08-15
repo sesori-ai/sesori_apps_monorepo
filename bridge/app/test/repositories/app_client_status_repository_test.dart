@@ -1,6 +1,8 @@
 import "package:sesori_bridge/src/api/app_client_status_response.dart";
+import "package:sesori_bridge/src/api/generate_session_metadata_response.dart";
 import "package:sesori_bridge/src/api/sesori_server_api.dart";
 import "package:sesori_bridge/src/repositories/app_client_status_repository.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -21,6 +23,7 @@ void main() {
       for (final statusCode in [404, 405]) {
         final api = _FakeSesoriServerApi()
           ..error = SesoriServerApiException(
+            method: "GET",
             statusCode: statusCode,
             uri: Uri.parse("https://auth.example.test/auth/app-clients/status"),
           );
@@ -57,4 +60,10 @@ class _FakeSesoriServerApi() implements SesoriServerApi {
     if (error != null) throw error!;
     return response;
   }
+
+  @override
+  Future<GenerateSessionMetadataResponse> generateSessionMetadata({
+    required GenerateSessionMetadataRequest request,
+    required SesoriServerRequestAbortSignal abortSignal,
+  }) => throw UnimplementedError();
 }

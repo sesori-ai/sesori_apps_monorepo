@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:convert";
 import "dart:io";
+import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
@@ -489,7 +490,7 @@ class _RecordingRelayClient({
   RelaySendOutcome sendIfCurrent({
     required RelayConnection connection,
     required int connID,
-    required List<int> payload,
+    required Uint8List payload,
   }) {
     sendAttempts.add((connection: connection, connId: connID));
     if (failNextSend) {

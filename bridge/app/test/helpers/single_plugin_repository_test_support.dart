@@ -131,6 +131,7 @@ WorktreeRepository singlePluginWorktreeRepository({
   return WorktreeRepository(
     projectsDao: projectsDao,
     sessionDao: sessionDao,
+    filesystemApi: const FilesystemApi(),
     gitApi: gitApi,
     runtime: createTestPluginRuntime(plugins: [plugin]),
   );

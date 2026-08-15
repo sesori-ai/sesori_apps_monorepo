@@ -8,16 +8,28 @@ import "../repositories/session_repository.dart";
 import "session_cleanup_result.dart";
 import "session_operation_dispatcher.dart";
 
+sealed class const LocalSessionMutation({required final Session session}) {
+  const factory titleUpdated({required Session session}) = SessionTitleUpdated;
+
+  const factory deleted({required Session session}) = SessionDeleted;
+}
+
+final class const SessionTitleUpdated({required super.session}) extends LocalSessionMutation;
+
+final class const SessionDeleted({required super.session}) extends LocalSessionMutation;
+
 /// Owns bridge-persisted session mutations and their backend propagation.
 class SessionMutationDispatcher({
   required final SessionRepository _sessionRepository,
   required final SessionOperationDispatcher _sessionOperationDispatcher,
 }) {
-  final StreamController<Session> _deletedSessionsController = StreamController<Session>.broadcast(sync: true);
+  final StreamController<LocalSessionMutation> _mutationsController = StreamController<LocalSessionMutation>.broadcast(
+    sync: true,
+  );
   bool _disposed = false;
   Future<void>? _disposeFuture;
 
-  Stream<Session> get deletedSessions => _deletedSessionsController.stream;
+  Stream<LocalSessionMutation> get mutations => _mutationsController.stream;
 
   Future<Session> renameSession({required String sessionId, required String title}) {
     if (_disposed) return Future.error(StateError("SessionMutationDispatcher is disposed"));
@@ -25,6 +37,15 @@ class SessionMutationDispatcher({
       sessionId: sessionId,
       operation: SessionOperation.renameSession,
       body: () => _renameSessionAlreadyReserved(sessionId: sessionId, title: title),
+    );
+  }
+
+  Future<Session?> applyGeneratedTitle({required String sessionId, required String title}) {
+    if (_disposed) return Future.error(StateError("SessionMutationDispatcher is disposed"));
+    return _sessionOperationDispatcher.dispatch(
+      sessionId: sessionId,
+      operation: SessionOperation.applyGeneratedTitle,
+      body: () => _applyGeneratedTitleAlreadyReserved(sessionId: sessionId, title: title),
     );
   }
 
@@ -45,7 +66,7 @@ class SessionMutationDispatcher({
         if (cleanupResult is CleanupRejected) return cleanupResult;
         final deleted = await _sessionRepository.deleteSession(sessionId: sessionId);
         await onDeleted(deleted.sessionIds);
-        _deletedSessionsController.add(deleted.session);
+        _mutationsController.add(LocalSessionMutation.deleted(session: deleted.session));
         return cleanupResult;
       },
     );
@@ -53,7 +74,7 @@ class SessionMutationDispatcher({
 
   Future<void> dispose() {
     _disposed = true;
-    return _disposeFuture ??= _deletedSessionsController.close();
+    return _disposeFuture ??= _mutationsController.close();
   }
 
   Future<Session> _renameSessionAlreadyReserved({required String sessionId, required String title}) async {
@@ -65,8 +86,23 @@ class SessionMutationDispatcher({
         message: "session $sessionId was not found",
       );
     }
+    _mutationsController.add(LocalSessionMutation.titleUpdated(session: renamed));
     await _propagateTitle(sessionId: sessionId, title: title);
     return renamed;
+  }
+
+  Future<Session?> _applyGeneratedTitleAlreadyReserved({
+    required String sessionId,
+    required String title,
+  }) async {
+    final updated = await _sessionRepository.setGeneratedSessionTitleIfAbsent(
+      sessionId: sessionId,
+      title: title,
+    );
+    if (updated == null) return null;
+    _mutationsController.add(LocalSessionMutation.titleUpdated(session: updated));
+    await _propagateTitle(sessionId: sessionId, title: title);
+    return updated;
   }
 
   Future<void> _propagateTitle({

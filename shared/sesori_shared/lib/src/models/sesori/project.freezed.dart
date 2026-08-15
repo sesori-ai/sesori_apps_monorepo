@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Projects {
 
- List<Project> get data;
+ List<ProjectSummary> get data;
 /// Create a copy of Projects
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -49,7 +49,7 @@ abstract mixin class $ProjectsCopyWith<$Res>  {
   factory $ProjectsCopyWith(Projects value, $Res Function(Projects) _then) = _$ProjectsCopyWithImpl;
 @useResult
 $Res call({
- List<Project> data
+ List<ProjectSummary> data
 });
 
 
@@ -69,7 +69,7 @@ class _$ProjectsCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') @override $Res call({Object? data = null,}) {
   return _then(Projects(
 data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
-as List<Project>,
+as List<ProjectSummary>,
   ));
 }
 
@@ -81,11 +81,11 @@ as List<Project>,
 @JsonSerializable()
 
 class _Projects implements Projects {
-  const _Projects({required  List<Project> data}): _data = data;
+  const _Projects({required  List<ProjectSummary> data}): _data = data;
   factory _Projects.fromJson(Map<String, dynamic> json) => _$ProjectsFromJson(json);
 
- final  List<Project> _data;
-@override List<Project> get data {
+ final  List<ProjectSummary> _data;
+@override List<ProjectSummary> get data {
   if (_data is EqualUnmodifiableListView) return _data;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_data);
@@ -125,7 +125,7 @@ abstract mixin class _$ProjectsCopyWith<$Res> implements $ProjectsCopyWith<$Res>
   factory _$ProjectsCopyWith(_Projects value, $Res Function(_Projects) _then) = __$ProjectsCopyWithImpl;
 @override @useResult
 $Res call({
- List<Project> data
+ List<ProjectSummary> data
 });
 
 
@@ -145,11 +145,181 @@ class __$ProjectsCopyWithImpl<$Res>
 @override @pragma('vm:prefer-inline') $Res call({Object? data = null,}) {
   return _then(_Projects(
 data: null == data ? _self._data : data // ignore: cast_nullable_to_non_nullable
-as List<Project>,
+as List<ProjectSummary>,
   ));
 }
 
 
+}
+
+
+/// @nodoc
+mixin _$ProjectSummary {
+
+ String get id; String? get name; String get path; ProjectTime? get time; bool get hasUnseenChanges;
+/// Create a copy of ProjectSummary
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ProjectSummaryCopyWith<ProjectSummary> get copyWith => _$ProjectSummaryCopyWithImpl<ProjectSummary>(this as ProjectSummary, _$identity);
+
+  /// Serializes this ProjectSummary to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges);
+
+@override
+String toString() {
+  return 'ProjectSummary(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ProjectSummaryCopyWith<$Res>  {
+  factory $ProjectSummaryCopyWith(ProjectSummary value, $Res Function(ProjectSummary) _then) = _$ProjectSummaryCopyWithImpl;
+@useResult
+$Res call({
+ String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges
+});
+
+
+$ProjectTimeCopyWith<$Res>? get time;
+
+}
+/// @nodoc
+class _$ProjectSummaryCopyWithImpl<$Res>
+    implements $ProjectSummaryCopyWith<$Res> {
+  _$ProjectSummaryCopyWithImpl(this._self, this._then);
+
+  final ProjectSummary _self;
+  final $Res Function(ProjectSummary) _then;
+
+/// Create a copy of ProjectSummary
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,}) {
+  return _then(ProjectSummary(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String?,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
+as ProjectTime?,hasUnseenChanges: null == hasUnseenChanges ? _self.hasUnseenChanges : hasUnseenChanges // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+/// Create a copy of ProjectSummary
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ProjectTimeCopyWith<$Res>? get time {
+    if (_self.time == null) {
+    return null;
+  }
+
+  return $ProjectTimeCopyWith<$Res>(_self.time!, (value) {
+    return _then(_self.copyWith(time: value));
+  });
+}
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _ProjectSummary implements ProjectSummary {
+  const _ProjectSummary({required this.id, required this.name, required this.path, required this.time, this.hasUnseenChanges = false});
+  factory _ProjectSummary.fromJson(Map<String, dynamic> json) => _$ProjectSummaryFromJson(json);
+
+@override final  String id;
+@override final  String? name;
+@override final  String path;
+@override final  ProjectTime? time;
+@override@JsonKey() final  bool hasUnseenChanges;
+
+/// Create a copy of ProjectSummary
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ProjectSummaryCopyWith<_ProjectSummary> get copyWith => __$ProjectSummaryCopyWithImpl<_ProjectSummary>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$ProjectSummaryToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges);
+
+@override
+String toString() {
+  return 'ProjectSummary(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ProjectSummaryCopyWith<$Res> implements $ProjectSummaryCopyWith<$Res> {
+  factory _$ProjectSummaryCopyWith(_ProjectSummary value, $Res Function(_ProjectSummary) _then) = __$ProjectSummaryCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges
+});
+
+
+@override $ProjectTimeCopyWith<$Res>? get time;
+
+}
+/// @nodoc
+class __$ProjectSummaryCopyWithImpl<$Res>
+    implements _$ProjectSummaryCopyWith<$Res> {
+  __$ProjectSummaryCopyWithImpl(this._self, this._then);
+
+  final _ProjectSummary _self;
+  final $Res Function(_ProjectSummary) _then;
+
+/// Create a copy of ProjectSummary
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,}) {
+  return _then(_ProjectSummary(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String?,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
+as ProjectTime?,hasUnseenChanges: null == hasUnseenChanges ? _self.hasUnseenChanges : hasUnseenChanges // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+/// Create a copy of ProjectSummary
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ProjectTimeCopyWith<$Res>? get time {
+    if (_self.time == null) {
+    return null;
+  }
+
+  return $ProjectTimeCopyWith<$Res>(_self.time!, (value) {
+    return _then(_self.copyWith(time: value));
+  });
+}
 }
 
 

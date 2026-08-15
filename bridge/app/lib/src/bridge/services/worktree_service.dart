@@ -8,8 +8,146 @@ import "../worktree_types.dart";
 export "../worktree_types.dart";
 
 const _maxWorktreeCreationAttempts = 3;
-const _branchPrefix = "session-";
+const _suffixSpace = 0x1000000;
 const _worktreeDir = ".worktrees";
+// Adapted from the MIT-licensed unique-names-generator dictionaries:
+// https://github.com/andreasonny83/unique-names-generator/tree/main/src/dictionaries
+const _workspaceColors = [
+  "amaranth",
+  "amber",
+  "amethyst",
+  "apricot",
+  "aqua",
+  "aquamarine",
+  "azure",
+  "beige",
+  "black",
+  "blue",
+  "blush",
+  "bronze",
+  "brown",
+  "chocolate",
+  "coffee",
+  "copper",
+  "coral",
+  "crimson",
+  "cyan",
+  "emerald",
+  "fuchsia",
+  "gold",
+  "gray",
+  "green",
+  "harlequin",
+  "indigo",
+  "ivory",
+  "jade",
+  "lavender",
+  "lime",
+  "magenta",
+  "maroon",
+  "moccasin",
+  "olive",
+  "orange",
+  "peach",
+  "pink",
+  "plum",
+  "purple",
+  "red",
+  "rose",
+  "salmon",
+  "sapphire",
+  "scarlet",
+  "silver",
+  "tan",
+  "teal",
+  "tomato",
+  "turquoise",
+  "violet",
+  "white",
+  "yellow",
+];
+const _workspaceAnimals = [
+  "aardvark",
+  "albatross",
+  "alpaca",
+  "antelope",
+  "armadillo",
+  "badger",
+  "bandicoot",
+  "bear",
+  "beaver",
+  "bison",
+  "bobcat",
+  "bonobo",
+  "butterfly",
+  "camel",
+  "capybara",
+  "cardinal",
+  "caribou",
+  "cat",
+  "chameleon",
+  "cheetah",
+  "chickadee",
+  "chinchilla",
+  "chipmunk",
+  "clownfish",
+  "condor",
+  "cougar",
+  "coyote",
+  "crane",
+  "deer",
+  "dingo",
+  "dolphin",
+  "donkey",
+  "dormouse",
+  "dove",
+  "dragonfly",
+  "duck",
+  "eagle",
+  "echidna",
+  "egret",
+  "elephant",
+  "elk",
+  "emu",
+  "falcon",
+  "ferret",
+  "finch",
+  "firefly",
+  "flamingo",
+  "fox",
+  "frog",
+  "gazelle",
+  "gecko",
+  "gerbil",
+  "gibbon",
+  "giraffe",
+  "goat",
+  "goldfish",
+  "goose",
+  "gopher",
+  "gorilla",
+  "guanaco",
+  "gull",
+  "hamster",
+  "hare",
+  "hawk",
+  "hedgehog",
+  "heron",
+  "horse",
+  "hummingbird",
+  "iguana",
+  "impala",
+  "jaguar",
+  "kangaroo",
+  "kingfisher",
+  "kiwi",
+  "koala",
+  "lynx",
+  "otter",
+  "panda",
+  "raven",
+  "wolf",
+];
 
 /// Orchestrates worktree lifecycle for sessions. Callers hand in the stable
 /// project IDENTIFIER; this service resolves it to the project's live
@@ -18,22 +156,12 @@ const _worktreeDir = ".worktrees";
 /// (base-branch override) stay keyed on the identifier.
 class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
   static final _random = Random.secure();
-  static final _safeNamePattern = RegExp(r'^[a-z0-9][a-z0-9-]*$');
 
-  static String _randomSuffix() => _random.nextInt(0xFFFFFF).toRadixString(16).padLeft(6, "0");
-
-  static bool _isSafeGitName(String name) =>
-      name.isNotEmpty &&
-      name.length <= 60 &&
-      !name.contains("..") &&
-      !name.contains("/") &&
-      !name.contains(r"\") &&
-      _safeNamePattern.hasMatch(name);
+  static String _hexSuffix(int value) => value.toRadixString(16).padLeft(6, "0");
 
   Future<WorktreeResult> prepareWorktreeForSession({
     required String projectId,
     required String? parentSessionId,
-    ({String branchName, String worktreeName})? preferredBranchAndWorktreeName,
   }) async {
     if (parentSessionId != null) {
       final parentWorktree = await _worktreeRepository.getParentWorktree(
@@ -85,49 +213,24 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
     final baseCommit = baseBranchAndCommit.baseCommit;
     final startPoint = baseBranchAndCommit.startPoint;
 
-    if (preferredBranchAndWorktreeName != null && parentSessionId == null) {
-      final preferredBranch = preferredBranchAndWorktreeName.branchName;
-      final preferredWorktree = preferredBranchAndWorktreeName.worktreeName;
-      if (!_isSafeGitName(preferredBranch) || !_isSafeGitName(preferredWorktree)) {
-        Log.w(
-          "WorktreeService: rejected unsafe preferred names: branch=$preferredBranch worktree=$preferredWorktree",
-        );
-      } else {
-        final suffix =
-            await _worktreeRepository.branchExists(
-              projectPath: projectPath,
-              branchName: preferredBranch,
-            )
-            ? "-${_randomSuffix()}"
-            : "";
-        final branchName = "$preferredBranch$suffix";
-        final worktreeName = "$preferredWorktree$suffix";
-        final worktreePath = "$projectPath/$_worktreeDir/$worktreeName";
-        final created = await _worktreeRepository.createWorktree(
-          projectPath: projectPath,
-          worktreePath: worktreePath,
-          branchName: branchName,
-          startPoint: startPoint,
-        );
-        if (created) {
-          return WorktreeSuccess(
-            path: worktreePath,
-            branchName: branchName,
-            baseBranch: baseBranch,
-            baseCommit: baseCommit,
-          );
-        }
-      }
-    }
+    final colorOffset = _random.nextInt(_workspaceColors.length);
+    final animalOffset = _random.nextInt(_workspaceAnimals.length);
 
+    // Advancing both curated lists keeps every bounded candidate distinct.
     for (var attempt = 0; attempt < _maxWorktreeCreationAttempts; attempt++) {
-      final branchName = "$_branchPrefix${_randomSuffix()}";
+      final branchName = _workspaceSlug(
+        colorIndex: (colorOffset + attempt) % _workspaceColors.length,
+        animalIndex: (animalOffset + attempt) % _workspaceAnimals.length,
+      );
       final worktreePath = "$projectPath/$_worktreeDir/$branchName";
 
       if (await _worktreeRepository.branchExists(
         projectPath: projectPath,
         branchName: branchName,
       )) {
+        continue;
+      }
+      if (_worktreeRepository.worktreePathExists(worktreePath: worktreePath)) {
         continue;
       }
 
@@ -148,14 +251,51 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
       }
     }
 
+    final lastSlug = _workspaceSlug(
+      colorIndex: (colorOffset + _maxWorktreeCreationAttempts - 1) % _workspaceColors.length,
+      animalIndex: (animalOffset + _maxWorktreeCreationAttempts - 1) % _workspaceAnimals.length,
+    );
+    final suffixOffset = _random.nextInt(_suffixSpace);
+    for (var suffixAttempt = 0; suffixAttempt < _maxWorktreeCreationAttempts; suffixAttempt++) {
+      final branchName = "$lastSlug-${_hexSuffix((suffixOffset + suffixAttempt) % _suffixSpace)}";
+      final worktreePath = "$projectPath/$_worktreeDir/$branchName";
+      if (await _worktreeRepository.branchExists(
+        projectPath: projectPath,
+        branchName: branchName,
+      )) {
+        continue;
+      }
+      if (_worktreeRepository.worktreePathExists(worktreePath: worktreePath)) {
+        continue;
+      }
+      final created = await _worktreeRepository.createWorktree(
+        projectPath: projectPath,
+        worktreePath: worktreePath,
+        branchName: branchName,
+        startPoint: startPoint,
+      );
+      if (created) {
+        return WorktreeSuccess(
+          path: worktreePath,
+          branchName: branchName,
+          baseBranch: baseBranch,
+          baseCommit: baseCommit,
+        );
+      }
+      break;
+    }
+
     Log.w(
-      "WorktreeService: failed to create worktree after 3 attempts for: $projectPath",
+      "WorktreeService: failed to create worktree after ${_maxWorktreeCreationAttempts + 1} attempts for: $projectPath",
     );
     return WorktreeFallback(
       originalPath: projectPath,
-      reason: "failed to create worktree after 3 attempts",
+      reason: "failed to create worktree after ${_maxWorktreeCreationAttempts + 1} attempts",
     );
   }
+
+  static String _workspaceSlug({required int colorIndex, required int animalIndex}) =>
+      "${_workspaceColors[colorIndex]}-${_workspaceAnimals[animalIndex]}";
 
   Future<String?> resolveHeadCommit({
     required String projectId,

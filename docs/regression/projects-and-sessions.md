@@ -8,8 +8,13 @@ child sessions with titles, activity, statuses, and unseen state.
 
 ## Required Behavior
 
-- Catalog reads come from the bridge database: no backend start, no blocking on
-  an in-progress import, always the last committed snapshot.
+- Catalog list summaries contain only durable fields from the bridge database:
+  no backend start, no blocking on an in-progress import, no filesystem or Git
+  inspection, always the last committed snapshot. A selected project receives
+  real capability checks, bounded across concurrent requests. A failed check
+  blocks creation with an explicit retry instead of being treated as
+  unsupported, and dedicated-worktree support is revalidated when a dedicated
+  session is created.
 - Backends that own projects supply the list; the bridge derives it for backends
   without a project concept. Both appear as ordinary projects.
 - A backend-native project identifier is stable and independent of its directory,
@@ -25,6 +30,9 @@ child sessions with titles, activity, statuses, and unseen state.
   that worktree, its initial branch, and base branch. The prompt requires all
   work to remain in that worktree, while permitting use of the initial branch,
   branch switches, and new branches within it.
+- When dedicated-worktree creation falls back, the session runs in the fallback
+  directory and persists as in-place with the resolved HEAD base commit, not as
+  a dedicated session without a worktree.
 - Session listings are project-scoped and pageable and carry plugin attribution,
   times, worktree and branch facts, prompt defaults, and unseen state that
   advances on activity and clears on view or mark-as-read.

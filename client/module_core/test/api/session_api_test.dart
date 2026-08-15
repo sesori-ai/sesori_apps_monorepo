@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 import "dart:typed_data";
 
@@ -157,6 +158,148 @@ void main() {
       final request = verification.captured.single as CreateSessionRequest;
       expect(request.variant, isNull);
       expect(request.pluginId, "plugin-1");
+    });
+
+    test("attachment create yields before preserving exact generated request JSON", () async {
+      const session = Session(
+        branchName: null,
+        id: "session-1",
+        pluginId: "plugin-1",
+        projectID: "project-1",
+        directory: "/tmp/project-1",
+        parentID: null,
+        title: "Session",
+        time: SessionTime(created: 1, updated: 1, archived: null),
+        pullRequest: null,
+        promptDefaults: null,
+        lastUserActivityAt: null,
+      );
+      var priorEventLoopTurnRan = false;
+      unawaited(
+        Future<void>.delayed(Duration.zero, () {
+          priorEventLoopTurnRan = true;
+        }),
+      );
+      when(
+        () => client.post<Session>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async {
+        expect(priorEventLoopTurnRan, isTrue);
+        return ApiResponse.success(session);
+      });
+      final attachment = ComposerAttachment(
+        mime: "image/png",
+        bytes: Uint8List.fromList(List<int>.generate(19, (index) => index)),
+        filename: 'screen"shot.png',
+      );
+      final expected = CreateSessionRequest(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        parts: [
+          const PromptPart.text(text: "hello"),
+          PromptPart.fileData(
+            mime: attachment.mime,
+            base64: base64Encode(attachment.bytes),
+            filename: attachment.filename,
+          ),
+        ],
+        agent: "build",
+        model: const PromptModel(providerID: "openai", modelID: "gpt-5.4"),
+        variant: null,
+        command: null,
+        dedicatedWorktree: true,
+      );
+
+      await api.createSessionWithMessage(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        text: "hello",
+        attachments: [attachment],
+        agent: "build",
+        model: const PromptModel(providerID: "openai", modelID: "gpt-5.4"),
+        variant: null,
+        command: null,
+        dedicatedWorktree: true,
+      );
+
+      final verification = verify(
+        () => client.post<Session>(
+          "/session/create",
+          fromJson: any(named: "fromJson"),
+          body: captureAny(named: "body"),
+        ),
+      )..called(1);
+      expect(verification.captured.single, jsonEncode(expected.toJson()));
+    });
+
+    test("attachment create omits a null filename and matches generated request JSON exactly", () async {
+      const session = Session(
+        branchName: null,
+        id: "session-1",
+        pluginId: "plugin-1",
+        projectID: "project-1",
+        directory: "/tmp/project-1",
+        parentID: null,
+        title: "Session",
+        time: SessionTime(created: 1, updated: 1, archived: null),
+        pullRequest: null,
+        promptDefaults: null,
+        lastUserActivityAt: null,
+      );
+      when(
+        () => client.post<Session>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(session));
+      final attachment = ComposerAttachment(
+        mime: "image/png",
+        bytes: Uint8List.fromList(const [1, 2, 3]),
+        filename: null,
+      );
+      final expected = CreateSessionRequest(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        parts: [
+          PromptPart.fileData(
+            mime: attachment.mime,
+            base64: base64Encode(attachment.bytes),
+            filename: null,
+          ),
+        ],
+        agent: null,
+        model: null,
+        variant: null,
+        command: null,
+        dedicatedWorktree: false,
+      );
+
+      await api.createSessionWithMessage(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        text: "",
+        attachments: [attachment],
+        agent: null,
+        model: null,
+        variant: null,
+        command: null,
+        dedicatedWorktree: false,
+      );
+
+      final verification = verify(
+        () => client.post<Session>(
+          "/session/create",
+          fromJson: any(named: "fromJson"),
+          body: captureAny(named: "body"),
+        ),
+      )..called(1);
+      final body = verification.captured.single as String;
+      expect(body, jsonEncode(expected.toJson()));
+      expect(body, isNot(contains('"filename"')));
     });
 
     test("sendMessage builds a request body with null variant when omitted", () async {

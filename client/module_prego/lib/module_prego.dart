@@ -14,6 +14,7 @@ export 'components/inputs/prego_voice_waveform.dart';
 export 'components/lists/prego_animated_sliver_list.dart';
 export 'components/loaders/prego_activity_indicator.dart';
 export 'components/loaders/prego_ai_loader.dart';
+export 'components/loaders/prego_launch_status.dart';
 export 'components/loaders/prego_skeleton.dart';
 export 'components/menus/prego_anchor_menu.dart';
 export 'components/menus/prego_info_popover.dart';

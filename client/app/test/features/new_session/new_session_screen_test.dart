@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:typed_data";
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter/gestures.dart";
@@ -11,6 +12,7 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/capabilities/media/composer_image_picker.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
 import "package:sesori_mobile/features/new_session/new_session_plugin_chooser.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
@@ -24,11 +26,85 @@ import "../../helpers/test_helpers.dart";
 
 class MockVoiceTranscriptionService() extends Mock implements VoiceTranscriptionService;
 
+class MockComposerImagePicker() extends Mock implements ComposerImagePicker;
+
+class MockImageClipboard() extends Mock implements ImageClipboard;
+
 class MockPluginRepository() extends Mock implements PluginRepository;
 
 class MockPluginPreferenceRepository() extends Mock implements PluginPreferenceRepository;
 
 class _MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit;
+
+final Uint8List _tinyPng = Uint8List.fromList(const [
+  0x89,
+  0x50,
+  0x4E,
+  0x47,
+  0x0D,
+  0x0A,
+  0x1A,
+  0x0A,
+  0x00,
+  0x00,
+  0x00,
+  0x0D,
+  0x49,
+  0x48,
+  0x44,
+  0x52,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x08,
+  0x06,
+  0x00,
+  0x00,
+  0x00,
+  0x1F,
+  0x15,
+  0xC4,
+  0x89,
+  0x00,
+  0x00,
+  0x00,
+  0x0D,
+  0x49,
+  0x44,
+  0x41,
+  0x54,
+  0x78,
+  0x9C,
+  0x62,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x05,
+  0x00,
+  0x01,
+  0x0D,
+  0x0A,
+  0x2D,
+  0xB4,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x49,
+  0x45,
+  0x4E,
+  0x44,
+  0xAE,
+  0x42,
+  0x60,
+  0x82,
+]);
 
 AgentInfo _testAgent({required String name, required String description, required String? variant}) {
   return AgentInfo(
@@ -74,7 +150,6 @@ Future<void> closeHarnessMenu(WidgetTester tester) async {
 
 Widget _buildApp({
   ThemeMode themeMode = ThemeMode.light,
-  bool? initialSupportsDedicatedWorktrees = true,
   SessionListState sessionListState = const SessionListState.loaded(
     sessions: [],
     baseBranch: null,
@@ -82,18 +157,17 @@ Widget _buildApp({
   ),
 }) {
   final router = GoRouter(
-    initialLocation: "/new",
+    initialLocation: "/projects/project-1/sessions/new",
     routes: [
       GoRoute(
         path: "/",
         builder: (context, state) => const Scaffold(body: SizedBox.shrink()),
         routes: [
           GoRoute(
-            path: "new",
-            builder: (context, state) => NewSessionScreen(
+            path: "projects/:projectId/sessions/new",
+            builder: (context, state) => const NewSessionScreen(
               projectId: "project-1",
               projectName: "Project One",
-              initialSupportsDedicatedWorktrees: initialSupportsDedicatedWorktrees,
             ),
           ),
         ],
@@ -166,6 +240,8 @@ void main() {
   late BehaviorSubject<ConnectionStatus> connectionStatus;
   late MockProjectRepository projectRepository;
   late MockVoiceTranscriptionService voiceTranscriptionService;
+  late MockComposerImagePicker imagePicker;
+  late MockImageClipboard imageClipboard;
   late ComposerDraftRepository composerDraftRepository;
   late MockProductAnalyticsService productAnalyticsService;
 
@@ -189,6 +265,9 @@ void main() {
     );
     projectRepository = MockProjectRepository();
     voiceTranscriptionService = MockVoiceTranscriptionService();
+    imagePicker = MockComposerImagePicker();
+    imageClipboard = MockImageClipboard();
+    when(imageClipboard.readImage).thenAnswer((_) async => null);
     composerDraftRepository = inMemoryComposerDraftRepository();
     productAnalyticsService = MockProductAnalyticsService();
     stubProductAnalyticsService(service: productAnalyticsService);
@@ -368,6 +447,8 @@ void main() {
     GetIt.instance.registerSingleton<ConnectionService>(connectionService);
     GetIt.instance.registerSingleton<ProjectRepository>(projectRepository);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
+    GetIt.instance.registerSingleton<ComposerImagePicker>(imagePicker);
+    GetIt.instance.registerSingleton<ImageClipboard>(imageClipboard);
     GetIt.instance.registerSingleton<NewSessionSelectionTracker>(NewSessionSelectionTracker());
     GetIt.instance.registerSingleton<ComposerDraftRepository>(composerDraftRepository);
     GetIt.instance.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
@@ -392,13 +473,13 @@ void main() {
     expect(find.byType(NewSessionScreen), findsNothing);
   });
 
-  testWidgets("known unsupported project never shows the worktree toggle while composer data loads", (tester) async {
+  testWidgets("hides the worktree toggle while project capability loads", (tester) async {
     final projectResponse = Completer<ApiResponse<Project>>();
     when(
       () => projectRepository.getProject(projectId: any(named: "projectId")),
     ).thenAnswer((_) => projectResponse.future);
 
-    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: false));
+    await tester.pumpWidget(_buildApp());
     await tester.pump();
 
     expect(find.byType(PregoSwitch), findsNothing);
@@ -415,6 +496,55 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+  });
+
+  testWidgets("blocks creation and retries when project capability is unavailable", (tester) async {
+    var attempts = 0;
+    when(
+      () => projectRepository.getProject(projectId: any(named: "projectId")),
+    ).thenAnswer((_) async {
+      attempts++;
+      return attempts == 1
+          ? ApiResponse.error(ApiError.generic())
+          : ApiResponse.success(
+              const Project(
+                id: "project-1",
+                name: "Project One",
+                path: "/project-one",
+                time: null,
+                supportsDedicatedWorktrees: true,
+              ),
+            );
+    });
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+
+    expect(find.text(loc.newSessionProjectUnavailable), findsOneWidget);
+    expect(find.widgetWithText(PregoButtonsSolid, loc.newSessionProjectRefresh), findsOneWidget);
+    expect(
+      tester
+          .widget<IgnorePointer>(
+            find.ancestor(of: find.byType(PromptInput), matching: find.byType(IgnorePointer)).first,
+          )
+          .ignoring,
+      isTrue,
+    );
+
+    await tester.tap(find.byKey(const Key("new_session_options_refresh")));
+    await tester.pumpAndSettle();
+
+    expect(find.text(loc.newSessionProjectUnavailable), findsNothing);
+    expect(find.byType(PregoSwitch), findsOneWidget);
+    expect(
+      tester
+          .widget<IgnorePointer>(
+            find.ancestor(of: find.byType(PromptInput), matching: find.byType(IgnorePointer)).first,
+          )
+          .ignoring,
+      isFalse,
+    );
   });
 
   testWidgets("old bridge guidance keeps Create available and Refresh uses legacy routes", (tester) async {
@@ -596,7 +726,7 @@ void main() {
   });
 
   testWidgets("shows variant picker when selected agent has a variant", (tester) async {
-    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
+    await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
@@ -899,7 +1029,7 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
+    await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
@@ -1149,6 +1279,7 @@ void main() {
     final context = tester.element(find.byType(NewSessionScreen));
     final loc = AppLocalizations.of(context)!;
     expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
+    expect(find.text(loc.newSessionCreationDuplicateWarning), findsNothing);
     expect(find.byKey(const Key("new_session_plugin_trigger")), findsNothing);
     expect(_harnessRow("plugin-1"), findsNothing);
     expect(
@@ -1328,7 +1459,7 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
+    await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
     // Initially shows the agent's default variant.
@@ -1378,7 +1509,7 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
+    await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
     // Initially shows the agent's default variant.
@@ -1398,7 +1529,7 @@ void main() {
   });
 
   testWidgets("preserves selectedAgentModel variant when changing agent", (tester) async {
-    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
+    await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
@@ -1421,7 +1552,7 @@ void main() {
     expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
   });
 
-  testWidgets("shows the loading overlay with accessible message during sending", (tester) async {
+  testWidgets("shows detail-shaped launch status during sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
       () => sessionService.createSessionWithMessage(
@@ -1438,7 +1569,7 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
+    await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
@@ -1447,13 +1578,18 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
-    expect(find.byKey(const Key("new_session_loading_progress")), findsOneWidget);
+    expect(find.byType(PregoLaunchStatus), findsOneWidget);
+    expect(find.byType(PromptInput), findsNothing);
     expect(find.bySemanticsLabel(loc.newSessionLoadingSemantics), findsOneWidget);
     expect(find.text(loc.newSessionLoadingMessage1), findsOneWidget);
+    expect(find.text(loc.sessionListNewSession), findsOneWidget);
+    expect(
+      GoRouter.of(tester.element(find.byType(PregoLaunchStatus))).routeInformationProvider.value.uri.path,
+      "/projects/project-1/sessions/new",
+    );
   });
 
-  testWidgets("blocks submit UI while a session is sending", (tester) async {
+  testWidgets("removes composer while a session is sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
       () => sessionService.createSessionWithMessage(
@@ -1470,21 +1606,15 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
+    await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
     await enterTypingMode(tester);
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    final absorbingFinder = find.byWidgetPredicate(
-      (widget) => widget is AbsorbPointer && widget.absorbing,
-    );
-    expect(absorbingFinder, findsOneWidget);
-    // With the message sent (field cleared) and creation in flight, the dark
-    // action button turns into the stop control — there is no send affordance
-    // left to double-submit through.
-    expect(find.byIcon(TablerSolid.player_stop), findsOneWidget);
+    expect(find.byType(PromptInput), findsNothing);
+    expect(find.byIcon(TablerSolid.player_stop), findsNothing);
     expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
 
     verify(
@@ -1520,7 +1650,7 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
+    await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
@@ -1529,7 +1659,7 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
+    expect(find.byType(PregoLaunchStatus), findsOneWidget);
 
     // Simulate system back navigation (which should be allowed while sending).
     // PregoTopNavigation renders a glass back button (not a stock BackButton),
@@ -1564,7 +1694,7 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
+    await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
@@ -1573,7 +1703,7 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
+    expect(find.byType(PregoLaunchStatus), findsOneWidget);
 
     // User leaves while the creation request is still in flight.
     // PregoTopNavigation renders a glass back button (not a stock BackButton),
@@ -1613,21 +1743,21 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
+    await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
     await enterTypingMode(tester);
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
+    expect(find.byType(PregoLaunchStatus), findsOneWidget);
 
-    createCompleter.complete(ApiResponse.success(testSession(id: "session-1", title: "Created session")));
+    createCompleter.complete(ApiResponse.success(testSession(id: "session-1", title: null)));
     await tester.pumpAndSettle();
 
     expect(find.text("session-detail:session-1"), findsOneWidget);
     expect(
-      find.text("uri:/projects/project-1/sessions/session-1?readOnly=false&name=Project+One&title=Created+session"),
+      find.text("uri:/projects/project-1/sessions/session-1?readOnly=false&name=Project+One"),
       findsOneWidget,
     );
     expect(find.byType(NewSessionScreen), findsNothing);
@@ -1651,7 +1781,7 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
+    await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
@@ -1660,7 +1790,7 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
+    expect(find.byType(PregoLaunchStatus), findsOneWidget);
 
     createCompleter.complete(ApiResponse.success(testSession(id: "session-1", title: "Created session")));
     await tester.pumpAndSettle();
@@ -1668,6 +1798,91 @@ void main() {
     expect(find.text("session-detail:session-1"), findsOneWidget);
     expect(find.byType(NewSessionScreen), findsNothing);
     expect(find.text(loc.newSessionLaunchingInBackground), findsNothing);
+  });
+
+  testWidgets("restores a coalesced failed submission without remounting the composer", (tester) async {
+    final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
+    when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+    when(pluginRepository.listPlugins).thenAnswer(
+      (_) async => ApiResponse.success(
+        PluginDiscoverySnapshot(
+          bridgeId: null,
+          supportsSessionOptions: true,
+          plugins: const [
+            PluginMetadata(
+              id: "plugin-1",
+              displayName: "Plugin One",
+              isDefault: true,
+              state: PluginLifecycleState.ready,
+              actionHint: null,
+              supportsPromptAttachments: true,
+            ),
+          ],
+        ),
+      ),
+    );
+    final retryCompleter = Completer<ApiResponse<Session>>();
+    addTearDown(() {
+      if (!retryCompleter.isCompleted) retryCompleter.complete(ApiResponse.error(ApiError.generic()));
+    });
+    final submittedAttachments = <List<ComposerAttachment>>[];
+    var creationCalls = 0;
+    when(
+      () => sessionService.createSessionWithMessage(
+        attachments: any(named: "attachments"),
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        providerID: any(named: "providerID"),
+        modelID: any(named: "modelID"),
+        variant: any(named: "variant"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).thenAnswer((invocation) {
+      creationCalls++;
+      submittedAttachments.add(
+        invocation.namedArguments[#attachments]! as List<ComposerAttachment>,
+      );
+      if (creationCalls == 1) return Future.value(ApiResponse.error(ApiError.generic()));
+      return retryCompleter.future;
+    });
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(TablerRegular.photo));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(EditableText), "test message");
+    await tester.pump();
+
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+    await tester.pump();
+
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    expect(find.byType(PromptInput), findsOneWidget);
+    expect(tester.widget<EditableText>(find.byType(EditableText)).controller.text, "test message");
+    expect(find.bySemanticsLabel("screenshot.png"), findsOneWidget);
+    expect(find.text(loc.newSessionCreationDuplicateWarning), findsOneWidget);
+    expect(tester.widget<PromptInput>(find.byType(PromptInput)).restorationKey, isNull);
+    expect(
+      tester.element(find.byType(PromptInput)).read<NewSessionCubit>().state,
+      isA<NewSessionCreationError>(),
+    );
+    expect(creationCalls, 1);
+    expect(identical(submittedAttachments.single.single, attachment), isTrue);
+
+    await tester.pump();
+    expect(find.bySemanticsLabel("screenshot.png"), findsOneWidget);
+    expect(find.text(loc.newSessionCreationDuplicateWarning), findsOneWidget);
+
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    expect(creationCalls, 2);
+    expect(identical(submittedAttachments.last.single, attachment), isTrue);
   });
 
   testWidgets("removes the loading overlay and keeps retry UI usable after an error", (tester) async {
@@ -1687,25 +1902,25 @@ void main() {
       ),
     ).thenAnswer((_) => createCompleter.future);
 
-    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
+    await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
     await enterTypingMode(tester);
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
+    expect(find.byType(PregoLaunchStatus), findsOneWidget);
 
     createCompleter.complete(ApiResponse.error(ApiError.generic()));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key("new_session_loading_overlay")), findsNothing);
+    expect(find.byType(PregoLaunchStatus), findsNothing);
     // Error text now comes from the shared, localized ApiError mapping.
     expect(find.text("An unknown error occurred"), findsOneWidget);
 
-    // Sending excluded focus from the composer, so it collapsed back to its
-    // resting pill; it must be usable again for the retry.
-    await enterTypingMode(tester);
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    expect(find.text("test message"), findsOneWidget);
+    expect(find.text(loc.newSessionCreationDuplicateWarning), findsOneWidget);
     expect(find.byType(EditableText), findsOneWidget);
     expect(find.byIcon(TablerRegular.arrow_up), findsOneWidget);
 
@@ -1716,7 +1931,7 @@ void main() {
   });
 
   testWidgets("persists and restores the per-project new-session draft", (tester) async {
-    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
+    await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
     await enterTypingMode(tester);
@@ -1733,7 +1948,7 @@ void main() {
     );
 
     // Re-open the new-session screen — the per-project draft is restored.
-    await tester.pumpWidget(_buildApp(initialSupportsDedicatedWorktrees: true));
+    await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
     expect(find.text("half-written idea"), findsOneWidget);
   });

@@ -15,6 +15,9 @@ idle suspension, the management snapshot, and lifecycle commands.
 - Runtime resolution before start may resolve a suitable existing or managed binary but
   never downloads or mutates files, and failure there is non-fatal. The persisted disable
   list is the only durable eligibility policy, with setup deciding blocked versus routable.
+- Hermes is a direct-CLI harness with no managed install. Setup distinguishes a missing or
+  pre-ACP binary, an adapter below `0.20.0`, and missing model/provider configuration;
+  startup revalidates the PATH adapter while an explicit `--hermes-bin` remains authoritative.
 - Listings order by display name case-insensitively with the identifier as tie-breaker,
   and the default is the preferred harness when selectable, else the first selectable.
 - Harnesses start on demand unless eager; a transient one may suspend after a confirmed
@@ -93,7 +96,7 @@ directories. Restore eligibility, timeouts, and sessions afterwards.
 ## Sources
 
 - `bridge/sesori_plugin_interface/lib/src/lifecycle/`; registered OpenCode, Codex,
-  Cursor, and Claude Code descriptors; plugin routing handlers
+  Cursor, Claude Code, and Hermes Agent descriptors; plugin routing handlers
 - `bridge/app/lib/src/services/plugin_lifecycle_service.dart`,
   `bridge/app/lib/src/bridge/runtime/plugin_registry.dart`
 - `client/module_core/.../plugin_management_service.dart` and the harness settings screen

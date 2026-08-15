@@ -879,6 +879,91 @@ void main() {
     });
   });
 
+  group("pending new sessions", () {
+    test("persists and clears caller-owned session markers", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final cwd = fixture.directory("pending-project");
+      final api = fixture.api();
+
+      await api.writePendingNewSession(sessionId: "secure-id", cwd: cwd);
+
+      expect(
+        await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {cwd}),
+        isA<PiPendingNewSession>().having((marker) => marker.cwd, "cwd", p.normalize(p.absolute(cwd))),
+      );
+      await api.clearPendingNewSession(sessionId: "secure-id", knownDirectories: {cwd});
+      expect(await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {cwd}), isNull);
+    });
+
+    test("marker resolution reports malformed settings without their content", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final project = fixture.directory("pending-project");
+      fixture.directory(p.join("pending-project", ".pi"));
+      final settingsPath = p.join(project, ".pi", "settings.json");
+      File(settingsPath).writeAsStringSync('{"private-setting":');
+      final api = fixture.api();
+
+      final warnings = await _captureWarnings(() async {
+        await api.writePendingNewSession(sessionId: "secure-id", cwd: project);
+        await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {project});
+        await api.clearPendingNewSession(sessionId: "secure-id", knownDirectories: {project});
+      });
+
+      expect(warnings, contains("malformed session settings"));
+      expect(warnings, contains(settingsPath));
+      expect(warnings, isNot(contains("private-setting")));
+    });
+
+    test("invalid marker logs its path and original failure", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final project = fixture.directory("pending-project");
+      final markerPath = p.join(
+        _defaultSessionDirectory(agentDirectory: fixture.agentDirectory, cwd: project),
+        ".sesori-pending",
+        "secure-id.pending",
+      );
+      final api = fixture.api();
+      await api.writePendingNewSession(sessionId: "secure-id", cwd: project);
+      File(markerPath).writeAsStringSync("relative-private-value");
+
+      final warnings = await _captureWarnings(() async {
+        await expectLater(
+          api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {project}),
+          throwsA(isA<PiInvalidPendingNewSessionException>()),
+        );
+      });
+
+      expect(warnings, contains("invalid pending session marker session_id=secure-id"));
+      expect(warnings, contains(markerPath));
+      expect(warnings, contains("Pending marker cwd is invalid"));
+      expect(warnings, isNot(contains("relative-private-value")));
+    });
+
+    test("rejects unsafe marker ids and line-breaking cwd values", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final api = fixture.api();
+
+      await expectLater(
+        api.writePendingNewSession(sessionId: "../escape", cwd: fixture.root.path),
+        throwsArgumentError,
+      );
+      for (final cwd in ["${fixture.root.path}\nother", "${fixture.root.path}\rother"]) {
+        await expectLater(
+          api.writePendingNewSession(sessionId: "secure-id", cwd: cwd),
+          throwsArgumentError,
+        );
+      }
+      expect(
+        await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {fixture.root.path}),
+        isNull,
+      );
+    });
+  });
+
   test("real Pi root scan retains metadata-only structural invariants when available", () async {
     final sessions = await PiSessionStorageApi(
       environment: Platform.environment,

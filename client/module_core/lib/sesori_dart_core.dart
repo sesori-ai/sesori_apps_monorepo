@@ -82,6 +82,7 @@ export "src/cubits/message_image/message_image_cubit.dart";
 export "src/cubits/message_image/message_image_state.dart";
 export "src/cubits/new_session/new_session_cubit.dart";
 export "src/cubits/new_session/new_session_state.dart";
+export "src/cubits/new_session/new_session_submission_snapshot.dart";
 export "src/cubits/notification_preferences/notification_preferences_cubit.dart";
 export "src/cubits/notification_preferences/notification_preferences_state.dart";
 export "src/cubits/plugin_management/plugin_management_cubit.dart";
