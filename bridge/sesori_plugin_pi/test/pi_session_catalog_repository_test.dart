@@ -94,6 +94,23 @@ void main() {
       expect(api.knownDirectories.last, contains(normalizeProjectDirectory(directory: "/repo/new")));
     });
 
+    test("directory priming preserves pending parent lineage", () async {
+      final repository = PiSessionCatalogRepository(
+        storageApi: _FakeStorageApi(sessions: const []),
+      );
+      repository.recordPendingSession(
+        sessionId: "child",
+        directory: "/repo/old",
+        parentSessionId: "parent",
+      );
+
+      repository.primeSessionDirectory(sessionId: "child", directory: "/repo/new");
+
+      final child = (await repository.listAllSessions(knownDirectories: const {})).single;
+      expect(child.directory, normalizeProjectDirectory(directory: "/repo/new"));
+      expect(child.parentID, "parent");
+    });
+
     test("propagates storage failures instead of returning an empty catalog", () async {
       final repository = PiSessionCatalogRepository(
         storageApi: _FakeStorageApi(sessions: const [], failure: StateError("scan failed")),

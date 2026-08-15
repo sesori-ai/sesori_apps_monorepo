@@ -37,8 +37,7 @@ void main() {
       for (
         var attempt = 0;
         attempt < 50 &&
-            (events.whereType<BridgeSseQuestionAsked>().isEmpty ||
-                events.whereType<BridgeSseTuiToastShow>().isEmpty);
+            (events.whereType<BridgeSseQuestionAsked>().isEmpty || events.whereType<BridgeSseTuiToastShow>().isEmpty);
         attempt++
       ) {
         await pump();
@@ -170,7 +169,14 @@ void main() {
           "notifyType": "warning",
         },
       );
-      await pump();
+      for (
+        var attempt = 0;
+        attempt < 50 &&
+            (events.whereType<BridgeSseQuestionAsked>().isEmpty || events.whereType<BridgeSseTuiToastShow>().isEmpty);
+        attempt++
+      ) {
+        await pump();
+      }
 
       expect(events.whereType<BridgeSseQuestionAsked>().single.sessionID, session.id);
       expect(events.whereType<BridgeSseTuiToastShow>().single.variant, "warning");

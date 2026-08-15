@@ -11,7 +11,11 @@ final class PiSessionCatalogRepository({required final PiSessionStorageApi _stor
   Map<String, PluginSession> get sessionSnapshot => Map.unmodifiable(_snapshotById);
 
   void primeSessionDirectory({required String sessionId, required String directory}) {
-    recordPendingSession(sessionId: sessionId, directory: directory, parentSessionId: null);
+    recordPendingSession(
+      sessionId: sessionId,
+      directory: directory,
+      parentSessionId: _primedSessions[sessionId]?.parentId,
+    );
   }
 
   void recordPendingSession({
