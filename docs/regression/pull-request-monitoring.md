@@ -18,6 +18,12 @@ change. Bridge-owned, plugin-agnostic, backed by the user's local gh CLI.
   included), else newest merged/closed, by creation time then PR number.
 - A branch or repository change invalidates the prior selection before any network
   work and never falls back to a previous branch's PR.
+- Generated metadata can rename only a still-current unpublished initial
+  dedicated branch. The resulting local session update carries the new durable
+  and current branch without claiming a title change; normal PR refresh then
+  reconciles selection. A refresh resolved against the old durable branch cannot
+  overwrite that result, and local or fetched remote-ref collisions receive a
+  different generated suffix.
 - Every PR-bearing read is gated on a fresh gh identity check; unknown, failed, or
   switched login returns session and branch without PR metadata instead of another
   account's cache. No token is stored and no GitHub login reaches clients. Routine
@@ -34,7 +40,7 @@ change. Bridge-owned, plugin-agnostic, backed by the user's local gh CLI.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, no plugin: a session in a GitHub repository with a matching open PR returns its branch and one PR; a missing or unauthenticated gh still serves sessions and branches. |
-| L2 Routine | Automated and headless bridge over fake gh/Git: open-before-terminal ordering, fork-head rejection, coworker PR acceptance, branch switch clearing a stale PR, detached/non-Git/non-GitHub outcomes, root-versus-child scope. |
+| L2 Routine | Automated and headless bridge over fake gh/Git: open-before-terminal ordering, fork-head rejection, coworker PR acceptance, branch switch clearing a stale PR, detached/non-Git/non-GitHub outcomes, root-versus-child scope, generated branch update followed by PR reconciliation, and stale pre-rename target rejection. |
 | L3 Release | Client end to end on the release-target client platform: branch and PR rendered in the session list, presence-driven refresh without manual pull, bounded explicit refresh, cadence read and changed from settings including out-of-range rejection. |
 | L4 Extended | Relay integration with multiple clients: presence union across two devices and projects, release on background/disconnect, relay loss clearing claims, identity switch failing closed, transient GitHub failure retained versus invalidated, old bridge/client degrading. |
 | L5 Full | Real authenticated GitHub account: batched targets beyond the per-command bound, pagination past newer fork heads, terminal fallback on a real merged PR, and a recheck that installed gh still returns the required fields. |
@@ -54,6 +60,9 @@ alternate whether list or detail holds the claim.
 - Branch updates but the stale PR remains, the branch clears merely because GitHub
   or local resolution is transiently unavailable, or the change bumps unseen
   state or sends a push notification.
+- Generated refinement keeps a stale PR, lets a pre-rename refresh restore the
+  deleted initial branch, reuses a colliding remote branch, or reports the branch
+  update as a title change.
 - Refresh cycles overlap, run with no viewer, stop after an interval change, make a
   newly viewed project wait a full interval, leak branch names, repo slugs, PR
   titles, URLs, or paths into routine logs, or discard useful failure diagnostics.
