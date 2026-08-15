@@ -34,12 +34,7 @@ void main() {
 
       final events = <BridgeSseEvent>[];
       final subscription = harness.plugin.events.listen(events.add);
-      for (
-        var attempt = 0;
-        attempt < 50 &&
-            (events.whereType<BridgeSseQuestionAsked>().isEmpty || events.whereType<BridgeSseTuiToastShow>().isEmpty);
-        attempt++
-      ) {
+      for (var attempt = 0; attempt < 50 && events.isEmpty; attempt++) {
         await pump();
       }
       expect(events.single, isA<BridgeSseSessionCreated>());
@@ -136,6 +131,38 @@ void main() {
         harness.processes.where((entry) => entry.spec.launch is! PiNoSession),
         hasLength(1),
       );
+    });
+
+    test("wrapped command failures retain the backend stack", () async {
+      final session = await harness.plugin.createSession(
+        directory: harness.project.path,
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final command = harness.plugin.sendCommand(
+        sessionId: session.id,
+        command: "review",
+        arguments: "src",
+        userVisibleArguments: "src",
+        variant: null,
+        agent: "pi",
+        model: null,
+      );
+      final process = await harness.nextSessionProcess();
+      final prompt = await waitForCommand(process: process, type: "prompt");
+      process.emitFailure(id: prompt["id"]! as String, command: "prompt", error: "failed");
+
+      try {
+        await command;
+        fail("command should fail");
+      } on PluginOperationException catch (error, stackTrace) {
+        expect(error.cause, isA<PiRpcCommandFailureException>());
+        expect(stackTrace.toString(), contains("pi_rpc_client.dart"));
+      }
     });
 
     test("maps questions and toasts while permissions remain unsupported", () async {
