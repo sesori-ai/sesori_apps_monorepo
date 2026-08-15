@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `fast-new-session-launch`
-- **Implementation base:** `origin/main` at `7900c2d5e` after Step 3 merge
-- **Current branch:** `fast-new-session-launch-step-4`
-- **Series state:** Steps 1-3/6 merged; Step 4/6 is open in #913 and monitored
-- **Current step:** finalize the immediate-launch PR after its Step 3 handoff
-- **Next action:** merge Step 4, then implement the approved asynchronous
-  generated-branch rename follow-up before Step 5
+- **Implementation base:** `origin/main` at `9f765e6d5` after follow-up 4A merge
+- **Current branch:** `fast-new-session-launch-step-5`
+- **Series state:** Steps 1-4/6 and standalone follow-up 4A merged; Step 5 is in
+  review in PR #928
+- **Current step:** monitor the Step 5 documentation PR
+- **Next action:** merge PR #928, then execute the Step 6 regression matrix
 
 ## Locked Decisions
 
@@ -20,9 +20,11 @@
 - [x] Metadata/title leaves the create-response critical path.
 - [x] Initial prompt, attachment, and slash-command acceptance remain
   synchronous.
-- [x] Dedicated worktrees use local curated `color-animal` names.
+- [x] Dedicated worktrees initially use local curated `color-animal` names.
 - [x] Pair collisions retry another pair; bounded exhaustion uses a secure
   suffix.
+- [x] Late metadata may rename only the still-current unpublished initial branch;
+  the worktree directory remains unchanged.
 - [x] Failure automatically restores the filled composer; no automatic resend.
 - [x] Because current server errors can occur after durable commit, every
   creation-originated error receives the duplicate-risk warning.
@@ -61,9 +63,13 @@
 - [x] Preserve nullable title handoff; never convert missing title to `""`.
 - [x] Extend authenticated `SesoriServerApi` for metadata, including token
   acquisition and one 401 refresh/retry; do not split one provider by use case.
-- [x] One late-title future set; drain actual workflows, abort metadata HTTP on
+- [x] One late-metadata future set; drain actual workflows, abort metadata HTTP on
   shutdown, and deadline-bound standalone token refresh.
-- [x] Keep the normalized event consumer alive through late-title drain, then
+- [x] Reuse that tracked workflow/family lane for branch refinement; add no
+  branch registry, watcher, lock, or second mutation stream.
+- [x] Generated branch failure cannot fail creation/title, and a switched,
+  detached, upstream, or matching fetched remote branch is never renamed.
+- [x] Keep the normalized event consumer alive through late-metadata drain, then
   fence mutation producers before draining its listener and event tails.
 - [x] Shared encryption returns preallocated typed bytes without boxed integer
   framing; analyze/test shared crypto and bridge relay callers explicitly.
@@ -79,8 +85,9 @@
 | [x] | 1/6 | `🌱 [fast-new-session-launch] docs: plan faster new-session launch [step 1/6]` | Merged in #894 |
 | [x] | 2/6 | `🌿 [fast-new-session-launch] feat(bridge): use local workspace names [step 2/6]` | Merged in #908 |
 | [x] | 3/6 | `🚧 [fast-new-session-launch] feat(bridge): return sessions before generated titles [step 3/6]` | Merged in #909 |
-| [ ] | 4/6 | `⚙️ [fast-new-session-launch] feat(client): open launching sessions immediately [step 4/6]` | Open in #913; based on `main` |
-| [ ] | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | Blocked on Step 4 merge |
+| [x] | 4/6 | `⚙️ [fast-new-session-launch] feat(client): open launching sessions immediately [step 4/6]` | Merged in #913 |
+| [x] | 4A | `⚙️ Rename generated session branches after launch` | Merged in #923 |
+| [ ] | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | PR #928 open and monitored |
 | [ ] | 6/6 | `🌿 [fast-new-session-launch] test: verify faster new-session launch [step 6/6]` | Blocked on Step 5 merge |
 
 ## Step 1 Checklist
@@ -139,11 +146,63 @@
 - [x] Regenerate Freezed/localization output and pass focused tests plus strict
   analysis across all touched owning modules and the downstream mobile app.
 
+## Follow-up 4A Checklist
+
+- [x] Restore typed generated `branchName` consumption while continuing to
+  ignore the auth response's obsolete `worktreeName`.
+- [x] Keep local branch/worktree creation and the canonical response independent
+  from metadata latency or failure.
+- [x] Rename only a root dedicated worktree still on its initial branch with no
+  upstream or matching fetched remote ref; leave its directory and plugin working
+  path unchanged.
+- [x] Validate the generated ref, apply bounded secure collision fallback, and
+  preserve the initial branch on every ineligible/failure outcome.
+- [x] Persist durable/current branch facts under the session-family lane and emit
+  existing `session.updated` with `titleChanged: false`.
+- [x] Preserve independent title application and tracked shutdown ownership.
+- [x] Run codegen, focused tests, strict analysis, cleanup/analytics assessment,
+  and architecture reviews; commit, push, open the standalone PR, and monitor it.
+
+## Step 5 Checklist
+
+- [x] Reconcile `session-creation-and-options.md` as the authoritative launch,
+  restoration, metadata, and dedicated-branch contract.
+- [x] Reconcile durable title/branch list updates in
+  `projects-and-sessions.md`.
+- [x] Reconcile memory-only attachment restoration and bounded serialization in
+  `attachments-and-images.md`.
+- [x] Reconcile stable-worktree branch refinement in
+  `diffs-and-source-control.md`.
+- [x] Reconcile generated branch updates and stale-target fencing in
+  `pull-request-monitoring.md`.
+- [x] Inspect `session-turns.md`; leave it unchanged because new-session launch
+  does not alter existing-session send, queue, or turn semantics.
+- [x] Complete the implementation cleanup audit and retain only compatibility or
+  independently used artifacts.
+- [x] Validate the documentation-only diff with `git diff --check`.
+- [x] Measure the merge-base Step 5 diff and reconcile it with the 80-180
+  changed-line target.
+- [x] Commit, push, open Step 5, and monitor it in PR #928.
+
+## Step 5 Cleanup Audit
+
+- [x] Obsolete preferred metadata naming, synchronous title-tail, single-session
+  enrichment, deletion-only listener, loading overlay, and app-level `cue`
+  dependency symbols have no production matches.
+- [x] The bridge metadata model no longer consumes `worktreeName`; the auth
+  response retains it only for released-bridge compatibility outside this repo.
+- [x] Generated metadata activation, durable session/worktree/base facts, explicit
+  user rename, normalized mutation delivery, and shared Prego launch status remain
+  independently required.
+- [x] No database migration, pending-session persistence, branch watcher/lock,
+  retry registry, optimistic transcript, or detail snapshot was introduced.
+- [x] No additional causal cleanup or newly dead implementation was found.
+
 ## Cleanup Ledger
 
 | Artifact | Decision | Owning step |
 |---|---|---|
-| Layer-skipping `MetadataService` and AI branch/worktree response fields | Replaced with shared typed request plus title-only API/repository and regenerated | 3 |
+| Layer-skipping `MetadataService` and AI branch/worktree response fields | Replaced with shared typed request plus title/branch API response; obsolete worktree response remains ignored | 3 + 4A |
 | Preferred-name API/validator and tests | Delete | 2 |
 | Current `session-*` random fallback | Replace with color-animal plus bounded suffix fallback | 2 |
 | Synchronous generated-title await | Deleted from response path | 3 |
@@ -153,7 +212,7 @@
 | Direct mobile `cue` dependency | Delete if no consumer remains | 4 |
 | Friendly rotating-copy timer | Keep one instance in exported `module_prego` launch status | 4 |
 | Composer submission bytes/text snapshot | Release on success/restoration or when a background request settles; never persist attachments | 4 |
-| Auth response branch/worktree keys | Defer for released-bridge compatibility | External follow-up |
+| Auth response branch/worktree keys | Keep branch as live 4A input; defer worktree removal for released-bridge compatibility | 4A + external follow-up |
 | Pending session/idempotency/detail staged load | Explicitly out of scope | Separate evidence-backed work |
 
 ## Verification Record
@@ -225,6 +284,31 @@
 - Step 4 post-Step-3-merge handoff passed 177 focused app routing/launch/detail
   tests, 65 bridge relay/orchestrator tests, and strict analysis in `client/app`
   and `bridge/app`.
+- Follow-up 4A codegen completed for `bridge/app`.
+- Follow-up 4A focused verification passed, 179 tests before architecture fixes
+  and 115 directly affected tests after them; the complete `bridge/app` suite
+  passed all 2,635 tests.
+- Follow-up 4A strict analysis: `dart analyze --fatal-infos` from `bridge/app`
+  passed with no issues.
+- Follow-up 4A architecture implementation review found API DTO leakage through
+  the metadata and Git repository boundaries. Both findings were applied; the
+  permitted second review approved the implementation with no remaining
+  architecture findings.
+- Follow-up 4A analytics assessment: no event added because there is no product
+  decision or funnel step tied to background branch refinement, and branch names
+  are explicitly prohibited analytics data.
+- Informational follow-up 4A diff before delivery, measured against implementation
+  base `f7bcdc63e`: `+1079 / -127` (1,206 changed lines), above the 350-700
+  target. This includes 264 plan/tracker lines, 33
+  generated model lines, and 582 test lines covering Git eligibility, collisions,
+  response timing, conditional persistence, rollback, events, and shutdown.
+- Follow-up 4A PR: #923, based on `main` and monitored.
+- Follow-up 4A review fixes passed 144 focused tests, all 2,641 `bridge/app`
+  tests, strict analysis, and `git diff --check`.
+- Step 5 merge-base documentation scope:
+  `git diff --numstat "$(git merge-base HEAD origin/main)" -- .plan/active/fast-new-session-launch/{PLAN,TRACKER}.md docs/regression/{attachments-and-images,projects-and-sessions,pull-request-monitoring,session-creation-and-options}.md`.
+- Self-inclusive Step 5 result: `+125 / -33` (158 changed lines), within the
+  80-180 target.
 
 ### Manual matrix
 
@@ -245,3 +329,7 @@ and complete detail snapshot under matched baseline/final conditions.
   API/repository layers; `module_prego` launch primitive with app-owned copy.
 - **Consistency corrections:** one-shot attachment consumption, initial
   backend-title semantics, and penultimate-doc-step rationale.
+- **Follow-up 4A review:** approved after clarifying that the deployed auth
+  metadata contract requires sanitized `title`, `branchName`, and
+  `worktreeName`; the bridge restores `branchName` consumption while continuing
+  to ignore `worktreeName`.

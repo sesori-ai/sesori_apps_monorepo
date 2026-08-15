@@ -85,7 +85,7 @@ void main() {
   });
 
   group("SesoriServerApi session metadata", () {
-    test("acquires token and posts typed request while decoding title-only response", () async {
+    test("acquires token and posts typed request while decoding title and branch", () async {
       late http.Request request;
       final tokenRefresher = _FakeTokenRefresher(token: "secret-token");
       final api = SesoriServerApi(
@@ -93,7 +93,7 @@ void main() {
         client: MockClient((incoming) async {
           request = incoming;
           return http.Response(
-            '{"title":"Generated title","branchName":"ignored","worktreeName":"ignored"}',
+            '{"title":"Generated title","branchName":"generated-branch","worktreeName":"ignored"}',
             200,
           );
         }),
@@ -107,6 +107,7 @@ void main() {
       );
 
       expect(response.title, equals("Generated title"));
+      expect(response.branchName, equals("generated-branch"));
       expect(tokenRefresher.forceRefreshValues, equals([false]));
       expect(request.method, equals("POST"));
       expect(request.url, equals(Uri.parse("https://auth.example.test/sessions/generate-metadata")));
@@ -124,7 +125,7 @@ void main() {
           requests.add(request);
           return request.headers["Authorization"] == "Bearer stale"
               ? http.Response("unauthorized", 401)
-              : http.Response('{"title":"Retried"}', 200);
+              : http.Response('{"title":"Retried","branchName":"retried-branch"}', 200);
         }),
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: tokenRefresher,
@@ -136,6 +137,7 @@ void main() {
       );
 
       expect(response.title, equals("Retried"));
+      expect(response.branchName, equals("retried-branch"));
       expect(tokenRefresher.forceRefreshValues, equals([false, true]));
       expect(requests, hasLength(2));
       expect(requests.last.headers["Authorization"], equals("Bearer fresh"));
@@ -292,7 +294,9 @@ void main() {
     });
 
     test("releases shutdown listener after completed response", () async {
-      final client = _ImmediateClient(responseBody: '{"title":"Generated title"}');
+      final client = _ImmediateClient(
+        responseBody: '{"title":"Generated title","branchName":"generated-branch"}',
+      );
       final abortSignal = SesoriServerRequestAbortSignal();
       final api = SesoriServerApi(
         authBackendUrl: "https://auth.example.test",

@@ -5,8 +5,8 @@ import "package:hermes_plugin/hermes_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
-/// The `initialize` result Hermes actually advertises (verified 2026-08-13
-/// against `hermes acp` v0.20.0): load/list/resume/fork session capabilities,
+/// The `initialize` result Hermes actually advertises (verified 2026-08-15
+/// against Hermes Agent 0.20.1): load/list/resume/fork session capabilities,
 /// image prompt support, and no `closeSession`. The base must therefore
 /// never call `session/close`. Auth mirrors `build_auth_methods()`: the
 /// configured provider as an agent method first, then a terminal-setup
@@ -118,7 +118,7 @@ void main() {
     test("declares the neutral ACP policies for a stock v1 server", () {
       expect(plugin.clientName, "sesori-bridge");
       expect(plugin.clientVersion, "0.0.0");
-      expect(plugin.authMethodId, isNull, reason: "use the first advertised method");
+      expect(plugin.authMethodId, isNull, reason: "Hermes provider ids are dynamic");
       expect(plugin.initializeCapabilityMeta, isNull);
       expect(plugin.supportsFormElicitation, isFalse, reason: "no elicitation/create on Hermes");
       expect(plugin.serializesPromptsProcessWide, isFalse);
@@ -128,6 +128,27 @@ void main() {
 
     test("handshake succeeds against Hermes's advertised capabilities", () async {
       await connect();
+    });
+
+    test("terminal-only setup authentication keeps the plugin blocked", () async {
+      final connecting = plugin.ensureConnected();
+      await respond(
+        method: "initialize",
+        result: {
+          "protocolVersion": 1,
+          "agentCapabilities": <String, dynamic>{},
+          "authMethods": [
+            {
+              "type": "terminal",
+              "id": "hermes-setup",
+              "name": "Configure Hermes provider",
+            },
+          ],
+        },
+      );
+
+      expect(fake.written.where((frame) => frame["method"] == "authenticate"), isEmpty);
+      expect(await connecting, isFalse);
     });
 
     test("a prompt turn streams text chunks into part delta events", () async {

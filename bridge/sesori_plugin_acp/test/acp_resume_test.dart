@@ -156,5 +156,60 @@ void main() {
       final loadsAfter = fake.written.where((f) => f["method"] == "session/load").length;
       expect(loadsAfter, loadsBefore, reason: "resident session is not re-loaded");
     });
+
+    test("a null load result stays non-resident so the next turn retries", () async {
+      final connecting = plugin.ensureConnected();
+      await respond("initialize", {
+        "protocolVersion": 1,
+        "agentCapabilities": {"loadSession": true},
+        "authMethods": <Object?>[],
+      });
+      expect(await connecting, isTrue);
+
+      await plugin.sendPrompt(
+        sessionId: "missing-session",
+        parts: const [PluginPromptPart.text(text: "first")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final firstLoad = await waitForFrame("session/load");
+      fake.emit({"jsonrpc": "2.0", "id": firstLoad["id"], "result": null});
+      final firstPrompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": firstPrompt["id"],
+        "error": {"code": -32000, "message": "session not found"},
+      });
+      await pump();
+
+      await plugin.sendPrompt(
+        sessionId: "missing-session",
+        parts: const [PluginPromptPart.text(text: "retry")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      for (var i = 0; i < 100; i++) {
+        if (fake.written.where((frame) => frame["method"] == "session/load").length == 2) break;
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+
+      final loads = fake.written.where((frame) => frame["method"] == "session/load").toList();
+      expect(loads, hasLength(2));
+      fake.emit({"jsonrpc": "2.0", "id": loads.last["id"], "result": null});
+      for (var i = 0; i < 100; i++) {
+        if (fake.written.where((frame) => frame["method"] == "session/prompt").length == 2) break;
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      final prompts = fake.written.where((frame) => frame["method"] == "session/prompt").toList();
+      expect(prompts, hasLength(2));
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": prompts.last["id"],
+        "error": {"code": -32000, "message": "session not found"},
+      });
+      await pump();
+    });
   });
 }

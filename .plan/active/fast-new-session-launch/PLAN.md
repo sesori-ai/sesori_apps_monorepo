@@ -6,9 +6,10 @@
 - **Status:** Active - plan ready for review
 - **Plan date:** 2026-08-13
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Implementation base:** `origin/main` at `14a4e405`
-- **Current branch:** `speed-up-new-session-load`
-- **Delivery:** six PRs; Step 1 raises this plan before production work
+- **Implementation base:** `origin/main` at `f7bcdc63e` after Step 4 merge
+- **Current branch:** `async-generated-session-branch-rename`
+- **Delivery:** six numbered PRs plus one approved standalone follow-up between
+  Steps 4 and 5; Step 1 raised this plan before production work
 
 This plan and `TRACKER.md` are the authority for implementation. The code and
 released product behavior remain authoritative where this document becomes
@@ -118,15 +119,22 @@ second session and worktree.
   before the bridge supports pending attempts.
 - `New session` is an acceptable temporary title; the generated title updates
   quietly later.
-- Metadata does not choose dedicated-worktree names. Branch and worktree use the
-  same locally generated lowercase ASCII `color-animal` slug, for example
-  `blue-otter`.
+- Metadata never gates dedicated-worktree creation. The branch and worktree
+  initially use the same locally generated lowercase ASCII `color-animal` slug,
+  for example `blue-otter`.
+- After the durable create response, successful metadata may rename only that
+  initial branch to the generated `branchName`. The worktree directory remains
+  the original `color-animal` path. Skip the rename when the worktree is no
+  longer on its initial branch or that branch has an upstream or matching remote ref.
 - The vocabulary is a small curated code-owned list. Naming is local,
   dependency-free, backend-neutral, and reusable for future workspace names.
 - On collision, sample another pair for a bounded number of attempts. If those
   attempts are exhausted or the final create races, append the existing secure
   short hexadecimal suffix to the last pair rather than losing workspace
   isolation.
+- A late generated branch collision likewise uses a bounded secure suffix. An
+  invalid generated branch or any Git/persistence failure keeps the initial
+  branch and cannot fail the session or generated-title update.
 - Creation failures return automatically to the filled composer. Text/voice
   provenance, slash command, and attachments are restored. The user explicitly
   presses Send again.
@@ -140,9 +148,10 @@ second session and worktree.
   contract; release verification enumerates every plugin registered in the build
   under test. Unregistered packages receive no product claim or plugin-specific
   production code.
-- Generated title runs fully off the response path. A user title must not be
-  overwritten if avoiding that race is a focused conditional write rather than
-  a new lifecycle state machine.
+- Generated title and eligible generated-branch rename run fully off the response
+  path. A user title must not be overwritten, and a user/agent branch switch or
+  published initial branch must not be renamed. These are focused conditional
+  mutations, not a new lifecycle state machine.
 - Detail first-content staging is explicitly out of scope. The real detail
   route keeps its coherent snapshot and uses the same launch presentation while
   loading, avoiding a launch-view-to-spinner regression.
@@ -307,9 +316,14 @@ Algorithm:
    creation failure fallback semantics.
 
 The generated words are lowercase ASCII and inherently valid Git/path slugs, so
-the metadata-oriented preferred-name parameter and runtime unsafe-name validator
-are deleted. Durable branch/worktree/base facts and the worktree system prompt
-remain unchanged.
+the metadata-oriented preferred-name parameter and its old pre-creation runtime
+validator remain deleted. Durable branch/worktree/base facts and the worktree
+system prompt initially describe this local identity.
+
+The approved follow-up does not rename or move the worktree directory after a
+backend starts in it. It refines only the checked-out branch after metadata, so
+the plugin working directory, stored session directory, and system prompt remain
+valid. The prompt deliberately calls its value the initial branch.
 
 ### 4. Early canonical response
 
@@ -345,10 +359,10 @@ batch `enrichSessions` remains for list reads.
 
 `SessionCreationService` continues to await project validation, plugin
 routability, git/worktree preparation, backend creation, first-input acceptance,
-durable commit, and slash-command acceptance. It then tracks late title
+durable commit, and slash-command acceptance. It then tracks late metadata
 completion and returns the canonical committed session immediately.
 
-### 5. Managed late generated title
+### 5. Managed late generated metadata
 
 Metadata starts only after durable creation and first-input/slash-command
 acceptance. Unknown projects and failed creations therefore cause no metadata
@@ -364,34 +378,36 @@ flow while keeping the auth server as one provider boundary:
 - Layer 1 existing `SesoriServerApi` owns the typed metadata POST alongside its
   other auth-server operations, including abort/deadline behavior, a method-aware
   status exception, token acquisition through injected `TokenRefresher`, one
-  typed 401 force-refresh/retry, and the title-only response DTO;
+  typed 401 force-refresh/retry, and the title-plus-branch response DTO;
 - Layer 2 `SessionMetadataRepository` under `bridge/app/lib/src/repositories/`
   owns the 500-character payload normalization and maps the typed API result;
 - Layer 3 `SessionCreationService` consumes the repository and owns the product
-  decision that metadata failure is logged and degraded to no generated title.
+  decision that metadata failure is logged and degraded to no generated title or
+  branch refinement.
 
 This follows the bridge architecture's explicit authenticated-provider boundary:
 `SesoriServerApi` consumes `TokenRefresher` and owns the complete authenticated
 HTTP operation. The repository does not inspect HTTP status or coordinate token
 lifecycle.
 
-The title-only DTO ignores the deployed response's extra `branchName` and
-`worktreeName` keys. The auth server response remains unchanged for released
-bridges. API/repository errors retain status/cause/stack context; only the
-creation service converts them into the best-effort result.
+The DTO consumes the deployed response's `title` and `branchName` and ignores
+`worktreeName`. The auth server response remains unchanged for released bridges.
+API/repository errors retain status/cause/stack context; only the creation
+service converts them into the best-effort result.
 
 Late work is owned by `SessionCreationService`, not by a detached route future.
 Immediately after all synchronous acceptance gates pass, the service starts and
-registers the complete metadata-to-title workflow in the tracked set before it
+registers the complete metadata workflow in the tracked set before it
 can return the canonical session:
 
-- one set tracks accepted title-completion futures;
+- one set tracks accepted metadata-completion futures, including title and any
+  eligible branch refinement;
 - standalone `TokenManager` refresh HTTP gains an injected request deadline, so
   token acquisition always settles; the desktop control-channel implementation
   retains its existing timeout;
 - one shutdown signal aborts in-flight metadata HTTP;
 - `beginShutdown` stops accepting new late work and triggers that request abort;
-- `drain` waits for tracked title work before session operations/listeners and
+- `drain` waits for tracked metadata work before session operations/listeners and
   the shared HTTP client are disposed.
 
 `drain` awaits the actual tracked workflows, never only a race wrapper while a
@@ -409,14 +425,14 @@ The composition root wires lifecycle ownership explicitly:
    injects that same instance into `OrchestratorSession`.
 2. `OrchestratorSession.beginShutdown` first fences
    `RoutedRequestDispatcher`, then calls
-   `SessionCreationService.beginShutdown` to stop late-title admission and abort
+   `SessionCreationService.beginShutdown` to stop late-metadata admission and abort
    metadata HTTP. An already accepted create may still finish its request, but
    if it reaches durable commit after this fence it returns without scheduling a
    generated title; title generation is best-effort during shutdown.
 3. The normalized event subscription and Orchestrator-owned local-mutation
    subscription move out of the broad `_subscriptions` composite. `_teardown`
    keeps both live while draining routed requests and relay completions, so no
-   accepted route can still reach late-title registration.
+   accepted route can still reach late-metadata registration.
 4. `_teardown` awaits `SessionCreationService.drain`, then begins/drains
    `SessionOperationDispatcher` while `OrchestratorSession` still maps typed
    local mutations to `SessionEventDispatcher`.
@@ -430,7 +446,7 @@ The composition root wires lifecycle ownership explicitly:
 7. The shutdown coordinator closes the shared HTTP client/database only after
    the whole `OrchestratorSession` drain phase.
 
-This order gives every tracked title task live mutation/event dependencies,
+This order gives every tracked metadata task live mutation/event dependencies,
 admits no task after the drain snapshot, and requires no global job registry.
 
 Generated title applies through `SessionMutationDispatcher` under the existing
@@ -446,6 +462,31 @@ local output only. `OrchestratorSession` decides and dispatches the correspondin
 backend-neutral event (`session.updated` for title success) before best-effort
 plugin propagation. Clients already consume it, so no new wire model is needed.
 
+The follow-up extends the same ownership rather than adding another job or event
+pipeline:
+
+1. `SessionCreationService` receives the typed title and generated branch in the
+   existing tracked metadata workflow. Title and branch application are
+   independent so either may succeed when the other fails.
+2. Generated branch application enters `SessionMutationDispatcher` under the
+   existing session-family lane. The dispatcher requires a stored root session
+   with a dedicated worktree and delegates Git decisions to `WorktreeService`.
+3. `WorktreeService` asks `GitCliApi` through `WorktreeRepository` to validate the
+   target, confirm the current branch still equals the durable initial branch,
+   confirm it has no upstream or matching remote ref, resolve a bounded collision suffix, and rename the
+   explicit old ref. It re-reads the current branch after the rename before
+   claiming a current-branch projection. No process-global or filesystem lock is
+   added for Git actions performed outside the bridge.
+4. After Git succeeds, `SessionRepository` conditionally replaces the durable
+   `branchName` expected by the operation and updates `currentBranchName` only
+   when Git still reports the renamed ref. A persistence failure attempts a
+   best-effort explicit Git rollback and logs both failures if rollback also
+   fails, preserving diagnostic evidence without failing session creation.
+5. A successful persisted rename emits a `branchUpdated(Session)` local mutation.
+   `OrchestratorSession` maps it to the existing `session.updated` event with
+   `titleChanged: false`; normal PR refresh later reconciles any PR cache. No new
+   client wire shape is introduced.
+
 ## Failure Semantics
 
 - **Still synchronous:** invalid project, unroutable backend, git/worktree setup
@@ -453,16 +494,18 @@ plugin propagation. Clients already consume it, so no new wire model is needed.
   initial prompt/attachment rejection, slash-command rejection, and durable
   binding failure.
 - **Best-effort after response:** metadata generation, bridge-owned generated
-  title application, and backend title propagation.
+  title application, eligible generated-branch rename, and backend title
+  propagation.
 - **Client creation failure:** restore the composer with a duplicate-risk
   warning for every creation-originated error; never auto-resend. Timeout,
   response loss, malformed/empty success, generic errors, and even some server
   rejections cannot prove that no durable session was committed.
 - **Background leave:** do not cancel bridge work. Existing list SSE/reconnect
   reconciliation remains authoritative once the binding commits.
-- **Shutdown:** cancel metadata HTTP, drain tracked title completions, then close
-  operation/event/mutation infrastructure. Do not persist prompt or pending title
-  work across process restart; generated title is explicitly best-effort.
+- **Shutdown:** cancel metadata HTTP, drain tracked metadata completions, then
+  close operation/event/mutation infrastructure. Do not persist prompt or
+  pending metadata work across process restart; generated title and branch
+  refinement are explicitly best-effort.
 
 ## Compatibility
 
@@ -474,9 +517,9 @@ plugin propagation. Clients already consume it, so no new wire model is needed.
   `session.updated` events.
 - No database migration is needed.
 - The auth server continues returning `title`, `branchName`, and `worktreeName`
-  because released bridges require all three fields. The new bridge ignores the
-  latter two. Narrowing that external response is deferred until those released
-  bridges are outside support.
+  because released bridges require all three fields. The new bridge intentionally
+  consumes `branchName` and ignores `worktreeName`; only the latter can be removed
+  once released bridges requiring it are outside support.
 - Production behavior remains plugin-neutral through `BridgePluginApi`.
 
 ## Cleanup Assessment
@@ -490,9 +533,9 @@ plugin propagation. Clients already consume it, so no new wire model is needed.
   keeps its independent dependency.
 - Obsolete loading copy or keys after refreshed copy moves to the shared launch
   view; generated localization outputs are regenerated, never hand-edited.
-- `SessionMetadata.branchName` and `SessionMetadata.worktreeName` plus the old
-  generated bridge model output; Step 3 replaces them with the title-only API
-  response DTO and regenerates its output.
+- The old layer-skipping `SessionMetadata` model and its `worktreeName` coupling;
+  the typed API response retains only the title and generated branch needed by
+  the late workflow.
 - `preferredBranchAndWorktreeName`, the metadata preferred-name branch, its
   runtime safe-name validator, and tests/fake fields that exist only for that
   path.
@@ -510,6 +553,8 @@ plugin propagation. Clients already consume it, so no new wire model is needed.
 
 - Generated title, auth/token refresh, first-message truncation, and the metadata
   endpoint activation side effect through the new API/repository layers.
+- Generated metadata `branchName`, `GitCliApi` branch validation/rename/upstream
+  primitives, and the durable creation/current branch fields.
 - Durable `Session` and database title/branch/worktree/base fields.
 - Explicit user rename APIs and every plugin's `renameSession` implementation.
 - `SessionMutationDispatcher` family serialization.
@@ -521,8 +566,9 @@ plugin propagation. Clients already consume it, so no new wire model is needed.
 
 ### Deferred cleanup
 
-- Auth-server response narrowing/removal of generated branch/worktree values,
-  solely because released bridges deserialize them as required fields.
+- Auth-server response narrowing/removal of generated `worktreeName`, solely
+  because released bridges deserialize it as required. Generated `branchName`
+  remains a live field for current bridges.
 - Replacing the metadata endpoint's activation side effect with a dedicated
   activation outcome.
 - Creation idempotency/pending-session persistence and true instant stable URLs.
@@ -536,6 +582,8 @@ plugin propagation. Clients already consume it, so no new wire model is needed.
 - Worktree cleanup redesign after plugin creation failure.
 - Renaming existing persisted worktrees or rewriting arbitrary `session-*` test
   fixtures unrelated to generation.
+- Renaming a worktree directory after plugin creation, renaming an initial branch
+  with an upstream or matching remote ref, or following a user/agent branch switch.
 - Changing plugin prompt semantics, session options discovery, relay timeout,
   or session-detail refresh reconciliation.
 
@@ -547,10 +595,10 @@ plugin propagation. Clients already consume it, so no new wire model is needed.
    launch is sending or being restored. It is required to preserve memory-only
    attachments and voice/command intent across the immediate visual transition;
    the still-mounted screen State retains the independent workspace toggle.
-2. **Late-title future set:** one `Set<Future<void>>` owned by
-   `SessionCreationService`, required so post-response title work cannot outlive
-   bridge dependencies.
-3. **Late-title abort controller/signal:** one shutdown signal shared by
+2. **Late-metadata future set:** the existing `Set<Future<void>>` owned by
+   `SessionCreationService`, renamed to describe that title and branch work cannot
+   outlive bridge dependencies; no second set is added.
+3. **Late-metadata abort controller/signal:** one shutdown signal shared by
    metadata requests, required to keep graceful shutdown from waiting for the
    45-second metadata deadline.
 4. **Memoized drain future/accepting flag:** lifecycle state local to the same
@@ -565,30 +613,34 @@ plugin propagation. Clients already consume it, so no new wire model is needed.
   that ephemeral local set is bounded by the existing attempt count.
 - Zero net long-lived stream controllers/subscriptions: the deletion-only
   mutation stream/listener is generalized in place.
+- Zero new branch registries, watchers, locks, or reconciliation jobs. Each late
+  rename carries only its expected/desired names through the existing tracked
+  workflow and family lane.
 - One UI timer, replacing rather than adding to the current rotating-copy timer.
 - No prompt/transcript persistence and no attachment persistence.
 - One transient sealed restore state and one post-frame consumption callback;
   neither retains state after the composer copies the snapshot.
 
-If implementation needs a pending-attempt registry, per-session title map,
-second mutation stream/listener, or partial-detail reconciliation machinery,
-stop and ask before expanding scope.
+If implementation needs a pending-attempt registry, per-session metadata map,
+second mutation stream/listener, Git watcher/lock, or partial-detail
+reconciliation machinery, stop and ask before expanding scope.
 
 ## Delivery Plan
 
 | Step | Exact PR title | Target | Scope |
 |---|---|---:|---|
 | 1/6 | `🌱 [fast-new-session-launch] docs: plan faster new-session launch [step 1/6]` | 750-900 lines | Add this reviewed plan and tracker only. |
-| 2/6 | `🌿 [fast-new-session-launch] feat(bridge): use local workspace names [step 2/6]` | 200-500 lines | Generate color-animal worktree/branch slugs and remove obsolete preferred-name code/tests. Metadata response fields are removed once in Step 3 with the API/repository replacement. |
+| 2/6 | `🌿 [fast-new-session-launch] feat(bridge): use local workspace names [step 2/6]` | 200-500 lines | Generate color-animal worktree/branch slugs and remove obsolete preferred-name code/tests. The old metadata model is replaced once in Step 3. |
 | 3/6 | `🚧 [fast-new-session-launch] feat(bridge): return sessions before generated titles [step 3/6]` | 950-1,450 lines | Add shared typed metadata request plus bridge API/repository layering, return canonical committed sessions, run title generation off the response path with exact shutdown ownership, conditional local title update, local `session.updated`, generated output, and obsolete-path deletion. |
 | 4/6 | `⚙️ [fast-new-session-launch] feat(client): open launching sessions immediately [step 4/6]` | 800-1,400 lines | Add sealed submission restoration, reusable Prego launch status, detail-shaped launch/loading, honest error warning, delete overlay/dependency/tests, regenerate state/localization. |
+| 4A | `⚙️ Rename generated session branches after launch` | 350-700 lines | Standalone approved follow-up: consume generated branch metadata, conditionally rename only the unpublished initial dedicated branch off the response path, persist both branch facts, and publish the existing session update. |
 | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | 80-180 lines | Reconcile affected regression docs and complete cleanup audit against actual implementation. |
 | 6/6 | `🌿 [fast-new-session-launch] test: verify faster new-session launch [step 6/6]` | 80-250 lines | Run the recorded level/matrix, record automated/manual results and timings, then move this plan from `active` to `completed` only on full required coverage. |
 
 Each implementation PR must stay below the 1,500 changed-line soft cap. If a
 step exceeds its target, prefer removing unnecessary machinery or splitting
-tests by owner without changing the fixed six-step lifecycle. Do not combine the
-bridge and client production steps into one large PR.
+tests by owner. The approved 4A follow-up does not renumber already merged/open
+six-step titles. Do not combine bridge and client production work.
 
 ## Per-Step Verification
 
@@ -652,6 +704,25 @@ bridge and client production steps into one large PR.
   existing-session queue plus analytics retain their released input-mode
   behavior after the richer callback input.
 
+### Follow-up 4A
+
+- `bridge/app`: metadata API/repository, creation service, mutation dispatcher,
+  worktree service/repository, Git API, DAO/repository persistence, local event
+  mapping, and shutdown tests plus `dart analyze --fatal-infos`.
+- Prove the canonical create response settles before metadata and branch rename,
+  and metadata/title failure remains independent from branch failure.
+- Prove only a stored root dedicated session on its original local branch is
+  eligible; in-place/fallback sessions, switched or detached worktrees, and an
+  initial branch with an upstream or matching fetched remote ref retain their
+  current branch.
+- Prove valid metadata renames only the branch, leaves the worktree/directory
+  unchanged, uses bounded secure collision fallback, updates durable/current
+  branch facts, and emits the existing `session.updated` with
+  `titleChanged: false`.
+- Prove generated-title behavior is unchanged, persistence failure attempts Git
+  rollback, deletion/family serialization wins predictably, and shutdown drains
+  the complete metadata workflow.
+
 ## Regression Documentation And Final Matrix
 
 Affected feature documents:
@@ -661,15 +732,19 @@ Affected feature documents:
   durable list/title update;
 - `docs/regression/attachments-and-images.md` - memory-only attachment
   restoration after failed creation.
+- `docs/regression/diffs-and-source-control.md` - late refinement of the durable
+  initial branch without moving the worktree;
+- `docs/regression/pull-request-monitoring.md` - generated branch update through
+  the existing current-branch/session update contract.
 
 `session-turns.md` is inspected for consistency but should not change unless the
 implementation alters existing-session sends, which is not planned.
 
 The durable-plan lifecycle intentionally reconciles these documents in the
-penultimate Step 5. Steps 2-4 record doc deltas in `TRACKER.md` as they merge,
-and the series is not release-complete until Step 5 updates the active contracts;
-this follows `docs/regression/README.md` rather than scattering partial feature
-wording across production steps.
+penultimate Step 5. Steps 2-4 and follow-up 4A record doc deltas in `TRACKER.md`
+as they merge, and the series is not release-complete until Step 5 updates the
+active contracts; this follows `docs/regression/README.md` rather than
+scattering partial feature wording across production steps.
 
 ### Highest required level
 
@@ -689,7 +764,11 @@ plugins. Automated tests are not a substitute for that client/plugin boundary.
   metadata slow/failure, title update, and dedicated-worktree naming because
   those behaviors are bridge-owned after the normalized boundary.
 - **Workspace:** in-place and dedicated; dedicated includes normal generated
-  name, collision retry, and suffix fallback through automated tests.
+  initial name, collision retry, and suffix fallback through automated tests.
+  A representative dedicated session additionally proves metadata arrives after
+  response, renames only the unpublished initial branch, leaves the worktree path
+  stable, updates the client branch, and skips after branch switch/upstream,
+  matching remote ref, or metadata/Git failure.
 - **Failure:** definitive rejection plus timeout/relay-loss simulation restoring
   the composer with honest warning; reconnect/discovery completion must not
   erase that warning before another explicit submission or route exit.
@@ -716,7 +795,7 @@ The acceptance criterion is structural, not a brittle wall-clock SLA:
   response or synchronous attachment/request/relay-envelope encoding; a
   maximum-sized fixture verifies the launch view paints and remains schedulable
   while every large serialization stage proceeds;
-- metadata/title completion cannot extend create response time;
+- metadata/title/branch completion cannot extend create response time;
 - route replacement occurs only after the real session is durable/queryable;
 - no accepted first input or command is moved behind the success response.
 
@@ -730,21 +809,27 @@ The acceptance criterion is structural, not a brittle wall-clock SLA:
   deduplication is deferred.
 - Generated title is best-effort and is not persisted as pending work across a
   bridge restart. A session may keep its backend/generic title if shutdown wins.
+- Generated branch refinement is likewise best-effort. Metadata failure, an
+  agent branch switch, an upstream or matching fetched remote ref, invalid output,
+  collision/create races, or a Git failure leaves the safe initial
+  `color-animal` branch in place.
 - The detail snapshot may remain slower than route replacement. It uses the
   same launch view for continuity, but staged transcript rendering and PR-read
   optimization are separate work.
 - Color-animal combinations are finite. Bounded distinct-pair retry plus one
   secure-suffix attempt handles collisions without an unbounded hot path; a real
   final Git creation failure still follows the existing project fallback.
-- Auth-server branch/worktree generation remains wasted work for new bridges
-  until released bridge compatibility allows endpoint narrowing. Bridge-side
-  dead fields and coupling are still removed now.
+- Auth-server branch generation is intentionally live again for current bridges.
+  Worktree-name generation remains wasted until released bridge compatibility
+  allows that field to be removed.
 
 ## Expected Result
 
 Pressing Send immediately presents the session experience. Metadata service
 latency and backend rename latency no longer delay the durable session response.
-Dedicated workspaces receive friendly local names without a network dependency.
+Dedicated workspaces receive friendly initial local names without a network
+dependency, then eligible unpublished branches refine to the generated task name
+after launch without moving the worktree.
 Success still means the backend accepted the initial action and the stable
 Sesori session is queryable. Failure restores the user's exact submission
 without unsafe automatic retry. No database or client-bridge wire migration is

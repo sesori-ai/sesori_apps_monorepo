@@ -13,9 +13,9 @@ void main() {
       final repository = SessionMetadataRepository(api: api);
       final message = "x" * 500;
 
-      final title = await repository.generateTitle(firstMessage: message);
+      final metadata = await repository.generateMetadata(firstMessage: message);
 
-      expect(title, equals("Generated title"));
+      expect(metadata, (title: "Generated title", branchName: "generated-branch"));
       expect(api.requests.single, equals(GenerateSessionMetadataRequest(firstMessage: message)));
       expect(api.abortSignals.single.isAborted, isFalse);
     });
@@ -24,7 +24,7 @@ void main() {
       final api = _FakeSesoriServerApi();
       final repository = SessionMetadataRepository(api: api);
 
-      await repository.generateTitle(firstMessage: "x" * 501);
+      await repository.generateMetadata(firstMessage: "x" * 501);
 
       expect(api.requests.single.firstMessage, equals("x" * 500));
     });
@@ -33,7 +33,7 @@ void main() {
       final api = _FakeSesoriServerApi();
       final repository = SessionMetadataRepository(api: api);
 
-      await repository.generateTitle(firstMessage: "${"x" * 499}😀tail");
+      await repository.generateMetadata(firstMessage: "${"x" * 499}😀tail");
 
       expect(api.requests.single.firstMessage, equals("x" * 499));
     });
@@ -43,7 +43,7 @@ void main() {
       final repository = SessionMetadataRepository(api: _FakeSesoriServerApi(failure: abort));
 
       await expectLater(
-        repository.generateTitle(firstMessage: "message"),
+        repository.generateMetadata(firstMessage: "message"),
         throwsA(
           isA<SessionMetadataRequestAbortedException>().having(
             (error) => error.innerError,
@@ -66,7 +66,7 @@ void main() {
       final repository = SessionMetadataRepository(api: _FakeSesoriServerApi(failure: apiError));
 
       await expectLater(
-        repository.generateTitle(firstMessage: "message"),
+        repository.generateMetadata(firstMessage: "message"),
         throwsA(
           isA<SessionMetadataInvalidResponseException>()
               .having((error) => error.cause, "cause", same(apiError))
@@ -82,7 +82,7 @@ void main() {
       final repository = SessionMetadataRepository(api: _FakeSesoriServerApi(failure: error));
 
       await expectLater(
-        repository.generateTitle(firstMessage: "message"),
+        repository.generateMetadata(firstMessage: "message"),
         throwsA(same(error)),
       );
     });
@@ -91,7 +91,7 @@ void main() {
       final api = _FakeSesoriServerApi();
       final repository = SessionMetadataRepository(api: api);
 
-      await repository.generateTitle(firstMessage: "message");
+      await repository.generateMetadata(firstMessage: "message");
       repository.beginShutdown();
 
       expect(api.abortSignals.single.isAborted, isTrue);
@@ -113,7 +113,7 @@ class _FakeSesoriServerApi({final Object? failure}) implements SesoriServerApi {
     requests.add(request);
     abortSignals.add(abortSignal);
     if (error case final error?) throw error;
-    return const GenerateSessionMetadataResponse(title: "Generated title");
+    return const GenerateSessionMetadataResponse(title: "Generated title", branchName: "generated-branch");
   }
 
   @override
