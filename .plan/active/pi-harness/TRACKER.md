@@ -456,7 +456,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   so cold replay conservatively displays only the slash-command token for both
   API commands and manually typed slash prompts, never hidden raw arguments;
   live API-command presentation retains exact `userVisibleArguments`.
-- Diff: +3,152/-109 = 3,261 changed lines; generated lines: 0; tests run: 210.
+- Diff: +3,152/-101 = 3,253 changed lines; generated lines: 0; tests run: 210.
   Review-fix working-tree delta excluding this tracker evidence: +586/-85 =
   671 changed lines. Recorded overage:
   persistence, residency, replay hydration, turn settlement, attachment
