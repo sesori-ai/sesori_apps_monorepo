@@ -258,6 +258,12 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         error.innerError,
         error.innerStackTrace,
       );
+    } on SessionMetadataInvalidResponseException catch (error) {
+      Log.w(
+        "Failed to generate title for session ${session.id}",
+        error.innerError,
+        error.innerStackTrace,
+      );
     } on Object catch (error, stackTrace) {
       Log.w("Failed to generate title for session ${session.id}", error, stackTrace);
     }

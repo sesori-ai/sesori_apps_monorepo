@@ -10,6 +10,13 @@ class SessionMetadataRequestAbortedException({
   required final StackTrace innerStackTrace,
 }) implements Exception;
 
+class SessionMetadataInvalidResponseException({
+  required final Object cause,
+  required final StackTrace causeStackTrace,
+  required final Object innerError,
+  required final StackTrace innerStackTrace,
+}) implements Exception;
+
 class SessionMetadataRepository({required final SesoriServerApi _api}) {
   static const int maximumFirstMessageLength = 500;
   final SesoriServerRequestAbortSignal _abortSignal = SesoriServerRequestAbortSignal();
@@ -26,6 +33,13 @@ class SessionMetadataRepository({required final SesoriServerApi _api}) {
       return response.title;
     } on http.RequestAbortedException catch (error, stackTrace) {
       throw SessionMetadataRequestAbortedException(innerError: error, innerStackTrace: stackTrace);
+    } on SesoriServerApiResponseException catch (error, stackTrace) {
+      throw SessionMetadataInvalidResponseException(
+        cause: error,
+        causeStackTrace: stackTrace,
+        innerError: error.innerError,
+        innerStackTrace: error.innerStackTrace,
+      );
     }
   }
 

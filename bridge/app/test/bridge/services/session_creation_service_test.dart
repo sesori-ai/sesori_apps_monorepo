@@ -204,6 +204,36 @@ void main() {
       expect((await db.sessionDao.getSession(sessionId: created.id))?.title, isNull);
     });
 
+    test("logs the underlying invalid metadata response", () async {
+      const innerError = FormatException("invalid metadata response marker");
+      final innerStackTrace = StackTrace.fromString("inner metadata response stack marker");
+      metadataRepository.failure = SessionMetadataInvalidResponseException(
+        cause: StateError("invalid metadata API response"),
+        causeStackTrace: StackTrace.current,
+        innerError: innerError,
+        innerStackTrace: innerStackTrace,
+      );
+
+      final output = await _captureWarningLog(() async {
+        await service.createSession(
+          request: const CreateSessionRequest(
+            projectId: "/repo",
+            pluginId: "fake",
+            dedicatedWorktree: false,
+            parts: [PromptPart.text(text: "Build it")],
+            variant: null,
+            agent: null,
+            model: null,
+            command: null,
+          ),
+        );
+        await service.drain();
+      });
+
+      expect(output, contains(innerError.message));
+      expect(output, contains("inner metadata response stack marker"));
+    });
+
     test("surfaces plugin startup failures without starting metadata", () async {
       final runtime = createTestPluginRuntime(plugins: const <BridgePluginApi>[]);
       final repository = singlePluginSessionRepository(
@@ -426,6 +456,7 @@ class _FakeSessionMetadataRepository() implements SessionMetadataRepository {
   Future<void>? generateGate;
   bool abortOnShutdown = false;
   Completer<void>? shutdownObserved;
+  Object? failure;
   final Completer<void> _shutdown = Completer<void>();
 
   @override
@@ -446,8 +477,36 @@ class _FakeSessionMetadataRepository() implements SessionMetadataRepository {
       );
     }
     if (generateGate case final gate?) await gate;
+    if (failure case final error?) throw error;
     return "Generated title";
   }
+}
+
+Future<String> _captureWarningLog(Future<void> Function() action) async {
+  final output = _BufferingStdout();
+  final previousLevel = Log.level;
+  try {
+    Log.level = LogLevel.warning;
+    await IOOverrides.runZoned(action, stderr: () => output);
+  } finally {
+    Log.level = previousLevel;
+  }
+  return output.text;
+}
+
+class _BufferingStdout() implements Stdout {
+  final StringBuffer _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
+  @override
+  void write(Object? object) => _buffer.write(object);
+
+  @override
+  void writeln([Object? object = ""]) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }
 
 class _FakeWorktreeService({required super.worktreeRepository}) extends WorktreeService {
