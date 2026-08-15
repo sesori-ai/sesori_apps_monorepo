@@ -601,12 +601,13 @@ final class PiSessionProcessRepository({
     required Set<String> knownDirectories,
   }) async {
     if (_disposed) throw const PiRpcDisposedException();
+    final hydration = _identityTracker.beginHydration(sessionId: sessionId);
     final PiResolvedSession? resolved;
     try {
       final resident = _residents[sessionId];
       if (resident != null) {
         final history = await _getEntries(client: resident.client);
-        return _hydrateHistory(sessionId: sessionId, history: history);
+        return _hydrateHistory(sessionId: sessionId, history: history, hydration: hydration);
       }
       resolved = await _storageApi.resolveSession(sessionId: sessionId, knownDirectories: knownDirectories);
     } on Object catch (error, stack) {
@@ -628,6 +629,7 @@ final class PiSessionProcessRepository({
       return _hydrateHistory(
         sessionId: sessionId,
         history: await _readHistory(resolved: resolved),
+        hydration: hydration,
       );
     } on Object catch (error, stack) {
       _throwLoadFailure(path: resolved.path, error: error, stack: stack);
@@ -652,17 +654,18 @@ final class PiSessionProcessRepository({
     }
   }
 
-  List<PluginMessageWithParts> _hydrateHistory({required String sessionId, required PiSessionEntriesDto history}) =>
-      _identityTracker
-          .beginHydration(sessionId: sessionId)
-          .complete(
-            map: (identities) => _historyMapper.map(
-              sessionId: sessionId,
-              entries: history.entries,
-              leafId: history.leafId,
-              identities: identities,
-            ),
-          );
+  List<PluginMessageWithParts> _hydrateHistory({
+    required String sessionId,
+    required PiSessionEntriesDto history,
+    required PiMessageIdentityHydration hydration,
+  }) => hydration.complete(
+    map: (identities) => _historyMapper.map(
+      sessionId: sessionId,
+      entries: history.entries,
+      leafId: history.leafId,
+      identities: identities,
+    ),
+  );
 
   Future<PiSessionEntriesDto> _readHistory({required PiResolvedSession resolved}) async {
     try {
