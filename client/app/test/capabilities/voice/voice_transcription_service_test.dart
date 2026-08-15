@@ -32,8 +32,8 @@ class _RealtimeConnector() implements RealtimeWebSocketConnector {
   Completer<void>? connectStarted;
 
   @override
-  Future<WebSocketChannel> connect(
-    Uri uri, {
+  Future<WebSocketChannel> connect({
+    required Uri uri,
     required Map<String, String> headers,
     required Duration connectTimeout,
   }) async {
@@ -491,7 +491,7 @@ void main() {
         await startWithRecordedFile();
         when(
           () => mockVoiceApi.transcribe(
-            recordingPath,
+            audioFilePath: recordingPath,
             mimeType: "audio/mp4",
             projectKey: null,
             capabilities: null,
@@ -506,7 +506,7 @@ void main() {
         verify(mockRecorder.stop).called(1);
         verify(
           () => mockVoiceApi.transcribe(
-            recordingPath,
+            audioFilePath: recordingPath,
             mimeType: "audio/mp4",
             projectKey: null,
             capabilities: null,
@@ -544,7 +544,7 @@ void main() {
         await startWithRecordedFile();
         when(
           () => mockVoiceApi.transcribe(
-            recordingPath,
+            audioFilePath: recordingPath,
             mimeType: "audio/mp4",
             projectKey: null,
             capabilities: null,
@@ -558,7 +558,7 @@ void main() {
         await startWithRecordedFile();
         when(
           () => mockVoiceApi.transcribe(
-            recordingPath,
+            audioFilePath: recordingPath,
             mimeType: "audio/mp4",
             projectKey: null,
             capabilities: null,
@@ -572,7 +572,7 @@ void main() {
         await startWithRecordedFile();
         when(
           () => mockVoiceApi.transcribe(
-            recordingPath,
+            audioFilePath: recordingPath,
             mimeType: "audio/mp4",
             projectKey: null,
             capabilities: null,
@@ -593,7 +593,7 @@ void main() {
         await startWithFile();
         when(
           () => mockVoiceApi.transcribe(
-            recordingPath,
+            audioFilePath: recordingPath,
             mimeType: "audio/mp4",
             projectKey: null,
             capabilities: null,
@@ -604,7 +604,7 @@ void main() {
 
         verify(
           () => mockVoiceApi.transcribe(
-            recordingPath,
+            audioFilePath: recordingPath,
             mimeType: "audio/mp4",
             projectKey: null,
             capabilities: null,
@@ -619,9 +619,9 @@ void main() {
         await startWithFile();
         when(
           () => mockVoiceApi.transcribe(
-            recordingPath,
+            audioFilePath: recordingPath,
             mimeType: "audio/mp4",
-            projectKey: deriveProjectGlossaryKey("project-123"),
+            projectKey: deriveProjectGlossaryKey(projectId: "project-123"),
             capabilities: capabilities,
           ),
         ).thenAnswer((_) async => ApiResponse.success("scoped"));
@@ -630,9 +630,9 @@ void main() {
 
         verify(
           () => mockVoiceApi.transcribe(
-            recordingPath,
+            audioFilePath: recordingPath,
             mimeType: "audio/mp4",
-            projectKey: deriveProjectGlossaryKey("project-123"),
+            projectKey: deriveProjectGlossaryKey(projectId: "project-123"),
             capabilities: capabilities,
           ),
         ).called(1);
@@ -719,7 +719,7 @@ void main() {
           fail("expected realtime start map");
         }
         final start = decodedStart;
-        expect(start["projectKey"], deriveProjectGlossaryKey("project-123"));
+        expect(start["projectKey"], deriveProjectGlossaryKey(projectId: "project-123"));
         expect(start["audio"], {"encoding": "pcm_s16le", "sampleRate": 48000, "channels": 1});
         expect(start.toString(), isNot(contains("project-123")));
         expect(connector.headers, {"Authorization": "Bearer fresh-token"});
@@ -765,7 +765,7 @@ void main() {
         expect(await stopFuture, "hello world");
         verifyNever(
           () => mockVoiceApi.transcribe(
-            any(),
+            audioFilePath: any(named: "audioFilePath"),
             mimeType: any(named: "mimeType"),
             projectKey: any(named: "projectKey"),
             capabilities: any(named: "capabilities"),
@@ -797,7 +797,7 @@ void main() {
         );
         verifyNever(
           () => mockVoiceApi.transcribe(
-            any(),
+            audioFilePath: any(named: "audioFilePath"),
             mimeType: any(named: "mimeType"),
             projectKey: any(named: "projectKey"),
             capabilities: any(named: "capabilities"),
@@ -941,7 +941,7 @@ void main() {
         );
         verifyNever(
           () => mockVoiceApi.transcribe(
-            any(),
+            audioFilePath: any(named: "audioFilePath"),
             mimeType: any(named: "mimeType"),
             projectKey: any(named: "projectKey"),
             capabilities: any(named: "capabilities"),
@@ -998,7 +998,7 @@ void main() {
         );
         verifyNever(
           () => mockVoiceApi.transcribe(
-            any(),
+            audioFilePath: any(named: "audioFilePath"),
             mimeType: any(named: "mimeType"),
             projectKey: any(named: "projectKey"),
             capabilities: any(named: "capabilities"),
@@ -1147,9 +1147,9 @@ void main() {
         when(mockRecorder.stop).thenAnswer((_) async => recordingPath);
         when(
           () => mockVoiceApi.transcribe(
-            recordingPath,
+            audioFilePath: recordingPath,
             mimeType: "audio/mp4",
-            projectKey: deriveProjectGlossaryKey("project-123"),
+            projectKey: deriveProjectGlossaryKey(projectId: "project-123"),
             capabilities: const VoiceCapabilities(realtimeEnabled: true, protocolVersions: [1]),
           ),
         ).thenAnswer((_) async => ApiResponse.success("fallback transcript"));
@@ -1486,7 +1486,7 @@ void main() {
 
         when(
           () => mockVoiceApi.transcribe(
-            recordingPath,
+            audioFilePath: recordingPath,
             mimeType: "audio/mp4",
             projectKey: null,
             capabilities: null,
@@ -1521,7 +1521,7 @@ void main() {
         final transcribeCompleter = Completer<ApiResponse<String>>();
         when(
           () => mockVoiceApi.transcribe(
-            recordingPath,
+            audioFilePath: recordingPath,
             mimeType: "audio/mp4",
             projectKey: null,
             capabilities: null,
@@ -1553,7 +1553,7 @@ void main() {
         final transcribeCompleter = Completer<ApiResponse<String>>();
         when(
           () => mockVoiceApi.transcribe(
-            recordingPath,
+            audioFilePath: recordingPath,
             mimeType: "audio/mp4",
             projectKey: null,
             capabilities: null,
@@ -1581,7 +1581,7 @@ void main() {
         final transcribeCompleter1 = Completer<ApiResponse<String>>();
         when(
           () => mockVoiceApi.transcribe(
-            recordingPath,
+            audioFilePath: recordingPath,
             mimeType: "audio/mp4",
             projectKey: null,
             capabilities: null,
@@ -1601,7 +1601,7 @@ void main() {
         final transcribeCompleter2 = Completer<ApiResponse<String>>();
         when(
           () => mockVoiceApi.transcribe(
-            recordingPath,
+            audioFilePath: recordingPath,
             mimeType: "audio/mp4",
             projectKey: null,
             capabilities: null,
@@ -1692,7 +1692,7 @@ void main() {
           File(recordingPath).writeAsBytesSync([1, 2, 3]);
           when(
             () => mockVoiceApi.transcribe(
-              recordingPath,
+              audioFilePath: recordingPath,
               mimeType: "audio/mp4",
               projectKey: null,
               capabilities: null,

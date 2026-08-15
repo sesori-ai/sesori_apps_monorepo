@@ -137,7 +137,7 @@ RealtimeStartMessage _parseStart(Map<String, Object?> map) {
   }
   final Object? projectKey = map["projectKey"];
   final audio = _parseAudio(map["audio"]);
-  if (projectKey != null && (projectKey is! String || !isValidProjectGlossaryKey(projectKey))) {
+  if (projectKey != null && (projectKey is! String || !isValidProjectGlossaryKey(value: projectKey))) {
     throw const FormatException("Invalid realtime project key");
   }
   return switch (projectKey) {

@@ -27,7 +27,7 @@ class RealtimeVoiceApi({
     // This API promises auth only ever sees the opaque derived key. Refuse a
     // value that is not one rather than forwarding it, so a caller that passes
     // a raw project ID fails here instead of leaking it off the device.
-    if (projectKey != null && !isValidProjectGlossaryKey(projectKey)) {
+    if (projectKey != null && !isValidProjectGlossaryKey(value: projectKey)) {
       throw const RealtimeVoiceProtocolException("Realtime projectKey must be an opaque project glossary key");
     }
     final token = await tokenProvider.getFreshAccessToken();
@@ -35,11 +35,11 @@ class RealtimeVoiceApi({
       throw const RealtimeVoiceOpenAuthenticationException(cause: null, httpStatus: null);
     }
     final channel = await connector.connect(
-      Uri.parse(authBaseUrl).replace(scheme: "wss", path: "/voice/realtime", query: null),
+      uri: Uri.parse(authBaseUrl).replace(scheme: "wss", path: "/voice/realtime", query: null),
       headers: {"Authorization": "Bearer $token"},
       connectTimeout: realtimeVoiceConnectTimeout,
     );
-    final session = RealtimeVoiceSession(channel);
+    final session = RealtimeVoiceSession(channel: channel);
     try {
       session._sendJson(RealtimeStartMessage(audio: audio, projectKey: projectKey).toJson());
     } on Object {
@@ -53,7 +53,7 @@ class RealtimeVoiceApi({
   }
 }
 
-final class RealtimeVoiceSession(final WebSocketChannel _channel) {
+final class RealtimeVoiceSession({required final WebSocketChannel channel}) {
   final StreamController<RealtimeVoiceEvent> _events = StreamController<RealtimeVoiceEvent>();
   final Completer<RealtimeVoiceEvent> _terminal = Completer<RealtimeVoiceEvent>();
   // ignore: no_slop_linter/prefer_specific_type, web_socket_channel exposes a dynamic stream
@@ -63,7 +63,7 @@ final class RealtimeVoiceSession(final WebSocketChannel _channel) {
   bool _finishRequested = false;
 
   this {
-    _subscription = _channel.stream.listen(
+    _subscription = channel.stream.listen(
       _handleInbound,
       onError: _handleInboundError,
       onDone: _handleInboundDone,
@@ -80,7 +80,7 @@ final class RealtimeVoiceSession(final WebSocketChannel _channel) {
     if (frame.isEmpty || frame.length.isOdd || frame.length > 65536) {
       throw const RealtimeVoiceProtocolException("Realtime audio frame must be non-empty aligned PCM16 <= 65536 bytes");
     }
-    _channel.sink.add(frame);
+    channel.sink.add(frame);
   }
 
   Future<RealtimeVoiceEvent> finish() async {
@@ -115,7 +115,7 @@ final class RealtimeVoiceSession(final WebSocketChannel _channel) {
         await _subscription.cancel();
       }(),
       () async {
-        await _channel.sink.close(realtimeNormalCloseCode);
+        await channel.sink.close(realtimeNormalCloseCode);
       }(),
     ], eagerError: true).then<void>((_) {});
 
@@ -147,7 +147,7 @@ final class RealtimeVoiceSession(final WebSocketChannel _channel) {
 
   // ignore: no_slop_linter/prefer_specific_type, JSON encoding requires Object-valued maps
   void _sendJson(Map<String, Object?> json) {
-    _channel.sink.add(jsonEncode(json));
+    channel.sink.add(jsonEncode(json));
   }
 
   // ignore: no_slop_linter/prefer_specific_type, web_socket_channel exposes arbitrary inbound frames

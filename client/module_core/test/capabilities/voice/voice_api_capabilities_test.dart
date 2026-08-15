@@ -173,7 +173,7 @@ void main() {
       ApiResponse<String>? result;
       api
           .transcribe(
-            "test/fixtures/voice_realtime_protocol_v1.json",
+            audioFilePath: "test/fixtures/voice_realtime_protocol_v1.json",
             mimeType: "application/json",
             projectKey: null,
             capabilities: null,
@@ -196,10 +196,10 @@ void main() {
     "Given async transcription context When protocol support is observed Then sends only opaque project key",
     () async {
       const capabilities = VoiceCapabilities(realtimeEnabled: false, protocolVersions: [1]);
-      final projectKey = deriveProjectGlossaryKey("project-123");
+      final projectKey = deriveProjectGlossaryKey(projectId: "project-123");
 
       await api.transcribe(
-        "test/fixtures/voice_realtime_protocol_v1.json",
+        audioFilePath: "test/fixtures/voice_realtime_protocol_v1.json",
         mimeType: "application/json",
         projectKey: projectKey,
         capabilities: capabilities,
@@ -213,9 +213,9 @@ void main() {
 
   test("Given old-server async fallback When transcribing Then omits projectKey exactly", () async {
     await api.transcribe(
-      "test/fixtures/voice_realtime_protocol_v1.json",
+      audioFilePath: "test/fixtures/voice_realtime_protocol_v1.json",
       mimeType: "application/json",
-      projectKey: deriveProjectGlossaryKey("project-123"),
+      projectKey: deriveProjectGlossaryKey(projectId: "project-123"),
       capabilities: null,
     );
 

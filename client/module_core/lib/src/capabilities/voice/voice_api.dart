@@ -57,8 +57,8 @@ class VoiceApi(final AuthenticatedHttpApiClient _client, final HttpApiClient _pu
   ///
   /// [mimeType] is sent as the file's content-type so the server can forward
   /// it to the transcription model (e.g. `"audio/mp4"` for m4a/AAC).
-  Future<ApiResponse<String>> transcribe(
-    String audioFilePath, {
+  Future<ApiResponse<String>> transcribe({
+    required String audioFilePath,
     required String mimeType,
     required String? projectKey,
     required VoiceCapabilities? capabilities,
@@ -105,7 +105,7 @@ class VoiceApi(final AuthenticatedHttpApiClient _client, final HttpApiClient _pu
     if (projectKey == null || capabilities == null || !capabilities.supportsProtocol1) {
       return null;
     }
-    if (!isValidProjectGlossaryKey(projectKey)) {
+    if (!isValidProjectGlossaryKey(value: projectKey)) {
       throw ArgumentError.value(projectKey, "projectKey", "Expected opaque project glossary key");
     }
     return {"projectKey": projectKey};

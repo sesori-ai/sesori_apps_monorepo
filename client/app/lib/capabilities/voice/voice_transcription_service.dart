@@ -263,7 +263,7 @@ class VoiceTranscriptionService({
         );
       case VoiceCapabilitiesAvailable(:final capabilities):
         _observedCapabilities = capabilities;
-        final projectKey = deriveProjectGlossaryKey(projectId);
+        final projectKey = deriveProjectGlossaryKey(projectId: projectId);
         _currentProjectKey = projectKey;
         if (capabilities.canUseRealtimeProtocol1) {
           return _RealtimeVoiceRecordingMode(projectKey: projectKey);
@@ -737,7 +737,7 @@ class VoiceTranscriptionService({
     }
 
     final response = await _voiceApi.transcribe(
-      path,
+      audioFilePath: path,
       mimeType: _audioFormat.mimeType,
       projectKey: _currentProjectKey,
       capabilities: _observedCapabilities,

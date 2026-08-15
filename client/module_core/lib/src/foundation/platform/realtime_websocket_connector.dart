@@ -29,5 +29,9 @@ final class const RealtimeVoiceOpenTransportException({required super.cause, req
 
 abstract interface class RealtimeWebSocketConnector() {
   /// Opens a WebSocket and resolves only after [WebSocketChannel.ready] succeeds.
-  Future<WebSocketChannel> connect(Uri uri, {required Map<String, String> headers, required Duration connectTimeout});
+  Future<WebSocketChannel> connect({
+    required Uri uri,
+    required Map<String, String> headers,
+    required Duration connectTimeout,
+  });
 }

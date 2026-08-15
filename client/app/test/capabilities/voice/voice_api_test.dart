@@ -52,7 +52,7 @@ void main() {
       ).thenAnswer((_) async => ApiResponse.success("transcribed text"));
 
       final result = await voiceApi.transcribe(
-        audioPath,
+        audioFilePath: audioPath,
         mimeType: "audio/mp4",
         projectKey: null,
         capabilities: null,
@@ -90,7 +90,7 @@ void main() {
     test("protocol 1 async context sends only opaque project key", () async {
       final audioPath = await createAudioPath();
       const capabilities = VoiceCapabilities(realtimeEnabled: false, protocolVersions: [1]);
-      final opaqueKey = deriveProjectGlossaryKey("project-123");
+      final opaqueKey = deriveProjectGlossaryKey(projectId: "project-123");
 
       when(
         () => mockAuthenticatedHttpApiClient.postMultipart<String>(
@@ -103,7 +103,7 @@ void main() {
       ).thenAnswer((_) async => ApiResponse.success("transcribed text"));
 
       final result = await voiceApi.transcribe(
-        audioPath,
+        audioFilePath: audioPath,
         mimeType: "audio/mp4",
         projectKey: opaqueKey,
         capabilities: capabilities,
@@ -143,7 +143,7 @@ void main() {
       );
 
       final result = await voiceApi.transcribe(
-        audioPath,
+        audioFilePath: audioPath,
         mimeType: "audio/mp4",
         projectKey: null,
         capabilities: null,
@@ -176,7 +176,7 @@ void main() {
       );
 
       final result = await voiceApi.transcribe(
-        audioPath,
+        audioFilePath: audioPath,
         mimeType: "audio/mp4",
         projectKey: null,
         capabilities: null,
@@ -201,7 +201,7 @@ void main() {
       );
 
       final result = await voiceApi.transcribe(
-        audioPath,
+        audioFilePath: audioPath,
         mimeType: "audio/mp4",
         projectKey: null,
         capabilities: null,
@@ -224,7 +224,7 @@ void main() {
       ).thenAnswer((_) async => ApiResponse.error(ApiError.jsonParsing("not json")));
 
       final result = await voiceApi.transcribe(
-        audioPath,
+        audioFilePath: audioPath,
         mimeType: "audio/mp4",
         projectKey: null,
         capabilities: null,
@@ -248,7 +248,7 @@ void main() {
       );
 
       final result = await voiceApi.transcribe(
-        audioPath,
+        audioFilePath: audioPath,
         mimeType: "audio/mp4",
         projectKey: null,
         capabilities: null,

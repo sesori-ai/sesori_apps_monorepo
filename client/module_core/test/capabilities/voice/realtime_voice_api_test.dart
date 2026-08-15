@@ -46,8 +46,8 @@ class _Connector({bool syncInbound = false, bool hangSubscriptionCancel = false,
   bool useDelayedConnect = false;
 
   @override
-  Future<WebSocketChannel> connect(
-    Uri uri, {
+  Future<WebSocketChannel> connect({
+    required Uri uri,
     required Map<String, String> headers,
     required Duration connectTimeout,
   }) async {
@@ -164,7 +164,7 @@ void main() {
   test("Given a realtime start When connecting Then uses fresh bearer upgrade header and start frame only", () async {
     final session = await api.start(
       audio: const RealtimeAudioFormat(sampleRate: 16000),
-      projectKey: deriveProjectGlossaryKey("project-123"),
+      projectKey: deriveProjectGlossaryKey(projectId: "project-123"),
     );
 
     expect(connector.uri, Uri.parse("wss://api.sesori.com/voice/realtime"));
@@ -178,7 +178,7 @@ void main() {
     expect(start, {
       "type": "start",
       "protocolVersion": 1,
-      "projectKey": deriveProjectGlossaryKey("project-123"),
+      "projectKey": deriveProjectGlossaryKey(projectId: "project-123"),
       "audio": {"encoding": "pcm_s16le", "sampleRate": 16000, "channels": 1},
     });
     await session.close();

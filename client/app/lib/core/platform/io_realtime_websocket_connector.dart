@@ -9,7 +9,11 @@ import "package:web_socket_channel/web_socket_channel.dart";
 
 @lazySingleton
 class IoRealtimeWebSocketClient() {
-  WebSocketChannel connect(Uri uri, {required Map<String, String> headers, required Duration connectTimeout}) {
+  WebSocketChannel connect({
+    required Uri uri,
+    required Map<String, String> headers,
+    required Duration connectTimeout,
+  }) {
     return IOWebSocketChannel.connect(uri, headers: headers, connectTimeout: connectTimeout);
   }
 }
@@ -20,12 +24,12 @@ class IoRealtimeWebSocketConnector({required final IoRealtimeWebSocketClient cli
   final IoRealtimeWebSocketClient _client = client;
 
   @override
-  Future<WebSocketChannel> connect(
-    Uri uri, {
+  Future<WebSocketChannel> connect({
+    required Uri uri,
     required Map<String, String> headers,
     required Duration connectTimeout,
   }) async {
-    final channel = _client.connect(uri, headers: headers, connectTimeout: connectTimeout);
+    final channel = _client.connect(uri: uri, headers: headers, connectTimeout: connectTimeout);
     try {
       await channel.ready;
       return channel;

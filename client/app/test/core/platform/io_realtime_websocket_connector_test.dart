@@ -16,7 +16,7 @@ void main() {
       const headers = {"Authorization": "Bearer access-token", "X-Sesori-Device": "device-1"};
       const connectTimeout = Duration(seconds: 10);
 
-      final result = await connector.connect(uri, headers: headers, connectTimeout: connectTimeout);
+      final result = await connector.connect(uri: uri, headers: headers, connectTimeout: connectTimeout);
 
       expect(result, same(channel));
       expect(client.uri, uri);
@@ -31,7 +31,7 @@ void main() {
 
       await expectLater(
         connector.connect(
-          Uri.parse("wss://auth.example.test/voice/realtime"),
+          uri: Uri.parse("wss://auth.example.test/voice/realtime"),
           headers: const {},
           connectTimeout: const Duration(seconds: 10),
         ),
@@ -71,7 +71,7 @@ void main() {
 
       await expectLater(
         connector.connect(
-          Uri.parse("wss://auth.example.test/voice/realtime"),
+          uri: Uri.parse("wss://auth.example.test/voice/realtime"),
           headers: const {},
           connectTimeout: const Duration(seconds: 10),
         ),
@@ -86,7 +86,7 @@ void main() {
       final connector = IoRealtimeWebSocketConnector(client: IoRealtimeWebSocketClient());
 
       await expectLater(
-        connector.connect(uri, headers: const {}, connectTimeout: const Duration(milliseconds: 100)),
+        connector.connect(uri: uri, headers: const {}, connectTimeout: const Duration(milliseconds: 100)),
         throwsA(isA<RealtimeVoiceOpenTransportException>()),
       );
     });
@@ -98,7 +98,7 @@ void main() {
       final uri = Uri.parse("wss://auth.example.test/voice/realtime?protocol=1");
 
       await connector.connect(
-        uri,
+        uri: uri,
         headers: const {"Authorization": "Bearer secret-token"},
         connectTimeout: const Duration(seconds: 10),
       );
@@ -117,7 +117,7 @@ Future<void> _expectStatusClassification({required int statusCode, required Matc
 
   await expectLater(
     connector.connect(
-      Uri.parse("wss://auth.example.test/voice/realtime"),
+      uri: Uri.parse("wss://auth.example.test/voice/realtime"),
       headers: const {},
       connectTimeout: const Duration(seconds: 10),
     ),
@@ -137,7 +137,7 @@ final class _CapturingIoRealtimeWebSocketClient({required final WebSocketChannel
   Duration? connectTimeout;
 
   @override
-  WebSocketChannel connect(Uri uri, {required Map<String, String> headers, required Duration connectTimeout}) {
+  WebSocketChannel connect({required Uri uri, required Map<String, String> headers, required Duration connectTimeout}) {
     this.uri = uri;
     this.headers = headers;
     this.connectTimeout = connectTimeout;
