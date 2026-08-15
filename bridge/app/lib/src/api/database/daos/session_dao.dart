@@ -411,6 +411,12 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     );
   }
 
+  Future<void> setParentSessionId({required String sessionId, required String parentSessionId}) async {
+    await (update(sessionTable)..where((table) => table.sessionId.equals(sessionId))).write(
+      SessionTableCompanion(parentSessionId: Value(parentSessionId)),
+    );
+  }
+
   Future<List<SessionDto>> getRootCatalogSessions({
     required String projectId,
     required int offset,

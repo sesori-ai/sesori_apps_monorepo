@@ -1153,7 +1153,7 @@ void main() {
         pluginId: derivedPlugin.id,
       );
 
-      await repository.createSession(
+      final created = await repository.createSession(
         pluginId: derivedPlugin.id,
         projectId: "child-project",
         directory: "/child",
@@ -1177,6 +1177,8 @@ void main() {
         [(sessionId: "backend-parent", directory: "/parent")],
       );
       expect(derivedPlugin.lastCreateParentSessionId, "backend-parent");
+      expect(created.parentID, "stable-parent");
+      expect((await db.sessionDao.getSession(sessionId: created.id))?.parentSessionId, "stable-parent");
     });
 
     test("createSession preserves stable identity and bridge title precedence", () async {
