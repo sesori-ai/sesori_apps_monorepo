@@ -126,6 +126,22 @@ final class PiSessionProcessRepository({
   Future<void> markPendingNew({required String sessionId, required String directory}) =>
       _storageApi.writePendingNewSession(sessionId: sessionId, cwd: directory);
 
+  Future<bool> clearPendingWhenPersisted({
+    required String sessionId,
+    required Set<String> knownDirectories,
+  }) async {
+    final resolved = await _storageApi.resolveSession(
+      sessionId: sessionId,
+      knownDirectories: knownDirectories,
+    );
+    if (resolved == null) return false;
+    await _storageApi.clearPendingNewSession(
+      sessionId: sessionId,
+      knownDirectories: {...knownDirectories, resolved.metadata.cwd},
+    );
+    return true;
+  }
+
   Future<PiSessionConnection> ensureResident({
     required String sessionId,
     required Set<String> knownDirectories,
@@ -348,7 +364,9 @@ final class PiSessionProcessRepository({
 
   PiPromptPayload mapPrompt({required List<PluginPromptPart> parts, required String? userVisibleText}) {
     final executionText = parts.whereType<PluginPromptPartText>().map((part) => part.text).join();
-    final message = executionText == userVisibleText
+    final message = executionText.isEmpty && (userVisibleText == null || userVisibleText.isEmpty)
+        ? ""
+        : executionText == userVisibleText
         ? executionText
         : const PiPersistedUserTextCodec().encode(
             executionText: executionText,

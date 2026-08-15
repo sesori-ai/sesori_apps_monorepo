@@ -25,6 +25,7 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
   String directory = initialDirectory;
   final List<_PiTurn> queue = [];
   _PiTurn? active;
+  Future<void>? idleReap;
   int generation = 0;
   int idleGeneration = 0;
 }
@@ -180,6 +181,11 @@ final class PiSessionService({
     required int generation,
   }) async {
     try {
+      final idleReap = state.idleReap;
+      if (idleReap != null) await idleReap;
+      if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) {
+        throw PiTurnCancelledException(sessionId: sessionId);
+      }
       final connection = await _processes.ensureResident(
         sessionId: sessionId,
         knownDirectories: {state.directory},
@@ -354,6 +360,7 @@ final class PiSessionService({
     if (!identical(_sessions[sessionId], state) || !identical(state.active, turn)) return;
     state.active = null;
     if (failed) _emit(BridgeSseSessionError(sessionID: sessionId));
+    unawaited(_clearPendingWhenPersisted(sessionId: sessionId, directory: state.directory));
     if (state.queue.isNotEmpty) {
       _startNext(sessionId: sessionId, state: state);
       return;
@@ -368,6 +375,19 @@ final class PiSessionService({
     _emit(const BridgeSseProjectUpdated());
     _syncWorkState();
     _scheduleIdleReap(sessionId: sessionId, state: state);
+  }
+
+  Future<void> _clearPendingWhenPersisted({required String sessionId, required String directory}) async {
+    try {
+      if (await _processes.clearPendingWhenPersisted(
+        sessionId: sessionId,
+        knownDirectories: {directory},
+      )) {
+        _pendingNewDirectories.remove(sessionId);
+      }
+    } on Object catch (error, stack) {
+      Log.w("[pi] failed to clear persisted pending marker for session id=$sessionId", error, stack);
+    }
   }
 
   Future<void> abort({required String sessionId}) async {
@@ -437,10 +457,12 @@ final class PiSessionService({
       }
       _extensionUi.cancelForOwner(sessionId: sessionId, processGeneration: null);
       final teardown = _processes.teardown(sessionId: sessionId);
+      state.idleReap = teardown;
       _activeIdleReaps.add(teardown);
       try {
         await teardown;
       } finally {
+        if (identical(state.idleReap, teardown)) state.idleReap = null;
         _activeIdleReaps.remove(teardown);
       }
       if (identical(_sessions[sessionId], state) && state.idleGeneration == generation) {

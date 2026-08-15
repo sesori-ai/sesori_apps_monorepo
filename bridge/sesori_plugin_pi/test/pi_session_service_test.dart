@@ -133,6 +133,34 @@ void main() {
     expect(fixture.spawned.last.launch, isA<PiNewSession>());
   });
 
+  test("new session clears its pending marker once persistence becomes observable", () async {
+    final process = FakePiProcess();
+    final storage = _Storage(initialResolved: null);
+    final fixture = _Fixture(processes: [process], storageOverride: storage);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final sessionId = await service.prepareNewSession(directory: "/project");
+
+    await service.sendPrompt(
+      sessionId: sessionId,
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "persist")],
+      userVisibleText: "persist",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    storage.resolved = _resolved(id: sessionId);
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: sessionId);
+    await pump();
+
+    expect(storage.pending, isNull);
+    expect(storage.clearedDirectories, contains("/project"));
+  });
+
   test("teardown promptly disposes a connecting process waiting on history", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
@@ -918,6 +946,49 @@ void main() {
     await fixture.dispose();
   });
 
+  test("new turn waits for active idle-reap teardown before reconnecting", () async {
+    final oldProcess = FakePiProcess(stdinCloseCompletes: false);
+    final replacement = FakePiProcess();
+    final fixture = _Fixture(processes: [oldProcess, replacement]);
+    addTearDown(fixture.dispose);
+    final clock = _ManualClock();
+    final service = fixture.service(clock: clock);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(oldProcess);
+    final firstPrompt = await waitForCommand(process: oldProcess, type: "prompt");
+    oldProcess.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    oldProcess.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+    clock.elapse();
+    await pump();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "second")],
+      userVisibleText: "second",
+      variant: null,
+      model: null,
+    );
+    await pump();
+    expect(fixture.spawned, hasLength(1));
+
+    oldProcess.completeStdinClose();
+    await _answerEntries(replacement);
+    final secondPrompt = await waitForCommand(process: replacement, type: "prompt");
+    expect(secondPrompt["message"], "second");
+    replacement.emitFailure(id: secondPrompt["id"]! as String, command: "prompt", error: "done");
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
   test("idle reap preserves pending marker location for later deletion", () async {
     final process = FakePiProcess();
     final storage = _Storage(initialResolved: null);
@@ -968,6 +1039,13 @@ void main() {
       userVisibleText: "visible",
     );
     expect(context.message, startsWith(PiPersistedUserTextCodec.marker));
+    final imageOnly = fixture.repository.mapPrompt(
+      parts: [
+        PluginPromptPart.fileData(mime: "image/png", base64: base64Encode([1]), filename: "a.png"),
+      ],
+      userVisibleText: null,
+    );
+    expect(imageOnly.message, isEmpty);
     for (final attachment in <PluginPromptPart>[
       const PluginPromptPart.filePath(mime: "image/png", path: "/private/a.png", filename: null),
       const PluginPromptPart.fileUrl(mime: "image/png", url: "https://private.invalid/a.png", filename: null),
