@@ -10,9 +10,9 @@ abstract final class HermesBinary() {
   static const String defaultBinary = "hermes";
 
   static AcpLaunchSpec launchSpec({
-    String binary = defaultBinary,
-    String? cwd,
-    Map<String, String> environment = const {},
+    required String binary,
+    required String? cwd,
+    required Map<String, String> environment,
   }) {
     return AcpLaunchSpec(
       command: binary,
