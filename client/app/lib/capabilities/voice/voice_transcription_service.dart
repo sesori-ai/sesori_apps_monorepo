@@ -404,6 +404,7 @@ class VoiceTranscriptionService({
     _throwIfPendingPreAudioFallback();
     _forwardRealtimeAudio = true;
     _ensureInteractionActive(generation);
+    _throwIfRealtimeTerminalFailure();
     _markRecordingStarted();
   }
 
@@ -575,6 +576,15 @@ class VoiceTranscriptionService({
   void _throwIfPendingPreAudioFallback() {
     final pending = _pendingPreAudioFallback;
     if (pending != null) throw pending;
+  }
+
+  /// A terminal failure can land while startup is still awaiting, which stops
+  /// capture underneath us. Marking the interaction as recording after that
+  /// would leave the composer live with no recorder behind it, so startup has
+  /// to abort on the failure that already happened.
+  void _throwIfRealtimeTerminalFailure() {
+    final failure = _realtimeTerminalFailure;
+    if (failure != null) throw failure;
   }
 
   Future<void> _cancelLateRealtimeSession(RealtimeVoiceSession session) async {

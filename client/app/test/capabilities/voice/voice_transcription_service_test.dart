@@ -805,6 +805,31 @@ void main() {
         );
       });
 
+      test("stream error during startup after ready aborts instead of marking a stopped recorder active", () async {
+        // Terminating capture on a post-ready stream error stops the recorder.
+        // If startup is still awaiting at that moment it must not go on to mark
+        // the interaction as recording, or the composer stays live with no
+        // recorder behind it.
+        final resumeGate = Completer<void>();
+        when(mockRecorder.resume).thenAnswer((_) => resumeGate.future);
+
+        final startFuture = service.startRecording(projectId: "project-123");
+        await Future<void>.delayed(Duration.zero);
+        connector.channel.inbound.add(
+          jsonEncode({"type": "ready", "protocolVersion": 1, "maxSessionSeconds": 900, "dailySecondsRemaining": 100}),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        audioFrames.addError(Exception("native stream failed"));
+        await Future<void>.delayed(Duration.zero);
+
+        resumeGate.complete();
+        await expectLater(startFuture, throwsA(isA<VoiceTranscriptionError>()));
+
+        expect(service.isRecording, isFalse);
+        verifyNever(mockWakeLockService.enable);
+      });
+
       test("post-ready stream error before the first frame terminates instead of stranding capture", () async {
         // The stream can fail after setup returns but before any audio frame is
         // forwarded. The pre-audio completer has no listener left by then and
