@@ -896,6 +896,26 @@ void main() {
       expect(await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {cwd}), isNull);
     });
 
+    test("marker resolution reports malformed settings without their content", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final project = fixture.directory("pending-project");
+      fixture.directory(p.join("pending-project", ".pi"));
+      final settingsPath = p.join(project, ".pi", "settings.json");
+      File(settingsPath).writeAsStringSync('{"private-setting":');
+      final api = fixture.api();
+
+      final warnings = await _captureWarnings(() async {
+        await api.writePendingNewSession(sessionId: "secure-id", cwd: project);
+        await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {project});
+        await api.clearPendingNewSession(sessionId: "secure-id", knownDirectories: {project});
+      });
+
+      expect(warnings, contains("malformed session settings"));
+      expect(warnings, contains(settingsPath));
+      expect(warnings, isNot(contains("private-setting")));
+    });
+
     test("rejects unsafe marker ids and line-breaking cwd values", () async {
       final fixture = _StorageFixture();
       addTearDown(fixture.dispose);

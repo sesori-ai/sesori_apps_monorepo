@@ -335,12 +335,14 @@ final class PiSessionService({
         ),
       );
     }
+    final failure = PiRpcProcessExitException(exitCode: exit.exitCode);
+    Log.w("[pi] resident process exited during active turn for session id=${exit.sessionId}", failure);
     _finish(
       sessionId: exit.sessionId,
       state: state,
       turn: turn,
       failed: true,
-      failure: PiRpcProcessExitException(exitCode: exit.exitCode),
+      failure: failure,
     );
   }
 

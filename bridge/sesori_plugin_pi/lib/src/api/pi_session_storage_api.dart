@@ -105,8 +105,9 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
       throw ArgumentError.value(cwd, "cwd", "must not contain CR or LF");
     }
     final normalizedCwd = _absolute(cwd);
-    final markerPath = _pendingMarkerPath(environment: _environment, sessionId: sessionId, cwd: normalizedCwd);
-    await Isolate.run(() => _writePendingMarker(path: markerPath, cwd: normalizedCwd));
+    final marker = _pendingMarkerPath(environment: _environment, sessionId: sessionId, cwd: normalizedCwd);
+    _logDiagnostics(marker.diagnostics);
+    await Isolate.run(() => _writePendingMarker(path: marker.path, cwd: normalizedCwd));
   }
 
   Future<PiPendingNewSession?> readPendingNewSession({
@@ -119,7 +120,8 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
     final result = await Isolate.run(
       () => _readPendingMarker(environment: environment, sessionId: sessionId, knownDirectories: directories),
     );
-    switch (result) {
+    result.diagnostics.forEach(_logDiagnostics);
+    switch (result.marker) {
       case _PiPendingMarkerAbsent():
         return null;
       case _PiPendingMarkerFound(:final cwd):
@@ -136,9 +138,10 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
     if (!isValidPiSessionId(sessionId: sessionId)) return;
     final environment = _environment;
     final directories = Set<String>.of(knownDirectories);
-    await Isolate.run(
+    final diagnostics = await Isolate.run(
       () => _clearPendingMarkers(environment: environment, sessionId: sessionId, knownDirectories: directories),
     );
+    diagnostics.forEach(_logDiagnostics);
   }
 
   Future<PiSessionFileHistoryDto> _readSessionHistory({required String path}) async {
@@ -243,7 +246,7 @@ class PiSessionHistoryStorageApi({required final PiSessionStorageApi storageApi}
       storageApi._readSessionHistory(path: path);
 }
 
-String _pendingMarkerPath({
+({String path, _PiScanDiagnostics diagnostics}) _pendingMarkerPath({
   required Map<String, String> environment,
   required String sessionId,
   required String cwd,
@@ -251,7 +254,7 @@ String _pendingMarkerPath({
   final result = _resolveEffectiveSessionDirectory(environment: environment, directory: cwd);
   final root = result.path;
   if (root == null) throw StateError("Pi session directory could not be resolved");
-  return p.join(root, ".sesori-pending", "$sessionId.pending");
+  return (path: p.join(root, ".sesori-pending", "$sessionId.pending"), diagnostics: result.diagnostics);
 }
 
 void _writePendingMarker({required String path, required String cwd}) {
@@ -266,17 +269,18 @@ void _writePendingMarker({required String path, required String cwd}) {
   }
 }
 
-_PiPendingMarkerResult _readPendingMarker({
+({_PiPendingMarkerResult marker, List<_PiScanDiagnostics> diagnostics}) _readPendingMarker({
   required Map<String, String> environment,
   required String sessionId,
   required Set<String> knownDirectories,
 }) {
   String? found;
-  for (final markerPath in _pendingMarkerPaths(
+  final markers = _pendingMarkerPaths(
     environment: environment,
     sessionId: sessionId,
     knownDirectories: knownDirectories,
-  )) {
+  );
+  for (final markerPath in markers.paths) {
     final file = File(markerPath);
     if (!file.existsSync()) continue;
     try {
@@ -297,35 +301,49 @@ _PiPendingMarkerResult _readPendingMarker({
       if (found != null && found != normalized) throw const FormatException("Conflicting pending markers");
       found = normalized;
     } on Object catch (error, stackTrace) {
-      return _PiPendingMarkerInvalid(error: error, stackTrace: stackTrace);
+      return (
+        marker: _PiPendingMarkerInvalid(error: error, stackTrace: stackTrace),
+        diagnostics: markers.diagnostics,
+      );
     }
   }
-  return found == null ? const _PiPendingMarkerAbsent() : _PiPendingMarkerFound(cwd: found);
+  return (
+    marker: found == null ? const _PiPendingMarkerAbsent() : _PiPendingMarkerFound(cwd: found),
+    diagnostics: markers.diagnostics,
+  );
 }
 
-void _clearPendingMarkers({
+List<_PiScanDiagnostics> _clearPendingMarkers({
   required Map<String, String> environment,
   required String sessionId,
   required Set<String> knownDirectories,
 }) {
-  for (final markerPath in _pendingMarkerPaths(
+  final markers = _pendingMarkerPaths(
     environment: environment,
     sessionId: sessionId,
     knownDirectories: knownDirectories,
-  )) {
+  );
+  for (final markerPath in markers.paths) {
     final file = File(markerPath);
     if (file.existsSync()) file.deleteSync();
   }
+  return markers.diagnostics;
 }
 
-Set<String> _pendingMarkerPaths({
+({Set<String> paths, List<_PiScanDiagnostics> diagnostics}) _pendingMarkerPaths({
   required Map<String, String> environment,
   required String sessionId,
   required Set<String> knownDirectories,
-}) => {
-  for (final directory in knownDirectories)
-    _pendingMarkerPath(environment: environment, sessionId: sessionId, cwd: directory),
-};
+}) {
+  final paths = <String>{};
+  final diagnostics = <_PiScanDiagnostics>[];
+  for (final directory in knownDirectories) {
+    final marker = _pendingMarkerPath(environment: environment, sessionId: sessionId, cwd: directory);
+    paths.add(marker.path);
+    diagnostics.add(marker.diagnostics);
+  }
+  return (paths: paths, diagnostics: diagnostics);
+}
 
 _PiHistoryReadResult _readPiSessionHistory({required String path}) {
   var resolvedPath = _absolute(path);
