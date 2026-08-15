@@ -27,9 +27,13 @@ that baseline, and the branch and worktree facts a session carries.
 - The base branch can be read and set; setting rejects empty input and applies
   to later dedicated baselines, and the stable project identifier resolves to
   the live directory before git runs.
-- A session reports its creation-time branch and dedicated-worktree facts; live
-  current-branch and PR refresh belong to pull request monitoring. A mutating
-  tool emits the diff refresh signal, and diffs stay encrypted from the relay.
+- A session initially reports its creation-time branch and dedicated-worktree
+  facts. Generated metadata may later rename only the still-current unpublished
+  initial dedicated branch without moving the worktree; durable and current
+  branch facts then update together through the existing session update. Other
+  live current-branch and PR refreshes belong to pull request monitoring. A
+  mutating tool emits the diff refresh signal, and diffs stay encrypted from the
+  relay.
 
 ## Regression Levels
 
@@ -37,7 +41,7 @@ that baseline, and the branch and worktree facts a session carries.
 |---|---|
 | L1 Smoke | Not included because a meaningful diff requires a mutating live turn. |
 | L2 Routine | Headless bridge, representative plugin: after a session edits files the diff lists them with before/after content and line counts; dedicated uses its base branch and in-place its creation-time commit. |
-| L3 Release | Client end to end (phone), representative plugin: added, modified, deleted, and untracked files report correct status and counts; a rename renders as deletion plus addition; binary, too-large, and unreadable files return explicit skip reasons; base-branch read and set apply to later baselines; the diff list, per-file view, and refresh on the file-change signal render. |
+| L3 Release | Client end to end (phone), representative plugin: added, modified, deleted, and untracked files report correct status and counts; a rename renders as deletion plus addition; binary, too-large, and unreadable files return explicit skip reasons; base-branch read and set apply to later baselines; eligible generated branch refinement updates source-control facts without moving the worktree; the diff list, per-file view, and refresh on the file-change signal render. |
 | L4 Extended | Relay integration, every supporting production plugin: unreachable base and no-common-ancestor are distinct client-visible failures; archived sessions and removed worktrees return no diffs without erroring; a moved project still resolves git correctly; each plugin's file-change signal triggers a refresh reflecting the real change set. |
 | L5 Full | Headless bridge for large mixed changes, non-git or commitless sessions returning no diffs, and invalid base branches; relay integration to prove diff payload encryption. Representative plugin. |
 
@@ -56,6 +60,9 @@ and in-place sessions, and default versus explicit base branches.
 - Line counts disagree with content, especially untracked or deletion-only.
 - Diffs never refresh after a mutating tool completes, or a moved project makes
   git run in the old directory.
+- Generated refinement renames a branch after it switches or becomes published,
+  moves the worktree directory, leaves durable/current branch facts disagreeing,
+  or leaves Git and persistence on different branch names after failure.
 
 ## Known Limitations
 

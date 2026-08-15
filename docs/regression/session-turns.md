@@ -43,6 +43,12 @@ defaults and queued client sends coherent.
   or command. Creation is published before any buffered turn output. Imported
   parent forks preserve exact lineage. Deleting a root fences descendant work
   and dialogs but physically removes only the named root session artifact.
+- Hermes runs turns through ACP v1 over `hermes acp`: initialization uses the
+  first non-terminal provider authentication method, image prompt parts remain
+  available, streamed updates use the shared ACP normalization, and abort uses
+  session cancellation. Version 1 uses the model/mode configured in Hermes and
+  offers no per-turn picker; Sesori does not call form-elicitation or unadvertised
+  session-close methods to complete an ordinary turn.
 - Normalized user-message events feed the durable user-side activity marker used
   to order running roots. Known event times are applied monotonically. Backend
   input represented as a user message, including automatic compaction or other
@@ -88,7 +94,9 @@ defaults and queued client sends coherent.
 
 Vary prompt shape, prompt versus slash command, explicit versus default
 agent/model, aborting early versus late, sending while busy to engage the client
-queue, turn length, and client count.
+queue, turn length, and client count. For Hermes, include text and image prompts,
+tool updates, a permission decision, cold history replay, and abort after output
+has started.
 
 ## Failure Signals
 
@@ -134,6 +142,7 @@ queue, turn length, and client count.
   event, chat history), `lib/src/bridge/sse/`, and their tests
 - Contract: `bridge/sesori_plugin_interface/lib/src/bridge_plugin.dart`;
   `shared/sesori_shared/lib/src/models/sesori/sesori_sse_event.dart`
+- Hermes: `bridge/sesori_plugin_hermes/` and the shared ACP plugin implementation
 - Client: `client/module_core/lib/src/cubits/session_detail/`,
   `client/app/lib/features/session_detail/`
 - Plans (discovery only): `.plan/completed/relay-request-concurrency`,

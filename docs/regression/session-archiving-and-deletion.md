@@ -93,6 +93,10 @@ and branches that remain after the asserted cleanup behavior.
 - A history purge failing after session-row deletion is logged and leaves storage
   residue for startup reconciliation rather than failing the deletion.
 - Attachment behavior here will change with unfinished lazy stored-image work.
+- Hermes exposes no ACP close or delete operation. Sesori purges its own row and
+  transcript and retains a plugin-scoped tombstone, but the corresponding ACP
+  row can remain in Hermes storage until upstream provides a supported deletion
+  surface; later import must not resurrect it.
 
 ## Sources
 

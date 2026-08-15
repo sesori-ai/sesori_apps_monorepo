@@ -73,6 +73,44 @@ class WorktreeRepository({
     return _gitApi.branchExists(projectPath: projectPath, branchName: branchName);
   }
 
+  Future<String?> getCurrentBranchName({required String worktreePath}) async {
+    final result = await _gitApi.getCurrentBranch(projectPath: worktreePath);
+    return switch (result) {
+      GitCurrentBranchNamed(:final branchName) => branchName,
+      _ => null,
+    };
+  }
+
+  Future<bool> isValidBranchName({required String branchName}) {
+    return _gitApi.isValidBranchName(branchName: branchName);
+  }
+
+  Future<bool> hasUpstream({
+    required String worktreePath,
+    required String branchName,
+  }) {
+    return _gitApi.hasUpstream(projectPath: worktreePath, branchName: branchName);
+  }
+
+  Future<bool> hasRemoteBranch({
+    required String worktreePath,
+    required String branchName,
+  }) {
+    return _gitApi.hasRemoteBranch(projectPath: worktreePath, branchName: branchName);
+  }
+
+  Future<void> renameBranch({
+    required String worktreePath,
+    required String oldBranchName,
+    required String newBranchName,
+  }) {
+    return _gitApi.renameBranch(
+      projectPath: worktreePath,
+      oldBranchName: oldBranchName,
+      newBranchName: newBranchName,
+    );
+  }
+
   Future<bool> createWorktree({
     required String projectPath,
     required String worktreePath,

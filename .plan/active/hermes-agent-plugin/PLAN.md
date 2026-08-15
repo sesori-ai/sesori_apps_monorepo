@@ -3,113 +3,174 @@
 ## Status
 
 - **Plan slug:** `hermes-agent-plugin`
-- **Status:** Step 1/9 plan PR open
+- **Status:** corrective review in progress after Steps 1-5 merged; Step 6 is open as PR #921
 - **Plan date:** 2026-08-13
-- **Plan delivery:** this document and `TRACKER.md` are Step 1/9
-- **Implementation base:** `origin/main`
-- **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Delivery:** one planning PR, four bridge PRs, one client branding PR, one regression-doc PR, one verification PR, one retirement PR — nine in total
+- **Owner review:** started 2026-08-15; the contributor-authored plan was not previously approved
+- **Implementation base:** current `origin/main`
+- **Delivery:** nine PRs total; Steps 7-9 are revised by this review while preserving the published step count
 
 ## Goal
 
-Add **Hermes Agent** (Nous Research) as a monitored and controllable coding backend in Sesori, alongside OpenCode, Codex, Cursor, and Claude Code. Users with the Hermes CLI installed can then see live Hermes sessions, stream turns, replay history, answer permission prompts, and send prompts from the phone app — through the existing relay/bridge path, with no new client surface.
+Add Hermes Agent as a monitored and controllable coding backend through its ACP
+v1 stdio server. Sesori supports Hermes ACP sessions: users can import persisted
+ACP sessions, create and continue sessions, stream turns and tools, answer
+permission requests, replay history, abort work, and send supported images.
 
-## Why ACP
+This does not claim visibility into ordinary Hermes CLI, TUI, or gateway
+sessions. Hermes `session/list` exposes persisted rows whose source is `acp`.
 
-Hermes ships a **standard ACP v1 server** (`hermes acp`, adapter protocol version 0.20.0, `PROTOCOL_VERSION = 1`). Sesori already has a mature ACP plugin base (`sesori_plugin_acp`) that Cursor and Oh My Pi are built on. The Hermes adapter therefore reduces to a Cursor-style thin plugin: a launch spec that spawns `hermes acp` over stdio, a policy layer, and a descriptor. No new transport, protocol, or client work.
+## Authoritative Upstream Facts
 
-### Verified Hermes ACP surface (2026-08-13, `hermes acp --version` → 0.20.0)
+Reviewed against Hermes Agent 0.20.1 (`v2026.8.13`, commit
+`f80f453ae0679347e38abc917c7f94f717bf96c5`):
 
-`initialize` advertises `load_session`, `session_capabilities {fork, list, resume}`, `prompt_capabilities {image}`; server implements `initialize`, `authenticate` (provider + `hermes-setup` terminal method), `session/new`, `session/load` (history replay via `session/update` notifications), `session/resume`, `session/list`, `session/cancel`, `session/prompt`, `session/request_permission` (via approval callback). It does **not** implement `session/close`, `session/set_config_option`, or `elicitation/create`.
+- `hermes acp` is the stdio server and negotiates ACP wire protocol version 1.
+- `hermes acp --version` prints the Hermes package version, not an ACP adapter
+  or Python SDK version. Hermes 0.20.0 remains Sesori's conservative supported
+  floor because that is the earliest release validated for this integration;
+  it is not claimed to be the first Hermes release with ACP support.
+- Initialize advertises load, list, resume, and fork session capabilities plus
+  image prompts. Hermes does not advertise session close.
+- Hermes implements standard model and mode state plus `session/set_model`,
+  `session/set_mode`, and `session/set_config_option`. Sesori v1 intentionally
+  uses the model/provider configured in Hermes and does not expose a Hermes
+  model or mode picker until the shared ACP surface supports those contracts.
+- A configured provider authentication method is advertised before the
+  terminal `hermes-setup` method. A fresh install can advertise only terminal
+  setup; the headless bridge must not invoke or accept that as authentication.
+- `hermes status` reports configured model/provider labels but does not prove
+  credentials are usable. It is a best-effort configuration probe; the ACP
+  initialize/authenticate handshake is the runtime authentication authority.
+- Permission requests carry a session id. Hermes permission scope is
+  backend-defined; its session-level option can be presented through Sesori's
+  existing "always" affordance as documented by the shared permission contract.
+- Prompt images are accepted by ACP, but successful vision behavior still
+  depends on the selected Hermes model/provider.
 
-### How the gaps are handled
+Sources:
 
-- `session/close` absent → the ACP base only calls close when the agent advertises `closeSession` (Hermes does not) and otherwise tears the session down locally. Safe.
-- `set_config_option` / elicitation absent → base `applyTurnSelection` is a no-op and `supportsFormElicitation` returns false; permissions flow through `session/request_permission`, which the base approval registry handles.
-- No managed runtime → the plugin resolves `hermes` on PATH (direct-CLI posture, like Cursor without its managed install). `ensureRuntime` is a probe, never a download.
+- <https://github.com/NousResearch/hermes-agent/releases/tag/v2026.8.13>
+- `acp_adapter/entry.py`, `acp_adapter/server.py`, `acp_adapter/auth.py`,
+  `acp_adapter/session.py`, and `acp_adapter/permissions.py` at the commit above
 
-## Architecture
+## Architecture And Scope
 
 ```
-Phone ── relay ── bridge ── sesori_plugin_hermes ── spawns ── hermes acp (stdio JSON-RPC)
-                        └── AcpPlugin (base): sessions, prompts, permissions,
-                            projects derived from session cwd, SSE events
+client <-> relay <-> bridge <-> sesori_plugin_hermes <-> hermes acp
 ```
 
-New package `bridge/sesori_plugin_hermes/` (name `hermes_plugin`), modeled on `sesori_plugin_cursor`:
+- `sesori_plugin_hermes` owns every Hermes-specific executable, identity,
+  setup, authentication-selection, launch, and capability decision.
+- `sesori_plugin_acp` owns standard ACP transport, sessions, turns, events,
+  approvals, and history replay.
+- Bridge app code knows Hermes only at the supported plugin registry
+  composition point.
+- Hermes is direct CLI only. Sesori never installs or updates Hermes and adds
+  no managed runtime state.
+- Setup resolves PATH or authoritative `--hermes-bin`, checks the Hermes package
+  version, and inspects configuration without starting the ACP server.
+  `ensureRuntime` revalidates either executable immediately before start.
+- Runtime authentication selects the first non-terminal method. Terminal-only
+  setup remains authentication-required with local CLI guidance.
+- External ACP sessions enter the durable catalog only through explicit Hermes
+  import. Normal project/session reads remain database-only and never start a
+  plugin.
+- Synced transcript reads remain bridge-authoritative. `session/load` is used
+  for first backfill or a stale reread, not every reopen.
+- Hermes has no close/delete ACP method. Sesori deletion removes its own row and
+  transcript and retains the normal plugin-scoped tombstone so import cannot
+  resurrect it. The Hermes ACP row can remain in Hermes storage; direct private
+  database mutation is out of scope without a supported upstream API.
 
-| File | Responsibility |
-|---|---|
-| `lib/hermes_plugin.dart` | package export (`HermesPlugin`, `HermesPluginDescriptor`, `HermesBinary`) |
-| `lib/src/hermes_binary.dart` | `defaultBinary = "hermes"`; builds `AcpLaunchSpec(command: hermes, args: ["acp"])`; env passthrough (auth via configured provider) |
-| `lib/src/hermes_identity.dart` | pluginId `hermes`, displayName `Hermes Agent`, provider id `hermes` |
-| `lib/src/hermes_plugin_impl.dart` | `HermesPlugin` extends `AcpPlugin`; policy getters below |
-| `lib/src/runtime/hermes_plugin_descriptor.dart` | const descriptor: `--hermes-bin` option, runtime probe, `inspectSetup`, `start` |
-| `lib/src/runtime/hermes_runtime_manifest.dart` | `minPathVersion` gate (0.20.0 — the adapter version verified) |
-| `test/…` | descriptor availability/setup tests + plugin tests with `FakeAcpProcess` |
+### Client Branding Exception
 
-### `HermesPlugin` policy (extending `AcpPlugin`)
+The owner explicitly approved custom Hermes branding on 2026-08-15, including
+the supplied NousResearch artwork. Step 6 therefore extends the existing
+`PregoBrandLogo` built-in mapping despite the general preference for opaque
+plugin ids. This is a presentation-only exception: behavior stays plugin-owned,
+the wire id remains a string, and unknown ids retain the generic icon/raw-id
+fallback. A future backend-neutral presentation contract is not introduced for
+one consumer.
 
-- `clientName` `sesori-bridge`, `clientVersion` `0.0.0`
-- `authMethodId` `null` (use Hermes's first advertised method; `authenticate` succeeds when a provider is configured)
-- `initializeCapabilityMeta` `null`
-- `supportsFormElicitation` `false`; `serializesPromptsProcessWide` `false`; `failsTurnOnSelectionError` `false`
-- `sessionCloseSettlementTimeout` `Duration(seconds: 5)`
-- default `AcpApprovalRegistry`, default `AcpEventMapper`, base `AcpSessionOptionsService` (single `hermes` agent; model surfaces from session/update once the config tracker records it)
-- `supportsPromptAttachments: true` — Hermes advertises `PromptCapabilities(image: true)`; the phone attachment flow works without extra work
+### Compatibility
 
-### Descriptor
+- No client/bridge wire shape changes. Plugin ids remain strings.
+- Older clients connected to a Hermes-capable bridge show the generic icon and
+  bridge-provided display name.
+- Newer clients connected to an older bridge receive no Hermes entry.
+- No migration, legacy route, compatibility shim, or persisted-data default is
+  needed.
 
-- `id` `hermes`, `displayName` `Hermes Agent`, `projectOwnership` bridgeDerived, `sessionOptionsScope` plugin
-- Option: `--hermes-bin` (bare name `bin`, default `hermes`)
-- `ensureRuntime`: no-op when `--hermes-bin` set; otherwise probe `hermes acp --version` on PATH (parse via shared `SemanticVersion`), gate on `minPathVersion`
-- `inspectSetup`: probe binary (missing → `PluginSetupRuntimeMissing` with install hint; outdated → unavailable hint); then `hermes status` auth probe — configured `Model:`/`Provider:` line → `PluginSetupReady`, else `PluginSetupAuthenticationRequired` ("configure a model with `hermes setup`/`hermes model`"); probe failures → `PluginSetupUnknown`
-- `start`: build `HermesPlugin`, wrap in `AcpBridgePlugin`, eager bounded connect (Cursor pattern), abort rollback
-- No `install`/managed-runtime capability (Hermes installs via its own installer; not Sesori's job)
+### Complexity Budget And Cleanup
 
-### Registration (activation step)
-
-- `app/lib/src/bridge/runtime/plugin_registry.dart` `knownPlugins` += `HermesPluginDescriptor()`
-- `app/pubspec.yaml` dependency on `hermes_plugin`; `bridge/pubspec.yaml` workspace += `sesori_plugin_hermes`; `bridge/Makefile` `MODULES` += `sesori_plugin_hermes`
-- Identity: plain `hermes` pluginId (precedent: pi/omp are not in the `Harness` enum)
-
-### Client branding (step 6/9)
-
-The mobile/desktop client is backend-neutral by convention and renders the
-harness list, chooser, and settings from the bridge-provided `displayName`
-("Hermes Agent" appears automatically). The only per-harness layer is
-`PregoBrandLogo` (module_prego), which falls back to a generic plug icon +
-raw pluginId for unknown ids. Step 6/9 brands it:
-
-- `shared/sesori_shared` `Harness` enum += `hermes` (no exhaustive switches exist; safe)
-- `module_prego/assets/svgs/brands/hermes_{light,dark}.svg` — the official
-  Hermes staff mark (traced from the hermes-agent website favicon `⚕` glyph,
-  U+2695) in brand blue `#1E3A8A` (light theme) / `#A8C0F0` (dark theme)
-- `PregoBrandLogo._assetFor` + `displayNameFor` cases → "Hermes Agent"
-- `prego_brand_logo_test.dart` mapping entry + display-name assertion
+- New persistent mutable state: none.
+- New in-memory coordination: none beyond the existing ACP plugin instance.
+- No runtime downloader, credential store, backend database reader, session
+  registry, or client capability transport is added.
+- Step 7 folds version parsing into the descriptor rather than retaining a
+  one-consumer runtime-manifest abstraction.
+- No existing production field, cache, watcher, or database column becomes
+  obsolete.
 
 ## Delivery Steps
 
-| Step | PR title | Scope |
+| Step | PR title | State and scope |
 |---|---|---|
-| 1/9 | `🌱 [hermes-plugin] docs: plan Hermes Agent harness support [step 1/9]` | PLAN.md + TRACKER.md |
-| 2/9 | `🌱 [hermes-plugin] feat(hermes): scaffold the ACP plugin package [step 2/9]` | pubspec, analysis_options, export, identity, binary/launch spec |
-| 3/9 | `⚙️ [hermes-plugin] feat(hermes): add the ACP plugin core [step 3/9]` | `HermesPlugin` (policy layer) + plugin tests with `FakeAcpProcess` |
-| 4/9 | `⚙️ [hermes-plugin] feat(hermes): add descriptor, runtime probe, and setup [step 4/9]` | descriptor, manifest, probe, `inspectSetup`, `start`, descriptor tests |
-| 5/9 | `⚙️ [hermes-plugin] feat(hermes): register the plugin in the bridge [step 5/9]` | plugin_registry, app pubspec, workspace pubspec, Makefile |
-| 6/9 | `⚙️ [hermes-plugin] feat(client): brand the Hermes harness [step 6/9]` | `Harness` enum += `hermes`, brand SVGs, `PregoBrandLogo` cases, tests |
-| 7/9 | `⚙️ [hermes-plugin] docs: document Hermes harness behavior [step 7/9]` | `docs/regression/` feature doc (plugin-setup-and-lifecycle + session-turns touch points) |
-| 8/9 | `🚧 [hermes-plugin] test(hermes): live-verify Hermes over ACP [step 8/9]` | live smoke test against the real `hermes acp` (already passing on the dev box); record E2E evidence |
-| 9/9 | `🌱 [hermes-plugin] docs: retire the plan [step 9/9]` | move plan to `.plan/completed/`, record E2E outcome |
+| 1/9 | `🌱 [hermes-plugin] docs: plan Hermes Agent harness support [step 1/9]` | Merged as #895; contributor-authored plan, corrected in Step 7. |
+| 2/9 | `🌱 [hermes-agent-plugin] feat(hermes): scaffold the ACP plugin package [step 2/9]` | Merged as #915. |
+| 3/9 | `⚙️ [hermes-agent-plugin] feat(hermes): add the ACP plugin core [step 3/9]` | Merged as #916. |
+| 4/9 | `⚙️ [hermes-agent-plugin] feat(hermes): add descriptor, runtime probe, and setup [step 4/9]` | Merged as #917. |
+| 5/9 | `⚙️ [hermes-agent-plugin] feat(hermes): register the plugin in the bridge [step 5/9]` | Merged as #919. |
+| 6/9 | `⚙️ [hermes-agent-plugin] feat(client): brand the Hermes harness [step 6/9]` | Open as #921; corrected supplied artwork and asset contract. |
+| 7/9 | `🚧 [hermes-agent-plugin] fix(hermes): correct runtime and ACP assumptions [step 7/9]` | Local: auth selection, version semantics, executable revalidation, setup failure classification, null activation retry, exact registry test, plan/docs correction. |
+| 8/9 | `🚧 [hermes-agent-plugin] test(hermes): verify production ACP behavior [step 8/9]` | Pending: complete regression docs and execute the matrix below against a real supported Hermes release. |
+| 9/9 | `🌱 [hermes-agent-plugin] docs: retire the plan [step 9/9]` | Pending; blocked until every required row below passes. |
 
-## Risk and test focus
+## Regression And Retirement Matrix
 
-- **Protocol drift**: Hermes ACP is fast-moving. `minPathVersion` gates it; verification step re-checks the surface.
-- **Missing `session/close` / `set_config_option`**: covered by capability negotiation in the base; tests assert no close/set_config calls are attempted.
-- **Auth probe heuristics**: `hermes status` parsing is best-effort; `PluginSetupUnknown` fallback keeps setup honest, and connect-time failure degrades the plugin without killing the bridge.
-- **Session cleanup**: backend-side deletion of Hermes sessions is out of scope (no ACP delete surface); bridge rows are authoritative, same as Cursor/Claude.
-- **Security**: plugin only spawns the user's own `hermes` binary with inherited environment; no new network surface, no managed downloads.
+Step 8 records the exact Hermes version, bridge/app build, client platform,
+host platform, privacy-safe evidence, cleanup, and Pass/Fail/Blocked result for
+each row. Required scope is the Hermes addition through L3, plus the named
+targeted L4 recovery checks; unchanged plugins retain their existing coverage.
 
-## Expected result
+| Feature document | Required Hermes evidence | Boundary |
+|---|---|---|
+| `plugin-setup-and-lifecycle.md` | Missing/pre-ACP/old/current PATH and explicit binaries; unconfigured terminal-only auth; configured start; disable/enable/restart; targeted L4 idle respawn | Headless bridge + client E2E + live plugin |
+| `projects-and-sessions.md` | Explicit Hermes import only; normal catalog reads do not start Hermes; failed/cancelled import leaves the committed catalog intact | Headless bridge + live plugin |
+| `session-creation-and-options.md` | Create with configured defaults; no false model/mode picker claim; stable Hermes identity | Client E2E + live plugin |
+| `session-turns.md` | Text, reasoning, tool and status streaming; abort; concurrent sessions; no unadvertised close/form/config call | Client E2E + live plugin |
+| `session-history-and-recovery.md` | First `session/load` backfill; synced reopen from bridge storage while stopped; plugin restart and bridge restart converge | Headless bridge + live plugin |
+| `questions-and-permissions.md` | Permission once/reject/backend-defined always; explicit session correlation with two active sessions; cleanup on abort | Client E2E + live plugin |
+| `attachments-and-images.md` | Supported image reaches a vision-capable configured model; unsupported/model rejection remains visible and bounded | Client E2E + live plugin |
+| `tools-and-file-changes.md` | Tool lifecycle and bounded output normalize live and after replay | Client E2E + live plugin |
+| `session-archiving-and-deletion.md` | Local deletion purges Sesori state, tombstone prevents re-import, and retained upstream Hermes row is recorded as a limitation | Headless bridge + live plugin |
+| Compatibility | Unknown-id fallback on an older client contract and no Hermes entry from an older bridge | Automated + client E2E where presentation is claimed |
 
-`sesori-bridge` runs Hermes as an eligible, setup-aware harness: ready when a configured Hermes install exists on PATH, runtime-missing when not, and — when enabled — live sessions, streamed turns, history replay, permission cards, and prompt sending from the phone, all through the existing ACP machinery with no client changes.
+Step 9 cannot retire this plan while a required row is unexecuted, partial,
+blocked, or failed unless the owner explicitly accepts that reduction here.
+
+## Risks And Test Focus
+
+- **Upstream schema drift:** Hermes runs the ACP SDK's unstable protocol mode.
+  Verify against both the supported floor when available and the current stable
+  release; wire protocol `1` alone is not sufficient evidence.
+- **Authentication:** terminal setup is not headless authentication. Verify
+  terminal-only and configured-provider method lists separately.
+- **Configuration:** status labels are not credential proof; runtime handshake
+  failure must stay typed and observable.
+- **Session scope:** only persisted ACP-source sessions are listed. Do not claim
+  ordinary Hermes CLI session discovery.
+- **Deletion:** Sesori cannot delete the upstream Hermes row through ACP. The
+  tombstone prevents user-visible resurrection but does not claim disk erasure.
+- **Images:** capability advertisement does not guarantee the configured model
+  supports vision.
+- **Privacy:** keep prompts, transcripts, paths, credentials, raw status output,
+  and session identifiers out of committed evidence.
+
+## Expected Result
+
+A supported, configured Hermes installation appears as `Hermes Agent`, can be
+imported and controlled through the existing relay/bridge path, and degrades
+only its own plugin when setup or authentication fails. Product behavior and
+regression evidence remain honest about configured model use, ACP-only session
+visibility, image-provider dependence, and upstream deletion limits.

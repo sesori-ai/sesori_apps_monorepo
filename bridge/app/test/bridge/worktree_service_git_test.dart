@@ -325,7 +325,16 @@ void main() {
       expect(processRunner.invocations.single.command, equals("git"));
       expect(
         processRunner.invocations.single.arguments,
-        equals(["worktree", "add", "-b", "feature/x", "--", "/repo/.worktrees/feature-x", "main"]),
+        equals([
+          "worktree",
+          "add",
+          "-b",
+          "feature/x",
+          "--no-track",
+          "--",
+          "/repo/.worktrees/feature-x",
+          "main",
+        ]),
       );
       expect(processRunner.invocations.single.workingDirectory, equals("/repo/project"));
     });

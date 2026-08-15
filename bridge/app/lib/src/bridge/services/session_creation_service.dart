@@ -15,8 +15,8 @@ class SessionCreationService({
   required final SessionRepository _sessionRepository,
   required final SessionMutationDispatcher _sessionMutationDispatcher,
 }) {
-  final Set<Future<void>> _lateTitleWork = <Future<void>>{};
-  bool _acceptingLateTitles = true;
+  final Set<Future<void>> _lateMetadataWork = <Future<void>>{};
+  bool _acceptingLateMetadata = true;
   Future<void>? _drainFuture;
 
   Future<Session> createSession({required CreateSessionRequest request}) async {
@@ -78,13 +78,13 @@ class SessionCreationService({
       agent: request.agent,
       model: request.model,
     );
-    _startLateTitle(session: created, firstText: firstText);
+    _startLateMetadata(session: created, firstText: firstText);
     return created;
   }
 
   void beginShutdown() {
-    if (!_acceptingLateTitles) return;
-    _acceptingLateTitles = false;
+    if (!_acceptingLateMetadata) return;
+    _acceptingLateMetadata = false;
     _sessionMetadataRepository.beginShutdown();
   }
 
@@ -236,42 +236,62 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
 ''';
   }
 
-  void _startLateTitle({required Session session, required String? firstText}) {
-    if (!_acceptingLateTitles || firstText == null) return;
+  void _startLateMetadata({required Session session, required String? firstText}) {
+    if (!_acceptingLateMetadata || firstText == null) return;
     late final Future<void> work;
-    work = _generateAndApplyTitle(session: session, firstText: firstText).whenComplete(() {
-      _lateTitleWork.remove(work);
+    work = _generateAndApplyMetadata(session: session, firstText: firstText).whenComplete(() {
+      _lateMetadataWork.remove(work);
     });
-    _lateTitleWork.add(work);
+    _lateMetadataWork.add(work);
   }
 
-  Future<void> _generateAndApplyTitle({required Session session, required String firstText}) async {
+  Future<void> _generateAndApplyMetadata({required Session session, required String firstText}) async {
+    final GeneratedSessionMetadata metadata;
     try {
-      final title = await _sessionMetadataRepository.generateTitle(
+      metadata = await _sessionMetadataRepository.generateMetadata(
         firstMessage: firstText,
       );
-      await _sessionMutationDispatcher.applyGeneratedTitle(sessionId: session.id, title: title);
     } on SessionMetadataRequestAbortedException catch (error) {
-      if (!_acceptingLateTitles) return;
+      if (!_acceptingLateMetadata) return;
       Log.w(
-        "Generated-title request was aborted for session ${session.id}",
+        "Generated-metadata request was aborted for session ${session.id}",
         error.innerError,
         error.innerStackTrace,
       );
+      return;
     } on SessionMetadataInvalidResponseException catch (error) {
       Log.w(
-        "Failed to generate title for session ${session.id}",
+        "Failed to generate metadata for session ${session.id}",
         error.innerError,
         error.innerStackTrace,
       );
+      return;
     } on Object catch (error, stackTrace) {
-      Log.w("Failed to generate title for session ${session.id}", error, stackTrace);
+      Log.w("Failed to generate metadata for session ${session.id}", error, stackTrace);
+      return;
+    }
+
+    try {
+      await _sessionMutationDispatcher.applyGeneratedTitle(
+        sessionId: session.id,
+        title: metadata.title,
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to apply generated title for session ${session.id}", error, stackTrace);
+    }
+    try {
+      await _sessionMutationDispatcher.applyGeneratedBranchName(
+        sessionId: session.id,
+        branchName: metadata.branchName,
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to apply generated branch for session ${session.id}", error, stackTrace);
     }
   }
 
   Future<void> _drain() async {
     beginShutdown();
-    await Future.wait(_lateTitleWork.toList(growable: false));
+    await Future.wait(_lateMetadataWork.toList(growable: false));
   }
 }
 
