@@ -40,7 +40,15 @@ class RealtimeVoiceApi({
       connectTimeout: realtimeVoiceConnectTimeout,
     );
     final session = RealtimeVoiceSession(channel);
-    session._sendJson(RealtimeStartMessage(audio: audio, projectKey: projectKey).toJson());
+    try {
+      session._sendJson(RealtimeStartMessage(audio: audio, projectKey: projectKey).toJson());
+    } on Object {
+      // The session already subscribed to the channel, so a send that fails
+      // between `ready` and the start frame would strand the transport. Release
+      // it here and let the original failure reach the caller unchanged.
+      unawaited(session.close());
+      rethrow;
+    }
     return session;
   }
 }
@@ -119,6 +127,12 @@ final class RealtimeVoiceSession(final WebSocketChannel _channel) {
           logw("Realtime voice session teardown timed out");
         },
       );
+    } on Object catch (error, stackTrace) {
+      // Teardown is best-effort. close() is scheduled with scheduleMicrotask
+      // from the inbound handlers, so rethrowing here would surface as an
+      // unhandled async error, and it is also awaited from stopAndTranscribe's
+      // finally, where throwing would abort the remaining cleanup.
+      loge("Realtime voice session teardown failed", error, stackTrace);
     } finally {
       if (teardownTimedOut) {
         unawaited(

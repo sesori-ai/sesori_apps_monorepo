@@ -765,7 +765,14 @@ class VoiceTranscriptionService({
         await _recorder.stop();
       } catch (error, stackTrace) {
         loge("Failed to stop realtime recorder", error, stackTrace);
-        throw VoiceTranscriptionError.recordingFailed();
+        // Confirmed text was already accepted from the provider before the
+        // recorder failed to stop, so it must survive this failure the same way
+        // it does on the terminal-failure path above. Throwing bare
+        // recordingFailed() here would silently discard transcribed speech.
+        throw VoiceRealtimePartialTranscriptionError(
+          confirmedText: _confirmedRealtimeTranscript,
+          failure: VoiceTranscriptionError.recordingFailed(),
+        );
       } finally {
         _realtimeNativeRecording = false;
         _stopAmplitudeMonitoring();

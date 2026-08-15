@@ -805,6 +805,36 @@ void main() {
         );
       });
 
+      test("recorder stop failure on release keeps the confirmed transcript", () async {
+        // Confirmed text was already accepted from the provider, so a recorder
+        // that fails to stop must not discard transcribed speech behind a bare
+        // recordingFailed().
+        final startFuture = service.startRecording(projectId: "project-123");
+        await Future<void>.delayed(Duration.zero);
+        connector.channel.inbound.add(
+          jsonEncode({"type": "ready", "protocolVersion": 1, "maxSessionSeconds": 900, "dailySecondsRemaining": 100}),
+        );
+        await startFuture;
+        connector.channel.inbound.add(
+          jsonEncode({"type": "transcript", "confirmedDelta": "kept words", "provisional": ""}),
+        );
+        audioFrames.add(Uint8List.fromList([1, 2]));
+        await Future<void>.delayed(Duration.zero);
+
+        when(mockRecorder.stop).thenThrow(Exception("stop failed"));
+
+        await expectLater(
+          service.stopAndTranscribe(),
+          throwsA(
+            isA<VoiceRealtimePartialTranscriptionError>().having(
+              (error) => error.confirmedText,
+              "confirmed",
+              "kept words",
+            ),
+          ),
+        );
+      });
+
       test("stream error during startup after ready aborts instead of marking a stopped recorder active", () async {
         // Terminating capture on a post-ready stream error stops the recorder.
         // If startup is still awaiting at that moment it must not go on to mark

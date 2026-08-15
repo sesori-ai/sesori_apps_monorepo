@@ -42,7 +42,14 @@ class IoRealtimeWebSocketConnector({required final IoRealtimeWebSocketClient cli
   }
 
   void _closeAfterFailedReady(WebSocketChannel channel) {
-    unawaited(channel.sink.close(status.normalClosure));
+    // Best-effort cleanup on an already-failed socket. Without a handler a
+    // throwing close becomes an unhandled async error that masks the mapped
+    // RealtimeVoiceOpenException the caller is about to receive.
+    unawaited(
+      channel.sink.close(status.normalClosure).catchError((Object error, StackTrace stackTrace) {
+        logw("Realtime voice socket close after failed ready failed");
+      }),
+    );
   }
 
   RealtimeVoiceOpenException _mapWebSocketChannelException(WebSocketChannelException error) {
