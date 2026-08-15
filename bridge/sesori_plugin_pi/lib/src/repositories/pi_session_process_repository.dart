@@ -601,11 +601,11 @@ final class PiSessionProcessRepository({
     required Set<String> knownDirectories,
   }) async {
     if (_disposed) throw const PiRpcDisposedException();
-    final hydration = _identityTracker.beginHydration(sessionId: sessionId);
     final PiResolvedSession? resolved;
     try {
       final resident = _residents[sessionId];
       if (resident != null) {
+        final hydration = _identityTracker.beginHydration(sessionId: sessionId);
         final history = await _getEntries(client: resident.client);
         return _hydrateHistory(sessionId: sessionId, history: history, hydration: hydration);
       }
@@ -626,10 +626,11 @@ final class PiSessionProcessRepository({
     }
 
     try {
+      final history = await _readHistory(resolved: resolved);
       return _hydrateHistory(
         sessionId: sessionId,
-        history: await _readHistory(resolved: resolved),
-        hydration: hydration,
+        history: history,
+        hydration: _identityTracker.beginHydration(sessionId: sessionId),
       );
     } on Object catch (error, stack) {
       _throwLoadFailure(path: resolved.path, error: error, stack: stack);
