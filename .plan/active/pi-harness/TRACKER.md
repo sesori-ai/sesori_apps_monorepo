@@ -477,10 +477,10 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   complete/partial/failed classification, and last-good retention. Pi uses the
   backend-neutral discovery result and synthesizes one primary `pi` agent.
 - Generated catalog outputs refreshed with package codegen. Focused catalog and
-  launch tests pass (16 tests); full Pi package tests pass (220 tests); fatal
+  launch tests pass (17 tests); full Pi package tests pass (222 tests); fatal
   analysis and `git diff --check` pass.
-- Diff: +1,884/-15 = 1,899 changed lines; generated lines: 841; non-generated
-  changed lines: 1,058, within the step estimate; tests run: 220.
+- Diff: +1,925/-17 = 1,942 changed lines; generated lines: 841; non-generated
+  changed lines: 1,101, within the step estimate; tests run: 222.
 - Formatter passes for the touched Dart files except the pinned formatter bug
   on the valid primary-constructor catalog enum. No shared image-capability
   field exists, so Pi image input support is parsed but not exposed through an
