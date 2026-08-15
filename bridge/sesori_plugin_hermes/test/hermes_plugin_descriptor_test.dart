@@ -166,6 +166,33 @@ void main() {
       );
     });
 
+    test("reports runtime missing for a Windows shell command-not-found result", () async {
+      final processes = _ProbeProcessService(
+        spawnError: null,
+        processSequence: [
+          _ProbeProcess(
+            pid: 1,
+            stdoutBytes: const [],
+            stderrBytes: utf8.encode(
+              "'hermes' is not recognized as an internal or external command,\r\n"
+              "operable program or batch file.\r\n",
+            ),
+            exitCode: Future<int>.value(1),
+          ),
+        ],
+        servesAcp: false,
+      );
+
+      final result = await const HermesPluginDescriptor().inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, isA<PluginSetupRuntimeMissing>());
+    });
+
     test("reports unknown when the host process seam fails for a non-spawn reason", () async {
       final processes = _ProbeProcessService(
         spawnError: StateError("host process seam unavailable"),

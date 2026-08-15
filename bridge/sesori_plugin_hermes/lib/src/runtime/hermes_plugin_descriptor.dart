@@ -237,6 +237,9 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       // with a nonzero exit; surface that as missing with an update hint, not
       // as an unknown failure.
       final stderr = result.stderr.toLowerCase();
+      if (_isShellCommandNotFound(stderr: stderr)) {
+        return _HermesRuntimeProbeState.missing;
+      }
       if (stderr.contains("acp") && stderr.contains("invalid choice")) {
         return _HermesRuntimeProbeState.preAcpInstall;
       }
@@ -257,6 +260,11 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
     Log.d("[hermes] available: '$executablePath acp --version' -> $version");
     return _HermesRuntimeProbeState.ready;
   }
+
+  bool _isShellCommandNotFound({required String stderr}) =>
+      stderr.contains("is not recognized as an internal or external command") ||
+      stderr.contains("is not recognized as the name of a cmdlet") ||
+      stderr.contains("command not found");
 
   String _normalizedStatusOutput({required CommandResult result}) {
     final combined = "${result.stdout}\n${result.stderr}";
