@@ -504,5 +504,10 @@ final class PiPlugin._({
         ),
       },
     );
+    if (event is PiExtensionUiQuestionAsked ||
+        event is PiExtensionUiQuestionReplied ||
+        event is PiExtensionUiQuestionRejected) {
+      _eventBuffer.add(const BridgeSseProjectUpdated());
+    }
   }
 }

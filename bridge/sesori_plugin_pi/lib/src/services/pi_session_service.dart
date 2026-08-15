@@ -136,16 +136,20 @@ final class PiSessionService({
       final directory = sessions[rootId]?.directory ?? directoryForSession(sessionId: rootId);
       if (directory == null) continue;
       final descendants = _descendantIds(rootId: rootId, sessions: sessions.values.toList());
+      final activeDescendants = [
+        for (final id in descendants)
+          if (activeIds.contains(id)) id,
+      ];
+      final activeFamilyIds = [rootId, ...activeDescendants];
       (byProject[directory] ??= []).add(
         PluginActiveSession(
           id: rootId,
           mainAgentRunning: status is PluginSessionStatusBusy || status is PluginSessionStatusRetry,
-          awaitingInput: _extensionUi.getPendingQuestions(sessionId: rootId).isNotEmpty,
-          isRetrying: status is PluginSessionStatusRetry,
-          childSessionIds: [
-            for (final id in descendants)
-              if (activeIds.contains(id)) id,
-          ],
+          awaitingInput: activeFamilyIds.any(
+            (sessionId) => _extensionUi.getPendingQuestions(sessionId: sessionId).isNotEmpty,
+          ),
+          isRetrying: activeFamilyIds.any((sessionId) => statuses[sessionId] is PluginSessionStatusRetry),
+          childSessionIds: activeDescendants,
         ),
       );
     }
