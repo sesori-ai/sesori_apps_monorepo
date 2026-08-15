@@ -179,13 +179,29 @@ class SessionRepository({
     required String? lastAgent,
     required AgentModel? lastAgentModel,
   }) async {
+    final parentBinding = parentSessionId == null
+        ? null
+        : await _requireBinding(
+            sessionId: parentSessionId,
+            operation: SessionOperation.createSession,
+          );
+    if (parentBinding != null && parentBinding.pluginId != pluginId) {
+      throw PluginOperationException(
+        SessionOperation.createSession.name,
+        statusCode: 409,
+        message: "parent session $parentSessionId belongs to another plugin",
+      );
+    }
     final result = await _runtime.useAndCommit(
       pluginId: pluginId,
       operation: SessionOperation.createSession,
       prepare: (plugin) {
+        if (parentBinding != null) {
+          _primeDerivedSessionDirectory(binding: parentBinding, plugin: plugin);
+        }
         return plugin.createSession(
           directory: directory,
-          parentSessionId: parentSessionId,
+          parentSessionId: parentBinding?.backendSessionId,
           parts: parts.map((part) => part.toPlugin()).toList(growable: false),
           userVisibleText: userVisibleText,
           variant: _toPluginVariant(variant),

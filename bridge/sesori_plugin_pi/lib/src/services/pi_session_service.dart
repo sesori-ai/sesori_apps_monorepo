@@ -513,7 +513,13 @@ final class PiSessionService({
       state.queue.clear();
     }
     final idleReap = state?.idleReap;
-    if (idleReap != null) await idleReap;
+    if (idleReap != null) {
+      try {
+        await idleReap;
+      } on Object catch (error, stackTrace) {
+        Log.w("[pi] idle process teardown failed while forgetting $sessionId", error, stackTrace);
+      }
+    }
     _extensionUi.cancelForOwner(sessionId: sessionId, processGeneration: null);
     final pendingDirectory = _pendingNewDirectories.remove(sessionId);
     await _processes.forgetSession(
