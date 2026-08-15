@@ -4,9 +4,9 @@
 
 - **Plan slug:** `hermes-agent-plugin`
 - **Owner review:** in progress since 2026-08-15
-- **Current open PR:** Step 6/9, #921
-- **Local successor:** Step 7/9 corrective integration branch
-- **Next action:** finish Step 7 corrections and verification; publish only after #921 merges
+- **Current open PR:** Step 7/9, #927
+- **Local successor:** Step 8/9 verification branch
+- **Next action:** address Step 7 review/CI, merge #927, then continue the local Step 8 evidence matrix
 - **Retirement:** blocked on the Step 8 matrix in `PLAN.md`
 
 ## Delivery

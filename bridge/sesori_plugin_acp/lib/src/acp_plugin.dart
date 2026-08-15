@@ -181,7 +181,7 @@ abstract class AcpPlugin({
   ///
   /// Agents that advertise interactive terminal setup can exclude it because
   /// the headless bridge cannot complete that flow.
-  String? selectAuthMethod(AcpInitializeResult init) =>
+  String? selectAuthMethod({required AcpInitializeResult init}) =>
       authMethodId ?? (init.authMethods.isNotEmpty ? init.authMethods.first.id : null);
 
   /// Non-standard capability hints sent under `clientCapabilities._meta`
@@ -380,7 +380,7 @@ abstract class AcpPlugin({
       );
     }
     if (init.requiresAuth) {
-      final methodId = selectAuthMethod(init);
+      final methodId = selectAuthMethod(init: init);
       if (methodId == null) {
         throw PluginAuthenticationRequiredException(
           AcpMethods.authenticate,

@@ -79,7 +79,7 @@ class HermesPlugin._({
   String? get authMethodId => null;
 
   @override
-  String? selectAuthMethod(AcpInitializeResult init) {
+  String? selectAuthMethod({required AcpInitializeResult init}) {
     for (final method in init.authMethods) {
       if (method.type != AcpAuthMethodType.terminal) return method.id;
     }

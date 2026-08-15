@@ -17,8 +17,8 @@ idle suspension, the management snapshot, and lifecycle commands.
   list is the only durable eligibility policy, with setup deciding blocked versus routable.
 - Hermes is a direct-CLI harness with no managed install. Setup distinguishes a missing or
   pre-ACP binary, a Hermes Agent release below `0.20.0`, and missing model/provider
-  configuration; startup revalidates both PATH and explicit `--hermes-bin` executables while
-  preserving an explicit path as authoritative.
+  configuration; startup revalidates the effective PATH or explicit `--hermes-bin` executable
+  while preserving an explicit path as authoritative.
   Model/provider setup remains an out-of-band Hermes CLI action, so authentication-required
   Hermes entries give local setup guidance rather than offering bridge-managed login.
 - Listings order by display name case-insensitively with the identifier as tie-breaker,
