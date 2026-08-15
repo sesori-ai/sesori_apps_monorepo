@@ -12,6 +12,8 @@ final class PiNewSession({required final String sessionId}) extends PiSessionLau
   }
 }
 
+final class const PiNoSession() extends PiSessionLaunch;
+
 /// Resumes the session stored at an exact absolute JSONL path.
 final class PiResumedSession({required final String sessionPath}) extends PiSessionLaunch {
   this {
@@ -44,13 +46,9 @@ class PiLaunchSpec({
   /// Additional entries merged over the inherited process environment.
   final Map<String, String> environment = Map.unmodifiable({...environment, "PI_SKIP_VERSION_CHECK": "1"});
 
-  List<String> get arguments => [
-    "--mode",
-    "rpc",
-    "--approve",
-    ...switch (launch) {
-      PiNewSession(:final sessionId) => ["--session-id", sessionId],
-      PiResumedSession(:final sessionPath) => ["--session", sessionPath],
-    },
-  ];
+  List<String> get arguments => switch (launch) {
+    PiNoSession() => ["--mode", "rpc", "--no-session", "--approve"],
+    PiNewSession(:final sessionId) => ["--mode", "rpc", "--approve", "--session-id", sessionId],
+    PiResumedSession(:final sessionPath) => ["--mode", "rpc", "--approve", "--session", sessionPath],
+  };
 }

@@ -34,6 +34,12 @@ defaults and queued client sends coherent.
 - Pi accepts only bounded, valid inline GIF, JPEG, PNG, and WebP data. Paths,
   URLs, non-image data, malformed base64, and oversized images fail visibly
   before admission and are never fetched, stringified, or silently omitted.
+- Pi discovers models, thinking levels, and extension, prompt-template, prompt,
+  and skill commands through bounded approved no-session probes in normalized
+  project directories. Reuse is project-local, refresh always probes, concurrent
+  requests for one project coalesce, and a failed refresh never replaces the
+  last coherent snapshot. Dialogs raised during probes are cancelled and never
+  enter session UI state.
 - Normalized user-message events feed the durable user-side activity marker used
   to order running roots. Known event times are applied monotonically. Backend
   input represented as a user message, including automatic compaction or other

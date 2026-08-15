@@ -16,6 +16,17 @@ void main() {
       expect(spec.arguments, ["--mode", "rpc", "--approve", "--session-id", "sesori.session-1"]);
     });
 
+    test("builds the exact no-session probe argument vector", () {
+      final spec = PiLaunchSpec(
+        binaryPath: "pi",
+        workingDirectory: "/tmp/project",
+        launch: const PiNoSession(),
+        environment: const {},
+      );
+
+      expect(spec.arguments, ["--mode", "rpc", "--no-session", "--approve"]);
+    });
+
     test("resumes only by absolute path", () {
       final absolutePath = Platform.isWindows ? r"C:\sessions\session.jsonl" : "/sessions/session.jsonl";
       final spec = PiLaunchSpec(
