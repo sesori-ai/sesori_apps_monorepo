@@ -217,8 +217,11 @@ final class PiPlugin._({
       );
     } on PluginOperationException {
       rethrow;
-    } on Object catch (error) {
-      throw PluginOperationException("renameSession", message: "Pi session rename failed.", cause: error);
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        PluginOperationException("renameSession", message: "Pi session rename failed.", cause: error),
+        stackTrace,
+      );
     }
     final renamed = session.copyWith(title: title);
     _eventBuffer.add(BridgeSseSessionUpdated(info: renamed.toJson(), titleChanged: true));
@@ -230,8 +233,11 @@ final class PiPlugin._({
     final root = await _requiredSession(sessionId: sessionId, operation: "deleteSession");
     try {
       await _sessionService.deleteSession(root: root);
-    } on Object catch (error) {
-      throw PluginOperationException("deleteSession", message: "Pi session deletion failed.", cause: error);
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        PluginOperationException("deleteSession", message: "Pi session deletion failed.", cause: error),
+        stackTrace,
+      );
     }
     _eventBuffer.add(BridgeSseSessionDeleted(info: root.toJson()));
     _eventBuffer.add(const BridgeSseProjectUpdated());
@@ -265,11 +271,14 @@ final class PiPlugin._({
       );
     } on PluginOperationException {
       rethrow;
-    } on Object catch (error) {
-      throw PluginOperationException(
-        "getSessionMessages",
-        message: "Pi session history could not be loaded.",
-        cause: error,
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        PluginOperationException(
+          "getSessionMessages",
+          message: "Pi session history could not be loaded.",
+          cause: error,
+        ),
+        stackTrace,
       );
     }
   }
@@ -339,8 +348,11 @@ final class PiPlugin._({
       );
     } on PluginOperationException {
       rethrow;
-    } on Object catch (error) {
-      throw PluginOperationException("sendCommand", message: "Pi did not accept the command.", cause: error);
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        PluginOperationException("sendCommand", message: "Pi did not accept the command.", cause: error),
+        stackTrace,
+      );
     }
   }
 

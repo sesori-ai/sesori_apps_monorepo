@@ -27,6 +27,7 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
   final List<_PiTurn> queue = [];
   _PiTurn? active;
   Future<void>? idleReap;
+  PluginSessionStatus status = const PluginSessionStatus.idle();
   int generation = 0;
   int idleGeneration = 0;
 }
@@ -96,12 +97,8 @@ final class PiSessionService({
     return sessionId;
   }
 
-  Map<String, PluginSessionStatus> get sessionStatuses => Map.unmodifiable({
-    for (final entry in _sessions.entries)
-      entry.key: entry.value.active != null || entry.value.queue.isNotEmpty
-          ? const PluginSessionStatus.busy()
-          : const PluginSessionStatus.idle(),
-  });
+  Map<String, PluginSessionStatus> get sessionStatuses =>
+      Map.unmodifiable({for (final entry in _sessions.entries) entry.key: entry.value.status});
 
   Future<void> deleteSession({required PluginSession root}) async {
     final sessions = await _catalog.listAllSessions(knownDirectories: {root.directory});
@@ -220,6 +217,7 @@ final class PiSessionService({
     state.idleGeneration++;
     state.queue.add(turn);
     if (state.active == null && state.queue.length == 1) {
+      state.status = const PluginSessionStatus.busy();
       _emit(
         BridgeSseSessionStatus(
           sessionID: sessionId,
@@ -343,12 +341,21 @@ final class PiSessionService({
     switch (processFrame.frame) {
       case PiEventFrame(:final event):
         if (turn.promptDispatched && event is PiAgentStartEvent) turn.agentStarted = true;
-        for (final mapped in _dispatcher.map(sessionId: processFrame.sessionId, event: event)) {
+        final now = _clock.now();
+        final mappedStatus = _dispatcher.sessionStatusFor(event: event, now: now);
+        final statusChanged =
+            mappedStatus != null &&
+            event is! PiAgentStartEvent &&
+            event is! PiAgentSettledEvent &&
+            state.status != mappedStatus;
+        if (statusChanged) state.status = mappedStatus;
+        for (final mapped in _dispatcher.map(sessionId: processFrame.sessionId, event: event, now: now)) {
           final serviceOwnsLifecycle =
               (event is PiAgentStartEvent || event is PiAgentSettledEvent) &&
               (mapped is BridgeSseSessionStatus || mapped is BridgeSseSessionIdle);
           if (!serviceOwnsLifecycle) _emit(mapped);
         }
+        if (statusChanged) _emit(const BridgeSseProjectUpdated());
         if (turn.promptDispatched && event is PiAgentSettledEvent) {
           turn.agentSettled = true;
           if (turn.responseSucceeded) {
@@ -430,9 +437,13 @@ final class PiSessionService({
     if (failed) _emit(BridgeSseSessionError(sessionID: sessionId));
     unawaited(_clearPendingWhenPersisted(sessionId: sessionId, directory: state.directory));
     if (state.queue.isNotEmpty) {
+      final statusChanged = state.status != const PluginSessionStatus.busy();
+      state.status = const PluginSessionStatus.busy();
+      if (statusChanged) _emit(const BridgeSseProjectUpdated());
       _startNext(sessionId: sessionId, state: state);
       return;
     }
+    state.status = const PluginSessionStatus.idle();
     _emit(
       BridgeSseSessionStatus(
         sessionID: sessionId,
@@ -469,6 +480,7 @@ final class PiSessionService({
     final cancelled = [?state.active, ...state.queue];
     state.active = null;
     state.queue.clear();
+    state.status = const PluginSessionStatus.idle();
     for (final turn in cancelled) {
       final acceptance = turn.commandAcceptance;
       if (acceptance != null && !acceptance.isCompleted) {
