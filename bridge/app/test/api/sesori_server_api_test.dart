@@ -233,6 +233,64 @@ void main() {
       expect(client.abortObserved, isTrue);
     });
 
+    test("aborts while acquiring the initial metadata token", () async {
+      final tokenRefresher = _PendingTokenRefresher();
+      final abortSignal = SesoriServerRequestAbortSignal();
+      var requestCount = 0;
+      final api = SesoriServerApi(
+        authBackendUrl: "https://auth.example.test",
+        client: MockClient((_) async {
+          requestCount++;
+          return http.Response('{"title":"Unexpected"}', 200);
+        }),
+        requestDeadline: const Duration(seconds: 1),
+        tokenRefresher: tokenRefresher,
+      );
+
+      final response = api.generateSessionMetadata(
+        request: const GenerateSessionMetadataRequest(firstMessage: "message"),
+        abortSignal: abortSignal,
+      );
+      await tokenRefresher.started.future;
+      abortSignal.abort();
+
+      await expectLater(
+        response.timeout(const Duration(seconds: 1)),
+        throwsA(isA<http.RequestAbortedException>()),
+      );
+      expect(tokenRefresher.forceRefreshValues, equals([false]));
+      expect(requestCount, 0);
+    });
+
+    test("aborts while force-refreshing the metadata token after 401", () async {
+      final tokenRefresher = _PendingForcedRefreshTokenRefresher();
+      final abortSignal = SesoriServerRequestAbortSignal();
+      var requestCount = 0;
+      final api = SesoriServerApi(
+        authBackendUrl: "https://auth.example.test",
+        client: MockClient((_) async {
+          requestCount++;
+          return http.Response("unauthorized", 401);
+        }),
+        requestDeadline: const Duration(seconds: 1),
+        tokenRefresher: tokenRefresher,
+      );
+
+      final response = api.generateSessionMetadata(
+        request: const GenerateSessionMetadataRequest(firstMessage: "message"),
+        abortSignal: abortSignal,
+      );
+      await tokenRefresher.forceRefreshStarted.future;
+      abortSignal.abort();
+
+      await expectLater(
+        response.timeout(const Duration(seconds: 1)),
+        throwsA(isA<http.RequestAbortedException>()),
+      );
+      expect(tokenRefresher.forceRefreshValues, equals([false, true]));
+      expect(requestCount, 1);
+    });
+
     test("releases shutdown listener after completed response", () async {
       final client = _ImmediateClient(responseBody: '{"title":"Generated title"}');
       final abortSignal = SesoriServerRequestAbortSignal();
@@ -264,6 +322,33 @@ class _FakeTokenRefresher({required final String token, final String? refreshedT
   Future<String> getAccessToken({bool forceRefresh = false}) async {
     forceRefreshValues.add(forceRefresh);
     return forceRefresh ? _refreshedToken : _token;
+  }
+}
+
+class _PendingTokenRefresher() implements TokenRefresher {
+  final Completer<void> started = Completer<void>();
+  final Completer<String> _token = Completer<String>();
+  final List<bool> forceRefreshValues = [];
+
+  @override
+  Future<String> getAccessToken({bool forceRefresh = false}) {
+    forceRefreshValues.add(forceRefresh);
+    started.complete();
+    return _token.future;
+  }
+}
+
+class _PendingForcedRefreshTokenRefresher() implements TokenRefresher {
+  final Completer<void> forceRefreshStarted = Completer<void>();
+  final Completer<String> _refreshedToken = Completer<String>();
+  final List<bool> forceRefreshValues = [];
+
+  @override
+  Future<String> getAccessToken({bool forceRefresh = false}) {
+    forceRefreshValues.add(forceRefresh);
+    if (!forceRefresh) return Future.value("stale");
+    forceRefreshStarted.complete();
+    return _refreshedToken.future;
   }
 }
 
