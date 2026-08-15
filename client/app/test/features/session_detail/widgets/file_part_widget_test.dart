@@ -844,6 +844,7 @@ void main() {
       child: ImageAttachmentViewer(
         image: ViewOnlyMessageImage(provider: provider, originalUri: null),
         flightImageProvider: provider,
+        heroPresentation: ImageAttachmentHeroPresentation.cropped,
         filename: "swap.png",
         heroTag: heroTag,
         originalPresentation: ImageAttachmentOriginalPresentation.idle,
@@ -1118,6 +1119,7 @@ void main() {
         child: ImageAttachmentViewer(
           image: image,
           flightImageProvider: image.provider,
+          heroPresentation: ImageAttachmentHeroPresentation.contained,
           filename: "../../unsafe.exe",
           heroTag: UniqueKey(),
           originalPresentation: ImageAttachmentOriginalPresentation.idle,

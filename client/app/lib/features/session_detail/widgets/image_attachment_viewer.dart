@@ -48,6 +48,7 @@ final class const StoredMessageImage({
 Future<void> showImageAttachmentViewer({
   required BuildContext context,
   required MessageImageViewerImage image,
+  required ImageAttachmentHeroPresentation heroPresentation,
   required String? filename,
   required Key heroTag,
 }) {
@@ -63,6 +64,7 @@ Future<void> showImageAttachmentViewer({
       LoadedMessageImage() => ImageAttachmentViewer(
         image: image,
         flightImageProvider: image.provider,
+        heroPresentation: heroPresentation,
         filename: filename,
         heroTag: heroTag,
         originalPresentation: ImageAttachmentOriginalPresentation.idle,
@@ -71,6 +73,7 @@ Future<void> showImageAttachmentViewer({
       ViewOnlyMessageImage() => ImageAttachmentViewer(
         image: image,
         flightImageProvider: image.provider,
+        heroPresentation: heroPresentation,
         filename: filename,
         heroTag: heroTag,
         originalPresentation: ImageAttachmentOriginalPresentation.idle,
@@ -78,6 +81,7 @@ Future<void> showImageAttachmentViewer({
       ),
       StoredMessageImage() => _StoredImageAttachmentViewer(
         image: image,
+        heroPresentation: heroPresentation,
         filename: filename,
         heroTag: heroTag,
       ),
@@ -113,6 +117,7 @@ ImageAttachmentActionsCubit _createActionsCubit({required LoadedMessageImage ima
 
 class const _StoredImageAttachmentViewer({
   required final StoredMessageImage image,
+  required final ImageAttachmentHeroPresentation heroPresentation,
   required final String? filename,
   required final Key heroTag,
 }) extends StatefulWidget {
@@ -137,6 +142,7 @@ class _StoredImageAttachmentViewerState() extends State<_StoredImageAttachmentVi
   Widget build(BuildContext context) => _StoredImageAttachmentViewerContent(
     thumbnail: widget.image.thumbnail,
     cubit: widget.image.cubit,
+    heroPresentation: widget.heroPresentation,
     filename: widget.filename,
     heroTag: widget.heroTag,
   );
@@ -148,9 +154,15 @@ enum ImageAttachmentOriginalPresentation() {
   failed;
 }
 
+enum ImageAttachmentHeroPresentation() {
+  cropped,
+  contained;
+}
+
 class const _StoredImageAttachmentViewerContent({
   required final ViewOnlyMessageImage thumbnail,
   required final MessageImageCubit cubit,
+  required final ImageAttachmentHeroPresentation heroPresentation,
   required final String? filename,
   required final Key heroTag,
 }) extends StatefulWidget {
@@ -276,6 +288,7 @@ class _StoredImageAttachmentViewerContentState() extends State<_StoredImageAttac
     return ImageAttachmentViewer(
       image: _decodedOriginal ?? widget.thumbnail,
       flightImageProvider: widget.thumbnail.provider,
+      heroPresentation: widget.heroPresentation,
       filename: widget.filename,
       heroTag: widget.heroTag,
       originalPresentation: presentation,
@@ -288,6 +301,7 @@ class const ImageAttachmentViewer({
   super.key,
   required final MessageImageViewerImage image,
   required final ImageProvider flightImageProvider,
+  required final ImageAttachmentHeroPresentation heroPresentation,
   required final String? filename,
   required final Key heroTag,
   required final ImageAttachmentOriginalPresentation originalPresentation,
@@ -464,6 +478,14 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
     BuildContext _,
   ) {
     final provider = widget.flightImageProvider;
+    if (widget.heroPresentation == ImageAttachmentHeroPresentation.contained) {
+      return Image(
+        key: ImageAttachmentViewer.flightFullImageKey,
+        image: provider,
+        fit: BoxFit.contain,
+        gaplessPlayback: true,
+      );
+    }
     return AnimatedBuilder(
       animation: animation,
       builder: (_, _) {
