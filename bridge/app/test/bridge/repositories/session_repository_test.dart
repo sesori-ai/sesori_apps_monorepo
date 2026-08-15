@@ -12,6 +12,7 @@ import "package:sesori_bridge/src/bridge/repositories/models/verified_github_log
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -155,7 +156,7 @@ void main() {
         contains("sess-tomb"),
       );
       expect(await db.sessionDao.getTombstonedSessionsForCleanup(pluginId: plugin.id), {
-        (backendSessionId: "sess-tomb", directory: "proj-tomb"),
+        (backendSessionId: "sess-tomb", directory: normalizeProjectDirectory(directory: "proj-tomb")),
       });
       expect(
         await db.sessionDao.getTombstonedSessionIds(pluginId: "other"),

@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:math";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         BridgeDerivedProjectsPluginApi,
@@ -527,7 +528,7 @@ class SessionRepository({
         await _sessionDao.insertSessionTombstone(
           backendSessionId: binding.backendSessionId,
           pluginId: binding.pluginId,
-          directory: binding.directory,
+          directory: normalizeProjectDirectory(directory: binding.directory),
           deletedAt: deletedAt,
         );
       }

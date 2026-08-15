@@ -168,7 +168,10 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
         if (file.existsSync()) rethrow;
       }
     }
-    await clearPendingNewSession(sessionId: sessionId, knownDirectories: knownDirectories);
+    await clearPendingNewSession(
+      sessionId: sessionId,
+      knownDirectories: {...knownDirectories, ?resolved?.metadata.cwd},
+    );
   }
 
   Future<PiSessionFileHistoryDto> _readSessionHistory({required String path}) async {

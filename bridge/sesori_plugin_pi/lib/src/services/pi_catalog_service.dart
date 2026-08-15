@@ -16,6 +16,7 @@ class PiCatalogService({
   }
 
   final Map<String, Future<PluginSessionOptionsDiscoveryResult>> _inFlight = {};
+  final Map<String, ({Object error, StackTrace stackTrace})> _failures = {};
 
   Future<bool> healthCheck() => _repository.healthCheck();
 
@@ -32,10 +33,7 @@ class PiCatalogService({
     );
     return switch (result) {
       PluginSessionOptionsDiscoveryObserved(:final options) => options,
-      PluginSessionOptionsDiscoveryFailed() => throw const PluginOperationException(
-        "discover Pi options",
-        message: "Pi session options are unavailable.",
-      ),
+      PluginSessionOptionsDiscoveryFailed() => _throwDiscoveryFailure(projectId: normalized),
     };
   }
 
@@ -80,10 +78,23 @@ class PiCatalogService({
             : PluginSessionOptionsCompleteness.partial,
       );
       _tracker.replace(projectId: projectId, snapshot: snapshot);
+      _failures.remove(projectId);
       return PluginSessionOptionsDiscoveryResult.observed(options: snapshot);
     } on Object catch (error, stack) {
+      _failures[projectId] = (error: error, stackTrace: stack);
       Log.w("[pi] project catalog probe failed", error, stack);
       return const PluginSessionOptionsDiscoveryResult.failed();
     }
+  }
+
+  Never _throwDiscoveryFailure({required String projectId}) {
+    final failure = _failures[projectId];
+    final error = PluginOperationException(
+      "discover Pi options",
+      message: "Pi session options are unavailable.",
+      cause: failure?.error,
+    );
+    if (failure == null) throw error;
+    Error.throwWithStackTrace(error, failure.stackTrace);
   }
 }

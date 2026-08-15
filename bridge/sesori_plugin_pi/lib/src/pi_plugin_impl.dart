@@ -226,10 +226,9 @@ final class PiPlugin._({
       await _sessionService.deleteSession(root: root);
     } on Object catch (error) {
       throw PluginOperationException("deleteSession", message: "Pi session deletion failed.", cause: error);
-    } finally {
-      _eventBuffer.add(BridgeSseSessionDeleted(info: root.toJson()));
-      _eventBuffer.add(const BridgeSseProjectUpdated());
     }
+    _eventBuffer.add(BridgeSseSessionDeleted(info: root.toJson()));
+    _eventBuffer.add(const BridgeSseProjectUpdated());
   }
 
   @override

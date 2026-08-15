@@ -85,10 +85,12 @@ final class PiSessionService({
   Future<String> prepareNewSession({required String directory, required String? parentSessionId}) async {
     if (_disposed) throw const PiRpcDisposedException();
     final sessionId = _processes.generateSessionId();
+    final parent = parentSessionId == null ? null : await _catalog.findSessionById(sessionId: parentSessionId);
     await _processes.markPendingNew(
       sessionId: sessionId,
       directory: directory,
       parentSessionId: parentSessionId,
+      parentDirectory: parent?.directory,
     );
     _pendingNewDirectories[sessionId] = directory;
     return sessionId;
@@ -510,6 +512,8 @@ final class PiSessionService({
       state.active = null;
       state.queue.clear();
     }
+    final idleReap = state?.idleReap;
+    if (idleReap != null) await idleReap;
     _extensionUi.cancelForOwner(sessionId: sessionId, processGeneration: null);
     final pendingDirectory = _pendingNewDirectories.remove(sessionId);
     await _processes.forgetSession(
