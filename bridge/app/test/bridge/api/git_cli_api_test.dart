@@ -143,7 +143,15 @@ void main() {
 
   test("hasRemoteBranch finds the exact branch name under any remote", () async {
     final processRunner = _RecordingProcessRunner(
-      stdout: "refs/remotes/origin/HEAD\nrefs/remotes/origin/initial-branch\n",
+      results: [
+        ProcessResult(1, 0, "origin\nteam/origin\n", ""),
+        ProcessResult(
+          1,
+          0,
+          "refs/remotes/origin/HEAD\nrefs/remotes/team/origin/initial-branch\n",
+          "",
+        ),
+      ],
     );
     final api = GitCliApi(
       processRunner: processRunner,
@@ -155,10 +163,9 @@ void main() {
       isTrue,
     );
     expect(processRunner.workingDirectory, "/worktree");
-    expect(processRunner.arguments, [
-      "for-each-ref",
-      "--format=%(refname)",
-      "refs/remotes/*/initial-branch",
+    expect(processRunner.invocations, [
+      ["remote"],
+      ["for-each-ref", "--format=%(refname)", "refs/remotes"],
     ]);
   });
 
@@ -199,9 +206,15 @@ void main() {
   });
 }
 
-class _RecordingProcessRunner({final String stdout = "", final String stderr = "", final int exitCode = 0})
+class _RecordingProcessRunner({
+  final String stdout = "",
+  final String stderr = "",
+  final int exitCode = 0,
+  final List<ProcessResult>? results,
+})
     implements ProcessRunner {
   List<String>? arguments;
+  final List<List<String>> invocations = [];
   String? workingDirectory;
   Map<String, String>? environment;
 
@@ -215,8 +228,10 @@ class _RecordingProcessRunner({final String stdout = "", final String stderr = "
   }) async {
     expect(executable, "git");
     this.arguments = arguments;
+    invocations.add(arguments);
     this.workingDirectory = workingDirectory;
     this.environment = environment;
+    if (results case final results? when results.isNotEmpty) return results.removeAt(0);
     return ProcessResult(1, exitCode, stdout, stderr);
   }
 
