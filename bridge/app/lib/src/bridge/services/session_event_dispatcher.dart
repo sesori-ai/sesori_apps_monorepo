@@ -1,7 +1,6 @@
 import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/session_repository.dart";
 import "session_event_service.dart";
@@ -13,6 +12,7 @@ typedef NormalizedSourcedBridgeEvent = ({
   bool allowDuringStop,
   Completer<void>? terminalHandoffConsumed,
 });
+typedef LocalSessionEvent = ({String pluginId, BridgeSseEvent event});
 typedef _DispatchEvent = ({
   int? generation,
   BridgeSseEvent event,
@@ -80,13 +80,13 @@ class SessionEventDispatcher({required final SessionEventService _sessionEventSe
     );
   }
 
-  Future<void> dispatchDeletedSession({required Session session}) {
+  Future<void> dispatchLocalEvent({required LocalSessionEvent source}) {
     return _dispatch(
-      pluginId: session.pluginId,
+      pluginId: source.pluginId,
       operation: () async => [
         (
           generation: null,
-          event: BridgeSseSessionDeleted(info: session.toJson()),
+          event: source.event,
           allowDuringStop: false,
           terminalHandoffConsumed: null,
         ),

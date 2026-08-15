@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan slug:** `pi-harness`
-- **Implementation base:** current `origin/main` with Step 13 merged
-- **Series state:** Step 14/21 in PR; Step 15/21 implemented and verified locally
-- **Current step:** 15/21, Pi models and commands complete locally
+- **Implementation base:** current `origin/main` with Step 14 merged
+- **Series state:** Step 14/21 merged; Step 15/21 implemented and verified locally
+- **Current step:** 15/21, Pi models and commands ready for PR
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
@@ -21,7 +21,7 @@
 - **Step 12 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/905
 - **Step 13 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/910
 - **Step 14 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/914
-- **Next action:** monitor the Step 14 PR; keep verified Step 15 local until Step 14 merges
+- **Next action:** open the Step 15 PR, then start Step 16 locally
 
 ## Locked Decisions
 
@@ -61,8 +61,8 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 11/21 | `⚙️ [pi-harness] feat(pi): replay Pi session history [step 11/21]` | 1,100-1,500 (recorded overage) | Merged as PR #892 |
 | [x] | 12/21 | `🚧 [pi-harness] feat(pi): map live messages and tools [step 12/21]` | 1,200-1,500 (recorded overage) | Merged as PR #905 |
 | [x] | 13/21 | `⚙️ [pi-harness] feat(pi): bridge extension dialogs [step 13/21]` | 900-1,300 | Merged as PR #910 |
-| [ ] | 14/21 | `🚧 [pi-harness] feat(pi): manage session residency and turns [step 14/21]` | 1,200-1,500 (recorded overage) | PR #914 open |
-| [ ] | 15/21 | `⚙️ [pi-harness] feat(pi): expose models and commands [step 15/21]` | 900-1,300 | Implemented and verified locally; pending Step 14 merge |
+| [x] | 14/21 | `🚧 [pi-harness] feat(pi): manage session residency and turns [step 14/21]` | 1,200-1,500 (recorded overage) | Merged as PR #914 |
+| [ ] | 15/21 | `⚙️ [pi-harness] feat(pi): expose models and commands [step 15/21]` | 900-1,300 | Implemented and verified locally; ready for PR |
 | [ ] | 16/21 | `🚧 [pi-harness] feat(pi): implement the plugin API [step 16/21]` | 1,100-1,500 | Not started |
 | [ ] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | Not started; runtime dependency merged |
 | [ ] | 18/21 | `⚙️ [pi-harness] feat(bridge): register Pi and OMP [step 18/21]` | 800-1,200 | Not started |
@@ -485,8 +485,8 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   field exists, so Pi image input support is parsed but not exposed through an
   invented backend-neutral field.
 - No database, persisted-data, client/bridge wire-contract, analytics, or
-  registered-plugin impact. Step 14 PR #914 remains open; Step 15 stays local
-  until it merges.
+  registered-plugin impact. Step 14 merged as PR #914; Step 15 is ready for its
+  PR.
 
 ## Findings And Plan Deltas
 

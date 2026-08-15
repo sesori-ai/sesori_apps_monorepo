@@ -1,20 +1,18 @@
 import "dart:async";
 
-import "package:sesori_shared/sesori_shared.dart";
-
 import "../bridge/services/session_event_dispatcher.dart";
 
-class SessionDeletionListener({
-  required final Stream<Session> _source,
+class SessionMutationListener({
+  required final Stream<LocalSessionEvent> _source,
   required final SessionEventDispatcher _dispatcher,
 }) {
-  StreamSubscription<Session>? _subscription;
+  StreamSubscription<LocalSessionEvent>? _subscription;
   bool _disposed = false;
 
   void start() {
     if (_subscription != null || _disposed) return;
     _subscription = _source.listen(
-      (session) => unawaited(_dispatcher.dispatchDeletedSession(session: session)),
+      (event) => unawaited(_dispatcher.dispatchLocalEvent(source: event)),
       onError: _dispatcher.addSourceError,
     );
   }

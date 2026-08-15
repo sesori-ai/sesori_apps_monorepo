@@ -61,6 +61,53 @@ void main() {
       expect(fixture.repository.renameCalls, isZero);
     });
 
+    test("earlier deletion prevents a later generated title", () async {
+      final releaseDelete = Completer<void>();
+      fixture.repository
+        ..clearTitle(sessionId: "child")
+        ..deleteGate = releaseDelete.future;
+
+      final deletion = fixture.deleteRoot();
+      await fixture.repository.deleteStarted.future;
+      final generated = fixture.mutations.applyGeneratedTitle(
+        sessionId: "child",
+        title: "Generated title",
+      );
+      await _flushEvents();
+
+      expect(fixture.repository.generatedTitleCalls, isZero);
+      releaseDelete.complete();
+      await deletion;
+      expect(await generated, isNull);
+      expect(fixture.repository.generatedTitleCalls, 1);
+      expect(fixture.repository.renameCalls, isZero);
+    });
+
+    test("earlier user rename prevents a later generated title", () async {
+      final renameStarted = Completer<void>();
+      final releaseRename = Completer<void>();
+      fixture.repository
+        ..clearTitle(sessionId: "child")
+        ..renameStarted["child"] = renameStarted
+        ..renameGates["child"] = releaseRename.future;
+
+      final rename = fixture.mutations.renameSession(sessionId: "child", title: "User title");
+      await renameStarted.future;
+      final generated = fixture.mutations.applyGeneratedTitle(
+        sessionId: "child",
+        title: "Generated title",
+      );
+      await _flushEvents();
+
+      expect(fixture.repository.generatedTitleCalls, isZero);
+      releaseRename.complete();
+      await rename;
+      expect(await generated, isNull);
+      expect(fixture.repository.generatedTitleCalls, 1);
+      expect(fixture.repository.renameCalls, 1);
+      expect((await fixture.repository.getCatalogSession(sessionId: "child"))?.title, "User title");
+    });
+
     test("earlier child action finishes before root deletion", () async {
       final actionStarted = Completer<void>();
       final releaseAction = Completer<void>();
@@ -287,10 +334,17 @@ class _FamilyRepository() implements SessionRepository {
   Future<void>? actionGate;
   Object? titleWriteError;
   int renameCalls = 0;
+  int generatedTitleCalls = 0;
   int deleteCalls = 0;
   int actionCalls = 0;
 
   bool contains({required String sessionId}) => _sessions.containsKey(sessionId);
+
+  void clearTitle({required String sessionId}) {
+    final record = _sessions[sessionId];
+    if (record == null) throw StateError("missing test session $sessionId");
+    record.title = null;
+  }
 
   void setArchived({required String sessionId, required bool archived}) {
     final record = _sessions[sessionId];
@@ -317,6 +371,15 @@ class _FamilyRepository() implements SessionRepository {
     if (record == null) return false;
     record.title = title;
     return true;
+  }
+
+  @override
+  Future<Session?> setGeneratedSessionTitleIfAbsent({required String sessionId, required String title}) async {
+    generatedTitleCalls++;
+    final record = _sessions[sessionId];
+    if (record == null || record.title != null) return null;
+    record.title = title;
+    return record.session;
   }
 
   @override

@@ -37,19 +37,23 @@ void main() {
       terminalHandoffConsumed: null,
     );
     service.createdIsPublishable = false;
-    final deletedDispatch = dispatcher.dispatchDeletedSession(
-      session: const Session(
-        id: "stable-root",
-        pluginId: "plugin",
-        projectID: "project",
-        directory: "/repo",
-        parentID: null,
-        title: "stale",
-        time: null,
-        pullRequest: null,
-        promptDefaults: null,
-        lastUserActivityAt: null,
-        branchName: null,
+    const deletedSession = Session(
+      id: "stable-root",
+      pluginId: "plugin",
+      projectID: "project",
+      directory: "/repo",
+      parentID: null,
+      title: "stale",
+      time: null,
+      pullRequest: null,
+      promptDefaults: null,
+      lastUserActivityAt: null,
+      branchName: null,
+    );
+    final deletedDispatch = dispatcher.dispatchLocalEvent(
+      source: (
+        pluginId: deletedSession.pluginId,
+        event: BridgeSseSessionDeleted(info: deletedSession.toJson()),
       ),
     );
     normalizeGate.complete();
@@ -58,6 +62,42 @@ void main() {
     final output = await outputFuture;
     expect(output.single.pluginId, "plugin");
     expect(output.single.event, isA<BridgeSseSessionDeleted>());
+    await dispatcher.dispose();
+  });
+
+  test("maps a local title update to session.updated with titleChanged", () async {
+    final service = _GatedSessionEventService(normalizeGate: Future<void>.value());
+    final dispatcher = SessionEventDispatcher(sessionEventService: service);
+    final outputFuture = dispatcher.events.first;
+    const session = Session(
+      id: "stable-root",
+      pluginId: "plugin",
+      projectID: "project",
+      directory: "/repo",
+      parentID: null,
+      title: "Generated title",
+      time: null,
+      pullRequest: null,
+      promptDefaults: null,
+      lastUserActivityAt: null,
+      branchName: null,
+    );
+
+    await dispatcher.dispatchLocalEvent(
+      source: (
+        pluginId: session.pluginId,
+        event: BridgeSseSessionUpdated(info: session.toJson(), titleChanged: true),
+      ),
+    );
+
+    final output = await outputFuture;
+    expect(output.pluginId, "plugin");
+    expect(
+      output.event,
+      isA<BridgeSseSessionUpdated>()
+          .having((event) => event.titleChanged, "titleChanged", isTrue)
+          .having((event) => event.info, "info", session.toJson()),
+    );
     await dispatcher.dispose();
   });
 

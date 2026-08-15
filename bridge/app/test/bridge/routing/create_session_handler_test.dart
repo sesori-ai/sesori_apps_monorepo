@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 import "dart:io";
 
@@ -5,7 +6,6 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart" show SessionDto;
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
-import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -60,11 +60,12 @@ Future<SessionDto> _expectStoredBinding({
 void main() {
   group("CreateSessionHandler", () {
     late _OpenCodeFakeBridgePlugin plugin;
-    late FakeMetadataService metadataService;
+    late FakeSessionMetadataRepository metadataRepository;
     late _FakeWorktreeService worktreeService;
     late SessionRepository sessionRepository;
     late SessionOperationDispatcher sessionOperationDispatcher;
     late SessionMutationDispatcher sessionMutationDispatcher;
+    late SessionCreationService sessionCreationService;
     late CreateSessionHandler handler;
     late AppDatabase db;
 
@@ -72,7 +73,7 @@ void main() {
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo", "/tmp"]);
       plugin = _OpenCodeFakeBridgePlugin();
-      metadataService = FakeMetadataService();
+      metadataRepository = FakeSessionMetadataRepository();
       worktreeService = _FakeWorktreeService(database: db);
       sessionRepository = singlePluginSessionRepository(
         plugin: plugin,
@@ -86,17 +87,17 @@ void main() {
         sessionRepository: sessionRepository,
         sessionOperationDispatcher: sessionOperationDispatcher,
       );
-      handler = CreateSessionHandler(
-        sessionCreationService: SessionCreationService(
-          metadataService: metadataService,
-          worktreeService: worktreeService,
-          sessionRepository: sessionRepository,
-          sessionMutationDispatcher: sessionMutationDispatcher,
-        ),
+      sessionCreationService = SessionCreationService(
+        sessionMetadataRepository: metadataRepository,
+        worktreeService: worktreeService,
+        sessionRepository: sessionRepository,
+        sessionMutationDispatcher: sessionMutationDispatcher,
       );
+      handler = CreateSessionHandler(sessionCreationService: sessionCreationService);
     });
 
     tearDown(() async {
+      await sessionCreationService.drain();
       await sessionOperationDispatcher.dispose();
       await sessionMutationDispatcher.dispose();
       await plugin.close();
@@ -478,17 +479,18 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      final localHandler = CreateSessionHandler(
-        sessionCreationService: SessionCreationService(
-          metadataService: metadataService,
-          worktreeService: worktreeService,
-          sessionRepository: localRepository,
-          sessionMutationDispatcher: SessionMutationDispatcher(
-            sessionRepository: localRepository,
-            sessionOperationDispatcher: SessionOperationDispatcher(sessionRepository: localRepository),
-          ),
-        ),
+      final localOperationDispatcher = SessionOperationDispatcher(sessionRepository: localRepository);
+      final localMutationDispatcher = SessionMutationDispatcher(
+        sessionRepository: localRepository,
+        sessionOperationDispatcher: localOperationDispatcher,
       );
+      final localCreationService = SessionCreationService(
+        sessionMetadataRepository: metadataRepository,
+        worktreeService: worktreeService,
+        sessionRepository: localRepository,
+        sessionMutationDispatcher: localMutationDispatcher,
+      );
+      final localHandler = CreateSessionHandler(sessionCreationService: localCreationService);
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-001",
         branchName: "session-001",
@@ -518,6 +520,9 @@ void main() {
 
       final dbSession = await db.sessionDao.getSession(sessionId: "s1");
       expect(dbSession, isNull);
+      await localCreationService.drain();
+      await localOperationDispatcher.dispose();
+      await localMutationDispatcher.dispose();
       await failingPlugin.close();
     });
 
@@ -687,12 +692,8 @@ void main() {
       expect(plugin.lastCreateSessionModel, equals((providerID: "openai", modelID: "gpt-5")));
     });
 
-    test("AI metadata renames the session without naming the worktree", () async {
-      metadataService.generateResult = const bridge_metadata.SessionMetadata(
-        title: "Fix Login Bug",
-        branchName: "fix-login-bug",
-        worktreeName: "fix-login-bug",
-      );
+    test("AI metadata updates the title after the canonical response", () async {
+      metadataRepository.generateResult = "Fix Login Bug";
       plugin.createSessionResult = const PluginSession(
         id: "s1",
         projectID: "p1",
@@ -734,15 +735,16 @@ void main() {
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
-      expect(metadataService.lastGenerateMessage, equals("Fix the login bug"));
+      expect(metadataRepository.lastGenerateMessage, equals("Fix the login bug"));
       expect(worktreeService.prepareCallCount, 1);
-      expect(result.title, equals("Fix Login Bug"));
+      expect(result.title, equals("Session"));
+      await sessionCreationService.drain();
       expect((await db.sessionDao.getSession(sessionId: result.id))?.title, equals("Fix Login Bug"));
       expect(plugin.lastRenameSessionTitle, equals("Fix Login Bug"));
     });
 
     test("missing AI metadata skips the session rename", () async {
-      metadataService.generateResult = null;
+      metadataRepository.generateResult = null;
       plugin.createSessionResult = const PluginSession(
         id: "s1",
         projectID: "p1",
@@ -780,7 +782,7 @@ void main() {
     });
 
     test("no text parts — metadata generation skipped", () async {
-      metadataService.lastGenerateMessage = null;
+      metadataRepository.lastGenerateMessage = null;
       plugin.createSessionResult = const PluginSession(
         id: "s1",
         projectID: "p1",
@@ -808,11 +810,11 @@ void main() {
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
-      expect(metadataService.lastGenerateMessage, isNull);
+      expect(metadataRepository.lastGenerateMessage, isNull);
     });
 
     test("whitespace-only text parts skipped — metadata generation skipped", () async {
-      metadataService.lastGenerateMessage = null;
+      metadataRepository.lastGenerateMessage = null;
       plugin.createSessionResult = const PluginSession(
         id: "s1",
         projectID: "p1",
@@ -840,7 +842,7 @@ void main() {
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
-      expect(metadataService.lastGenerateMessage, isNull);
+      expect(metadataRepository.lastGenerateMessage, isNull);
     });
 
     test("command dispatched after session creation with new session ID", () async {
@@ -880,6 +882,89 @@ void main() {
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("Review this code"));
       expect(plugin.lastSendCommandVariant, equals("low"));
+    });
+
+    test("slash-command acceptance gates response and late metadata", () async {
+      final commandGate = Completer<void>();
+      plugin
+        ..createSessionResult = const PluginSession(
+          id: "cmd-session-gated",
+          projectID: "p1",
+          directory: "/repo",
+          parentID: null,
+          title: "Command Session",
+          time: null,
+        )
+        ..sendCommandStarted = Completer<void>()
+        ..sendCommandCompleter = commandGate;
+      metadataRepository.generateResult = "Generated command title";
+
+      var responseCompleted = false;
+      final response = handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: legacyMissingPluginId,
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Review this code")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: "review",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+      unawaited(response.then<void>((_) => responseCompleted = true));
+
+      await plugin.sendCommandStarted!.future;
+      expect(responseCompleted, isFalse);
+      expect(metadataRepository.lastGenerateMessage, isNull);
+
+      commandGate.complete();
+      final created = await response;
+      expect(created.title, "Command Session");
+      await sessionCreationService.drain();
+      expect(metadataRepository.lastGenerateMessage, "Review this code");
+    });
+
+    test("slash-command rejection fails creation without starting metadata", () async {
+      final commandGate = Completer<void>();
+      plugin
+        ..createSessionResult = const PluginSession(
+          id: "cmd-session-rejected",
+          projectID: "p1",
+          directory: "/repo",
+          parentID: null,
+          title: "Command Session",
+          time: null,
+        )
+        ..sendCommandStarted = Completer<void>()
+        ..sendCommandCompleter = commandGate;
+      metadataRepository.generateResult = "Must not be used";
+
+      final response = handler.handle(
+        makeRequest("POST", "/session/create"),
+        body: const CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: legacyMissingPluginId,
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Review this code")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: "review",
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+      await plugin.sendCommandStarted!.future;
+      commandGate.completeError(StateError("command rejected"));
+
+      await expectLater(response, throwsA(isA<StateError>()));
+      expect(metadataRepository.lastGenerateMessage, isNull);
     });
 
     test("dedicated worktree command carries worktree guardrail in command arguments", () async {
@@ -944,17 +1029,18 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      final localHandler = CreateSessionHandler(
-        sessionCreationService: SessionCreationService(
-          metadataService: metadataService,
-          worktreeService: worktreeService,
-          sessionRepository: orderedRepository,
-          sessionMutationDispatcher: SessionMutationDispatcher(
-            sessionRepository: orderedRepository,
-            sessionOperationDispatcher: SessionOperationDispatcher(sessionRepository: orderedRepository),
-          ),
-        ),
+      final orderedOperationDispatcher = SessionOperationDispatcher(sessionRepository: orderedRepository);
+      final orderedMutationDispatcher = SessionMutationDispatcher(
+        sessionRepository: orderedRepository,
+        sessionOperationDispatcher: orderedOperationDispatcher,
       );
+      final orderedCreationService = SessionCreationService(
+        sessionMetadataRepository: metadataRepository,
+        worktreeService: worktreeService,
+        sessionRepository: orderedRepository,
+        sessionMutationDispatcher: orderedMutationDispatcher,
+      );
+      final localHandler = CreateSessionHandler(sessionCreationService: orderedCreationService);
 
       await localHandler.handle(
         makeRequest("POST", "/session/create"),
@@ -984,6 +1070,9 @@ void main() {
       expect(dbSession!.lastAgent, equals("coder"));
       expect(dbSession.lastAgentModel?.providerID, equals("openai"));
       expect(dbSession.lastAgentModel?.modelID, equals("gpt-5"));
+      await orderedCreationService.drain();
+      await orderedOperationDispatcher.dispose();
+      await orderedMutationDispatcher.dispose();
       await orderedPlugin.close();
     });
 
@@ -1121,11 +1210,7 @@ void main() {
 
     test("plugin rename failure keeps the stored generated title", () async {
       final throwingPlugin = _ThrowingRenameSessionPlugin();
-      metadataService.generateResult = const bridge_metadata.SessionMetadata(
-        title: "Fix Login Bug",
-        branchName: "fix-login-bug",
-        worktreeName: "fix-login-bug",
-      );
+      metadataRepository.generateResult = "Fix Login Bug";
       throwingPlugin.createSessionResult = const PluginSession(
         id: "s1",
         projectID: "p1",
@@ -1146,14 +1231,13 @@ void main() {
         sessionRepository: throwingRepository,
         sessionOperationDispatcher: throwingOperationDispatcher,
       );
-      final localHandler = CreateSessionHandler(
-        sessionCreationService: SessionCreationService(
-          metadataService: metadataService,
-          worktreeService: worktreeService,
-          sessionRepository: throwingRepository,
-          sessionMutationDispatcher: throwingDispatcher,
-        ),
+      final localCreationService = SessionCreationService(
+        sessionMetadataRepository: metadataRepository,
+        worktreeService: worktreeService,
+        sessionRepository: throwingRepository,
+        sessionMutationDispatcher: throwingDispatcher,
       );
+      final localHandler = CreateSessionHandler(sessionCreationService: localCreationService);
 
       final result = await localHandler.handle(
         makeRequest("POST", "/session/create"),
@@ -1173,7 +1257,8 @@ void main() {
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
-      expect(result.title, "Fix Login Bug");
+      expect(result.title, "Session");
+      await localCreationService.drain();
       expect((await db.sessionDao.getSession(sessionId: result.id))?.title, "Fix Login Bug");
       await throwingOperationDispatcher.dispose();
       await throwingDispatcher.dispose();

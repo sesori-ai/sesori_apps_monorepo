@@ -5,8 +5,6 @@ import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
-import "package:sesori_bridge/src/bridge/metadata_service.dart";
-import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_command_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_message_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
@@ -31,6 +29,7 @@ import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_target.dart";
+import "package:sesori_bridge/src/repositories/session_metadata_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 
@@ -204,6 +203,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   Object? throwOnDeleteSessionError;
   Object? throwOnArchiveSessionError;
   Completer<void>? archiveSessionCompleter;
+  Completer<void>? sendCommandStarted;
   Completer<void>? sendCommandCompleter;
   int getProjectsCallCount = 0;
 
@@ -391,6 +391,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
+    if (sendCommandStarted case final started? when !started.isCompleted) started.complete();
     lastSendCommandSessionId = sessionId;
     lastSendCommand = command;
     lastSendCommandArguments = arguments;
@@ -565,15 +566,18 @@ class FakeSessionDao() {
   }
 }
 
-/// Hand-written fake [MetadataService] for testing.
-class FakeMetadataService() implements MetadataService {
-  bridge_metadata.SessionMetadata? generateResult;
+/// Hand-written fake [SessionMetadataRepository] for testing.
+class FakeSessionMetadataRepository() implements SessionMetadataRepository {
+  String? generateResult = "Generated title";
   String? lastGenerateMessage;
 
   @override
-  Future<bridge_metadata.SessionMetadata?> generate({required String firstMessage}) async {
+  void beginShutdown() {}
+
+  @override
+  Future<String> generateTitle({required String firstMessage}) async {
     lastGenerateMessage = firstMessage;
-    return generateResult;
+    return generateResult ?? (throw StateError("metadata unavailable"));
   }
 }
 
@@ -843,6 +847,9 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
 
   @override
+  Future<Session?> setGeneratedSessionTitleIfAbsent({required String sessionId, required String title}) async => null;
+
+  @override
   Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
 
   @override
@@ -901,14 +908,6 @@ class _NoopSessionRepository() implements SessionRepository {
     required int? limit,
     required VerifiedGithubLogin? verifiedGithubLogin,
   }) async => const <Session>[];
-  @override
-  Future<Session> enrichSession({
-    required Session session,
-    required VerifiedGithubLogin? verifiedGithubLogin,
-  }) async => session;
-  @override
-  Future<Session> enrichPluginSession({required String pluginId, required PluginSession pluginSession}) async =>
-      pluginSession.toSharedSession(pluginId: pluginId);
   @override
   Future<List<Session>> enrichSessions({
     required List<Session> sessions,
@@ -1057,22 +1056,33 @@ class _NoopSessionRepository() implements SessionRepository {
   }) async {}
 
   @override
-  Future<Session> renameSession({required String sessionId, required String title}) async => const Session(
+  Future<void> renameSession({required String sessionId, required String title}) async {}
+
+  @override
+  Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
+}
+
+Session _sharedSessionFromPlugin(PluginSession session, String pluginId) {
+  return Session(
     branchName: null,
-    id: "",
-    pluginId: "fake",
-    projectID: "",
-    directory: "",
-    parentID: null,
-    title: null,
-    time: null,
+    id: session.id,
+    pluginId: pluginId,
+    projectID: session.projectID,
+    directory: session.directory,
+    parentID: session.parentID,
+    title: session.title,
+    time: switch (session.time) {
+      PluginSessionTime(:final created, :final updated, :final archived) => SessionTime(
+        created: created,
+        updated: updated,
+        archived: archived,
+      ),
+      null => null,
+    },
     pullRequest: null,
     promptDefaults: null,
     lastUserActivityAt: null,
   );
-
-  @override
-  Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
 }
 
 /// Test-friendly [SessionRepository] that delegates to a [FakeBridgePlugin]
@@ -1124,6 +1134,25 @@ class FakeSessionRepository({
   Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async {
     recordedTitles.add((sessionId: sessionId, title: title));
     return true;
+  }
+
+  @override
+  Future<Session?> setGeneratedSessionTitleIfAbsent({required String sessionId, required String title}) async {
+    final stored = await _sessionDao.getSession(sessionId: sessionId);
+    if (stored == null || stored.title != null) return null;
+    return Session(
+      branchName: stored.branchName,
+      id: stored.sessionId,
+      pluginId: stored.pluginId,
+      projectID: stored.projectId,
+      directory: stored.directory,
+      parentID: stored.parentSessionId,
+      title: title,
+      time: SessionTime(created: stored.createdAt, updated: stored.updatedAt, archived: stored.archivedAt),
+      pullRequest: null,
+      promptDefaults: null,
+      lastUserActivityAt: stored.lastUserMessageAt,
+    );
   }
 
   @override
@@ -1206,7 +1235,7 @@ class FakeSessionRepository({
       start: start,
       limit: limit,
     );
-    final sessions = pluginSessions.map((s) => s.toSharedSession(pluginId: _plugin.id)).toList();
+    final sessions = pluginSessions.map((session) => _sharedSessionFromPlugin(session, _plugin.id)).toList();
     final sessionIds = sessions.map((s) => s.id).toList();
     final dbSessions = await _sessionDao.getSessionsByIds(sessionIds: sessionIds);
     final mergedSessions = sessions.map((session) {
@@ -1257,26 +1286,6 @@ class FakeSessionRepository({
       });
     }
     return result;
-  }
-
-  @override
-  Future<Session> enrichSession({
-    required Session session,
-    required VerifiedGithubLogin? verifiedGithubLogin,
-  }) async {
-    final sessions = await enrichSessions(
-      sessions: [session],
-      verifiedGithubLogin: verifiedGithubLogin,
-    );
-    return sessions.single;
-  }
-
-  @override
-  Future<Session> enrichPluginSession({required String pluginId, required PluginSession pluginSession}) async {
-    return await enrichSession(
-      session: pluginSession.toSharedSession(pluginId: pluginId),
-      verifiedGithubLogin: null,
-    );
   }
 
   @override
@@ -1337,7 +1346,7 @@ class FakeSessionRepository({
   @override
   Future<List<Session>> getChildSessions({required String sessionId}) async {
     final pluginSessions = await _plugin.getChildSessions(sessionId);
-    return pluginSessions.map((s) => s.toSharedSession(pluginId: _plugin.id)).toList();
+    return pluginSessions.map((session) => _sharedSessionFromPlugin(session, _plugin.id)).toList();
   }
 
   @override
@@ -1592,19 +1601,7 @@ class FakeSessionRepository({
   }
 
   @override
-  Future<Session> renameSession({required String sessionId, required String title}) async => const Session(
-    branchName: null,
-    id: "",
-    pluginId: "fake",
-    projectID: "",
-    directory: "",
-    parentID: null,
-    title: null,
-    time: null,
-    pullRequest: null,
-    promptDefaults: null,
-    lastUserActivityAt: null,
-  );
+  Future<void> renameSession({required String sessionId, required String title}) async {}
 
   @override
   Future<String> resolveProjectDirectory({required String projectId}) async => projectId;

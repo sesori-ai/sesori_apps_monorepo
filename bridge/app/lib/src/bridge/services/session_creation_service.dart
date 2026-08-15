@@ -1,39 +1,38 @@
+import "dart:async";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../metadata_service.dart";
-import "../models/session_metadata.dart" as bridge_metadata;
+import "../../repositories/session_metadata_repository.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
 import "session_mutation_dispatcher.dart";
 import "worktree_service.dart";
 
 class SessionCreationService({
-  required final MetadataService _metadataService,
+  required final SessionMetadataRepository _sessionMetadataRepository,
   required final WorktreeService _worktreeService,
   required final SessionRepository _sessionRepository,
   required final SessionMutationDispatcher _sessionMutationDispatcher,
 }) {
+  final Set<Future<void>> _lateTitleWork = <Future<void>>{};
+  bool _acceptingLateTitles = true;
+  Future<void>? _drainFuture;
+
   Future<Session> createSession({required CreateSessionRequest request}) async {
-    // Validate the opaque project handle before metadata generation or any
-    // plugin/git side effect. The stored path is authoritative; unknown ids
-    // must not be treated as directories.
+    // Validate the opaque project handle before any plugin/git side effect.
+    // The stored path is authoritative; unknown ids are not directories.
     final projectDirectory = await _sessionRepository.resolveProjectDirectory(projectId: request.projectId);
     final normalizedCommand = request.command?.normalize();
     final agentModel = request.model;
     final userTexts = _extractTexts(parts: request.parts);
     final firstText = userTexts.firstOrNull;
     final userVisibleText = userTexts.isEmpty ? null : userTexts.join("\n\n");
-    final pluginRoutability = _sessionRepository.ensurePluginRoutable(
+    await _sessionRepository.ensurePluginRoutable(
       pluginId: request.pluginId,
       operation: SessionOperation.createSession,
     );
-    final metadataGeneration = _generateMetadata(firstText: firstText);
-    await pluginRoutability;
-    final (metadata, worktreeResult) = await (
-      metadataGeneration,
-      _prepareWorktree(request: request),
-    ).wait;
+    final worktreeResult = await _prepareWorktree(request: request);
     final worktreeState = await _resolveWorktreeState(
       projectId: request.projectId,
       projectDirectory: projectDirectory,
@@ -79,16 +78,17 @@ class SessionCreationService({
       agent: request.agent,
       model: request.model,
     );
-    final finalSession = await _maybeRenameSession(session: created, metadata: metadata);
-    // The plugin only knows the directory the session was created in, so for
-    // a moved project it echoes the live path (or its own internal id) as the
-    // session's projectID. Re-key the response to the stable identifier the
-    // phone and the bridge key on — mirroring project-scoped session fetches.
-    return await _sessionRepository.enrichSession(
-      session: finalSession.copyWith(projectID: request.projectId),
-      verifiedGithubLogin: null,
-    );
+    _startLateTitle(session: created, firstText: firstText);
+    return created;
   }
+
+  void beginShutdown() {
+    if (!_acceptingLateTitles) return;
+    _acceptingLateTitles = false;
+    _sessionMetadataRepository.beginShutdown();
+  }
+
+  Future<void> drain() => _drainFuture ??= _drain();
 
   List<String> _extractTexts({required List<PromptPart> parts}) {
     return parts
@@ -96,13 +96,6 @@ class SessionCreationService({
         .map((part) => part.text)
         .where((text) => text.trim().isNotEmpty)
         .toList(growable: false);
-  }
-
-  Future<bridge_metadata.SessionMetadata?> _generateMetadata({required String? firstText}) async {
-    if (firstText == null) {
-      return null;
-    }
-    return await _metadataService.generate(firstMessage: firstText);
   }
 
   Future<WorktreeResult?> _prepareWorktree({
@@ -148,20 +141,6 @@ class SessionCreationService({
       return const [];
     }
     return parts;
-  }
-
-  Future<Session> _maybeRenameSession({
-    required Session session,
-    required bridge_metadata.SessionMetadata? metadata,
-  }) async {
-    if (metadata?.title case final title?) {
-      try {
-        return await _sessionMutationDispatcher.renameSession(sessionId: session.id, title: title);
-      } catch (e) {
-        Log.w("Failed to rename session ${session.id}: $e");
-      }
-    }
-    return session;
   }
 
   Future<void> _maybeSendCommand({
@@ -255,6 +234,44 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
 
 ---
 ''';
+  }
+
+  void _startLateTitle({required Session session, required String? firstText}) {
+    if (!_acceptingLateTitles || firstText == null) return;
+    late final Future<void> work;
+    work = _generateAndApplyTitle(session: session, firstText: firstText).whenComplete(() {
+      _lateTitleWork.remove(work);
+    });
+    _lateTitleWork.add(work);
+  }
+
+  Future<void> _generateAndApplyTitle({required Session session, required String firstText}) async {
+    try {
+      final title = await _sessionMetadataRepository.generateTitle(
+        firstMessage: firstText,
+      );
+      await _sessionMutationDispatcher.applyGeneratedTitle(sessionId: session.id, title: title);
+    } on SessionMetadataRequestAbortedException catch (error) {
+      if (!_acceptingLateTitles) return;
+      Log.w(
+        "Generated-title request was aborted for session ${session.id}",
+        error.innerError,
+        error.innerStackTrace,
+      );
+    } on SessionMetadataInvalidResponseException catch (error) {
+      Log.w(
+        "Failed to generate title for session ${session.id}",
+        error.innerError,
+        error.innerStackTrace,
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to generate title for session ${session.id}", error, stackTrace);
+    }
+  }
+
+  Future<void> _drain() async {
+    beginShutdown();
+    await Future.wait(_lateTitleWork.toList(growable: false));
   }
 }
 
