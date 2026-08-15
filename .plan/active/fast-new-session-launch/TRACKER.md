@@ -3,13 +3,12 @@
 ## Current State
 
 - **Plan slug:** `fast-new-session-launch`
-- **Implementation base:** Step 3 head `0f3efcdd2`
+- **Implementation base:** `origin/main` at `7900c2d5e` after Step 3 merge
 - **Current branch:** `fast-new-session-launch-step-4`
-- **Series state:** Steps 1-2/6 merged; Step 3/6 is passing and mergeable in
-  #909; Step 4/6 is open in #913 and monitored
-- **Current step:** monitor the canonical-response and immediate-launch PRs
-- **Next action:** merge Step 3, retarget Step 4 to `main`, then advance after
-  Step 4 review and CI complete
+- **Series state:** Steps 1-3/6 merged; Step 4/6 is open in #913 and monitored
+- **Current step:** finalize the immediate-launch PR after its Step 3 handoff
+- **Next action:** merge Step 4, then implement the approved asynchronous
+  generated-branch rename follow-up before Step 5
 
 ## Locked Decisions
 
@@ -79,8 +78,8 @@
 |---|---|---|---|
 | [x] | 1/6 | `🌱 [fast-new-session-launch] docs: plan faster new-session launch [step 1/6]` | Merged in #894 |
 | [x] | 2/6 | `🌿 [fast-new-session-launch] feat(bridge): use local workspace names [step 2/6]` | Merged in #908 |
-| [ ] | 3/6 | `🚧 [fast-new-session-launch] feat(bridge): return sessions before generated titles [step 3/6]` | #909 passing and mergeable |
-| [ ] | 4/6 | `⚙️ [fast-new-session-launch] feat(client): open launching sessions immediately [step 4/6]` | Open in #913; stacked on #909 |
+| [x] | 3/6 | `🚧 [fast-new-session-launch] feat(bridge): return sessions before generated titles [step 3/6]` | Merged in #909 |
+| [ ] | 4/6 | `⚙️ [fast-new-session-launch] feat(client): open launching sessions immediately [step 4/6]` | Open in #913; based on `main` |
 | [ ] | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | Blocked on Step 4 merge |
 | [ ] | 6/6 | `🌿 [fast-new-session-launch] test: verify faster new-session launch [step 6/6]` | Blocked on Step 5 merge |
 
@@ -222,7 +221,10 @@
   153-line overlay; no unrelated production feature was added. Splitting would
   fragment one submission/serialization lifecycle across the fixed six-step
   series, so the cohesive implementation remains one PR.
-- Step 4 PR: #913, stacked on #909 and monitored.
+- Step 4 PR: #913, based on `main` and monitored.
+- Step 4 post-Step-3-merge handoff passed 177 focused app routing/launch/detail
+  tests, 65 bridge relay/orchestrator tests, and strict analysis in `client/app`
+  and `bridge/app`.
 
 ### Manual matrix
 
