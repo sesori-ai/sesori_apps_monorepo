@@ -26,8 +26,8 @@ void main() {
     addTearDown(fixture.dispose);
     final service = fixture.service();
 
-    final sessionId = await service.prepareNewSession(directory: "/project");
-    final secondSessionId = await service.prepareNewSession(directory: "/project");
+    final sessionId = await service.prepareNewSession(directory: "/project", parentSessionId: null);
+    final secondSessionId = await service.prepareNewSession(directory: "/project", parentSessionId: null);
 
     expect(PiNewSession(sessionId: sessionId).sessionId, sessionId);
     expect(sessionId, matches(RegExp(r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")));
@@ -41,7 +41,7 @@ void main() {
     final fixture = _Fixture(processes: const [], storageOverride: storage);
     addTearDown(fixture.dispose);
     final service = fixture.service();
-    final sessionId = await service.prepareNewSession(directory: "/project");
+    final sessionId = await service.prepareNewSession(directory: "/project", parentSessionId: null);
 
     await service.forgetSession(sessionId: sessionId);
 
@@ -98,7 +98,7 @@ void main() {
     final process = FakePiProcess();
     final storage = _Storage(
       initialResolved: _resolved(),
-      initialPending: const PiPendingNewSession(id: "session", cwd: "/pending"),
+      initialPending: const PiPendingNewSession(id: "session", cwd: "/pending", parentSessionPath: null),
     );
     final fixture = _Fixture(processes: [process], storageOverride: storage);
     addTearDown(fixture.dispose);
@@ -138,7 +138,7 @@ void main() {
     final created = FakePiProcess();
     final storage = _Storage(
       initialResolved: _resolved(),
-      initialPending: const PiPendingNewSession(id: "session", cwd: "/pending"),
+      initialPending: const PiPendingNewSession(id: "session", cwd: "/pending", parentSessionPath: null),
     );
     final fixture = _Fixture(processes: [resumed, created], storageOverride: storage);
     addTearDown(fixture.dispose);
@@ -151,7 +151,7 @@ void main() {
 
     storage
       ..resolved = null
-      ..pending = const PiPendingNewSession(id: "session", cwd: "/pending");
+      ..pending = const PiPendingNewSession(id: "session", cwd: "/pending", parentSessionPath: null);
     final pending = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/pending"});
     await _answerEntries(created);
     await pending;
@@ -164,7 +164,7 @@ void main() {
     final fixture = _Fixture(processes: [process], storageOverride: storage);
     addTearDown(fixture.dispose);
     final service = fixture.service();
-    final sessionId = await service.prepareNewSession(directory: "/project");
+    final sessionId = await service.prepareNewSession(directory: "/project", parentSessionId: null);
 
     await service.sendPrompt(
       sessionId: sessionId,
@@ -1061,7 +1061,7 @@ void main() {
     final fixture = _Fixture(processes: [process], storageOverride: storage);
     final clock = _ManualClock();
     final service = fixture.service(clock: clock);
-    final sessionId = await service.prepareNewSession(directory: "/project");
+    final sessionId = await service.prepareNewSession(directory: "/project", parentSessionId: null);
     await service.sendPrompt(
       sessionId: sessionId,
       directory: "/project",
@@ -1226,6 +1226,7 @@ final class _Fixture({
   late final PiHistoryMapper historyMapper = PiHistoryMapper(pluginId: "pi");
   final List<PiSessionService> _services = [];
   final List<PiExtensionUiService> extensions = [];
+  late final PiSessionCatalogRepository catalogRepository = PiSessionCatalogRepository(storageApi: storage);
   late final PiSessionProcessRepository repository = PiSessionProcessRepository(
     storageApi: storage,
     historyStorageApi: _HistoryStorage(storageApi: storage),
@@ -1244,13 +1245,14 @@ final class _Fixture({
   PiSessionService service({ServerClock clock = const ServerClock()}) {
     late final PiExtensionUiService extension;
     extension = PiExtensionUiService(
-      catalogRepository: PiSessionCatalogRepository(storageApi: storage),
+      catalogRepository: catalogRepository,
       processRepository: repository,
       tracker: PiExtensionUiTracker(),
       editorTimeout: const Duration(minutes: 1),
     );
     final service = PiSessionService(
       processRepository: repository,
+      catalogRepository: catalogRepository,
       eventDispatcher: PiEventDispatcher(
         historyMapper: historyMapper,
         identityTracker: identities,
@@ -1307,8 +1309,12 @@ final class _Storage({
   }
 
   @override
-  Future<void> writePendingNewSession({required String sessionId, required String cwd}) async {
-    pending = PiPendingNewSession(id: sessionId, cwd: cwd);
+  Future<void> writePendingNewSession({
+    required String sessionId,
+    required String cwd,
+    required String? parentSessionPath,
+  }) async {
+    pending = PiPendingNewSession(id: sessionId, cwd: cwd, parentSessionPath: parentSessionPath);
   }
 
   @override

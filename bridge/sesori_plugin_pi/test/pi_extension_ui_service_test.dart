@@ -557,7 +557,11 @@ final class _FakeStorageApi({
   }) async => null;
 
   @override
-  Future<void> writePendingNewSession({required String sessionId, required String cwd}) async {}
+  Future<void> writePendingNewSession({
+    required String sessionId,
+    required String cwd,
+    required String? parentSessionPath,
+  }) async {}
 
   @override
   Future<PiResolvedSession?> resolveSession({required String sessionId, required Set<String> knownDirectories}) async {

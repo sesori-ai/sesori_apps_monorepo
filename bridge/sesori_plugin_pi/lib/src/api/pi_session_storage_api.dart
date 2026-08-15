@@ -29,6 +29,7 @@ final class const PiResolvedSession({
 final class const PiPendingNewSession({
   required final String id,
   required final String cwd,
+  required final String? parentSessionPath,
 });
 
 final class const PiInvalidPendingNewSessionException({
@@ -97,17 +98,27 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
     return result.path;
   }
 
-  Future<void> writePendingNewSession({required String sessionId, required String cwd}) async {
+  Future<void> writePendingNewSession({
+    required String sessionId,
+    required String cwd,
+    required String? parentSessionPath,
+  }) async {
     if (!isValidPiSessionId(sessionId: sessionId)) {
       throw ArgumentError.value(sessionId, "sessionId", "must be a valid Pi session ID");
     }
     if (cwd.contains("\n") || cwd.contains("\r")) {
       throw ArgumentError.value(cwd, "cwd", "must not contain CR or LF");
     }
+    if ((parentSessionPath?.contains("\n") ?? false) || (parentSessionPath?.contains("\r") ?? false)) {
+      throw ArgumentError.value(parentSessionPath, "parentSessionPath", "must not contain CR or LF");
+    }
     final normalizedCwd = _absolute(cwd);
+    final normalizedParent = parentSessionPath == null ? null : _absolute(parentSessionPath);
     final marker = _pendingMarkerPath(environment: _environment, sessionId: sessionId, cwd: normalizedCwd);
     _logDiagnostics(marker.diagnostics);
-    await Isolate.run(() => _writePendingMarker(path: marker.path, cwd: normalizedCwd));
+    await Isolate.run(
+      () => _writePendingMarker(path: marker.path, cwd: normalizedCwd, parentSessionPath: normalizedParent),
+    );
   }
 
   Future<PiPendingNewSession?> readPendingNewSession({
@@ -124,8 +135,8 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
     switch (result.marker) {
       case _PiPendingMarkerAbsent():
         return null;
-      case _PiPendingMarkerFound(:final cwd):
-        return PiPendingNewSession(id: sessionId, cwd: cwd);
+      case _PiPendingMarkerFound(:final cwd, :final parentSessionPath):
+        return PiPendingNewSession(id: sessionId, cwd: cwd, parentSessionPath: parentSessionPath);
       case _PiPendingMarkerInvalid(:final path, :final error, :final stackTrace):
         Log.w("[pi] invalid pending session marker session_id=$sessionId path=$path", error, stackTrace);
         Error.throwWithStackTrace(
@@ -143,6 +154,21 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
       () => _clearPendingMarkers(environment: environment, sessionId: sessionId, knownDirectories: directories),
     );
     diagnostics.forEach(_logDiagnostics);
+  }
+
+  Future<void> deleteSession({required String sessionId, required String? directory}) async {
+    if (!isValidPiSessionId(sessionId: sessionId)) return;
+    final knownDirectories = directory == null || directory.trim().isEmpty ? const <String>{} : {directory};
+    final resolved = await resolveSession(sessionId: sessionId, knownDirectories: knownDirectories);
+    if (resolved != null) {
+      final file = File(resolved.path);
+      try {
+        file.deleteSync();
+      } on FileSystemException {
+        if (file.existsSync()) rethrow;
+      }
+    }
+    await clearPendingNewSession(sessionId: sessionId, knownDirectories: knownDirectories);
   }
 
   Future<PiSessionFileHistoryDto> _readSessionHistory({required String path}) async {
@@ -258,12 +284,12 @@ class PiSessionHistoryStorageApi({required final PiSessionStorageApi storageApi}
   return (path: p.join(root, ".sesori-pending", "$sessionId.pending"), diagnostics: result.diagnostics);
 }
 
-void _writePendingMarker({required String path, required String cwd}) {
+void _writePendingMarker({required String path, required String cwd, required String? parentSessionPath}) {
   final directory = Directory(p.dirname(path));
   directory.createSync(recursive: true);
   final temporary = File("$path.tmp");
   try {
-    temporary.writeAsStringSync("$cwd\n", flush: true);
+    temporary.writeAsStringSync("$cwd\n${parentSessionPath == null ? "" : "$parentSessionPath\n"}", flush: true);
     temporary.renameSync(path);
   } finally {
     if (temporary.existsSync()) temporary.deleteSync();
@@ -275,7 +301,7 @@ void _writePendingMarker({required String path, required String cwd}) {
   required String sessionId,
   required Set<String> knownDirectories,
 }) {
-  String? found;
+  ({String cwd, String? parentSessionPath})? found;
   final markers = _pendingMarkerPaths(
     environment: environment,
     sessionId: sessionId,
@@ -293,12 +319,18 @@ void _writePendingMarker({required String path, required String cwd}) {
         bytes.closeSync();
       }
       if (content.length > 16 * 1024) throw const FormatException("Pending marker exceeds byte limit");
-      final text = utf8.decode(content, allowMalformed: false);
-      final cwd = text.endsWith("\n") ? text.substring(0, text.length - 1) : text;
-      if (cwd.isEmpty || cwd.contains("\n") || cwd.contains("\r") || !p.isAbsolute(cwd)) {
-        throw const FormatException("Pending marker cwd is invalid");
+      final lines = utf8.decode(content, allowMalformed: false).split("\n");
+      if (lines.isNotEmpty && lines.last.isEmpty) lines.removeLast();
+      if (lines.isEmpty || lines.length > 2 || lines.any((line) => line.contains("\r"))) {
+        throw const FormatException("Pending marker is invalid");
       }
-      final normalized = _absolute(cwd);
+      final cwd = lines.first;
+      if (cwd.isEmpty || !p.isAbsolute(cwd)) throw const FormatException("Pending marker cwd is invalid");
+      final parent = lines.length == 2 ? lines.last : null;
+      if (parent != null && (parent.isEmpty || !p.isAbsolute(parent))) {
+        throw const FormatException("Pending marker parent is invalid");
+      }
+      final normalized = (cwd: _absolute(cwd), parentSessionPath: parent == null ? null : _absolute(parent));
       if (found != null && found != normalized) throw const FormatException("Conflicting pending markers");
       found = normalized;
     } on Object catch (error, stackTrace) {
@@ -309,7 +341,9 @@ void _writePendingMarker({required String path, required String cwd}) {
     }
   }
   return (
-    marker: found == null ? const _PiPendingMarkerAbsent() : _PiPendingMarkerFound(cwd: found),
+    marker: found == null
+        ? const _PiPendingMarkerAbsent()
+        : _PiPendingMarkerFound(cwd: found.cwd, parentSessionPath: found.parentSessionPath),
     diagnostics: markers.diagnostics,
   );
 }
@@ -1009,7 +1043,8 @@ sealed class const _PiPendingMarkerResult();
 
 final class const _PiPendingMarkerAbsent() extends _PiPendingMarkerResult;
 
-final class const _PiPendingMarkerFound({required final String cwd}) extends _PiPendingMarkerResult;
+final class const _PiPendingMarkerFound({required final String cwd, required final String? parentSessionPath})
+    extends _PiPendingMarkerResult;
 
 final class const _PiPendingMarkerInvalid({
   required final String path,

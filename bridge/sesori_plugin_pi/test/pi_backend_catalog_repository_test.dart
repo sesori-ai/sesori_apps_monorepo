@@ -3,6 +3,7 @@ import "dart:async";
 import "package:path/path.dart" as path;
 import "package:pi_plugin/pi_plugin.dart";
 import "package:pi_plugin/pi_testing.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -186,6 +187,17 @@ Map<String, Object?> _model({
   "input": const ["text", "image"],
 };
 
+final class const _CommandExecutor() implements CommandExecutor {
+  @override
+  Future<CommandResult> run(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    Duration? timeout,
+  }) async => const CommandResult(exitCode: 0, stdout: "", stderr: "");
+}
+
 class _ProbeHarness({
   required final Map<String, Object?>? stateModel,
   required final List<Map<String, Object?>> models,
@@ -219,6 +231,8 @@ class _ProbeHarness({
             unawaited(_answer(process));
             return process;
           },
+          commandExecutor: const _CommandExecutor(),
+          healthTimeout: const Duration(seconds: 1),
         ).probe(
           projectId: path.normalize(path.absolute("project/./nested/..")),
           totalTimeout: timeout,

@@ -7,6 +7,7 @@ import "../api/models/pi_event.dart";
 import "../api/models/pi_extension_ui_request.dart";
 import "../api/models/pi_rpc_frame.dart";
 import "../api/pi_rpc_client.dart";
+import "../repositories/pi_session_catalog_repository.dart";
 import "../repositories/pi_session_process_repository.dart";
 import "pi_event_dispatcher.dart";
 import "pi_extension_ui_service.dart";
@@ -47,6 +48,7 @@ final class _PiTurn({
 
 final class PiSessionService({
   required final PiSessionProcessRepository processRepository,
+  required final PiSessionCatalogRepository catalogRepository,
   required final PiEventDispatcher eventDispatcher,
   required final PiExtensionUiService extensionUiService,
   required final ServerClock clock,
@@ -58,6 +60,7 @@ final class PiSessionService({
   }
 
   final PiSessionProcessRepository _processes = processRepository;
+  final PiSessionCatalogRepository _catalog = catalogRepository;
   final PiEventDispatcher _dispatcher = eventDispatcher;
   final PiExtensionUiService _extensionUi = extensionUiService;
   final ServerClock _clock = clock;
@@ -76,10 +79,17 @@ final class PiSessionService({
   Stream<PluginWorkState> get workState => _workState.stream;
   PluginWorkState get currentWorkState => _workState.current;
 
-  Future<String> prepareNewSession({required String directory}) async {
+  String? directoryForSession({required String sessionId}) =>
+      _sessions[sessionId]?.directory ?? _pendingNewDirectories[sessionId];
+
+  Future<String> prepareNewSession({required String directory, required String? parentSessionId}) async {
     if (_disposed) throw const PiRpcDisposedException();
     final sessionId = _processes.generateSessionId();
-    await _processes.markPendingNew(sessionId: sessionId, directory: directory);
+    await _processes.markPendingNew(
+      sessionId: sessionId,
+      directory: directory,
+      parentSessionId: parentSessionId,
+    );
     _pendingNewDirectories[sessionId] = directory;
     return sessionId;
   }
@@ -90,6 +100,60 @@ final class PiSessionService({
           ? const PluginSessionStatus.busy()
           : const PluginSessionStatus.idle(),
   });
+
+  Future<void> deleteSession({required PluginSession root}) async {
+    final sessions = await _catalog.listAllSessions(knownDirectories: {root.directory});
+    final descendants = _descendantIds(rootId: root.id, sessions: sessions);
+    for (final affected in [root.id, ...descendants]) {
+      await forgetSession(sessionId: affected);
+      _catalog.forgetSession(sessionId: affected);
+    }
+    await _processes.deletePersistedSession(sessionId: root.id, directory: root.directory);
+  }
+
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() {
+    final statuses = sessionStatuses;
+    final sessions = _catalog.sessionSnapshot;
+    final activeIds = <String>{};
+    for (final entry in statuses.entries) {
+      final running = entry.value is PluginSessionStatusBusy || entry.value is PluginSessionStatusRetry;
+      final awaitingInput = _extensionUi.getPendingQuestions(sessionId: entry.key).isNotEmpty;
+      if (running || awaitingInput) activeIds.add(entry.key);
+    }
+    final rootIds = <String>{};
+    for (final sessionId in activeIds) {
+      var rootId = sessionId;
+      final visited = {sessionId};
+      while (true) {
+        final parent = sessions[rootId]?.parentID;
+        if (parent == null || !visited.add(parent)) break;
+        rootId = parent;
+      }
+      rootIds.add(rootId);
+    }
+    final byProject = <String, List<PluginActiveSession>>{};
+    for (final rootId in rootIds) {
+      final status = statuses[rootId];
+      final directory = sessions[rootId]?.directory ?? directoryForSession(sessionId: rootId);
+      if (directory == null) continue;
+      final descendants = _descendantIds(rootId: rootId, sessions: sessions.values.toList());
+      (byProject[directory] ??= []).add(
+        PluginActiveSession(
+          id: rootId,
+          mainAgentRunning: status is PluginSessionStatusBusy || status is PluginSessionStatusRetry,
+          awaitingInput: _extensionUi.getPendingQuestions(sessionId: rootId).isNotEmpty,
+          isRetrying: status is PluginSessionStatusRetry,
+          childSessionIds: [
+            for (final id in descendants)
+              if (activeIds.contains(id)) id,
+          ],
+        ),
+      );
+    }
+    return [
+      for (final entry in byProject.entries) PluginProjectActivitySummary(id: entry.key, activeSessions: entry.value),
+    ];
+  }
 
   Future<void> sendPrompt({
     required String sessionId,
@@ -437,6 +501,14 @@ final class PiSessionService({
     if (state != null) {
       state.generation++;
       state.idleGeneration++;
+      for (final turn in [?state.active, ...state.queue]) {
+        final acceptance = turn.commandAcceptance;
+        if (acceptance != null && !acceptance.isCompleted) {
+          acceptance.completeError(PiTurnCancelledException(sessionId: sessionId), StackTrace.current);
+        }
+      }
+      state.active = null;
+      state.queue.clear();
     }
     _extensionUi.cancelForOwner(sessionId: sessionId, processGeneration: null);
     final pendingDirectory = _pendingNewDirectories.remove(sessionId);
@@ -446,6 +518,22 @@ final class PiSessionService({
     );
     _dispatcher.forgetSession(sessionId: sessionId);
     _syncWorkState();
+  }
+
+  Set<String> _descendantIds({required String rootId, required List<PluginSession> sessions}) {
+    final children = <String, List<String>>{};
+    for (final session in sessions) {
+      final parent = session.parentID;
+      if (parent != null) (children[parent] ??= []).add(session.id);
+    }
+    final descendants = <String>{};
+    final pending = [...?children[rootId]];
+    while (pending.isNotEmpty) {
+      final id = pending.removeLast();
+      if (!descendants.add(id)) continue;
+      pending.addAll(children[id] ?? const []);
+    }
+    return descendants;
   }
 
   void _scheduleIdleReap({required String sessionId, required _PiSessionTurnState state}) {

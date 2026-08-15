@@ -113,6 +113,9 @@ final class PiSessionProcessRepository({
   Stream<PiSessionProcessExit> get exits => _exits.stream;
   Set<String> get residentSessionIds => Set.unmodifiable(_residents.keys);
 
+  Future<void> deletePersistedSession({required String sessionId, required String? directory}) =>
+      _storageApi.deleteSession(sessionId: sessionId, directory: directory);
+
   String generateSessionId() {
     final random = Random.secure();
     final bytes = List<int>.generate(16, (_) => random.nextInt(256));
@@ -123,8 +126,30 @@ final class PiSessionProcessRepository({
         "${hex.substring(16, 20)}-${hex.substring(20)}";
   }
 
-  Future<void> markPendingNew({required String sessionId, required String directory}) =>
-      _storageApi.writePendingNewSession(sessionId: sessionId, cwd: directory);
+  Future<void> markPendingNew({
+    required String sessionId,
+    required String directory,
+    required String? parentSessionId,
+  }) async {
+    final parentPath = parentSessionId == null
+        ? null
+        : await _storageApi.resolveSessionPath(
+            sessionId: parentSessionId,
+            knownDirectories: {directory},
+          );
+    if (parentSessionId != null && parentPath == null) {
+      throw PluginOperationException.notFound(
+        "create Pi session",
+        message: "Parent Pi session was not found.",
+        cause: PiSessionHistoryNotFoundException(sessionId: parentSessionId),
+      );
+    }
+    await _storageApi.writePendingNewSession(
+      sessionId: sessionId,
+      cwd: directory,
+      parentSessionPath: parentPath,
+    );
+  }
 
   Future<bool> clearPendingWhenPersisted({
     required String sessionId,
@@ -206,7 +231,11 @@ final class PiSessionProcessRepository({
         Log.w("[pi] failed to clear stale pending marker for resolved session id=$sessionId; continuing", error, stack);
       }
     }
-    final launch = resolved == null ? PiNewSession(sessionId: sessionId) : PiResumedSession(sessionPath: resolved.path);
+    final launch = resolved == null
+        ? pending!.parentSessionPath == null
+              ? PiNewSession(sessionId: sessionId)
+              : PiForkedSession(sessionId: sessionId, parentSessionPath: pending.parentSessionPath!)
+        : PiResumedSession(sessionPath: resolved.path);
     final cwd = resolved?.metadata.cwd ?? pending!.cwd;
     final client = PiRpcClient(
       launchSpec: PiLaunchSpec(

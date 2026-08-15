@@ -290,7 +290,12 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
       // The backend still enumerates the deleted session (no session/delete):
       // its questions must not surface — and must not be queried at all.
-      await db.sessionDao.insertSessionTombstone(backendSessionId: "gone", pluginId: "codex", deletedAt: 1);
+      await db.sessionDao.insertSessionTombstone(
+        backendSessionId: "gone",
+        pluginId: "codex",
+        directory: null,
+        deletedAt: 1,
+      );
 
       final plugin = _FakeDerivedQuestionPlugin(
         launchDirectory: parent,
@@ -465,6 +470,7 @@ void main() {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "gone",
         pluginId: "codex",
+        directory: null,
         deletedAt: 1,
       );
       final plugin = _FakeDerivedQuestionPlugin(
@@ -520,6 +526,7 @@ void main() {
         await db.sessionDao.insertSessionTombstone(
           backendSessionId: sessionId,
           pluginId: "codex",
+          directory: null,
           deletedAt: 1,
         );
       }
@@ -566,6 +573,7 @@ void main() {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "gone-root",
         pluginId: "codex",
+        directory: null,
         deletedAt: 1,
       );
       final plugin = _FakeDerivedQuestionPlugin(
@@ -603,6 +611,7 @@ void main() {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "gone-child",
         pluginId: "codex",
+        directory: null,
         deletedAt: 1,
       );
       final plugin = _FakeDerivedQuestionPlugin(
@@ -642,6 +651,7 @@ void main() {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "gone-root",
         pluginId: "codex",
+        directory: null,
         deletedAt: 1,
       );
       final plugin = _FakeDerivedQuestionPlugin(

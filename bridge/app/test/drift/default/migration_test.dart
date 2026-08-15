@@ -6,6 +6,7 @@ import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
+
 import 'generated/schema.dart';
 
 import 'generated/schema_v1.dart' as v1;
@@ -1542,6 +1543,32 @@ void main() {
       expect(session.catalogTitle, 'Catalog title');
       expect(await db.select(db.pullRequestsTable).get(), isEmpty);
       expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
+    },
+  );
+
+  test(
+    'migration v13 → v14 preserves legacy tombstones with unknown directories',
+    () async {
+      final schema = await verifier.schemaAt(13);
+      schema.rawDatabase.execute(
+        'INSERT INTO deleted_sessions_table '
+        '(owner_identity, backend_session_id, plugin_id, deleted_at) '
+        'VALUES (?, ?, ?, ?)',
+        ['local', 'legacy-session', 'cursor', 123],
+      );
+
+      final db = AppDatabase(schema.newConnection());
+      addTearDown(db.close);
+      await verifier.migrateAndValidate(
+        db,
+        14,
+        options: const ValidationOptions(validateDropped: true),
+      );
+
+      final tombstone = (await db.select(db.deletedSessionsTable).get()).single;
+      expect(tombstone.backendSessionId, 'legacy-session');
+      expect(tombstone.pluginId, 'cursor');
+      expect(tombstone.directory, isNull);
     },
   );
 

@@ -80,6 +80,7 @@ void main() {
       await database.sessionDao.insertSessionTombstone(
         backendSessionId: "deleted",
         pluginId: "native",
+        directory: null,
         deletedAt: 30,
       );
 
@@ -615,6 +616,7 @@ void main() {
       await database.sessionDao.insertSessionTombstone(
         backendSessionId: "deleted-root",
         pluginId: "derived",
+        directory: null,
         deletedAt: 30,
       );
       final plugin = _DerivedImportPlugin(

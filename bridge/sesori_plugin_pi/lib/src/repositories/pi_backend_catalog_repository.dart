@@ -1,6 +1,6 @@
 import "dart:async";
 
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show CommandExecutor, normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/models/pi_catalog_dto.dart";
@@ -30,7 +30,18 @@ class PiBackendCatalogRepository({
   required final String _binaryPath,
   required final Map<String, String> _environment,
   required final PiProcessFactory _processFactory,
+  required final CommandExecutor _commandExecutor,
+  required final Duration _healthTimeout,
 }) {
+  Future<bool> healthCheck() async {
+    try {
+      return (await _commandExecutor.run(_binaryPath, const ["--version"], timeout: _healthTimeout)).exitCode == 0;
+    } on Object catch (error, stack) {
+      Log.w("[pi] health check failed", error, stack);
+      return false;
+    }
+  }
+
   Future<PiCatalogProbeSnapshot> probe({
     required String projectId,
     required Duration totalTimeout,

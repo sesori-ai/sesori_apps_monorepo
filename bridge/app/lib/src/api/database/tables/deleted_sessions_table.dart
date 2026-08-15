@@ -28,6 +28,13 @@ class DeletedSessionsTable() extends Table {
   /// tombstones from ever touching another plugin's sessions.
   TextColumn get pluginId => text()();
 
+  /// Authoritative session directory captured before the session row is removed.
+  ///
+  /// COMPATIBILITY 2026-08-15 (v1.7.1): Public tombstones predate this column
+  /// and have no valid directory backfill. Remove nullability once every
+  /// supported bridge database must have created tombstones after schema v14.
+  TextColumn get directory => text().nullable()();
+
   IntColumn get deletedAt => integer()();
 
   @override
@@ -43,6 +50,7 @@ sealed class const DeletedSessionDto._() with _$DeletedSessionDto, $DeletedSessi
     required String ownerIdentity,
     required String backendSessionId,
     required String pluginId,
+    required String? directory,
     required int deletedAt,
   }) = _DeletedSessionDto;
 }

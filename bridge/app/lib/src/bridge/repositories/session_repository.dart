@@ -63,6 +63,11 @@ typedef SessionBindingsCommitted = ({
 
 typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
 
+typedef TombstonedSessionCleanup = ({
+  String backendSessionId,
+  String? directory,
+});
+
 /// The deleted root as clients see it, plus every session id removed with it.
 typedef DeletedSessionSubtree = ({Session session, List<String> sessionIds});
 
@@ -421,16 +426,23 @@ class SessionRepository({
     return List<String>.unmodifiable(pluginIds);
   }
 
-  Future<Set<String>> getTombstonedBackendSessionIdsForCleanup({required String pluginId}) async {
+  Future<Set<TombstonedSessionCleanup>> getTombstonedSessionsForCleanup({required String pluginId}) async {
     final tombstones = await _runtime.useIfActive(
       pluginId: pluginId,
       operation: SessionOperation.cleanupSession,
-      body: (plugin, _) {
+      body: (plugin, _) async {
         _requirePersistedSessionCleanupApi(
           pluginId: pluginId,
           plugin: plugin,
         );
-        return _sessionDao.getTombstonedSessionIds(pluginId: pluginId);
+        final rows = await _sessionDao.getTombstonedSessionsForCleanup(pluginId: pluginId);
+        return {
+          for (final row in rows)
+            (
+              backendSessionId: row.backendSessionId,
+              directory: row.directory,
+            ),
+        };
       },
     );
     if (tombstones == null) {
@@ -442,6 +454,7 @@ class SessionRepository({
   Future<void> deletePersistedSession({
     required String pluginId,
     required String backendSessionId,
+    required String? directory,
   }) {
     return _runtime.use(
       pluginId: pluginId,
@@ -449,7 +462,10 @@ class SessionRepository({
       body: (plugin) => _requirePersistedSessionCleanupApi(
         pluginId: pluginId,
         plugin: plugin,
-      ).deletePersistedSession(backendSessionId: backendSessionId),
+      ).deletePersistedSession(
+        backendSessionId: backendSessionId,
+        directory: directory,
+      ),
     );
   }
 
@@ -511,6 +527,7 @@ class SessionRepository({
         await _sessionDao.insertSessionTombstone(
           backendSessionId: binding.backendSessionId,
           pluginId: binding.pluginId,
+          directory: binding.directory,
           deletedAt: deletedAt,
         );
       }

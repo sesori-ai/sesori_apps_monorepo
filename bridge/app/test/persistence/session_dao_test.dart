@@ -304,17 +304,25 @@ void main() {
       await dao.insertSessionTombstone(
         backendSessionId: "shared-id",
         pluginId: "acp",
+        directory: "/repo/acp",
         deletedAt: 1,
       );
       await dao.insertSessionTombstone(
         backendSessionId: "shared-id",
         pluginId: "codex",
+        directory: null,
         deletedAt: 2,
       );
 
       expect(await dao.isSessionTombstoned(backendSessionId: "shared-id", pluginId: "acp"), isTrue);
       expect(await dao.isSessionTombstoned(backendSessionId: "shared-id", pluginId: "codex"), isTrue);
       expect(await dao.isSessionTombstoned(backendSessionId: "shared-id", pluginId: "other"), isFalse);
+      expect(await dao.getTombstonedSessionsForCleanup(pluginId: "acp"), {
+        (backendSessionId: "shared-id", directory: "/repo/acp"),
+      });
+      expect(await dao.getTombstonedSessionsForCleanup(pluginId: "codex"), {
+        (backendSessionId: "shared-id", directory: null),
+      });
     });
 
     test("tombstone reads are scoped to the current owner", () async {
@@ -325,6 +333,7 @@ void main() {
               ownerIdentity: const Value("other-owner"),
               backendSessionId: "shared-id",
               pluginId: "codex",
+              directory: const Value(null),
               deletedAt: 1,
             ),
           );

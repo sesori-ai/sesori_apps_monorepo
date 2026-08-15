@@ -452,8 +452,14 @@ void main() {
     });
 
     test("persisted cleanup is idempotent for an absent transcript", () async {
-      await harness.plugin.deletePersistedSession(backendSessionId: testSessionId);
-      await harness.plugin.deletePersistedSession(backendSessionId: testSessionId);
+      await harness.plugin.deletePersistedSession(
+        backendSessionId: testSessionId,
+        directory: null,
+      );
+      await harness.plugin.deletePersistedSession(
+        backendSessionId: testSessionId,
+        directory: "/ignored",
+      );
     });
   });
 }

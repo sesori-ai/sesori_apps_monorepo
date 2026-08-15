@@ -139,6 +139,7 @@ void main() {
 
       await plugin.deletePersistedSession(
         backendSessionId: "session-1",
+        directory: "/repo",
       );
 
       expect(sessionCleanupService.deletedSessionIds, ["session-1"]);

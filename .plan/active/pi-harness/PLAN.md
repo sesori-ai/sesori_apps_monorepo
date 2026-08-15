@@ -872,6 +872,12 @@ Sesori profile. ACP mode does not run OMP's interactive version-check path.
 | `getActiveSessionsSummary` | synchronous session-service summary by cwd |
 | `dispose` | idempotent process/dialog/event teardown |
 
+Deleted-session tombstones retain the normalized backend session directory for
+new deletions so startup reconciliation can resolve project-local Pi session
+roots exactly. The directory is nullable because released tombstones have no
+honest backfill; legacy `null` rows retain global/default-root discovery without
+inventing a location.
+
 ### OMP `BridgePluginApi` mapping
 
 | Contract | OMP implementation |

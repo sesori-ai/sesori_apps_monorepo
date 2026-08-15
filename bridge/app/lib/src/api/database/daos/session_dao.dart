@@ -44,6 +44,11 @@ typedef SessionPullRequestScopeUpdate = ({
   String? currentGithubRepositoryIdentity,
 });
 
+typedef TombstonedSessionRow = ({
+  String backendSessionId,
+  String? directory,
+});
+
 @DriftAccessor(tables: [SessionTable, ProjectsTable, DeletedSessionsTable])
 class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   static const _ownerIdentity = "local";
@@ -88,6 +93,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
   Future<void> insertSessionTombstone({
     required String backendSessionId,
     required String pluginId,
+    required String? directory,
     required int deletedAt,
   }) async {
     await into(deletedSessionsTable).insert(
@@ -95,6 +101,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
         ownerIdentity: const Value(_ownerIdentity),
         backendSessionId: backendSessionId,
         pluginId: pluginId,
+        directory: Value(directory),
         deletedAt: deletedAt,
       ),
       mode: InsertMode.insertOrIgnore,
@@ -104,10 +111,25 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
   /// The tombstoned session ids for [pluginId] — sessions the user deleted
   /// that a backend without session deletion would otherwise keep listing.
   Future<Set<String>> getTombstonedSessionIds({required String pluginId}) async {
+    final rows = await _getTombstonedSessions(pluginId: pluginId);
+    return {for (final row in rows) row.backendSessionId};
+  }
+
+  Future<Set<TombstonedSessionRow>> getTombstonedSessionsForCleanup({required String pluginId}) async {
+    final rows = await _getTombstonedSessions(pluginId: pluginId);
+    return {
+      for (final row in rows)
+        (
+          backendSessionId: row.backendSessionId,
+          directory: row.directory,
+        ),
+    };
+  }
+
+  Future<List<DeletedSessionDto>> _getTombstonedSessions({required String pluginId}) {
     final query = select(deletedSessionsTable)
       ..where((t) => t.ownerIdentity.equals(_ownerIdentity) & t.pluginId.equals(pluginId));
-    final rows = await query.get();
-    return {for (final row in rows) row.backendSessionId};
+    return query.get();
   }
 
   Future<bool> isSessionTombstoned({required String backendSessionId, required String pluginId}) async {

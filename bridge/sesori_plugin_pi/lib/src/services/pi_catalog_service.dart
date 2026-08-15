@@ -17,6 +17,28 @@ class PiCatalogService({
 
   final Map<String, Future<PluginSessionOptionsDiscoveryResult>> _inFlight = {};
 
+  Future<bool> healthCheck() => _repository.healthCheck();
+
+  Future<List<PluginCommand>> getCommands({required String projectId}) async =>
+      (await requireOptions(projectId: projectId)).commands;
+
+  Future<PluginSessionOptions> requireOptions({required String projectId}) async {
+    final normalized = normalizeProjectDirectory(directory: projectId);
+    final tracked = _tracker.snapshotFor(projectId: normalized);
+    if (tracked != null) return tracked;
+    final result = await getSessionOptions(
+      projectId: normalized,
+      discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+    );
+    return switch (result) {
+      PluginSessionOptionsDiscoveryObserved(:final options) => options,
+      PluginSessionOptionsDiscoveryFailed() => throw const PluginOperationException(
+        "discover Pi options",
+        message: "Pi session options are unavailable.",
+      ),
+    };
+  }
+
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required String projectId,
     required PluginSessionOptionsDiscoveryMode discoveryMode,

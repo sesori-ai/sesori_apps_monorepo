@@ -886,11 +886,18 @@ void main() {
       final cwd = fixture.directory("pending-project");
       final api = fixture.api();
 
-      await api.writePendingNewSession(sessionId: "secure-id", cwd: cwd);
+      final parentPath = p.join(fixture.root.path, "parent.jsonl");
+      await api.writePendingNewSession(
+        sessionId: "secure-id",
+        cwd: cwd,
+        parentSessionPath: parentPath,
+      );
 
       expect(
         await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {cwd}),
-        isA<PiPendingNewSession>().having((marker) => marker.cwd, "cwd", p.normalize(p.absolute(cwd))),
+        isA<PiPendingNewSession>()
+            .having((marker) => marker.cwd, "cwd", p.normalize(p.absolute(cwd)))
+            .having((marker) => marker.parentSessionPath, "parent", p.normalize(p.absolute(parentPath))),
       );
       await api.clearPendingNewSession(sessionId: "secure-id", knownDirectories: {cwd});
       expect(await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {cwd}), isNull);
@@ -906,7 +913,7 @@ void main() {
       final api = fixture.api();
 
       final warnings = await _captureWarnings(() async {
-        await api.writePendingNewSession(sessionId: "secure-id", cwd: project);
+        await api.writePendingNewSession(sessionId: "secure-id", cwd: project, parentSessionPath: null);
         await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {project});
         await api.clearPendingNewSession(sessionId: "secure-id", knownDirectories: {project});
       });
@@ -926,7 +933,7 @@ void main() {
         "secure-id.pending",
       );
       final api = fixture.api();
-      await api.writePendingNewSession(sessionId: "secure-id", cwd: project);
+      await api.writePendingNewSession(sessionId: "secure-id", cwd: project, parentSessionPath: null);
       File(markerPath).writeAsStringSync("relative-private-value");
 
       final warnings = await _captureWarnings(() async {
@@ -948,12 +955,12 @@ void main() {
       final api = fixture.api();
 
       await expectLater(
-        api.writePendingNewSession(sessionId: "../escape", cwd: fixture.root.path),
+        api.writePendingNewSession(sessionId: "../escape", cwd: fixture.root.path, parentSessionPath: null),
         throwsArgumentError,
       );
       for (final cwd in ["${fixture.root.path}\nother", "${fixture.root.path}\rother"]) {
         await expectLater(
-          api.writePendingNewSession(sessionId: "secure-id", cwd: cwd),
+          api.writePendingNewSession(sessionId: "secure-id", cwd: cwd, parentSessionPath: null),
           throwsArgumentError,
         );
       }
