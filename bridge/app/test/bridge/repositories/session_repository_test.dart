@@ -1120,6 +1120,65 @@ void main() {
       expect(detail, created);
     });
 
+    test("createSession primes a derived parent directory and forwards its backend id", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final derivedPlugin = _FakeDerivedPlugin(launchDirectory: "/child", allSessions: const []);
+      final repository = singlePluginSessionRepository(
+        plugin: derivedPlugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.projectsDao.recordOpenedProject(
+        projectId: "parent-project",
+        path: "/parent",
+        displayName: null,
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      await db.sessionDao.insertSession(
+        sessionId: "stable-parent",
+        backendSessionId: "backend-parent",
+        projectId: "parent-project",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: derivedPlugin.id,
+      );
+
+      await repository.createSession(
+        pluginId: derivedPlugin.id,
+        projectId: "child-project",
+        directory: "/child",
+        parentSessionId: "stable-parent",
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+        isDedicated: false,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+
+      expect(
+        derivedPlugin.primedDirectories,
+        [(sessionId: "backend-parent", directory: "/parent")],
+      );
+      expect(derivedPlugin.lastCreateParentSessionId, "backend-parent");
+    });
+
     test("createSession preserves stable identity and bridge title precedence", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -2925,6 +2984,7 @@ class _FakeDerivedPlugin({
   int listAllSessionsCalls = 0;
   int sendPromptCalls = 0;
   String? lastGetChildSessionsParentId;
+  String? lastCreateParentSessionId;
 
   /// The hint set received on the most recent [listAllSessions] call.
   Set<String>? receivedKnownDirectories;
@@ -2955,6 +3015,27 @@ class _FakeDerivedPlugin({
   @override
   void primeSessionDirectory({required String sessionId, required String directory}) {
     primedDirectories.add((sessionId: sessionId, directory: directory));
+  }
+
+  @override
+  Future<PluginSession> createSession({
+    required String directory,
+    required String? parentSessionId,
+    required List<PluginPromptPart> parts,
+    required String? userVisibleText,
+    required PluginSessionVariant? variant,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    lastCreateParentSessionId = parentSessionId;
+    return PluginSession(
+      id: "backend-child",
+      projectID: directory,
+      directory: directory,
+      parentID: parentSessionId,
+      title: null,
+      time: null,
+    );
   }
 
   /// Echo-only rename, mirroring the ACP contract (no backend rename RPC).
