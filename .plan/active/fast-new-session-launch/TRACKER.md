@@ -180,6 +180,8 @@
 - [x] Complete the implementation cleanup audit and retain only compatibility or
   independently used artifacts.
 - [x] Validate the documentation-only diff with `git diff --check`.
+- [x] Measure the merge-base Step 5 diff and reconcile it with the 80-180
+  changed-line target.
 - [x] Commit, push, open Step 5, and monitor it in PR #928.
 
 ## Step 5 Cleanup Audit
@@ -303,6 +305,10 @@
 - Follow-up 4A PR: #923, based on `main` and monitored.
 - Follow-up 4A review fixes passed 144 focused tests, all 2,641 `bridge/app`
   tests, strict analysis, and `git diff --check`.
+- Step 5 merge-base documentation scope:
+  `git diff --numstat "$(git merge-base HEAD origin/main)" -- .plan/active/fast-new-session-launch/{PLAN,TRACKER}.md docs/regression/{attachments-and-images,projects-and-sessions,pull-request-monitoring,session-creation-and-options}.md`.
+- Self-inclusive Step 5 result: `+125 / -33` (158 changed lines), within the
+  80-180 target.
 
 ### Manual matrix
 

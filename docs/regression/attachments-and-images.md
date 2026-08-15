@@ -9,12 +9,13 @@ content the transcript renders live and after reload.
 ## Required Behavior
 
 - The composer offers image staging only for a backend declaring prompt
-  attachment support. Staged images are memory-only, are cleared when the target
-  stops supporting attachments, the session changes, or the submission completes,
-  never persist in a draft, and travel inline within the staged-attachment size
-  bound so the request fits the relay's message limit. The owning plugin normalizes
-  backend-produced images into a client-safe attachment; host paths never cross
-  that boundary.
+  attachment support. Staged images are memory-only. They are cleared when the
+  target stops supporting attachments, the session changes, or submission
+  succeeds or settles after route exit; current-route failure instead transfers
+  the one-shot snapshot into restoration. They never persist in a draft and travel
+  inline within the staged-attachment size bound so the request fits the relay's
+  message limit. The owning plugin normalizes backend-produced images into a
+  client-safe attachment; host paths never cross that boundary.
 - During new-session submission, one memory-only snapshot retains the exact
   attachment identities only until success, in-route restoration, or background
   settlement. A failed current-route launch restores those attachments together
