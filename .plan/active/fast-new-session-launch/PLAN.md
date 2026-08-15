@@ -125,7 +125,7 @@ second session and worktree.
 - After the durable create response, successful metadata may rename only that
   initial branch to the generated `branchName`. The worktree directory remains
   the original `color-animal` path. Skip the rename when the worktree is no
-  longer on its initial branch or that branch has an upstream.
+  longer on its initial branch or that branch has an upstream or matching remote ref.
 - The vocabulary is a small curated code-owned list. Naming is local,
   dependency-free, backend-neutral, and reusable for future workspace names.
 - On collision, sample another pair for a bounded number of attempts. If those
@@ -473,7 +473,7 @@ pipeline:
    with a dedicated worktree and delegates Git decisions to `WorktreeService`.
 3. `WorktreeService` asks `GitCliApi` through `WorktreeRepository` to validate the
    target, confirm the current branch still equals the durable initial branch,
-   confirm it has no upstream, resolve a bounded collision suffix, and rename the
+   confirm it has no upstream or matching remote ref, resolve a bounded collision suffix, and rename the
    explicit old ref. It re-reads the current branch after the rename before
    claiming a current-branch projection. No process-global or filesystem lock is
    added for Git actions performed outside the bridge.
@@ -583,7 +583,7 @@ pipeline:
 - Renaming existing persisted worktrees or rewriting arbitrary `session-*` test
   fixtures unrelated to generation.
 - Renaming a worktree directory after plugin creation, renaming an initial branch
-  with an upstream, or following a user/agent branch switch.
+  with an upstream or matching remote ref, or following a user/agent branch switch.
 - Changing plugin prompt semantics, session options discovery, relay timeout,
   or session-detail refresh reconciliation.
 

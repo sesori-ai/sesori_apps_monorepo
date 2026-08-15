@@ -92,6 +92,13 @@ class WorktreeRepository({
     return _gitApi.hasUpstream(projectPath: worktreePath, branchName: branchName);
   }
 
+  Future<bool> hasRemoteBranch({
+    required String worktreePath,
+    required String branchName,
+  }) {
+    return _gitApi.hasRemoteBranch(projectPath: worktreePath, branchName: branchName);
+  }
+
   Future<void> renameBranch({
     required String worktreePath,
     required String oldBranchName,

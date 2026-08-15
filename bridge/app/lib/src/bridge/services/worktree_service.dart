@@ -316,7 +316,11 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
     if (await _worktreeRepository.hasUpstream(
       worktreePath: worktreePath,
       branchName: initialBranchName,
-    )) {
+    ) ||
+        await _worktreeRepository.hasRemoteBranch(
+          worktreePath: worktreePath,
+          branchName: initialBranchName,
+        )) {
       return GeneratedBranchRenameSkipped(reason: GeneratedBranchRenameSkipReason.initialBranchPublished);
     }
 

@@ -43,8 +43,8 @@ variant, and worktree mode, and creating the session with its first input.
   `session.updated` event. User rename or deletion wins, and plugin rename
   failure does not remove the locally committed generated title.
 - Generated metadata may also rename a root dedicated session's still-current
-  initial branch when it has no upstream. The worktree directory and plugin
-  working path remain unchanged. Generated refs are validated, collisions use a
+  initial branch when it has no upstream or matching remote ref. The worktree
+  directory and plugin working path remain unchanged. Generated refs are validated, collisions use a
   bounded secure suffix, durable and current branch facts commit together, and
   the existing `session.updated` event reports the result without claiming a
   title change. Switched, detached, published, invalid, and failed refinements

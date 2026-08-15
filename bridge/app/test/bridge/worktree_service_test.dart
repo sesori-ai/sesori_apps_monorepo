@@ -1016,6 +1016,22 @@ void main() {
           GeneratedBranchRenameSkipReason.initialBranchPublished,
         ),
       );
+
+      repository
+        ..upstream = false
+        ..remoteBranch = true;
+      expect(
+        await service.renameGeneratedBranch(
+          worktreePath: "/worktree",
+          initialBranchName: "blue-otter",
+          generatedBranchName: "fix-login-flow",
+        ),
+        isA<GeneratedBranchRenameSkipped>().having(
+          (result) => result.reason,
+          "reason",
+          GeneratedBranchRenameSkipReason.initialBranchPublished,
+        ),
+      );
       expect(repository.renameCalls, isEmpty);
     });
 
@@ -1178,6 +1194,7 @@ class _GeneratedRenameWorktreeRepository() implements WorktreeRepository {
   bool validBranchName = true;
   bool Function(String branchName)? branchNameValidator;
   bool upstream = false;
+  bool remoteBranch = false;
   String? currentBranchName = "blue-otter";
   String? currentAfterRename;
   Object? currentBranchReadErrorAfterRename;
@@ -1201,6 +1218,9 @@ class _GeneratedRenameWorktreeRepository() implements WorktreeRepository {
 
   @override
   Future<bool> hasUpstream({required String worktreePath, required String branchName}) async => upstream;
+
+  @override
+  Future<bool> hasRemoteBranch({required String worktreePath, required String branchName}) async => remoteBranch;
 
   @override
   Future<bool> branchExists({required String projectPath, required String branchName}) async {

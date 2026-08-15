@@ -262,6 +262,18 @@ class GitCliApi({
     return result.stdout.toString().trim().isNotEmpty;
   }
 
+  Future<bool> hasRemoteBranch({
+    required String projectPath,
+    required String branchName,
+  }) async {
+    final arguments = ["for-each-ref", "--format=%(refname)", "refs/remotes/*/$branchName"];
+    final result = await runGit(projectPath: projectPath, arguments: arguments);
+    if (result.exitCode != 0) {
+      throw ProcessException("git", arguments, result.stderr.toString(), result.exitCode);
+    }
+    return result.stdout.toString().trim().isNotEmpty;
+  }
+
   Future<void> renameBranch({
     required String projectPath,
     required String oldBranchName,

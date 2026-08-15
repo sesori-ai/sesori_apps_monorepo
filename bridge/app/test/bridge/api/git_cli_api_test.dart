@@ -141,6 +141,27 @@ void main() {
     ]);
   });
 
+  test("hasRemoteBranch finds the exact branch name under any remote", () async {
+    final processRunner = _RecordingProcessRunner(
+      stdout: "refs/remotes/origin/HEAD\nrefs/remotes/origin/initial-branch\n",
+    );
+    final api = GitCliApi(
+      processRunner: processRunner,
+      gitPathExists: ({required String gitPath}) => true,
+    );
+
+    expect(
+      await api.hasRemoteBranch(projectPath: "/worktree", branchName: "initial-branch"),
+      isTrue,
+    );
+    expect(processRunner.workingDirectory, "/worktree");
+    expect(processRunner.arguments, [
+      "for-each-ref",
+      "--format=%(refname)",
+      "refs/remotes/*/initial-branch",
+    ]);
+  });
+
   test("renameBranch uses explicit old and new refs and preserves failures", () async {
     final processRunner = _RecordingProcessRunner();
     final api = GitCliApi(
