@@ -445,7 +445,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   exact slash-command dispatch with privacy-safe presentation, ambiguous-timeout
   teardown with old-dialog retirement, and disposal waiting for active idle-reap
   teardown.
-- Full package tests pass (210 tests); fatal analysis and diff checks pass. The
+- Full package tests pass (211 tests); fatal analysis and diff checks pass. The
   pinned formatter still crashes on the pre-existing Dart 3.13
   primary-constructor enum in `pi_session_storage_api.dart`; every other changed
   Dart file formats cleanly.
@@ -456,7 +456,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   so cold replay conservatively displays only the slash-command token for both
   API commands and manually typed slash prompts, never hidden raw arguments;
   live API-command presentation retains exact `userVisibleArguments`.
-- Diff: +3,152/-101 = 3,253 changed lines; generated lines: 0; tests run: 210.
+- Diff: +3,202/-102 = 3,304 changed lines; generated lines: 0; tests run: 211.
   Review-fix working-tree delta excluding this tracker evidence: +586/-85 =
   671 changed lines. Recorded overage:
   persistence, residency, replay hydration, turn settlement, attachment

@@ -6,6 +6,7 @@ import "package:pi_plugin/pi_plugin.dart";
 import "package:pi_plugin/pi_testing.dart";
 import "package:pi_plugin/src/api/models/pi_session_history_dto.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_history_mapper.dart";
+import "package:pi_plugin/src/repositories/mappers/pi_message_identity_builder.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_persisted_user_text_codec.dart";
 import "package:pi_plugin/src/repositories/pi_session_process_repository.dart";
 import "package:pi_plugin/src/trackers/pi_message_identity_tracker.dart";
@@ -46,6 +47,34 @@ void main() {
       expect(messages.single.parts.single.text, "from rpc");
       expect(process.stdinClosed, isTrue);
       expect(process.killed, isTrue);
+    });
+
+    test("resident history preserves identities allocated while replay is pending", () async {
+      final process = FakePiProcess();
+      final identities = PiMessageIdentityTracker(pluginId: "pi");
+      final repository = _repository(
+        processFactory: ({required spec}) async => process,
+        identityTracker: identities,
+      );
+      addTearDown(repository.dispose);
+      final connecting = repository.ensureResident(sessionId: "session", knownDirectories: const {});
+      final initial = await waitForCommand(process: process, type: "get_entries");
+      process.emitResponse(id: initial["id"]! as String, command: "get_entries", data: _historyJson(text: "first"));
+      await connecting;
+
+      final pending = repository.loadHistory(sessionId: "session", knownDirectories: const {});
+      final replay = await _waitForNthCommand(process: process, type: "get_entries", count: 2);
+      expect(
+        identities.forSession(sessionId: "session").next(role: PiMessageIdentityRole.user, timestamp: 1),
+        "pi:session:user:1:2",
+      );
+      process.emitResponse(id: replay["id"]! as String, command: "get_entries", data: _historyJson(text: "first"));
+      await pending;
+
+      expect(
+        identities.forSession(sessionId: "session").next(role: PiMessageIdentityRole.user, timestamp: 1),
+        "pi:session:user:1:3",
+      );
     });
 
     test("uses the injected replay timeout for get_entries", () async {
@@ -384,6 +413,7 @@ void main() {
 PiSessionProcessRepository _repository({
   PiSessionStorageApi? storageApi,
   required PiProcessFactory processFactory,
+  PiMessageIdentityTracker? identityTracker,
   Duration startupExitTimeout = const Duration(seconds: 5),
   Duration historyRpcTimeout = const Duration(minutes: 2),
 }) {
@@ -395,10 +425,23 @@ PiSessionProcessRepository _repository({
     environment: const {"EXTRA": "value"},
     processFactory: processFactory,
     historyMapper: PiHistoryMapper(pluginId: "pi"),
-    identityTracker: PiMessageIdentityTracker(pluginId: "pi"),
+    identityTracker: identityTracker ?? PiMessageIdentityTracker(pluginId: "pi"),
     startupExitTimeout: startupExitTimeout,
     historyRpcTimeout: historyRpcTimeout,
   );
+}
+
+Future<Map<String, Object?>> _waitForNthCommand({
+  required FakePiProcess process,
+  required String type,
+  required int count,
+}) async {
+  for (var attempt = 0; attempt < 50; attempt++) {
+    final commands = process.written.where((frame) => frame["type"] == type);
+    if (commands.length >= count) return commands.elementAt(count - 1);
+    await pump();
+  }
+  throw StateError("no command '$type' number $count");
 }
 
 Map<String, Object?> _historyJson({required String text}) => {
@@ -453,6 +496,9 @@ final class _FakeStorageApi({
   final PiSessionFileHistoryDto? history,
 }) implements PiSessionStorageApi {
   final bool _missing = missing;
+
+  @override
+  Future<void> clearPendingNewSession({required String sessionId, required Set<String> knownDirectories}) async {}
 
   @override
   Future<PiResolvedSession?> resolveSession({required String sessionId, required Set<String> knownDirectories}) async {
