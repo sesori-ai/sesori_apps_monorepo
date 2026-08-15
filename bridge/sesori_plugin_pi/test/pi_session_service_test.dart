@@ -49,6 +49,31 @@ void main() {
     expect(storage.clearedDirectories, contains("/project"));
   });
 
+  test("persisted turns do not rescan pending marker storage", () async {
+    final process = FakePiProcess();
+    final storage = _Storage(initialResolved: _resolved());
+    final fixture = _Fixture(processes: [process], storageOverride: storage);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "persisted")],
+      userVisibleText: "persisted",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+    await pump();
+
+    expect(storage.resolveCalls, 1);
+  });
+
   test("connect hydrates before exposing startup frames and shares one spawn", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
@@ -159,6 +184,7 @@ void main() {
 
     expect(storage.pending, isNull);
     expect(storage.clearedDirectories, contains("/project"));
+    expect(storage.resolveCalls, 2);
   });
 
   test("teardown promptly disposes a connecting process waiting on history", () async {
@@ -989,6 +1015,39 @@ void main() {
     await _waitForIdle(service: service, sessionId: "session");
   });
 
+  test("abort waits for active idle-reap teardown", () async {
+    final process = FakePiProcess(stdinCloseCompletes: false);
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final clock = _ManualClock();
+    final service = fixture.service(clock: clock);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "prompt")],
+      userVisibleText: "prompt",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+    clock.elapse();
+    await pump();
+
+    var completed = false;
+    final abort = service.abort(sessionId: "session").then((_) => completed = true);
+    await pump();
+    expect(completed, isFalse);
+
+    process.completeStdinClose();
+    await abort;
+    expect(process.killed, isTrue);
+  });
+
   test("idle reap preserves pending marker location for later deletion", () async {
     final process = FakePiProcess();
     final storage = _Storage(initialResolved: null);
@@ -1219,8 +1278,10 @@ final class _Storage({
   PiResolvedSession? resolved = initialResolved;
   PiPendingNewSession? pending = initialPending;
   Set<String>? clearedDirectories;
+  int resolveCalls = 0;
   @override
   Future<PiResolvedSession?> resolveSession({required String sessionId, required Set<String> knownDirectories}) async {
+    resolveCalls++;
     await resolveGate?.future;
     return resolved == null || resolved?.metadata.id == sessionId ? resolved : _resolved(id: sessionId);
   }

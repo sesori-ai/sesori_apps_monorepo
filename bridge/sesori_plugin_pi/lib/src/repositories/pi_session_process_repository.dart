@@ -130,6 +130,8 @@ final class PiSessionProcessRepository({
     required String sessionId,
     required Set<String> knownDirectories,
   }) async {
+    final resident = _residents[sessionId];
+    if (resident == null || !resident.pendingPersistence) return false;
     final resolved = await _storageApi.resolveSession(
       sessionId: sessionId,
       knownDirectories: knownDirectories,
@@ -139,6 +141,7 @@ final class PiSessionProcessRepository({
       sessionId: sessionId,
       knownDirectories: {...knownDirectories, resolved.metadata.cwd},
     );
+    if (identical(_residents[sessionId], resident)) resident.pendingPersistence = false;
     return true;
   }
 
@@ -236,7 +239,11 @@ final class PiSessionProcessRepository({
         await client.dispose();
         throw StateError("Pi session connection was invalidated during startup");
       }
-      final resident = _ResidentClient(client: client, generation: generation);
+      final resident = _ResidentClient(
+        client: client,
+        generation: generation,
+        initialPendingPersistence: pending != null,
+      );
       _residents[sessionId] = resident;
       resident.frameSubscription = client.frames.listen((frame) {
         if (identical(_residents[sessionId], resident) && !_frames.isClosed) {
@@ -878,11 +885,15 @@ final class PiSessionProcessRepository({
 
 final class const _ConnectingClient({required final PiRpcClient client, required final int generation});
 
-final class _ResidentClient({required final PiRpcClient client, required final int generation}) {
+final class _ResidentClient({
+  required final PiRpcClient client,
+  required final int generation,
+  required bool initialPendingPersistence,
+}) {
   StreamSubscription<PiRpcFrame>? frameSubscription;
   ({String providerID, String modelID})? model;
   String? variant;
-
+  bool pendingPersistence = initialPendingPersistence;
   Future<void> cancelFrames() async {
     await frameSubscription?.cancel();
     frameSubscription = null;

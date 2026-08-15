@@ -410,6 +410,8 @@ final class PiSessionService({
     _extensionUi.cancelForOwner(sessionId: sessionId, processGeneration: null);
     final connection = cancelled.firstOrNull?.connection;
     try {
+      final idleReap = state.idleReap;
+      if (idleReap != null) await idleReap;
       if (connection != null) await _processes.abort(connection: connection);
     } on Object catch (error, stack) {
       Log.w("[pi] abort command failed for session id=$sessionId", error, stack);
