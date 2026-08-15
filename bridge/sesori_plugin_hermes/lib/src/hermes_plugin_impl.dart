@@ -9,7 +9,7 @@ import "hermes_identity.dart";
 ///
 /// Hermes is a stock ACP v1 server: `hermes acp` advertises load/list/resume/
 /// fork/prompt capabilities and streams turns via `session/update`
-/// notifications, so the base [AcpPlugin] machinery applies unchanged — this
+/// notifications, so the base [AcpPlugin] machinery applies unchanged. This
 /// class only declares the harness's protocol policies. There are no
 /// `hermes/*` extensions, no config-option model picker, and no managed
 /// runtime (Hermes installs itself; the bridge resolves it on PATH).
@@ -20,17 +20,18 @@ class HermesPlugin._({
   required super.eventMapper,
   required super.commandTracker,
   required super.sessionOptionsService,
-  super.processFactory,
+  required super.processFactory,
 }) extends AcpPlugin {
   factory({
-    String binaryPath = HermesBinary.defaultBinary,
-    String? launchDirectory,
-    AcpProcessFactory? processFactory,
+    required String binaryPath,
+    required String? launchDirectory,
+    required AcpProcessFactory processFactory,
   }) {
     final cwd = launchDirectory ?? Directory.current.path;
     final launchSpec = HermesBinary.launchSpec(
       binary: binaryPath,
       cwd: cwd,
+      environment: const {},
     );
     final commandTracker = AcpCommandTracker();
     final configurationTracker = AcpSessionConfigurationTracker();
@@ -38,13 +39,13 @@ class HermesPlugin._({
     final sessionOptionsService = AcpSessionOptionsService(
       configurationTracker: configurationTracker,
       commandTracker: commandTracker,
-      pluginId: HermesPluginIdentity.pluginId,
+      pluginId: HermesPluginIdentity.id,
       agentDisplayName: HermesPluginIdentity.displayName,
     );
     final mapper = AcpEventMapper(
       launchDirectory: cwd,
-      agentId: HermesPluginIdentity.pluginId,
-      pluginId: HermesPluginIdentity.pluginId,
+      agentId: HermesPluginIdentity.id,
+      pluginId: HermesPluginIdentity.id,
       configurationTracker: configurationTracker,
       contentMapper: contentMapper,
     );
@@ -61,27 +62,26 @@ class HermesPlugin._({
 
   this
     : super(
-        id: HermesPluginIdentity.pluginId,
+        id: HermesPluginIdentity.id,
         agentDisplayName: HermesPluginIdentity.displayName,
       );
 
   @override
-  String get clientName => HermesPluginIdentity.clientName;
+  String get clientName => "sesori-bridge";
 
   @override
-  String get clientVersion => HermesPluginIdentity.clientVersion;
+  String get clientVersion => "0.0.0";
 
-  /// Hermes advertises the configured provider as an agent auth method first
-  /// and a terminal-setup method after it (see `build_auth_methods`); `null`
-  /// picks the first advertised method — the provider — which is what we want
-  /// to authenticate against.
+  /// Hermes provider method ids are dynamic, so there is no fixed preferred
+  /// id. Hermes advertises the configured provider first and its terminal
+  /// setup method second; the ACP base uses the first method when this is null.
   @override
   String? get authMethodId => null;
 
   @override
   Map<String, dynamic>? get initializeCapabilityMeta => null;
 
-  /// Hermes has no `elicitation/create` — permissions arrive as
+  /// Hermes has no `elicitation/create`; permissions arrive as
   /// `session/request_permission`, which the base approval registry handles.
   @override
   bool get supportsFormElicitation => false;

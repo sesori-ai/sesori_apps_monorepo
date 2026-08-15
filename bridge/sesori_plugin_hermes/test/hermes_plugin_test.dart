@@ -7,7 +7,7 @@ import "package:test/test.dart";
 
 /// The `initialize` result Hermes actually advertises (verified 2026-08-13
 /// against `hermes acp` v0.20.0): load/list/resume/fork session capabilities,
-/// image prompt support, and no `closeSession` — the base must therefore
+/// image prompt support, and no `closeSession`. The base must therefore
 /// never call `session/close`. Auth mirrors `build_auth_methods()`: the
 /// configured provider as an agent method first, then a terminal-setup
 /// method.
@@ -47,6 +47,7 @@ void main() {
       fake = FakeAcpProcess();
       handledFrameIds = {};
       plugin = HermesPlugin(
+        binaryPath: HermesBinary.defaultBinary,
         launchDirectory: "/repo",
         processFactory: (_) async => fake,
       );
@@ -59,7 +60,7 @@ void main() {
 
     Future<void> pump() => Future<void>.delayed(Duration.zero);
 
-    Future<Map<String, dynamic>> waitForFrame(String method) async {
+    Future<Map<String, dynamic>> waitForFrame({required String method}) async {
       for (var i = 0; i < 50; i++) {
         final matches = fake.written.where(
           (frame) => frame["method"] == method && !handledFrameIds.contains(frame["id"]),
@@ -74,19 +75,22 @@ void main() {
       throw StateError("agent never wrote a '$method' frame");
     }
 
-    Future<void> respond(String method, Map<String, dynamic> result) async {
-      final frame = await waitForFrame(method);
+    Future<void> respond({
+      required String method,
+      required Map<String, dynamic> result,
+    }) async {
+      final frame = await waitForFrame(method: method);
       fake.emit({"jsonrpc": "2.0", "id": frame["id"], "result": result});
       await pump();
     }
 
     Future<void> connect() async {
       final connecting = plugin.ensureConnected();
-      await respond("initialize", hermesInitializeResult);
+      await respond(method: "initialize", result: hermesInitializeResult);
       // Hermes advertises the configured provider method first, then a
       // terminal-setup method; the handshake authenticates against the first
       // advertised method because authMethodId is null.
-      final authFrame = await waitForFrame("authenticate");
+      final authFrame = await waitForFrame(method: "authenticate");
       expect(
         (authFrame["params"] as Map).cast<String, dynamic>()["methodId"],
         "opencode-go",
@@ -102,7 +106,11 @@ void main() {
 
     test("the default binary is the Hermes CLI and the launch spec drives `hermes acp`", () {
       expect(HermesBinary.defaultBinary, "hermes");
-      final spec = HermesBinary.launchSpec(cwd: "/repo");
+      final spec = HermesBinary.launchSpec(
+        binary: HermesBinary.defaultBinary,
+        cwd: "/repo",
+        environment: const {},
+      );
       expect(spec.command, "hermes");
       expect(spec.args, ["acp"]);
     });
@@ -137,7 +145,7 @@ void main() {
         agent: null,
         model: null,
       );
-      await respond("session/new", const {"sessionId": "s1"});
+      await respond(method: "session/new", result: const {"sessionId": "s1"});
       final session = await creating;
       expect(session.id, "s1");
 
@@ -148,7 +156,7 @@ void main() {
         agent: null,
         model: null,
       );
-      final promptFrame = await waitForFrame("session/prompt");
+      final promptFrame = await waitForFrame(method: "session/prompt");
       final params = (promptFrame["params"] as Map).cast<String, dynamic>();
       expect(params["sessionId"], "s1");
       final prompt = params["prompt"] as List;
@@ -190,7 +198,7 @@ void main() {
         agent: null,
         model: null,
       );
-      await respond("session/new", const {"sessionId": "s1"});
+      await respond(method: "session/new", result: const {"sessionId": "s1"});
       await creating;
 
       await plugin.deleteSession("s1");
