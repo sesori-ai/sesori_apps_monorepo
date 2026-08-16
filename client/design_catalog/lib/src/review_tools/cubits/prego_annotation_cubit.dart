@@ -33,6 +33,12 @@ final class const PregoAnnotationImportPreview({
   required final PregoAnnotationDocument document,
 }) extends PregoAnnotationImportEditor;
 
+final class const PregoAnnotationImportReplaceFailed({
+  required final String encoded,
+  required final PregoAnnotationDocument document,
+  required final String message,
+}) extends PregoAnnotationImportEditor;
+
 sealed class const PregoAnnotationState({required final PregoAnnotationScope scope});
 
 final class const PregoAnnotationLoading({required super.scope}) extends PregoAnnotationState;
@@ -187,7 +193,7 @@ final class PregoAnnotationCubit({
     }
     await _persist(
       previous: ready,
-      next: ready.document.replaceAnnotations(annotations),
+      next: ready.document.replaceAnnotations(annotations: annotations),
       successEditor: const PregoAnnotationEditorClosed(),
     );
   }
@@ -195,14 +201,36 @@ final class PregoAnnotationCubit({
   Future<void> toggleResolved({required String annotationId}) async {
     final ready = _ready;
     if (ready == null) return;
+    final editedBody = switch (ready.editor) {
+      PregoAnnotationExistingEditor(annotationId: final editorAnnotationId, :final body)
+          when editorAnnotationId == annotationId =>
+        body.trim(),
+      PregoAnnotationDraftEditor() || PregoAnnotationExistingEditor() || PregoAnnotationEditorClosed() => null,
+    };
+    if (editedBody != null && editedBody.isEmpty) {
+      final editor = ready.editor as PregoAnnotationExistingEditor;
+      _emitReady(
+        document: ready.document,
+        editor: PregoAnnotationExistingEditor(
+          annotationId: editor.annotationId,
+          body: editor.body,
+          validationError: "Write a note before saving.",
+        ),
+      );
+      return;
+    }
     final annotations = [
       for (final annotation in ready.document.annotations)
-        annotation.id == annotationId ? annotation.withResolved(resolved: !annotation.resolved) : annotation,
+        annotation.id == annotationId
+            ? (editedBody == null ? annotation : annotation.withBody(body: editedBody)).withResolved(
+                resolved: !annotation.resolved,
+              )
+            : annotation,
     ];
     await _persist(
       previous: ready,
-      next: ready.document.replaceAnnotations(annotations),
-      successEditor: const PregoAnnotationEditorClosed(),
+      next: ready.document.replaceAnnotations(annotations: annotations),
+      successEditor: ready.editor,
     );
   }
 
@@ -213,7 +241,7 @@ final class PregoAnnotationCubit({
     if (annotations.length == ready.document.annotations.length) return;
     await _persist(
       previous: ready,
-      next: ready.document.replaceAnnotations(annotations),
+      next: ready.document.replaceAnnotations(annotations: annotations),
       successEditor: const PregoAnnotationEditorClosed(),
     );
   }
@@ -267,7 +295,12 @@ final class PregoAnnotationCubit({
     if (importEditor is! PregoAnnotationImportInput) return;
     try {
       final document = _repository.validateImport(scope: state.scope, encoded: importEditor.encoded);
-      _replaceImportEditor(PregoAnnotationImportPreview(encoded: importEditor.encoded, document: document));
+      _replaceImportEditor(
+        PregoAnnotationImportPreview(
+          encoded: importEditor.encoded,
+          document: document,
+        ),
+      );
     } on PregoAnnotationRepositoryException catch (error) {
       _replaceImportEditor(PregoAnnotationImportInput(encoded: importEditor.encoded, validationError: error.message));
     }
@@ -275,32 +308,53 @@ final class PregoAnnotationCubit({
 
   Future<void> replaceImport() async {
     final importEditor = _importEditor;
-    if (importEditor is! PregoAnnotationImportPreview) return;
+    final String encoded;
+    final PregoAnnotationDocument document;
+    switch (importEditor) {
+      case PregoAnnotationImportPreview(encoded: final value, document: final valueDocument) ||
+          PregoAnnotationImportReplaceFailed(encoded: final value, document: final valueDocument):
+        encoded = value;
+        document = valueDocument;
+      case PregoAnnotationImportInput() || null:
+        return;
+    }
     try {
       // This is the annotation repository persistence API, not GoRouter navigation.
       // ignore: no_slop_linter/avoid_raw_go_router
-      await _repository.replace(document: importEditor.document);
+      await _repository.replace(document: document);
       if (isClosed) return;
       emit(
         PregoAnnotationReady(
           scope: state.scope,
-          document: importEditor.document,
+          document: document,
           editor: const PregoAnnotationEditorClosed(),
         ),
       );
     } on PregoAnnotationRepositoryException catch (error) {
-      final ready = _ready;
-      if (ready != null) {
+      if (isClosed) return;
+      if (state case final PregoAnnotationImporting importing) {
         emit(
-          PregoAnnotationSaveFailed(
-            scope: ready.scope,
-            document: ready.document,
-            editor: ready.editor,
-            message: error.message,
+          PregoAnnotationImporting.fromReady(
+            ready: importing,
+            importEditor: PregoAnnotationImportReplaceFailed(
+              encoded: encoded,
+              document: document,
+              message: error.message,
+            ),
           ),
         );
       } else {
-        emit(PregoAnnotationLoadFailed(scope: state.scope, message: error.message, importEditor: importEditor));
+        emit(
+          PregoAnnotationLoadFailed(
+            scope: state.scope,
+            message: error.message,
+            importEditor: PregoAnnotationImportReplaceFailed(
+              encoded: encoded,
+              document: document,
+              message: error.message,
+            ),
+          ),
+        );
       }
     }
   }
@@ -323,8 +377,9 @@ final class PregoAnnotationCubit({
   }
 
   PregoAnnotationReadyState? get _ready => switch (state) {
-    final PregoAnnotationReadyState ready => ready,
-    PregoAnnotationLoading() || PregoAnnotationLoadFailed() => null,
+    final PregoAnnotationReady ready => ready,
+    final PregoAnnotationSaveFailed ready => ready,
+    PregoAnnotationLoading() || PregoAnnotationLoadFailed() || PregoAnnotationImporting() => null,
   };
 
   PregoAnnotationImportEditor? get _importEditor => switch (state) {

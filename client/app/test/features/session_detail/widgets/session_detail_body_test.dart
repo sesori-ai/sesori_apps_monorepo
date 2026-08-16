@@ -1345,6 +1345,7 @@ void main() {
       "HapticFeedbackType.lightImpact",
       "HapticFeedbackType.selectionClick",
       "HapticFeedbackType.selectionClick",
+      "HapticFeedbackType.lightImpact",
       "HapticFeedbackType.selectionClick",
     ]);
 
@@ -1355,6 +1356,7 @@ void main() {
       "HapticFeedbackType.lightImpact",
       "HapticFeedbackType.selectionClick",
       "HapticFeedbackType.selectionClick",
+      "HapticFeedbackType.lightImpact",
       "HapticFeedbackType.selectionClick",
     ]);
   });

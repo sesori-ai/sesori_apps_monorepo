@@ -103,8 +103,10 @@ class _PregoMeasurementLayerState() extends State<PregoMeasurementLayer> {
             fit: StackFit.expand,
             children: [
               Positioned.fill(
-                child: AbsorbPointer(
-                  child: KeyedSubtree(key: _contentKey, child: widget.child),
+                child: ExcludeFocus(
+                  child: AbsorbPointer(
+                    child: KeyedSubtree(key: _contentKey, child: widget.child),
+                  ),
                 ),
               ),
               Positioned.fill(

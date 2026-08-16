@@ -1,3 +1,4 @@
+import "package:flutter/gestures.dart";
 import "package:flutter/widgets.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart" as material;
@@ -94,6 +95,9 @@ void main() {
     expect(find.text("Edit annotation"), findsOneWidget);
     await tester.tap(find.text("Resolve"));
     await tester.pumpAndSettle();
+    expect(find.text("Reopen"), findsOneWidget);
+    await tester.tap(find.text("Cancel"));
+    await tester.pump();
     expect(find.text("Annotations · 0 open · 1 total"), findsOneWidget);
 
     await tester.tap(_annotationPins());
@@ -103,6 +107,71 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Annotations · 0 open · 0 total"), findsOneWidget);
     expect(_annotationPins(), findsNothing);
+  });
+
+  testWidgets("ignores drags and non-primary clicks when creating annotations", (tester) async {
+    final repository = _repository(<String, String>{});
+    await _pumpLayer(tester, repository: repository, scope: phoneScope, layerKey: "gestures");
+    final target = tester.getCenter(find.byKey(const Key("annotation-target")));
+
+    await tester.tapAt(target, buttons: kSecondaryMouseButton);
+    await tester.pump();
+    expect(find.text("New annotation"), findsNothing);
+
+    final drag = await tester.startGesture(target);
+    await drag.moveBy(const Offset(80, 0));
+    await drag.up();
+    await tester.pump();
+    expect(find.text("New annotation"), findsNothing);
+  });
+
+  testWidgets("moves an element pin after the preview target is laid out again", (tester) async {
+    final repository = _repository(<String, String>{});
+    var targetAtBottom = true;
+    late StateSetter setHostState;
+    await tester.pumpWidget(
+      material.MaterialApp(
+        theme: pregoCatalogDarkTheme,
+        home: material.Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              setHostState = setState;
+              return SizedBox(
+                width: 393,
+                height: 852,
+                child: PregoAnnotationLayer(
+                  scope: phoneScope,
+                  repository: repository,
+                  child: Align(
+                    alignment: targetAtBottom ? Alignment.bottomCenter : Alignment.center,
+                    child: const DecoratedBox(
+                      key: Key("moving-annotation-target"),
+                      decoration: BoxDecoration(color: Color(0xFF3366FF)),
+                      child: SizedBox(width: 180, height: 80),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tapAt(tester.getCenter(find.byKey(const Key("moving-annotation-target"))));
+    await tester.pump();
+    await tester.enterText(find.byType(material.TextFormField), "Follow this target");
+    await tester.tap(find.text("Save"));
+    await tester.pumpAndSettle();
+    final initial =
+        (tester.widget<CustomPaint>(_annotationLeaders()).painter! as PregoAnnotationPinLeaderPainter).anchor;
+
+    setHostState(() => targetAtBottom = false);
+    await tester.pump();
+    await tester.pump();
+    final moved = (tester.widget<CustomPaint>(_annotationLeaders()).painter! as PregoAnnotationPinLeaderPainter).anchor;
+
+    expect(moved.dy, lessThan(initial.dy));
   });
 }
 
@@ -158,7 +227,7 @@ Finder _annotationLeaders() => find.byWidgetPredicate(
 
 PregoAnnotationRepository _repository(Map<String, String> values) => PregoAnnotationRepository(
   storage: PregoAnnotationStorage.test(
-    read: (key) async => values[key],
-    write: (key, value) async => values[key] = value,
+    read: ({required key}) async => values[key],
+    write: ({required key, required value}) async => values[key] = value,
   ),
 );

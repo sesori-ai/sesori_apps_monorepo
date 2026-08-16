@@ -68,6 +68,8 @@ class _AnnotationCanvasState() extends State<_AnnotationCanvas> {
   final _contentKey = GlobalKey();
   var _showList = false;
   String? _copyStatus;
+  Map<String, Offset> _pinAnchors = const {};
+  bool _pinRefreshScheduled = false;
 
   @override
   Widget build(BuildContext context) => BlocBuilder<PregoAnnotationCubit, PregoAnnotationState>(
@@ -79,14 +81,17 @@ class _AnnotationCanvasState() extends State<_AnnotationCanvas> {
           PregoAnnotationLoading() || PregoAnnotationLoadFailed() => null,
         };
         final importEditor = _importFor(state);
+        if (state case final PregoAnnotationReadyState ready) {
+          _schedulePinRefresh(document: ready.document);
+        }
         return Stack(
           key: _rootKey,
           fit: StackFit.expand,
           children: [
             Positioned.fill(
-              child: Listener(
+              child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onPointerUp: _onCanvasPointerUp,
+                onTapUp: _onCanvasTapUp,
                 child: AbsorbPointer(
                   child: KeyedSubtree(key: _contentKey, child: widget.child),
                 ),
@@ -144,7 +149,7 @@ class _AnnotationCanvasState() extends State<_AnnotationCanvas> {
     required RenderBox root,
     required RenderObject content,
   }) {
-    final anchor = _positionFor(annotation: annotation, root: root, content: content);
+    final anchor = _pinAnchors[annotation.id] ?? _positionFor(annotation: annotation, root: root, content: content);
     final pinRect = layoutPregoAnnotationPin(anchor: anchor, canvasSize: root.size);
     final colors = context.prego.colors;
     return [
@@ -258,7 +263,7 @@ class _AnnotationCanvasState() extends State<_AnnotationCanvas> {
     };
   }
 
-  void _onCanvasPointerUp(PointerUpEvent event) {
+  void _onCanvasTapUp(TapUpDetails details) {
     final cubit = context.read<PregoAnnotationCubit>();
     final state = cubit.state;
     if (state is! PregoAnnotationReadyState ||
@@ -269,10 +274,10 @@ class _AnnotationCanvasState() extends State<_AnnotationCanvas> {
     final root = _rootKey.currentContext?.findRenderObject();
     final content = _contentKey.currentContext?.findRenderObject();
     if (root is! RenderBox || content == null) return;
-    final local = root.globalToLocal(event.position);
+    final local = root.globalToLocal(details.globalPosition);
     final normalizedX = (local.dx / root.size.width).clamp(0.0, 1.0).toDouble();
     final normalizedY = (local.dy / root.size.height).clamp(0.0, 1.0).toDouble();
-    final target = _targetResolver.findAt(contentRoot: content, globalPosition: event.position).firstOrNull;
+    final target = _targetResolver.findAt(contentRoot: content, globalPosition: details.globalPosition).firstOrNull;
     final anchor = target == null
         ? PregoCanvasAnnotationAnchor(normalizedX: normalizedX, normalizedY: normalizedY)
         : _elementAnchor(
@@ -283,6 +288,26 @@ class _AnnotationCanvasState() extends State<_AnnotationCanvas> {
             fallbackY: normalizedY,
           );
     cubit.startDraft(anchor: anchor);
+  }
+
+  void _schedulePinRefresh({required PregoAnnotationDocument document}) {
+    if (_pinRefreshScheduled) return;
+    _pinRefreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pinRefreshScheduled = false;
+      if (!mounted) return;
+      final state = context.read<PregoAnnotationCubit>().state;
+      if (state is! PregoAnnotationReadyState || !identical(state.document, document)) return;
+      final root = _rootKey.currentContext?.findRenderObject();
+      final content = _contentKey.currentContext?.findRenderObject();
+      if (root is! RenderBox || content == null) return;
+      final anchors = {
+        for (final annotation in document.annotations)
+          annotation.id: _positionFor(annotation: annotation, root: root, content: content),
+      };
+      if (_sameAnchors(_pinAnchors, anchors)) return;
+      setState(() => _pinAnchors = anchors);
+    });
   }
 
   PregoElementAnnotationAnchor _elementAnchor({
@@ -341,6 +366,14 @@ class _AnnotationCanvasState() extends State<_AnnotationCanvas> {
       setState(() => _copyStatus = "Clipboard access failed. Try again from this browser tab.");
     }
   }
+}
+
+bool _sameAnchors(Map<String, Offset> first, Map<String, Offset> second) {
+  if (first.length != second.length) return false;
+  for (final entry in first.entries) {
+    if (second[entry.key] != entry.value) return false;
+  }
+  return true;
 }
 
 PregoAnnotationImportEditor? _importFor(PregoAnnotationState state) => switch (state) {
@@ -503,6 +536,10 @@ class const _AnnotationImportPanel({required final PregoAnnotationImportEditor i
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<PregoAnnotationCubit>();
+    final replacementError = switch (importEditor) {
+      PregoAnnotationImportReplaceFailed(:final message) => message,
+      PregoAnnotationImportInput() || PregoAnnotationImportPreview() => null,
+    };
     return _ReviewPanel(
       child: switch (importEditor) {
         PregoAnnotationImportInput(:final encoded, :final validationError) => Column(
@@ -531,13 +568,23 @@ class const _AnnotationImportPanel({required final PregoAnnotationImportEditor i
             ),
           ],
         ),
-        PregoAnnotationImportPreview(:final encoded, :final document) => Column(
+        PregoAnnotationImportPreview(:final encoded, :final document) ||
+        PregoAnnotationImportReplaceFailed(:final encoded, :final document) => Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text("Replace local annotations?"),
             const SizedBox(height: 4),
             Text("Validated ${document.annotations.length} annotations for this canvas."),
+            if (replacementError != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                replacementError,
+                style: context.prego.textTheme.textXs.medium.copyWith(
+                  color: context.prego.colors.textErrorPrimary,
+                ),
+              ),
+            ],
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,

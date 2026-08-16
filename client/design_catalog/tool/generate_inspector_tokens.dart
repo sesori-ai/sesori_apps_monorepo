@@ -86,7 +86,7 @@ String _generate() {
   for (final scale in typography) {
     for (final weight in weights) {
       buffer.writeln(
-        '  PregoInspectionToken(kind: PregoInspectionTokenKind.typography, name: "${_kebab(scale)} / $weight", reference: "context.prego.textTheme.$scale.$weight", value: theme.$scale.$weight),',
+        '  PregoInspectionToken(kind: PregoInspectionTokenKind.typography, name: "${_typographyName(scale)} / $weight", reference: "context.prego.textTheme.$scale.$weight", value: theme.$scale.$weight),',
       );
     }
   }
@@ -153,3 +153,8 @@ List<String> _staticFields(String path, {required String type}) {
 
 String _kebab(String value) =>
     value.replaceAllMapped(RegExp("([a-z0-9])([A-Z])"), (match) => "${match.group(1)}-${match.group(2)}").toLowerCase();
+
+String _typographyName(String value) => switch (value) {
+  "display2xl" => "display-2xl",
+  _ => _kebab(value),
+};

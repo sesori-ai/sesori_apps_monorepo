@@ -61,7 +61,7 @@ final class PregoAnnotationRepository({required final PregoAnnotationStorage sto
   }
 
   String _storageKey(PregoAnnotationScope scope) =>
-      "$_storagePrefix.${Uri.encodeComponent(scope.useCasePath)}.${Uri.encodeComponent(scope.viewportName)}";
+      "$_storagePrefix/${Uri.encodeComponent(scope.useCasePath)}/${Uri.encodeComponent(scope.viewportName)}";
 
   PregoAnnotationDocument _decodeDocument({
     required String encoded,
@@ -69,7 +69,7 @@ final class PregoAnnotationRepository({required final PregoAnnotationStorage sto
   }) {
     final decoded = jsonDecode(encoded);
     if (decoded is! Map<String, Object?>) throw const FormatException("Document must be an object");
-    if (decoded["schemaVersion"] != _schemaVersion) {
+    if (decoded["schemaVersion"] is! int || decoded["schemaVersion"] != _schemaVersion) {
       throw const FormatException("Unsupported schema version");
     }
     final scopeJson = decoded["scope"];

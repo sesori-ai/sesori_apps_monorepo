@@ -70,6 +70,6 @@ final class PregoAnnotationDocument {
   final PregoAnnotationScope scope;
   final List<PregoAnnotation> annotations;
 
-  PregoAnnotationDocument replaceAnnotations(List<PregoAnnotation> annotations) =>
+  PregoAnnotationDocument replaceAnnotations({required List<PregoAnnotation> annotations}) =>
       PregoAnnotationDocument(scope: scope, annotations: annotations);
 }

@@ -14,9 +14,6 @@ final class const PregoInspectionTokenMatches<T>({
 }) {
   final T value;
   final List<PregoInspectionToken<T>> candidates;
-
-  bool get isMapped => candidates.isNotEmpty;
-  bool get isAmbiguous => candidates.length > 1;
 }
 
 final class PregoInspectionTokenResolver({required final BuildContext context}) {

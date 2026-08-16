@@ -14,7 +14,10 @@ void main() {
     const firstScope = PregoAnnotationScope(useCasePath: "prego/button", viewportName: "iPhone");
     const secondScope = PregoAnnotationScope(useCasePath: "prego/button", viewportName: "Android");
     final repository = PregoAnnotationRepository(
-      storage: PregoAnnotationStorage.test(read: (_) async => null, write: (_, _) async {}),
+      storage: PregoAnnotationStorage.test(
+        read: ({required key}) async => null,
+        write: ({required key, required value}) async {},
+      ),
     );
     var mode = PregoReviewMode.interact;
     var scope = firstScope;

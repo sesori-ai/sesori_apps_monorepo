@@ -81,6 +81,24 @@ void main() {
     expect(find.textContaining("pinned"), findsNothing);
     expect(_measurementPainter(tester).measurements, isEmpty);
   });
+
+  testWidgets("keeps preview descendants out of keyboard focus", (tester) async {
+    final previewFocus = FocusNode();
+    addTearDown(previewFocus.dispose);
+    await tester.pumpWidget(
+      material.MaterialApp(
+        theme: pregoCatalogDarkTheme,
+        home: PregoMeasurementLayer(
+          child: Focus(focusNode: previewFocus, child: const SizedBox()),
+        ),
+      ),
+    );
+
+    previewFocus.requestFocus();
+    await tester.pump();
+
+    expect(previewFocus.hasFocus, isFalse);
+  });
 }
 
 PregoMeasurementPainter _measurementPainter(WidgetTester tester) {

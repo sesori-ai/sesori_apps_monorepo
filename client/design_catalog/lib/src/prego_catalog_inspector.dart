@@ -10,7 +10,7 @@ import "inspector/prego_inspection_tokens.dart";
 import "review_tools/presentation/prego_review_action.dart";
 import "review_tools/presentation/prego_review_target.dart";
 
-typedef PregoInspectorCopyText = Future<void> Function(String text);
+typedef PregoInspectorCopyText = Future<void> Function({required String text});
 
 class const PregoCatalogInspector({
   required this.child,
@@ -37,12 +37,20 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
   int _pinnedIndex = 0;
   Offset _pointerPosition = Offset.zero;
   String? _copiedReference;
+  bool _copyFailed = false;
   bool _selectionClearScheduled = false;
+  late PregoInspectionTokenResolver _inspectionTokenResolver;
 
   bool get _hasPinnedSelection => _pinnedCandidates.isNotEmpty;
   PregoReviewTarget? get _hovered => _hoverCandidates.firstOrNull;
   PregoReviewTarget? get _pinned => _hasPinnedSelection ? _pinnedCandidates[_pinnedIndex] : null;
   PregoReviewTarget? get _active => _pinned ?? _hovered;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _inspectionTokenResolver = PregoInspectionTokenResolver(context: context);
+  }
 
   @override
   void dispose() {
@@ -56,7 +64,7 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
     final active = _active;
     final root = _rootKey.currentContext?.findRenderObject() as RenderBox?;
     final activeRect = active == null || root == null ? null : _safeRectIn(target: active, root: root);
-    if (active != null && root != null && activeRect == null) _scheduleInvalidSelectionClear();
+    if (active != null) _scheduleInvalidSelectionClear();
 
     return Focus(
       focusNode: _focusNode,
@@ -115,7 +123,7 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
       candidate: candidate,
       candidates: _hasPinnedSelection ? _pinnedCandidates : _hoverCandidates,
       root: root,
-      resolver: PregoInspectionTokenResolver(context: context),
+      resolver: _inspectionTokenResolver,
       textDirection: Directionality.of(context),
     );
     final panelWidth = _hasPinnedSelection ? 312.0 : 236.0;
@@ -139,6 +147,7 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
           position: _pinnedIndex,
           candidateCount: _hasPinnedSelection ? _pinnedCandidates.length : _hoverCandidates.length,
           copiedReference: _copiedReference,
+          copyFailed: _copyFailed,
           onPrevious: _hasPinnedSelection ? () => _cycle(by: -1) : null,
           onNext: _hasPinnedSelection ? () => _cycle(by: 1) : null,
           onClear: _hasPinnedSelection ? _clearPinned : null,
@@ -166,6 +175,7 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
       setState(() {
         _pinnedCandidates = _hoverCandidates;
         _pinnedIndex = 0;
+        _copyFailed = false;
       });
       return KeyEventResult.handled;
     }
@@ -184,6 +194,7 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
       _hoverCandidates = candidates;
       _pointerPosition = localPosition;
       _copiedReference = null;
+      _copyFailed = false;
     });
   }
 
@@ -202,6 +213,7 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
       }
       _hoverCandidates = candidates;
       _copiedReference = null;
+      _copyFailed = false;
     });
   }
 
@@ -210,6 +222,7 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
     setState(() {
       _pinnedIndex = (_pinnedIndex + by) % _pinnedCandidates.length;
       _copiedReference = null;
+      _copyFailed = false;
     });
   }
 
@@ -224,13 +237,25 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
   }
 
   Future<void> _copy(String value) async {
-    if (widget.copyText case final copyText?) {
-      await copyText(value);
-    } else {
-      await Clipboard.setData(ClipboardData(text: value));
+    try {
+      if (widget.copyText case final copyText?) {
+        await copyText(text: value);
+      } else {
+        await Clipboard.setData(ClipboardData(text: value));
+      }
+    } on Object {
+      if (!mounted) return;
+      setState(() {
+        _copiedReference = null;
+        _copyFailed = true;
+      });
+      return;
     }
     if (!mounted) return;
-    setState(() => _copiedReference = value);
+    setState(() {
+      _copiedReference = value;
+      _copyFailed = false;
+    });
   }
 
   List<PregoReviewTarget> _findCandidates({required Offset globalPosition}) {
@@ -381,6 +406,7 @@ class const _InspectorCard({
   required this.position,
   required this.candidateCount,
   required this.copiedReference,
+  required this.copyFailed,
   required this.onPrevious,
   required this.onNext,
   required this.onClear,
@@ -392,6 +418,7 @@ class const _InspectorCard({
   final int position;
   final int candidateCount;
   final String? copiedReference;
+  final bool copyFailed;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
   final VoidCallback? onClear;
@@ -547,7 +574,11 @@ class const _InspectorCard({
           const SizedBox(height: 12),
           PregoReviewAction(
             label: "Copy PREGO token reference",
-            text: copiedReference == copyValue ? "Copied" : "Copy ${_shortReference(copyValue)}",
+            text: copiedReference == copyValue
+                ? "Copied"
+                : copyFailed
+                ? "Copy failed"
+                : "Copy ${_shortReference(copyValue)}",
             onPressed: onCopy == null ? null : () => onCopy!(copyValue),
             wide: true,
           ),

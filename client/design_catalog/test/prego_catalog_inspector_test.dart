@@ -8,6 +8,7 @@ import "package:sesori_design_catalog/src/prego_catalog_inspector.dart";
 import "package:sesori_design_catalog/src/prego_catalog_theme.dart";
 import "package:sesori_design_catalog/src/review_tools/models/prego_annotation.dart";
 import "package:sesori_design_catalog/src/review_tools/prego_review_tools.dart";
+import "package:sesori_design_catalog/src/review_tools/presentation/prego_review_target.dart";
 import "package:sesori_design_catalog/src/review_tools/repositories/prego_annotation_repository.dart";
 import "package:sesori_design_catalog/src/review_tools/storage/prego_annotation_storage.dart";
 import "package:theme_prego/module_prego.dart";
@@ -55,6 +56,23 @@ void main() {
     expect(unmapped.candidates, isEmpty);
   });
 
+  testWidgets("review target discovery skips hidden subtrees", (tester) async {
+    final rootKey = GlobalKey();
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: SizedBox(
+          key: rootKey,
+          child: const Offstage(offstage: true, child: Text("Hidden target")),
+        ),
+      ),
+    );
+
+    final root = rootKey.currentContext!.findRenderObject()!;
+    final targets = const PregoReviewTargetResolver().collect(contentRoot: root);
+    expect(targets.where((target) => target.label == "Text"), isEmpty);
+  });
+
   testWidgets("hover aligns to a scaled text target and click pins nested details", (tester) async {
     var pressCount = 0;
     String? copiedReference;
@@ -68,7 +86,7 @@ void main() {
             width: 700,
             height: 600,
             child: PregoCatalogInspector(
-              copyText: (value) async => copiedReference = value,
+              copyText: ({required text}) async => copiedReference = text,
               child: Center(
                 child: Transform.scale(
                   scale: 0.5,
@@ -195,9 +213,46 @@ void main() {
     await tester.sendEventToBinding(pointer.removePointer());
   });
 
+  testWidgets("reports clipboard failures without unpinning the target", (tester) async {
+    final pointer = TestPointer(3, PointerDeviceKind.mouse);
+    await tester.pumpWidget(
+      material.MaterialApp(
+        theme: pregoCatalogDarkTheme,
+        home: SizedBox(
+          width: 700,
+          height: 600,
+          child: PregoCatalogInspector(
+            copyText: ({required text}) async => throw StateError("blocked"),
+            child: Builder(
+              builder: (context) => Text("Copy me", style: context.prego.textTheme.textSm.medium),
+            ),
+          ),
+        ),
+      ),
+    );
+    final position = tester.getCenter(find.text("Copy me"));
+    await tester.sendEventToBinding(pointer.addPointer(location: position));
+    await tester.sendEventToBinding(pointer.hover(position));
+    await tester.pump();
+    await tester.tapAt(position);
+    await tester.pump();
+
+    final copyButton = find.text("Copy medium");
+    await tester.ensureVisible(copyButton);
+    await tester.tap(copyButton);
+    await tester.pump();
+
+    expect(find.text("Copy failed"), findsOneWidget);
+    expect(find.byKey(const Key("prego-inspector-card")), findsOneWidget);
+    await tester.sendEventToBinding(pointer.removePointer());
+  });
+
   testWidgets("interact review mode leaves component interaction untouched", (tester) async {
     final repository = PregoAnnotationRepository(
-      storage: PregoAnnotationStorage.test(read: (_) async => null, write: (_, _) async {}),
+      storage: PregoAnnotationStorage.test(
+        read: ({required key}) async => null,
+        write: ({required key, required value}) async {},
+      ),
     );
     const child = SizedBox(key: Key("child"));
     const scope = PregoAnnotationScope(useCasePath: "prego/button", viewportName: "iPhone");

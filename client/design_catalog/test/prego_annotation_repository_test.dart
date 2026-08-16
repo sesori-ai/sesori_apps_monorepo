@@ -107,19 +107,43 @@ void main() {
     expect(values, isEmpty);
   });
 
+  test("keeps dotted scope components isolated", () async {
+    final values = <String, String>{};
+    final repository = _repository(values);
+    const first = PregoAnnotationScope(useCasePath: "a.b", viewportName: "c");
+    const second = PregoAnnotationScope(useCasePath: "a", viewportName: "b.c");
+
+    await repository.replace(document: PregoAnnotationDocument.empty(scope: first));
+    await repository.replace(document: PregoAnnotationDocument.empty(scope: second));
+
+    expect(values, hasLength(2));
+  });
+
+  test("rejects a non-integer schema version", () {
+    final repository = _repository(<String, String>{});
+    final encoded = repository
+        .exportJson(document: PregoAnnotationDocument.empty(scope: scope))
+        .replaceFirst('"schemaVersion": 1', '"schemaVersion": 1.0');
+
+    expect(
+      () => repository.validateImport(scope: scope, encoded: encoded),
+      throwsA(isA<PregoAnnotationRepositoryException>()),
+    );
+  });
+
   test("wraps storage read and write failures with their original causes", () async {
     final readCause = StateError("read blocked");
     final writeCause = StateError("write blocked");
     final readRepository = PregoAnnotationRepository(
       storage: PregoAnnotationStorage.test(
-        read: (_) async => throw readCause,
-        write: (_, _) async {},
+        read: ({required key}) async => throw readCause,
+        write: ({required key, required value}) async {},
       ),
     );
     final writeRepository = PregoAnnotationRepository(
       storage: PregoAnnotationStorage.test(
-        read: (_) async => null,
-        write: (_, _) async => throw writeCause,
+        read: ({required key}) async => null,
+        write: ({required key, required value}) async => throw writeCause,
       ),
     );
 
@@ -144,7 +168,7 @@ void main() {
 
 PregoAnnotationRepository _repository(Map<String, String> values) => PregoAnnotationRepository(
   storage: PregoAnnotationStorage.test(
-    read: (key) async => values[key],
-    write: (key, value) async => values[key] = value,
+    read: ({required key}) async => values[key],
+    write: ({required key, required value}) async => values[key] = value,
   ),
 );

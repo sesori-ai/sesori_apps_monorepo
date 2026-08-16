@@ -23,6 +23,6 @@ final class PregoAnnotationStorage._({
     required PregoAnnotationStorageWrite write,
   }) => PregoAnnotationStorage._(read: read, write: write);
 
-  Future<String?> read({required String key}) => _read(key);
-  Future<void> write({required String key, required String value}) => _write(key, value);
+  Future<String?> read({required String key}) => _read(key: key);
+  Future<void> write({required String key, required String value}) => _write(key: key, value: value);
 }

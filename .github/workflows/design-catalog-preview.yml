@@ -55,13 +55,13 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: ${{ env.FLUTTER_CHANNEL }}
 
-      - name: Build catalog
+      - name: Validate and build catalog
         working-directory: client/design_catalog
         run: |
           DART_BIN=$(command -v dart)
           FLUTTER_BIN=$(command -v flutter)
           FLUTTER_SDK_ROOT=$(dirname "$(dirname "$FLUTTER_BIN")")
-          make DART="$DART_BIN" FLUTTER="$FLUTTER_BIN" FLUTTER_ROOT="$FLUTTER_SDK_ROOT" pub-get build
+          make DART="$DART_BIN" FLUTTER="$FLUTTER_BIN" FLUTTER_ROOT="$FLUTTER_SDK_ROOT" pub-get check
 
       - name: Deploy Access-protected preview
         id: deploy

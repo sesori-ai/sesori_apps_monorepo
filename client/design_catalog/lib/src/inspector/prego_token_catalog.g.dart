@@ -330,11 +330,11 @@ List<PregoInspectionToken<Color>> buildPregoInspectionColorTokens(PregoColors co
 ];
 
 List<PregoInspectionToken<TextStyle>> buildPregoInspectionTypographyTokens(PregoTextTheme theme) => [
-  PregoInspectionToken(kind: PregoInspectionTokenKind.typography, name: "display2xl / light", reference: "context.prego.textTheme.display2xl.light", value: theme.display2xl.light),
-  PregoInspectionToken(kind: PregoInspectionTokenKind.typography, name: "display2xl / regular", reference: "context.prego.textTheme.display2xl.regular", value: theme.display2xl.regular),
-  PregoInspectionToken(kind: PregoInspectionTokenKind.typography, name: "display2xl / medium", reference: "context.prego.textTheme.display2xl.medium", value: theme.display2xl.medium),
-  PregoInspectionToken(kind: PregoInspectionTokenKind.typography, name: "display2xl / bold", reference: "context.prego.textTheme.display2xl.bold", value: theme.display2xl.bold),
-  PregoInspectionToken(kind: PregoInspectionTokenKind.typography, name: "display2xl / black", reference: "context.prego.textTheme.display2xl.black", value: theme.display2xl.black),
+  PregoInspectionToken(kind: PregoInspectionTokenKind.typography, name: "display-2xl / light", reference: "context.prego.textTheme.display2xl.light", value: theme.display2xl.light),
+  PregoInspectionToken(kind: PregoInspectionTokenKind.typography, name: "display-2xl / regular", reference: "context.prego.textTheme.display2xl.regular", value: theme.display2xl.regular),
+  PregoInspectionToken(kind: PregoInspectionTokenKind.typography, name: "display-2xl / medium", reference: "context.prego.textTheme.display2xl.medium", value: theme.display2xl.medium),
+  PregoInspectionToken(kind: PregoInspectionTokenKind.typography, name: "display-2xl / bold", reference: "context.prego.textTheme.display2xl.bold", value: theme.display2xl.bold),
+  PregoInspectionToken(kind: PregoInspectionTokenKind.typography, name: "display-2xl / black", reference: "context.prego.textTheme.display2xl.black", value: theme.display2xl.black),
   PregoInspectionToken(kind: PregoInspectionTokenKind.typography, name: "display-xl / light", reference: "context.prego.textTheme.displayXl.light", value: theme.displayXl.light),
   PregoInspectionToken(kind: PregoInspectionTokenKind.typography, name: "display-xl / regular", reference: "context.prego.textTheme.displayXl.regular", value: theme.displayXl.regular),
   PregoInspectionToken(kind: PregoInspectionTokenKind.typography, name: "display-xl / medium", reference: "context.prego.textTheme.displayXl.medium", value: theme.displayXl.medium),

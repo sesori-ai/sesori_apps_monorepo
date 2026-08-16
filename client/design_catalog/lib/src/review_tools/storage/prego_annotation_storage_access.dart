@@ -1,5 +1,5 @@
-typedef PregoAnnotationStorageRead = Future<String?> Function(String key);
-typedef PregoAnnotationStorageWrite = Future<void> Function(String key, String value);
+typedef PregoAnnotationStorageRead = Future<String?> Function({required String key});
+typedef PregoAnnotationStorageWrite = Future<void> Function({required String key, required String value});
 
 final class const PregoAnnotationStorageAccess({
   required final PregoAnnotationStorageRead read,

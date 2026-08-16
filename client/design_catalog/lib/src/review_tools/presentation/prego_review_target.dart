@@ -25,7 +25,7 @@ extension PregoReviewTargetResolverOperations on PregoReviewTargetResolver {
     _visit(
       object: contentRoot,
       depth: 0,
-      path: const [],
+      path: <int>[],
       onTarget: (target) {
         if (_containsGlobalPosition(box: target.renderBox, globalPosition: globalPosition)) {
           candidates.add(target);
@@ -38,7 +38,7 @@ extension PregoReviewTargetResolverOperations on PregoReviewTargetResolver {
 
   List<PregoReviewTarget> collect({required RenderObject contentRoot}) {
     final candidates = <PregoReviewTarget>[];
-    _visit(object: contentRoot, depth: 0, path: const [], onTarget: candidates.add);
+    _visit(object: contentRoot, depth: 0, path: <int>[], onTarget: candidates.add);
     return candidates;
   }
 
@@ -46,6 +46,7 @@ extension PregoReviewTargetResolverOperations on PregoReviewTargetResolver {
     RenderObject current = contentRoot;
     var depth = 0;
     for (final targetIndex in path) {
+      if (_hidesSubtree(current)) return null;
       RenderObject? next;
       var index = 0;
       current.visitChildren((child) {
@@ -57,6 +58,7 @@ extension PregoReviewTargetResolverOperations on PregoReviewTargetResolver {
       current = resolvedNext;
       depth += 1;
     }
+    if (_hidesSubtree(current)) return null;
     if (current case final RenderBox box when box.attached && box.hasSize && !box.size.isEmpty) {
       final label = _labelFor(box);
       if (label != null) return PregoReviewTarget(renderBox: box, label: label, depth: depth, path: path);
@@ -78,6 +80,7 @@ extension PregoReviewTargetResolverOperations on PregoReviewTargetResolver {
     required List<int> path,
     required ValueChanged<PregoReviewTarget> onTarget,
   }) {
+    if (_hidesSubtree(object)) return;
     if (object case final RenderBox box when box.attached && box.hasSize && !box.size.isEmpty) {
       final label = _labelFor(box);
       if (label != null) {
@@ -86,10 +89,18 @@ extension PregoReviewTargetResolverOperations on PregoReviewTargetResolver {
     }
     var childIndex = 0;
     object.visitChildren((child) {
-      _visit(object: child, depth: depth + 1, path: [...path, childIndex], onTarget: onTarget);
+      path.add(childIndex);
+      _visit(object: child, depth: depth + 1, path: path, onTarget: onTarget);
+      path.removeLast();
       childIndex += 1;
     });
   }
+
+  bool _hidesSubtree(RenderObject object) => switch (object) {
+    RenderOffstage(:final offstage) => offstage,
+    RenderOpacity(:final opacity) => opacity == 0,
+    _ => false,
+  };
 
   // Comparator is a Dart collection callback and therefore has a positional signature.
   // ignore: no_slop_linter/prefer_required_named_parameters

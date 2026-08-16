@@ -31,11 +31,11 @@ void main() {
 
     cubit.edit(annotationId: id);
     cubit.updateEditorBody(body: "Updated note");
-    await cubit.saveEditor();
     await cubit.toggleResolved(annotationId: id);
     state = cubit.state as PregoAnnotationReadyState;
     expect(state.document.annotations.single.body, "Updated note");
     expect(state.document.annotations.single.resolved, isTrue);
+    expect(state.editor, isA<PregoAnnotationExistingEditor>());
 
     await cubit.delete(annotationId: id);
     state = cubit.state as PregoAnnotationReadyState;
@@ -47,8 +47,8 @@ void main() {
     var failWrites = false;
     final repository = PregoAnnotationRepository(
       storage: PregoAnnotationStorage.test(
-        read: (_) async => null,
-        write: (_, _) async {
+        read: ({required key}) async => null,
+        write: ({required key, required value}) async {
           if (failWrites) throw StateError("quota");
         },
       ),
@@ -87,8 +87,8 @@ void main() {
     var stored = "{broken";
     final repository = PregoAnnotationRepository(
       storage: PregoAnnotationStorage.test(
-        read: (_) async => stored,
-        write: (_, value) async => stored = value,
+        read: ({required key}) async => stored,
+        write: ({required key, required value}) async => stored = value,
       ),
     );
     final replacement = PregoAnnotationDocument(
@@ -123,6 +123,37 @@ void main() {
     expect(ready.document.annotations.single.body, "Portable note");
     expect(stored, contains("Portable note"));
   });
+
+  test("keeps a validated import visible when replacement persistence fails", () async {
+    final repository = PregoAnnotationRepository(
+      storage: PregoAnnotationStorage.test(
+        read: ({required key}) async => null,
+        write: ({required key, required value}) async => throw StateError("quota"),
+      ),
+    );
+    final replacement = PregoAnnotationDocument.empty(scope: scope);
+    final cubit = PregoAnnotationCubit(repository: repository, scope: scope);
+    addTearDown(cubit.close);
+    await _ready(cubit);
+
+    cubit.startImport();
+    cubit.updateImportJson(encoded: repository.exportJson(document: replacement));
+    cubit.validateImport();
+    await cubit.replaceImport();
+
+    expect(
+      cubit.state,
+      isA<PregoAnnotationImporting>().having(
+        (state) => state.importEditor,
+        "importEditor",
+        isA<PregoAnnotationImportReplaceFailed>().having(
+          (editor) => editor.message,
+          "message",
+          "Could not save annotations in this browser.",
+        ),
+      ),
+    );
+  });
 }
 
 Future<PregoAnnotationReadyState> _ready(PregoAnnotationCubit cubit) async {
@@ -135,7 +166,7 @@ Future<PregoAnnotationReadyState> _ready(PregoAnnotationCubit cubit) async {
 
 PregoAnnotationRepository _repository(Map<String, String> values) => PregoAnnotationRepository(
   storage: PregoAnnotationStorage.test(
-    read: (key) async => values[key],
-    write: (key, value) async => values[key] = value,
+    read: ({required key}) async => values[key],
+    write: ({required key, required value}) async => values[key] = value,
   ),
 );
