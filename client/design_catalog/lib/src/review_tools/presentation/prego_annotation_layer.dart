@@ -70,6 +70,7 @@ class _AnnotationCanvasState() extends State<_AnnotationCanvas> {
   String? _copyStatus;
   Map<String, Offset> _pinAnchors = const {};
   bool _pinRefreshScheduled = false;
+  PregoAnnotationDocument? _pendingPinDocument;
 
   @override
   Widget build(BuildContext context) => BlocBuilder<PregoAnnotationCubit, PregoAnnotationState>(
@@ -291,18 +292,25 @@ class _AnnotationCanvasState() extends State<_AnnotationCanvas> {
   }
 
   void _schedulePinRefresh({required PregoAnnotationDocument document}) {
+    _pendingPinDocument = document;
     if (_pinRefreshScheduled) return;
     _pinRefreshScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _pinRefreshScheduled = false;
       if (!mounted) return;
+      final pendingDocument = _pendingPinDocument;
+      _pendingPinDocument = null;
       final state = context.read<PregoAnnotationCubit>().state;
-      if (state is! PregoAnnotationReadyState || !identical(state.document, document)) return;
+      if (pendingDocument == null ||
+          state is! PregoAnnotationReadyState ||
+          !identical(state.document, pendingDocument)) {
+        return;
+      }
       final root = _rootKey.currentContext?.findRenderObject();
       final content = _contentKey.currentContext?.findRenderObject();
       if (root is! RenderBox || content == null) return;
       final anchors = {
-        for (final annotation in document.annotations)
+        for (final annotation in pendingDocument.annotations)
           annotation.id: _positionFor(annotation: annotation, root: root, content: content),
       };
       if (_sameAnchors(first: _pinAnchors, second: anchors)) return;

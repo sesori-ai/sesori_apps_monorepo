@@ -13,7 +13,7 @@
 - Change budget: `git diff --numstat $(git merge-base origin/main HEAD)...HEAD`
   at merge base `d84b10cb30ff43965e0dacf708cee53308bdb8fa` measured
   5,729 additions and 60 deletions (5,789 changed lines). The generated token
-  catalog accounts for 470 additions; the 5,319 non-generated additions show
+  catalog accounts for 470 additions; the 5,259 non-generated additions show
   that the completed review-tool scope substantially exceeded the plan's
   1,500-line soft target rather than only the generated-code allowance.
 - Automated: `flutter analyze`, focused inspector tests, the full 31-test
