@@ -134,6 +134,38 @@ void main() {
       await subscription.cancel();
     });
 
+    test("publishes an accepted follow-up prompt as a user message", () async {
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+      process.emit(_result());
+      await pump();
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      await harness.plugin.sendPrompt(
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "follow up")],
+        variant: null,
+        agent: "Default",
+        model: (providerID: "anthropic", modelID: "default"),
+      );
+      await pump();
+
+      final part = events
+          .whereType<BridgeSseMessagePartUpdated>()
+          .where((event) => event.part.text == "follow up")
+          .single
+          .part;
+      final message = events
+          .whereType<BridgeSseMessageUpdated>()
+          .map((event) => shared.Message.fromJson(event.info))
+          .where((message) => message.id == part.messageID)
+          .single;
+      expect(message, isA<shared.MessageUser>());
+      await subscription.cancel();
+    });
+
     test("fails closed when init violates the pre-bound session identity", () async {
       final events = <BridgeSseEvent>[];
       final subscription = harness.plugin.events.listen(events.add);

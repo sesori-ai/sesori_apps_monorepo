@@ -21,7 +21,8 @@ defaults and queued client sends coherent.
   transition back to idle; retry carries attempt, message, and timing, and
   finalized messages enter durable history matching a history read. Internal
   backend command records are not rendered as conversation messages or used as
-  assistant model attribution.
+  assistant model attribution. Claude follow-up prompts appear as user messages
+  when accepted even though its stream transport does not echo submitted input.
 - Pi keeps at most one lazy resident RPC process per active session and allows
   different sessions to run concurrently. Startup replays and hydrates message
   identity before live frames attach or a turn dispatches; same-session prompts

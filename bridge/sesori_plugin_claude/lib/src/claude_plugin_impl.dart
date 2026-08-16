@@ -240,6 +240,10 @@ final class ClaudePlugin({
       operation: "sendPrompt",
     );
     _unstartedSessions.remove(sessionId);
+    _emitVisibleUserMessage(
+      sessionId: sessionId,
+      text: parts.whereType<PluginPromptPartText>().map((part) => part.text).join("\n"),
+    );
   }
 
   @override
