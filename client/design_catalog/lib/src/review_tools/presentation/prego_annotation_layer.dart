@@ -305,7 +305,7 @@ class _AnnotationCanvasState() extends State<_AnnotationCanvas> {
         for (final annotation in document.annotations)
           annotation.id: _positionFor(annotation: annotation, root: root, content: content),
       };
-      if (_sameAnchors(_pinAnchors, anchors)) return;
+      if (_sameAnchors(first: _pinAnchors, second: anchors)) return;
       setState(() => _pinAnchors = anchors);
     });
   }
@@ -368,7 +368,7 @@ class _AnnotationCanvasState() extends State<_AnnotationCanvas> {
   }
 }
 
-bool _sameAnchors(Map<String, Offset> first, Map<String, Offset> second) {
+bool _sameAnchors({required Map<String, Offset> first, required Map<String, Offset> second}) {
   if (first.length != second.length) return false;
   for (final entry in first.entries) {
     if (second[entry.key] != entry.value) return false;

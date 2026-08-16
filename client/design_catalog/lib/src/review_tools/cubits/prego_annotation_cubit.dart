@@ -201,14 +201,12 @@ final class PregoAnnotationCubit({
   Future<void> toggleResolved({required String annotationId}) async {
     final ready = _ready;
     if (ready == null) return;
-    final editedBody = switch (ready.editor) {
-      PregoAnnotationExistingEditor(annotationId: final editorAnnotationId, :final body)
-          when editorAnnotationId == annotationId =>
-        body.trim(),
+    final editedEditor = switch (ready.editor) {
+      final PregoAnnotationExistingEditor editor when editor.annotationId == annotationId => editor,
       PregoAnnotationDraftEditor() || PregoAnnotationExistingEditor() || PregoAnnotationEditorClosed() => null,
     };
-    if (editedBody != null && editedBody.isEmpty) {
-      final editor = ready.editor as PregoAnnotationExistingEditor;
+    final editedBody = editedEditor?.body.trim();
+    if (editedEditor case final editor? when editor.body.trim().isEmpty) {
       _emitReady(
         document: ready.document,
         editor: PregoAnnotationExistingEditor(
