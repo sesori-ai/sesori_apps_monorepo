@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `hermes-agent-plugin`
-- **Status:** corrective review in progress after Steps 1-5 merged; Step 6 is open as PR #921
+- **Status:** corrective review complete through Step 8; Steps 1-8 merged (#921, #927, #929), Step 9 blocked
 - **Plan date:** 2026-08-13
 - **Owner review:** started 2026-08-15; the contributor-authored plan was not previously approved
 - **Implementation base:** current `origin/main`

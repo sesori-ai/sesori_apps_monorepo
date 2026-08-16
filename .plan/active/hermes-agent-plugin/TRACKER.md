@@ -4,9 +4,9 @@
 
 - **Plan slug:** `hermes-agent-plugin`
 - **Owner review:** in progress since 2026-08-15
-- **Current open PR:** Step 8/9, #929
+- **Current open PR:** none
 - **Local successor:** none; Step 9 retirement is blocked
-- **Next action:** review and merge #929, then execute blocked matrix rows or record explicit owner acceptance
+- **Next action:** execute the blocked matrix rows or record explicit owner acceptance of the reduction
 - **Retirement:** blocked on the Step 8 matrix in `PLAN.md`
 
 ## Delivery
@@ -20,7 +20,7 @@
 | [x] | 5/9 | #919 | Merged registration and CI coverage. |
 | [x] | 6/9 | #921 | Merged branding implementation and supplied artwork corrections. |
 | [x] | 7/9 | #927 | Merged corrective plan/runtime/ACP pass. |
-| [ ] | 8/9 | #929 | Open regression evidence; blocked rows prevent retirement. |
+| [x] | 8/9 | #929 | Merged regression evidence; blocked rows prevent retirement. |
 | [ ] | 9/9 | pending | Retirement only after required evidence passes. |
 
 ## Owner Decisions
@@ -66,8 +66,10 @@ Execution date: 2026-08-15.
 
 - Hermes Agent: `0.20.1`, upstream tag `v2026.8.13`, commit
   `f80f453ae0679347e38abc917c7f94f717bf96c5`.
-- Bridge source: local Step 8 merge `3540d42a`, containing merged Step 7
-  `d4e673306` from `main`.
+- Bridge source: branch `hermes-agent-plugin-step8-takeover` (PR #929), whose
+  tested tree contained merged Step 7 commit
+  `d4e6733062abf424ee10b0dfbbeb8d42ae18003b` (PR #927). PR #929 landed on `main`
+  as merge commit `1f67127cfc288d7e73436a5c45d7cf67ec1618cf`.
 - Host: macOS 26.6.1 (`25G76`), arm64; Dart 3.13.0 stable.
 - Client platform/build: none. Client E2E rows are Blocked, not inferred from
   debug HTTP or raw ACP behavior.
