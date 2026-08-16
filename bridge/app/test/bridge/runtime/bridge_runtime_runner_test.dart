@@ -1,3 +1,6 @@
+import "dart:io";
+
+import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart";
 import "package:test/test.dart";
 
@@ -50,4 +53,88 @@ void main() {
       );
     });
   });
+
+  group("BridgeRuntimeRunner.resolveLocalMachineName", () {
+    test("uses the stable macOS LocalHostName instead of a numeric hostname", () async {
+      final runner = _RecordingProcessRunner(
+        result: ProcessResult(1, 0, "Alexs-MB-2025\n", ""),
+      );
+
+      final name = await BridgeRuntimeRunner.resolveLocalMachineName(
+        isMacOS: true,
+        processRunner: runner,
+        localHostname: "192.168.1.170",
+      );
+
+      expect(name, "Alexs-MB-2025");
+      expect(runner.executable, "/usr/sbin/scutil");
+      expect(runner.arguments, ["--get", "LocalHostName"]);
+    });
+
+    test("uses a non-numeric macOS hostname when LocalHostName is unavailable", () async {
+      final name = await BridgeRuntimeRunner.resolveLocalMachineName(
+        isMacOS: true,
+        processRunner: _RecordingProcessRunner(
+          result: ProcessResult(1, 1, "", "No such key"),
+        ),
+        localHostname: "dev-laptop.local",
+      );
+
+      expect(name, "dev-laptop.local");
+    });
+
+    test("replaces a numeric macOS fallback hostname with one canonical name", () async {
+      final name = await BridgeRuntimeRunner.resolveLocalMachineName(
+        isMacOS: true,
+        processRunner: _RecordingProcessRunner(
+          result: ProcessResult(1, 1, "", "No such key"),
+        ),
+        localHostname: "192.168.1.170",
+      );
+
+      expect(name, "sesori-bridge");
+    });
+
+    test("keeps the platform hostname without invoking scutil elsewhere", () async {
+      final runner = _RecordingProcessRunner(
+        result: ProcessResult(1, 0, "unused", ""),
+      );
+
+      final name = await BridgeRuntimeRunner.resolveLocalMachineName(
+        isMacOS: false,
+        processRunner: runner,
+        localHostname: "linux-workstation",
+      );
+
+      expect(name, "linux-workstation");
+      expect(runner.executable, isNull);
+    });
+  });
+}
+
+class _RecordingProcessRunner({required final ProcessResult result}) implements ProcessRunner {
+  String? executable;
+  List<String>? arguments;
+
+  @override
+  Future<ProcessResult> run(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    this.executable = executable;
+    this.arguments = arguments;
+    return result;
+  }
+
+  @override
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) {
+    throw UnimplementedError();
+  }
 }

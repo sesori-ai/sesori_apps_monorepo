@@ -20,7 +20,7 @@ void main() {
     test("returns projects from GET /projects", () async {
       const projects = Projects(
         data: [
-          Project(id: "project-1", name: "Project 1", path: "/project-1", time: null),
+          ProjectSummary(id: "project-1", name: "Project 1", path: "/project-1", time: null),
         ],
       );
       when(

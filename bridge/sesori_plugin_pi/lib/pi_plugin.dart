@@ -18,4 +18,7 @@ export "src/models/pi_notification_type.dart";
 export "src/models/pi_rpc_command.dart";
 export "src/models/pi_summarization_source.dart";
 export "src/models/pi_thinking_level.dart";
+export "src/repositories/pi_backend_catalog_repository.dart";
 export "src/repositories/pi_session_catalog_repository.dart";
+export "src/services/pi_catalog_service.dart";
+export "src/trackers/pi_catalog_tracker.dart";

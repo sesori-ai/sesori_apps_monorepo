@@ -89,6 +89,82 @@ void main() {
       expect(result.createdAt, equals(createdAt));
     });
 
+    test("replaceGeneratedBranch conditionally updates durable and current branch names", () async {
+      await dao.insertSession(
+        pluginId: "opencode",
+        sessionId: "ses-generated-branch",
+        backendSessionId: "ses-generated-branch",
+        projectId: "proj-1",
+        isDedicated: true,
+        createdAt: 1,
+        worktreePath: "/tmp/worktrees/blue-otter",
+        branchName: "blue-otter",
+        baseBranch: "main",
+        baseCommit: "abc123",
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+
+      expect(
+        await dao.replaceGeneratedBranch(
+          sessionId: "ses-generated-branch",
+          expectedBranchName: "other-branch",
+          branchName: "fix-login-flow",
+        ),
+        isFalse,
+      );
+      expect(
+        await dao.replaceGeneratedBranch(
+          sessionId: "ses-generated-branch",
+          expectedBranchName: "blue-otter",
+          branchName: "fix-login-flow",
+        ),
+        isTrue,
+      );
+
+      final result = await dao.getSession(sessionId: "ses-generated-branch");
+      expect(result?.branchName, "fix-login-flow");
+      expect(result?.currentBranchName, "fix-login-flow");
+    });
+
+    test("replaceGeneratedBranch preserves a concurrently switched current branch", () async {
+      await dao.insertSession(
+        pluginId: "opencode",
+        sessionId: "ses-switched-branch",
+        backendSessionId: "ses-switched-branch",
+        projectId: "proj-1",
+        isDedicated: true,
+        createdAt: 1,
+        worktreePath: "/tmp/worktrees/blue-otter",
+        branchName: "blue-otter",
+        baseBranch: "main",
+        baseCommit: "abc123",
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      await dao.updatePullRequestScopes(
+        updates: const [
+          (
+            sessionId: "ses-switched-branch",
+            currentBranchName: "user-branch",
+            currentGithubRepositoryIdentity: null,
+          ),
+        ],
+      );
+
+      expect(
+        await dao.replaceGeneratedBranch(
+          sessionId: "ses-switched-branch",
+          expectedBranchName: "blue-otter",
+          branchName: "fix-login-flow",
+        ),
+        isFalse,
+      );
+      final result = await dao.getSession(sessionId: "ses-switched-branch");
+      expect(result?.branchName, "blue-otter");
+      expect(result?.currentBranchName, "user-branch");
+    });
+
     test("generated companion insert persists last default selection fields", () async {
       await db
           .into(db.sessionTable)
@@ -189,6 +265,63 @@ void main() {
       expect(result.lastAgentModel?.providerID, equals("new-provider"));
       expect(result.lastAgentModel?.modelID, equals("new-model"));
       expect(result.lastAgentModel?.variant, isNull);
+    });
+
+    test("setTitleIfNull ignores catalog title and does not replace a bridge title", () async {
+      await dao.insertSession(
+        pluginId: "opencode",
+        sessionId: "ses-generated-title",
+        backendSessionId: "ses-generated-title",
+        projectId: "proj-1",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      await dao.updateObservedSessionProjection(
+        sessionId: "ses-generated-title",
+        directory: "proj-1",
+        catalogTitle: "Catalog title",
+        updateCatalogTitle: true,
+        updatedAt: 2,
+        projectionUpdatedAt: 2,
+      );
+
+      expect(
+        await dao.setTitleIfNull(
+          sessionId: "ses-generated-title",
+          title: "Generated title",
+          updatedAt: 3,
+          projectionUpdatedAt: 3,
+        ),
+        isTrue,
+      );
+      expect(
+        await dao.setTitleIfNull(
+          sessionId: "ses-generated-title",
+          title: "Later generated title",
+          updatedAt: 4,
+          projectionUpdatedAt: 4,
+        ),
+        isFalse,
+      );
+      expect((await dao.getSession(sessionId: "ses-generated-title"))?.title, "Generated title");
+    });
+
+    test("setTitleIfNull reports a missing row", () async {
+      expect(
+        await dao.setTitleIfNull(
+          sessionId: "does-not-exist",
+          title: "Generated title",
+          updatedAt: 1,
+          projectionUpdatedAt: 1,
+        ),
+        isFalse,
+      );
     });
 
     test("get non-existent sessionId returns null", () async {

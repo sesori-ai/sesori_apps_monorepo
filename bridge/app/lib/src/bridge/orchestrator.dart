@@ -16,6 +16,7 @@ import "../api/attachment_spill_storage.dart";
 import "../api/database/daos/session_options_cache_dao.dart";
 import "../api/database/database.dart";
 import "../api/database/history/chat_history_database.dart";
+import "../api/sesori_server_api.dart";
 import "../auth/access_token_provider.dart";
 import "../auth/bridge_registration_service.dart";
 import "../auth/token_refresher.dart";
@@ -25,7 +26,7 @@ import "../listeners/chat_history_listener.dart";
 import "../listeners/plugin_catalog_hydration_listener.dart";
 import "../listeners/plugin_event_listener.dart";
 import "../listeners/session_binding_commit_listener.dart";
-import "../listeners/session_deletion_listener.dart";
+import "../listeners/session_mutation_listener.dart";
 import "../listeners/session_options_changed_refresh_listener.dart";
 import "../listeners/session_options_creation_refresh_listener.dart";
 import "../listeners/viewed_project_pr_refresh_listener.dart";
@@ -41,6 +42,7 @@ import "../push/push_session_state_tracker.dart";
 import "../repositories/bridge_settings_repository.dart";
 import "../repositories/catalog_import_repository.dart";
 import "../repositories/project_catalog_identity_calculator.dart";
+import "../repositories/session_metadata_repository.dart";
 import "../routing/cancel_catalog_import_handler.dart";
 import "../routing/get_bridge_settings_handler.dart";
 import "../routing/get_catalog_import_statuses_handler.dart";
@@ -66,7 +68,6 @@ import "api/git_cli_api.dart";
 import "foundation/filesystem_permission_validator.dart";
 import "foundation/process_runner.dart";
 import "key_exchange.dart";
-import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "relay_client.dart";
 import "repositories/agent_repository.dart";
@@ -262,6 +263,7 @@ class Orchestrator({
     final worktreeRepository = WorktreeRepository(
       projectsDao: _database.projectsDao,
       sessionDao: _database.sessionDao,
+      filesystemApi: const FilesystemApi(),
       gitApi: gitCliApi,
       runtime: _pluginRuntime,
     );
@@ -273,6 +275,7 @@ class Orchestrator({
     final sessionMutationDispatcher = SessionMutationDispatcher(
       sessionRepository: sessionRepository,
       sessionOperationDispatcher: sessionOperationDispatcher,
+      worktreeService: worktreeService,
     );
     final pushTracker = PushSessionStateTracker(now: clock.now);
     final pushRateLimiter = PushRateLimiter(now: clock.now);
@@ -372,10 +375,13 @@ class Orchestrator({
       legacyMissingPluginId: _legacyMissingPluginId,
     );
     final sessionCreationService = SessionCreationService(
-      metadataService: MetadataService(
-        client: _httpClient,
-        baseUrl: config.authBackendURL,
-        tokenRefresher: _tokenRefresher,
+      sessionMetadataRepository: SessionMetadataRepository(
+        api: SesoriServerApi(
+          authBackendUrl: config.authBackendURL,
+          client: _httpClient,
+          requestDeadline: SesoriServerApi.defaultRequestDeadline,
+          tokenRefresher: _tokenRefresher,
+        ),
       ),
       worktreeService: worktreeService,
       sessionRepository: sessionRepository,
@@ -475,6 +481,10 @@ class Orchestrator({
     final sessionEventDispatcher = SessionEventDispatcher(
       sessionEventService: sessionEventService,
     );
+    final sessionMutationListener = SessionMutationListener(
+      source: sessionMutationDispatcher.mutations.map(_mapLocalMutation),
+      dispatcher: sessionEventDispatcher,
+    );
     final permissionAutoApprovalService = PermissionAutoApprovalService(
       sessionRepository: sessionRepository,
       permissionRepository: permissionRepository,
@@ -490,10 +500,6 @@ class Orchestrator({
     ];
     final sessionBindingCommitListener = SessionBindingCommitListener(
       source: sessionRepository.bindingCommits,
-      dispatcher: sessionEventDispatcher,
-    );
-    final sessionDeletionListener = SessionDeletionListener(
-      source: sessionMutationDispatcher.deletedSessions,
       dispatcher: sessionEventDispatcher,
     );
     final sessionOptionsCreationRefreshListener = SessionOptionsCreationRefreshListener(
@@ -596,7 +602,7 @@ class Orchestrator({
       pluginEvents: normalizedPluginEvents,
       pluginEventListeners: pluginEventListeners,
       sessionBindingCommitListener: sessionBindingCommitListener,
-      sessionDeletionListener: sessionDeletionListener,
+      sessionMutationListener: sessionMutationListener,
       chatHistoryListener: chatHistoryListener,
       chatHistoryActivityListener: chatHistoryActivityListener,
       chatHistoryService: chatHistoryService,
@@ -635,6 +641,7 @@ class Orchestrator({
       sessionAbortService: sessionAbortService,
       sessionOperationDispatcher: sessionOperationDispatcher,
       sessionMutationDispatcher: sessionMutationDispatcher,
+      sessionCreationService: sessionCreationService,
       restartDispatcher: restartDispatcher,
       statusNotifier: _statusNotifier,
       reconnectBackoff: _reconnectBackoff,
@@ -663,6 +670,18 @@ class Orchestrator({
       List<int>.generate(32, (_) => random.nextInt(256)),
     );
   }
+
+  LocalSessionEvent _mapLocalMutation(LocalSessionMutation mutation) {
+    final session = mutation.session;
+    return (
+      pluginId: session.pluginId,
+      event: switch (mutation) {
+        SessionTitleUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: true),
+        SessionBranchUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
+        SessionDeleted() => BridgeSseSessionDeleted(info: session.toJson()),
+      },
+    );
+  }
 }
 
 bool _gitPathExists({required String gitPath}) {
@@ -681,7 +700,7 @@ class OrchestratorSession._({
     required final Stream<NormalizedSourcedBridgeEvent> _pluginEvents,
     required final List<PluginEventListener> _pluginEventListeners,
     required final SessionBindingCommitListener _sessionBindingCommitListener,
-    required final SessionDeletionListener _sessionDeletionListener,
+    required final SessionMutationListener _sessionMutationListener,
     required final ChatHistoryListener _chatHistoryListener,
     required final ChatHistoryActivityListener _chatHistoryActivityListener,
     required final ChatHistoryService _chatHistoryService,
@@ -720,6 +739,7 @@ class OrchestratorSession._({
     required final SessionAbortService _sessionAbortService,
     required final SessionOperationDispatcher _sessionOperationDispatcher,
     required final SessionMutationDispatcher _sessionMutationDispatcher,
+    required final SessionCreationService _sessionCreationService,
     required final BridgeRestartDispatcher _restartDispatcher,
     required final ControlStatusNotifier? _statusNotifier,
     required final ReconnectBackoffPolicy _reconnectBackoff,
@@ -730,6 +750,7 @@ class OrchestratorSession._({
   final CompositeSubscription _catalogImportSubscriptions = CompositeSubscription();
   // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _subscriptions = CompositeSubscription();
+  StreamSubscription<NormalizedSourcedBridgeEvent>? _normalizedEventSubscription;
   final Map<String, Future<void>> _pluginEventProcessingTails = <String, Future<void>>{};
   final Set<Future<void>> _inFlightRelayCompletions = <Future<void>>{};
 
@@ -836,32 +857,30 @@ class OrchestratorSession._({
     _sessionAbortService.abortedSessions.listen(_completionListener.markSessionAborted).addTo(_subscriptions);
     _sessionAbortService.abortFailedSessions.listen(_completionListener.clearPendingAbort).addTo(_subscriptions);
     _completionListener.start();
-    _pluginEvents
-        .listen(
-          (source) {
-            unawaited(_processPluginEventInOrder(source));
-          },
-          onError: (Object e, StackTrace st) {
-            Log.w("plugin event stream error: $e");
-            unawaited(
-              _failureReporter.recordFailure(
-                error: e,
-                stackTrace: st,
-                uniqueIdentifier: "bridge.plugin.events",
-                fatal: false,
-                reason: "plugin event stream failure",
-                information: const [],
-              ),
-            );
-          },
-          onDone: () {
-            Log.w("plugin event stream closed");
-          },
-        )
-        .addTo(_subscriptions);
+    _normalizedEventSubscription = _pluginEvents.listen(
+      (source) {
+        unawaited(_processPluginEventInOrder(source));
+      },
+      onError: (Object e, StackTrace st) {
+        Log.w("plugin event stream error: $e");
+        unawaited(
+          _failureReporter.recordFailure(
+            error: e,
+            stackTrace: st,
+            uniqueIdentifier: "bridge.plugin.events",
+            fatal: false,
+            reason: "plugin event stream failure",
+            information: const [],
+          ),
+        );
+      },
+      onDone: () {
+        Log.w("plugin event stream closed");
+      },
+    );
+    _sessionMutationListener.start();
     _chatHistoryListener.start();
     _sessionBindingCommitListener.start();
-    _sessionDeletionListener.start();
     for (final listener in _pluginEventListeners) {
       listener.start();
     }
@@ -1024,6 +1043,7 @@ class OrchestratorSession._({
 
   Future<void> _teardown() async {
     _routedRequestDispatcher.beginShutdown();
+    _sessionCreationService.beginShutdown();
     final teardownSw = Stopwatch()..start();
     Object? firstTeardownError;
     StackTrace? firstTeardownStackTrace;
@@ -1052,28 +1072,30 @@ class OrchestratorSession._({
       attempt(_catalogImportSubscriptions.cancel),
       for (final listener in _pluginEventListeners) attempt(listener.dispose),
       attempt(_sessionBindingCommitListener.dispose),
-      attempt(_sessionDeletionListener.dispose),
       attempt(_chatHistoryListener.dispose),
       attempt(_chatHistoryActivityListener.dispose),
     ]);
     Log.v("[shutdown] event producers cancelled (+${teardownSw.elapsedMilliseconds}ms)");
-    await Future.wait([
-      attempt(() async {
-        await Future.wait(_pluginEventProcessingTails.values);
-        // After the tails, because a processed event may have just dispatched
-        // its capture.
-        await Future.wait(_pendingPartCaptures.toList(growable: false));
-      }),
-      attempt(_routedRequestDispatcher.drain),
-      attempt(_drainRelayCompletions),
-    ]);
+    await Future.wait([attempt(_routedRequestDispatcher.drain), attempt(_drainRelayCompletions)]);
     Log.v(
-      "[shutdown] plugin events, routed requests, and relay completions drained "
+      "[shutdown] routed requests and relay completions drained "
       "(+${teardownSw.elapsedMilliseconds}ms)",
     );
+    await attempt(_sessionCreationService.drain);
+    Log.v("[shutdown] late session titles drained (+${teardownSw.elapsedMilliseconds}ms)");
     _sessionOperationDispatcher.beginShutdown();
     await attempt(_sessionOperationDispatcher.dispose);
     Log.v("[shutdown] session operations drained (+${teardownSw.elapsedMilliseconds}ms)");
+    await attempt(_sessionMutationDispatcher.dispose);
+    await attempt(_sessionMutationListener.dispose);
+    await attempt(_sessionEventDispatcher.dispose);
+    await attempt(() async {
+      await Future.wait(_pluginEventProcessingTails.values);
+      // After the tails, because a processed event may have just dispatched
+      // its capture.
+      await Future.wait(_pendingPartCaptures.toList(growable: false));
+    });
+    await attempt(() => _normalizedEventSubscription?.cancel());
     await Future.wait([
       attempt(_permissionAutoApprovalService.dispose),
       attempt(_sessionPromptService.dispose),
@@ -1084,8 +1106,6 @@ class OrchestratorSession._({
       attempt(_sessionOptionsCreationRefreshListener.dispose),
       attempt(_sessionOptionsChangedRefreshListener.dispose),
     ]);
-    await attempt(_sessionEventDispatcher.dispose);
-    await attempt(_sessionMutationDispatcher.dispose);
     await attempt(_projectActivityService.dispose);
     Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_completionListener.dispose);
@@ -1245,6 +1265,7 @@ class OrchestratorSession._({
 
   void beginShutdown() {
     _routedRequestDispatcher.beginShutdown();
+    _sessionCreationService.beginShutdown();
     if (_cancelRequestedAt == null) {
       _cancelRequestedAt = DateTime.now();
       Log.d(
@@ -1887,7 +1908,7 @@ class OrchestratorSession._({
         }
 
         final connID = ByteData.sublistView(msg.data).getUint16(0, Endian.big);
-        final payload = msg.data.sublist(2);
+        final payload = Uint8List.sublistView(msg.data, 2);
         if (payload.isEmpty) {
           Log.v("empty payload for connID=$connID");
           break processMessage;
@@ -1914,7 +1935,7 @@ class OrchestratorSession._({
             break processMessage;
           }
 
-          List<int> encrypted;
+          Uint8List encrypted;
           try {
             encrypted = await kxManager.handleKeyExchange(message: relayMessage);
             Log.d("key exchange OK, sending ready to connID=$connID");
@@ -1989,7 +2010,7 @@ class OrchestratorSession._({
               _sendIfCurrent(
                 connection: connection,
                 connID: connID,
-                payload: utf8.encode(rekeyRequired),
+                payload: Uint8List.fromList(utf8.encode(rekeyRequired)),
               );
             } catch (_) {
               if (_cancelled) {
@@ -2015,7 +2036,7 @@ class OrchestratorSession._({
           final ackJSON = utf8.encode(
             jsonEncode(const RelayMessage.resumeAck().toJson()),
           );
-          List<int> encryptedAck;
+          Uint8List encryptedAck;
           try {
             encryptedAck = await frame(ackJSON, encryptor: encryptor);
           } catch (_) {
@@ -2194,7 +2215,7 @@ class OrchestratorSession._({
     required Object phoneIncarnation,
     required Map<int, Object> activePhoneIncarnations,
   }) async {
-    final ({List<int> payload, int cleartextLength}) encrypted;
+    final ({Uint8List payload, int cleartextLength}) encrypted;
     try {
       encrypted = await _encryptRelayMessage(message: response, connID: connID);
     } on Object catch (error, stackTrace) {
@@ -2316,7 +2337,7 @@ class OrchestratorSession._({
     return base + Duration(milliseconds: extra);
   }
 
-  Future<({List<int> payload, int cleartextLength})> _encryptRelayMessage({
+  Future<({Uint8List payload, int cleartextLength})> _encryptRelayMessage({
     required int connID,
     required RelayMessage message,
   }) async {
@@ -2333,7 +2354,7 @@ class OrchestratorSession._({
   RelaySendOutcome _sendEncryptedResponseIfCurrent({
     required RelayConnection connection,
     required int connID,
-    required List<int> payload,
+    required Uint8List payload,
     required int cleartextLength,
     required Object phoneIncarnation,
     required Map<int, Object> activePhoneIncarnations,
@@ -2355,7 +2376,7 @@ class OrchestratorSession._({
   RelaySendOutcome _sendIfCurrent({
     required RelayConnection connection,
     required int connID,
-    required List<int> payload,
+    required Uint8List payload,
   }) {
     try {
       return _client.sendIfCurrent(

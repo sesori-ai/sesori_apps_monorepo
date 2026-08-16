@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:convert";
+import "dart:typed_data";
 
 import "package:clock/clock.dart";
 import "package:cryptography/cryptography.dart";
@@ -86,6 +87,7 @@ void main() {
       await _waitForSendCount(client, 2);
 
       expect(client.sentConnIDs, containsAll([1, 2]));
+      expect(client.sentPayloads, everyElement(isA<Uint8List>()));
 
       final firstEnvelope = await _decryptEnvelope(client.sentPayloads.first, roomKey);
       final secondEnvelope = await _decryptEnvelope(client.sentPayloads.last, roomKey);
@@ -557,7 +559,7 @@ Future<void> _pumpEventLoop() => Future<void>.delayed(const Duration(millisecond
 
 class _RecordingRelayClient() extends RelayClient {
   final List<int> sentConnIDs = <int>[];
-  final List<List<int>> sentPayloads = <List<int>>[];
+  final List<Uint8List> sentPayloads = <Uint8List>[];
   RelaySendOutcome nextOutcome = RelaySendOutcome.sent;
   void Function()? onNextSend;
   final StreamController<int> _sends = StreamController<int>.broadcast();
@@ -577,10 +579,10 @@ class _RecordingRelayClient() extends RelayClient {
   RelaySendOutcome sendIfCurrent({
     required RelayConnection connection,
     required int connID,
-    required List<int> payload,
+    required Uint8List payload,
   }) {
     sentConnIDs.add(connID);
-    sentPayloads.add(List<int>.from(payload));
+    sentPayloads.add(Uint8List.fromList(payload));
     _sends.add(sentConnIDs.length);
     final outcome = nextOutcome;
     onNextSend?.call();
@@ -600,7 +602,7 @@ class _ThrowingRelayClient() extends RelayClient {
   RelaySendOutcome sendIfCurrent({
     required RelayConnection connection,
     required int connID,
-    required List<int> payload,
+    required Uint8List payload,
   }) {
     throw Exception("send failed intentionally");
   }

@@ -47,15 +47,17 @@ class RelayCryptoService() {
 
   /// Encrypts plaintext using XChaCha20-Poly1305.
   /// Returns: [24 bytes nonce][ciphertext + 16 byte auth tag]
-  Future<List<int>> encrypt(List<int> plaintext, {required SecretKey key}) async {
+  Future<Uint8List> encrypt(List<int> plaintext, {required SecretKey key}) async {
     final secretBox = await _cipher.encrypt(plaintext, secretKey: key);
-
-    // Layout: nonce (24 bytes) + ciphertext + mac (16 bytes)
-    return [
-      ...secretBox.nonce,
-      ...secretBox.cipherText,
-      ...secretBox.mac.bytes,
-    ];
+    final encrypted = Uint8List(secretBox.nonce.length + secretBox.cipherText.length + secretBox.mac.bytes.length);
+    encrypted.setRange(0, secretBox.nonce.length, secretBox.nonce);
+    encrypted.setRange(
+      secretBox.nonce.length,
+      secretBox.nonce.length + secretBox.cipherText.length,
+      secretBox.cipherText,
+    );
+    encrypted.setRange(secretBox.nonce.length + secretBox.cipherText.length, encrypted.length, secretBox.mac.bytes);
+    return encrypted;
   }
 
   /// Decrypts ciphertext produced by [encrypt].
@@ -68,13 +70,10 @@ class RelayCryptoService() {
       );
     }
 
-    final nonce = data.sublist(0, 24);
-    final ciphertextAndMac = data.sublist(24);
-    final cipherText = ciphertextAndMac.sublist(
-      0,
-      ciphertextAndMac.length - 16,
-    );
-    final mac = Mac(ciphertextAndMac.sublist(ciphertextAndMac.length - 16));
+    final bytes = data is Uint8List ? data : Uint8List.fromList(data);
+    final nonce = Uint8List.sublistView(bytes, 0, 24);
+    final cipherText = Uint8List.sublistView(bytes, 24, bytes.length - 16);
+    final mac = Mac(Uint8List.sublistView(bytes, bytes.length - 16));
 
     final secretBox = SecretBox(cipherText, nonce: nonce, mac: mac);
 

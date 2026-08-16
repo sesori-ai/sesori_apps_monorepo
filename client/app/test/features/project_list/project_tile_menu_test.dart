@@ -67,7 +67,7 @@ void main() {
     await getIt.reset();
   });
 
-  final project = testProject(id: "/home/user/my-app", path: "/home/user/my-app");
+  final project = testProjectSummary(id: "/home/user/my-app", path: "/home/user/my-app");
 
   /// Pumps the real screen with a single project loaded. A router hosts it
   /// because the rename sheet pops itself with go_router's `context.pop()`.

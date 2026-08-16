@@ -24,7 +24,7 @@ void main() {
         (connID: 65535, hi: 0xFF, lo: 0xFF),
       ];
 
-      final payload = "test-payload".codeUnits;
+      final payload = Uint8List.fromList("test-payload".codeUnits);
 
       for (final tt in tests) {
         expect(
@@ -67,7 +67,7 @@ void main() {
         client.sendIfCurrent(
           connection: connection,
           connID: 0,
-          payload: "hello".codeUnits,
+          payload: Uint8List.fromList("hello".codeUnits),
         ),
         RelaySendOutcome.stale,
       );
@@ -610,7 +610,7 @@ void main() {
         client.sendIfCurrent(
           connection: connection,
           connID: 1,
-          payload: "before".codeUnits,
+          payload: Uint8List.fromList("before".codeUnits),
         ),
         RelaySendOutcome.sent,
       );
@@ -642,7 +642,7 @@ void main() {
         client.sendIfCurrent(
           connection: connection,
           connID: 2,
-          payload: "after".codeUnits,
+          payload: Uint8List.fromList("after".codeUnits),
         ),
         RelaySendOutcome.sent,
       );
@@ -670,7 +670,7 @@ void main() {
         client.sendIfCurrent(
           connection: firstConnection,
           connID: 1,
-          payload: const [1],
+          payload: Uint8List.fromList(const [1]),
         ),
         RelaySendOutcome.stale,
       );
@@ -690,7 +690,7 @@ void main() {
         client.sendIfCurrent(
           connection: firstConnection,
           connID: 1,
-          payload: const [1],
+          payload: Uint8List.fromList(const [1]),
         ),
         RelaySendOutcome.stale,
       );
@@ -702,7 +702,7 @@ void main() {
         client.sendIfCurrent(
           connection: secondConnection,
           connID: 2,
-          payload: const [2],
+          payload: Uint8List.fromList(const [2]),
         ),
         RelaySendOutcome.sent,
       );
@@ -727,7 +727,7 @@ void main() {
         client.sendIfCurrent(
           connection: firstConnection,
           connID: 1,
-          payload: const [1],
+          payload: Uint8List.fromList(const [1]),
         ),
         RelaySendOutcome.stale,
       );

@@ -127,7 +127,6 @@ class NotificationOpenDispatcher({
           AppRoute.sessions(
             projectId: request.projectId,
             projectName: null,
-            supportsDedicatedWorktrees: null,
           ),
           sessionDetail,
         ].map((route) => route.buildPath()).toList(growable: false),

@@ -79,11 +79,11 @@ String toString() {
 
 
 class ProjectListLoaded implements ProjectListState {
-  const ProjectListLoaded({required  List<Project> projects, required  Map<String, int> activityById,  Map<String, bool> unseenByProjectId = const {}, this.isRefreshing = false}): _projects = projects,_activityById = activityById,_unseenByProjectId = unseenByProjectId;
+  const ProjectListLoaded({required  List<ProjectSummary> projects, required  Map<String, int> activityById,  Map<String, bool> unseenByProjectId = const {}, this.isRefreshing = false}): _projects = projects,_activityById = activityById,_unseenByProjectId = unseenByProjectId;
   
 
- final  List<Project> _projects;
- List<Project> get projects {
+ final  List<ProjectSummary> _projects;
+ List<ProjectSummary> get projects {
   if (_projects is EqualUnmodifiableListView) return _projects;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_projects);
@@ -141,7 +141,7 @@ abstract mixin class $ProjectListLoadedCopyWith<$Res> implements $ProjectListSta
   factory $ProjectListLoadedCopyWith(ProjectListLoaded value, $Res Function(ProjectListLoaded) _then) = _$ProjectListLoadedCopyWithImpl;
 @useResult
 $Res call({
- List<Project> projects, Map<String, int> activityById, Map<String, bool> unseenByProjectId, bool isRefreshing
+ List<ProjectSummary> projects, Map<String, int> activityById, Map<String, bool> unseenByProjectId, bool isRefreshing
 });
 
 
@@ -161,7 +161,7 @@ class _$ProjectListLoadedCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') $Res call({Object? projects = null,Object? activityById = null,Object? unseenByProjectId = null,Object? isRefreshing = null,}) {
   return _then(ProjectListLoaded(
 projects: null == projects ? _self._projects : projects // ignore: cast_nullable_to_non_nullable
-as List<Project>,activityById: null == activityById ? _self._activityById : activityById // ignore: cast_nullable_to_non_nullable
+as List<ProjectSummary>,activityById: null == activityById ? _self._activityById : activityById // ignore: cast_nullable_to_non_nullable
 as Map<String, int>,unseenByProjectId: null == unseenByProjectId ? _self._unseenByProjectId : unseenByProjectId // ignore: cast_nullable_to_non_nullable
 as Map<String, bool>,isRefreshing: null == isRefreshing ? _self.isRefreshing : isRefreshing // ignore: cast_nullable_to_non_nullable
 as bool,

@@ -47,3 +47,4 @@ Icon
 
 # Built Visual Studio Code Extensions
 *.vsix
+.opencode/package-lock.json

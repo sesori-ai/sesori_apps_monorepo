@@ -1,46 +1,47 @@
+import "dart:async";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../metadata_service.dart";
-import "../models/session_metadata.dart" as bridge_metadata;
+import "../../repositories/session_metadata_repository.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
 import "session_mutation_dispatcher.dart";
 import "worktree_service.dart";
 
 class SessionCreationService({
-  required final MetadataService _metadataService,
+  required final SessionMetadataRepository _sessionMetadataRepository,
   required final WorktreeService _worktreeService,
   required final SessionRepository _sessionRepository,
   required final SessionMutationDispatcher _sessionMutationDispatcher,
 }) {
+  final Set<Future<void>> _lateMetadataWork = <Future<void>>{};
+  bool _acceptingLateMetadata = true;
+  Future<void>? _drainFuture;
+
   Future<Session> createSession({required CreateSessionRequest request}) async {
-    // Validate the opaque project handle before metadata generation or any
-    // plugin/git side effect. The stored path is authoritative; unknown ids
-    // must not be treated as directories.
+    // Validate the opaque project handle before any plugin/git side effect.
+    // The stored path is authoritative; unknown ids are not directories.
     final projectDirectory = await _sessionRepository.resolveProjectDirectory(projectId: request.projectId);
     final normalizedCommand = request.command?.normalize();
     final agentModel = request.model;
     final userTexts = _extractTexts(parts: request.parts);
     final firstText = userTexts.firstOrNull;
     final userVisibleText = userTexts.isEmpty ? null : userTexts.join("\n\n");
-    final pluginRoutability = _sessionRepository.ensurePluginRoutable(
+    await _sessionRepository.ensurePluginRoutable(
       pluginId: request.pluginId,
       operation: SessionOperation.createSession,
     );
-    final metadataGeneration = _generateMetadata(firstText: firstText);
-    await pluginRoutability;
-    final metadata = await metadataGeneration;
-    final worktreeResult = await _prepareWorktree(request: request, metadata: metadata);
+    final worktreeResult = await _prepareWorktree(request: request);
     final worktreeState = await _resolveWorktreeState(
       projectId: request.projectId,
-      dedicatedWorktree: request.dedicatedWorktree,
+      projectDirectory: projectDirectory,
       worktreeResult: worktreeResult,
     );
     final created = await _sessionRepository.createSession(
       pluginId: request.pluginId,
       projectId: request.projectId,
-      directory: _resolveDirectory(projectDirectory: projectDirectory, worktreeResult: worktreeResult),
+      directory: worktreeState.directory,
       parentSessionId: null,
       parts: _buildPromptParts(
         parts: request.parts,
@@ -51,7 +52,7 @@ class SessionCreationService({
       variant: request.variant,
       agent: normalizedCommand == null || normalizedCommand.isEmpty ? request.agent : null,
       model: normalizedCommand == null || normalizedCommand.isEmpty ? request.model : null,
-      isDedicated: request.dedicatedWorktree,
+      isDedicated: worktreeState.isDedicated,
       worktreePath: worktreeState.worktreePath,
       branchName: worktreeState.branchName,
       baseBranch: worktreeState.baseBranch,
@@ -77,16 +78,17 @@ class SessionCreationService({
       agent: request.agent,
       model: request.model,
     );
-    final finalSession = await _maybeRenameSession(session: created, metadata: metadata);
-    // The plugin only knows the directory the session was created in, so for
-    // a moved project it echoes the live path (or its own internal id) as the
-    // session's projectID. Re-key the response to the stable identifier the
-    // phone and the bridge key on — mirroring project-scoped session fetches.
-    return await _sessionRepository.enrichSession(
-      session: finalSession.copyWith(projectID: request.projectId),
-      verifiedGithubLogin: null,
-    );
+    _startLateMetadata(session: created, firstText: firstText);
+    return created;
   }
+
+  void beginShutdown() {
+    if (!_acceptingLateMetadata) return;
+    _acceptingLateMetadata = false;
+    _sessionMetadataRepository.beginShutdown();
+  }
+
+  Future<void> drain() => _drainFuture ??= _drain();
 
   List<String> _extractTexts({required List<PromptPart> parts}) {
     return parts
@@ -96,16 +98,8 @@ class SessionCreationService({
         .toList(growable: false);
   }
 
-  Future<bridge_metadata.SessionMetadata?> _generateMetadata({required String? firstText}) async {
-    if (firstText == null) {
-      return null;
-    }
-    return await _metadataService.generate(firstMessage: firstText);
-  }
-
   Future<WorktreeResult?> _prepareWorktree({
     required CreateSessionRequest request,
-    required bridge_metadata.SessionMetadata? metadata,
   }) async {
     if (!request.dedicatedWorktree) {
       return null;
@@ -113,9 +107,6 @@ class SessionCreationService({
     return await _worktreeService.prepareWorktreeForSession(
       projectId: request.projectId,
       parentSessionId: null,
-      preferredBranchAndWorktreeName: metadata != null
-          ? (branchName: metadata.branchName, worktreeName: metadata.worktreeName)
-          : null,
     );
   }
 
@@ -150,36 +141,6 @@ class SessionCreationService({
       return const [];
     }
     return parts;
-  }
-
-  /// The working directory the new session runs in: the dedicated worktree
-  /// when one was created, otherwise the project's live directory. The
-  /// request's projectId is the stable identifier — it may point where the
-  /// folder used to be, so it is never used as a directory directly.
-  String _resolveDirectory({
-    required String projectDirectory,
-    required WorktreeResult? worktreeResult,
-  }) {
-    return switch (worktreeResult) {
-      WorktreeSuccess(:final path) => path,
-      // The fallback carries the live project directory it fell back to.
-      WorktreeFallback(:final originalPath) => originalPath,
-      null => projectDirectory,
-    };
-  }
-
-  Future<Session> _maybeRenameSession({
-    required Session session,
-    required bridge_metadata.SessionMetadata? metadata,
-  }) async {
-    if (metadata?.title case final title?) {
-      try {
-        return await _sessionMutationDispatcher.renameSession(sessionId: session.id, title: title);
-      } catch (e) {
-        Log.w("Failed to rename session ${session.id}: $e");
-      }
-    }
-    return session;
   }
 
   Future<void> _maybeSendCommand({
@@ -224,34 +185,35 @@ class SessionCreationService({
     return userArguments;
   }
 
-  Future<({String? worktreePath, String? branchName, String? baseBranch, String? baseCommit})> _resolveWorktreeState({
+  Future<_SessionCreationWorktreeState> _resolveWorktreeState({
     required String projectId,
-    required bool dedicatedWorktree,
+    required String projectDirectory,
     required WorktreeResult? worktreeResult,
   }) async {
-    if (worktreeResult case WorktreeSuccess(
-      :final path,
-      branchName: final resolvedBranchName,
-      baseBranch: final resolvedBaseBranch,
-      baseCommit: final resolvedBaseCommit,
-    )) {
-      return (
-        worktreePath: path,
-        branchName: resolvedBranchName,
-        baseBranch: resolvedBaseBranch,
-        baseCommit: resolvedBaseCommit,
-      );
-    }
-    if (dedicatedWorktree) {
-      return (worktreePath: null, branchName: null, baseBranch: null, baseCommit: null);
+    final String directory;
+    switch (worktreeResult) {
+      case WorktreeSuccess(
+        :final path,
+        branchName: final resolvedBranchName,
+        baseBranch: final resolvedBaseBranch,
+        baseCommit: final resolvedBaseCommit,
+      ):
+        return _DedicatedSessionCreationWorktreeState(
+          path: path,
+          branchName: resolvedBranchName,
+          baseBranch: resolvedBaseBranch,
+          baseCommit: resolvedBaseCommit,
+        );
+      case WorktreeFallback(:final originalPath):
+        directory = originalPath;
+      case null:
+        directory = projectDirectory;
     }
     final startCommit = await _worktreeService.resolveHeadCommit(projectId: projectId);
     // In-place sessions have no branch baseline. The immutable HEAD commit is
     // their exact comparison point even when local changes already exist.
-    return (
-      worktreePath: null,
-      branchName: null,
-      baseBranch: null,
+    return _InPlaceSessionCreationWorktreeState(
+      directory: directory,
       baseCommit: startCommit,
     );
   }
@@ -273,4 +235,104 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
 ---
 ''';
   }
+
+  void _startLateMetadata({required Session session, required String? firstText}) {
+    if (!_acceptingLateMetadata || firstText == null) return;
+    late final Future<void> work;
+    work = _generateAndApplyMetadata(session: session, firstText: firstText).whenComplete(() {
+      _lateMetadataWork.remove(work);
+    });
+    _lateMetadataWork.add(work);
+  }
+
+  Future<void> _generateAndApplyMetadata({required Session session, required String firstText}) async {
+    final GeneratedSessionMetadata metadata;
+    try {
+      metadata = await _sessionMetadataRepository.generateMetadata(
+        firstMessage: firstText,
+      );
+    } on SessionMetadataRequestAbortedException catch (error) {
+      if (!_acceptingLateMetadata) return;
+      Log.w(
+        "Generated-metadata request was aborted for session ${session.id}",
+        error.innerError,
+        error.innerStackTrace,
+      );
+      return;
+    } on SessionMetadataInvalidResponseException catch (error) {
+      Log.w(
+        "Failed to generate metadata for session ${session.id}",
+        error.innerError,
+        error.innerStackTrace,
+      );
+      return;
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to generate metadata for session ${session.id}", error, stackTrace);
+      return;
+    }
+
+    try {
+      await _sessionMutationDispatcher.applyGeneratedTitle(
+        sessionId: session.id,
+        title: metadata.title,
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to apply generated title for session ${session.id}", error, stackTrace);
+    }
+    try {
+      await _sessionMutationDispatcher.applyGeneratedBranchName(
+        sessionId: session.id,
+        branchName: metadata.branchName,
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to apply generated branch for session ${session.id}", error, stackTrace);
+    }
+  }
+
+  Future<void> _drain() async {
+    beginShutdown();
+    await Future.wait(_lateMetadataWork.toList(growable: false));
+  }
+}
+
+sealed class _SessionCreationWorktreeState() {
+  String get directory;
+  bool get isDedicated;
+  String? get worktreePath;
+  String? get branchName;
+  String? get baseBranch;
+  String? get baseCommit;
+}
+
+class _DedicatedSessionCreationWorktreeState({
+  required final String path,
+  @override required final String branchName,
+  @override required final String baseBranch,
+  @override required final String baseCommit,
+}) implements _SessionCreationWorktreeState {
+  @override
+  String get directory => path;
+
+  @override
+  bool get isDedicated => true;
+
+  @override
+  String get worktreePath => path;
+}
+
+class _InPlaceSessionCreationWorktreeState({
+  @override required final String directory,
+  @override required final String? baseCommit,
+}) implements _SessionCreationWorktreeState {
+  @override
+  bool get isDedicated => false;
+
+  @override
+  String? get worktreePath => null;
+
+  @override
+  String? get branchName => null;
+
+  @override
+  String? get baseBranch => null;
 }

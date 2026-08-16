@@ -13,7 +13,7 @@ import "../../core/extensions/build_context_x.dart";
 /// (which lives in the parent screen).
 Future<void> showRenameProjectDialog({
   required BuildContext context,
-  required Project project,
+  required ProjectSummary project,
   required ProjectListCubit cubit,
 }) {
   return showPregoBottomSheet<void>(
@@ -25,7 +25,7 @@ Future<void> showRenameProjectDialog({
 
 @visibleForTesting
 class const RenameProjectDialog({
-  required final Project project,
+  required final ProjectSummary project,
   required final ProjectListCubit cubit,
   super.key,
 }) extends StatefulWidget {

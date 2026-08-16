@@ -299,7 +299,7 @@ class _ProjectListBodyState() extends State<_ProjectListBody> {
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
         // Keep the list mounted at zero items so its final row can finish the
         // closing transition before the connected-empty view takes over.
-        PregoAnimatedSliverList<Project>(
+        PregoAnimatedSliverList<ProjectSummary>(
           key: const ValueKey("project-list"),
           items: projects,
           itemKey: (project) => ValueKey(project.id),

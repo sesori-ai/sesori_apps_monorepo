@@ -106,6 +106,25 @@ void main() {
       expect(await loading, isEmpty);
     });
 
+    test("a null session/load result surfaces as a typed failure", () async {
+      final loading = plugin.getSessionMessages(sessionId);
+      await completeReplayHandshake();
+
+      final loadFrame = await waitForFrame("session/load");
+      fake.emit({"jsonrpc": "2.0", "id": loadFrame["id"], "result": null});
+
+      await expectLater(
+        loading,
+        throwsA(
+          isA<PluginOperationException>().having(
+            (error) => error.operation,
+            "operation",
+            "session/load history replay",
+          ),
+        ),
+      );
+    });
+
     test("partial history replayed before a -32602 rejection is preserved", () async {
       final loading = plugin.getSessionMessages(sessionId);
       await completeReplayHandshake();

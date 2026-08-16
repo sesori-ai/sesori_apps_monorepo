@@ -3,8 +3,8 @@ import "dart:async";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_dispatcher.dart";
 import "package:sesori_bridge/src/listeners/session_binding_commit_listener.dart";
-import "package:sesori_bridge/src/listeners/session_deletion_listener.dart";
-import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_bridge/src/listeners/session_mutation_listener.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -53,29 +53,23 @@ void main() {
     await source.close();
   });
 
-  test("deletion listener forwards committed stable sessions", () async {
-    final source = StreamController<Session>.broadcast();
+  test("mutation listener forwards mapped local events", () async {
+    final source = StreamController<LocalSessionEvent>.broadcast();
     final dispatcher = _RecordingDispatcher();
-    final listener = SessionDeletionListener(source: source.stream, dispatcher: dispatcher);
+    final listener = SessionMutationListener(source: source.stream, dispatcher: dispatcher);
     listener.start();
-    const deleted = Session(
-      id: "stable-root",
+    const updated = (
       pluginId: "plugin",
-      projectID: "project",
-      directory: "/repo",
-      parentID: null,
-      title: null,
-      time: null,
-      pullRequest: null,
-      promptDefaults: null,
-      lastUserActivityAt: null,
-      branchName: null,
+      event: BridgeSseSessionUpdated(info: <String, dynamic>{}, titleChanged: true),
     );
+    const deleted = (pluginId: "plugin", event: BridgeSseSessionDeleted(info: <String, dynamic>{}));
 
-    source.add(deleted);
+    source
+      ..add(updated)
+      ..add(deleted);
     await Future<void>.delayed(Duration.zero);
 
-    expect(dispatcher.deletedSessions, [deleted]);
+    expect(dispatcher.localEvents, [updated, deleted]);
     await listener.dispose();
     await source.close();
   });
@@ -83,7 +77,7 @@ void main() {
 
 class _RecordingDispatcher() implements SessionEventDispatcher {
   final List<SessionBindingsCommitted> commits = [];
-  final List<Session> deletedSessions = [];
+  final List<LocalSessionEvent> localEvents = [];
 
   @override
   Future<void> dispatchBindingsCommitted({required SessionBindingsCommitted commit}) async {
@@ -91,8 +85,8 @@ class _RecordingDispatcher() implements SessionEventDispatcher {
   }
 
   @override
-  Future<void> dispatchDeletedSession({required Session session}) async {
-    deletedSessions.add(session);
+  Future<void> dispatchLocalEvent({required LocalSessionEvent source}) async {
+    localEvents.add(source);
   }
 
   @override

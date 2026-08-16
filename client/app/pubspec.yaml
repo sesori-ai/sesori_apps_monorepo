@@ -46,6 +46,9 @@ dependencies:
   collection: ^1.19.1
   rxdart: ^0.28.0
   flutter_bloc: ^9.1.1
+  # Before updating go_router, check its release notes for a fix to
+  # https://github.com/flutter/flutter/issues/191132. Once fixed, remove the
+  # explicit MaterialPage workaround in lib/core/routing/app_router.dart.
   go_router: ^17.3.0
   get_it: ^9.2.1
   injectable: ^3.0.0
@@ -83,7 +86,6 @@ dependencies:
   firebase_messaging: ^16.4.3
   flutter_local_notifications: ^22.2.0
   flutter_svg: ^2.3.0
-  cue: ^0.3.1
   sign_in_with_apple: ^8.1.0
   crypto: ^3.0.7
   vector_graphics: ^1.2.2

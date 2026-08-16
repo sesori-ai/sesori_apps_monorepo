@@ -20,12 +20,12 @@ class ProjectListService({
     };
   }
 
-  ({bool changed, List<Project> projects}) mergeTimestampUpdates({
-    required Iterable<Project> projects,
+  ({bool changed, List<ProjectSummary> projects}) mergeTimestampUpdates({
+    required Iterable<ProjectSummary> projects,
     required Map<String, int> timestampByProjectId,
   }) {
     var changed = false;
-    final mergedProjects = <Project>[];
+    final mergedProjects = <ProjectSummary>[];
     for (final project in projects) {
       final updated = timestampByProjectId[project.id];
       final time = project.time;
@@ -39,17 +39,17 @@ class ProjectListService({
     return (changed: changed, projects: _sortProjects(mergedProjects));
   }
 
-  List<Project> removeProject({required Iterable<Project> projects, required String projectId}) {
+  List<ProjectSummary> removeProject({required Iterable<ProjectSummary> projects, required String projectId}) {
     return _sortProjects(projects.where((project) => project.id != projectId));
   }
 
-  List<Project> orderProjects({
-    required Iterable<Project> projects,
+  List<ProjectSummary> orderProjects({
+    required Iterable<ProjectSummary> projects,
     required Map<String, Map<String, SessionActivityInfo>> activityByProjectId,
     required Map<String, Map<String, SessionListItemState>> listStateByProjectId,
   }) {
-    final running = <Project>[];
-    final remaining = <Project>[];
+    final running = <ProjectSummary>[];
+    final remaining = <ProjectSummary>[];
     final runningActivityAtByProjectId = <String, int>{};
     for (final project in projects) {
       final activity = activityByProjectId[project.id];
@@ -83,11 +83,11 @@ class ProjectListService({
     return [...running, ..._sortProjects(remaining)];
   }
 
-  List<Project> _sortProjects(Iterable<Project> projects) {
+  List<ProjectSummary> _sortProjects(Iterable<ProjectSummary> projects) {
     return projects.toList()..sort((a, b) => _compareProjectsByTimestampAndName(a: a, b: b));
   }
 
-  int _compareProjectsByTimestampAndName({required Project a, required Project b}) {
+  int _compareProjectsByTimestampAndName({required ProjectSummary a, required ProjectSummary b}) {
     final aUpdated = a.time?.updated;
     final bUpdated = b.time?.updated;
     if (aUpdated == null && bUpdated != null) return 1;
@@ -105,5 +105,5 @@ class ProjectListService({
     return a.id.compareTo(b.id);
   }
 
-  String _effectiveName(Project project) => project.name ?? project.path;
+  String _effectiveName(ProjectSummary project) => project.name ?? project.path;
 }

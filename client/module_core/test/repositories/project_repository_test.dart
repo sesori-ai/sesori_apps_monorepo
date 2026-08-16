@@ -19,7 +19,8 @@ void main() {
       sessionApi: MockSessionApi(),
     );
     const project = Project(id: "project-1", name: "Project 1", path: "/project-1", time: null);
-    const projects = Projects(data: [project]);
+    const projectSummary = ProjectSummary(id: "project-1", name: "Project 1", path: "/project-1", time: null);
+    const projects = Projects(data: [projectSummary]);
     const suggestions = FilesystemSuggestions(data: [], path: null);
     const sessions = SessionListResponse(items: []);
 
@@ -181,7 +182,7 @@ void main() {
       filesystemApi: MockFilesystemApi(),
       sessionApi: MockSessionApi(),
     );
-    const project = Project(id: "project-1", name: "Project", path: "/project", time: null);
+    const project = ProjectSummary(id: "project-1", name: "Project", path: "/project", time: null);
     final session = testSession(id: "session-1", pluginId: "plugin-b", title: "Session");
     when(api.listProjects).thenAnswer((_) async => ApiResponse.success(const Projects(data: [project])));
     when(
@@ -222,7 +223,7 @@ void main() {
       filesystemApi: MockFilesystemApi(),
       sessionApi: sessionApi,
     );
-    const project = Project(id: "project-1", name: "Project", path: "/project", time: null);
+    const project = ProjectSummary(id: "project-1", name: "Project", path: "/project", time: null);
     final root = testSession(id: "root", pluginId: "plugin-b", title: "Root");
     final child = testSession(id: "child", pluginId: "plugin-b", title: "Child").copyWith(parentID: "root");
     when(api.listProjects).thenAnswer((_) async => ApiResponse.success(const Projects(data: [project])));
@@ -248,7 +249,7 @@ void main() {
       filesystemApi: MockFilesystemApi(),
       sessionApi: sessionApi,
     );
-    const project = Project(id: "project-1", name: "Project", path: "/project", time: null);
+    const project = ProjectSummary(id: "project-1", name: "Project", path: "/project", time: null);
     final root = testSession(id: "root", pluginId: "plugin-b", title: "Root");
     final child = testSession(id: "child", pluginId: "plugin-b", title: "Child").copyWith(parentID: "root");
     final nested = testSession(
@@ -284,7 +285,7 @@ void main() {
       filesystemApi: MockFilesystemApi(),
       sessionApi: sessionApi,
     );
-    const project = Project(id: "project-1", name: "Project", path: "/project", time: null);
+    const project = ProjectSummary(id: "project-1", name: "Project", path: "/project", time: null);
     final root = testSession(id: "root", pluginId: "plugin-a", title: "Root");
     final error = ApiError.generic();
     when(api.listProjects).thenAnswer((_) async => ApiResponse.success(const Projects(data: [project])));
@@ -304,8 +305,8 @@ void main() {
       filesystemApi: MockFilesystemApi(),
       sessionApi: sessionApi,
     );
-    const failedProject = Project(id: "failed-project", name: "Failed", path: "/failed", time: null);
-    const matchingProject = Project(id: "matching-project", name: "Matching", path: "/matching", time: null);
+    const failedProject = ProjectSummary(id: "failed-project", name: "Failed", path: "/failed", time: null);
+    const matchingProject = ProjectSummary(id: "matching-project", name: "Matching", path: "/matching", time: null);
     final failedRoot = testSession(id: "failed-root", pluginId: "plugin-a", title: "Failed root");
     final matchingRoot = testSession(id: "matching-root", pluginId: "plugin-b", title: "Matching root");
     final target = testSession(id: "target", pluginId: "plugin-b", title: "Target");
@@ -354,8 +355,8 @@ void main() {
       filesystemApi: MockFilesystemApi(),
       sessionApi: MockSessionApi(),
     );
-    const failedProject = Project(id: "failed-project", name: "Failed", path: "/failed", time: null);
-    const matchingProject = Project(id: "matching-project", name: "Matching", path: "/matching", time: null);
+    const failedProject = ProjectSummary(id: "failed-project", name: "Failed", path: "/failed", time: null);
+    const matchingProject = ProjectSummary(id: "matching-project", name: "Matching", path: "/matching", time: null);
     final target = testSession(id: "target", pluginId: "plugin-b", title: "Target");
     final error = ApiError.generic();
     final logs = <String>[];
@@ -389,8 +390,8 @@ void main() {
       filesystemApi: MockFilesystemApi(),
       sessionApi: sessionApi,
     );
-    const blockedProject = Project(id: "blocked-project", name: "Blocked", path: "/blocked", time: null);
-    const matchingProject = Project(id: "matching-project", name: "Matching", path: "/matching", time: null);
+    const blockedProject = ProjectSummary(id: "blocked-project", name: "Blocked", path: "/blocked", time: null);
+    const matchingProject = ProjectSummary(id: "matching-project", name: "Matching", path: "/matching", time: null);
     final blockedRoot = testSession(id: "blocked-root", pluginId: "plugin-a", title: "Blocked root");
     final blockedChild = testSession(id: "blocked-child", pluginId: "plugin-a", title: "Blocked child");
     final matchingRoot = testSession(id: "matching-root", pluginId: "plugin-b", title: "Matching root");

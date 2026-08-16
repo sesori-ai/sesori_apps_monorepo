@@ -93,7 +93,6 @@ void main() {
       projectViewingService: mockProjectViewingService,
       routeSource: mockRouteSource,
       projectId: projectId,
-      initialSupportsDedicatedWorktrees: null,
       failureReporter: mockFailureReporter,
     );
 
@@ -1505,7 +1504,6 @@ void main() {
           projectViewingService: mockProjectViewingService,
           routeSource: mockRouteSource,
           projectId: "global",
-          initialSupportsDedicatedWorktrees: null,
           failureReporter: mockFailureReporter,
         );
       },

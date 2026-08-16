@@ -1161,7 +1161,8 @@ that omit plugin identity. No unrelated plugin/runtime refactor is planned.
 
 - Extend `PiSessionProcessRepository` and add `PiSessionService` with one lazy
   process per active session, pending-new markers, secure IDs, generation-fenced
-  connects, selections, per-session lanes, merged events, and idle reap.
+  connects, selections, per-session lanes, merged events, and idle reap. Hydrate
+  replay identity state before exposing resident events or accepting turns.
 - Map validated inline images, reject unsupported attachments, preserve
   cross-session concurrency, and tear the process down after abort.
 - Cover spawn/serialization/resume races, transient history/rename leases,

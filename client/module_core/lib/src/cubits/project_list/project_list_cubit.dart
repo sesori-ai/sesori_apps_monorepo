@@ -131,7 +131,7 @@ class ProjectListCubit(
     );
   }
 
-  void setActiveProject(Project project) {
+  void setActiveProject(ProjectSummary project) {
     _connectionService.setActiveDirectory(project.id);
   }
 
@@ -254,7 +254,7 @@ class ProjectListCubit(
 
   /// Merges the REST-loaded `Project.hasUnseenChanges` with the live tracker
   /// map (the tracker takes precedence once it has an entry).
-  Map<String, bool> _unseenByProjectId(List<Project> projects) {
+  Map<String, bool> _unseenByProjectId(List<ProjectSummary> projects) {
     final live = _sessionUnseenTracker.currentProjectUnseen;
     return {
       for (final project in projects) project.id: live[project.id] ?? project.hasUnseenChanges,

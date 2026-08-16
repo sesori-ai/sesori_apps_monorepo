@@ -323,7 +323,6 @@ class PiRpcClient({
       gracefulTimeout: gracefulTimeout,
       pendingError: const PiRpcDisposedException(),
     );
-    await _starting;
     try {
       await _frames.close();
     } on Object catch (error, stack) {

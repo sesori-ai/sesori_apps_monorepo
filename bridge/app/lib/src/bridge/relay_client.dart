@@ -230,7 +230,7 @@ class RelayClient({
   RelaySendOutcome sendIfCurrent({
     required RelayConnection connection,
     required int connID,
-    required List<int> payload,
+    required Uint8List payload,
   }) {
     if (connID < 0 || connID > 0xFFFF) {
       throw RangeError.range(connID, 0, 0xFFFF, "connID");

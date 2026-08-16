@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:convert";
 import "dart:io";
+import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
@@ -218,7 +219,7 @@ void main() {
         harness.relayClient.sendIfCurrent(
           connection: harness.relayClient.promotedConnection!,
           connID: 1,
-          payload: const [1],
+          payload: Uint8List.fromList(const [1]),
         ),
         RelaySendOutcome.stale,
       );
@@ -647,7 +648,7 @@ class _RecordingRelayClient({
   RelaySendOutcome sendIfCurrent({
     required RelayConnection connection,
     required int connID,
-    required List<int> payload,
+    required Uint8List payload,
   }) {
     if (failNextSend) {
       failNextSend = false;

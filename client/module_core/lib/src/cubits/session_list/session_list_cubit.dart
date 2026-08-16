@@ -34,7 +34,6 @@ class SessionListCubit({
   required final ProjectViewingService _projectViewingService,
   required final RouteSource _routeSource,
   required final String _projectId,
-  required final bool? initialSupportsDedicatedWorktrees,
   required final FailureReporter _failureReporter,
 }) extends Cubit<SessionListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();

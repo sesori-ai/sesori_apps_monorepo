@@ -16,7 +16,13 @@ final class const PiPersistedUserTextCodec() {
   }
 
   String decodeVisibleText({required String persistedText}) {
-    if (!persistedText.startsWith(marker)) return persistedText;
+    if (!persistedText.startsWith(marker)) {
+      if (persistedText.startsWith("/")) {
+        final separator = persistedText.indexOf(RegExp(r"\s"));
+        return separator < 0 ? persistedText : persistedText.substring(0, separator);
+      }
+      return persistedText;
+    }
     final hiddenSeparator = persistedText.indexOf(":", marker.length);
     if (hiddenSeparator < 0) return persistedText;
     final visibleSeparator = persistedText.indexOf(":", hiddenSeparator + 1);

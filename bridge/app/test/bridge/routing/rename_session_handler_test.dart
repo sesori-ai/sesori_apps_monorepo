@@ -7,6 +7,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.
 import "package:sesori_bridge/src/bridge/routing/rename_session_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -37,6 +38,7 @@ void main() {
       sessionMutationDispatcher = SessionMutationDispatcher(
         sessionRepository: sessionRepository,
         sessionOperationDispatcher: sessionOperationDispatcher,
+        worktreeService: _UnusedWorktreeService(),
       );
       handler = RenameSessionHandler(sessionMutationDispatcher: sessionMutationDispatcher);
       await sessionRepository.insertStoredSession(
@@ -242,4 +244,9 @@ void main() {
       expect(plugin.lastRenameSessionId, isNull);
     });
   });
+}
+
+class _UnusedWorktreeService() implements WorktreeService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

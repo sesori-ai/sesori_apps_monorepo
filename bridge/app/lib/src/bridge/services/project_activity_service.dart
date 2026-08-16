@@ -21,7 +21,7 @@ class ProjectActivityService({
 
   Stream<ProjectActivityChange> get changes => _changes.stream;
 
-  Future<List<Project>> getProjects() {
+  Future<List<ProjectSummary>> getProjects() {
     return _projectRepository.getProjects();
   }
 

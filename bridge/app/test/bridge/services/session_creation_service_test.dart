@@ -1,19 +1,16 @@
 import "dart:async";
 import "dart:io";
 
-import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
-import "package:sesori_bridge/src/bridge/metadata_service.dart";
-import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge_metadata;
 import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
+import "package:sesori_bridge/src/repositories/session_metadata_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -25,7 +22,7 @@ void main() {
   group("SessionCreationService", () {
     late AppDatabase db;
     late _FakePlugin plugin;
-    late _FakeMetadataService metadataService;
+    late _FakeSessionMetadataRepository metadataRepository;
     late _FakeWorktreeService worktreeService;
     late SessionOperationDispatcher operationDispatcher;
     late SessionMutationDispatcher mutationDispatcher;
@@ -35,7 +32,7 @@ void main() {
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       plugin = _FakePlugin();
-      metadataService = _FakeMetadataService();
+      metadataRepository = _FakeSessionMetadataRepository();
       worktreeService = _FakeWorktreeService(
         worktreeRepository: singlePluginWorktreeRepository(
           projectsDao: db.projectsDao,
@@ -58,9 +55,10 @@ void main() {
       mutationDispatcher = SessionMutationDispatcher(
         sessionRepository: repository,
         sessionOperationDispatcher: operationDispatcher,
+        worktreeService: worktreeService,
       );
       service = SessionCreationService(
-        metadataService: metadataService,
+        sessionMetadataRepository: metadataRepository,
         worktreeService: worktreeService,
         sessionRepository: repository,
         sessionMutationDispatcher: mutationDispatcher,
@@ -68,6 +66,7 @@ void main() {
     });
 
     tearDown(() async {
+      await service.drain();
       await operationDispatcher.dispose();
       await mutationDispatcher.dispose();
       await db.close();
@@ -92,20 +91,20 @@ void main() {
         ),
       );
 
-      expect(metadataService.generateCalls, isZero);
+      expect(metadataRepository.generateCalls, isZero);
       expect(worktreeService.prepareCalls, isZero);
       expect(worktreeService.resolveCalls, isZero);
       expect(plugin.createCalls, isZero);
       expect(await db.sessionDao.getSession(sessionId: "backend-session"), isNull);
     });
 
-    test("starts plugin and metadata generation concurrently after project validation", () async {
+    test("starts metadata only after backend creation is accepted", () async {
       final pluginGate = Completer<void>();
       final metadataGate = Completer<void>();
       final runtime = createTestPluginRuntime(plugins: [plugin])
         ..useStarted = Completer<void>()
         ..useGate = pluginGate.future;
-      metadataService
+      metadataRepository
         ..generateStarted = Completer<void>()
         ..generateGate = metadataGate.future;
       final repository = singlePluginSessionRepository(
@@ -120,9 +119,10 @@ void main() {
       final localMutationDispatcher = SessionMutationDispatcher(
         sessionRepository: repository,
         sessionOperationDispatcher: localOperationDispatcher,
+        worktreeService: worktreeService,
       );
       final localService = SessionCreationService(
-        metadataService: metadataService,
+        sessionMetadataRepository: metadataRepository,
         worktreeService: worktreeService,
         sessionRepository: repository,
         sessionMutationDispatcher: localMutationDispatcher,
@@ -142,23 +142,102 @@ void main() {
       );
 
       await runtime.useStarted!.future;
-      final metadataStartedWhilePluginBlocked = metadataService.generateStarted?.isCompleted;
+      expect(metadataRepository.generateCalls, isZero);
       pluginGate.complete();
+      await metadataRepository.generateStarted!.future;
+      final created = await creation;
+      expect(await db.sessionDao.getSession(sessionId: created.id), isNotNull);
       metadataGate.complete();
-      await creation;
-
-      expect(metadataStartedWhilePluginBlocked, isTrue);
+      await localService.drain();
       await localOperationDispatcher.dispose();
       await localMutationDispatcher.dispose();
       await runtime.dispose();
     });
 
-    test("surfaces plugin startup failures without waiting for metadata", () async {
+    test("returns a queryable session without waiting for metadata", () async {
       final metadataGate = Completer<void>();
-      final runtime = createTestPluginRuntime(plugins: const <BridgePluginApi>[]);
-      metadataService
+      metadataRepository
         ..generateStarted = Completer<void>()
         ..generateGate = metadataGate.future;
+      final creation = service.createSession(
+        request: const CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Build it")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+      );
+
+      final created = await creation.timeout(const Duration(seconds: 1));
+      expect(metadataRepository.generateStarted?.isCompleted, isTrue);
+      expect(await db.sessionDao.getSession(sessionId: created.id), isNotNull);
+      metadataGate.complete();
+      await service.drain();
+    });
+
+    test("shutdown aborts and drains the underlying metadata workflow", () async {
+      metadataRepository
+        ..generateStarted = Completer<void>()
+        ..abortOnShutdown = true
+        ..shutdownObserved = Completer<void>();
+
+      final created = await service.createSession(
+        request: const CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Build it")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+      );
+      await metadataRepository.generateStarted!.future;
+
+      service.beginShutdown();
+      await service.drain().timeout(const Duration(seconds: 1));
+
+      expect(metadataRepository.shutdownObserved?.isCompleted, isTrue);
+      expect((await db.sessionDao.getSession(sessionId: created.id))?.title, isNull);
+    });
+
+    test("logs the underlying invalid metadata response", () async {
+      const innerError = FormatException("invalid metadata response marker");
+      final innerStackTrace = StackTrace.fromString("inner metadata response stack marker");
+      metadataRepository.failure = SessionMetadataInvalidResponseException(
+        cause: StateError("invalid metadata API response"),
+        causeStackTrace: StackTrace.current,
+        innerError: innerError,
+        innerStackTrace: innerStackTrace,
+      );
+
+      final output = await _captureWarningLog(() async {
+        await service.createSession(
+          request: const CreateSessionRequest(
+            projectId: "/repo",
+            pluginId: "fake",
+            dedicatedWorktree: false,
+            parts: [PromptPart.text(text: "Build it")],
+            variant: null,
+            agent: null,
+            model: null,
+            command: null,
+          ),
+        );
+        await service.drain();
+      });
+
+      expect(output, contains(innerError.message));
+      expect(output, contains("inner metadata response stack marker"));
+    });
+
+    test("surfaces plugin startup failures without starting metadata", () async {
+      final runtime = createTestPluginRuntime(plugins: const <BridgePluginApi>[]);
       final repository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -171,9 +250,10 @@ void main() {
       final localMutationDispatcher = SessionMutationDispatcher(
         sessionRepository: repository,
         sessionOperationDispatcher: localOperationDispatcher,
+        worktreeService: worktreeService,
       );
       final localService = SessionCreationService(
-        metadataService: metadataService,
+        sessionMetadataRepository: metadataRepository,
         worktreeService: worktreeService,
         sessionRepository: repository,
         sessionMutationDispatcher: localMutationDispatcher,
@@ -196,9 +276,9 @@ void main() {
         creation.timeout(const Duration(milliseconds: 100)),
         throwsA(isA<PluginOperationException>()),
       );
-      await metadataService.generateStarted!.future;
       await failure;
-      metadataGate.complete();
+      expect(metadataRepository.generateCalls, isZero);
+      await localService.drain();
       await localOperationDispatcher.dispose();
       await localMutationDispatcher.dispose();
       await runtime.dispose();
@@ -238,6 +318,113 @@ void main() {
       expect(plugin.lastCreateUserVisibleText, "Build it");
       expect(plugin.lastCreateParts, hasLength(2));
       expect(plugin.lastCreateParts?.last, const PluginPromptPart.text(text: "Build it"));
+    });
+
+    test("applies dedicated-session metadata after returning the initial branch", () async {
+      final metadataGate = Completer<void>();
+      metadataRepository.generateGate = metadataGate.future;
+      worktreeService
+        ..prepareResult = WorktreeSuccess(
+          path: "/repo/.worktrees/blue-otter",
+          branchName: "blue-otter",
+          baseBranch: "main",
+          baseCommit: "abc123",
+        )
+        ..renameResult = GeneratedBranchRenamed(branchName: "generated-branch");
+
+      final created = await service
+          .createSession(
+            request: const CreateSessionRequest(
+              projectId: "/repo",
+              pluginId: "fake",
+              dedicatedWorktree: true,
+              parts: [PromptPart.text(text: "Build it")],
+              variant: null,
+              agent: null,
+              model: null,
+              command: null,
+            ),
+          )
+          .timeout(const Duration(seconds: 1));
+
+      expect((await db.sessionDao.getSession(sessionId: created.id))?.branchName, "blue-otter");
+      expect(worktreeService.renameCalls, isZero);
+
+      metadataGate.complete();
+      await service.drain();
+
+      final stored = await db.sessionDao.getSession(sessionId: created.id);
+      expect(stored?.branchName, "generated-branch");
+      expect(stored?.currentBranchName, "generated-branch");
+      expect(stored?.title, "Generated title");
+      expect(worktreeService.renamedWorktreePath, "/repo/.worktrees/blue-otter");
+      expect(worktreeService.renamedInitialBranchName, "blue-otter");
+    });
+
+    test("still applies the generated title when branch rename fails", () async {
+      worktreeService
+        ..prepareResult = WorktreeSuccess(
+          path: "/repo/.worktrees/blue-otter",
+          branchName: "blue-otter",
+          baseBranch: "main",
+          baseCommit: "abc123",
+        )
+        ..renameError = StateError("branch rename failed");
+
+      final created = await service.createSession(
+        request: const CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: true,
+          parts: [PromptPart.text(text: "Build it")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+      );
+      await service.drain();
+
+      final stored = await db.sessionDao.getSession(sessionId: created.id);
+      expect(stored?.branchName, "blue-otter");
+      expect(stored?.title, "Generated title");
+    });
+
+    test("applies the generated title without waiting for branch refinement", () async {
+      final renameStarted = Completer<void>();
+      final renameGate = Completer<void>();
+      worktreeService
+        ..prepareResult = WorktreeSuccess(
+          path: "/repo/.worktrees/blue-otter",
+          branchName: "blue-otter",
+          baseBranch: "main",
+          baseCommit: "abc123",
+        )
+        ..renameStarted = renameStarted
+        ..renameGate = renameGate.future;
+
+      final created = await service.createSession(
+        request: const CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: true,
+          parts: [PromptPart.text(text: "Build it")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+      );
+      await renameStarted.future;
+
+      try {
+        final whileBranchBlocked = await db.sessionDao.getSession(sessionId: created.id);
+        expect(whileBranchBlocked?.title, "Generated title");
+        expect(whileBranchBlocked?.branchName, "blue-otter");
+      } finally {
+        renameGate.complete();
+        await service.drain();
+      }
     });
 
     test("projects every nonblank user text part without bridge-owned context", () async {
@@ -296,6 +483,33 @@ void main() {
       expect(worktreeService.resolveCalls, 1);
     });
 
+    test("stores a dedicated-worktree fallback as in-place with the HEAD commit", () async {
+      worktreeService
+        ..prepareResult = WorktreeFallback(originalPath: "/fallback/repo", reason: "not git")
+        ..headCommit = "fallback-head";
+
+      final created = await service.createSession(
+        request: const CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: true,
+          parts: [],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+      );
+
+      final stored = await db.sessionDao.getSession(sessionId: created.id);
+      expect(plugin.lastCreateDirectory, "/fallback/repo");
+      expect(stored?.directory, "/fallback/repo");
+      expect(stored?.isDedicated, isFalse);
+      expect(stored?.worktreePath, isNull);
+      expect(stored?.baseCommit, "fallback-head");
+      expect(worktreeService.resolveCalls, 1);
+    });
+
     test("allocates around a cross-plugin backend-id collision without changing the retained binding", () async {
       await db.projectsDao.recordOpenedProject(
         projectId: "/retained",
@@ -346,45 +560,93 @@ void main() {
   });
 }
 
-class _FakeMetadataService() extends MetadataService {
+class _FakeSessionMetadataRepository() implements SessionMetadataRepository {
   int generateCalls = 0;
   Completer<void>? generateStarted;
   Future<void>? generateGate;
-
-  this
-    : super(
-        client: http.Client(),
-        baseUrl: "http://localhost",
-        tokenRefresher: _FakeTokenRefresher(),
-      );
+  bool abortOnShutdown = false;
+  Completer<void>? shutdownObserved;
+  Object? failure;
+  final Completer<void> _shutdown = Completer<void>();
 
   @override
-  Future<bridge_metadata.SessionMetadata?> generate({required String firstMessage}) async {
+  void beginShutdown() {
+    if (!_shutdown.isCompleted) _shutdown.complete();
+  }
+
+  @override
+  Future<GeneratedSessionMetadata> generateMetadata({required String firstMessage}) async {
     generateCalls++;
     if (generateStarted case final started? when !started.isCompleted) started.complete();
+    if (abortOnShutdown) {
+      await _shutdown.future;
+      shutdownObserved?.complete();
+      throw SessionMetadataRequestAbortedException(
+        innerError: StateError("metadata request aborted"),
+        innerStackTrace: StackTrace.current,
+      );
+    }
     if (generateGate case final gate?) await gate;
-    return null;
+    if (failure case final error?) throw error;
+    return (
+      title: "Generated title",
+      branchName: "generated-branch",
+    );
   }
 }
 
-class _FakeTokenRefresher() implements TokenRefresher {
+Future<String> _captureWarningLog(Future<void> Function() action) async {
+  final output = _BufferingStdout();
+  final previousLevel = Log.level;
+  try {
+    Log.level = LogLevel.warning;
+    await IOOverrides.runZoned(action, stderr: () => output);
+  } finally {
+    Log.level = previousLevel;
+  }
+  return output.text;
+}
+
+class _BufferingStdout() implements Stdout {
+  final StringBuffer _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
   @override
-  Future<String> getAccessToken({bool forceRefresh = false}) async => "token";
+  void write(Object? object) => _buffer.write(object);
+
+  @override
+  void writeln([Object? object = ""]) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }
 
 class _FakeWorktreeService({required super.worktreeRepository}) extends WorktreeService {
   int prepareCalls = 0;
   int resolveCalls = 0;
+  Completer<void>? prepareStarted;
   WorktreeResult prepareResult = WorktreeFallback(originalPath: "/repo", reason: "fallback");
   String? headCommit;
+  GeneratedBranchRenameResult renameResult = GeneratedBranchRenameSkipped(
+    reason: GeneratedBranchRenameSkipReason.initialBranchChanged,
+  );
+  Object? renameError;
+  int renameCalls = 0;
+  int rollbackCalls = 0;
+  String? renamedWorktreePath;
+  String? renamedInitialBranchName;
+  String? renamedGeneratedBranchName;
+  Completer<void>? renameStarted;
+  Future<void>? renameGate;
 
   @override
   Future<WorktreeResult> prepareWorktreeForSession({
     required String projectId,
     required String? parentSessionId,
-    ({String branchName, String worktreeName})? preferredBranchAndWorktreeName,
   }) async {
     prepareCalls++;
+    if (prepareStarted case final started? when !started.isCompleted) started.complete();
     return prepareResult;
   }
 
@@ -394,6 +656,31 @@ class _FakeWorktreeService({required super.worktreeRepository}) extends Worktree
   }) async {
     resolveCalls++;
     return headCommit;
+  }
+
+  @override
+  Future<GeneratedBranchRenameResult> renameGeneratedBranch({
+    required String worktreePath,
+    required String initialBranchName,
+    required String generatedBranchName,
+  }) async {
+    renameCalls++;
+    renamedWorktreePath = worktreePath;
+    renamedInitialBranchName = initialBranchName;
+    renamedGeneratedBranchName = generatedBranchName;
+    renameStarted?.complete();
+    if (renameGate case final gate?) await gate;
+    if (renameError case final error?) throw error;
+    return renameResult;
+  }
+
+  @override
+  Future<void> rollbackGeneratedBranchRename({
+    required String worktreePath,
+    required String generatedBranchName,
+    required String initialBranchName,
+  }) async {
+    rollbackCalls++;
   }
 }
 
@@ -438,6 +725,18 @@ class _FakePlugin() implements NativeProjectsPluginApi {
     required String projectId,
     required PluginSessionOptionsDiscoveryMode discoveryMode,
   }) => throw UnimplementedError();
+
+  @override
+  Future<PluginSession> renameSession({required String sessionId, required String title}) async {
+    return PluginSession(
+      id: sessionId,
+      projectID: "/repo",
+      directory: lastCreateDirectory ?? "/repo",
+      parentID: null,
+      title: title,
+      time: null,
+    );
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

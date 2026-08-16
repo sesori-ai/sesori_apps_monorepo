@@ -1,7 +1,8 @@
 /// Typed, transport-agnostic reason for a failed remote request, surfaced by
 /// feature failure states (e.g. [ProjectListState.failed], [SessionListState.failed],
-/// [SessionDetailState.failed], [NewSessionState.error]) so the UI can perform an
-/// exhaustive switch for localized messages.
+/// [SessionDetailState.failed], [NewSessionState.creationError],
+/// [NewSessionState.discoveryError]) so the UI can perform an exhaustive switch
+/// for localized messages.
 ///
 /// Keeps the transport-level `ApiError` from `sesori_auth` out of domain state
 /// and the presentation layer. The cubit translates `ApiError → RemoteFailureReason`
