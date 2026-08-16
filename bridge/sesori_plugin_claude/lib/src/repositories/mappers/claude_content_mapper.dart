@@ -56,14 +56,24 @@ final class const ClaudeContentMapper() {
     return _mapValue(content: content, state: state).toList(growable: false);
   }
 
+  static const List<String> _internalCommandMarkers = [
+    "<local-command-stdout>",
+    "<local-command-caveat>",
+    "<command-name>",
+    "<command-message>",
+  ];
+
   /// Whether [blocks] carry the CLI's internal slash-command envelope or local
   /// command output, which is never rendered as a user message.
+  ///
+  /// The envelope always leads with its tag, so only a block that *starts*
+  /// with a marker is internal. A prompt that merely mentions a marker mid-text
+  /// stays visible — with replay as the only echo source, a substring match
+  /// would silently hide that prompt everywhere.
   bool containsInternalCommandOutput({required List<ClaudeMappedContentBlock> blocks}) => blocks.any(
     (block) =>
         block is ClaudeMappedTextContentBlock &&
-        (block.text.contains("<local-command-stdout>") ||
-            block.text.contains("<local-command-caveat>") ||
-            block.text.contains("<command-name>")),
+        _internalCommandMarkers.any((marker) => block.text.trimLeft().startsWith(marker)),
   );
 
   /// Strips the bridge-owned worktree context envelope from user [content], so
@@ -94,8 +104,8 @@ final class const ClaudeContentMapper() {
     final envelopeEnd = text.indexOf("\n---", markerIndex);
     if (envelopeEnd < 0) return text;
     final trailing = text.substring(envelopeEnd + "\n---".length).trim();
-    if (markerIndex == 0) return trailing.isEmpty ? null : trailing;
-    final prefix = text.substring(0, markerIndex).trimRight();
+    final prefix = text.substring(0, markerIndex).trim();
+    if (prefix.isEmpty) return trailing.isEmpty ? null : trailing;
     if (!prefix.startsWith("/")) return text;
     return trailing.isEmpty ? prefix : "$prefix $trailing";
   }

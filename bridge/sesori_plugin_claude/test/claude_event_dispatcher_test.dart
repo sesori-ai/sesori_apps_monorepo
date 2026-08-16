@@ -195,6 +195,24 @@ void main() {
       expect((shared.Message.fromJson(error.info) as shared.MessageError).modelID, "claude-opus-5");
     });
 
+    test("keeps a prompt that merely mentions internal command markers", () {
+      final mentioned = _map(
+        mapper,
+        _user(
+          uuid: "user-mention",
+          content: const [
+            {"type": "text", "text": "What does <command-name> mean in <local-command-stdout> output?"},
+          ],
+        ),
+      );
+
+      expect((mentioned.first as BridgeSseMessageUpdated).info["id"], "user-mention");
+      expect(
+        (mentioned.last as BridgeSseMessagePartUpdated).part.text,
+        "What does <command-name> mean in <local-command-stdout> output?",
+      );
+    });
+
     test("maps tool input and completion with one diff signal", () {
       _startMessage(mapper, messageId: "msg-tool");
       final started = _map(
