@@ -165,6 +165,10 @@ class const PregoGlassScaffold({
 
   @override
   State<PregoGlassScaffold> createState() => _PregoGlassScaffoldState();
+
+  /// Extra space below the navigation bar over which scrolling content fades
+  /// back to full opacity.
+  static const double _scrollEdgeFadeExtent = PregoSpacing.xl;
 }
 
 class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
@@ -341,7 +345,11 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
                 builder: (context, bannerHeight, indicator) => Transform.translate(
                   offset: Offset(
                     0,
-                    topPad + topNav.preferredSize.height + bannerHeight + (collapsing ? _largeTitleHeight : 0),
+                    topPad +
+                        topNav.preferredSize.height +
+                        bannerHeight +
+                        PregoGlassScaffold._scrollEdgeFadeExtent +
+                        (collapsing ? _largeTitleHeight : 0),
                   ),
                   child: indicator,
                 ),
@@ -357,8 +365,10 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
           SliverToBoxAdapter(
             child: ValueListenableBuilder<double>(
               valueListenable: _bannerHeight,
-              builder: (context, bannerHeight, _) =>
-                  SizedBox(height: topPad + topNav.preferredSize.height + bannerHeight),
+              builder: (context, bannerHeight, _) => SizedBox(
+                height:
+                    topPad + topNav.preferredSize.height + bannerHeight + PregoGlassScaffold._scrollEdgeFadeExtent,
+              ),
             ),
           ),
         // The fixed-title modes (inline, back-leading) show their title in the
@@ -388,8 +398,8 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
       // there is nothing behind it to fade. Wrapped in [IgnorePointer] so the
       // decorative gradient never swallows taps or scroll drags starting in the
       // top region — content beneath it stays fully interactive. The fade spans
-      // the whole top area, banner included, so content dissolves before it
-      // slides under the (opaque) banner exactly as it does under the bar.
+      // the whole top area, banner included, and extends slightly below the bar
+      // so content dissolves before sliding under the navigation controls.
       if (extendBehind)
         Positioned(
           top: 0,
@@ -411,7 +421,11 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
                     end: Alignment.bottomCenter,
                   ),
                 ),
-                height: topPad + topNav.preferredSize.height + bannerHeight,
+                height:
+                    topPad +
+                    topNav.preferredSize.height +
+                    bannerHeight +
+                    PregoGlassScaffold._scrollEdgeFadeExtent,
               ),
             ),
           ),
@@ -455,7 +469,10 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
       backgroundColor: Colors.transparent,
       floatingActionButton: _floatingActionButton,
       body: top_bar.PregoTopBarInsetScope(
-        baseInset: topPad + PregoTopNavigation.barHeight,
+        baseInset:
+            topPad +
+            PregoTopNavigation.barHeight +
+            (extendBehind ? PregoGlassScaffold._scrollEdgeFadeExtent : 0),
         bannerHeight: _bannerHeight,
         child: scaffold,
       ),
