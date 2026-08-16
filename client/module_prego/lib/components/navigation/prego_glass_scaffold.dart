@@ -272,6 +272,9 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
       onBack: widget.onBack,
       automaticallyImplyLeading: widget.automaticallyImplyLeading,
     );
+    final barInset = topPad + topNav.preferredSize.height;
+    double scrollEdgeInset(double bannerHeight) =>
+        barInset + bannerHeight + PregoGlassScaffold._scrollEdgeFadeExtent;
 
     // The top-navigation area handed to GlassScaffold: status-bar inset, then
     // the animated banner slot, then the bar row. GlassScaffold positions it
@@ -345,11 +348,7 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
                 builder: (context, bannerHeight, indicator) => Transform.translate(
                   offset: Offset(
                     0,
-                    topPad +
-                        topNav.preferredSize.height +
-                        bannerHeight +
-                        PregoGlassScaffold._scrollEdgeFadeExtent +
-                        (collapsing ? _largeTitleHeight : 0),
+                    scrollEdgeInset(bannerHeight) + (collapsing ? _largeTitleHeight : 0),
                   ),
                   child: indicator,
                 ),
@@ -365,10 +364,7 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
           SliverToBoxAdapter(
             child: ValueListenableBuilder<double>(
               valueListenable: _bannerHeight,
-              builder: (context, bannerHeight, _) => SizedBox(
-                height:
-                    topPad + topNav.preferredSize.height + bannerHeight + PregoGlassScaffold._scrollEdgeFadeExtent,
-              ),
+              builder: (context, bannerHeight, _) => SizedBox(height: scrollEdgeInset(bannerHeight)),
             ),
           ),
         // The fixed-title modes (inline, back-leading) show their title in the
@@ -421,11 +417,7 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
                     end: Alignment.bottomCenter,
                   ),
                 ),
-                height:
-                    topPad +
-                    topNav.preferredSize.height +
-                    bannerHeight +
-                    PregoGlassScaffold._scrollEdgeFadeExtent,
+                height: scrollEdgeInset(bannerHeight),
               ),
             ),
           ),
@@ -469,10 +461,7 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
       backgroundColor: Colors.transparent,
       floatingActionButton: _floatingActionButton,
       body: top_bar.PregoTopBarInsetScope(
-        baseInset:
-            topPad +
-            PregoTopNavigation.barHeight +
-            (extendBehind ? PregoGlassScaffold._scrollEdgeFadeExtent : 0),
+        baseInset: extendBehind ? scrollEdgeInset(0) : barInset,
         bannerHeight: _bannerHeight,
         child: scaffold,
       ),
