@@ -33,6 +33,9 @@ void main() {
       expect(arguments, containsAllInOrder(["--output-format", "stream-json"]));
       expect(arguments, contains("--verbose"));
       expect(arguments, contains("--include-partial-messages"));
+      // The replay echo is the only user-message event source; without it every
+      // stdin turn would be invisible in the live transcript.
+      expect(arguments, contains("--replay-user-messages"));
     });
 
     test("always routes permission asks over stdio", () {

@@ -107,7 +107,7 @@ void main() {
       await subscription.cancel();
     });
 
-    test("shows only userVisibleText while sending full execution context", () async {
+    test("shows only the user-authored text from a replayed execution context", () async {
       final events = <BridgeSseEvent>[];
       final subscription = harness.plugin.events.listen(events.add);
 
@@ -123,14 +123,22 @@ void main() {
         agent: "Default",
         model: (providerID: "anthropic", modelID: "default"),
       );
+      final process = harness.processes.single;
+      final written = await waitForFrame(process, "user");
+      final executionText = _userTexts(process).join("\n");
+      expect(executionText, contains("private-branch"));
+      process.emit(_replayOf(written, uuid: "replay-user-1"));
       await pump();
 
       final visibleParts = events.whereType<BridgeSseMessagePartUpdated>().where(
         (event) => event.part.type == PluginMessagePartType.text,
       );
       expect(visibleParts.single.part.text, "visible prompt");
-      final executionText = _userTexts(harness.processes.single).join("\n");
-      expect(executionText, contains("private-branch"));
+      expect(visibleParts.single.part.messageID, "replay-user-1");
+      final user = events.whereType<BridgeSseMessageUpdated>().where(
+        (event) => event.info["role"] == "user",
+      );
+      expect(user.single.info["id"], "replay-user-1");
       await subscription.cancel();
     });
 
@@ -210,6 +218,38 @@ void main() {
               .having((error) => error.cause, "cause", isNotNull),
         ),
       );
+    });
+
+    test("renders a follow-up prompt from its replayed user frame", () async {
+      await harness.createSession();
+      final first = harness.processes.single;
+      await waitForFrame(first, "user");
+      first.emit(_result());
+      await pump();
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      await harness.plugin.sendPrompt(
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "follow-up")],
+        variant: null,
+        agent: "Default",
+        model: (providerID: "anthropic", modelID: "default"),
+      );
+      await _waitForUserText(first, "follow-up");
+      final written = first.written.lastWhere((frame) => frame["type"] == "user");
+      first.emit(_replayOf(written, uuid: "replay-user-2"));
+      await pump();
+
+      final visible = events.whereType<BridgeSseMessagePartUpdated>().where(
+        (event) => event.part.text == "follow-up",
+      );
+      expect(visible.single.part.messageID, "replay-user-2");
+      final message = events.whereType<BridgeSseMessageUpdated>().where(
+        (event) => event.info["id"] == "replay-user-2" && event.info["role"] == "user",
+      );
+      expect(message, hasLength(1));
+      await subscription.cancel();
     });
 
     test("respawns between turns when launch-only effort changes", () async {
@@ -607,6 +647,15 @@ Map<String, Object?> _result() => {
   "subtype": "success",
   "session_id": testSessionId,
   "is_error": false,
+};
+
+/// The CLI's `--replay-user-messages` echo of a stdin user frame [written],
+/// stamped with its transcript [uuid].
+Map<String, Object?> _replayOf(Map<String, Object?> written, {required String uuid}) => {
+  ...written,
+  "uuid": uuid,
+  "isReplay": true,
+  "timestamp": "2026-08-11T12:00:00.000Z",
 };
 
 final class _ThrowingDeleteTranscriptApi() extends ClaudeTranscriptApi {

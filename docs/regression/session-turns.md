@@ -22,6 +22,12 @@ defaults and queued client sends coherent.
   finalized messages enter durable history matching a history read. Internal
   backend command records are not rendered as conversation messages or used as
   assistant model attribution.
+- Claude user prompts appear in the live transcript from the CLI's replayed
+  stdin echo under their transcript uuid, so a follow-up prompt stays visible
+  and a later transcript backfill converges on the same message instead of
+  duplicating it. The bridge worktree context envelope is stripped from the
+  echo, and a slash command renders one synthetic user message because its
+  echo is the CLI's internal command envelope.
 - Pi keeps at most one lazy resident RPC process per active session and allows
   different sessions to run concurrently. Startup replays and hydrates message
   identity before live frames attach or a turn dispatches; same-session prompts
