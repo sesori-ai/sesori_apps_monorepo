@@ -47,18 +47,15 @@ Widget _harness({
 
 void main() {
   // The test viewport has no status-bar inset, so the top-bar geometry is:
-  // bar row top == banner height, first content top == banner height + the bar
-  // and its scroll-edge fade extent.
+  // bar row top == banner height, first content top == banner height + 54. The
+  // decorative scroll-edge fade paints below that layout boundary.
 
   testWidgets("without a banner the bar sits at the top and content clears it", (tester) async {
     await tester.pumpWidget(_harness(banner: null));
     await tester.pump();
 
     expect(tester.getTopLeft(find.byType(GlassAppBar)).dy, 0);
-    expect(
-      tester.getTopLeft(find.byKey(_contentKey)).dy,
-      PregoTopNavigation.barHeight + PregoSpacing.xl,
-    );
+    expect(tester.getTopLeft(find.byKey(_contentKey)).dy, PregoTopNavigation.barHeight);
   });
 
   testWidgets("a banner mounted with the scaffold shifts the bar and content down by its height", (tester) async {
@@ -72,7 +69,7 @@ void main() {
     expect(tester.getTopLeft(find.byType(GlassAppBar)).dy, _bannerHeight);
     expect(
       tester.getTopLeft(find.byKey(_contentKey)).dy,
-      _bannerHeight + PregoTopNavigation.barHeight + PregoSpacing.xl,
+      _bannerHeight + PregoTopNavigation.barHeight,
     );
   });
 
@@ -89,13 +86,13 @@ void main() {
     expect(midBarTop, lessThan(_bannerHeight));
     // The measured inset trails the animation by one frame (measure → notify →
     // rebuild). After a zero-duration frame the animation hasn't advanced, so
-    // the content must sit one bar and fade extent below the mid-animation bar.
+    // the content must sit exactly one bar height below the mid-animation bar.
     await tester.pump(Duration.zero);
     final midContentTop = tester.getTopLeft(find.byKey(_contentKey)).dy;
     expect(
       midContentTop,
       moreOrLessEquals(
-        midBarTop + PregoTopNavigation.barHeight + PregoSpacing.xl,
+        midBarTop + PregoTopNavigation.barHeight,
       ),
     );
 
@@ -103,7 +100,7 @@ void main() {
     expect(tester.getTopLeft(find.byType(GlassAppBar)).dy, _bannerHeight);
     expect(
       tester.getTopLeft(find.byKey(_contentKey)).dy,
-      _bannerHeight + PregoTopNavigation.barHeight + PregoSpacing.xl,
+      _bannerHeight + PregoTopNavigation.barHeight,
     );
   });
 
@@ -125,10 +122,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("banner-content"), findsNothing);
     expect(tester.getTopLeft(find.byType(GlassAppBar)).dy, 0);
-    expect(
-      tester.getTopLeft(find.byKey(_contentKey)).dy,
-      PregoTopNavigation.barHeight + PregoSpacing.xl,
-    );
+    expect(tester.getTopLeft(find.byKey(_contentKey)).dy, PregoTopNavigation.barHeight);
   });
 
   testWidgets("PregoTopBarInsetBuilder tracks the banner height inside the scaffold", (tester) async {
@@ -146,15 +140,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       capturedInsets.last,
-      PregoTopNavigation.barHeight + _bannerHeight + PregoSpacing.xl,
+      PregoTopNavigation.barHeight + _bannerHeight,
     );
 
     await tester.pumpWidget(_harness(banner: null, extraSlivers: [probe]));
     await tester.pumpAndSettle();
-    expect(
-      capturedInsets.last,
-      PregoTopNavigation.barHeight + PregoSpacing.xl,
-    );
+    expect(capturedInsets.last, PregoTopNavigation.barHeight);
   });
 
   testWidgets("PregoTopBarInsetBuilder falls back to the static bar inset without a scaffold", (tester) async {
@@ -205,7 +196,7 @@ void main() {
     expect(tester.getSize(find.byType(GlassAppBar)).height, PregoTopNavigation.barHeight);
     expect(
       tester.getTopLeft(find.byKey(_contentKey)).dy,
-      topPad + _bannerHeight + PregoTopNavigation.barHeight + PregoSpacing.xl,
+      topPad + _bannerHeight + PregoTopNavigation.barHeight,
     );
   });
 

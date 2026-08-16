@@ -298,7 +298,7 @@ void main() {
 
     expect(
       tester.getTopLeft(find.byType(PregoPopupAlertsNotifications)).dy,
-      PregoTopNavigation.barHeight + 30 + 2 * PregoSpacing.xl,
+      PregoTopNavigation.barHeight + 30 + PregoSpacing.xl,
     );
   });
 }
