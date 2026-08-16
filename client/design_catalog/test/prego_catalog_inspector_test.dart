@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/gestures.dart";
 import "package:flutter/services.dart";
 import "package:flutter/widgets.dart";
@@ -244,6 +246,53 @@ void main() {
 
     expect(find.text("Copy failed"), findsOneWidget);
     expect(find.byKey(const Key("prego-inspector-card")), findsOneWidget);
+    await tester.sendEventToBinding(pointer.removePointer());
+  });
+
+  testWidgets("ignores an older clipboard failure after a newer copy succeeds", (tester) async {
+    final firstCopy = Completer<void>();
+    var copyCount = 0;
+    final pointer = TestPointer(4, PointerDeviceKind.mouse);
+    await tester.pumpWidget(
+      material.MaterialApp(
+        theme: pregoCatalogDarkTheme,
+        home: SizedBox(
+          width: 700,
+          height: 600,
+          child: PregoCatalogInspector(
+            copyText: ({required text}) {
+              copyCount += 1;
+              return copyCount == 1 ? firstCopy.future : Future.value();
+            },
+            child: Builder(
+              builder: (context) => Text("Copy me", style: context.prego.textTheme.textSm.medium),
+            ),
+          ),
+        ),
+      ),
+    );
+    final position = tester.getCenter(find.text("Copy me"));
+    await tester.sendEventToBinding(pointer.addPointer(location: position));
+    await tester.sendEventToBinding(pointer.hover(position));
+    await tester.pump();
+    await tester.tapAt(position);
+    await tester.pump();
+
+    final copyButton = find.text("Copy medium");
+    await tester.ensureVisible(copyButton);
+    await tester.tap(copyButton);
+    await tester.pump();
+    await tester.tap(copyButton);
+    await tester.pump();
+
+    expect(copyCount, 2);
+    expect(find.text("Copied"), findsOneWidget);
+
+    firstCopy.completeError(StateError("blocked"));
+    await tester.pump();
+
+    expect(find.text("Copied"), findsOneWidget);
+    expect(find.text("Copy failed"), findsNothing);
     await tester.sendEventToBinding(pointer.removePointer());
   });
 

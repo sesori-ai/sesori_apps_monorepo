@@ -38,6 +38,7 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
   Offset _pointerPosition = Offset.zero;
   String? _copiedReference;
   bool _copyFailed = false;
+  int _copyRequest = 0;
   bool _selectionClearScheduled = false;
   late PregoInspectionTokenResolver _inspectionTokenResolver;
 
@@ -237,6 +238,7 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
   }
 
   Future<void> _copy(String value) async {
+    final request = ++_copyRequest;
     try {
       if (widget.copyText case final copyText?) {
         await copyText(text: value);
@@ -244,14 +246,14 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
         await Clipboard.setData(ClipboardData(text: value));
       }
     } on Object {
-      if (!mounted) return;
+      if (!mounted || request != _copyRequest) return;
       setState(() {
         _copiedReference = null;
         _copyFailed = true;
       });
       return;
     }
-    if (!mounted) return;
+    if (!mounted || request != _copyRequest) return;
     setState(() {
       _copiedReference = value;
       _copyFailed = false;
