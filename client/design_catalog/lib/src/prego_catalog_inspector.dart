@@ -1,4 +1,5 @@
-// ignore_for_file: deprecated_member_use, no_slop_linter/avoid_as_cast, no_slop_linter/avoid_bang_operator, no_slop_linter/avoid_string_literals_in_widgets, no_slop_linter/prefer_edge_insets_directional, no_slop_linter/prefer_required_named_parameters, unnecessary_type_name_in_constructor, use_declaring_parameters, use_if_null_to_convert_nulls_to_bools, use_primary_constructors
+// This catalog-only developer tool intentionally presents fixed English audit labels.
+// ignore_for_file: no_slop_linter/avoid_string_literals_in_widgets
 
 import "package:flutter/gestures.dart";
 import "package:flutter/rendering.dart";
@@ -13,18 +14,15 @@ import "review_tools/presentation/prego_review_target.dart";
 typedef PregoInspectorCopyText = Future<void> Function({required String text});
 
 class const PregoCatalogInspector({
-  required this.child,
-  this.copyText,
+  required final Widget child,
+  final PregoInspectorCopyText? copyText,
   super.key,
 }) extends StatefulWidget {
-  final Widget child;
-  final PregoInspectorCopyText? copyText;
-
   @override
   State<PregoCatalogInspector> createState() => _PregoCatalogInspectorState();
 }
 
-class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
+class _PregoCatalogInspectorState() extends State<PregoCatalogInspector> {
   final _rootKey = GlobalKey();
   final _contentKey = GlobalKey();
   final _panelKey = GlobalKey();
@@ -63,7 +61,8 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
   Widget build(BuildContext context) {
     final colors = context.prego.colors;
     final active = _active;
-    final root = _rootKey.currentContext?.findRenderObject() as RenderBox?;
+    final rootObject = _rootKey.currentContext?.findRenderObject();
+    final root = rootObject is RenderBox ? rootObject : null;
     final activeRect = active == null || root == null ? null : _safeRectIn(target: active, root: root);
     if (active != null) _scheduleInvalidSelectionClear();
 
@@ -117,8 +116,9 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
     required PregoReviewTarget candidate,
     required Rect targetRect,
   }) {
-    final root = _rootKey.currentContext?.findRenderObject() as RenderBox?;
-    if (root == null) return const SizedBox.shrink();
+    final rootObject = _rootKey.currentContext?.findRenderObject();
+    if (rootObject is! RenderBox) return const SizedBox.shrink();
+    final root = rootObject;
 
     final details = _InspectionDetails.from(
       candidate: candidate,
@@ -158,6 +158,8 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
     );
   }
 
+  // Focus.onKeyEvent is a framework callback with positional parameters.
+  // ignore: no_slop_linter/prefer_required_named_parameters
   KeyEventResult _onKeyEvent(FocusNode _, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     if (event.logicalKey == LogicalKeyboardKey.escape) {
@@ -184,8 +186,9 @@ class _PregoCatalogInspectorState extends State<PregoCatalogInspector> {
   }
 
   void _onHover(PointerHoverEvent event) {
-    final root = _rootKey.currentContext?.findRenderObject() as RenderBox?;
-    if (root == null) return;
+    final rootObject = _rootKey.currentContext?.findRenderObject();
+    if (rootObject is! RenderBox) return;
+    final root = rootObject;
     final candidates = _findCandidates(globalPosition: event.position);
     final localPosition = root.globalToLocal(event.position);
     if (_targetResolver.sameTargets(first: _hoverCandidates, second: candidates) && _pointerPosition == localPosition) {
@@ -290,26 +293,26 @@ Rect? _safeRectIn({required PregoReviewTarget target, required RenderBox root}) 
 }
 
 final class const _InspectionDetails({
-  required this.label,
-  required this.logicalSize,
-  required this.renderedSize,
-  required this.constraints,
-  required this.textStyle,
-  required this.textTokens,
-  required this.textColor,
-  required this.textColorTokens,
-  required this.backgroundColor,
-  required this.backgroundColorTokens,
-  required this.padding,
-  required this.paddingTokens,
-  required this.radius,
-  required this.radiusTokens,
-  required this.semanticLabel,
-  required this.semanticRole,
-  required this.isInteractive,
-  required this.contrastRatio,
+  required final String label,
+  required final Size logicalSize,
+  required final Size renderedSize,
+  required final BoxConstraints constraints,
+  required final TextStyle? textStyle,
+  required final PregoInspectionTokenMatches<TextStyle>? textTokens,
+  required final Color? textColor,
+  required final PregoInspectionTokenMatches<Color>? textColorTokens,
+  required final Color? backgroundColor,
+  required final PregoInspectionTokenMatches<Color>? backgroundColorTokens,
+  required final EdgeInsets? padding,
+  required final List<PregoInspectionTokenMatches<double>> paddingTokens,
+  required final List<double>? radius,
+  required final List<PregoInspectionTokenMatches<double>> radiusTokens,
+  required final String? semanticLabel,
+  required final SemanticsRole? semanticRole,
+  required final bool isInteractive,
+  required final double? contrastRatio,
 }) {
-  factory _InspectionDetails.from({
+  factory from({
     required PregoReviewTarget candidate,
     required List<PregoReviewTarget> candidates,
     required RenderBox root,
@@ -319,9 +322,10 @@ final class const _InspectionDetails({
     final box = candidate.renderBox;
     final rect = candidate.rectIn(root: root);
     final style = box is RenderParagraph ? _firstTextStyle(box.text) : null;
-    final decoration = box is RenderDecoratedBox && box.decoration is BoxDecoration
-        ? box.decoration as BoxDecoration
-        : null;
+    final decoration = switch (box) {
+      RenderDecoratedBox(:final BoxDecoration decoration) => decoration,
+      _ => null,
+    };
     final padding = box is RenderPadding ? box.padding.resolve(textDirection) : null;
     final resolvedRadius = decoration?.borderRadius?.resolve(textDirection);
     final radius = resolvedRadius == null
@@ -377,55 +381,25 @@ final class const _InspectionDetails({
             ],
       semanticLabel: semantics?.label,
       semanticRole: semantics?.role,
-      isInteractive: semantics?.button == true || semantics?.onTap != null || box is RenderSemanticsGestureHandler,
-      contrastRatio: textColor == null || background == null ? null : _contrast(textColor, background),
+      isInteractive: (semantics?.button ?? false) || semantics?.onTap != null || box is RenderSemanticsGestureHandler,
+      contrastRatio: textColor == null || background == null ? null : _contrast(first: textColor, second: background),
     );
   }
-
-  final String label;
-  final Size logicalSize;
-  final Size renderedSize;
-  final BoxConstraints constraints;
-  final TextStyle? textStyle;
-  final PregoInspectionTokenMatches<TextStyle>? textTokens;
-  final Color? textColor;
-  final PregoInspectionTokenMatches<Color>? textColorTokens;
-  final Color? backgroundColor;
-  final PregoInspectionTokenMatches<Color>? backgroundColorTokens;
-  final EdgeInsets? padding;
-  final List<PregoInspectionTokenMatches<double>> paddingTokens;
-  final List<double>? radius;
-  final List<PregoInspectionTokenMatches<double>> radiusTokens;
-  final String? semanticLabel;
-  final SemanticsRole? semanticRole;
-  final bool isInteractive;
-  final double? contrastRatio;
 }
 
 class const _InspectorCard({
-  required this.details,
-  required this.expanded,
-  required this.position,
-  required this.candidateCount,
-  required this.copiedReference,
-  required this.copyFailed,
-  required this.onPrevious,
-  required this.onNext,
-  required this.onClear,
-  required this.onCopy,
+  required final _InspectionDetails details,
+  required final bool expanded,
+  required final int position,
+  required final int candidateCount,
+  required final String? copiedReference,
+  required final bool copyFailed,
+  required final VoidCallback? onPrevious,
+  required final VoidCallback? onNext,
+  required final VoidCallback? onClear,
+  required final ValueChanged<String>? onCopy,
   super.key,
 }) extends StatelessWidget {
-  final _InspectionDetails details;
-  final bool expanded;
-  final int position;
-  final int candidateCount;
-  final String? copiedReference;
-  final bool copyFailed;
-  final VoidCallback? onPrevious;
-  final VoidCallback? onNext;
-  final VoidCallback? onClear;
-  final ValueChanged<String>? onCopy;
-
   @override
   Widget build(BuildContext context) {
     final colors = context.prego.colors;
@@ -450,16 +424,22 @@ class const _InspectorCard({
             child: expanded
                 ? ConstrainedBox(
                     constraints: const BoxConstraints(maxHeight: 364),
-                    child: SingleChildScrollView(child: _buildExpanded(context, primaryText, secondaryText)),
+                    child: SingleChildScrollView(
+                      child: _buildExpanded(
+                        context,
+                        primaryText: primaryText,
+                        secondaryText: secondaryText,
+                      ),
+                    ),
                   )
-                : _buildSummary(primaryText, secondaryText),
+                : _buildSummary(primaryText: primaryText, secondaryText: secondaryText),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildSummary(TextStyle primaryText, TextStyle secondaryText) => Column(
+  Widget _buildSummary({required TextStyle primaryText, required TextStyle secondaryText}) => Column(
     mainAxisSize: MainAxisSize.min,
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -480,7 +460,11 @@ class const _InspectorCard({
     ],
   );
 
-  Widget _buildExpanded(BuildContext context, TextStyle primaryText, TextStyle secondaryText) {
+  Widget _buildExpanded(
+    BuildContext context, {
+    required TextStyle primaryText,
+    required TextStyle secondaryText,
+  }) {
     final copyValue = _primaryReference(details);
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -581,7 +565,10 @@ class const _InspectorCard({
                 : copyFailed
                 ? "Copy failed"
                 : "Copy ${_shortReference(copyValue)}",
-            onPressed: onCopy == null ? null : () => onCopy!(copyValue),
+            onPressed: switch (onCopy) {
+              final onCopy? => () => onCopy(copyValue),
+              null => null,
+            },
             wide: true,
           ),
         ],
@@ -590,10 +577,10 @@ class const _InspectorCard({
   }
 }
 
-class const _Section({required this.title, required this.rows}) extends StatelessWidget {
-  final String title;
-  final List<(String, String)> rows;
-
+class const _Section({
+  required final String title,
+  required final List<(String, String)> rows,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = context.prego.textTheme;
@@ -605,7 +592,7 @@ class const _Section({required this.title, required this.rows}) extends Stateles
         const SizedBox(height: 4),
         for (final (label, value) in rows)
           Padding(
-            padding: const EdgeInsets.only(top: 3),
+            padding: const EdgeInsetsDirectional.only(top: 3),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -629,8 +616,8 @@ bool _containsGlobalPosition({required RenderBox box, required Offset globalPosi
 
 TextStyle? _firstTextStyle(InlineSpan span) {
   if (span.style case final style?) return style;
-  if (span is TextSpan && span.children != null) {
-    for (final child in span.children!) {
+  if (span case TextSpan(children: final children?)) {
+    for (final child in children) {
       if (_firstTextStyle(child) case final style?) return style;
     }
   }
@@ -642,17 +629,17 @@ Color? _nearestBackground({
   required List<PregoReviewTarget> candidates,
 }) {
   final target = candidate.renderBox;
-  final decorated = candidates
-      .where((item) => item.renderBox is RenderDecoratedBox && item.renderBox.size >= target.size)
-      .cast<PregoReviewTarget>();
-  for (final item in decorated) {
-    final decoration = (item.renderBox as RenderDecoratedBox).decoration;
-    if (decoration is BoxDecoration && decoration.color != null) return decoration.color;
+  for (final item in candidates) {
+    final box = item.renderBox;
+    if (box case RenderDecoratedBox(:final BoxDecoration decoration)
+        when box.size >= target.size && decoration.color != null) {
+      return decoration.color;
+    }
   }
   return null;
 }
 
-double _contrast(Color first, Color second) {
+double _contrast({required Color first, required Color second}) {
   final lighter = first.computeLuminance() > second.computeLuminance() ? first : second;
   final darker = identical(lighter, first) ? second : first;
   return (lighter.computeLuminance() + 0.05) / (darker.computeLuminance() + 0.05);
@@ -717,9 +704,9 @@ String _format(double value) => value == value.roundToDouble() ? value.toInt().t
 
 String _colorHex(Color color) => "#${color.toARGB32().toRadixString(16).padLeft(8, "0").toUpperCase()}";
 
-String _weightLabel(FontWeight? weight) => weight == null ? "Inherited" : ((weight.index + 1) * 100).toString();
+String _weightLabel(FontWeight? weight) => weight == null ? "Inherited" : weight.value.toString();
 
-String _lineHeight(TextStyle style) {
-  if (style.height == null || style.fontSize == null) return "Inherited";
-  return "${_format(style.height! * style.fontSize!)} px";
-}
+String _lineHeight(TextStyle style) => switch (style) {
+  TextStyle(height: final height?, fontSize: final fontSize?) => "${_format(height * fontSize)} px",
+  _ => "Inherited",
+};

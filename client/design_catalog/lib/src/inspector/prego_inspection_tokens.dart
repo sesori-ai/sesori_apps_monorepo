@@ -1,5 +1,3 @@
-// ignore_for_file: no_slop_linter/prefer_required_named_parameters, use_declaring_parameters
-
 import "package:flutter/widgets.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -9,12 +7,9 @@ import "prego_token_catalog.g.dart";
 export "prego_inspection_token.dart";
 
 final class const PregoInspectionTokenMatches<T>({
-  required this.value,
-  required this.candidates,
-}) {
-  final T value;
-  final List<PregoInspectionToken<T>> candidates;
-}
+  required final T value,
+  required final List<PregoInspectionToken<T>> candidates,
+});
 
 final class PregoInspectionTokenResolver({required final BuildContext context}) {
   final List<PregoInspectionToken<Color>> _colors = buildPregoInspectionColorTokens(context.prego.colors);
@@ -28,7 +23,9 @@ final class PregoInspectionTokenResolver({required final BuildContext context}) 
   }
 
   PregoInspectionTokenMatches<TextStyle> matchTypography(TextStyle style) {
-    final candidates = _typography.where((token) => _sameTypographyMetrics(token.value, style)).toList(growable: false);
+    final candidates = _typography
+        .where((token) => _sameTypographyMetrics(first: token.value, second: style))
+        .toList(growable: false);
     return PregoInspectionTokenMatches(value: style, candidates: candidates);
   }
 
@@ -43,7 +40,7 @@ final class PregoInspectionTokenResolver({required final BuildContext context}) 
   }
 }
 
-bool _sameTypographyMetrics(TextStyle first, TextStyle second) =>
+bool _sameTypographyMetrics({required TextStyle first, required TextStyle second}) =>
     first.fontFamily == second.fontFamily &&
     first.fontSize == second.fontSize &&
     first.fontWeight == second.fontWeight &&
