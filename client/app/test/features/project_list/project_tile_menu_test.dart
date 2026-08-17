@@ -129,8 +129,15 @@ void main() {
   testWidgets("right-clicking a project opens the same anchored menu without navigating", (tester) async {
     await pumpScreen(tester);
 
-    // The mouse counterpart of the long-press, for the desktop app.
-    await tester.tap(find.widgetWithText(ProjectTile, "my-app"), buttons: kSecondaryMouseButton);
+    // Desktop pointer events can carry the full pressed-button mask rather
+    // than only the button that changed. The secondary bit must still open the
+    // menu instead of being rejected as a combined-button tap.
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.widgetWithText(ProjectTile, "my-app")),
+      kind: PointerDeviceKind.mouse,
+      buttons: kPrimaryButton | kSecondaryButton,
+    );
+    await gesture.up();
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(InkWell, "Rename"), findsOneWidget);

@@ -94,8 +94,15 @@ void main() {
 
     await pumpPanel(tester, session: session);
 
-    // The mouse counterpart of the long-press, for the desktop app.
-    await tester.tap(find.widgetWithText(SessionTile, "My Session"), buttons: kSecondaryMouseButton);
+    // Desktop pointer events can carry the full pressed-button mask rather
+    // than only the button that changed. The secondary bit must still open the
+    // menu instead of being rejected as a combined-button tap.
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.widgetWithText(SessionTile, "My Session")),
+      kind: PointerDeviceKind.mouse,
+      buttons: kPrimaryButton | kSecondaryButton,
+    );
+    await gesture.up();
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(InkWell, "Rename"), findsOneWidget);
