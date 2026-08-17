@@ -14,8 +14,8 @@ a static Flutter Web application.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated: validate unique scenario identifiers, production-valid button combinations, manifest parity, navigation coverage, Prego canvas-background mappings, layout-guide defaults and safe/content geometry, Review Tools mode routing and keyboard actions, measurement snapping/axis locking/clearing, offset annotation-pin geometry, scope-keyed annotation persistence and import recovery, inspector token-candidate resolution, transform-correct inspection bounds, stale-target clearing, nested target cycling, and rendering of every curated state. |
-| L2 Routine | Client end to end: build the release web catalog and interact with the solid-button playground, light/dark themes, Prego canvas backgrounds, toggleable safe-area/content/spacing guides, iOS/Android viewports, enabled clicks, disabled/loading states, the all-states matrix, all four Review Tools modes, keyboard action activation, local annotation reload, JSON copy/import, scope isolation, offset annotation pins, and hover/pinned inspection in a browser. |
+| L1 Smoke | Automated: validate unique scenario identifiers, production-valid button combinations, manifest parity, navigation coverage, Prego canvas-background mappings, canvas-navigation defaults/query parsing, zoom transforms, Interact-only panning and scope resets, layout-guide defaults and safe/content geometry, Review Tools mode routing and keyboard actions, measurement snapping/axis locking/clearing, offset annotation-pin geometry, scope-keyed annotation persistence and import recovery, inspector token-candidate resolution, transform-correct inspection bounds, stale-target clearing, nested target cycling, and rendering of every curated state. |
+| L2 Routine | Client end to end: build the release web catalog and interact with the solid-button playground, light/dark themes, Prego canvas backgrounds, 50–300% canvas zoom and explicit panning, toggleable safe-area/content/spacing guides, iOS/Android viewports, enabled clicks, disabled/loading states, the all-states matrix, all four Review Tools modes, keyboard action activation, local annotation reload, JSON copy/import, scope isolation, offset annotation pins, and hover/pinned inspection in a browser. |
 | L3 Release | Packaged or external: once private PR previews are enabled, verify a trusted same-repository PR receives an Access-protected interactive preview without production credentials, services, data, or analytics. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
@@ -30,6 +30,13 @@ a static Flutter Web application.
 - Switch between surface and brand canvas backgrounds. Confirm the selected
   semantic background follows the active Prego theme and survives in a shared
   preview URL.
+- Zoom the complete canvas at 50%, 100%, and 300%; confirm the device viewport,
+  component, and canvas overlays scale together and the selected zoom survives
+  in a shared preview URL. In Interact mode, enable Move canvas and pan to each
+  edge with mouse, trackpad, and touch input. Confirm panning does not activate
+  the component, Move canvas is inactive in the other Review Tools modes, normal
+  component gestures return when it is disabled, and pan resets after changing
+  the use case or viewport.
 - Enable Prego layout guides and confirm safe-area bands follow the selected
   viewport while the content bounds stay 16 logical pixels inside the safe
   region. Toggle each guide independently, confirm the spacing grid is off by
@@ -74,6 +81,7 @@ a static Flutter Web application.
 - `client/design_catalog/Makefile`
 - `client/design_catalog/README.md`
 - `client/design_catalog/lib/src/prego_catalog_background.dart`
+- `client/design_catalog/lib/src/prego_canvas_navigation.dart`
 - `client/design_catalog/lib/src/prego_catalog_inspector.dart`
 - `client/design_catalog/lib/src/prego_catalog_layout_guides.dart`
 - `client/design_catalog/lib/src/inspector/`

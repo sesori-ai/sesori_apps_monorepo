@@ -61,6 +61,18 @@ the URL so teammates can share the same interactive audit view. Safe areas and
 content margins are deliberately separate: the 16-pixel margin is a PREGO
 content rule, not an iOS or Android system inset.
 
+## Canvas navigation
+
+Use **Addons → Canvas navigation** to zoom the complete component preview from
+50% to 300%. Zoom is stored in the URL so a close-up can be shared. Enable
+**Move canvas** while **Review tools → Interact** is selected to drag the
+enlarged preview with a mouse, trackpad, or touch gesture. The pan position is
+temporary and resets when the use case or viewport changes.
+
+Move canvas is deliberately inactive in Inspect, Measure, and Annotate so its
+drag gesture cannot compete with those tools. Turn Move canvas off to exercise
+the component's own taps and drags.
+
 ## Review tools
 
 Use **Addons → Review tools** to switch between four mutually exclusive modes:

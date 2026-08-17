@@ -2,6 +2,7 @@ import "package:flutter/widgets.dart";
 import "package:widgetbook/widgetbook.dart";
 
 import "src/prego_button_catalog.dart";
+import "src/prego_canvas_navigation.dart";
 import "src/prego_catalog_background.dart";
 import "src/prego_catalog_layout_guides.dart";
 import "src/prego_catalog_platform.dart";
@@ -24,6 +25,7 @@ class const DesignCatalogApp({super.key}) extends StatelessWidget {
       addons: [
         buildPregoThemeAddon(),
         PregoReviewToolsAddon(),
+        PregoCanvasNavigationAddon(),
         ViewportAddon(PregoCatalogViewports.all),
         PregoCatalogPlatformAddon(viewports: PregoCatalogViewports.all),
         PregoCanvasBackgroundAddon(),
