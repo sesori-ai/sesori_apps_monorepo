@@ -40,15 +40,24 @@ class BridgeStartupBannerFormatter({
   String? format({required String version}) {
     if (!_hasTerminal) return null;
 
-    final wordmark = _unicode ? _unicodeWordmark : _asciiWordmark;
+    final terminalColumns = _terminalColumns;
+    if (terminalColumns == null) return null;
+
+    final compactDetail = " v$version";
+    if (terminalColumns < _maxWidth(_asciiWordmark) || terminalColumns < "  BRIDGE$compactDetail".length) {
+      return null;
+    }
+    final wordmark = _unicode && terminalColumns >= _maxWidth(_unicodeWordmark) ? _unicodeWordmark : _asciiWordmark;
+    final fullDetail = " v$version  |  AI coding sessions on your phone";
+    final detail = terminalColumns >= "  BRIDGE$fullDetail".length ? fullDetail : compactDetail;
     final buffer = StringBuffer()..writeln();
     for (final line in wordmark) {
       buffer.writeln(_paint(code: _banner, text: line));
     }
     buffer
       ..writeln()
-      ..write("  ${_paint(code: "$_brand$_bold", text: "BRIDGE")} ")
-      ..write(_paint(code: _dim, text: "v$version  |  AI coding sessions on your phone"))
+      ..write("  ${_paint(code: "$_brand$_bold", text: "BRIDGE")}")
+      ..write(_paint(code: _dim, text: detail))
       ..writeln();
     return buffer.toString();
   }
@@ -60,6 +69,16 @@ class BridgeStartupBannerFormatter({
       return false;
     }
   }
+
+  int? get _terminalColumns {
+    try {
+      return _out.terminalColumns;
+    } on Object {
+      return null;
+    }
+  }
+
+  static int _maxWidth(List<String> lines) => lines.fold(0, (width, line) => line.length > width ? line.length : width);
 
   String _paint({required String code, required String text}) => _color ? "$code$text$_reset" : text;
 }
