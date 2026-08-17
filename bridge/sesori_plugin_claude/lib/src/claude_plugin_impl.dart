@@ -148,7 +148,6 @@ final class ClaudePlugin({
         rethrow;
       }
     }
-    _emitVisibleUserMessage(sessionId: sessionId, text: userVisibleText);
     return session;
   }
 
@@ -507,6 +506,12 @@ final class ClaudePlugin({
     }
   }
 
+  /// Synthesizes the visible user bubble for a slash command.
+  ///
+  /// Plain prompts never need this: `--replay-user-messages` echoes them under
+  /// their transcript uuid. A command's echo (and its transcript row) is the
+  /// CLI's `<command-name>` envelope, which both mapping paths drop, so this
+  /// synthetic message stays the turn's only user row and cannot duplicate.
   void _emitVisibleUserMessage({required String sessionId, required String? text}) {
     final visible = text?.trim();
     if (visible == null || visible.isEmpty) return;

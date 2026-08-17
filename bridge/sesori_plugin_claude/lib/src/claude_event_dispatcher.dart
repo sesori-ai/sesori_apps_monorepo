@@ -226,7 +226,7 @@ final class ClaudeEventDispatcher({
     _messageIds[sessionId] = messageId;
     if (_realModel(model: message.model) case final model?) _models[sessionId] = model;
     final mapped = _content.map(content: message.message["content"]);
-    if (_containsInternalCommandOutput(blocks: mapped)) return const [];
+    if (_content.containsInternalCommandOutput(blocks: mapped)) return const [];
     final parts = _content.mapParts(content: message.message["content"], sessionId: sessionId, messageId: messageId);
     if (!parts.any((part) => part.type.isVisible)) return const [];
     _announcedMessageIds[sessionId] = messageId;
@@ -268,7 +268,7 @@ final class ClaudeEventDispatcher({
     required ClaudeUserMessage message,
   }) {
     final mapped = _content.map(content: message.message["content"]);
-    if (_containsInternalCommandOutput(blocks: mapped)) return const [];
+    if (_content.containsInternalCommandOutput(blocks: mapped)) return const [];
     final results = mapped.whereType<ClaudeMappedToolResultContentBlock>().toList();
     if (results.isNotEmpty) {
       final events = <BridgeSseEvent>[];
@@ -294,7 +294,14 @@ final class ClaudeEventDispatcher({
 
     final messageId = _nonEmptyString(message.uuid);
     if (messageId == null) return const [];
-    final parts = _content.mapParts(content: message.message["content"], sessionId: sessionId, messageId: messageId);
+    // Replayed stdin turns echo the exact execution payload, so the
+    // bridge-owned worktree context is stripped the same way the transcript
+    // history path strips it.
+    final parts = _content.mapParts(
+      content: _content.visibleUserContent(content: message.message["content"]),
+      sessionId: sessionId,
+      messageId: messageId,
+    );
     if (!parts.any((part) => part.type.isVisible)) return const [];
     return [
       BridgeSseMessageUpdated(
@@ -427,14 +434,6 @@ String? _realModel({required String? model}) {
   final normalized = _nonEmptyString(model);
   return normalized == "<synthetic>" ? null : normalized;
 }
-
-bool _containsInternalCommandOutput({required List<ClaudeMappedContentBlock> blocks}) => blocks.any(
-  (block) =>
-      block is ClaudeMappedTextContentBlock &&
-      (block.text.contains("<local-command-stdout>") ||
-          block.text.contains("<local-command-caveat>") ||
-          block.text.contains("<command-name>")),
-);
 
 PluginMessageTime? _messageTime(DateTime? timestamp) =>
     timestamp == null ? null : PluginMessageTime(created: timestamp.millisecondsSinceEpoch, completed: null);

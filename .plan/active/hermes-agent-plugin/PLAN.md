@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `hermes-agent-plugin`
-- **Status:** corrective review in progress after Steps 1-5 merged; Step 6 is open as PR #921
+- **Status:** corrective review complete through Step 8; Steps 1-8 merged (#921, #927, #929), Step 9 blocked
 - **Plan date:** 2026-08-13
 - **Owner review:** started 2026-08-15; the contributor-authored plan was not previously approved
 - **Implementation base:** current `origin/main`
@@ -123,7 +123,7 @@ one consumer.
 | 5/9 | `⚙️ [hermes-agent-plugin] feat(hermes): register the plugin in the bridge [step 5/9]` | Merged as #919. |
 | 6/9 | `⚙️ [hermes-agent-plugin] feat(client): brand the Hermes harness [step 6/9]` | Merged as #921; corrected supplied artwork and asset contract. |
 | 7/9 | `🚧 [hermes-agent-plugin] fix(hermes): correct runtime and ACP assumptions [step 7/9]` | Merged as #927: auth selection, version semantics, executable revalidation, setup failure classification, null activation retry, exact registry test, plan/docs correction. |
-| 8/9 | `🚧 [hermes-agent-plugin] test(hermes): verify production ACP behavior [step 8/9]` | Local: supported-version headless/live evidence recorded in `TRACKER.md`; provider and client rows remain blocked. |
+| 8/9 | `🚧 [hermes-agent-plugin] test(hermes): verify production ACP behavior [step 8/9]` | Merged as #929: supported-version headless/live evidence recorded in `TRACKER.md`; provider and client rows remain blocked. |
 | 9/9 | `🌱 [hermes-agent-plugin] docs: retire the plan [step 9/9]` | Pending; blocked until every required row below passes. |
 
 ## Regression And Retirement Matrix
