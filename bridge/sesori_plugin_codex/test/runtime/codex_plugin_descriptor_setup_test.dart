@@ -75,7 +75,7 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, const PluginSetupReady());
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.146.0"));
       expect(processes.spawnedExecutables, ["codex", "codex"]);
       expect(processes.spawnedArguments, [
         const ["--version"],
@@ -124,7 +124,10 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, const PluginSetupReady());
+      expect(
+        result,
+        PluginSetupReady.versioned(runtimeVersion: manifest.bundledVersion.raw),
+      );
       expect(processes.spawnedExecutables, ["codex", managedBinaryPath, managedBinaryPath]);
     });
 
@@ -156,7 +159,7 @@ void main() {
             stateDirectory: stateDirectory,
           );
 
-      expect(result, const PluginSetupReady());
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.146.0"));
       expect(processes.spawnedExecutables, ["codex", appCli, appCli]);
     });
 
@@ -195,7 +198,10 @@ void main() {
             stateDirectory: stateDirectory,
           );
 
-      expect(result, const PluginSetupReady());
+      expect(
+        result,
+        PluginSetupReady.versioned(runtimeVersion: manifest.bundledVersion.raw),
+      );
       expect(processes.spawnedExecutables, ["codex", appCli, managedBinaryPath, managedBinaryPath]);
     });
 
@@ -295,8 +301,9 @@ void main() {
 
       expect(
         result,
-        const PluginSetupAuthenticationRequired(
+        const PluginSetupAuthenticationRequired.versioned(
           actionHint: "Sign in to Codex, then retry setup detection.",
+          runtimeVersion: "0.146.0",
         ),
       );
       expect(processes.spawnedArguments, [
@@ -330,6 +337,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupUnknown>());
+      expect(result.runtimeVersion, "0.146.0");
       expect(result.actionHint, isNot(contains("account-secret-output")));
     });
 
@@ -358,6 +366,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupUnknown>());
+      expect(result.runtimeVersion, "0.146.0");
     });
   });
 }

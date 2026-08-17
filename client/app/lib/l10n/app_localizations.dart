@@ -1033,6 +1033,12 @@ abstract class AppLocalizations {
   /// **'Setup'**
   String get harnessesSetupStatus;
 
+  /// No description provided for @harnessesRuntimeVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get harnessesRuntimeVersion;
+
   /// No description provided for @harnessesRuntimeStatus.
   ///
   /// In en, this message translates to:

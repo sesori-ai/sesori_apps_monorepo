@@ -185,9 +185,11 @@ final class const OmpPluginDescriptor({
       expectedVersion: manifest.minPathVersion,
       exactVersion: false,
     );
-    if (pathProbe == _OmpRuntimeProbe.ready) return const PluginSetupReady();
+    if (pathProbe.state == _OmpRuntimeProbe.ready) {
+      return PluginSetupReady.versioned(runtimeVersion: pathProbe.version!);
+    }
     if (explicitBin != null) {
-      return switch (pathProbe) {
+      return switch (pathProbe.state) {
         _OmpRuntimeProbe.missing => const PluginSetupRuntimeMissing(
           actionHint: "Fix the configured Oh My Pi CLI path, then restart the bridge.",
         ),
@@ -197,7 +199,7 @@ final class const OmpPluginDescriptor({
         _OmpRuntimeProbe.unknown => const PluginSetupUnknown(
           actionHint: "Oh My Pi setup could not be determined. Verify the configured CLI and retry.",
         ),
-        _OmpRuntimeProbe.ready => const PluginSetupReady(),
+        _OmpRuntimeProbe.ready => PluginSetupReady.versioned(runtimeVersion: pathProbe.version!),
       };
     }
     final managedProbe = await _probeRuntime(
@@ -207,8 +209,10 @@ final class const OmpPluginDescriptor({
       expectedVersion: manifest.bundledVersion,
       exactVersion: true,
     );
-    if (managedProbe == _OmpRuntimeProbe.ready) return const PluginSetupReady();
-    if (pathProbe == _OmpRuntimeProbe.unknown || managedProbe == _OmpRuntimeProbe.unknown) {
+    if (managedProbe.state == _OmpRuntimeProbe.ready) {
+      return PluginSetupReady.versioned(runtimeVersion: managedProbe.version!);
+    }
+    if (pathProbe.state == _OmpRuntimeProbe.unknown || managedProbe.state == _OmpRuntimeProbe.unknown) {
       return const PluginSetupUnknown(
         actionHint: "Oh My Pi setup could not be determined. Verify the local CLI and retry.",
       );
@@ -229,7 +233,7 @@ final class const OmpPluginDescriptor({
     }
   }
 
-  Future<_OmpRuntimeProbe> _probeRuntime({
+  Future<({String? version, _OmpRuntimeProbe state})> _probeRuntime({
     required String executable,
     required HostProcessService processes,
     required Map<String, String> environment,
@@ -250,18 +254,21 @@ final class const OmpPluginDescriptor({
         timeout: _versionProbeTimeout,
       );
     } on TimeoutException {
-      return _OmpRuntimeProbe.unknown;
+      return (state: _OmpRuntimeProbe.unknown, version: null);
     } on io.ProcessException {
-      return _OmpRuntimeProbe.missing;
+      return (state: _OmpRuntimeProbe.missing, version: null);
     } on Object catch (error, stackTrace) {
       Log.w("[omp] runtime version probe failed", error, stackTrace);
-      return _OmpRuntimeProbe.unknown;
+      return (state: _OmpRuntimeProbe.unknown, version: null);
     }
-    if (result.exitCode != 0) return _OmpRuntimeProbe.unknown;
+    if (result.exitCode != 0) return (state: _OmpRuntimeProbe.unknown, version: null);
     final version = _versionValidator(processes: processes).parseVersionOutput(output: result.stdout);
-    if (version == null) return _OmpRuntimeProbe.unknown;
+    if (version == null) return (state: _OmpRuntimeProbe.unknown, version: null);
     final comparison = version.compareTo(expectedVersion);
-    return (exactVersion ? comparison == 0 : comparison >= 0) ? _OmpRuntimeProbe.ready : _OmpRuntimeProbe.outdated;
+    final state = (exactVersion ? comparison == 0 : comparison >= 0)
+        ? _OmpRuntimeProbe.ready
+        : _OmpRuntimeProbe.outdated;
+    return (state: state, version: state == _OmpRuntimeProbe.ready ? version.raw : null);
   }
 
   RuntimeVersionValidator _versionValidator({required HostProcessService processes}) => RuntimeVersionValidator(

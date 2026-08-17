@@ -134,6 +134,7 @@ final class const ClaudePluginDescriptor({
         actionHint: "Update Claude Code to a supported version, then retry setup detection.",
       );
     }
+    final runtimeVersion = version.toString();
 
     final CommandResult authResult;
     try {
@@ -144,24 +145,28 @@ final class const ClaudePluginDescriptor({
         timeout: _probeTimeout,
       );
     } on Object {
-      return const PluginSetupUnknown(
+      return PluginSetupUnknown.versioned(
         actionHint: "Claude Code authentication could not be determined. Run `claude auth status` locally and retry.",
+        runtimeVersion: runtimeVersion,
       );
     }
     try {
       final status = ClaudeAuthStatusDto.fromJson(jsonDecodeMap(authResult.stdout));
       return switch (status.loggedIn) {
-        true => const PluginSetupReady(),
-        false => const PluginSetupAuthenticationRequired(
+        true => PluginSetupReady.versioned(runtimeVersion: runtimeVersion),
+        false => PluginSetupAuthenticationRequired.versioned(
           actionHint: "Run `claude auth login` on this machine, then retry setup detection.",
+          runtimeVersion: runtimeVersion,
         ),
-        null => const PluginSetupUnknown(
+        null => PluginSetupUnknown.versioned(
           actionHint: "Claude Code authentication could not be determined. Run `claude auth status` locally and retry.",
+          runtimeVersion: runtimeVersion,
         ),
       };
     } on Object {
-      return const PluginSetupUnknown(
+      return PluginSetupUnknown.versioned(
         actionHint: "Claude Code authentication could not be determined. Run `claude auth status` locally and retry.",
+        runtimeVersion: runtimeVersion,
       );
     }
   }

@@ -513,7 +513,10 @@ void main() {
       disabledPluginIds: const {"cursor"},
       setupById: const {
         "cursor": PluginSetupNotInspected(),
-        "opencode": PluginSetupAuthenticationRequired(actionHint: "Run opencode auth login."),
+        "opencode": PluginSetupAuthenticationRequired.versioned(
+          actionHint: "Run opencode auth login.",
+          runtimeVersion: "1.18.11",
+        ),
       },
     );
 
@@ -524,12 +527,14 @@ void main() {
           id: "cursor",
           displayName: "Cursor",
           state: PluginSetupState.notInspected,
+          runtimeVersion: null,
           actionHint: null,
         ),
         const PluginSetupMetadata(
           id: "opencode",
           displayName: "OpenCode",
           state: PluginSetupState.authenticationRequired,
+          runtimeVersion: "1.18.11",
           actionHint: "Run opencode auth login.",
         ),
       ],

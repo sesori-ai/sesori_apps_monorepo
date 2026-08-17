@@ -1065,6 +1065,7 @@ class PluginLifecycleService({
         PluginSetupUnavailable() => PluginSetupState.unavailable,
         PluginSetupUnknown() => PluginSetupState.unknown,
       },
+      runtimeVersion: setup.runtimeVersion,
       actionHint: setup.actionHint,
     );
   }

@@ -399,6 +399,7 @@ class const _HarnessControlCard({
     final supportsIdleTimeout = capabilities.contains(PluginManagementCapability.idleTimeout);
     final showExternal = !supportsLifecycle && !capabilities.contains(PluginManagementCapability.unknown);
     final setupReady = plugin.setup.state == PluginSetupState.ready;
+    final showVersion = plugin.setup.runtimeVersion != null;
     final runtimeKnown = plugin.runtimeState != PluginRuntimeState.unknown;
     final enabled = plugin.runtimeState.isEnabled;
     final showOperational = setupReady && enabled;
@@ -473,7 +474,8 @@ class const _HarnessControlCard({
             title: loc.harnessesSetupStatus,
             value: _setupStatus(context: context, state: plugin.setup.state),
             isLast:
-                !(showRuntime ||
+                !(showVersion ||
+                    showRuntime ||
                     showWork ||
                     showExternal ||
                     showInstall ||
@@ -484,6 +486,22 @@ class const _HarnessControlCard({
                     showTimeout ||
                     showClearTimeout),
           ),
+          if (showVersion)
+            _FactRow(
+              title: loc.harnessesRuntimeVersion,
+              value: plugin.setup.runtimeVersion!,
+              isLast:
+                  !(showRuntime ||
+                      showWork ||
+                      showExternal ||
+                      showInstall ||
+                      showAuthentication ||
+                      showLifecycle ||
+                      showSetupRefresh ||
+                      showRestart ||
+                      showTimeout ||
+                      showClearTimeout),
+            ),
           if (showAuthentication)
             PregoGroupedRow(
               key: Key("harness_authentication_$pluginId"),

@@ -75,14 +75,14 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
     if (host.startAborted.isAborted) throw const PluginStartAbortedException();
 
     final executablePath = _explicitBin(config: host.config) ?? HermesBinary.defaultBinary;
-    final state = await _probeHermesRuntime(
+    final runtime = await _probeHermesRuntime(
       executablePath: executablePath,
       processes: host.processes,
       environment: host.environment,
     );
     if (host.startAborted.isAborted) throw const PluginStartAbortedException();
 
-    switch (state) {
+    switch (runtime.state) {
       case _HermesRuntimeProbeState.ready:
         yield ProvisionReady(binaryPath: executablePath);
       case _HermesRuntimeProbeState.missing || _HermesRuntimeProbeState.preAcpInstall:
@@ -115,7 +115,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       environment: environment,
     );
 
-    switch (runtime) {
+    switch (runtime.state) {
       case _HermesRuntimeProbeState.missing:
         return PluginSetupRuntimeMissing(
           actionHint: explicitBin != null
@@ -164,38 +164,43 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
         error,
         stackTrace,
       );
-      return const PluginSetupUnknown(
+      return PluginSetupUnknown.versioned(
         actionHint: "Hermes authentication could not be determined. Run `hermes status` locally and retry.",
+        runtimeVersion: runtime.version!,
       );
     } on Object catch (error, stackTrace) {
       Log.w("[hermes] status probe could not launch '$executablePath status'", error, stackTrace);
-      return const PluginSetupUnknown(
+      return PluginSetupUnknown.versioned(
         actionHint: "Hermes authentication could not be determined. Run `hermes status` locally and retry.",
+        runtimeVersion: runtime.version!,
       );
     }
     if (statusResult.exitCode != 0) {
       Log.w("[hermes] status probe '$executablePath status' exited with code ${statusResult.exitCode}");
-      return const PluginSetupUnknown(
+      return PluginSetupUnknown.versioned(
         actionHint: "Hermes authentication could not be determined. Run `hermes status` locally and retry.",
+        runtimeVersion: runtime.version!,
       );
     }
     final statusOutput = _normalizedStatusOutput(result: statusResult);
     final model = _statusValue(output: statusOutput, field: "model");
     final provider = _statusValue(output: statusOutput, field: "provider");
     if (_isConfiguredStatusValue(value: model) && _isConfiguredStatusValue(value: provider)) {
-      return const PluginSetupReady();
+      return PluginSetupReady.versioned(runtimeVersion: runtime.version!);
     }
     if (model != null || provider != null) {
-      return const PluginSetupAuthenticationRequired(
+      return PluginSetupAuthenticationRequired.versioned(
         actionHint: "Configure a model and provider with `hermes setup` or `hermes model` on this machine, then retry setup detection.",
+        runtimeVersion: runtime.version!,
       );
     }
-    return const PluginSetupUnknown(
+    return PluginSetupUnknown.versioned(
       actionHint: "Hermes setup could not be determined. Run `hermes status` locally and retry.",
+      runtimeVersion: runtime.version!,
     );
   }
 
-  Future<_HermesRuntimeProbeState> _probeHermesRuntime({
+  Future<({String? version, _HermesRuntimeProbeState state})> _probeHermesRuntime({
     required String executablePath,
     required HostProcessService processes,
     required Map<String, String> environment,
@@ -220,18 +225,18 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
         "[hermes] availability probe '$executablePath acp --version' did not exit within "
         "${_versionProbeTimeout.inSeconds}s",
       );
-      return _HermesRuntimeProbeState.unknown;
+      return (state: _HermesRuntimeProbeState.unknown, version: null);
     } on io.ProcessException catch (error, stackTrace) {
       // The host process seam reports spawn failures as ProcessException;
       // ENOENT (errorCode 2) means not installed / not on PATH.
-      if (error.errorCode == 2) return _HermesRuntimeProbeState.missing;
+      if (error.errorCode == 2) return (state: _HermesRuntimeProbeState.missing, version: null);
       Log.w("[hermes] availability probe could not launch '$executablePath acp --version'", error, stackTrace);
-      return _HermesRuntimeProbeState.unknown;
+      return (state: _HermesRuntimeProbeState.unknown, version: null);
     } on Object catch (error, stackTrace) {
       // Any other spawn failure (host seam error, permission) is not proof of
       // a missing runtime; report unknown rather than a misleading hint.
       Log.w("[hermes] availability probe could not launch '$executablePath acp --version'", error, stackTrace);
-      return _HermesRuntimeProbeState.unknown;
+      return (state: _HermesRuntimeProbeState.unknown, version: null);
     }
 
     if (result.exitCode != 0) {
@@ -241,27 +246,27 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       // as an unknown failure.
       final stderr = result.stderr.toLowerCase();
       if (_isShellCommandNotFound(stderr: stderr)) {
-        return _HermesRuntimeProbeState.missing;
+        return (state: _HermesRuntimeProbeState.missing, version: null);
       }
       if (stderr.contains("acp") && stderr.contains("invalid choice")) {
-        return _HermesRuntimeProbeState.preAcpInstall;
+        return (state: _HermesRuntimeProbeState.preAcpInstall, version: null);
       }
-      return _HermesRuntimeProbeState.unknown;
+      return (state: _HermesRuntimeProbeState.unknown, version: null);
     }
 
     final parsed = _tryParseVersion(value: result.stdout.trim());
     if (parsed == null) {
-      return _HermesRuntimeProbeState.unrecognized;
+      return (state: _HermesRuntimeProbeState.unrecognized, version: null);
     }
     if (parsed.compareTo(_minHermesVersion) < 0) {
       Log.w(
         "[hermes] Hermes Agent ${parsed.toString()} is below the supported minimum ${_minHermesVersion.toString()}",
       );
-      return _HermesRuntimeProbeState.outdated;
+      return (state: _HermesRuntimeProbeState.outdated, version: null);
     }
     final version = parsed.toString();
     Log.d("[hermes] available: '$executablePath acp --version' -> $version");
-    return _HermesRuntimeProbeState.ready;
+    return (state: _HermesRuntimeProbeState.ready, version: version);
   }
 
   bool _isShellCommandNotFound({required String stderr}) =>

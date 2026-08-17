@@ -352,6 +352,7 @@ class const OpenCodePluginDescriptor({
       manifest: manifest,
       probeTimeout: _versionProbeTimeout,
     );
+    String? runtimeVersion;
 
     Future<bool> managedRuntimeIsReady() async {
       if (hasExplicitBin) return false;
@@ -359,7 +360,9 @@ class const OpenCodePluginDescriptor({
         executable: manifest.managedBinaryPath(stateDirectory: stateDirectory),
         environment: environment,
       );
-      return managedVersion != null && managedVersion.compareTo(manifest.bundledVersion) == 0;
+      final isReady = managedVersion != null && managedVersion.compareTo(manifest.bundledVersion) == 0;
+      if (isReady) runtimeVersion = managedVersion.raw;
+      return isReady;
     }
 
     /// What to tell the user when no usable runtime was found and Sesori can
@@ -433,10 +436,12 @@ class const OpenCodePluginDescriptor({
               actionHint: "The configured OpenCode binary is too old. Update it and restart the bridge.",
             );
           }
+        } else {
+          runtimeVersion = version.raw;
         }
       }
     }
-    return const PluginSetupReady();
+    return PluginSetupReady.versioned(runtimeVersion: runtimeVersion!);
   }
 
   /// Resolves an existing OpenCode runtime (a recent-enough PATH install or the

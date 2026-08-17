@@ -8,12 +8,21 @@ import "package:meta/meta.dart";
 sealed class const PluginSetupStatus() {
   /// Generic, user-facing guidance authored by the plugin.
   String? get actionHint;
+
+  /// Display-ready version of the usable runtime selected by inspection.
+  ///
+  /// Null means inspection did not select a versioned local runtime. Raw
+  /// command output must never be exposed through this field.
+  String? get runtimeVersion;
 }
 
 /// Setup was deliberately not inspected because the plugin is disabled.
 final class const PluginSetupNotInspected() extends PluginSetupStatus {
   @override
   String? get actionHint => null;
+
+  @override
+  String? get runtimeVersion => null;
 
   @override
   bool operator ==(Object other) => other is PluginSetupNotInspected;
@@ -26,23 +35,36 @@ final class const PluginSetupNotInspected() extends PluginSetupStatus {
 }
 
 /// The required runtime and authentication are already available.
-final class const PluginSetupReady() extends PluginSetupStatus {
+base class const PluginSetupReady() extends PluginSetupStatus {
+  const factory versioned({required String runtimeVersion}) = _VersionedPluginSetupReady;
+
   @override
   String? get actionHint => null;
 
   @override
-  bool operator ==(Object other) => other is PluginSetupReady;
+  String? get runtimeVersion => null;
 
   @override
-  int get hashCode => runtimeType.hashCode;
+  bool operator ==(Object other) => other is PluginSetupReady && other.runtimeVersion == runtimeVersion;
 
   @override
-  String toString() => "PluginSetupReady";
+  int get hashCode => runtimeVersion.hashCode;
+
+  @override
+  String toString() => "PluginSetupReady(runtimeVersion: $runtimeVersion)";
+}
+
+final class const _VersionedPluginSetupReady({@override required final String runtimeVersion})
+    extends PluginSetupReady {
+  this : assert(runtimeVersion != "", "PluginSetupReady.runtimeVersion must not be empty"), super();
 }
 
 /// No usable backend runtime was found.
 final class const PluginSetupRuntimeMissing({@override required final String? actionHint}) extends PluginSetupStatus {
   this : assert(actionHint != "", "PluginSetupRuntimeMissing.actionHint must not be empty");
+
+  @override
+  String? get runtimeVersion => null;
 
   @override
   bool operator ==(Object other) => other is PluginSetupRuntimeMissing && other.actionHint == actionHint;
@@ -55,23 +77,44 @@ final class const PluginSetupRuntimeMissing({@override required final String? ac
 }
 
 /// The runtime exists, but the backend requires authentication.
-final class const PluginSetupAuthenticationRequired({@override required final String? actionHint})
+base class const PluginSetupAuthenticationRequired({@override required final String? actionHint})
     extends PluginSetupStatus {
   this : assert(actionHint != "", "PluginSetupAuthenticationRequired.actionHint must not be empty");
 
-  @override
-  bool operator ==(Object other) => other is PluginSetupAuthenticationRequired && other.actionHint == actionHint;
+  const factory versioned({
+    required String? actionHint,
+    required String runtimeVersion,
+  }) = _VersionedPluginSetupAuthenticationRequired;
 
   @override
-  int get hashCode => actionHint.hashCode;
+  String? get runtimeVersion => null;
 
   @override
-  String toString() => "PluginSetupAuthenticationRequired(actionHint: $actionHint)";
+  bool operator ==(Object other) =>
+      other is PluginSetupAuthenticationRequired &&
+      other.actionHint == actionHint &&
+      other.runtimeVersion == runtimeVersion;
+
+  @override
+  int get hashCode => Object.hash(actionHint, runtimeVersion);
+
+  @override
+  String toString() => "PluginSetupAuthenticationRequired(actionHint: $actionHint, runtimeVersion: $runtimeVersion)";
+}
+
+final class const _VersionedPluginSetupAuthenticationRequired({
+  required super.actionHint,
+  @override required final String runtimeVersion,
+}) extends PluginSetupAuthenticationRequired {
+  this : assert(runtimeVersion != "", "PluginSetupAuthenticationRequired.runtimeVersion must not be empty"), super();
 }
 
 /// The backend is present but unsupported or otherwise unusable.
 final class const PluginSetupUnavailable({@override required final String? actionHint}) extends PluginSetupStatus {
   this : assert(actionHint != "", "PluginSetupUnavailable.actionHint must not be empty");
+
+  @override
+  String? get runtimeVersion => null;
 
   @override
   bool operator ==(Object other) => other is PluginSetupUnavailable && other.actionHint == actionHint;
@@ -84,15 +127,28 @@ final class const PluginSetupUnavailable({@override required final String? actio
 }
 
 /// Setup could not be determined safely after a transient or ambiguous probe.
-final class const PluginSetupUnknown({@override required final String? actionHint}) extends PluginSetupStatus {
+base class const PluginSetupUnknown({@override required final String? actionHint}) extends PluginSetupStatus {
   this : assert(actionHint != "", "PluginSetupUnknown.actionHint must not be empty");
 
-  @override
-  bool operator ==(Object other) => other is PluginSetupUnknown && other.actionHint == actionHint;
+  const factory versioned({required String? actionHint, required String runtimeVersion}) = _VersionedPluginSetupUnknown;
 
   @override
-  int get hashCode => actionHint.hashCode;
+  String? get runtimeVersion => null;
 
   @override
-  String toString() => "PluginSetupUnknown(actionHint: $actionHint)";
+  bool operator ==(Object other) =>
+      other is PluginSetupUnknown && other.actionHint == actionHint && other.runtimeVersion == runtimeVersion;
+
+  @override
+  int get hashCode => Object.hash(actionHint, runtimeVersion);
+
+  @override
+  String toString() => "PluginSetupUnknown(actionHint: $actionHint, runtimeVersion: $runtimeVersion)";
+}
+
+final class const _VersionedPluginSetupUnknown({
+  required super.actionHint,
+  @override required final String runtimeVersion,
+}) extends PluginSetupUnknown {
+  this : assert(runtimeVersion != "", "PluginSetupUnknown.runtimeVersion must not be empty"), super();
 }
