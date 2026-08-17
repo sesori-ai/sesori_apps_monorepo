@@ -50,6 +50,14 @@ sealed class const ClaudeStreamMessage({
             uuid: uuid,
             raw: json,
           ),
+          "thinking_tokens" => ClaudeThinkingTokensMessage(
+            estimatedTokens: _intOrNull(json["estimated_tokens"]),
+            estimatedTokensDelta: _intOrNull(json["estimated_tokens_delta"]),
+            sessionId: sessionId,
+            uuid: uuid,
+            raw: json,
+          ),
+          "task_progress" => ClaudeTaskProgressMessage.fromJson(json, sessionId: sessionId, uuid: uuid),
           _ => ClaudeUnknownMessage(type: type, subtype: subtype, sessionId: sessionId, uuid: uuid, raw: json),
         };
       case "assistant":
@@ -147,6 +155,54 @@ final class const ClaudeStatusMessage({
   required super.uuid,
   required super.raw,
 }) extends ClaudeStreamMessage;
+
+/// `system`/`thinking_tokens` — a running estimate of the current thinking
+/// block's token count, emitted alongside thinking deltas.
+final class const ClaudeThinkingTokensMessage({
+  required final int? estimatedTokens,
+  required final int? estimatedTokensDelta,
+  required super.sessionId,
+  required super.uuid,
+  required super.raw,
+}) extends ClaudeStreamMessage;
+
+/// `system`/`task_progress` — periodic progress for a running subagent task.
+final class const ClaudeTaskProgressMessage({
+  required final String? taskId,
+  required final String? toolUseId,
+  required final String? description,
+  required final String? subagentType,
+  required final String? lastToolName,
+  required final String? summary,
+  required final int? totalTokens,
+  required final int? toolUses,
+  required final int? durationMs,
+  required super.sessionId,
+  required super.uuid,
+  required super.raw,
+}) extends ClaudeStreamMessage {
+  factory fromJson(
+    Map<String, Object?> json, {
+    required String? sessionId,
+    required String? uuid,
+  }) {
+    final usage = _mapOrEmpty(json["usage"]);
+    return ClaudeTaskProgressMessage(
+      taskId: _stringOrNull(json["task_id"]),
+      toolUseId: _stringOrNull(json["tool_use_id"]),
+      description: _stringOrNull(json["description"]),
+      subagentType: _stringOrNull(json["subagent_type"]),
+      lastToolName: _stringOrNull(json["last_tool_name"]),
+      summary: _stringOrNull(json["summary"]),
+      totalTokens: _intOrNull(usage["total_tokens"]),
+      toolUses: _intOrNull(usage["tool_uses"]),
+      durationMs: _intOrNull(usage["duration_ms"]),
+      sessionId: sessionId,
+      uuid: uuid,
+      raw: json,
+    );
+  }
+}
 
 enum ClaudeAssistantError() {
   authenticationFailed,

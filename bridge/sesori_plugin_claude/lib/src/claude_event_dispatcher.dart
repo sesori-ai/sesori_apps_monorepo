@@ -71,6 +71,10 @@ final class ClaudeEventDispatcher({
         ClaudeResultMessage() => _mapResult(sessionId: sessionId, message: message),
         ClaudeInitMessage() ||
         ClaudeStatusMessage() ||
+        // ponytail: parsed but not surfaced — no client UI consumes thinking
+        // token estimates or subagent task progress yet.
+        ClaudeThinkingTokensMessage() ||
+        ClaudeTaskProgressMessage() ||
         ClaudeControlRequestMessage() ||
         ClaudeControlResponseMessage() ||
         ClaudeRateLimitMessage() ||
