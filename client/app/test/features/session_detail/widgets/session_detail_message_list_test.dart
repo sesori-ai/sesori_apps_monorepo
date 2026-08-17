@@ -1,3 +1,4 @@
+import "package:flutter/foundation.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -495,6 +496,49 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+  });
+
+  testWidgets("macOS mouse-wheel scrolling animates and accumulates rapid ticks", (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    try {
+      await tester.binding.setSurfaceSize(const Size(900, 700));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          initialMessages: _userMessages(count: 12),
+          initialStreamingText: const {},
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _sendPointerScroll(
+        tester: tester,
+        target: find.byKey(_listViewKey),
+        delta: const Offset(0, -120),
+      );
+
+      expect(_position(tester).pixels, 0, reason: "a wheel tick should not jump the transcript in one frame");
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(_position(tester).pixels, allOf(greaterThan(0), lessThan(120)));
+
+      await _sendPointerScroll(
+        tester: tester,
+        target: find.byKey(_listViewKey),
+        delta: const Offset(0, -120),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        _position(tester).pixels,
+        closeTo(240, 0.5),
+        reason: "a second tick must extend the destination instead of replacing unfinished travel",
+      );
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 
   testWidgets("programmatic scroll changes do not detach follow mode", (tester) async {

@@ -82,6 +82,9 @@ defaults and queued client sends coherent.
 - Transcript content scrolling behind the top navigation or floating composer
   dissolves into a strong surface-colour fade, keeping the title and controls
   visually separate and screenshot-readable without text collisions.
+- On macOS, discrete physical mouse-wheel ticks scroll the session transcript
+  smoothly and accumulate while an earlier tick is still animating. Trackpad
+  scrolling keeps Flutter's native direct-manipulation and momentum behavior.
 
 ## Regression Levels
 
@@ -125,6 +128,8 @@ has started.
   running session as if they were user activity.
 - Scrolled transcript text remains clearly visible through the fade and collides
   with the navigation title or floating composer controls.
+- On macOS, a physical mouse wheel moves the transcript in abrupt steps, loses
+  distance across rapid ticks, or changes the smooth native trackpad behavior.
 
 ## Known Limitations
 
