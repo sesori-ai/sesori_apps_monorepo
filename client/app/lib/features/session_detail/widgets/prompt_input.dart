@@ -850,7 +850,7 @@ class _PromptInputState() extends State<PromptInput> {
       // controls keep their own surfaces.
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.center,
+          begin: Alignment.bottomCenter,
           end: Alignment.topCenter,
           colors: [
             prego.colors.bgSurface1.withValues(alpha: 0.98),

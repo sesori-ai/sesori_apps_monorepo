@@ -47,7 +47,8 @@ Widget _harness({
 
 void main() {
   // The test viewport has no status-bar inset, so the top-bar geometry is:
-  // bar row top == banner height, first content top == banner height + 54.
+  // bar row top == banner height, first content top == banner height + 54. The
+  // decorative scroll-edge fade paints below that layout boundary.
 
   testWidgets("without a banner the bar sits at the top and content clears it", (tester) async {
     await tester.pumpWidget(_harness(banner: null));
@@ -88,7 +89,12 @@ void main() {
     // the content must sit exactly one bar height below the mid-animation bar.
     await tester.pump(Duration.zero);
     final midContentTop = tester.getTopLeft(find.byKey(_contentKey)).dy;
-    expect(midContentTop, moreOrLessEquals(midBarTop + PregoTopNavigation.barHeight));
+    expect(
+      midContentTop,
+      moreOrLessEquals(
+        midBarTop + PregoTopNavigation.barHeight,
+      ),
+    );
 
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(find.byType(GlassAppBar)).dy, _bannerHeight);
@@ -132,7 +138,10 @@ void main() {
 
     await tester.pumpWidget(_harness(banner: _banner(), extraSlivers: [probe]));
     await tester.pumpAndSettle();
-    expect(capturedInsets.last, PregoTopNavigation.barHeight + _bannerHeight);
+    expect(
+      capturedInsets.last,
+      PregoTopNavigation.barHeight + _bannerHeight,
+    );
 
     await tester.pumpWidget(_harness(banner: null, extraSlivers: [probe]));
     await tester.pumpAndSettle();
@@ -230,7 +239,7 @@ void main() {
     expect(parent?.widget, isA<Builder>());
   });
 
-  testWidgets("the scroll-edge gradient spans the banner and the bar", (tester) async {
+  testWidgets("the scroll-edge gradient extends below the banner and bar", (tester) async {
     final gradientFinder = find.byWidgetPredicate(
       (widget) =>
           widget is Container &&
@@ -246,14 +255,19 @@ void main() {
     expect(gradient.colors[0], surface.withValues(alpha: surface.a * 0.98));
     expect(gradient.colors[1], surface.withValues(alpha: surface.a * 0.88));
     expect(gradient.colors[2], surface.withValues(alpha: 0));
+    expect(gradient.begin, Alignment.topCenter);
+    expect(gradient.end, Alignment.bottomCenter);
     expect(
       tester.getSize(gradientFinder).height,
-      PregoTopNavigation.barHeight + _bannerHeight,
+      PregoTopNavigation.barHeight + _bannerHeight + PregoSpacing.xl,
     );
 
     await tester.pumpWidget(_harness(banner: null));
     await tester.pumpAndSettle();
-    expect(tester.getSize(gradientFinder).height, PregoTopNavigation.barHeight);
+    expect(
+      tester.getSize(gradientFinder).height,
+      PregoTopNavigation.barHeight + PregoSpacing.xl,
+    );
   });
 
   testWidgets("pull-to-refresh opens below the bar and moves content down", (tester) async {
