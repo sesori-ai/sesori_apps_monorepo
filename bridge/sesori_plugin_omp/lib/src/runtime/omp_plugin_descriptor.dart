@@ -185,21 +185,21 @@ final class const OmpPluginDescriptor({
       expectedVersion: manifest.minPathVersion,
       exactVersion: false,
     );
-    if (pathProbe.state == _OmpRuntimeProbe.ready) {
-      return PluginSetupReady.versioned(runtimeVersion: pathProbe.version!);
+    if (pathProbe case _OmpRuntimeReady(:final version)) {
+      return PluginSetupReady.versioned(runtimeVersion: version);
     }
     if (explicitBin != null) {
-      return switch (pathProbe.state) {
-        _OmpRuntimeProbe.missing => const PluginSetupRuntimeMissing(
+      return switch (pathProbe) {
+        _OmpRuntimeReady(:final version) => PluginSetupReady.versioned(runtimeVersion: version),
+        _OmpRuntimeMissing() => const PluginSetupRuntimeMissing(
           actionHint: "Fix the configured Oh My Pi CLI path, then restart the bridge.",
         ),
-        _OmpRuntimeProbe.outdated => const PluginSetupUnavailable(
+        _OmpRuntimeOutdated() => const PluginSetupUnavailable(
           actionHint: "Update the configured Oh My Pi CLI, then restart the bridge.",
         ),
-        _OmpRuntimeProbe.unknown => const PluginSetupUnknown(
+        _OmpRuntimeUnknown() => const PluginSetupUnknown(
           actionHint: "Oh My Pi setup could not be determined. Verify the configured CLI and retry.",
         ),
-        _OmpRuntimeProbe.ready => PluginSetupReady.versioned(runtimeVersion: pathProbe.version!),
       };
     }
     final managedProbe = await _probeRuntime(
@@ -209,10 +209,10 @@ final class const OmpPluginDescriptor({
       expectedVersion: manifest.bundledVersion,
       exactVersion: true,
     );
-    if (managedProbe.state == _OmpRuntimeProbe.ready) {
-      return PluginSetupReady.versioned(runtimeVersion: managedProbe.version!);
+    if (managedProbe case _OmpRuntimeReady(:final version)) {
+      return PluginSetupReady.versioned(runtimeVersion: version);
     }
-    if (pathProbe.state == _OmpRuntimeProbe.unknown || managedProbe.state == _OmpRuntimeProbe.unknown) {
+    if (pathProbe is _OmpRuntimeUnknown || managedProbe is _OmpRuntimeUnknown) {
       return const PluginSetupUnknown(
         actionHint: "Oh My Pi setup could not be determined. Verify the local CLI and retry.",
       );
@@ -233,7 +233,7 @@ final class const OmpPluginDescriptor({
     }
   }
 
-  Future<({String? version, _OmpRuntimeProbe state})> _probeRuntime({
+  Future<_OmpRuntimeProbe> _probeRuntime({
     required String executable,
     required HostProcessService processes,
     required Map<String, String> environment,
@@ -254,21 +254,21 @@ final class const OmpPluginDescriptor({
         timeout: _versionProbeTimeout,
       );
     } on TimeoutException {
-      return (state: _OmpRuntimeProbe.unknown, version: null);
+      return const _OmpRuntimeUnknown();
     } on io.ProcessException {
-      return (state: _OmpRuntimeProbe.missing, version: null);
+      return const _OmpRuntimeMissing();
     } on Object catch (error, stackTrace) {
       Log.w("[omp] runtime version probe failed", error, stackTrace);
-      return (state: _OmpRuntimeProbe.unknown, version: null);
+      return const _OmpRuntimeUnknown();
     }
-    if (result.exitCode != 0) return (state: _OmpRuntimeProbe.unknown, version: null);
+    if (result.exitCode != 0) return const _OmpRuntimeUnknown();
     final version = _versionValidator(processes: processes).parseVersionOutput(output: result.stdout);
-    if (version == null) return (state: _OmpRuntimeProbe.unknown, version: null);
+    if (version == null) return const _OmpRuntimeUnknown();
     final comparison = version.compareTo(expectedVersion);
-    final state = (exactVersion ? comparison == 0 : comparison >= 0)
-        ? _OmpRuntimeProbe.ready
-        : _OmpRuntimeProbe.outdated;
-    return (state: state, version: state == _OmpRuntimeProbe.ready ? version.raw : null);
+    if (exactVersion ? comparison == 0 : comparison >= 0) {
+      return _OmpRuntimeReady(version: version.raw);
+    }
+    return const _OmpRuntimeOutdated();
   }
 
   RuntimeVersionValidator _versionValidator({required HostProcessService processes}) => RuntimeVersionValidator(
@@ -303,4 +303,15 @@ final class const OmpPluginDescriptor({
   }
 }
 
-enum _OmpRuntimeProbe() { ready, missing, outdated, unknown }
+/// Outcome of an Oh My Pi runtime probe. Only [_OmpRuntimeReady] carries the
+/// selected runtime version, so a version can never accompany a rejected or
+/// unresolved runtime.
+sealed class const _OmpRuntimeProbe();
+
+final class const _OmpRuntimeReady({required final String version}) extends _OmpRuntimeProbe;
+
+final class const _OmpRuntimeMissing() extends _OmpRuntimeProbe;
+
+final class const _OmpRuntimeOutdated() extends _OmpRuntimeProbe;
+
+final class const _OmpRuntimeUnknown() extends _OmpRuntimeProbe;
