@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>Sesori AI chat states</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="styles.css">
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <!-- Approved direction: three Figma-aligned chat states in one comparison page,
+         with the working and finished activity groups remaining genuinely interactive. -->
+    <main class="showcase" aria-labelledby="page-title">
+      <h1 id="page-title" class="sr-only">Three states of an AI chat turn</h1>
+
+      <article class="stage" aria-labelledby="thinking-title">
+        <h2 id="thinking-title" class="sr-only">Thinking</h2>
+        <div class="chat-screen" data-state="thinking">
+          <div class="chat-thread">
+            <div class="user-message">
+              Search codebase for relevant files, checking type definitions and resolving import paths.
+            </div>
+
+            <div class="activity-row thinking-row" role="status" aria-live="polite">
+              <span class="icon icon-sparkle rotating" aria-hidden="true">&#xF6D7;</span>
+              <span class="thinking-label">Thinking...</span>
+              <span class="thinking-context">Analyzing your request...</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="stage" aria-labelledby="working-title">
+        <h2 id="working-title" class="sr-only">Working</h2>
+        <div class="chat-screen" data-state="working">
+          <div class="chat-thread">
+            <div class="user-message">
+              Search codebase for relevant files, checking type definitions and resolving import paths.
+            </div>
+
+            <div class="assistant-flow">
+              <div class="status-group">
+                <div class="activity-row" role="status">
+                  <span class="icon icon-sparkle rotating" aria-hidden="true">&#xF6D7;</span>
+                  <span>Working for 3min 5s</span>
+                </div>
+                <div class="divider" aria-hidden="true"></div>
+              </div>
+
+              <div class="activity-row">
+                <span class="icon" aria-hidden="true">&#xEB1C;</span>
+                <span>Searching for <span class="underlined">monorepo</span></span>
+                <span class="icon chevron" aria-hidden="true">&#xEA61;</span>
+              </div>
+
+              <p>
+                I'm using the simple skill because this is a focused visual/component change; I'll keep the
+                implementation narrow and preserve the existing panel's content, sizing, and privacy/accessibility
+                behavior. I'm also checking the current worktree first so I don't overwrite unrelated
+              </p>
+
+              <section class="accordion" data-accordion>
+                <button
+                  class="activity-row accordion-toggle"
+                  type="button"
+                  aria-expanded="true"
+                  aria-controls="working-tool-list"
+                  data-accordion-toggle
+                >
+                  <span class="icon" aria-hidden="true">&#xEBCA;</span>
+                  <span>Loaded a tool, read files, ran commands</span>
+                  <span class="icon chevron" aria-hidden="true">&#xEA5F;</span>
+                </button>
+
+                <div id="working-tool-list" class="accordion-panel tool-list" data-accordion-panel>
+                  <div class="activity-row">
+                    <span class="icon" aria-hidden="true">&#xEBEF;</span>
+                    <span>Ran <span class="underlined">$ make catalog-build</span></span>
+                  </div>
+                  <div class="activity-row">
+                    <span class="icon" aria-hidden="true">&#xEB1C;</span>
+                    <span>Search for AGENTS.md in website</span>
+                  </div>
+                  <div class="activity-row">
+                    <span class="icon" aria-hidden="true">&#xEA39;</span>
+                    <span>Read <span class="underlined">index.astro</span></span>
+                  </div>
+                  <div class="activity-row">
+                    <span class="icon" aria-hidden="true">&#xEAAD;</span>
+                    <span>Listed files in public</span>
+                  </div>
+                  <div class="activity-row">
+                    <span class="icon" aria-hidden="true">&#xEB04;</span>
+                    <span>
+                      created <span class="underlined">tool-call.txt</span>
+                      <span class="added">+2</span> <span class="removed">-1</span>
+                    </span>
+                  </div>
+                  <div class="activity-row">
+                    <span class="icon" aria-hidden="true">&#xEB0A;</span>
+                    <span>Viewed an image.</span>
+                  </div>
+                </div>
+              </section>
+
+              <p>
+                The selected region is the card, not the contact section or hero. The current checkout already
+                contains unrelated in-progress hero-video edits, so I'll leave those untouched and add the new MP4
+                only to the selected card's background.
+              </p>
+
+              <div class="activity-row">
+                <span class="icon" aria-hidden="true">&#xF00B;</span>
+                <span>Subagents 2</span>
+              </div>
+
+              <p class="secondary-copy">Planning video background replacement</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="stage" aria-labelledby="finished-title">
+        <h2 id="finished-title" class="sr-only">Finished</h2>
+        <div class="chat-screen finished-screen" data-state="finished">
+          <div class="chat-thread">
+            <div class="user-message">
+              Search codebase for relevant files, checking type definitions and resolving import paths.
+            </div>
+
+            <div class="assistant-flow">
+              <section class="accordion workspace-accordion" data-accordion>
+                <div class="status-group">
+                  <button
+                    class="activity-row accordion-toggle finished-toggle"
+                    type="button"
+                    aria-expanded="false"
+                    aria-controls="finished-workspace"
+                    data-accordion-toggle
+                  >
+                    <span class="icon icon-sparkle finished-sparkle" aria-hidden="true">&#xF6D7;</span>
+                    <span>Worked for 5 min 15s</span>
+                    <span class="icon chevron" aria-hidden="true">&#xEA61;</span>
+                  </button>
+                  <div class="divider" aria-hidden="true"></div>
+                </div>
+
+                <div
+                  id="finished-workspace"
+                  class="accordion-panel finished-workspace"
+                  data-accordion-panel
+                  hidden
+                >
+                  <section class="accordion command-accordion" data-accordion>
+                    <button
+                      class="activity-row accordion-toggle"
+                      type="button"
+                      aria-expanded="true"
+                      aria-controls="finished-command"
+                      data-accordion-toggle
+                    >
+                      <span class="icon" aria-hidden="true">&#xEBEF;</span>
+                      <span>Ran <span class="underlined">$ make catalog-build</span></span>
+                      <span class="icon chevron" aria-hidden="true">&#xEA5F;</span>
+                    </button>
+
+                    <div id="finished-command" class="accordion-panel command-card" data-accordion-panel>
+                      <div class="command-card-header">
+                        <div>
+                          <div class="command-label">Shell</div>
+                          <div class="command-line">
+                            <span class="icon" aria-hidden="true">$</span>
+                            <code>make catalog-build</code>
+                          </div>
+                        </div>
+                        <button
+                          class="icon-button copy-command"
+                          type="button"
+                          aria-label="Copy command"
+                          data-copy="make catalog-build"
+                        >
+                          <span class="icon" aria-hidden="true">&#xEA7A;</span>
+                        </button>
+                      </div>
+
+                      <div class="command-output" tabindex="0" aria-label="Command output">
+                        <code>sed -n '1,260p' .agents/skills/<br>sesori-plan-worker/SKILL.md &gt;/dev/<br>null</code>
+                        <code>gh pr view 904 --json<br>state,mergedAt,mergeCommit,url</code>
+                        <code>git status --short --branch</code>
+                      </div>
+
+                      <div class="command-success">
+                        <span class="icon" aria-hidden="true">&#xEA5E;</span>
+                        <span>Success</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  <div class="tool-list finished-tool-list">
+                    <div class="activity-row">
+                      <span class="icon" aria-hidden="true">&#xEB1C;</span>
+                      <span>Search for AGENTS.md in website</span>
+                    </div>
+                    <div class="activity-row">
+                      <span class="icon" aria-hidden="true">&#xEA39;</span>
+                      <span>Read <span class="underlined">index.astro</span></span>
+                    </div>
+                    <div class="activity-row">
+                      <span class="icon" aria-hidden="true">&#xEAAD;</span>
+                      <span>Listed files in public</span>
+                    </div>
+                    <div class="activity-row">
+                      <span class="icon" aria-hidden="true">&#xEB04;</span>
+                      <span>
+                        created <span class="underlined">tool-call.txt</span>
+                        <span class="added">+2</span> <span class="removed">-1</span>
+                      </span>
+                    </div>
+                    <div class="image-tool">
+                      <div class="activity-row">
+                        <span class="icon" aria-hidden="true">&#xEB0A;</span>
+                        <span>Viewed an image.</span>
+                      </div>
+                      <div class="image-preview">
+                        <img src="assets/figma-image-1.png" alt="Abstract blue reference">
+                        <button class="remove-image" type="button" aria-label="Remove preview">
+                          <span class="icon" aria-hidden="true">&#xEB55;</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p>
+                    The selected region is the card, not the contact section or hero. The current checkout already
+                    contains unrelated in-progress hero-video edits, so I'll leave those untouched and add the new
+                    MP4 only to the selected card's background.
+                  </p>
+
+                  <div class="subagent-group">
+                    <div class="activity-row">
+                      <span class="icon" aria-hidden="true">&#xF00B;</span>
+                      <span>Subagents 2</span>
+                    </div>
+                    <div class="subagent-list">
+                      <div class="subagent">
+                        <img src="assets/figma-image-4.png" alt="">
+                        <div>
+                          <div>Critique detector evidence</div>
+                          <div class="subagent-status">Done</div>
+                        </div>
+                      </div>
+                      <div class="subagent">
+                        <img src="assets/figma-image-5.png" alt="">
+                        <div>
+                          <div>Critique design evidence</div>
+                          <div class="subagent-status">Done</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="divider workspace-divider" aria-hidden="true"></div>
+                </div>
+              </section>
+
+              <div class="result-copy">
+                <p>Added clickable “Common issues” pills to the written-feedback step:</p>
+                <ul>
+                  <li>Slow reconnects</li>
+                  <li>Session drops</li>
+                  <li>Late notifications</li>
+                  <li>Hard to navigate</li>
+                </ul>
+                <p>
+                  They support multi-selection, keyboard access, dark/light themes, and pill-only submission.
+                  Restart clears selections; Back preserves them. I verified both platform layouts and the existing
+                  rating branches in a real browser.
+                </p>
+              </div>
+
+              <p class="result-link">
+                Refresh the open <a href="#feedback-prototype">feedback prototype</a>
+                <span class="icon inline-icon" aria-hidden="true">&#xEADE;</span> to try it.
+              </p>
+
+              <div class="result-actions" role="group" aria-label="Response actions">
+                <button
+                  class="icon-button"
+                  type="button"
+                  aria-label="Copy response"
+                  data-copy="Added clickable Common issues pills to the written-feedback step."
+                >
+                  <span class="icon" aria-hidden="true">&#xEA7A;</span>
+                </button>
+                <button class="icon-button" type="button" aria-label="Branch from response">
+                  <span class="icon" aria-hidden="true">&#xEB8F;</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </main>
+  </body>
+</html>
