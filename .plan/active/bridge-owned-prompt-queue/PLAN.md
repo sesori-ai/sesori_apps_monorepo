@@ -200,9 +200,14 @@ existing `sendTurn`/interrupt mechanics untouched, but:
   emit the queue event. Entries already dispatched return not-found; the
   running turn stays governed by abort/Stop.
 - Dedupe: `enqueueTurn` refuses (as success, no-op) a `promptId` already
-  queued or present in a bounded per-session recently-dispatched set — this
-  kills the observed duplicate-turn class when a client retries after an
-  uncertain outcome (timeout / relay response lost).
+  queued or present in a per-session set of the last 64 dispatched prompt
+  ids — this kills the observed duplicate-turn class when a client retries
+  after an uncertain outcome (timeout / relay response lost). The bound
+  comfortably covers the retry window: a retry fires on the next
+  reconnect/refresh drain while the session-detail cubit is alive, and 64
+  interleaved dispatches on one session before that drain is not a plausible
+  flow. A retry delayed past eviction would re-enqueue — same exposure as
+  today, strictly rarer; accepted residual.
 - Dispatch→message correlation, with the no-flicker ordering guarantee
   (message event first, queue event second):
   - Plain prompts: at dispatch, push `promptId` onto a per-session FIFO of
@@ -401,6 +406,14 @@ Series slug `bridge-owned-prompt-queue`; every PR titled
 
 ## Risks And Accepted Trade-offs
 
+- Acceptance-semantics reversal for `sendPrompt` AND `sendCommand` on busy
+  sessions: the ACK now precedes backend dispatch, so a prompt or command can
+  return success and later fail at dispatch. That failure surfaces as queue
+  removal plus the existing `BridgeSseSessionError` — no per-entry failed
+  state. This is a deliberate trade-off for instant steering acceptance and
+  matches ACP's shipped semantics ("the send was already accepted, so a dead
+  agent must surface as a failed turn, not a silent drop"). Step 4
+  implements and tests it as such.
 - Queue lost on bridge restart (in-memory): accepted, matches ACP acceptance
   semantics; the backend process dies with the bridge anyway.
 - Snapshot pair (messages, queue) is not atomic: bounded one-cycle transient,
