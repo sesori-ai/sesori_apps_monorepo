@@ -1,4 +1,3 @@
-import "package:flutter/gestures.dart" show kSecondaryButton;
 import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
@@ -107,13 +106,8 @@ class const SessionTile({
       // Right-click is the mouse counterpart of long-press. The row announces
       // itself as one button, so its two lines aren't separate nodes to swipe
       // past.
-      child: Listener(
-        // Some desktop pointer paths report the full pressed-button mask.
-        // TapGestureRecognizer ignores combined masks, so inspect the
-        // secondary bit directly instead of waiting for onSecondaryTap.
-        onPointerDown: (event) {
-          if ((event.buttons & kSecondaryButton) != 0) openMenu();
-        },
+      child: GestureDetector(
+        onSecondaryTap: openMenu,
         child: MergeSemantics(
           child: Semantics(
             button: true,

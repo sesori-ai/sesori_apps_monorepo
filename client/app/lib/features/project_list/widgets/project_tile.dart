@@ -1,6 +1,5 @@
 import "dart:async";
 
-import "package:flutter/gestures.dart" show kSecondaryButton;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:path/path.dart" as p;
@@ -144,13 +143,8 @@ class const ProjectTile({
       // ListTile, whereas an InkWell contributes only the actions, not the
       // role, and leaves the row's three lines as three separate nodes to
       // swipe past.
-      child: Listener(
-        // Some desktop pointer paths report the full pressed-button mask.
-        // TapGestureRecognizer ignores combined masks, so inspect the
-        // secondary bit directly instead of waiting for onSecondaryTap.
-        onPointerDown: (event) {
-          if ((event.buttons & kSecondaryButton) != 0) openMenu();
-        },
+      child: GestureDetector(
+        onSecondaryTap: openMenu,
         child: MergeSemantics(
           child: Semantics(
             button: true,

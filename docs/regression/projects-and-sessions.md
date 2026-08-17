@@ -26,9 +26,6 @@ child sessions with titles, activity, statuses, and unseen state.
 - Opening validates the path and surfaces the git-initialization choice. Hiding
   delists without destroying sessions or history. Import is explicit, per
   plugin, atomic, non-destructive, cancellable, and attributes progress.
-- Project and session rows open their anchored action menu on long press or a
-  secondary mouse/trackpad click, including desktop events that carry a full
-  pressed-button mask. A context click never opens the row itself.
 - A session created in a dedicated worktree receives a system prompt identifying
   that worktree, its initial branch, and base branch. The prompt requires all
   work to remain in that worktree, while permitting use of the initial branch,
@@ -107,7 +104,6 @@ after a marker has been established.
   awaiting-only is promoted, or inactive session/project or child order changes.
 - Unseen never clears, clears without viewing, or an unavailable plugin is idle.
 - Hiding destroys sessions, or a cancelled import destroys the committed catalog.
-- A secondary click navigates into a row or fails to open its action menu.
 - A generated title/branch update fails to reach list/detail, changes unseen,
   moves the worktree, or rewrites the backend's creation-time system context.
 
