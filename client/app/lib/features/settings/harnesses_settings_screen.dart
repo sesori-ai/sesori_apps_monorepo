@@ -399,7 +399,7 @@ class const _HarnessControlCard({
     final supportsIdleTimeout = capabilities.contains(PluginManagementCapability.idleTimeout);
     final showExternal = !supportsLifecycle && !capabilities.contains(PluginManagementCapability.unknown);
     final setupReady = plugin.setup.state == PluginSetupState.ready;
-    final showVersion = plugin.setup.runtimeVersion != null;
+    final runtimeVersion = plugin.setup.runtimeVersion;
     final runtimeKnown = plugin.runtimeState != PluginRuntimeState.unknown;
     final enabled = plugin.runtimeState.isEnabled;
     final showOperational = setupReady && enabled;
@@ -474,7 +474,7 @@ class const _HarnessControlCard({
             title: loc.harnessesSetupStatus,
             value: _setupStatus(context: context, state: plugin.setup.state),
             isLast:
-                !(showVersion ||
+                !(runtimeVersion != null ||
                     showRuntime ||
                     showWork ||
                     showExternal ||
@@ -486,10 +486,10 @@ class const _HarnessControlCard({
                     showTimeout ||
                     showClearTimeout),
           ),
-          if (showVersion)
+          if (runtimeVersion != null)
             _FactRow(
               title: loc.harnessesRuntimeVersion,
-              value: plugin.setup.runtimeVersion!,
+              value: runtimeVersion,
               isLast:
                   !(showRuntime ||
                       showWork ||
