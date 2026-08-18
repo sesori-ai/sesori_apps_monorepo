@@ -8,16 +8,16 @@ import "package:test/test.dart";
 /// An [AcpPlugin] whose [applyTurnSelection] blocks on a test-controlled gate,
 /// so a test can land an abort while a turn is mid-selection.
 class _GatedSelectionPlugin({
-    required super.id,
-    required super.agentDisplayName,
-    required super.launchSpec,
-    required super.launchDirectory,
-    required super.eventMapper,
-    required super.contentMapper,
-    required super.commandTracker,
-    required super.sessionOptionsService,
-    required AcpProcessFactory super.processFactory,
-  }) extends TestAcpPlugin {
+  required super.id,
+  required super.agentDisplayName,
+  required super.launchSpec,
+  required super.launchDirectory,
+  required super.eventMapper,
+  required super.contentMapper,
+  required super.commandTracker,
+  required super.sessionOptionsService,
+  required AcpProcessFactory super.processFactory,
+}) extends TestAcpPlugin {
   Completer<void>? selectionGate;
 
   @override
@@ -141,6 +141,7 @@ void main() {
     }
 
     Future<void> sendPrompt(String sessionId, String text) => plugin.sendPrompt(
+      promptId: "prompt-1",
       sessionId: sessionId,
       parts: [PluginPromptPart.text(text: text)],
       variant: null,
@@ -224,6 +225,7 @@ void main() {
       emitted.clear();
 
       await plugin.sendCommand(
+        promptId: "prompt-1",
         sessionId: sessionId,
         command: "review",
         arguments: "[SYSTEM CONTEXT — IMPORTANT] internal\n\nuser arguments",
@@ -558,6 +560,7 @@ void main() {
       final gate = Completer<void>();
       gated.selectionGate = gate;
       await gated.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PluginPromptPart.text(text: "hi")],
         variant: null,
@@ -814,6 +817,7 @@ void main() {
       await creating;
 
       Future<void> send(String text) => respawning.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s1",
         parts: [PluginPromptPart.text(text: text)],
         variant: null,

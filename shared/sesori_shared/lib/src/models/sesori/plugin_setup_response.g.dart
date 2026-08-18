@@ -15,6 +15,7 @@ _PluginSetupMetadata _$PluginSetupMetadataFromJson(Map json) =>
         json['state'],
         unknownValue: PluginSetupState.unknown,
       ),
+      runtimeVersion: json['runtimeVersion'] as String?,
       actionHint: json['actionHint'] as String?,
     );
 
@@ -24,6 +25,7 @@ Map<String, dynamic> _$PluginSetupMetadataToJson(
   'id': instance.id,
   'displayName': instance.displayName,
   'state': _$PluginSetupStateEnumMap[instance.state]!,
+  'runtimeVersion': ?instance.runtimeVersion,
   'actionHint': ?instance.actionHint,
 };
 

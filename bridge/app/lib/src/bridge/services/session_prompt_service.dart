@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
@@ -25,6 +26,7 @@ class SessionPromptService({
 
   Future<void> sendPrompt({
     required String sessionId,
+    required String? promptId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
     required String? agent,
@@ -39,6 +41,9 @@ class SessionPromptService({
           : SessionOperation.sendCommand,
       body: () => _sendPrompt(
         sessionId: sessionId,
+        // Clients that predate prompt ids omit them; plugins always receive
+        // one so queue entries and dedupe stay uniformly keyed.
+        promptId: promptId ?? generatePromptId(),
         parts: parts,
         variant: variant,
         agent: agent,
@@ -50,6 +55,7 @@ class SessionPromptService({
 
   Future<void> _sendPrompt({
     required String sessionId,
+    required String promptId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
     required String? agent,
@@ -62,6 +68,7 @@ class SessionPromptService({
     if (normalizedCommand == null || normalizedCommand.isEmpty) {
       await _sessionRepository.sendPrompt(
         sessionId: sessionId,
+        promptId: promptId,
         parts: parts,
         variant: variant,
         agent: agent,
@@ -84,6 +91,7 @@ class SessionPromptService({
     // duration of the command's agent run.
     await _sessionRepository.sendCommand(
       sessionId: sessionId,
+      promptId: promptId,
       command: normalizedCommand,
       arguments: arguments ?? '',
       userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
@@ -96,6 +104,23 @@ class SessionPromptService({
       variant: variant,
       agent: agent,
       model: model,
+    );
+  }
+
+  /// Cancels the queued prompt [promptId] on [sessionId] before dispatch.
+  ///
+  /// Runs on the same serialized family lane as sends, so a cancel cannot
+  /// race the enqueue or dispatch of the entry it names, and holds the same
+  /// archive-permanence rule as every other session mutation. Returns whether
+  /// an entry was removed.
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) {
+    return _dispatcher.dispatch(
+      sessionId: sessionId,
+      operation: SessionOperation.cancelQueuedPrompt,
+      body: () async {
+        await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
+        return await _sessionRepository.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId);
+      },
     );
   }
 
@@ -134,5 +159,17 @@ class SessionPromptService({
 
   Future<void> dispose() async {
     await _promptDefaultsChangesController.close();
+  }
+
+  static final Random _secureRandom = Random.secure();
+
+  /// Bridge-generated prompt identity for sends that carry none (old clients,
+  /// bridge-originated initial commands).
+  static String generatePromptId() {
+    final buffer = StringBuffer("prm_");
+    for (var index = 0; index < 16; index++) {
+      buffer.write(_secureRandom.nextInt(256).toRadixString(16).padLeft(2, "0"));
+    }
+    return buffer.toString();
   }
 }

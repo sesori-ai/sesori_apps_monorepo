@@ -763,6 +763,7 @@ class SessionDetailCubit(
             SesoriSessionDiff() ||
             SesoriSessionError() ||
             SesoriSessionCompacted() ||
+            SesoriSessionQueuedPrompts() ||
             SesoriTodoUpdated():
           break;
       }
@@ -882,6 +883,9 @@ class SessionDetailCubit(
       SesoriWorktreeReady() ||
       SesoriWorktreeFailed() ||
       SesoriSessionPromptDefaultsChanged() ||
+      // Queued prompts render only for the session itself; own-session events
+      // arrive through the session-scoped stream, not this global path.
+      SesoriSessionQueuedPrompts() ||
       // Unseen-state changes are list-level concerns handled by the tracker;
       // the detail screen does not react to them.
       SesoriSessionUnseenChanged() => false,
@@ -967,6 +971,7 @@ class SessionDetailCubit(
             SesoriWorktreeReady() ||
             SesoriWorktreeFailed() ||
             SesoriSessionUnseenChanged() ||
+            SesoriSessionQueuedPrompts() ||
             SesoriSessionPromptDefaultsChanged():
           break;
       }

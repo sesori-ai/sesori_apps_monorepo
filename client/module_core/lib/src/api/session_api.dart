@@ -153,6 +153,9 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         model: model,
         variant: variant,
         command: command,
+        // Client-generated prompt identity lands with the bridge-owned queue
+        // rendering (plan step 5); until then the bridge generates one.
+        promptId: null,
       ),
     );
   }

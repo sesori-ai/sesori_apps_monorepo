@@ -39,6 +39,7 @@ export "src/models/plugin_project.dart";
 export "src/models/plugin_project_activity_summary.dart";
 export "src/models/plugin_prompt_part.dart";
 export "src/models/plugin_provider.dart";
+export "src/models/plugin_queued_prompt.dart";
 export "src/models/plugin_session.dart";
 export "src/models/plugin_session_options.dart";
 export "src/models/plugin_session_status.dart";

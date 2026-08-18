@@ -13,6 +13,8 @@ enum SessionOperation() {
   abortSession,
   getChildSessions,
   getPendingQuestions,
+  getQueuedPrompts,
+  cancelQueuedPrompt,
   replyToQuestion,
   rejectQuestion,
   getPendingPermissions,

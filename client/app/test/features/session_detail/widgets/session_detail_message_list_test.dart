@@ -123,7 +123,7 @@ MessageWithParts _message({
   final time = createdAtMs == null ? null : MessageTime(created: createdAtMs, completed: null);
 
   final info = role == "user"
-      ? Message.user(id: messageId, sessionID: "session-1", agent: null, time: time)
+      ? Message.user(promptId: null, id: messageId, sessionID: "session-1", agent: null, time: time)
       : Message.assistant(
           id: messageId,
           sessionID: "session-1",
@@ -157,6 +157,7 @@ MessageWithParts _message({
 
 const _emptyUserMessage = MessageWithParts(
   info: Message.user(
+    promptId: null,
     id: "empty-user",
     sessionID: "session-1",
     agent: null,

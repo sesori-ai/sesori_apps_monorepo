@@ -278,6 +278,7 @@ void main() {
     harness.plugins.single.emitEvent(
       BridgeSseMessageUpdated(
         info: const Message.user(
+          promptId: null,
           id: "message",
           sessionID: "session",
           agent: null,

@@ -292,6 +292,7 @@
   "harnessesDismissRefreshError": "Dismiss refresh error",
   "harnessesDefaultBadge": "Default",
   "harnessesSetupStatus": "Setup",
+  "harnessesRuntimeVersion": "Version",
   "harnessesRuntimeStatus": "Runtime",
   "harnessesWorkStatus": "Work",
   "harnessesCustomIdleTimeout": "Custom for this harness",

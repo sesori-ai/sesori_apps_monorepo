@@ -28,6 +28,7 @@ class SendPromptHandler({required final SessionPromptService _sessionPromptServi
 
     await _sessionPromptService.sendPrompt(
       sessionId: sessionId,
+      promptId: body.promptId,
       parts: body.parts,
       variant: body.variant,
       agent: body.agent,

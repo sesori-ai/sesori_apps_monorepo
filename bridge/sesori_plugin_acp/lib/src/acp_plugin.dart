@@ -839,6 +839,7 @@ abstract class AcpPlugin({
   @override
   Future<void> sendPrompt({
     required String sessionId,
+    required String promptId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
     required String? agent,
@@ -848,7 +849,7 @@ abstract class AcpPlugin({
     // re-resolves the client at dispatch time (see [_runTurn]).
     await _connectedClient();
     _recordSessionActivity(sessionId);
-    eventMapper.mapSentPrompt(sessionId: sessionId, parts: parts).forEach(_eventBuffer.add);
+    eventMapper.mapSentPrompt(sessionId: sessionId, promptId: promptId, parts: parts).forEach(_eventBuffer.add);
     _enqueueTurn(
       sessionId: sessionId,
       parts: parts,
@@ -861,6 +862,7 @@ abstract class AcpPlugin({
   @override
   Future<void> sendCommand({
     required String sessionId,
+    required String promptId,
     required String command,
     required String arguments,
     required String? userVisibleArguments,
@@ -877,6 +879,7 @@ abstract class AcpPlugin({
     eventMapper
         .mapSentPrompt(
           sessionId: sessionId,
+          promptId: promptId,
           parts: [PluginPromptPart.text(text: visibleBody)],
         )
         .forEach(_eventBuffer.add);

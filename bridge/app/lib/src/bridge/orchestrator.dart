@@ -93,6 +93,7 @@ import "repositories/trackers/session_event_tracker.dart";
 import "repositories/worktree_repository.dart";
 import "routing/abort_session_handler.dart";
 import "routing/bridge_restart_dispatcher.dart";
+import "routing/cancel_queued_prompt_handler.dart";
 import "routing/create_directory_handler.dart";
 import "routing/create_project_handler.dart";
 import "routing/create_session_handler.dart";
@@ -106,6 +107,7 @@ import "routing/get_current_project_handler.dart";
 import "routing/get_project_questions_handler.dart";
 import "routing/get_projects_handler.dart";
 import "routing/get_providers_handler.dart";
+import "routing/get_queued_prompts_handler.dart";
 import "routing/get_session_attachment_handler.dart";
 import "routing/get_session_diffs_handler.dart";
 import "routing/get_session_handler.dart";
@@ -565,6 +567,8 @@ class Orchestrator({
         ),
         DeleteSessionHandler(sessionDeletionService: sessionDeletionService),
         SendPromptHandler(sessionPromptService: sessionPromptService),
+        GetQueuedPromptsHandler(sessionRepository: sessionRepository),
+        CancelQueuedPromptHandler(sessionPromptService: sessionPromptService),
         AbortSessionHandler(sessionAbortService: sessionAbortService),
         GetProvidersHandler(providerRepository),
         GetAgentsHandler(agentRepository),
