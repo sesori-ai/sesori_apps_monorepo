@@ -16,9 +16,10 @@ defaults and queued client sends coherent.
   operations queued behind a send (abort, permission and question replies)
   are never blocked for the duration of a turn.
 - Every send carries a client-generated prompt id, stable across retries. A
-  queue-owning plugin refuses a duplicate id (already queued or recently
-  dispatched) as an idempotent success, so a retry of a send whose response
-  was lost cannot become a second turn.
+  queue-owning plugin refuses a duplicate id (already queued or within its
+  bounded recently-dispatched window) as an idempotent success, so a retry of
+  a send whose response was lost does not become a second turn within that
+  window.
 - Sends to an archived session are refused in the serialized lane archiving
   uses, so a send cannot slip past a concurrent archive.
 - Work enters a short per-plugin admission lane in arrival order, then execution
@@ -164,6 +165,9 @@ has started.
 - A send staged locally (POST not yet accepted) is dropped if the session
   screen is left inside that sub-second window; while disconnected, staged
   sends survive only as long as the session-detail cubit is alive.
+- Retry dedupe is bounded to the last 64 dispatched prompt ids per session; a
+  retry delayed past that window re-enqueues (accepted residual recorded in
+  the plan).
 - Pi persists API commands and manually typed slash prompts in the same raw
   shape. Cold replay therefore shows only the slash-command token to avoid
   exposing bridge-owned arguments; live API-command presentation retains only
