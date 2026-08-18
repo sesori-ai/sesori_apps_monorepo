@@ -478,6 +478,9 @@ void _stubRepositorySnapshot({
     () => repository.getPendingPermissions(sessionId: "session-1"),
   ).thenAnswer((_) async => ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])));
   when(
+    () => repository.getQueuedPrompts(sessionId: "session-1"),
+  ).thenAnswer((_) async => ApiResponse.success(const QueuedPromptResponse(data: <QueuedSessionPrompt>[])));
+  when(
     () => repository.getChildren(sessionId: "session-1"),
   ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
   when(() => repository.getSessionStatuses()).thenAnswer(

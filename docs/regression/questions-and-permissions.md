@@ -66,6 +66,9 @@ different combination than the previous recorded run.
 
 ## Failure Signals
 
+- A permission or question reply stalls behind a prompt sent to the same busy
+  session (the send must be accepted at enqueue and release the session lane
+  immediately).
 - A request never appears, appears under the wrong session, or omits options the
   backend actually offered.
 - An answer does not reach the backend, arrives with a different scope than the

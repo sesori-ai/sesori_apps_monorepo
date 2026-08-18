@@ -151,6 +151,7 @@ class CodexMessageRepository({
                 sessionID: sessionId,
                 agent: null,
                 time: _messageTimeFrom(lineTimestamp),
+                promptId: null,
               ),
               messageId: messageId,
               sessionId: sessionId,
@@ -170,6 +171,7 @@ class CodexMessageRepository({
               sessionID: sessionId,
               agent: null,
               time: pending.time,
+              promptId: null,
             ),
             messageId: messageId,
             sessionId: sessionId,
@@ -349,6 +351,7 @@ class CodexMessageRepository({
                   sessionID: sessionId,
                   agent: null,
                   time: messageTime,
+                  promptId: null,
                 )
               : assistantInfo(id: messageId, time: messageTime);
           messages.add(
@@ -386,6 +389,7 @@ class CodexMessageRepository({
           sessionID: sessionId,
           agent: null,
           time: pending.time,
+          promptId: null,
         ),
         messageId: messageId,
         sessionId: sessionId,

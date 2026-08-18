@@ -88,6 +88,7 @@ const _metadata = PluginManagementMetadata(
     id: "codex",
     displayName: "Codex",
     state: PluginSetupState.authenticationRequired,
+    runtimeVersion: "0.42.0",
     actionHint: "Sign in.",
   ),
   runtimeState: PluginRuntimeState.blocked,

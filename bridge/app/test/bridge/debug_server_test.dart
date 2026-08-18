@@ -454,6 +454,7 @@ void main() {
       plugin.messagesResult = [
         const PluginMessageWithParts(
           info: PluginMessage.user(
+            promptId: null,
             id: "m1",
             sessionID: "s1",
             agent: null,
@@ -1066,6 +1067,12 @@ abstract interface class _SubscriptionAwarePlugin() {
 }
 
 class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAwarePlugin {
+  @override
+  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
+
   final _controller = StreamController<BridgeSseEvent>.broadcast();
   final Completer<void> _eventsSubscribed = Completer<void>();
 
@@ -1161,6 +1168,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAware
 
   @override
   Future<void> sendPrompt({
+    required String promptId,
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
@@ -1227,6 +1235,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAware
 
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,
@@ -1308,6 +1317,12 @@ class _BlockingRoutesPlugin() extends _FakeBridgePlugin {
 
 /// Plugin that tracks subscribe/unsubscribe counts via a wrapping stream.
 class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAwarePlugin {
+  @override
+  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
+
   final _eventController = StreamController<BridgeSseEvent>.broadcast();
   final Completer<void> _eventsSubscribed = Completer<void>();
   int subscribeCount = 0;
@@ -1403,6 +1418,7 @@ class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionA
 
   @override
   Future<void> sendPrompt({
+    required String promptId,
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
@@ -1462,6 +1478,7 @@ class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionA
 
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,

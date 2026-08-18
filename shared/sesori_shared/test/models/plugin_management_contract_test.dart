@@ -7,6 +7,7 @@ void main() {
       id: "opencode",
       displayName: "OpenCode",
       state: PluginSetupState.ready,
+      runtimeVersion: "1.18.11",
       actionHint: null,
     ),
     runtimeState: PluginRuntimeState.active,

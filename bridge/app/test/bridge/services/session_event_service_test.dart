@@ -650,6 +650,7 @@ void main() {
       );
       final message = BridgeSseMessageUpdated(
         info: const Message.user(
+          promptId: null,
           id: "backend-message",
           sessionID: "backend-root",
           agent: null,

@@ -3,6 +3,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_detail/widgets/message_timestamp_reveal.dart";
+import "package:sesori_mobile/features/session_detail/widgets/queued_message_bubble.dart";
 import "package:sesori_mobile/features/session_detail/widgets/retry_error_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_message_list.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
@@ -14,6 +15,7 @@ class const _SessionDetailMessageListHarness({
   required final List<MessageWithParts> initialMessages,
   required final Map<String, String> initialStreamingText,
   final List<QueuedSessionSubmission> initialQueuedMessages = const [],
+  final List<QueuedSessionPrompt> initialBridgeQueuedPrompts = const [],
   final String? initialRetryErrorMessage,
   final Future<void> Function()? onLoadOlderMessages,
 }) extends StatefulWidget {
@@ -25,7 +27,9 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   late List<MessageWithParts> _messages;
   late Map<String, String> _streamingText;
   late List<QueuedSessionSubmission> _queuedMessages;
+  late List<QueuedSessionPrompt> _bridgeQueuedPrompts;
   QueuedSessionSubmission? _sendingSubmission;
+  final List<String> cancelledBridgePromptIds = [];
   late String? _retryErrorMessage;
   bool _isLoadingOlderMessages = false;
   int? lastCancelledQueuedMessageIndex;
@@ -36,6 +40,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     _messages = widget.initialMessages;
     _streamingText = widget.initialStreamingText;
     _queuedMessages = widget.initialQueuedMessages;
+    _bridgeQueuedPrompts = widget.initialBridgeQueuedPrompts;
     _retryErrorMessage = widget.initialRetryErrorMessage;
   }
 
@@ -95,6 +100,13 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: SessionDetailMessageList(
+          bridgeQueuedPrompts: _bridgeQueuedPrompts,
+          onCancelBridgeQueuedPrompt: (promptId) {
+            cancelledBridgePromptIds.add(promptId);
+            setState(
+              () => _bridgeQueuedPrompts = [..._bridgeQueuedPrompts.where((prompt) => prompt.id != promptId)],
+            );
+          },
           projectId: null,
           onLoadOlderMessages: widget.onLoadOlderMessages,
           messages: _messages,
@@ -123,7 +135,7 @@ MessageWithParts _message({
   final time = createdAtMs == null ? null : MessageTime(created: createdAtMs, completed: null);
 
   final info = role == "user"
-      ? Message.user(id: messageId, sessionID: "session-1", agent: null, time: time)
+      ? Message.user(promptId: null, id: messageId, sessionID: "session-1", agent: null, time: time)
       : Message.assistant(
           id: messageId,
           sessionID: "session-1",
@@ -157,6 +169,7 @@ MessageWithParts _message({
 
 const _emptyUserMessage = MessageWithParts(
   info: Message.user(
+    promptId: null,
     id: "empty-user",
     sessionID: "session-1",
     agent: null,
@@ -219,6 +232,38 @@ Future<void> _detachViewport(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets("renders bridge-queued prompts as cancellable queued bubbles", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: const [],
+        initialStreamingText: const {},
+        initialBridgeQueuedPrompts: const [
+          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 0, createdAt: 100),
+          QueuedSessionPrompt(id: "prm_2", text: "src", command: "review", attachmentCount: 0, createdAt: 200),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text("steer it"), findsOneWidget);
+    expect(find.text("/review src"), findsOneWidget);
+    expect(find.text("Cancel"), findsNWidgets(2));
+
+    await tester.tap(
+      find.descendant(
+        of: find.ancestor(of: find.text("steer it"), matching: find.byType(QueuedMessageBubble)),
+        matching: find.text("Cancel"),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(harnessKey.currentState?.cancelledBridgePromptIds, ["prm_1"]);
+    expect(find.text("steer it"), findsNothing);
+    expect(find.text("/review src"), findsOneWidget);
+  });
+
   testWidgets("does not render a user envelope until it has visible parts", (tester) async {
     final key = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
@@ -526,6 +571,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     const submission = QueuedSessionSubmission.text(
+      promptId: "prompt-1",
       text: "Queued while reading history",
       inputMode: ComposerInputMode.typed,
       attachments: [],
@@ -565,6 +611,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     const submission = QueuedSessionSubmission.text(
+      promptId: "prompt-1",
       text: "New prompt from history",
       inputMode: ComposerInputMode.typed,
       attachments: [],
@@ -595,6 +642,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     const submission = QueuedSessionSubmission.text(
+      promptId: "prompt-1",
       text: "Queued before reconnect",
       inputMode: ComposerInputMode.typed,
       attachments: [],
@@ -632,6 +680,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     const submission = QueuedSessionSubmission.text(
+      promptId: "prompt-1",
       text: "Direct sending prompt",
       inputMode: ComposerInputMode.typed,
       attachments: [],

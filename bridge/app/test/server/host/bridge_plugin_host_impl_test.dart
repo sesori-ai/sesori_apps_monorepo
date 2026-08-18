@@ -42,6 +42,7 @@ void main() {
         bridgeIdentity: bridgeIdentity,
         ownerSessionId: '100:bridge-start-marker',
         terminatedBridgeIdentities: const [],
+        resolveIdleTimeout: () => const Duration(minutes: 10),
         processRepository: _UnusedProcessRepository(),
         loopbackPortApi: const LoopbackPortApi(),
         processStarter: _failingStarter,

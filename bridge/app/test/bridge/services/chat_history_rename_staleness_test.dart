@@ -19,6 +19,7 @@ void main() {
       ..messagesResult = const [
         PluginMessageWithParts(
           info: PluginMessage.user(
+            promptId: null,
             id: "m1",
             sessionID: "backend-a",
             agent: null,

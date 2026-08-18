@@ -30,6 +30,17 @@ idle suspension, the management snapshot, and lifecycle commands.
   idle window and a resident one never does, and idle timeouts survive restart.
   Enable, disable, restart, and refresh are offered only where declared, with enable
   persisting eligibility, re-inspecting setup, then starting when ready.
+- A resident harness that keeps the idle-timeout capability (Claude Code) reports the
+  configured timeout instead of zero and consumes it internally through the host: the
+  Claude plugin reaps each idle session's CLI child process after that window and
+  transparently resumes it on the next prompt, so the settings knob stays effective
+  even though whole-plugin suspension never runs. A runtime timeout change applies at
+  each session's next idle transition without a plugin restart.
+- A Claude session whose CLI scheduled a `ScheduleWakeup` loop wakeup is not reaped
+  before the wakeup fires (the in-process timer would die and `--resume` cannot rearm
+  it); a wakeup that never fires stops deferring one idle window past its fire time.
+  The wakeup-fired turn the CLI starts on its own is surfaced busy, then idle on its
+  result, and abort interrupts it like any enqueued turn.
 - A busy harness conflicts explicitly, forcing needs confirmation and is sent once, the
   snapshot changes only on real content change with a new token, and a terminal failure
   removes only that harness's routing and new-session choice.
@@ -39,6 +50,10 @@ idle suspension, the management snapshot, and lifecycle commands.
 - Shared management metadata advertises authentication independently and reports idle,
   in-progress, or fail-closed unknown state. Device-code challenges remain request-scoped;
   only sealed completed, failed, or cancelled progress enters the global SSE stream.
+- Setup and management snapshots report the display-ready version of the exact usable local
+  runtime selected by each harness's existing inspection precedence. Older bridges and
+  configurations without a selected versioned local runtime omit it; the mobile harness card
+  shows a Version fact only when the bridge reports one.
 - The bridge exposes explicit plugin-scoped start and cancel routes. Duplicate starts join
   the active operation, management commands conflict while it runs, cancellation settles
   upstream cleanup, and setup reinspection remains authoritative before normal startup.
@@ -60,7 +75,7 @@ idle suspension, the management snapshot, and lifecycle commands.
 |---|---|
 | L1 Smoke | A started bridge inspects every registered harness and publishes coherent setup and management snapshots. A ready fixture has a selectable default; a fixture with no usable harness has zero selectable entries and no default without failing startup. Headless bridge; all registered harnesses listed. |
 | L2 Routine | Demand-driven start of a ready harness, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Headless bridge; representative harness for start, every registered harness for listing and ordering. |
-| L3 Release | The management surface as rendered: per-harness setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, default badge, enable/disable, restart, and idle-timeout default plus override persisted across a bridge restart. Client end to end; every harness declaring the relevant capability must pass. |
+| L3 Release | The management surface as rendered: per-harness selected runtime version when reported, setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, default badge, enable/disable, restart, and idle-timeout default plus override persisted across a bridge restart. Client end to end; every harness declaring the relevant capability must pass. |
 | L4 Extended | Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. |
 | L5 Full | Every registered production harness through inspect, enable, disable, restart, refresh, and idle behavior on a supported platform, plus forward-compatible presentation of an unknown harness or capability and the reported state of a session interrupted by a forced disable. Live plugin and client end to end as each entry requires. |
 
@@ -79,6 +94,8 @@ timeouts, and sessions afterwards.
   output; resolution mutating runtime files; a disabled harness probed or started.
 - An eligible harness dropped from listings, a drifting or unselectable default, or
   snapshot tokens that miss real changes.
+- A harness card showing raw version-probe output, a rejected runtime's version, or a version
+  different from the executable selected by setup inspection and runtime resolution.
 - A control offered for an undeclared capability, a supported control missing, a busy
   harness accepting a safe command, or idle suspension on a resident or busy harness.
 - A missing authentication state from an older bridge decoding as anything but idle, a

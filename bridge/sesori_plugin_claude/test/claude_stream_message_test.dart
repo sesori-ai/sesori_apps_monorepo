@@ -198,6 +198,89 @@ void main() {
       expect(message.status, "allowed");
     });
 
+    test("reads thinking token estimates", () {
+      final message =
+          ClaudeStreamMessage.parse({
+                "type": "system",
+                "subtype": "thinking_tokens",
+                "estimated_tokens": 512,
+                "estimated_tokens_delta": 64,
+              })
+              as ClaudeThinkingTokensMessage;
+
+      expect(message.estimatedTokens, 512);
+      expect(message.estimatedTokensDelta, 64);
+    });
+
+    test("reads subagent task progress including nested usage", () {
+      final message =
+          ClaudeStreamMessage.parse({
+                "type": "system",
+                "subtype": "task_progress",
+                "task_id": "task-1",
+                "tool_use_id": "toolu_1",
+                "description": "Explore repo",
+                "subagent_type": "Explore",
+                "last_tool_name": "Grep",
+                "summary": "searching",
+                "usage": {"total_tokens": 1200, "tool_uses": 3, "duration_ms": 4500},
+              })
+              as ClaudeTaskProgressMessage;
+
+      expect(message.taskId, "task-1");
+      expect(message.toolUseId, "toolu_1");
+      expect(message.description, "Explore repo");
+      expect(message.subagentType, "Explore");
+      expect(message.lastToolName, "Grep");
+      expect(message.summary, "searching");
+      expect(message.totalTokens, 1200);
+      expect(message.toolUses, 3);
+      expect(message.durationMs, 4500);
+    });
+
+    test("reads hook start and hook output frames", () {
+      final started =
+          ClaudeStreamMessage.parse({
+                "type": "system",
+                "subtype": "hook_started",
+                "hook_id": "hook-1",
+                "hook_name": "format",
+                "hook_event": "PostToolUse",
+              })
+              as ClaudeHookStartedMessage;
+
+      expect(started.hookId, "hook-1");
+      expect(started.hookName, "format");
+      expect(started.hookEvent, "PostToolUse");
+
+      final progress =
+          ClaudeStreamMessage.parse({
+                "type": "system",
+                "subtype": "hook_progress",
+                "hook_id": "hook-1",
+                "stdout": "formatting",
+              })
+              as ClaudeHookOutputMessage;
+
+      expect(progress.phase, ClaudeHookPhase.progress);
+      expect(progress.stdout, "formatting");
+      expect(progress.exitCode, isNull);
+
+      final response =
+          ClaudeStreamMessage.parse({
+                "type": "system",
+                "subtype": "hook_response",
+                "hook_id": "hook-1",
+                "stderr": "warning",
+                "exit_code": 2,
+              })
+              as ClaudeHookOutputMessage;
+
+      expect(response.phase, ClaudeHookPhase.response);
+      expect(response.stderr, "warning");
+      expect(response.exitCode, 2);
+    });
+
     test("absorbs unknown types and unknown system subtypes", () {
       final unknownType = ClaudeStreamMessage.parse({"type": "some_future_event", "session_id": "s"});
       expect(unknownType, isA<ClaudeUnknownMessage>());

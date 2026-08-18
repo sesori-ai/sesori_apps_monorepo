@@ -141,9 +141,16 @@ void main() {
         connectionStatus.add(connectionLostStatus);
         await pumpEventQueue();
 
-        when(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).thenAnswer(
-          (_) async =>
-              ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-refreshed")], nextCursor: null)),
+        when(
+          () => mockSessionService.getMessages(
+            sessionId: sessionId,
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-refreshed")], nextCursor: null),
+          ),
         );
 
         final emitted = <SessionDetailState>[];
@@ -153,7 +160,13 @@ void main() {
         mockConnectionService.emitDataMayBeStale();
         await pumpEventQueue();
 
-        verifyNever(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before")));
+        verifyNever(
+          () => mockSessionService.getMessages(
+            sessionId: sessionId,
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        );
         verifyNever(() => mockSessionService.getPendingQuestions(sessionId: sessionId));
         verifyNever(() => mockSessionService.getChildren(sessionId: sessionId));
         verifyNever(() => mockSessionService.getSessionStatuses());
@@ -205,9 +218,16 @@ void main() {
       await _awaitLoaded(cubit);
       clearInteractions(mockSessionService);
 
-      when(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).thenAnswer(
-        (_) async =>
-            ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-immediate")], nextCursor: null)),
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-immediate")], nextCursor: null),
+        ),
       );
 
       final emitted = <SessionDetailState>[];
@@ -217,7 +237,13 @@ void main() {
       mockConnectionService.emitDataMayBeStale();
       await pumpEventQueue();
 
-      verify(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
@@ -352,6 +378,7 @@ void main() {
     test("sendMessage forwards selectedAgentModel variant to repository", () async {
       when(
         () => mockSessionRepository.sendMessage(
+          promptId: any(named: "promptId"),
           attachments: const [],
           sessionId: sessionId,
           text: "hello",
@@ -391,6 +418,7 @@ void main() {
 
       verify(
         () => mockSessionRepository.sendMessage(
+          promptId: any(named: "promptId"),
           attachments: const [],
           sessionId: sessionId,
           text: "hello",
@@ -424,7 +452,13 @@ void main() {
       clearInteractions(mockSessionService);
 
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
-      when(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).thenAnswer((_) => messagesCompleter.future);
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).thenAnswer((_) => messagesCompleter.future);
       when(
         () => mockSessionService.getPendingQuestions(sessionId: sessionId),
       ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
@@ -468,7 +502,9 @@ void main() {
       await pumpEventQueue();
 
       messagesCompleter.complete(
-        ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-race")], nextCursor: null)),
+        ApiResponse.success(
+          MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-race")], nextCursor: null),
+        ),
       );
       await pumpEventQueue();
 
@@ -498,7 +534,13 @@ void main() {
 
       await _awaitLoaded(cubit);
 
-      when(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).thenAnswer(
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).thenAnswer(
         (_) async => ApiResponse.success(
           MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-provider-fallback")], nextCursor: null),
         ),
@@ -521,7 +563,13 @@ void main() {
 
     test("stale signal is ignored when state is SessionDetailLoading", () async {
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
-      when(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).thenAnswer((_) => messagesCompleter.future);
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).thenAnswer((_) => messagesCompleter.future);
 
       final cubit = SessionDetailCubit(
         mockConnectionService,
@@ -542,7 +590,13 @@ void main() {
       mockConnectionService.emitDataMayBeStale();
       await pumpEventQueue();
 
-      verify(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getPendingPermissions(sessionId: any(named: "sessionId"))).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
@@ -560,14 +614,20 @@ void main() {
         ),
       ).called(1);
 
-      messagesCompleter.complete(ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)));
+      messagesCompleter.complete(
+        ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+      );
       await _awaitLoaded(cubit);
       await cubit.close();
     });
 
     test("stale signal is ignored when state is SessionDetailFailed", () async {
       when(
-        () => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before")),
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
       final cubit = SessionDetailCubit(
@@ -591,7 +651,13 @@ void main() {
       mockConnectionService.emitDataMayBeStale();
       await pumpEventQueue();
 
-      verify(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
       expect(cubit.state, isA<SessionDetailFailed>());
     });
 
@@ -629,7 +695,11 @@ void main() {
         final error = StateError("silent refresh sentinel");
 
         when(
-          () => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before")),
+          () => mockSessionService.getMessages(
+            sessionId: sessionId,
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
         ).thenThrow(error);
 
         final emitted = <SessionDetailState>[];
@@ -696,7 +766,11 @@ void main() {
       );
       var messageLoads = 0;
       when(
-        () => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
       ).thenAnswer((_) async {
         messageLoads++;
         if (messageLoads == 1) {
@@ -800,7 +874,11 @@ void main() {
       final firstMessages = Completer<ApiResponse<MessageWithPartsResponse>>();
       var messageLoads = 0;
       when(
-        () => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
       ).thenAnswer((_) {
         messageLoads++;
         if (messageLoads == 1) return firstMessages.future;
@@ -852,7 +930,13 @@ void main() {
       reset(mockSessionService);
 
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
-      when(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).thenAnswer((_) => messagesCompleter.future);
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).thenAnswer((_) => messagesCompleter.future);
       when(
         () => mockSessionService.getPendingQuestions(sessionId: sessionId),
       ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
@@ -893,11 +977,19 @@ void main() {
       await pumpEventQueue();
 
       messagesCompleter.complete(
-        ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-coalesced")], nextCursor: null)),
+        ApiResponse.success(
+          MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-coalesced")], nextCursor: null),
+        ),
       );
       await pumpEventQueue();
 
-      verify(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getPendingPermissions(sessionId: any(named: "sessionId"))).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
@@ -953,16 +1045,34 @@ void main() {
       mockConnectionService.emitDataMayBeStale();
       mockConnectionService.emitDataMayBeStale();
       await pumpEventQueue();
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
 
       // Once the cooldown elapses, the queued signals collapse into exactly
       // one trailing refresh...
       await Future<void>.delayed(const Duration(milliseconds: 120));
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
 
       // ...and a drained queue schedules nothing further.
       await Future<void>.delayed(const Duration(milliseconds: 150));
-      verifyNever(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")));
+      verifyNever(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      );
     });
 
     test("a queued signal survives a refresh that outlives the cooldown window", () async {
@@ -1000,20 +1110,34 @@ void main() {
       // the entire cooldown window.
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
       when(
-        () => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
       ).thenAnswer((_) => messagesCompleter.future);
 
       mockConnectionService.emitDataMayBeStale();
       mockConnectionService.emitDataMayBeStale();
       await pumpEventQueue();
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
 
       // The cooldown elapses while the first refresh is still in flight; the
       // queued signal must be retained, not silently coalesced into the
       // stale in-flight run.
       await Future<void>.delayed(const Duration(milliseconds: 120));
       when(
-        () => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
       ).thenAnswer(
         (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
       );
@@ -1024,7 +1148,13 @@ void main() {
       // Once the next window elapses, the retained signal produces the
       // trailing refresh against fresh data.
       await Future<void>.delayed(const Duration(milliseconds: 150));
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
     });
 
     test("the trailing refresh runs as soon as a slow refresh completes, not a window later", () async {
@@ -1060,19 +1190,33 @@ void main() {
 
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
       when(
-        () => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
       ).thenAnswer((_) => messagesCompleter.future);
 
       mockConnectionService.emitDataMayBeStale();
       mockConnectionService.emitDataMayBeStale();
       await Future<void>.delayed(const Duration(milliseconds: 120));
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
 
       // The minimum interval elapsed mid-refresh; when the slow refresh
       // finally completes, the queued trailing refresh must start right away
       // rather than waiting out another full cooldown window.
       when(
-        () => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
       ).thenAnswer(
         (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
       );
@@ -1080,7 +1224,13 @@ void main() {
         ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
       );
       await pumpEventQueue();
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
     });
 
     test("the queue is held while hidden and consumed by the resume refresh", () async {
@@ -1118,22 +1268,46 @@ void main() {
       mockConnectionService.emitDataMayBeStale();
       mockConnectionService.emitDataMayBeStale();
       await pumpEventQueue();
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
 
       // Backgrounding cancels the cooldown: the queued trailing refresh must
       // not spend the radio while the app is hidden.
       lifecycle.emitState(LifecycleState.paused);
       await Future<void>.delayed(const Duration(milliseconds: 300));
-      verifyNever(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")));
+      verifyNever(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      );
 
       // The resume bypass refresh consumes the held signal...
       lifecycle.emitState(LifecycleState.resumed);
       await pumpEventQueue();
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
 
       // ...so nothing further fires afterwards.
       await Future<void>.delayed(const Duration(milliseconds: 300));
-      verifyNever(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")));
+      verifyNever(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      );
     });
 
     test("a failed resume refresh preserves hidden staleness until a snapshot succeeds", () async {
@@ -1169,7 +1343,11 @@ void main() {
       );
       var messageLoads = 0;
       when(
-        () => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
       ).thenAnswer((_) async {
         messageLoads++;
         if (messageLoads == 1) {
@@ -1228,14 +1406,24 @@ void main() {
 
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
       when(
-        () => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
       ).thenAnswer((_) => messagesCompleter.future);
 
       // Refresh A starts and stays in flight; a second signal queues.
       mockConnectionService.emitDataMayBeStale();
       mockConnectionService.emitDataMayBeStale();
       await pumpEventQueue();
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
 
       // Pause cancels the cooldown (the only armed trailing trigger); the
       // resume bypass finds A still in flight and cannot start a refresh.
@@ -1246,7 +1434,11 @@ void main() {
       // When A finally completes, the queued signal must still produce the
       // trailing refresh instead of being stranded.
       when(
-        () => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
       ).thenAnswer(
         (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
       );
@@ -1254,14 +1446,24 @@ void main() {
         ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
       );
       await pumpEventQueue();
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
     });
   });
 }
 
 void _stubLoadApis(MockSessionService service, {required String sessionId}) {
   when(
-    () => service.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
+    () => service.getMessages(
+      sessionId: any(named: "sessionId"),
+      limit: any(named: "limit"),
+      before: any(named: "before"),
+    ),
   ).thenAnswer(
     (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(
       ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),

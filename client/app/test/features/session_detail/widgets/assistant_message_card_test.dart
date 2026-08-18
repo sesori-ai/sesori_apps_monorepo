@@ -283,6 +283,12 @@ void main() {
     );
 
     tapTarget.onTap!();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 130));
+
+    expect(find.byKey(ImageAttachmentViewer.flightCropImageKey), findsNothing);
+    expect(find.byKey(ImageAttachmentViewer.flightFullImageKey), findsOneWidget);
+
     await tester.pumpAndSettle();
 
     expect(find.byType(ImageAttachmentViewer), findsOneWidget);

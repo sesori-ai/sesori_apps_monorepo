@@ -352,14 +352,17 @@ class const OpenCodePluginDescriptor({
       manifest: manifest,
       probeTimeout: _versionProbeTimeout,
     );
-
-    Future<bool> managedRuntimeIsReady() async {
-      if (hasExplicitBin) return false;
+    /// The pinned managed runtime's version when it is already installed and
+    /// matches the bundled pin, or null. Only consulted without an explicit
+    /// binary, which is authoritative when set.
+    Future<String?> managedRuntimeVersion() async {
+      if (hasExplicitBin) return null;
       final managedVersion = await versionValidator.detectVersion(
         executable: manifest.managedBinaryPath(stateDirectory: stateDirectory),
         environment: environment,
       );
-      return managedVersion != null && managedVersion.compareTo(manifest.bundledVersion) == 0;
+      if (managedVersion == null || managedVersion.compareTo(manifest.bundledVersion) != 0) return null;
+      return managedVersion.raw;
     }
 
     /// What to tell the user when no usable runtime was found and Sesori can
@@ -372,8 +375,7 @@ class const OpenCodePluginDescriptor({
           : "Install OpenCode from Sesori, or install it locally and retry setup detection.";
     }
 
-    CommandResult? result;
-    var runtimeResolved = false;
+    final CommandResult result;
     try {
       result = await executor.run(
         executable,
@@ -382,61 +384,68 @@ class const OpenCodePluginDescriptor({
         timeout: _versionProbeTimeout,
       );
     } on io.ProcessException {
-      runtimeResolved = await managedRuntimeIsReady();
-      if (!runtimeResolved) {
+      final managedVersion = await managedRuntimeVersion();
+      if (managedVersion == null) {
         return PluginSetupRuntimeMissing(
           actionHint: hasExplicitBin
               ? "Fix the configured OpenCode binary path, then restart the bridge."
               : missingRuntimeHint(),
         );
       }
+      return PluginSetupReady.versioned(runtimeVersion: managedVersion);
     } on TimeoutException {
-      runtimeResolved = await managedRuntimeIsReady();
-      if (!runtimeResolved) {
+      final managedVersion = await managedRuntimeVersion();
+      if (managedVersion == null) {
         return const PluginSetupUnknown(
           actionHint: "OpenCode did not answer its setup check. Verify the local installation and retry.",
         );
       }
+      return PluginSetupReady.versioned(runtimeVersion: managedVersion);
     } on Object {
-      runtimeResolved = await managedRuntimeIsReady();
-      if (!runtimeResolved) {
+      final managedVersion = await managedRuntimeVersion();
+      if (managedVersion == null) {
         return const PluginSetupUnknown(
           actionHint: "OpenCode setup could not be determined. Verify the local installation and retry.",
         );
       }
+      return PluginSetupReady.versioned(runtimeVersion: managedVersion);
     }
 
-    if (!runtimeResolved) {
-      if (result!.exitCode != 0) {
-        if (!await managedRuntimeIsReady()) {
-          if (!hasExplicitBin) {
-            return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
-          }
-          return const PluginSetupUnknown(
-            actionHint: "OpenCode did not answer its setup check. Verify the local installation and retry.",
-          );
+    if (result.exitCode != 0) {
+      final managedVersion = await managedRuntimeVersion();
+      if (managedVersion == null) {
+        if (!hasExplicitBin) {
+          return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
         }
-      } else {
-        final version = versionValidator.parseVersionOutput(output: result.stdout);
-        if (version == null) {
-          if (!await managedRuntimeIsReady()) {
-            return const PluginSetupUnknown(
-              actionHint: "OpenCode returned an unrecognized version. Update OpenCode and retry.",
-            );
-          }
-        } else if (version.compareTo(manifest.minPathVersion) < 0) {
-          if (!await managedRuntimeIsReady()) {
-            if (!hasExplicitBin) {
-              return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
-            }
-            return const PluginSetupUnavailable(
-              actionHint: "The configured OpenCode binary is too old. Update it and restart the bridge.",
-            );
-          }
-        }
+        return const PluginSetupUnknown(
+          actionHint: "OpenCode did not answer its setup check. Verify the local installation and retry.",
+        );
       }
+      return PluginSetupReady.versioned(runtimeVersion: managedVersion);
     }
-    return const PluginSetupReady();
+    final version = versionValidator.parseVersionOutput(output: result.stdout);
+    if (version == null) {
+      final managedVersion = await managedRuntimeVersion();
+      if (managedVersion == null) {
+        return const PluginSetupUnknown(
+          actionHint: "OpenCode returned an unrecognized version. Update OpenCode and retry.",
+        );
+      }
+      return PluginSetupReady.versioned(runtimeVersion: managedVersion);
+    }
+    if (version.compareTo(manifest.minPathVersion) < 0) {
+      final managedVersion = await managedRuntimeVersion();
+      if (managedVersion == null) {
+        if (!hasExplicitBin) {
+          return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
+        }
+        return const PluginSetupUnavailable(
+          actionHint: "The configured OpenCode binary is too old. Update it and restart the bridge.",
+        );
+      }
+      return PluginSetupReady.versioned(runtimeVersion: managedVersion);
+    }
+    return PluginSetupReady.versioned(runtimeVersion: version.raw);
   }
 
   /// Resolves an existing OpenCode runtime (a recent-enough PATH install or the

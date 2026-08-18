@@ -1,6 +1,7 @@
 import "models/plugin_agent.dart";
 import "models/plugin_message.dart";
 import "models/plugin_pending_question.dart";
+import "models/plugin_queued_prompt.dart";
 
 sealed class const BridgeSseEvent();
 
@@ -64,6 +65,17 @@ class const BridgeSseCommandExecuted({
   required final String sessionID,
   required final String arguments,
   required final String messageID,
+}) extends BridgeSseEvent;
+
+/// Full replacement of [sessionID]'s queued-prompt list.
+///
+/// Emitted by queue-owning plugins on every change (accept, cancel, dispatch,
+/// abort, failure) with the complete current list, so a missed event
+/// self-heals on the next one. [sessionID] is the backend session identity;
+/// bridge core translates it to the stable binding before relaying.
+class const BridgeSseQueuedPromptsUpdated({
+  required final String sessionID,
+  required final List<PluginQueuedPrompt> prompts,
 }) extends BridgeSseEvent;
 
 class const BridgeSseMessageUpdated({required final Map<String, dynamic> info}) extends BridgeSseEvent;

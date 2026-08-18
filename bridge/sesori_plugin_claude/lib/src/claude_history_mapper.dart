@@ -70,6 +70,7 @@ final class const ClaudeHistoryMapper({
                   sessionID: sessionId,
                   agent: null,
                   time: _messageTime(record.timestamp),
+                  promptId: null,
                 ),
                 parts: parts,
               ),

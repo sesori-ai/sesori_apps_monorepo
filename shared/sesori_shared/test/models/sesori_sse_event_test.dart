@@ -642,7 +642,7 @@ void main() {
 
     test('messageUpdated implements SesoriSessionEvent', () {
       const event = SesoriSseEvent.messageUpdated(
-        info: Message.user(id: 'm', sessionID: 's', agent: null, time: null),
+        info: Message.user(promptId: null, id: 'm', sessionID: 's', agent: null, time: null),
       );
       expect(event, isA<SesoriSessionEvent>());
     });
@@ -913,7 +913,7 @@ void main() {
 
     test('messageUpdated uses message.updated', () {
       final json = const SesoriSseEvent.messageUpdated(
-        info: Message.user(id: 'm', sessionID: 's', agent: null, time: null),
+        info: Message.user(promptId: null, id: 'm', sessionID: 's', agent: null, time: null),
       ).toJson();
       expect(json['type'], 'message.updated');
     });

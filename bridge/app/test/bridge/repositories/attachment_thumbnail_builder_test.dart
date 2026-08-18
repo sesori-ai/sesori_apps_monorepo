@@ -8,7 +8,7 @@ import "package:test/test.dart";
 void main() {
   const builder = AttachmentThumbnailBuilder();
 
-  test("renders opaque images as square JPEG thumbnails", () async {
+  test("renders opaque images as aspect-preserving JPEG thumbnails", () async {
     final source = image.Image(width: 900, height: 450, numChannels: 3);
     image.fillRect(source, x1: 0, y1: 0, x2: 299, y2: 449, color: image.ColorRgb8(255, 0, 0));
     image.fillRect(source, x1: 300, y1: 0, x2: 599, y2: 449, color: image.ColorRgb8(0, 255, 0));
@@ -20,10 +20,14 @@ void main() {
     final rendered = result as AttachmentThumbnailRendered;
     expect(rendered.format, AttachmentThumbnailFormat.jpeg);
     final decoded = image.decodeJpg(rendered.bytes)!;
-    expect((decoded.width, decoded.height), (512, 512));
-    final center = decoded.getPixel(256, 256);
+    expect((decoded.width, decoded.height), (512, 256));
+    final left = decoded.getPixel(20, 128);
+    final center = decoded.getPixel(256, 128);
+    final right = decoded.getPixel(491, 128);
+    expect(left.r, greaterThan(left.g));
     expect(center.g, greaterThan(center.r));
     expect(center.g, greaterThan(center.b));
+    expect(right.b, greaterThan(right.g));
   });
 
   test("preserves transparency with PNG thumbnails", () async {
@@ -52,7 +56,7 @@ void main() {
     expect(center.r, greaterThan(center.b));
   });
 
-  test("bakes EXIF orientation before the center crop", () async {
+  test("bakes EXIF orientation before the aspect-preserving resize", () async {
     final source = image.Image(width: 60, height: 20, numChannels: 3);
     image.fillRect(source, x1: 0, y1: 0, x2: 29, y2: 19, color: image.ColorRgb8(255, 0, 0));
     image.fillRect(source, x1: 30, y1: 0, x2: 59, y2: 19, color: image.ColorRgb8(0, 0, 255));
@@ -61,10 +65,21 @@ void main() {
     final result = await builder.build(bytes: orientedJpeg);
 
     final decoded = image.decodeJpg((result as AttachmentThumbnailRendered).bytes)!;
-    final top = decoded.getPixel(256, 100);
-    final bottom = decoded.getPixel(256, 412);
+    expect((decoded.width, decoded.height), (171, 512));
+    final top = decoded.getPixel(85, 100);
+    final bottom = decoded.getPixel(85, 412);
     expect(top.r, greaterThan(top.b));
     expect(bottom.b, greaterThan(bottom.r));
+  });
+
+  test("keeps the resized short edge at least one pixel", () async {
+    final source = image.Image(width: 4096, height: 1, numChannels: 3);
+    image.fill(source, color: image.ColorRgb8(20, 40, 60));
+
+    final result = await builder.build(bytes: image.encodePng(source));
+
+    final decoded = image.decodeJpg((result as AttachmentThumbnailRendered).bytes)!;
+    expect((decoded.width, decoded.height), (512, 1));
   });
 
   test("rejects corrupt and oversized encoded dimensions", () async {

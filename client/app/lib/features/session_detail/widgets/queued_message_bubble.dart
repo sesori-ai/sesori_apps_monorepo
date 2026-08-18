@@ -1,5 +1,4 @@
 import "package:material_ui/material_ui.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
@@ -20,7 +19,9 @@ final class const ReadOnlyPendingMessageBubblePresentation() extends QueuedMessa
 
 class const QueuedMessageBubble({
   super.key,
-  required final QueuedSessionSubmission submission,
+  required final String? displayText,
+  required final bool isCommand,
+  required final int attachmentCount,
   required final QueuedMessageBubblePresentation presentation,
 }) extends StatelessWidget {
   @override
@@ -53,11 +54,11 @@ class const QueuedMessageBubble({
           _status(
             prego: prego,
             icon: Icon(
-              submission.isCommand ? TablerRegular.terminal : TablerRegular.clock,
+              isCommand ? TablerRegular.terminal : TablerRegular.clock,
               size: 14,
               color: prego.colors.textTertiary,
             ),
-            label: submission.isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
+            label: isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
           ),
           const SizedBox(width: PregoSpacing.xs),
           TextButton.icon(
@@ -80,11 +81,11 @@ class const QueuedMessageBubble({
       ReadOnlyPendingMessageBubblePresentation() => _status(
         prego: prego,
         icon: Icon(
-          submission.isCommand ? TablerRegular.terminal : TablerRegular.clock,
+          isCommand ? TablerRegular.terminal : TablerRegular.clock,
           size: 14,
           color: prego.colors.textTertiary,
         ),
-        label: submission.isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
+        label: isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
       ),
     };
 
@@ -93,7 +94,7 @@ class const QueuedMessageBubble({
       mainAxisSize: MainAxisSize.min,
       children: [
         UserMessageBubble(
-          markdown: submission.displayText ?? loc.sessionDetailQueuedAttachmentCount(submission.attachments.length),
+          markdown: displayText ?? loc.sessionDetailQueuedAttachmentCount(attachmentCount),
           attachments: const [],
           outlined: isPending,
           transitionDuration: duration,

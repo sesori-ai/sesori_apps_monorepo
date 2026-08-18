@@ -104,6 +104,7 @@ void main() {
       plugin.messagesResult = [
         const PluginMessageWithParts(
           info: PluginMessage.user(
+            promptId: null,
             id: "m1",
             sessionID: "s1",
             agent: null,
@@ -139,6 +140,7 @@ void main() {
       plugin.messagesResult = [
         PluginMessageWithParts(
           info: const PluginMessage.user(
+            promptId: null,
             id: "m1",
             sessionID: "s1",
             agent: null,

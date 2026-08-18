@@ -239,6 +239,7 @@ void main() {
       server.requestLog.clear();
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Continue")],
         agent: null,
@@ -271,6 +272,7 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.idle);
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Continue")],
         agent: null,
@@ -296,6 +298,7 @@ void main() {
       await server.waitForSseConnection();
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Continue")],
         agent: null,
@@ -344,6 +347,7 @@ void main() {
 
       await expectLater(
         plugin.sendPrompt(
+          promptId: "prompt-1",
           sessionId: "s-root",
           parts: const [PluginPromptPart.text(text: "Continue")],
           agent: null,
@@ -363,6 +367,7 @@ void main() {
       server.holdCommand = Completer<void>();
 
       await plugin.sendCommand(
+        promptId: "prompt-1",
         sessionId: "s-root",
         command: "/review-work",
         arguments: "recent changes",
@@ -395,6 +400,7 @@ void main() {
       server.holdCommand = Completer<void>();
 
       await plugin.sendCommand(
+        promptId: "prompt-1",
         sessionId: "s-root",
         command: "/review-work",
         arguments: "",
@@ -602,6 +608,7 @@ void main() {
       addTearDown(subscription.cancel);
       await initialProjectUpdated.future;
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "long task")],
         agent: null,

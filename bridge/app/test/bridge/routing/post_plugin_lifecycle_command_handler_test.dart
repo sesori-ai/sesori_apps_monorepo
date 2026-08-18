@@ -88,6 +88,7 @@ const _plugin = PluginManagementMetadata(
     id: "one",
     displayName: "One",
     state: PluginSetupState.ready,
+    runtimeVersion: "1.2.3",
     actionHint: null,
   ),
   runtimeState: PluginRuntimeState.dormant,

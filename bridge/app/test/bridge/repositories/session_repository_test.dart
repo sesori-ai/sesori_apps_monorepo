@@ -1420,6 +1420,7 @@ void main() {
 
       for (final variant in cases) {
         await repository.sendPrompt(
+          promptId: "prompt-1",
           sessionId: "stable-s1",
           parts: const [PromptPart.text(text: "Prompt")],
           variant: variant,
@@ -1430,6 +1431,7 @@ void main() {
         expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
 
         await repository.sendCommand(
+          promptId: "prompt-1",
           sessionId: "stable-s1",
           command: "review",
           arguments: "Prompt",
@@ -1456,6 +1458,7 @@ void main() {
 
       await expectLater(
         repository.sendPrompt(
+          promptId: "prompt-1",
           sessionId: "missing",
           parts: const [],
           variant: null,
@@ -1480,6 +1483,7 @@ void main() {
       );
       await expectLater(
         repository.sendPrompt(
+          promptId: "prompt-1",
           sessionId: "wrong-plugin",
           parts: const [],
           variant: null,
@@ -1517,7 +1521,7 @@ void main() {
       );
       plugin.messagesResult = const [
         PluginMessageWithParts(
-          info: PluginMessageUser(id: "message-1", sessionID: "backend-s1", agent: null, time: null),
+          info: PluginMessageUser(promptId: null, id: "message-1", sessionID: "backend-s1", agent: null, time: null),
           parts: [
             PluginMessagePart(
               id: "part-1",
@@ -2097,7 +2101,14 @@ void main() {
       );
 
       // The worktree session primes with its worktree path...
-      await repository.sendPrompt(sessionId: "w1", parts: const [], variant: null, agent: null, model: null);
+      await repository.sendPrompt(
+        promptId: "prompt-1",
+        sessionId: "w1",
+        parts: const [],
+        variant: null,
+        agent: null,
+        model: null,
+      );
       expect(plugin.primedDirectories.last, (sessionId: "w1", directory: worktree));
 
       // ...a plain session primes with the owning project directory...
@@ -2105,6 +2116,7 @@ void main() {
       expect(plugin.primedDirectories.last, (sessionId: "p1", directory: parent));
 
       await repository.sendCommand(
+        promptId: "prompt-1",
         sessionId: "w1",
         command: "review",
         arguments: "",
@@ -2119,7 +2131,14 @@ void main() {
       final primesBefore = plugin.primedDirectories.length;
       final sendsBefore = plugin.sendPromptCalls;
       await expectLater(
-        repository.sendPrompt(sessionId: "ghost", parts: const [], variant: null, agent: null, model: null),
+        repository.sendPrompt(
+          promptId: "prompt-1",
+          sessionId: "ghost",
+          parts: const [],
+          variant: null,
+          agent: null,
+          model: null,
+        ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
       );
       expect(plugin.primedDirectories.length, primesBefore);
@@ -2362,6 +2381,7 @@ void main() {
 
       final guardedOperations = <Future<void> Function()>[
         () => repository.sendCommand(
+          promptId: "prompt-1",
           sessionId: "gone",
           command: "test",
           arguments: "",
@@ -2371,6 +2391,7 @@ void main() {
           model: null,
         ),
         () => repository.sendPrompt(
+          promptId: "prompt-1",
           sessionId: "gone",
           parts: const [],
           variant: null,
@@ -2759,6 +2780,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
 
   @override
   Future<void> sendPrompt({
+    required String promptId,
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
@@ -2772,6 +2794,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
 
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,
@@ -2969,6 +2992,7 @@ class _FakeDerivedPlugin({
 
   @override
   Future<void> sendPrompt({
+    required String promptId,
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
@@ -2980,6 +3004,7 @@ class _FakeDerivedPlugin({
 
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,

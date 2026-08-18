@@ -105,6 +105,7 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
     clock: const ServerClock(),
     environment: const <String, String>{},
     currentUser: null,
+    resolveIdleTimeoutMins: ({required pluginId}) => 10,
   );
   final runtime =
       PluginRuntime(

@@ -135,7 +135,7 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, const PluginSetupReady());
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.20.0"));
       expect(processes.spawnedExecutables, ["hermes", "hermes"]);
       expect(processes.spawnedArguments, [
         const ["acp", "--version"],
@@ -366,6 +366,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupAuthenticationRequired>());
+      expect(result.runtimeVersion, "0.20.0");
     });
 
     test("reports authentication required when a model has no provider", () async {
@@ -396,6 +397,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupAuthenticationRequired>());
+      expect(result.runtimeVersion, "0.20.0");
     });
 
     test("reports unknown when the status command exits nonzero", () async {
@@ -426,6 +428,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupUnknown>());
+      expect(result.runtimeVersion, "0.20.0");
     });
 
     test("uses an explicit --hermes-bin override for every probe", () async {
@@ -455,7 +458,7 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, const PluginSetupReady());
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.20.0"));
       expect(processes.spawnedExecutables, ["/custom/hermes", "/custom/hermes"]);
     });
 

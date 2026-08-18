@@ -133,6 +133,7 @@ const _unsupportedPlugin = PluginManagementMetadata(
     id: "one",
     displayName: "One",
     state: PluginSetupState.ready,
+    runtimeVersion: null,
     actionHint: null,
   ),
   runtimeState: PluginRuntimeState.dormant,

@@ -1262,6 +1262,12 @@ class _GeneratedRenameWorktreeRepository() implements WorktreeRepository {
 
 class _FakeBridgePluginApi() implements NativeProjectsPluginApi {
   @override
+  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
+
+  @override
   String get id => "fake";
 
   @override
@@ -1334,6 +1340,7 @@ class _FakeBridgePluginApi() implements NativeProjectsPluginApi {
 
   @override
   Future<void> sendPrompt({
+    required String promptId,
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
@@ -1343,6 +1350,7 @@ class _FakeBridgePluginApi() implements NativeProjectsPluginApi {
 
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,

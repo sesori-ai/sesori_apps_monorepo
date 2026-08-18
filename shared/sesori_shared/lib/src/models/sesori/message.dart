@@ -28,6 +28,13 @@ sealed class const Message._() with _$Message {
     required String sessionID,
     required String? agent,
     required MessageTime? time,
+
+    /// The `SendPromptRequest.promptId` this message fulfilled, when known.
+    ///
+    /// Attached on the live event that consumes a bridge-queued prompt so
+    /// clients can swap the queued bubble for this message atomically.
+    /// History reads that cannot reconstruct it carry null.
+    required String? promptId,
   }) = MessageUser;
 
   const factory assistant({

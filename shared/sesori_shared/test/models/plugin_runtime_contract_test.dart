@@ -97,18 +97,23 @@ void main() {
           id: "codex",
           displayName: "Codex",
           state: PluginSetupState.authenticationRequired,
+          runtimeVersion: "0.42.0",
           actionHint: "Run codex login on this machine.",
         ),
         PluginSetupMetadata(
           id: "opencode",
           displayName: "OpenCode",
           state: PluginSetupState.ready,
+          runtimeVersion: "1.18.11",
           actionHint: null,
         ),
       ],
     );
 
     expect(PluginSetupResponse.fromJson(response.toJson()), response);
+    final oldPayload = response.toJson();
+    ((oldPayload["plugins"] as List<Object?>).first! as Map<String, dynamic>).remove("runtimeVersion");
+    expect(PluginSetupResponse.fromJson(oldPayload).plugins.first.runtimeVersion, isNull);
     expect(
       PluginSetupMetadata.fromJson(const {
         "id": "future",

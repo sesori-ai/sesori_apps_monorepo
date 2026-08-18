@@ -65,6 +65,7 @@ export "src/models/sesori/provider_info.dart";
 export "src/models/sesori/pull_request_info.dart";
 export "src/models/sesori/pull_request_refresh_settings.dart";
 export "src/models/sesori/question.dart";
+export "src/models/sesori/queued_prompt.dart";
 export "src/models/sesori/rename_project_request.dart";
 export "src/models/sesori/rename_session_request.dart";
 export "src/models/sesori/reply_to_permission_request.dart";

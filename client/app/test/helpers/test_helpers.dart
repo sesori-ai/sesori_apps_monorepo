@@ -478,6 +478,13 @@ void delegateSessionRepositoryToService({
     (invocation) => service.getPendingPermissions(sessionId: invocation.namedArguments[#sessionId]! as String),
   );
   when(
+    () => repository.getQueuedPrompts(sessionId: any(named: "sessionId")),
+  ).thenAnswer(
+    (_) => Future<ApiResponse<QueuedPromptResponse>>.value(
+      ApiResponse.success(const QueuedPromptResponse(data: <QueuedSessionPrompt>[])),
+    ),
+  );
+  when(
     () => repository.getChildren(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (invocation) => service.getChildren(sessionId: invocation.namedArguments[#sessionId]! as String),
@@ -552,6 +559,7 @@ void delegateSessionRepositoryToService({
   registerFallbackValue(const <ComposerAttachment>[]);
   when(
     () => repository.sendMessage(
+      promptId: any(named: "promptId"),
       sessionId: any(named: "sessionId"),
       text: any(named: "text"),
       attachments: any(named: "attachments"),
@@ -562,6 +570,7 @@ void delegateSessionRepositoryToService({
     ),
   ).thenAnswer(
     (invocation) => service.sendMessage(
+      promptId: "prompt-1",
       sessionId: invocation.namedArguments[#sessionId]! as String,
       text: invocation.namedArguments[#text]! as String,
       attachments: invocation.namedArguments[#attachments]! as List<ComposerAttachment>,

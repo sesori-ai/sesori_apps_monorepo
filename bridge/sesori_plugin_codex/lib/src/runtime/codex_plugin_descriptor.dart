@@ -316,7 +316,9 @@ class const CodexPluginDescriptor({
                 ),
       };
     }
-    final executable = (selection as CodexRuntimeSelected).binaryPath;
+    final selectedRuntime = selection as CodexRuntimeSelected;
+    final executable = selectedRuntime.binaryPath;
+    final runtimeVersion = selectedRuntime.version.raw;
     final executor = HostProcessCommandExecutor(
       processes: processes,
       runInShell: io.Platform.isWindows,
@@ -332,21 +334,24 @@ class const CodexPluginDescriptor({
         timeout: _versionProbeTimeout,
       );
     } on Object {
-      return const PluginSetupUnknown(
+      return PluginSetupUnknown.versioned(
         actionHint: "Codex authentication could not be determined. Run `codex login status` locally and retry.",
+        runtimeVersion: runtimeVersion,
       );
     }
     final statusOutput = _normalizedStatusOutput(loginResult);
     if (statusOutput.contains("not logged in") || statusOutput.contains("logged out")) {
-      return const PluginSetupAuthenticationRequired(
+      return PluginSetupAuthenticationRequired.versioned(
         actionHint: "Sign in to Codex, then retry setup detection.",
+        runtimeVersion: runtimeVersion,
       );
     }
     if (loginResult.exitCode == 0 && statusOutput.contains("logged in")) {
-      return const PluginSetupReady();
+      return PluginSetupReady.versioned(runtimeVersion: runtimeVersion);
     }
-    return const PluginSetupUnknown(
+    return PluginSetupUnknown.versioned(
       actionHint: "Codex authentication could not be determined. Run `codex login status` locally and retry.",
+      runtimeVersion: runtimeVersion,
     );
   }
 

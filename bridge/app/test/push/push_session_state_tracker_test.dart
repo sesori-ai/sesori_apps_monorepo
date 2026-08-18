@@ -782,6 +782,7 @@ void main() {
         ..handleEvent(
           const SesoriSseEvent.messageUpdated(
             info: Message.user(
+              promptId: null,
               id: "m-1",
               sessionID: "session-a",
               agent: null,

@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:isolate";
+import "dart:math" as math;
 import "dart:typed_data";
 
 import "package:image/image.dart" as image;
@@ -66,9 +67,11 @@ class const AttachmentThumbnailBuilder() {
       if (firstFrame == null) return const AttachmentThumbnailUnsupported();
 
       final oriented = image.bakeOrientation(firstFrame);
-      final thumbnail = image.copyResizeCropSquare(
+      final landscape = oriented.width >= oriented.height;
+      final thumbnail = image.copyResize(
         oriented,
-        size: _size,
+        width: landscape ? _size : math.max(1, (_size * oriented.width / oriented.height).round()),
+        height: landscape ? math.max(1, (_size * oriented.height / oriented.width).round()) : _size,
         interpolation: image.Interpolation.average,
       );
       final transparent = thumbnail.hasAlpha && thumbnail.any((pixel) => pixel.a != pixel.maxChannelValue);

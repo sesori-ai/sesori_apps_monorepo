@@ -198,6 +198,7 @@ void main() {
       final session = await creating;
 
       await plugin.sendCommand(
+        promptId: "prompt-1",
         sessionId: session.id,
         command: "compact",
         arguments: "focus on the current task",

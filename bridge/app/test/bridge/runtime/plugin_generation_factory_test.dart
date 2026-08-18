@@ -65,6 +65,7 @@ void main() {
         clock: const ServerClock(),
         environment: const <String, String>{"HOME": "/home/alex"},
         currentUser: ProcessUser.fromRawUser("alex"),
+        resolveIdleTimeoutMins: ({required pluginId}) => 10,
       );
       BridgePlugin? startedPlugin;
       await for (final event in factory.start(
@@ -144,6 +145,7 @@ void main() {
         clock: const ServerClock(),
         environment: const <String, String>{},
         currentUser: null,
+        resolveIdleTimeoutMins: ({required pluginId}) => 10,
       );
       await factory.enforceBridgeOwnership();
 

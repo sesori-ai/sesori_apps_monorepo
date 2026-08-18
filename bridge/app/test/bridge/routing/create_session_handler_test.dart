@@ -1384,6 +1384,7 @@ class _OrderCheckingCommandPlugin({required final AppDatabase _database}) extend
 
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,
@@ -1398,6 +1399,7 @@ class _OrderCheckingCommandPlugin({required final AppDatabase _database}) extend
     );
     hadStoredRowWhenCommandSent = session != null;
     await super.sendCommand(
+      promptId: "prompt-1",
       sessionId: sessionId,
       command: command,
       arguments: arguments,

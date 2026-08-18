@@ -904,13 +904,18 @@ $PluginMessageTimeCopyWith<$Res>? get time {
 @JsonSerializable(createFactory: false)
 
 class PluginMessageUser implements PluginMessage {
-  const PluginMessageUser({required this.id, required this.sessionID, required this.agent, required this.time,  String? $type}): $type = $type ?? 'user';
+  const PluginMessageUser({required this.id, required this.sessionID, required this.agent, required this.time, required this.promptId,  String? $type}): $type = $type ?? 'user';
   
 
 @override final  String id;
 @override final  String sessionID;
 @override final  String? agent;
 @override final  PluginMessageTime? time;
+/// The `sendPrompt`/`sendCommand` prompt id this message fulfilled, when
+/// known. Attached on the live event that consumes a queued prompt so
+/// clients can swap the queued bubble for this message atomically.
+/// History reads that cannot reconstruct it carry null.
+ final  String? promptId;
 
 @JsonKey(name: 'role')
 final String $type;
@@ -929,16 +934,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageUser&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.time, time) || other.time == time));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageUser&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.time, time) || other.time == time)&&(identical(other.promptId, promptId) || other.promptId == promptId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,agent,time);
+int get hashCode => Object.hash(runtimeType,id,sessionID,agent,time,promptId);
 
 @override
 String toString() {
-  return 'PluginMessage.user(id: $id, sessionID: $sessionID, agent: $agent, time: $time)';
+  return 'PluginMessage.user(id: $id, sessionID: $sessionID, agent: $agent, time: $time, promptId: $promptId)';
 }
 
 
@@ -949,7 +954,7 @@ abstract mixin class $PluginMessageUserCopyWith<$Res> implements $PluginMessageC
   factory $PluginMessageUserCopyWith(PluginMessageUser value, $Res Function(PluginMessageUser) _then) = _$PluginMessageUserCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String? agent, PluginMessageTime? time
+ String id, String sessionID, String? agent, PluginMessageTime? time, String? promptId
 });
 
 
@@ -966,13 +971,14 @@ class _$PluginMessageUserCopyWithImpl<$Res>
 
 /// Create a copy of PluginMessage
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? agent = freezed,Object? time = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? agent = freezed,Object? time = freezed,Object? promptId = freezed,}) {
   return _then(PluginMessageUser(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
-as PluginMessageTime?,
+as PluginMessageTime?,promptId: freezed == promptId ? _self.promptId : promptId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

@@ -526,6 +526,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessesSetupStatus => 'Setup';
 
   @override
+  String get harnessesRuntimeVersion => 'Version';
+
+  @override
   String get harnessesRuntimeStatus => 'Runtime';
 
   @override

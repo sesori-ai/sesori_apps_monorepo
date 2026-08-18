@@ -61,4 +61,15 @@ abstract class PluginHost() {
   /// Atomic JSON-file persistence under [stateDirectory], with a locked
   /// read-modify-write primitive.
   HostJsonStore get store;
+
+  /// The user-configured idle timeout for this plugin, or null when idle
+  /// cleanup is disabled.
+  ///
+  /// A live getter over the bridge's runtime-mutable settings: read it when
+  /// arming an idle timer rather than caching it, so a settings change takes
+  /// effect at the next idle transition without a plugin restart. Plugins
+  /// whose descriptor declares `PluginResidencyPolicy.resident` own idle
+  /// cleanup themselves (the bridge's whole-plugin suspension timer never
+  /// arms) and use this value for their internal reclamation instead.
+  Duration? get pluginIdleTimeout;
 }

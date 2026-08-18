@@ -35,14 +35,25 @@ class PromptSendQueue() {
     return _active = _items.removeFirst();
   }
 
-  void completeSend() => _active = null;
+  void completeSend() {
+    final active = _active;
+    if (active != null) _settledElsewhere.remove(active.promptId);
+    _active = null;
+  }
 
   /// Restores the active submission at the head after a failed send.
-  void failSend() {
+  ///
+  /// Returns whether it was requeued. A submission the bridge settled while
+  /// its send was in flight (accepted, dispatched, or cancelled there) is
+  /// discarded instead — its transport failure proves nothing, and a retry
+  /// would resurrect a prompt the bridge no longer queues.
+  bool failSend() {
     final active = _active;
-    if (active == null) return;
+    if (active == null) return false;
     _active = null;
+    if (_settledElsewhere.remove(active.promptId)) return false;
     _items.addFirst(active);
+    return true;
   }
 
   /// Remove a submission by index (user cancellation).
@@ -53,5 +64,33 @@ class PromptSendQueue() {
     var i = 0;
     _items.removeWhere((_) => i++ == index);
     return item;
+  }
+
+  /// Prompt ids the bridge settled while their send was still in flight; the
+  /// active slot's own settle consumes the mark (discarding on failure).
+  final Set<String> _settledElsewhere = {};
+
+  /// Whether the in-flight submission was already settled by the bridge and
+  /// therefore renders nowhere.
+  bool get isActiveSettledElsewhere {
+    final active = _active;
+    return active != null && _settledElsewhere.contains(active.promptId);
+  }
+
+  /// Drops every staged copy of [promptId] — the bridge settled that prompt
+  /// (queued, dispatched, or cancelled it), so a local retry would only
+  /// duplicate or resurrect it. The active slot keeps settling through
+  /// complete/fail so the drain loop stays single-flight; it is marked so
+  /// rendering hides it and a late transport failure discards it.
+  void removeByPromptId(String promptId) {
+    _items.removeWhere((item) => item.promptId == promptId);
+    if (_active?.promptId == promptId) _settledElsewhere.add(promptId);
+  }
+
+  /// Drops everything staged locally (the user stopped the session).
+  void clear() {
+    _items.clear();
+    _active = null;
+    _settledElsewhere.clear();
   }
 }

@@ -295,6 +295,12 @@ PluginSession _session({
 class _FakeBridgePlugin({required final List<PluginProject> _projects, required final List<PluginSession> _sessions})
     implements NativeProjectsPluginApi {
   @override
+  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
+
+  @override
   Future<List<PluginProject>> getProjects() async => _projects;
 
   @override
@@ -355,6 +361,7 @@ class _FakeBridgePlugin({required final List<PluginProject> _projects, required 
 
   @override
   Future<void> sendPrompt({
+    required String promptId,
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
@@ -364,6 +371,7 @@ class _FakeBridgePlugin({required final List<PluginProject> _projects, required 
 
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,

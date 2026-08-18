@@ -49,7 +49,6 @@ ClaudeBridgePlugin _defaultBuildBridgePlugin({
 /// Descriptor and composition root for the local Claude Code CLI plugin.
 final class const ClaudePluginDescriptor({
   final Duration _probeTimeout = const Duration(seconds: 10),
-  final Duration _sessionIdleTimeout = const Duration(minutes: 5),
   final Duration _statusDebounce = const Duration(seconds: 5),
   final ClaudeBridgePluginFactory? _buildBridgePlugin,
 }) extends BridgePluginDescriptor {
@@ -83,6 +82,16 @@ final class const ClaudePluginDescriptor({
 
   @override
   bool get supportsPromptAttachments => true;
+
+  /// Claude owns idle reclamation per session: the service reaps individual
+  /// CLI child processes on the user-configured idle timeout
+  /// ([PluginHost.pluginIdleTimeout]) and resumes them transparently with
+  /// `--resume`. Whole-plugin suspension would add nothing (an all-reaped
+  /// plugin holds no processes, timers, or ports) and would silently kill any
+  /// pending in-process `ScheduleWakeup` timer, so the bridge-level idle
+  /// suspension must never arm.
+  @override
+  PluginResidencyPolicy residencyPolicy({required PluginConfig config}) => PluginResidencyPolicy.resident;
 
   @override
   List<PluginOption> get options => cliOptions;
@@ -134,6 +143,7 @@ final class const ClaudePluginDescriptor({
         actionHint: "Update Claude Code to a supported version, then retry setup detection.",
       );
     }
+    final runtimeVersion = version.toString();
 
     final CommandResult authResult;
     try {
@@ -144,24 +154,28 @@ final class const ClaudePluginDescriptor({
         timeout: _probeTimeout,
       );
     } on Object {
-      return const PluginSetupUnknown(
+      return PluginSetupUnknown.versioned(
         actionHint: "Claude Code authentication could not be determined. Run `claude auth status` locally and retry.",
+        runtimeVersion: runtimeVersion,
       );
     }
     try {
       final status = ClaudeAuthStatusDto.fromJson(jsonDecodeMap(authResult.stdout));
       return switch (status.loggedIn) {
-        true => const PluginSetupReady(),
-        false => const PluginSetupAuthenticationRequired(
+        true => PluginSetupReady.versioned(runtimeVersion: runtimeVersion),
+        false => PluginSetupAuthenticationRequired.versioned(
           actionHint: "Run `claude auth login` on this machine, then retry setup detection.",
+          runtimeVersion: runtimeVersion,
         ),
-        null => const PluginSetupUnknown(
+        null => PluginSetupUnknown.versioned(
           actionHint: "Claude Code authentication could not be determined. Run `claude auth status` locally and retry.",
+          runtimeVersion: runtimeVersion,
         ),
       };
     } on Object {
-      return const PluginSetupUnknown(
+      return PluginSetupUnknown.versioned(
         actionHint: "Claude Code authentication could not be determined. Run `claude auth status` locally and retry.",
+        runtimeVersion: runtimeVersion,
       );
     }
   }
@@ -191,7 +205,7 @@ final class const ClaudePluginDescriptor({
       processes: processes,
       approvals: approvals,
       clock: host.clock,
-      idleTimeout: _sessionIdleTimeout,
+      resolveIdleTimeout: () => host.pluginIdleTimeout,
     );
     const content = ClaudeContentMapper();
     final plugin = ClaudePlugin(

@@ -124,6 +124,7 @@ final class PiHistoryMapper({
         sessionID: sessionId,
         agent: null,
         time: _time(message.timestamp),
+        promptId: null,
       ),
       parts: parts,
     );
