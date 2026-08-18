@@ -58,6 +58,22 @@ sealed class const ClaudeStreamMessage({
             raw: json,
           ),
           "task_progress" => ClaudeTaskProgressMessage.fromJson(json, sessionId: sessionId, uuid: uuid),
+          "hook_started" => ClaudeHookStartedMessage(
+            hookId: _stringOrNull(json["hook_id"]),
+            hookName: _stringOrNull(json["hook_name"]),
+            hookEvent: _stringOrNull(json["hook_event"]),
+            sessionId: sessionId,
+            uuid: uuid,
+            raw: json,
+          ),
+          // `hook_progress` shares the output shape and the same emitter, so it
+          // is modelled here rather than left to surface as a later unknown.
+          "hook_progress" || "hook_response" => ClaudeHookOutputMessage.fromJson(
+            json,
+            phase: subtype == "hook_progress" ? ClaudeHookPhase.progress : ClaudeHookPhase.response,
+            sessionId: sessionId,
+            uuid: uuid,
+          ),
           _ => ClaudeUnknownMessage(type: type, subtype: subtype, sessionId: sessionId, uuid: uuid, raw: json),
         };
       case "assistant":
@@ -202,6 +218,53 @@ final class const ClaudeTaskProgressMessage({
       raw: json,
     );
   }
+}
+
+/// `system`/`hook_started` — a hook began running for a lifecycle event.
+final class const ClaudeHookStartedMessage({
+  required final String? hookId,
+  required final String? hookName,
+
+  /// The lifecycle event that triggered the hook, e.g. `PreToolUse`.
+  required final String? hookEvent,
+  required super.sessionId,
+  required super.uuid,
+  required super.raw,
+}) extends ClaudeStreamMessage;
+
+enum ClaudeHookPhase() { progress, response }
+
+/// `system`/`hook_progress` and `system`/`hook_response` — streamed and final
+/// output from a running hook. `exitCode` only arrives with the final frame.
+final class const ClaudeHookOutputMessage({
+  required final ClaudeHookPhase phase,
+  required final String? hookId,
+  required final String? hookName,
+  required final String? hookEvent,
+  required final String? stdout,
+  required final String? stderr,
+  required final int? exitCode,
+  required super.sessionId,
+  required super.uuid,
+  required super.raw,
+}) extends ClaudeStreamMessage {
+  factory fromJson(
+    Map<String, Object?> json, {
+    required ClaudeHookPhase phase,
+    required String? sessionId,
+    required String? uuid,
+  }) => ClaudeHookOutputMessage(
+    phase: phase,
+    hookId: _stringOrNull(json["hook_id"]),
+    hookName: _stringOrNull(json["hook_name"]),
+    hookEvent: _stringOrNull(json["hook_event"]),
+    stdout: _stringOrNull(json["stdout"]),
+    stderr: _stringOrNull(json["stderr"]),
+    exitCode: _intOrNull(json["exit_code"]),
+    sessionId: sessionId,
+    uuid: uuid,
+    raw: json,
+  );
 }
 
 enum ClaudeAssistantError() {
