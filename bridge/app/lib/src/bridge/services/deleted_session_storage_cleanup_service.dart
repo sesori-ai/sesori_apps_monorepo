@@ -20,9 +20,9 @@ class DeletedSessionStorageCleanupService({
 
   Future<void> _reconcile() async {
     for (final pluginId in await _sessionRepository.persistedSessionCleanupPluginIds) {
-      final Set<TombstonedSessionCleanup> sessions;
+      final Set<String> sessionIds;
       try {
-        sessions = await _sessionRepository.getTombstonedSessionsForCleanup(
+        sessionIds = await _sessionRepository.getTombstonedBackendSessionIdsForCleanup(
           pluginId: pluginId,
         );
       } on Object catch (error, stackTrace) {
@@ -35,19 +35,16 @@ class DeletedSessionStorageCleanupService({
         continue;
       }
 
-      final orderedSessions = sessions.toList(growable: false)
-        ..sort((a, b) => a.backendSessionId.compareTo(b.backendSessionId));
-      for (final session in orderedSessions) {
+      for (final backendSessionId in sessionIds.toList(growable: false)..sort()) {
         try {
           await _sessionRepository.deletePersistedSession(
             pluginId: pluginId,
-            backendSessionId: session.backendSessionId,
-            directory: session.directory,
+            backendSessionId: backendSessionId,
           );
         } on Object catch (error, stackTrace) {
           Log.w(
             "Failed to delete persisted session storage "
-            "(plugin=$pluginId, sessionId=${session.backendSessionId}); retrying next startup",
+            "(plugin=$pluginId, sessionId=$backendSessionId); retrying next startup",
             error,
             stackTrace,
           );

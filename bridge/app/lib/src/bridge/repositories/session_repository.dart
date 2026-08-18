@@ -1,7 +1,6 @@
 import "dart:async";
 import "dart:math";
 
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         BridgeDerivedProjectsPluginApi,
@@ -63,11 +62,6 @@ typedef SessionBindingsCommitted = ({
 });
 
 typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
-
-typedef TombstonedSessionCleanup = ({
-  String backendSessionId,
-  String? directory,
-});
 
 /// The deleted root as clients see it, plus every session id removed with it.
 typedef DeletedSessionSubtree = ({Session session, List<String> sessionIds});
@@ -461,23 +455,16 @@ class SessionRepository({
     return List<String>.unmodifiable(pluginIds);
   }
 
-  Future<Set<TombstonedSessionCleanup>> getTombstonedSessionsForCleanup({required String pluginId}) async {
+  Future<Set<String>> getTombstonedBackendSessionIdsForCleanup({required String pluginId}) async {
     final tombstones = await _runtime.useIfActive(
       pluginId: pluginId,
       operation: SessionOperation.cleanupSession,
-      body: (plugin, _) async {
+      body: (plugin, _) {
         _requirePersistedSessionCleanupApi(
           pluginId: pluginId,
           plugin: plugin,
         );
-        final rows = await _sessionDao.getTombstonedSessionsForCleanup(pluginId: pluginId);
-        return {
-          for (final row in rows)
-            (
-              backendSessionId: row.backendSessionId,
-              directory: row.directory,
-            ),
-        };
+        return _sessionDao.getTombstonedSessionIds(pluginId: pluginId);
       },
     );
     if (tombstones == null) {
@@ -489,7 +476,6 @@ class SessionRepository({
   Future<void> deletePersistedSession({
     required String pluginId,
     required String backendSessionId,
-    required String? directory,
   }) {
     return _runtime.use(
       pluginId: pluginId,
@@ -497,10 +483,7 @@ class SessionRepository({
       body: (plugin) => _requirePersistedSessionCleanupApi(
         pluginId: pluginId,
         plugin: plugin,
-      ).deletePersistedSession(
-        backendSessionId: backendSessionId,
-        directory: directory,
-      ),
+      ).deletePersistedSession(backendSessionId: backendSessionId),
     );
   }
 
@@ -562,7 +545,6 @@ class SessionRepository({
         await _sessionDao.insertSessionTombstone(
           backendSessionId: binding.backendSessionId,
           pluginId: binding.pluginId,
-          directory: normalizeProjectDirectory(directory: binding.directory),
           deletedAt: deletedAt,
         );
       }

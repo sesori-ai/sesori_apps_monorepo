@@ -209,6 +209,19 @@ eagerly "just in case."
 - Defensive depth must stay proportional to damage. A rare case that degrades a
   screen, fails one request, or shows a stale value does not justify tree walks,
   cascade checks, extra queries on hot paths, or new coordination.
+- Weigh every defense and compatibility measure as effort-versus-damage: the
+  probability of the case actually occurring times the harm when it does,
+  against the complexity the measure adds everywhere it touches. When the
+  damage is very low — cosmetic residue, a slightly wrong display for old data,
+  a rare leaked local file, a stale value that self-corrects — accept it and
+  add nothing, even when a fix is straightforward.
+- This explicitly covers low-damage backward compatibility: a new feature does
+  not owe migrations, schema changes, backfills, or fallback paths just so
+  pre-existing sessions or rows render perfectly. If the worst outcome for old
+  data is a minor visual or informational imperfection, ship without the
+  compatibility machinery and leave old data as-is. Reserve compatibility work
+  for real damage: data loss, broken core flows, security, or a violated
+  public wire contract.
 - Enforce an invariant at the one place that owns it, on the entity the caller
   named. Do not extend it outward to parents, children, families, or related
   entities in case someone reaches them another way.

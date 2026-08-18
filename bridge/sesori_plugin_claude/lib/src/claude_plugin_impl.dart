@@ -386,10 +386,7 @@ final class ClaudePlugin({
   }
 
   @override
-  Future<void> deletePersistedSession({
-    required String backendSessionId,
-    required String? directory,
-  }) async {
+  Future<void> deletePersistedSession({required String backendSessionId}) async {
     _transcripts.deleteSession(sessionId: backendSessionId);
   }
 

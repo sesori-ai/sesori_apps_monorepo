@@ -26,10 +26,6 @@ entirely along with its transcript and, optionally, its worktree.
   cancels its turn and pending input, waits within a bounded deadline for that
   session to settle, then closes it before local plugin state is removed. A
   timeout or close failure remains observable and leaves local state retryable.
-- New deletion tombstones retain the deleted session's authoritative directory,
-  and startup reconciliation passes it to directory-scoped plugins. Legacy
-  public tombstones retain an unknown directory and global-index plugins keep
-  their existing cleanup behavior.
 - OMP tombstone reconciliation pages its ACP catalog to exhaustion, resumes the
   matching session without replay, invokes `/session delete`, then closes it.
   A bounded but truncated scan uses OMP's global-ID resume fallback; only an

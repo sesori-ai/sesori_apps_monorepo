@@ -39,7 +39,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -279,9 +279,6 @@ class AppDatabase(super.e) extends _$AppDatabase {
         if (violations.isNotEmpty) {
           throw StateError("Migration v12->v13 left foreign key violations: ${violations.map((row) => row.data)}");
         }
-      },
-      from13To14: (m, schema) async {
-        await m.addColumn(schema.deletedSessionsTable, schema.deletedSessionsTable.directory);
       },
     ),
     beforeOpen: (details) async {

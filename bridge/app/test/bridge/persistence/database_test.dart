@@ -21,7 +21,7 @@ void main() {
           "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'session_options_cache_table'",
         )
         .getSingle();
-    expect(database.schemaVersion, 14);
+    expect(database.schemaVersion, 13);
     expect(definition.read<String>("sql").toUpperCase(), contains("WITHOUT ROWID"));
 
     final foreignKeys = await database.customSelect("PRAGMA foreign_key_list('session_options_cache_table')").get();
