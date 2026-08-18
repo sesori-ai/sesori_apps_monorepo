@@ -109,20 +109,30 @@ class ChatHistoryService({
         );
       },
     );
-    if (decided != null) return decided;
+    if (decided != null) {
+      // A store that stayed "fresh" across an abrupt bridge death still holds
+      // the dead turn's open tool parts — no idle event ever fired and no
+      // backfill will run. The page is already in memory, so detecting them is
+      // free; only a page that actually contains one pays for a status read.
+      if (!_containsOpenToolPart(page: decided)) return decided;
+      if (!await _sweepUnlessTurnRunning(sessionId: sessionId)) return decided;
+      final storageScope = await _requireStorageScope(sessionId: sessionId);
+      return await _enqueueRead(
+        sessionId: sessionId,
+        read: () => _chatHistoryRepository.getSessionMessages(
+          sessionId: sessionId,
+          storageScope: storageScope,
+          limit: limit,
+          before: before,
+          attachmentProjection: attachmentProjection,
+        ),
+      );
+    }
 
     await backfillSession(sessionId: sessionId);
     // A backend transcript reports no result for a tool whose turn died, so a
     // fresh backfill can import open tool parts that will never complete.
-    // Finalize them unless a turn is actually running right now. Null status —
-    // no binding, stopped plugin, failed read — cannot host a live tool, so it
-    // sweeps too. A turn that starts between this check and the sweep may
-    // transiently mark its first tool as errored; the next live capture of
-    // that part overwrites it, which is proportional to the damage.
-    final status = await _sessionRepository.getSessionStatus(sessionId: sessionId);
-    if (status is! SessionStatusBusy && status is! SessionStatusRetry) {
-      await finalizeOpenToolParts(sessionId: sessionId);
-    }
+    await _sweepUnlessTurnRunning(sessionId: sessionId);
     final storageScope = await _requireStorageScope(sessionId: sessionId);
     // The backfill is itself queued, so this read lands after it and after
     // any capture that raced its fetch.
@@ -481,6 +491,55 @@ class ChatHistoryService({
           );
           await _clearSyncedAtQuietly(sessionId: sessionId);
           return const <CapturedPartShapes>[];
+        }
+      },
+    );
+  }
+
+  /// Whether any served part is a tool still reported as `pending`/`running`.
+  bool _containsOpenToolPart({required ChatHistoryPage page}) {
+    for (final message in page.messages) {
+      for (final part in message.parts) {
+        if (part.type != MessagePartType.tool) continue;
+        final status = part.state?.status;
+        if (status == ToolStatus.pending || status == ToolStatus.running) return true;
+      }
+    }
+    return false;
+  }
+
+  /// Finalizes the session's open tool parts unless a turn is running now, and
+  /// reports whether anything was rewritten.
+  ///
+  /// A read-path sweep, so it mutates rows without projecting delivery shapes:
+  /// the caller re-reads the page itself, and projection could fail for
+  /// reasons — an unregistered bridge — that must not fail the sweep. A null
+  /// status — no binding, stopped plugin, failed read — cannot host a live
+  /// tool, so it sweeps too. A turn that starts between the check and the
+  /// sweep may transiently mark its first tool as errored; the next live
+  /// capture of that part overwrites it, which is proportional to the damage.
+  Future<bool> _sweepUnlessTurnRunning({required String sessionId}) async {
+    final status = await _sessionRepository.getSessionStatus(sessionId: sessionId);
+    if (status is SessionStatusBusy || status is SessionStatusRetry) return false;
+    final observedAt = DateTime.now().millisecondsSinceEpoch;
+    return await _enqueueRead(
+      sessionId: sessionId,
+      read: () async {
+        try {
+          final refs = await _chatHistoryRepository.finalizeOpenToolParts(
+            sessionId: sessionId,
+            updatedAt: observedAt,
+          );
+          return refs.isNotEmpty;
+        } on Object catch (error, stackTrace) {
+          Log.w(
+            "Failed to finalize open tool parts for session $sessionId; "
+            "dropping the synced marker so the next read re-backfills",
+            error,
+            stackTrace,
+          );
+          await _clearSyncedAtQuietly(sessionId: sessionId);
+          return false;
         }
       },
     );

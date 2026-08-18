@@ -129,6 +129,55 @@ void main() {
       expect(served.single.parts.single.state!.status, ToolStatus.running);
     });
 
+    test("a fresh store still finalizes open tool parts left by an abrupt death", () async {
+      // Live captures keep the store fresh, so no backfill runs. A bridge that
+      // died mid-turn never saw an idle event; the stranded part must still be
+      // finalized when the transcript is served from the store.
+      final repository = _FakeSessionRepository(transcript: const [], status: const SessionStatus.idle());
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.backfillSession(sessionId: "ses_a");
+      await history.service.captureMessage(sessionId: "ses_a", message: _message(id: "m1"));
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: _toolPart(id: "t1", messageId: "m1", status: ToolStatus.running),
+      );
+
+      final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
+
+      expect(served.single.parts.single.state!.status, ToolStatus.error);
+    });
+
+    test("a fresh store with a busy session keeps its running tool", () async {
+      final repository = _FakeSessionRepository(transcript: const [], status: const SessionStatus.busy());
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.backfillSession(sessionId: "ses_a");
+      await history.service.captureMessage(sessionId: "ses_a", message: _message(id: "m1"));
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: _toolPart(id: "t1", messageId: "m1", status: ToolStatus.running),
+      );
+
+      final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
+
+      expect(served.single.parts.single.state!.status, ToolStatus.running);
+    });
+
+    test("a fresh store without open tool parts is served without a status read", () async {
+      final repository = _FakeSessionRepository(transcript: const [], status: null);
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.backfillSession(sessionId: "ses_a");
+      await history.service.captureMessage(sessionId: "ses_a", message: _message(id: "m1"));
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: _toolPart(id: "t1", messageId: "m1", status: ToolStatus.completed, output: "done"),
+      );
+
+      final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
+
+      expect(served.single.parts.single.state!.status, ToolStatus.completed);
+      expect(repository.statusReads, isZero, reason: "a page with no open tool needs no status query");
+    });
+
     test("an unobservable session status sweeps: a stopped backend hosts no live tool", () async {
       final repository = _FakeSessionRepository(
         transcript: [
@@ -214,11 +263,16 @@ class _FakeSessionRepository({
   required final List<MessageWithParts> transcript,
   required final SessionStatus? status,
 }) implements SessionRepository {
+  int statusReads = 0;
+
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => transcript;
 
   @override
-  Future<SessionStatus?> getSessionStatus({required String sessionId}) async => status;
+  Future<SessionStatus?> getSessionStatus({required String sessionId}) async {
+    statusReads++;
+    return status;
+  }
 
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => StoredSession(
