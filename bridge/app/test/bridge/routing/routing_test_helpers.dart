@@ -906,6 +906,9 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const <MessageWithParts>[];
 
   @override
+  Future<SessionStatus?> getSessionStatus({required String sessionId}) async => null;
+
+  @override
   Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => const <ProjectActivitySummary>[];
 
   @override
@@ -1506,6 +1509,13 @@ class FakeSessionRepository({
             stored.sessionId: entry.value.toSharedSessionStatus(),
       },
     );
+  }
+
+  @override
+  Future<SessionStatus?> getSessionStatus({required String sessionId}) async {
+    final stored = await _sessionDao.getSession(sessionId: sessionId);
+    if (stored == null) return null;
+    return (await _plugin.getSessionStatuses())[stored.backendSessionId]?.toSharedSessionStatus();
   }
 
   @override

@@ -27,6 +27,7 @@ import "package:sesori_shared/sesori_shared.dart"
         PullRequestInfo,
         QueuedSessionPrompt,
         Session,
+        SessionStatus,
         SessionStatusResponse,
         SessionVariant;
 
@@ -1015,6 +1016,25 @@ class SessionRepository({
           if (result.statuses == null) result.pluginId,
       ],
     );
+  }
+
+  /// The single session's live status, or null when it cannot be observed —
+  /// the session has no binding, its plugin is not active, or the plugin read
+  /// failed. The caller owns the policy for that uncertainty.
+  Future<SessionStatus?> getSessionStatus({required String sessionId}) async {
+    final binding = await _sessionDao.getSession(sessionId: sessionId);
+    if (binding == null) return null;
+    try {
+      final pluginStatuses = await _runtime.useIfActive(
+        pluginId: binding.pluginId,
+        operation: SessionOperation.getSessionStatuses,
+        body: (plugin, _) => plugin.getSessionStatuses().timeout(_aggregateSourceDeadline),
+      );
+      return pluginStatuses?[binding.backendSessionId]?.toSharedSessionStatus();
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not read the status of session $sessionId from plugin ${binding.pluginId}", error, stackTrace);
+      return null;
+    }
   }
 
   Future<List<Session>> enrichSessions({

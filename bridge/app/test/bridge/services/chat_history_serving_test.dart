@@ -232,6 +232,9 @@ class _FakeSessionRepository({required var List<MessageWithParts> transcript, fi
   }
 
   @override
+  Future<SessionStatus?> getSessionStatus({required String sessionId}) async => const SessionStatus.idle();
+
+  @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => StoredSession(
     id: sessionId,
     backendSessionId: sessionId,

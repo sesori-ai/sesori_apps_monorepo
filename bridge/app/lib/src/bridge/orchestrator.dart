@@ -1428,6 +1428,19 @@ class OrchestratorSession._({
         await _permissionAutoApprovalService.approvePending();
       }
 
+      // An ended turn can strand tool parts in a non-terminal state — a
+      // permission never answered, an abort, a backend process death. The
+      // backend will never complete them, so finalize the stored snapshots and
+      // tell subscribers before the idle event lands.
+      if (event case BridgeSseSessionIdle(:final sessionID)) {
+        await _finalizeOpenToolParts(
+          sessionId: sessionID,
+          pluginId: pluginId,
+          generation: generation,
+          allowDuringStop: allowDuringStop,
+        );
+      }
+
       final refreshProjectsSummary = event is BridgeSseProjectUpdated || event is BridgeSseSessionDeleted;
       final SseEventDelivery? delivery;
       if (event is BridgeSseMessagePartUpdated) {
@@ -1512,6 +1525,34 @@ class OrchestratorSession._({
               information: [event.runtimeType.toString()],
             )
             .catchError((_) {}),
+      );
+    }
+  }
+
+  /// Finalizes tool parts stranded by the ended turn and delivers each
+  /// rewritten part to subscribers as an ordinary part update.
+  Future<void> _finalizeOpenToolParts({
+    required String sessionId,
+    required String? pluginId,
+    required int? generation,
+    required bool allowDuringStop,
+  }) async {
+    final List<CapturedPartShapes> finalized;
+    try {
+      finalized = await _chatHistoryService.finalizeOpenToolParts(sessionId: sessionId);
+    } catch (e, st) {
+      Log.w("failed to finalize open tool parts for session $sessionId", e, st);
+      return;
+    }
+    for (final shapes in finalized) {
+      await _deliverSseEvent(
+        delivery: SseEventDelivery.attachmentShaped(
+          inlineEvent: _mapper.buildMessagePartEvent(part: shapes.inlinePart),
+          storedReferenceEvent: _mapper.buildMessagePartEvent(part: shapes.storedReferencePart),
+        ),
+        pluginId: pluginId,
+        generation: generation,
+        allowDuringStop: allowDuringStop,
       );
     }
   }

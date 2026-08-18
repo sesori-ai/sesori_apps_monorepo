@@ -23,6 +23,13 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
 - Binary and attachment payloads are never stored inline in database tables; they
   round-trip through spill storage and still render. A slow or stuck request
   never blocks unrelated requests, other plugins, key exchange, or reconnects.
+- A tool part stranded in `pending`/`running` after its turn ended is finalized
+  to a terminal error, for every backend. The sweep runs when the session goes
+  idle (finalized parts are also delivered live as part updates) and after a
+  backfill whose session is not currently busy — including when its status is
+  unobservable, since a stopped backend hosts no live tool. Finalization never
+  advances the session's freshness marks, and a genuinely running tool swept by
+  the turn-start race is corrected by its next live capture.
 - Pi history follows the active `leafId` branch while retaining visible
   pre-compaction messages and omitting compaction and branch-summary payloads.
   File fallback is allowed only for Pi's exact no-model startup failure, applies

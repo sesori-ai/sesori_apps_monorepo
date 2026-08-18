@@ -28,6 +28,9 @@ class ChatHistoryArchiveVersionException({
 /// older page (null when the caller has reached the start of the transcript).
 typedef ChatHistoryPage = ({List<MessageWithParts> messages, int? nextCursor});
 
+/// Identity of one stored part inside its session.
+typedef StoredPartRef = ({String messageId, String partId});
+
 /// How fresh a session's stored transcript is.
 ///
 /// [syncedAt] is null until a backfill completes, so a row created by live
@@ -280,6 +283,52 @@ class ChatHistoryRepository({
       remainingInlineBytes = projected.remainingInlineBytes;
     }
     return null;
+  }
+
+  /// Rewrites every stored tool part still in a non-terminal state to a
+  /// terminal error, and returns the identity of each rewritten row.
+  ///
+  /// A tool part left `pending`/`running` after its turn ended can never
+  /// receive a result — the backend reports tool completion only within the
+  /// turn that ran it — so keeping the stored snapshot open would render an
+  /// eternal spinner on every later read.
+  Future<List<StoredPartRef>> finalizeOpenToolParts({
+    required String sessionId,
+    required int updatedAt,
+  }) async {
+    final rows = await _chatHistoryDao.getParts(sessionId: sessionId);
+    final finalized = <StoredPartRef>[];
+    for (final row in rows) {
+      // Cheap prefilter so an idle sweep does not decode a whole transcript;
+      // the decoded check below remains the only authority.
+      if (!row.partJson.contains('"status":"pending"') && !row.partJson.contains('"status":"running"')) {
+        continue;
+      }
+      final Map<String, dynamic> json;
+      try {
+        json = jsonDecodeMap(row.partJson);
+      } on Object catch (error, stackTrace) {
+        Log.w(
+          "Skipping an undecodable stored part ${row.partId} of session $sessionId during tool finalization",
+          error,
+          stackTrace,
+        );
+        continue;
+      }
+      if (json["type"] != "tool") continue;
+      final Object? rawState = json["state"];
+      if (rawState is! Map<String, dynamic>) continue;
+      final status = rawState["status"];
+      if (status != "pending" && status != "running") continue;
+
+      rawState["status"] = "error";
+      rawState["error"] = "The turn ended before this tool reported a result.";
+      await _chatHistoryDao.upsertPart(
+        row: row.copyWith(partJson: jsonEncode(json), updatedAt: updatedAt),
+      );
+      finalized.add((messageId: row.messageId, partId: row.partId));
+    }
+    return finalized;
   }
 
   Future<void> deleteMessage({required String sessionId, required String messageId}) {

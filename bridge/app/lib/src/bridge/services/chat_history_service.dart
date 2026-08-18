@@ -112,6 +112,17 @@ class ChatHistoryService({
     if (decided != null) return decided;
 
     await backfillSession(sessionId: sessionId);
+    // A backend transcript reports no result for a tool whose turn died, so a
+    // fresh backfill can import open tool parts that will never complete.
+    // Finalize them unless a turn is actually running right now. Null status —
+    // no binding, stopped plugin, failed read — cannot host a live tool, so it
+    // sweeps too. A turn that starts between this check and the sweep may
+    // transiently mark its first tool as errored; the next live capture of
+    // that part overwrites it, which is proportional to the damage.
+    final status = await _sessionRepository.getSessionStatus(sessionId: sessionId);
+    if (status is! SessionStatusBusy && status is! SessionStatusRetry) {
+      await finalizeOpenToolParts(sessionId: sessionId);
+    }
     final storageScope = await _requireStorageScope(sessionId: sessionId);
     // The backfill is itself queued, so this read lands after it and after
     // any capture that raced its fetch.
@@ -417,6 +428,61 @@ class ChatHistoryService({
           : state.copyWith(
               attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(),
             ),
+    );
+  }
+
+  /// Finalizes tool parts left open after the session's turn ended, returning
+  /// each rewritten part in both delivery shapes for live emission.
+  ///
+  /// A stored `pending`/`running` tool part whose turn is over can never
+  /// receive a result, so it would spin forever on every later read. The
+  /// sweep does not touch the session's freshness marks: rewriting local rows
+  /// is neither a live capture nor backend activity, and advancing the
+  /// watermark here could make a stale store look current.
+  Future<List<CapturedPartShapes>> finalizeOpenToolParts({required String sessionId}) {
+    final observedAt = DateTime.now().millisecondsSinceEpoch;
+    return _enqueueRead(
+      sessionId: sessionId,
+      read: () async {
+        try {
+          final refs = await _chatHistoryRepository.finalizeOpenToolParts(
+            sessionId: sessionId,
+            updatedAt: observedAt,
+          );
+          if (refs.isEmpty) return const <CapturedPartShapes>[];
+          final storageScope = await _requireStorageScope(sessionId: sessionId);
+          final shapes = <CapturedPartShapes>[];
+          for (final ref in refs) {
+            final inlinePart = await _chatHistoryRepository.projectStoredPart(
+              sessionId: sessionId,
+              storageScope: storageScope,
+              messageId: ref.messageId,
+              partId: ref.partId,
+              attachmentProjection: _attachmentProjectionFor(delivery: MessageAttachmentDelivery.inline),
+            );
+            final storedReferencePart = await _chatHistoryRepository.projectStoredPart(
+              sessionId: sessionId,
+              storageScope: storageScope,
+              messageId: ref.messageId,
+              partId: ref.partId,
+              attachmentProjection: _attachmentProjectionFor(delivery: MessageAttachmentDelivery.storedReference),
+            );
+            if (inlinePart != null && storedReferencePart != null) {
+              shapes.add(CapturedPartShapes(inlinePart: inlinePart, storedReferencePart: storedReferencePart));
+            }
+          }
+          return shapes;
+        } on Object catch (error, stackTrace) {
+          Log.w(
+            "Failed to finalize open tool parts for session $sessionId; "
+            "dropping the synced marker so the next read re-backfills",
+            error,
+            stackTrace,
+          );
+          await _clearSyncedAtQuietly(sessionId: sessionId);
+          return const <CapturedPartShapes>[];
+        }
+      },
     );
   }
 
