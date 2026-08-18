@@ -20,8 +20,8 @@ void main() {
     });
 
     test("serializes queued turns for one session", () async {
-      harness.enqueue("first", model: "haiku");
-      harness.enqueue("second", model: "haiku");
+      unawaited(harness.enqueue("first", model: "haiku"));
+      unawaited(harness.enqueue("second", model: "haiku"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
 
@@ -36,8 +36,8 @@ void main() {
     });
 
     test("abort fences a queued turn and cancels the running turn", () async {
-      harness.enqueue("first", model: "haiku");
-      harness.enqueue("second", model: "haiku");
+      unawaited(harness.enqueue("first", model: "haiku"));
+      unawaited(harness.enqueue("second", model: "haiku"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
 
@@ -53,7 +53,7 @@ void main() {
     });
 
     test("next turn resumes in a fresh process after abort", () async {
-      harness.enqueue("first", model: "haiku");
+      unawaited(harness.enqueue("first", model: "haiku"));
       final first = await harness.firstProcess;
       await waitForFrame(first, "user");
 
@@ -63,7 +63,7 @@ void main() {
       await abort;
       await harness.waitForIdle();
 
-      harness.enqueue("second", model: "haiku");
+      unawaited(harness.enqueue("second", model: "haiku"));
       final second = await harness.processAt(1);
       await waitForFrame(second, "user");
 
@@ -74,7 +74,7 @@ void main() {
     test("abort tears down the process when interrupt fails", () async {
       await harness.dispose();
       harness = _ServiceHarness(failInterrupt: true);
-      harness.enqueue("first");
+      unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
 
@@ -85,7 +85,7 @@ void main() {
     });
 
     test("interruptActiveWork aborts and waits for active sessions within its budget", () async {
-      harness.enqueue("first");
+      unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
 
@@ -101,7 +101,7 @@ void main() {
     });
 
     test("routes control asks and clears them when the process exits", () async {
-      harness.enqueue("first");
+      unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
       process.emit({
@@ -124,7 +124,7 @@ void main() {
     });
 
     test("reaps an idle process and transparently resumes the next turn", () async {
-      harness.enqueue("first", model: "haiku");
+      unawaited(harness.enqueue("first", model: "haiku"));
       final first = await harness.firstProcess;
       await waitForFrame(first, "user");
       first.emit({
@@ -156,7 +156,7 @@ void main() {
       await pump();
       expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
 
-      harness.enqueue("second", model: "haiku");
+      unawaited(harness.enqueue("second", model: "haiku"));
       final second = await harness.processAt(1);
       await waitForFrame(second, "user");
 
@@ -166,7 +166,7 @@ void main() {
     });
 
     test("aborting an idle session preserves its scheduled reap", () async {
-      harness.enqueue("first");
+      unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
       process.emit(_result());
@@ -182,7 +182,7 @@ void main() {
     test("concurrent disposal waits for an in-flight idle teardown", () async {
       await harness.dispose();
       harness = _ServiceHarness(stdinCloseCompletes: false);
-      harness.enqueue("first");
+      unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
       process.emit(_result());
@@ -203,10 +203,168 @@ void main() {
       expect(completed, isTrue);
     });
 
+    test("accepts a steering send at enqueue while a turn is running", () async {
+      unawaited(harness.enqueue("first", model: "haiku"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+
+      var accepted = false;
+      unawaited(harness.enqueue("second", model: "haiku").then((_) => accepted = true));
+      await pump();
+
+      expect(accepted, isTrue, reason: "acceptance must not wait for the running turn");
+      expect(_userFrames(process), hasLength(1), reason: "the queued turn must not dispatch mid-turn");
+    });
+
+    test("exposes queued entries until dispatch settles and emits full-list updates", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      unawaited(harness.enqueue("second"));
+      await pump();
+
+      expect(
+        harness.service.queuedPrompts(sessionId: testSessionId).map((prompt) => prompt.id),
+        ["prompt-first", "prompt-second"],
+      );
+      final updates = harness.events.whereType<BridgeSseQueuedPromptsUpdated>().toList();
+      expect(updates.last.prompts.map((prompt) => prompt.id), ["prompt-first", "prompt-second"]);
+
+      process.emit(_result());
+      await _waitForUserFrames(process, 2);
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      expect(harness.service.queuedPrompts(sessionId: testSessionId), isEmpty);
+      final finalUpdate = harness.events.whereType<BridgeSseQueuedPromptsUpdated>().last;
+      expect(finalUpdate.prompts, isEmpty);
+    });
+
+    test("refuses a duplicate prompt id as an accepted no-op", () async {
+      unawaited(harness.enqueue("first", promptId: "prm_dup"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+
+      await harness.enqueue("first-again", promptId: "prm_dup");
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      expect(_userFrames(process), hasLength(1), reason: "the retry must not become a second turn");
+    });
+
+    test("refuses a recently dispatched prompt id after its turn completed", () async {
+      unawaited(harness.enqueue("first", promptId: "prm_done"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      await harness.enqueue("first-retry", promptId: "prm_done");
+      await pump();
+
+      expect(_userFrames(process), hasLength(1));
+    });
+
+    test("cancels a pending entry before dispatch and refuses a dispatched one", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      unawaited(harness.enqueue("second"));
+      await pump();
+
+      expect(
+        harness.service.cancelQueuedPrompt(sessionId: testSessionId, promptId: "prompt-second"),
+        isTrue,
+      );
+      expect(
+        harness.service.cancelQueuedPrompt(sessionId: testSessionId, promptId: "prompt-first"),
+        isFalse,
+        reason: "the dispatched running turn is governed by abort, not cancel",
+      );
+      expect(
+        harness.service.queuedPrompts(sessionId: testSessionId).map((prompt) => prompt.id),
+        ["prompt-first"],
+      );
+
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      expect(_userFrames(process), hasLength(1), reason: "the cancelled turn must never dispatch");
+    });
+
+    test("consumes an entry via emittedVisibleMessage at dispatch", () async {
+      unawaited(
+        harness.enqueue("run-command", onDispatched: () => ClaudeQueuedDispatch.emittedVisibleMessage),
+      );
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      await pump();
+
+      expect(harness.service.queuedPrompts(sessionId: testSessionId), isEmpty);
+      process.emit(_result());
+      await harness.waitForIdle();
+    });
+
+    test("consumeQueuedPrompt removes the echoed entry", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      expect(harness.service.queuedPrompts(sessionId: testSessionId), hasLength(1));
+
+      harness.service.consumeQueuedPrompt(sessionId: testSessionId, promptId: "prompt-first");
+
+      expect(harness.service.queuedPrompts(sessionId: testSessionId), isEmpty);
+      process.emit(_result());
+      await harness.waitForIdle();
+    });
+
+    test("abort clears queued entries and announces the empty queue", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      unawaited(harness.enqueue("second"));
+      await pump();
+
+      final abort = harness.service.abort(sessionId: testSessionId);
+      final interrupt = await _waitForControlSubtype(process, "interrupt");
+      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      await abort;
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      expect(harness.service.queuedPrompts(sessionId: testSessionId), isEmpty);
+      expect(harness.events.whereType<BridgeSseQueuedPromptsUpdated>().last.prompts, isEmpty);
+      expect(_userFrames(process), hasLength(1));
+    });
+
+    test("blocking initial turn completes acceptance only at dispatch", () async {
+      var accepted = false;
+      final acceptance = harness.service
+          .enqueueInitialTurn(
+            sessionId: testSessionId,
+            directory: "/tmp/project",
+            createNew: true,
+            parts: [const PluginPromptPart.text(text: "initial")],
+            model: null,
+            effort: null,
+            permissionMode: null,
+          )
+          .then((_) => accepted = true);
+      await pump();
+      expect(accepted, isFalse, reason: "acceptance waits for the spawn and stdin write");
+
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      await acceptance;
+      expect(accepted, isTrue);
+      process.emit(_result());
+      await harness.waitForIdle();
+    });
+
     test("delete waits for an in-flight idle teardown", () async {
       await harness.dispose();
       harness = _ServiceHarness(stdinCloseCompletes: false);
-      harness.enqueue("first");
+      unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
       process.emit(_result());
@@ -274,20 +432,28 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
     return process;
   }
 
-  void enqueue(String text, {String? model}) {
-    unawaited(
-      service
-          .enqueueTurn(
-            sessionId: testSessionId,
-            directory: "/tmp/project",
-            createNew: true,
-            parts: [PluginPromptPart.text(text: text)],
-            model: model,
-            effort: null,
-            permissionMode: null,
-          )
-          .catchError((Object _) {}),
-    );
+  Future<void> enqueue(
+    String text, {
+    String? model,
+    String? promptId,
+    ClaudeQueuedDispatch Function()? onDispatched,
+  }) {
+    return service
+        .enqueueTurn(
+          sessionId: testSessionId,
+          directory: "/tmp/project",
+          createNew: true,
+          parts: [PluginPromptPart.text(text: text)],
+          model: model,
+          effort: null,
+          permissionMode: null,
+          promptId: promptId ?? "prompt-$text",
+          displayText: text,
+          command: null,
+          attachmentCount: 0,
+          onDispatched: onDispatched ?? () => ClaudeQueuedDispatch.awaitsUserEcho,
+        )
+        .catchError((Object _) {});
   }
 
   Future<FakeClaudeProcess> processAt(int index) async {

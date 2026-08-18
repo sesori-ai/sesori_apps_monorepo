@@ -127,10 +127,9 @@ final class ClaudePlugin({
     _eventBuffer.add(BridgeSseSessionCreated(info: session.toJson()));
     if (parts.isNotEmpty) {
       try {
-        await _enqueue(
+        await _enqueueInitial(
           sessionId: sessionId,
           directory: normalized,
-          createNew: true,
           parts: parts,
           variant: variant,
           agent: agent,
@@ -229,17 +228,35 @@ final class ClaudePlugin({
     _requireTurn(parts: parts, operation: "sendPrompt");
     final directory = _directoryForSession(sessionId);
     if (directory == null) throw const PluginOperationException.notFound("sendPrompt", message: "session not found");
-    await _enqueue(
+    final text = parts
+        .whereType<PluginPromptPartText>()
+        .map((part) => part.text)
+        .where((text) => text.trim().isNotEmpty)
+        .join("\n")
+        .trim();
+    await _enqueueQueued(
       sessionId: sessionId,
       directory: directory,
-      createNew: _unstartedSessions.contains(sessionId),
       parts: parts,
       variant: variant,
       agent: agent,
       model: model,
       operation: "sendPrompt",
+      promptId: promptId,
+      displayText: text.isEmpty ? null : text,
+      command: null,
+      attachmentCount: parts.length - parts.whereType<PluginPromptPartText>().length,
+      onDispatched: () {
+        _unstartedSessions.remove(sessionId);
+        _eventDispatcher.beginTurn(sessionId: sessionId);
+        _eventDispatcher.expectUserEcho(
+          sessionId: sessionId,
+          promptId: promptId,
+          onConsumed: () => _sessions.consumeQueuedPrompt(sessionId: sessionId, promptId: promptId),
+        );
+        return ClaudeQueuedDispatch.awaitsUserEcho;
+      },
     );
-    _unstartedSessions.remove(sessionId);
   }
 
   @override
@@ -255,23 +272,39 @@ final class ClaudePlugin({
   }) async {
     final directory = _directoryForSession(sessionId);
     if (directory == null) throw const PluginOperationException.notFound("sendCommand", message: "session not found");
-    await _enqueue(
+    final visible = userVisibleArguments?.trim();
+    await _enqueueQueued(
       sessionId: sessionId,
       directory: directory,
-      createNew: _unstartedSessions.contains(sessionId),
       parts: [PluginPromptPart.text(text: arguments.isEmpty ? "/$command" : "/$command $arguments")],
       variant: variant,
       agent: agent,
       model: model,
       operation: "sendCommand",
-    );
-    _unstartedSessions.remove(sessionId);
-    final visible = userVisibleArguments?.trim();
-    _emitVisibleUserMessage(
-      sessionId: sessionId,
-      text: visible == null || visible.isEmpty ? "/$command" : "/$command $visible",
+      promptId: promptId,
+      displayText: visible == null || visible.isEmpty ? null : visible,
+      command: command,
+      attachmentCount: 0,
+      onDispatched: () {
+        _unstartedSessions.remove(sessionId);
+        _eventDispatcher.beginTurn(sessionId: sessionId);
+        _emitVisibleUserMessage(
+          sessionId: sessionId,
+          text: visible == null || visible.isEmpty ? "/$command" : "/$command $visible",
+          promptId: promptId,
+        );
+        return ClaudeQueuedDispatch.emittedVisibleMessage;
+      },
     );
   }
+
+  @override
+  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async =>
+      _sessions.queuedPrompts(sessionId: sessionId);
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async =>
+      _sessions.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId);
 
   @override
   Future<void> abortSession({required String sessionId}) => _sessions.abort(sessionId: sessionId);
@@ -403,10 +436,52 @@ final class ClaudePlugin({
     await _eventBuffer.close();
   }
 
-  Future<void> _enqueue({
+  /// Queues a send to an existing session, accepted at enqueue.
+  Future<void> _enqueueQueued({
     required String sessionId,
     required String directory,
-    required bool createNew,
+    required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+    required String operation,
+    required String promptId,
+    required String? displayText,
+    required String? command,
+    required int attachmentCount,
+    required ClaudeQueuedDispatch Function() onDispatched,
+  }) async {
+    _validateModel(model, operation: operation);
+    final effort = _effort(variant, operation: operation);
+    final permissionMode = _permissionMode(agent, operation: operation);
+    final createNew = _unstartedSessions.contains(sessionId);
+    try {
+      await _sessions.enqueueTurn(
+        sessionId: sessionId,
+        directory: directory,
+        createNew: createNew,
+        parts: parts,
+        model: model?.modelID,
+        effort: effort,
+        permissionMode: permissionMode,
+        promptId: promptId,
+        displayText: displayText,
+        command: command,
+        attachmentCount: attachmentCount,
+        onDispatched: onDispatched,
+      );
+    } on PluginOperationException {
+      rethrow;
+    } on Object catch (error) {
+      throw PluginOperationException(operation, message: "Claude did not accept the turn", cause: error);
+    }
+  }
+
+  /// Runs a new session's first turn with acceptance at dispatch, so session
+  /// creation can roll back when the initial prompt never starts.
+  Future<void> _enqueueInitial({
+    required String sessionId,
+    required String directory,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
     required String? agent,
@@ -418,10 +493,10 @@ final class ClaudePlugin({
     final permissionMode = _permissionMode(agent, operation: operation);
     _eventDispatcher.beginTurn(sessionId: sessionId);
     try {
-      await _sessions.enqueueTurn(
+      await _sessions.enqueueInitialTurn(
         sessionId: sessionId,
         directory: directory,
-        createNew: createNew,
+        createNew: true,
         parts: parts,
         model: model?.modelID,
         effort: effort,
@@ -508,13 +583,13 @@ final class ClaudePlugin({
     }
   }
 
-  /// Synthesizes the visible user bubble for a slash command.
+  /// Synthesizes the visible user bubble for a slash command at dispatch.
   ///
   /// Plain prompts never need this: `--replay-user-messages` echoes them under
   /// their transcript uuid. A command's echo (and its transcript row) is the
   /// CLI's `<command-name>` envelope, which both mapping paths drop, so this
   /// synthetic message stays the turn's only user row and cannot duplicate.
-  void _emitVisibleUserMessage({required String sessionId, required String? text}) {
+  void _emitVisibleUserMessage({required String sessionId, required String? text, required String? promptId}) {
     final visible = text?.trim();
     if (visible == null || visible.isEmpty) return;
     final messageId = "sesori-user-${++_messageSequence}";
@@ -526,7 +601,7 @@ final class ClaudePlugin({
           sessionID: sessionId,
           agent: null,
           time: PluginMessageTime(created: now, completed: now),
-          promptId: null,
+          promptId: promptId,
         ).toJson(),
       ),
     );
