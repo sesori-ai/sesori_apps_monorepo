@@ -184,6 +184,9 @@ final class PiPlugin._({
       try {
         await _sessionService.sendPrompt(
           sessionId: sessionId,
+          // createSession carries no client prompt id; the fresh session id
+          // keys this initial turn uniquely.
+          promptId: "initial-$sessionId",
           directory: normalized,
           parts: parts,
           userVisibleText: userVisibleText,
@@ -283,8 +286,6 @@ final class PiPlugin._({
   @override
   Future<void> sendPrompt({
     required String sessionId,
-    // Pi owns no prompt queue: busy sessions reject sends, so [promptId] has
-    // no queued entry or synthesized user message to stamp.
     required String promptId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
@@ -304,6 +305,7 @@ final class PiPlugin._({
     );
     await _sessionService.sendPrompt(
       sessionId: sessionId,
+      promptId: promptId,
       directory: session.directory,
       parts: parts,
       userVisibleText: parts.whereType<PluginPromptPartText>().map((part) => part.text).join(),
@@ -315,7 +317,6 @@ final class PiPlugin._({
   @override
   Future<void> sendCommand({
     required String sessionId,
-    // Ignored for the same reason as [sendPrompt]'s.
     required String promptId,
     required String command,
     required String arguments,
@@ -341,6 +342,7 @@ final class PiPlugin._({
     try {
       await _sessionService.sendCommand(
         sessionId: sessionId,
+        promptId: promptId,
         directory: session.directory,
         command: command,
         arguments: arguments,

@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:collection";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
@@ -30,9 +31,14 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
   PluginSessionStatus status = const PluginSessionStatus.idle();
   int generation = 0;
   int idleGeneration = 0;
+
+  /// Recently admitted prompt ids, retained so the retry of a send whose
+  /// response was lost is an idempotent no-op instead of a duplicate turn.
+  final Queue<String> recentPromptIds = Queue<String>();
 }
 
 final class _PiTurn({
+  required final String promptId,
   required final PiPromptPayload payload,
   required final ({String providerID, String modelID})? model,
   required final PluginSessionVariant? variant,
@@ -160,6 +166,7 @@ final class PiSessionService({
 
   Future<void> sendPrompt({
     required String sessionId,
+    required String promptId,
     required String directory,
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
@@ -172,6 +179,7 @@ final class PiSessionService({
       sessionId: sessionId,
       directory: directory,
       turn: _PiTurn(
+        promptId: promptId,
         payload: payload,
         model: model,
         variant: variant,
@@ -184,6 +192,7 @@ final class PiSessionService({
 
   Future<void> sendCommand({
     required String sessionId,
+    required String promptId,
     required String directory,
     required String command,
     required String arguments,
@@ -193,6 +202,7 @@ final class PiSessionService({
   }) {
     if (_disposed) return Future.error(const PiRpcDisposedException());
     final state = _sessions[sessionId];
+    if (state != null && state.recentPromptIds.contains(promptId)) return Future.value();
     if (state?.active != null || (state?.queue.isNotEmpty ?? false)) {
       return Future.error(PiSessionBusyException(sessionId: sessionId));
     }
@@ -205,6 +215,7 @@ final class PiSessionService({
       sessionId: sessionId,
       directory: directory,
       turn: _PiTurn(
+        promptId: promptId,
         payload: payload,
         model: model,
         variant: variant,
@@ -215,8 +226,23 @@ final class PiSessionService({
     return acceptance.future;
   }
 
+  /// See [_PiSessionTurnState.recentPromptIds]. 64 comfortably exceeds any
+  /// realistic gap between a lost acceptance response and its retry.
+  static const int _recentPromptIdLimit = 64;
+
   void _admit({required String sessionId, required String directory, required _PiTurn turn}) {
     final state = _sessions.putIfAbsent(sessionId, () => _PiSessionTurnState(initialDirectory: directory));
+    if (state.recentPromptIds.contains(turn.promptId)) {
+      // The retry of a send whose response was lost: the turn is already
+      // admitted (queued, running, or finished), so accept idempotently.
+      final acceptance = turn.commandAcceptance;
+      if (acceptance != null && !acceptance.isCompleted) acceptance.complete();
+      return;
+    }
+    state.recentPromptIds.addLast(turn.promptId);
+    while (state.recentPromptIds.length > _recentPromptIdLimit) {
+      state.recentPromptIds.removeFirst();
+    }
     state.directory = directory;
     state.idleGeneration++;
     state.queue.add(turn);
@@ -273,6 +299,7 @@ final class PiSessionService({
       }
       _dispatcher.beginTurn(
         sessionId: sessionId,
+        promptId: turn.promptId,
         executionText: turn.payload.message,
         userVisibleText: turn.userVisibleText,
       );

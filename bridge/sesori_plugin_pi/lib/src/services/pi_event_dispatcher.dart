@@ -19,12 +19,18 @@ final class PiEventDispatcher({
   final PiToolTracker _tools = toolTracker;
   final Map<String, _SessionState> _sessions = {};
 
-  void beginTurn({required String sessionId, required String? executionText, required String? userVisibleText}) {
+  void beginTurn({
+    required String sessionId,
+    required String promptId,
+    required String? executionText,
+    required String? userVisibleText,
+  }) {
     final state = _session(sessionId);
     state
       ..clearMessage()
       ..executionText = executionText
-      ..userVisibleText = userVisibleText;
+      ..userVisibleText = userVisibleText
+      ..promptId = promptId;
     _tools.beginTurn(sessionId: sessionId);
   }
 
@@ -311,13 +317,15 @@ final class PiEventDispatcher({
     final state = _session(sessionId);
     final textContent = message.content.whereType<PiTextContentDto>().singleOrNull;
     final visibleText = state.userVisibleText;
-    final exactText = textContent?.text == state.executionText ? visibleText : null;
+    final isTurnEcho = textContent?.text == state.executionText;
+    final exactText = isTurnEcho ? visibleText : null;
     final messageId = state.identities.next(role: PiMessageIdentityRole.user, timestamp: message.timestamp);
     final mapped = _historyMapper.mapUserMessage(
       sessionId: sessionId,
       messageId: messageId,
       message: message,
       exactText: exactText,
+      promptId: isTurnEcho ? state.promptId : null,
     );
     if (mapped == null) return const [];
     return [
@@ -608,6 +616,7 @@ final class _SessionState({required final PiMessageIdentityBuilder identities}) 
   PiAssistantMessageDto? message;
   String? executionText;
   String? userVisibleText;
+  String? promptId;
   bool announced = false;
   final Set<({int contentIndex, PluginMessagePartType type})> startedParts = {};
   final Set<String> emittedPartIds = {};

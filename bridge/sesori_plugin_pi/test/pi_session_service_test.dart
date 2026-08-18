@@ -58,6 +58,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-1",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "persisted")],
       userVisibleText: "persisted",
@@ -168,6 +169,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: sessionId,
+      promptId: "prompt-2",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "persist")],
       userVisibleText: "persist",
@@ -366,6 +368,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-3",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "selected")],
       userVisibleText: "selected",
@@ -393,6 +396,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-4",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "selected")],
       userVisibleText: "selected",
@@ -418,6 +422,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-5",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "ordered")],
       userVisibleText: "ordered",
@@ -446,6 +451,7 @@ void main() {
 
     final accepted = service.sendCommand(
       sessionId: "session",
+      promptId: "prompt-6",
       directory: "/project",
       command: "name",
       arguments: "first",
@@ -467,6 +473,7 @@ void main() {
 
     final failed = service.sendCommand(
       sessionId: "session",
+      promptId: "prompt-7",
       directory: "/project",
       command: "name",
       arguments: "second",
@@ -492,6 +499,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "one",
+      promptId: "prompt-8",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "first")],
       userVisibleText: "first",
@@ -500,6 +508,7 @@ void main() {
     );
     await service.sendPrompt(
       sessionId: "one",
+      promptId: "prompt-9",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "second")],
       userVisibleText: "second",
@@ -508,6 +517,7 @@ void main() {
     );
     await service.sendPrompt(
       sessionId: "two",
+      promptId: "prompt-10",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "other")],
       userVisibleText: "other",
@@ -528,6 +538,52 @@ void main() {
     expect(secondPrompt["message"], "second");
   });
 
+  test("a retried prompt id is an idempotent no-op instead of a duplicate turn", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prm_retry",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "once")],
+      userVisibleText: "once",
+      variant: null,
+      model: null,
+    );
+    // The retry of a send whose response was lost.
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prm_retry",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "once")],
+      userVisibleText: "once",
+      variant: null,
+      model: null,
+    );
+    final retriedCommand = service.sendCommand(
+      sessionId: "session",
+      promptId: "prm_retry",
+      directory: "/project",
+      command: "deploy",
+      arguments: "",
+      userVisibleArguments: null,
+      variant: null,
+      model: null,
+    );
+    await expectLater(retriedCommand, completes);
+
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+
+    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
+  });
+
   test("slash command keeps exact backend text and privacy-safe live presentation", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
@@ -538,6 +594,7 @@ void main() {
 
     final accepted = service.sendCommand(
       sessionId: "session",
+      promptId: "prompt-11",
       directory: "/project",
       command: "deploy",
       arguments: "--token hidden public",
@@ -577,6 +634,7 @@ void main() {
 
     final noArguments = service.sendCommand(
       sessionId: "session",
+      promptId: "prompt-12",
       directory: "/project",
       command: "status",
       arguments: "",
@@ -600,6 +658,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-13",
       directory: "/project",
       parts: [
         const PluginPromptPart.text(text: "/review src"),
@@ -641,6 +700,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-14",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "busy")],
       userVisibleText: "busy",
@@ -650,6 +710,7 @@ void main() {
     await expectLater(
       service.sendCommand(
         sessionId: "session",
+        promptId: "prompt-15",
         directory: "/project",
         command: "name",
         arguments: "x",
@@ -668,6 +729,7 @@ void main() {
 
     final accepted = service.sendCommand(
       sessionId: "session",
+      promptId: "prompt-16",
       directory: "/project",
       command: "name",
       arguments: "private visible",
@@ -720,6 +782,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-17",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "prompt")],
       userVisibleText: "prompt",
@@ -747,6 +810,7 @@ void main() {
 
     final accepted = service.sendCommand(
       sessionId: "session",
+      promptId: "prompt-18",
       directory: "/project",
       command: "name",
       arguments: "value",
@@ -772,6 +836,7 @@ void main() {
 
     final accepted = service.sendCommand(
       sessionId: "session",
+      promptId: "prompt-19",
       directory: "/project",
       command: "name",
       arguments: "value",
@@ -808,6 +873,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-20",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "first")],
       userVisibleText: "first",
@@ -816,6 +882,7 @@ void main() {
     );
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-21",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "queued")],
       userVisibleText: "queued",
@@ -860,6 +927,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-22",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "first")],
       userVisibleText: "first",
@@ -868,6 +936,7 @@ void main() {
     );
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-23",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "second")],
       userVisibleText: "second",
@@ -876,6 +945,7 @@ void main() {
     );
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-24",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "third")],
       userVisibleText: "third",
@@ -918,6 +988,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "child",
+      promptId: "prompt-25",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "prompt")],
       userVisibleText: "prompt",
@@ -971,6 +1042,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-26",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "first")],
       userVisibleText: "first",
@@ -979,6 +1051,7 @@ void main() {
     );
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-27",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "queued")],
       userVisibleText: "queued",
@@ -1008,6 +1081,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "one",
+      promptId: "prompt-28",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "one")],
       userVisibleText: "one",
@@ -1038,6 +1112,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-29",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "prompt")],
       userVisibleText: "prompt",
@@ -1072,6 +1147,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-30",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "first")],
       userVisibleText: "first",
@@ -1088,6 +1164,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-31",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "second")],
       userVisibleText: "second",
@@ -1114,6 +1191,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-32",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "prompt")],
       userVisibleText: "prompt",
@@ -1147,6 +1225,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-33",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "prompt")],
       userVisibleText: "prompt",
@@ -1180,6 +1259,7 @@ void main() {
     final sessionId = await service.prepareNewSession(directory: "/project", parentSessionId: null);
     await service.sendPrompt(
       sessionId: sessionId,
+      promptId: "prompt-34",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "prompt")],
       userVisibleText: "prompt",
