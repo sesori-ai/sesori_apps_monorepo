@@ -311,7 +311,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-      await api.sendMessage(
+      await api.sendMessage(promptId: "prompt-1", 
         attachments: const [],
         sessionId: "session-1",
         text: "hello",
@@ -346,7 +346,7 @@ void main() {
         bytes: Uint8List.fromList(const [1, 2, 3]),
         filename: "screenshot.png",
       );
-      await api.sendMessage(
+      await api.sendMessage(promptId: "prompt-1", 
         sessionId: "session-1",
         text: "look at this",
         attachments: [attachment],
@@ -383,7 +383,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-      await api.sendMessage(
+      await api.sendMessage(promptId: "prompt-1", 
         sessionId: "session-1",
         text: "",
         attachments: [

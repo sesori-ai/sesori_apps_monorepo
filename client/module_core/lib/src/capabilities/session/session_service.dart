@@ -121,6 +121,7 @@ class SessionService({required final SessionRepository _repository}) {
 
   Future<ApiResponse<void>> sendMessage({
     required String sessionId,
+    required String promptId,
     required String text,
     required List<ComposerAttachment> attachments,
     required String? agent,
@@ -130,6 +131,7 @@ class SessionService({required final SessionRepository _repository}) {
     required String? command,
   }) => _repository.sendMessage(
     sessionId: sessionId,
+    promptId: promptId,
     text: text,
     attachments: attachments,
     agent: agent,

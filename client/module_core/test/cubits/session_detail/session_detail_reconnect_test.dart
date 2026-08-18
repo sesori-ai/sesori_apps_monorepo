@@ -158,7 +158,7 @@ void main() {
       ),
     ).thenAnswer(
       (_) async => const SessionDetailLoadResult.loaded(
-        snapshot: SessionDetailSnapshot(
+        snapshot: SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
           projectId: "project-1",
           pluginId: "opencode",
           supportsPromptAttachments: false,
@@ -239,7 +239,7 @@ void main() {
     ).thenAnswer((_) async => ApiResponse.success(null));
 
     const loadedResult = SessionDetailLoadResult.loaded(
-      snapshot: SessionDetailSnapshot(
+      snapshot: SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
         projectId: "project-1",
         pluginId: "opencode",
         supportsPromptAttachments: false,

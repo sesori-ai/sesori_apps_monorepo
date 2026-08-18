@@ -680,7 +680,7 @@ void main() {
 
       // Nothing reached the wire, and the refused prompt was not queued either.
       verifyNever(
-        () => mockSessionRepository.sendMessage(
+        () => mockSessionRepository.sendMessage(promptId: "prompt-1", 
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           attachments: any(named: "attachments"),

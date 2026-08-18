@@ -137,7 +137,7 @@ void main() {
       // Complete the load with an empty snapshot
       completer.complete(
         const SessionDetailLoadResult.loaded(
-          snapshot: SessionDetailSnapshot(
+          snapshot: SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -205,7 +205,7 @@ void main() {
       // Complete the load
       completer.complete(
         const SessionDetailLoadResult.loaded(
-          snapshot: SessionDetailSnapshot(
+          snapshot: SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -268,7 +268,7 @@ void main() {
 
       loadCompleter.complete(
         const SessionDetailLoadResult.loaded(
-          snapshot: SessionDetailSnapshot(
+          snapshot: SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -320,7 +320,7 @@ void main() {
         ),
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
-          snapshot: SessionDetailSnapshot(
+          snapshot: SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -389,7 +389,7 @@ void main() {
     test("silent refresh fails closed when attachment support is unresolved", () async {
       final mockLoadService = MockSessionDetailLoadService();
       SessionDetailSnapshot snapshot({required bool? supportsPromptAttachments}) {
-        return SessionDetailSnapshot(
+        return SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
           projectId: "project-1",
           pluginId: "codex",
           supportsPromptAttachments: supportsPromptAttachments,
@@ -457,7 +457,7 @@ void main() {
     test("queued attachment waits for a current capability load after reconnect", () async {
       final mockLoadService = MockSessionDetailLoadService();
       final refreshes = <Completer<SessionDetailLoadResult>>[];
-      const snapshot = SessionDetailSnapshot(
+      const snapshot = SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
         projectId: "project-1",
         pluginId: "codex",
         supportsPromptAttachments: true,
@@ -498,7 +498,7 @@ void main() {
       });
       var sendCalls = 0;
       when(
-        () => mockSessionRepository.sendMessage(
+        () => mockSessionRepository.sendMessage(promptId: "prompt-1", 
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           attachments: any(named: "attachments"),
@@ -575,7 +575,7 @@ void main() {
         ),
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
-          snapshot: SessionDetailSnapshot(
+          snapshot: SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -597,7 +597,7 @@ void main() {
         ),
       );
       when(
-        () => mockSessionRepository.sendMessage(
+        () => mockSessionRepository.sendMessage(promptId: "prompt-1", 
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           attachments: any(named: "attachments"),
@@ -637,7 +637,7 @@ void main() {
     test("a send failed after reconnect is retried on the replacement connection", () async {
       final mockLoadService = MockSessionDetailLoadService();
       final firstAttempt = Completer<ApiResponse<void>>();
-      const snapshot = SessionDetailSnapshot(
+      const snapshot = SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
         projectId: "project-1",
         pluginId: "opencode",
         supportsPromptAttachments: false,
@@ -679,7 +679,7 @@ void main() {
       );
       var sendCalls = 0;
       when(
-        () => mockSessionRepository.sendMessage(
+        () => mockSessionRepository.sendMessage(promptId: "prompt-1", 
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           attachments: any(named: "attachments"),
@@ -723,7 +723,7 @@ void main() {
 
     test("stale pre-disconnect refresh cannot authorize a queued attachment", () async {
       final mockLoadService = MockSessionDetailLoadService();
-      const supportedSnapshot = SessionDetailSnapshot(
+      const supportedSnapshot = SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
         projectId: "project-1",
         pluginId: "codex",
         supportsPromptAttachments: true,
@@ -741,7 +741,7 @@ void main() {
         isRootSession: true,
         isArchived: false,
       );
-      const unsupportedSnapshot = SessionDetailSnapshot(
+      const unsupportedSnapshot = SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
         projectId: "project-1",
         pluginId: "codex",
         supportsPromptAttachments: false,
@@ -783,7 +783,7 @@ void main() {
       });
       var sendCalls = 0;
       when(
-        () => mockSessionRepository.sendMessage(
+        () => mockSessionRepository.sendMessage(promptId: "prompt-1", 
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           attachments: any(named: "attachments"),
@@ -865,7 +865,7 @@ void main() {
 
     test("stale pre-disconnect failure cannot overwrite the reconnect load", () async {
       final mockLoadService = MockSessionDetailLoadService();
-      const snapshot = SessionDetailSnapshot(
+      const snapshot = SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
         projectId: "project-1",
         pluginId: "codex",
         supportsPromptAttachments: true,
@@ -988,7 +988,7 @@ void main() {
 
       reloadedCompleter.complete(
         const SessionDetailLoadResult.loaded(
-          snapshot: SessionDetailSnapshot(
+          snapshot: SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -1062,7 +1062,7 @@ void main() {
 
       reloadedCompleter.complete(
         const SessionDetailLoadResult.loaded(
-          snapshot: SessionDetailSnapshot(
+          snapshot: SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -1100,7 +1100,7 @@ void main() {
         ),
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
-          snapshot: SessionDetailSnapshot(
+          snapshot: SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -1181,7 +1181,7 @@ void main() {
         attachment: null,
       );
 
-      SessionDetailSnapshot snapshot({required List<MessageWithParts> messages}) => SessionDetailSnapshot(
+      SessionDetailSnapshot snapshot({required List<MessageWithParts> messages}) => SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
         projectId: "project-1",
         pluginId: "opencode",
         supportsPromptAttachments: false,
@@ -1284,7 +1284,7 @@ void main() {
         ),
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
-          snapshot: SessionDetailSnapshot(
+          snapshot: SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -1356,7 +1356,7 @@ void main() {
         ),
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
-          snapshot: SessionDetailSnapshot(
+          snapshot: SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -1452,7 +1452,7 @@ void main() {
         ),
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
-          snapshot: SessionDetailSnapshot(
+          snapshot: SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -1527,7 +1527,7 @@ void main() {
         ),
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
-          snapshot: SessionDetailSnapshot(
+          snapshot: SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -1602,7 +1602,7 @@ void main() {
         ),
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
-          snapshot: SessionDetailSnapshot(
+          snapshot: SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -1670,7 +1670,7 @@ void main() {
       // Complete the load
       completer.complete(
         const SessionDetailLoadResult.loaded(
-          snapshot: SessionDetailSnapshot(
+          snapshot: SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,

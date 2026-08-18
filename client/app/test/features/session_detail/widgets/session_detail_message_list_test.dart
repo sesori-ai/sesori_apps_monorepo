@@ -94,7 +94,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
-        body: SessionDetailMessageList(
+        body: SessionDetailMessageList(bridgeQueuedPrompts: const [], 
           projectId: null,
           onLoadOlderMessages: widget.onLoadOlderMessages,
           messages: _messages,
@@ -526,7 +526,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    const submission = QueuedSessionSubmission.text(
+    const submission = QueuedSessionSubmission.text(promptId: "prompt-1", 
       text: "Queued while reading history",
       inputMode: ComposerInputMode.typed,
       attachments: [],
@@ -565,7 +565,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    const submission = QueuedSessionSubmission.text(
+    const submission = QueuedSessionSubmission.text(promptId: "prompt-1", 
       text: "New prompt from history",
       inputMode: ComposerInputMode.typed,
       attachments: [],
@@ -595,7 +595,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    const submission = QueuedSessionSubmission.text(
+    const submission = QueuedSessionSubmission.text(promptId: "prompt-1", 
       text: "Queued before reconnect",
       inputMode: ComposerInputMode.typed,
       attachments: [],
@@ -632,7 +632,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    const submission = QueuedSessionSubmission.text(
+    const submission = QueuedSessionSubmission.text(promptId: "prompt-1", 
       text: "Direct sending prompt",
       inputMode: ComposerInputMode.typed,
       attachments: [],

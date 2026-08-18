@@ -136,6 +136,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
 
   Future<ApiResponse<void>> sendMessage({
     required String sessionId,
+    required String promptId,
     required String text,
     required List<ComposerAttachment> attachments,
     required String? agent,
@@ -153,10 +154,27 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         model: model,
         variant: variant,
         command: command,
-        // Client-generated prompt identity lands with the bridge-owned queue
-        // rendering (plan step 5); until then the bridge generates one.
-        promptId: null,
+        promptId: promptId,
       ),
+    );
+  }
+
+  /// The bridge-owned queued prompts for a session. Old bridges without the
+  /// route answer an error, which callers degrade to an empty list.
+  Future<ApiResponse<QueuedPromptResponse>> getQueuedPrompts({required String sessionId}) {
+    return _client.post(
+      "/session/queued_prompts",
+      fromJson: QueuedPromptResponse.fromJson,
+      body: SessionIdRequest(sessionId: sessionId),
+    );
+  }
+
+  /// Cancels a bridge-queued prompt before it dispatches to the harness.
+  Future<ApiResponse<void>> cancelQueuedPrompt({required String sessionId, required String promptId}) {
+    return _client.post(
+      "/session/prompt/cancel",
+      fromJson: SuccessEmptyResponse.fromJson,
+      body: CancelQueuedPromptRequest(sessionId: sessionId, promptId: promptId),
     );
   }
 

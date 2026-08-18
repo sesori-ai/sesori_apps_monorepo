@@ -351,7 +351,7 @@ void main() {
 
     test("sendMessage forwards selectedAgentModel variant to repository", () async {
       when(
-        () => mockSessionRepository.sendMessage(
+        () => mockSessionRepository.sendMessage(promptId: "prompt-1", 
           attachments: const [],
           sessionId: sessionId,
           text: "hello",
@@ -390,7 +390,7 @@ void main() {
       );
 
       verify(
-        () => mockSessionRepository.sendMessage(
+        () => mockSessionRepository.sendMessage(promptId: "prompt-1", 
           attachments: const [],
           sessionId: sessionId,
           text: "hello",

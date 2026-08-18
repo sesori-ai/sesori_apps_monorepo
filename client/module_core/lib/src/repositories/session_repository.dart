@@ -226,6 +226,7 @@ class SessionRepository({
 
   Future<ApiResponse<void>> sendMessage({
     required String sessionId,
+    required String promptId,
     required String text,
     required List<ComposerAttachment> attachments,
     required String? agent,
@@ -235,6 +236,7 @@ class SessionRepository({
   }) {
     return _api.sendMessage(
       sessionId: sessionId,
+      promptId: promptId,
       text: text,
       attachments: attachments,
       agent: agent,
@@ -242,5 +244,13 @@ class SessionRepository({
       variant: variant,
       command: command,
     );
+  }
+
+  Future<ApiResponse<QueuedPromptResponse>> getQueuedPrompts({required String sessionId}) {
+    return _api.getQueuedPrompts(sessionId: sessionId);
+  }
+
+  Future<ApiResponse<void>> cancelQueuedPrompt({required String sessionId, required String promptId}) {
+    return _api.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId);
   }
 }

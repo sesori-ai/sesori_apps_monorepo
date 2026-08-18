@@ -54,4 +54,18 @@ class PromptSendQueue() {
     _items.removeWhere((_) => i++ == index);
     return item;
   }
+
+  /// Drops every staged copy of [promptId] — the bridge owns that prompt now
+  /// (its queue listed it, or its message landed), so a local retry would
+  /// only duplicate it.
+  void removeByPromptId(String promptId) {
+    _items.removeWhere((item) => item.promptId == promptId);
+    if (_active?.promptId == promptId) _active = null;
+  }
+
+  /// Drops everything staged locally (the user stopped the session).
+  void clear() {
+    _items.clear();
+    _active = null;
+  }
 }
