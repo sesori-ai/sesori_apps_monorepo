@@ -118,6 +118,12 @@ extension RequestHandlerTestMatching on RequestHandlerBase {
 
 /// Hand-written fake [BridgePluginApi] used across routing handler tests.
 class FakeBridgePlugin() implements NativeProjectsPluginApi {
+  @override
+  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
+
   final _controller = StreamController<BridgeSseEvent>.broadcast();
 
   // ── Configurable return values ───────────────────────────────────────────
@@ -368,6 +374,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
 
   @override
   Future<void> sendPrompt({
+    required String promptId,
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
@@ -383,6 +390,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
 
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,
@@ -1044,6 +1052,7 @@ class _NoopSessionRepository() implements SessionRepository {
 
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,
@@ -1059,6 +1068,7 @@ class _NoopSessionRepository() implements SessionRepository {
 
   @override
   Future<void> sendPrompt({
+    required String promptId,
     required String sessionId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
@@ -1558,6 +1568,7 @@ class FakeSessionRepository({
 
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,
@@ -1567,6 +1578,7 @@ class FakeSessionRepository({
     required PromptModel? model,
   }) async {
     await _plugin.sendCommand(
+      promptId: "prompt-1",
       sessionId: sessionId,
       command: command,
       arguments: arguments,
@@ -1593,6 +1605,7 @@ class FakeSessionRepository({
 
   @override
   Future<void> sendPrompt({
+    required String promptId,
     required String sessionId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
@@ -1600,6 +1613,7 @@ class FakeSessionRepository({
     required PromptModel? model,
   }) async {
     await _plugin.sendPrompt(
+      promptId: "prompt-1",
       sessionId: sessionId,
       parts: parts.map((part) => part.toPlugin()).toList(growable: false),
       variant: _toPluginVariant(variant),

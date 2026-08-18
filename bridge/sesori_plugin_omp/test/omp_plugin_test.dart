@@ -80,6 +80,7 @@ void main() {
     }
 
     Future<void> send(String sessionId, String text) => plugin.sendPrompt(
+      promptId: "prompt-1",
       sessionId: sessionId,
       parts: [PluginPromptPart.text(text: text)],
       variant: null,
@@ -147,6 +148,7 @@ void main() {
       await creating;
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "session-1",
         parts: const [PluginPromptPart.text(text: "private prompt")],
         variant: null,

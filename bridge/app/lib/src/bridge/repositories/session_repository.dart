@@ -285,6 +285,7 @@ class SessionRepository({
 
   Future<void> sendCommand({
     required String sessionId,
+    required String promptId,
     required String command,
     required String arguments,
     required String? userVisibleArguments,
@@ -303,6 +304,7 @@ class SessionRepository({
         _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
         return plugin.sendCommand(
           sessionId: binding.backendSessionId,
+          promptId: promptId,
           command: command,
           arguments: arguments,
           userVisibleArguments: userVisibleArguments,
@@ -319,6 +321,7 @@ class SessionRepository({
 
   Future<void> sendPrompt({
     required String sessionId,
+    required String promptId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
     required String? agent,
@@ -335,6 +338,7 @@ class SessionRepository({
         _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
         return plugin.sendPrompt(
           sessionId: binding.backendSessionId,
+          promptId: promptId,
           parts: parts.map((part) => part.toPlugin()).toList(growable: false),
           variant: _toPluginVariant(variant),
           agent: agent,

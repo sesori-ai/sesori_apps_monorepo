@@ -523,8 +523,13 @@ Future<List<MessageWithParts>> _storedMessages({
   storageScope: testAttachmentStorageScope(sessionId: sessionId),
 )).messages;
 
-Message _message({required String id}) =>
-    Message.user(id: id, sessionID: "ses_a", agent: null, time: const MessageTime(created: 1, completed: null));
+Message _message({required String id}) => Message.user(
+  promptId: null,
+  id: id,
+  sessionID: "ses_a",
+  agent: null,
+  time: const MessageTime(created: 1, completed: null),
+);
 
 MessagePart _part({
   required String id,

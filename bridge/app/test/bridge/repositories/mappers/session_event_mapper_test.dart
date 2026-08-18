@@ -17,6 +17,7 @@ void main() {
         parentId: "backend-parent",
       );
       final messageInfo = const Message.user(
+        promptId: null,
         id: "message",
         sessionID: "backend-session",
         agent: null,

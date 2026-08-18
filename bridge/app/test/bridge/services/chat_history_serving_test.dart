@@ -184,8 +184,13 @@ void main() {
   });
 }
 
-Message _message({required String id}) =>
-    Message.user(id: id, sessionID: "ses_a", agent: null, time: const MessageTime(created: 1, completed: null));
+Message _message({required String id}) => Message.user(
+  promptId: null,
+  id: id,
+  sessionID: "ses_a",
+  agent: null,
+  time: const MessageTime(created: 1, completed: null),
+);
 
 MessagePart _part({required String id, required String messageId}) => MessagePart(
   id: id,

@@ -384,6 +384,12 @@ class _TestHarness._({
 }
 
 class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
+  @override
+  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
+
   final _controller = StreamController<BridgeSseEvent>.broadcast();
 
   int subscribeCount = 0;
@@ -480,6 +486,7 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
 
   @override
   Future<void> sendPrompt({
+    required String promptId,
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
@@ -547,6 +554,7 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
 
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,

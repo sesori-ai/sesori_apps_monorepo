@@ -1250,6 +1250,7 @@ void main() {
             messages: [
               MessageWithParts(
                 info: const Message.user(
+                  promptId: null,
                   id: "message-1",
                   sessionID: _sessionId,
                   agent: "build",
@@ -1331,6 +1332,7 @@ void main() {
       sessionEvents.add(
         const SesoriMessageUpdated(
           info: Message.user(
+            promptId: null,
             id: "message-1",
             sessionID: _sessionId,
             agent: "build",
@@ -1415,6 +1417,7 @@ void main() {
       sessionEvents.add(
         const SesoriMessageUpdated(
           info: Message.user(
+            promptId: null,
             id: "message-1",
             sessionID: _sessionId,
             agent: "build",
@@ -1476,6 +1479,7 @@ void main() {
       sessionEvents.add(
         const SesoriMessageUpdated(
           info: Message.user(
+            promptId: null,
             id: "message-1",
             sessionID: _sessionId,
             agent: "build",
@@ -1550,6 +1554,7 @@ void main() {
       sessionEvents.add(
         const SesoriMessageUpdated(
           info: Message.user(
+            promptId: null,
             id: "z-user",
             sessionID: _sessionId,
             agent: "build",
@@ -1570,6 +1575,7 @@ void main() {
       const messages = <MessageWithParts>[
         MessageWithParts(
           info: Message.user(
+            promptId: null,
             id: "user-1",
             sessionID: _sessionId,
             agent: "build",
@@ -1623,6 +1629,7 @@ void main() {
       sessionEvents.add(
         const SesoriMessageUpdated(
           info: Message.user(
+            promptId: null,
             id: "user-2",
             sessionID: _sessionId,
             agent: "build",

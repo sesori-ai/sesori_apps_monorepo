@@ -380,6 +380,7 @@ void main() {
       messages: const [
         MessageWithParts(
           info: Message.user(
+            promptId: null,
             id: "empty-user-envelope",
             sessionID: "session-1",
             agent: null,
@@ -467,6 +468,7 @@ void main() {
       messages: const [
         MessageWithParts(
           info: Message.user(
+            promptId: null,
             id: "markdown-user",
             sessionID: "session-1",
             agent: null,
@@ -511,6 +513,7 @@ void main() {
       messages: const [
         MessageWithParts(
           info: Message.user(
+            promptId: null,
             id: "remote-image-user",
             sessionID: "session-1",
             agent: null,
@@ -553,6 +556,7 @@ void main() {
       messages: const [
         MessageWithParts(
           info: Message.user(
+            promptId: null,
             id: "unknown-attachment-user",
             sessionID: "session-1",
             agent: null,
@@ -593,6 +597,7 @@ void main() {
       messages: const [
         MessageWithParts(
           info: Message.user(
+            promptId: null,
             id: "empty-user",
             sessionID: "session-1",
             agent: null,

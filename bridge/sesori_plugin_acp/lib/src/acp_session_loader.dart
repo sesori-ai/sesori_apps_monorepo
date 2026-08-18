@@ -292,6 +292,7 @@ class AcpReplayCollector({
         sessionID: sessionId,
         agent: null,
         time: null,
+        promptId: null,
       );
     }
     return PluginMessage.assistant(

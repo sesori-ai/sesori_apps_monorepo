@@ -220,6 +220,7 @@ final class ClaudePlugin({
   @override
   Future<void> sendPrompt({
     required String sessionId,
+    required String promptId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
     required String? agent,
@@ -244,6 +245,7 @@ final class ClaudePlugin({
   @override
   Future<void> sendCommand({
     required String sessionId,
+    required String promptId,
     required String command,
     required String arguments,
     required String? userVisibleArguments,
@@ -524,6 +526,7 @@ final class ClaudePlugin({
           sessionID: sessionId,
           agent: null,
           time: PluginMessageTime(created: now, completed: now),
+          promptId: null,
         ).toJson(),
       ),
     );

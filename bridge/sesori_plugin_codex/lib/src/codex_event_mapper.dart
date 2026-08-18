@@ -389,6 +389,7 @@ class CodexEventMapper({
             // Live notifications carry no per-message timestamp; the rollout
             // re-fetch is authoritative and fills this in.
             time: null,
+            promptId: null,
           ),
           partType: PluginMessagePartType.text,
           partSuffix: "text",

@@ -314,6 +314,7 @@ final class ClaudeEventDispatcher({
           sessionID: sessionId,
           agent: null,
           time: _messageTime(message.timestamp),
+          promptId: null,
         ).toJson(),
       ),
       for (final part in parts) BridgeSseMessagePartUpdated(part: part),

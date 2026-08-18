@@ -60,7 +60,10 @@ void main() {
     when(() => connectionService.status).thenAnswer((_) => connectionStatus);
     when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
     when(
-      () => loadService.load(sessionId: any(named: "sessionId"), projectId: any(named: "projectId")),
+      () => loadService.load(
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+      ),
     ).thenAnswer(
       (_) async => SessionDetailLoadResult.loaded(
         snapshot: _snapshot(messages: messages, olderMessagesCursor: olderMessagesCursor),
@@ -68,7 +71,10 @@ void main() {
       ),
     );
     when(
-      () => loadService.reload(sessionId: any(named: "sessionId"), projectId: any(named: "projectId")),
+      () => loadService.reload(
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+      ),
     ).thenAnswer(
       (_) async => SessionDetailLoadResult.loaded(
         snapshot: _snapshot(messages: messages, olderMessagesCursor: olderMessagesCursor),
@@ -98,14 +104,23 @@ void main() {
   group("session detail paging", () {
     setUp(() async {
       await openSession(
-        messages: [_message(id: "m5"), _message(id: "m6")],
+        messages: [
+          _message(id: "m5"),
+          _message(id: "m6"),
+        ],
         olderMessagesCursor: 5,
       );
     });
 
     test("loading older messages prepends them and advances the cursor", () async {
       when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5)).thenAnswer(
-        (_) async => (messages: [_message(id: "m3"), _message(id: "m4")], olderMessagesCursor: 3),
+        (_) async => (
+          messages: [
+            _message(id: "m3"),
+            _message(id: "m4"),
+          ],
+          olderMessagesCursor: 3,
+        ),
       );
 
       await cubit.loadOlderMessages();
@@ -152,7 +167,13 @@ void main() {
       // The bridge's cursor is exclusive, but a live event may have appended
       // the same message while the page was in flight.
       when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5)).thenAnswer(
-        (_) async => (messages: [_message(id: "m4"), _message(id: "m5")], olderMessagesCursor: null),
+        (_) async => (
+          messages: [
+            _message(id: "m4"),
+            _message(id: "m5"),
+          ],
+          olderMessagesCursor: null,
+        ),
       );
 
       await cubit.loadOlderMessages();
@@ -214,7 +235,13 @@ Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
 }
 
 MessageWithParts _message({required String id}) => MessageWithParts(
-  info: Message.user(id: id, sessionID: _sessionId, agent: null, time: const MessageTime(created: 1, completed: null)),
+  info: Message.user(
+    promptId: null,
+    id: id,
+    sessionID: _sessionId,
+    agent: null,
+    time: const MessageTime(created: 1, completed: null),
+  ),
   parts: const [],
 );
 

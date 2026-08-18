@@ -170,6 +170,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendCommand(
+        promptId: "prompt-1",
         sessionId: testSessionId,
         command: "review",
         arguments: "${_worktreeContext.trimRight()}\n\nsrc",
@@ -204,6 +205,7 @@ void main() {
 
       await expectLater(
         harness.plugin.sendCommand(
+          promptId: "prompt-1",
           sessionId: session.id,
           command: "review",
           arguments: "src",
@@ -230,6 +232,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "follow-up")],
         variant: null,
@@ -260,6 +263,7 @@ void main() {
       await pump();
 
       await harness.plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "deeper")],
         variant: const PluginSessionVariant(id: "high"),
@@ -279,6 +283,7 @@ void main() {
     test("throws not found instead of creating a process for an unknown session", () async {
       await expectLater(
         harness.plugin.sendPrompt(
+          promptId: "prompt-1",
           sessionId: otherTestSessionId,
           parts: const [PluginPromptPart.text(text: "hello")],
           variant: null,
@@ -450,6 +455,7 @@ void main() {
         process,
       ).where((subtype) => subtype == "set_permission_mode").length;
       await harness.plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "plan again")],
         variant: null,

@@ -6,7 +6,7 @@ part "send_prompt_request.freezed.dart";
 
 part "send_prompt_request.g.dart";
 
-/// Request body for `POST /session/prompt`.
+/// Request body for `POST /session/prompt_async`.
 @Freezed(fromJson: true, toJson: true)
 sealed class SendPromptRequest with _$SendPromptRequest {
   const factory({
@@ -16,6 +16,13 @@ sealed class SendPromptRequest with _$SendPromptRequest {
     required PromptModel? model,
     required String? command,
     required SessionVariant? variant,
+
+    /// Client-generated identity for this prompt, stable across retries.
+    ///
+    /// The bridge queues, dedupes, and correlates the eventual transcript
+    /// message under this id. Null from clients that predate it; the bridge
+    /// generates a fallback so plugins always receive one.
+    required String? promptId,
   }) = _SendPromptRequest;
 
   factory fromJson(Map<String, dynamic> json) => _$SendPromptRequestFromJson(json);
