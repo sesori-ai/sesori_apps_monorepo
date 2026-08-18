@@ -283,6 +283,9 @@ final class PiPlugin._({
   @override
   Future<void> sendPrompt({
     required String sessionId,
+    // Pi owns no prompt queue: busy sessions reject sends, so [promptId] has
+    // no queued entry or synthesized user message to stamp.
+    required String promptId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
     required String? agent,
@@ -312,6 +315,8 @@ final class PiPlugin._({
   @override
   Future<void> sendCommand({
     required String sessionId,
+    // Ignored for the same reason as [sendPrompt]'s.
+    required String promptId,
     required String command,
     required String arguments,
     required String? userVisibleArguments,
