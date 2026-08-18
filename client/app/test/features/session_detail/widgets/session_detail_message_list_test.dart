@@ -6,6 +6,7 @@ import "package:sesori_mobile/features/session_detail/widgets/message_timestamp_
 import "package:sesori_mobile/features/session_detail/widgets/queued_message_bubble.dart";
 import "package:sesori_mobile/features/session_detail/widgets/retry_error_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_message_list.dart";
+import "package:sesori_mobile/features/session_detail/widgets/user_message_card.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -91,6 +92,15 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     });
   }
 
+  /// Mirrors the cubit's atomic queued→sent swap: the delivered user message
+  /// lands and the bridge entry leaves in one state emission.
+  void deliverBridgePrompt({required String promptId, required MessageWithParts message}) {
+    setState(() {
+      _messages = [..._messages, message];
+      _bridgeQueuedPrompts = [..._bridgeQueuedPrompts.where((prompt) => prompt.id != promptId)];
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -130,12 +140,13 @@ MessageWithParts _message({
   required String text,
   String? partId,
   int? createdAtMs,
+  String? promptId,
 }) {
   final resolvedPartId = partId ?? "$messageId-part";
   final time = createdAtMs == null ? null : MessageTime(created: createdAtMs, completed: null);
 
   final info = role == "user"
-      ? Message.user(promptId: null, id: messageId, sessionID: "session-1", agent: null, time: time)
+      ? Message.user(promptId: promptId, id: messageId, sessionID: "session-1", agent: null, time: time)
       : Message.assistant(
           id: messageId,
           sessionID: "session-1",
@@ -262,6 +273,39 @@ void main() {
     expect(harnessKey.currentState?.cancelledBridgePromptIds, ["prm_1"]);
     expect(find.text("steer it"), findsNothing);
     expect(find.text("/review src"), findsOneWidget);
+  });
+
+  testWidgets("a bridge-queued prompt transforms into its message without a blank frame", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [_message(messageId: "assistant-1", role: "assistant", text: "working on it")],
+        initialStreamingText: const {},
+        initialBridgeQueuedPrompts: const [
+          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 0, createdAt: 100),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text("steer it"), findsOneWidget);
+    expect(find.byType(QueuedMessageBubble), findsOneWidget);
+
+    harnessKey.currentState?.deliverBridgePrompt(
+      promptId: "prm_1",
+      message: _message(messageId: "replay-user-1", role: "user", text: "steer it", promptId: "prm_1"),
+    );
+
+    // The prompt's text must stay on screen through every frame of the
+    // handoff — the row transforms in place, it never blinks out.
+    await tester.pump();
+    expect(find.text("steer it"), findsOneWidget);
+    await tester.pump();
+    expect(find.text("steer it"), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text("steer it"), findsOneWidget);
+    expect(find.byType(QueuedMessageBubble), findsNothing);
+    expect(find.byType(UserMessageCard), findsOneWidget);
   });
 
   testWidgets("does not render a user envelope until it has visible parts", (tester) async {

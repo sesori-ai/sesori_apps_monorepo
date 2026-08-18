@@ -2796,7 +2796,7 @@ void main() {
       agentModel: null,
     );
     const followingSubmission = QueuedSessionSubmission.text(
-      promptId: "prompt-1",
+      promptId: "prompt-2",
       text: "Next prompt",
       inputMode: ComposerInputMode.typed,
       attachments: [],
@@ -2814,7 +2814,9 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    final submissionFinder = find.byKey(const ObjectKey(submission));
+    final submissionFinder = find.byWidgetPredicate(
+      (widget) => widget is QueuedMessageBubble && widget.key == const ValueKey("session-detail-prompt-prompt-1"),
+    );
     final before = tester.element(submissionFinder);
     expect(
       find.descendant(of: find.byType(SessionDetailMessageList), matching: submissionFinder),

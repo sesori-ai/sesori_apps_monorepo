@@ -127,8 +127,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// pinned at the newest edge. Domain message ids come from the
   /// assistant backend and cannot collide with this.
   static const _kRetryErrorRowId = "session-detail-retry-error-row";
-  static const _kTransientSubmissionRowPrefix = "session-detail-transient-submission-";
-  static const _kBridgeQueuedRowPrefix = "session-detail-bridge-queued-";
+  static const _kPromptRowPrefix = "session-detail-prompt-";
 
   static const _kUserAuthorId = "user";
   static const _kAgentAuthorId = "agent";
@@ -199,8 +198,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   /// The chat controller needs string IDs; object identity keeps one row stable
   /// as the queue moves the same submission from pending to sending.
-  final Expando<String> _transientSubmissionEntryIds = Expando<String>();
-  int _nextTransientSubmissionEntryId = 0;
 
   @override
   void initState() {
@@ -425,11 +422,15 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required List<QueuedSessionPrompt> bridgeQueuedPrompts,
     required bool hasRetryError,
   }) {
-    return <chat_core.Message>[
+    // A prompt keeps one row id from staged send through bridge queue to its
+    // delivered user message, so the animated list updates that row in place
+    // instead of removing one entry and inserting another — the queued→sent
+    // handoff must never blink through a frame with neither rendered.
+    final entries = <chat_core.Message>[
       for (final message in messages)
         if (message.hasRenderableUserContent)
           chat_core.Message.custom(
-            id: message.info.id,
+            id: _entryIdForMessage(info: message.info),
             authorId: switch (message.info) {
               MessageUser() => _kUserAuthorId,
               MessageAssistant() => _kAgentAuthorId,
@@ -438,7 +439,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             // Role discriminates assistant from error under the shared
             // agent authorId, so a live assistant→error transition on the
             // same message id is no longer value-equal and forces the row
-            // to re-render as the error card.
+            // to re-render as the error card. The same inequality drives the
+            // transient-submission→user transform on a stable prompt row id.
             metadata: <String, String>{
               _kRoleMetadataKey: switch (message.info) {
                 MessageUser() => _kUserRole,
@@ -449,21 +451,30 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           ),
       if (hasRetryError) const chat_core.Message.custom(id: _kRetryErrorRowId, authorId: _kAgentAuthorId),
       // Bridge-accepted prompts render before locally staged ones: they were
-      // accepted earlier and dispatch first.
+      // accepted earlier and dispatch first. A prompt whose message already
+      // landed owns that row id above and renders only as the message.
       for (final prompt in bridgeQueuedPrompts)
         chat_core.Message.custom(
-          id: "$_kBridgeQueuedRowPrefix${prompt.id}",
+          id: "$_kPromptRowPrefix${prompt.id}",
           authorId: _kUserAuthorId,
           metadata: const <String, String>{_kRoleMetadataKey: _kTransientSubmissionRole},
         ),
       if (sendingSubmission != null) _chatEntryFor(submission: sendingSubmission),
       for (final submission in queuedMessages) _chatEntryFor(submission: submission),
     ];
+    // One row per id: a prompt momentarily present in two sources (its message
+    // landed while the queue copy is still being reconciled) keeps its most
+    // settled entry. The chat controller hard-rejects duplicate ids.
+    final seenIds = <String>{};
+    return [
+      for (final entry in entries)
+        if (seenIds.add(entry.id)) entry,
+    ];
   }
 
   chat_core.Message _chatEntryFor({required QueuedSessionSubmission submission}) {
     return chat_core.Message.custom(
-      id: _entryIdFor(submission: submission),
+      id: "$_kPromptRowPrefix${submission.promptId}",
       authorId: _kUserAuthorId,
       metadata: const <String, String>{
         _kRoleMetadataKey: _kTransientSubmissionRole,
@@ -471,19 +482,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     );
   }
 
+  String _entryIdForMessage({required Message info}) => switch (info) {
+    MessageUser(promptId: final promptId?) => "$_kPromptRowPrefix$promptId",
+    MessageUser() || MessageAssistant() || MessageError() => info.id,
+  };
+
   static String? _bridgePromptDisplayText(QueuedSessionPrompt prompt) {
     final command = prompt.command;
     final text = prompt.text;
     if (command == null) return text;
     return text == null ? "/$command" : "/$command $text";
-  }
-
-  String _entryIdFor({required QueuedSessionSubmission submission}) {
-    final existing = _transientSubmissionEntryIds[submission];
-    if (existing != null) return existing;
-    final id = "$_kTransientSubmissionRowPrefix${_nextTransientSubmissionEntryId++}";
-    _transientSubmissionEntryIds[submission] = id;
-    return id;
   }
 
   static Future<chat_core.User?> _resolveUser(String id) async => chat_core.User(id: id);
@@ -503,9 +511,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final indexById = _indexByIdFor(messages: messages);
     final transientSubmissions = <String, _TransientSubmission>{
       if (sendingSubmission != null)
-        _entryIdFor(submission: sendingSubmission): (submission: sendingSubmission, isSending: true),
+        "$_kPromptRowPrefix${sendingSubmission.promptId}": (submission: sendingSubmission, isSending: true),
       for (final submission in queuedMessages)
-        _entryIdFor(submission: submission): (submission: submission, isSending: false),
+        "$_kPromptRowPrefix${submission.promptId}": (submission: submission, isSending: false),
     };
 
     // Coalesced post-frame pin-to-edge while following. The scheduler
@@ -639,23 +647,34 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       // Synthetic row: no timestamp, but it still slides with the rest.
       return _revealable(createdAtMs: null, child: RetryErrorMessageCard(message: retryErrorMessage));
     }
-    if (entry.id.startsWith(_kBridgeQueuedRowPrefix)) {
-      final promptId = entry.id.substring(_kBridgeQueuedRowPrefix.length);
+    if (entry.id.startsWith(_kPromptRowPrefix)) {
+      // One row serves the prompt's whole lifecycle. Resolve the most settled
+      // state first: the delivered message, else the bridge-queued entry, else
+      // the locally staged submission. A mid-handoff frame (entry updated
+      // before the next widget rebuild, or vice versa) then renders the
+      // previous state instead of collapsing to an empty box.
+      final index = indexById[entry.id];
+      if (index != null && index < messages.length && messages[index].hasRenderableUserContent) {
+        final message = messages[index];
+        return _revealable(createdAtMs: message.info.time?.created, child: UserMessageCard(message: message));
+      }
+      final promptId = entry.id.substring(_kPromptRowPrefix.length);
       final prompt = widget.bridgeQueuedPrompts.where((candidate) => candidate.id == promptId).firstOrNull;
-      if (prompt == null) return const SizedBox.shrink();
-      final onCancel = widget.onCancelBridgeQueuedPrompt;
-      return _revealable(
-        createdAtMs: prompt.createdAt,
-        child: QueuedMessageBubble(
-          key: ValueKey(entry.id),
-          displayText: _bridgePromptDisplayText(prompt),
-          isCommand: prompt.command != null,
-          attachmentCount: prompt.attachmentCount,
-          presentation: onCancel == null
-              ? const QueuedMessageBubblePresentation.pendingReadOnly()
-              : QueuedMessageBubblePresentation.pending(onCancel: () => onCancel(prompt.id)),
-        ),
-      );
+      if (prompt != null) {
+        final onCancel = widget.onCancelBridgeQueuedPrompt;
+        return _revealable(
+          createdAtMs: prompt.createdAt,
+          child: QueuedMessageBubble(
+            key: ValueKey(entry.id),
+            displayText: _bridgePromptDisplayText(prompt),
+            isCommand: prompt.command != null,
+            attachmentCount: prompt.attachmentCount,
+            presentation: onCancel == null
+                ? const QueuedMessageBubblePresentation.pendingReadOnly()
+                : QueuedMessageBubblePresentation.pending(onCancel: () => onCancel(prompt.id)),
+          ),
+        );
+      }
     }
     final transientSubmission = transientSubmissions[entry.id];
     if (transientSubmission != null) {
@@ -664,7 +683,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return _revealable(
         createdAtMs: null,
         child: QueuedMessageBubble(
-          key: ObjectKey(submission),
+          key: ValueKey(entry.id),
           displayText: submission.displayText,
           isCommand: submission.isCommand,
           attachmentCount: submission.attachments.length,
@@ -892,6 +911,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _indexSignature = signature;
     return _indexById = <String, int>{
       for (var i = 0; i < messages.length; i++) messages[i].info.id: i,
+      for (var i = 0; i < messages.length; i++)
+        if (messages[i].info case MessageUser(promptId: final promptId?)) "$_kPromptRowPrefix$promptId": i,
     };
   }
 
