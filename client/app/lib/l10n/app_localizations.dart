@@ -1591,6 +1591,12 @@ abstract class AppLocalizations {
   /// **'Attach image'**
   String get sessionDetailAttachImage;
 
+  /// Label shown over the composer while supported image files are dragged over its native desktop or iPad drop target.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop images to attach'**
+  String get sessionDetailDropImagesToAttach;
+
   /// Accessibility label of the badge on a staged attachment thumbnail that removes it from the composer.
   ///
   /// In en, this message translates to:

@@ -27,6 +27,8 @@ import "package:sesori_mobile/features/session_detail/widgets/user_message_card.
 import "package:sesori_mobile/features/session_detail/widgets/voice_cancel_button.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:super_clipboard/super_clipboard.dart";
+import "package:super_drag_and_drop/super_drag_and_drop.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
@@ -40,6 +42,22 @@ class MockVoiceTranscriptionService() extends Mock implements VoiceTranscription
 class MockComposerImagePicker() extends Mock implements ComposerImagePicker;
 
 class MockImageClipboard() extends Mock implements ImageClipboard;
+
+class MockDropItem() extends Mock implements DropItem {
+  @override
+  String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) => "MockDropItem";
+}
+
+class MockDropSession() extends Mock implements DropSession {
+  @override
+  String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) => "MockDropSession";
+}
+
+class MockDataReader() extends Mock implements DataReader;
+
+class MockDataReaderFile() extends Mock implements DataReaderFile;
+
+class MockReadProgress() extends Mock implements ReadProgress;
 
 /// A valid 1x1 transparent PNG so `Image.memory` thumbnails decode in tests.
 final Uint8List _tinyPng = Uint8List.fromList(const [
@@ -195,6 +213,67 @@ List<Object?> _captureHapticFeedback({required bool throwsPlatformException}) {
   return feedback;
 }
 
+MockDropItem _droppedImageItem({
+  required Uint8List bytes,
+  required String filename,
+  required Stream<Uint8List>? byteStream,
+  required int? reportedFileSize,
+  required VoidCallback? onClose,
+}) {
+  final item = MockDropItem();
+  final reader = MockDataReader();
+  final file = MockDataReaderFile();
+  final progress = MockReadProgress();
+
+  when(() => item.canProvide(any())).thenAnswer(
+    (invocation) => invocation.positionalArguments.single == Formats.png,
+  );
+  when(() => item.dataReader).thenReturn(reader);
+  when(() => reader.getFormats(any())).thenReturn([Formats.png]);
+  when(() => file.fileName).thenReturn(filename);
+  when(() => file.fileSize).thenReturn(reportedFileSize ?? bytes.length);
+  when(file.getStream).thenAnswer((_) => byteStream ?? Stream.value(bytes));
+  when(file.close).thenAnswer((_) => onClose?.call());
+  when(
+    () => reader.getFile(
+      Formats.png,
+      any(),
+      onError: any(named: "onError"),
+    ),
+  ).thenAnswer((invocation) {
+    final onFile = invocation.positionalArguments[1] as AsyncValueChanged<DataReaderFile>;
+    onFile(file);
+    return progress;
+  });
+  return item;
+}
+
+Future<void> _performImageDrop({required WidgetTester tester, required List<DropItem> items}) async {
+  final region = tester.widget<DropRegion>(find.byType(DropRegion));
+  final session = MockDropSession();
+  final position = DropPosition(local: Offset.zero, global: Offset.zero);
+  when(() => session.items).thenReturn(items);
+  when(() => session.allowedOperations).thenReturn({DropOperation.copy});
+
+  expect(
+    await Future.value(region.onDropOver(DropOverEvent(session: session, position: position))),
+    DropOperation.copy,
+  );
+  region.onDropEnter?.call(DropEvent(session: session));
+  await tester.pump();
+  expect(find.text("Drop images to attach"), findsOneWidget);
+
+  await region.onPerformDrop(
+    PerformDropEvent(
+      session: session,
+      position: position,
+      acceptedOperation: DropOperation.copy,
+    ),
+  );
+  await tester.pumpAndSettle();
+  expect(find.text("Drop images to attach"), findsNothing);
+}
+
 void main() {
   late MockSessionDetailCubit cubit;
   late MockVoiceTranscriptionService voiceTranscriptionService;
@@ -202,8 +281,16 @@ void main() {
   late MockImageClipboard imageClipboard;
 
   setUpAll(() {
+    void onFileFallback(DataReaderFile _) {}
+    void onErrorFallback(Object _) {}
+
     registerFallbackValue(ComposerDraft.typed(text: ""));
     registerFallbackValue(ComposerInputMode.typed);
+    registerFallbackValue(Formats.png);
+    registerFallbackValue(<DataFormat>[]);
+    registerFallbackValue(onFileFallback);
+    registerFallbackValue(onErrorFallback);
+    registerFallbackValue(_tinyPng);
   });
 
   Finder semanticsWithLabel(String label) =>
@@ -2213,6 +2300,212 @@ void main() {
     expect(editable.controller.selection, TextSelection.collapsed(offset: transcript.length));
     expect(scrollController.position.maxScrollExtent, greaterThan(0));
     expect(scrollController.offset, scrollController.position.maxScrollExtent);
+  });
+
+  testWidgets("image drop is available on native desktop and iOS", (tester) async {
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    for (final platform in [TargetPlatform.macOS, TargetPlatform.iOS]) {
+      debugDefaultTargetPlatformOverride = platform;
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      expect(find.byType(DropRegion), findsOneWidget, reason: platform.name);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    }
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets("dropping multiple images stages them in drag order", (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    when(
+      () => imagePicker.attachmentFromBytes(
+        bytes: any(named: "bytes"),
+        filename: any(named: "filename"),
+      ),
+    ).thenAnswer((invocation) {
+      return ComposerAttachment(
+        mime: "image/png",
+        bytes: invocation.namedArguments[#bytes]! as Uint8List,
+        filename: invocation.namedArguments[#filename]! as String,
+      );
+    });
+
+    var closedFiles = 0;
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await _performImageDrop(
+      tester: tester,
+      items: [
+        _droppedImageItem(
+          bytes: _tinyPng,
+          filename: "first.png",
+          byteStream: null,
+          reportedFileSize: null,
+          onClose: () => closedFiles++,
+        ),
+        _droppedImageItem(
+          bytes: _tinyPng,
+          filename: "second.png",
+          byteStream: null,
+          reportedFileSize: null,
+          onClose: () => closedFiles++,
+        ),
+      ],
+    );
+
+    final attachmentLabels = tester
+        .widgetList<Semantics>(find.byType(Semantics))
+        .map((semantics) => semantics.properties.label)
+        .whereType<String>();
+    expect(attachmentLabels, containsAllInOrder(["first.png", "second.png"]));
+    expect(closedFiles, 2);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets("a rejected dropped image does not block a later valid image", (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final invalidBytes = Uint8List.fromList(const [0, 1, 2, 3]);
+    when(
+      () => imagePicker.attachmentFromBytes(
+        bytes: any(named: "bytes"),
+        filename: any(named: "filename"),
+      ),
+    ).thenAnswer((invocation) {
+      final filename = invocation.namedArguments[#filename]! as String;
+      if (filename == "invalid.png") throw const UnsupportedAttachmentImageError();
+      return ComposerAttachment(
+        mime: "image/png",
+        bytes: invocation.namedArguments[#bytes]! as Uint8List,
+        filename: filename,
+      );
+    });
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await _performImageDrop(
+      tester: tester,
+      items: [
+        _droppedImageItem(
+          bytes: invalidBytes,
+          filename: "invalid.png",
+          byteStream: null,
+          reportedFileSize: null,
+          onClose: null,
+        ),
+        _droppedImageItem(
+          bytes: _tinyPng,
+          filename: "valid.png",
+          byteStream: null,
+          reportedFileSize: null,
+          onClose: null,
+        ),
+      ],
+    );
+
+    expect(find.text("That image format isn't supported."), findsOneWidget);
+    expect(semanticsWithLabel("invalid.png"), findsNothing);
+    expect(semanticsWithLabel("valid.png"), findsOneWidget);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets("an oversized dropped image closes without reading", (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    var closedFiles = 0;
+    final item = _droppedImageItem(
+      bytes: _tinyPng,
+      filename: "oversized.png",
+      byteStream: null,
+      reportedFileSize: maxComposerPromptAttachmentBytes + 1,
+      onClose: () => closedFiles++,
+    );
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await _performImageDrop(tester: tester, items: [item]);
+
+    expect(find.text("That image is too large to attach."), findsOneWidget);
+    expect(closedFiles, 1);
+    verifyNever(
+      () => imagePicker.attachmentFromBytes(
+        bytes: any(named: "bytes"),
+        filename: any(named: "filename"),
+      ),
+    );
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets("image drop is unavailable without attachment capability", (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final state = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      supportsPromptAttachments: false,
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DropRegion), findsNothing);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets("a dropped image is discarded when attachment support changes during its read", (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final states = StreamController<SessionDetailState>.broadcast();
+    final imageBytes = StreamController<Uint8List>();
+    addTearDown(states.close);
+    addTearDown(imageBytes.close);
+    final supported = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      supportsPromptAttachments: true,
+    );
+    when(() => cubit.state).thenReturn(supported);
+    whenListen(cubit, states.stream, initialState: supported);
+    when(
+      () => imagePicker.attachmentFromBytes(
+        bytes: any(named: "bytes"),
+        filename: any(named: "filename"),
+      ),
+    ).thenReturn(ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "stale.png"));
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await _performImageDrop(
+      tester: tester,
+      items: [
+        _droppedImageItem(
+          bytes: _tinyPng,
+          filename: "stale.png",
+          byteStream: imageBytes.stream,
+          reportedFileSize: null,
+          onClose: null,
+        ),
+      ],
+    );
+
+    states.add(supported.copyWith(supportsPromptAttachments: false));
+    await tester.pumpAndSettle();
+    imageBytes.add(_tinyPng);
+    await tester.pump();
+
+    verifyNever(
+      () => imagePicker.attachmentFromBytes(
+        bytes: any(named: "bytes"),
+        filename: any(named: "filename"),
+      ),
+    );
+    expect(semanticsWithLabel("stale.png"), findsNothing);
+    debugDefaultTargetPlatformOverride = null;
   });
 
   testWidgets("accordion attach action stages a removable thumbnail without raising the keyboard", (tester) async {

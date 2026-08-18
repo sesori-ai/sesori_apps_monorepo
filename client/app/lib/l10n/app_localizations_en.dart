@@ -812,6 +812,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailAttachImage => 'Attach image';
 
   @override
+  String get sessionDetailDropImagesToAttach => 'Drop images to attach';
+
+  @override
   String get sessionDetailRemoveAttachment => 'Remove attachment';
 
   @override
