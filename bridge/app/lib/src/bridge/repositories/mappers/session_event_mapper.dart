@@ -29,6 +29,7 @@ class const SessionEventMapper() {
       BridgeSseMessageRemoved(:final sessionID) ||
       BridgeSseMessagePartDelta(:final sessionID) ||
       BridgeSseMessagePartRemoved(:final sessionID) ||
+      BridgeSseQueuedPromptsUpdated(:final sessionID) ||
       BridgeSseTodoUpdated(:final sessionID) => {sessionID},
       BridgeSseSessionError(:final sessionID) => {?sessionID},
       BridgeSseMessageUpdated(:final info) => {Message.fromJson(info).sessionID},
@@ -136,14 +137,15 @@ class const SessionEventMapper() {
         :final sessionID,
         :final agent,
         :final model,
-      ) => switch (mapped(sessionID)) {
-        final sessionId? => BridgeSseSessionPromptDefaultsChanged(
-          sessionID: sessionId,
-          agent: agent,
-          model: model,
-        ),
-        null => null,
-      },
+      ) =>
+        switch (mapped(sessionID)) {
+          final sessionId? => BridgeSseSessionPromptDefaultsChanged(
+            sessionID: sessionId,
+            agent: agent,
+            model: model,
+          ),
+          null => null,
+        },
       BridgeSseSessionStatus(:final sessionID, :final status) => switch (mapped(sessionID)) {
         final sessionId? => BridgeSseSessionStatus(sessionID: sessionId, status: status),
         null => null,
@@ -171,6 +173,10 @@ class const SessionEventMapper() {
       },
       BridgeSseMessageRemoved(:final sessionID, :final messageID) => switch (mapped(sessionID)) {
         final sessionId? => BridgeSseMessageRemoved(sessionID: sessionId, messageID: messageID),
+        null => null,
+      },
+      BridgeSseQueuedPromptsUpdated(:final sessionID, :final prompts) => switch (mapped(sessionID)) {
+        final sessionId? => BridgeSseQueuedPromptsUpdated(sessionID: sessionId, prompts: prompts),
         null => null,
       },
       BridgeSseMessagePartUpdated(:final part) => switch (mapped(part.sessionID)) {

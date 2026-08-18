@@ -79,7 +79,7 @@ void main() {
         stateDirectory: "/state",
       );
 
-      expect(result, const PluginSetupReady());
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "17.2.13"));
       expect(processes.arguments, [
         const ["--version"],
       ]);
@@ -96,7 +96,7 @@ void main() {
         stateDirectory: "/state",
       );
 
-      expect(result, const PluginSetupReady());
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "17.2.13"));
     });
 
     test("reports an installable missing runtime after PATH and managed probes", () async {

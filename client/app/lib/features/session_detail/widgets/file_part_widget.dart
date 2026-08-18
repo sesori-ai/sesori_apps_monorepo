@@ -418,6 +418,7 @@ class _LoadedImageAttachmentState() extends State<_LoadedImageAttachment> {
                 showImageAttachmentViewer(
                   context: context,
                   image: viewerImage,
+                  heroPresentation: ImageAttachmentHeroPresentation.cropped,
                   filename: widget.filename,
                   heroTag: _heroTag,
                 ),

@@ -513,7 +513,10 @@ void main() {
       disabledPluginIds: const {"cursor"},
       setupById: const {
         "cursor": PluginSetupNotInspected(),
-        "opencode": PluginSetupAuthenticationRequired(actionHint: "Run opencode auth login."),
+        "opencode": PluginSetupAuthenticationRequired.versioned(
+          actionHint: "Run opencode auth login.",
+          runtimeVersion: "1.18.11",
+        ),
       },
     );
 
@@ -524,12 +527,14 @@ void main() {
           id: "cursor",
           displayName: "Cursor",
           state: PluginSetupState.notInspected,
+          runtimeVersion: null,
           actionHint: null,
         ),
         const PluginSetupMetadata(
           id: "opencode",
           displayName: "OpenCode",
           state: PluginSetupState.authenticationRequired,
+          runtimeVersion: "1.18.11",
           actionHint: "Run opencode auth login.",
         ),
       ],
@@ -632,7 +637,9 @@ void main() {
     expect(alpha.actionHint, "Install Alpha.");
     expect(beta.runtimeState, shared.PluginRuntimeState.disabled);
     expect(opencode.runtimeState, shared.PluginRuntimeState.dormant);
-    expect(opencode.idleTimeoutMins, 0);
+    // Residency no longer zeroes the reported timeout: the configured value is
+    // surfaced so resident plugins that consume it internally show the real knob.
+    expect(opencode.idleTimeoutMins, 45);
     expect(opencode.hasIdleTimeoutOverride, isTrue);
     expect(settingsRepository.currentSettings.plugins.idleTimeoutMinsFor(pluginId: "opencode"), 45);
     expect(runtime.activePluginIds, isEmpty);
@@ -1174,7 +1181,7 @@ void main() {
     expect(snapshotTokens, hasLength(3));
   });
 
-  test("resident plugins persist timeout edits while retaining effective zero", () async {
+  test("resident plugins persist timeout edits and report the configured value", () async {
     final repository = _IdleLifecycleRepository();
     addTearDown(repository.dispose);
     final settingsRepository = _MutableBridgeSettingsRepository(
@@ -1201,7 +1208,10 @@ void main() {
     );
 
     expect(settingsRepository.settings.plugins.settingsByPluginId["one"]?.idleTimeoutMins, 20);
-    expect(response.plugins.single.idleTimeoutMins, 0);
+    // The configured value is reported (a resident plugin may consume it for
+    // internal reclamation via PluginHost.pluginIdleTimeout); only the
+    // whole-plugin suspension timer stays disarmed.
+    expect(response.plugins.single.idleTimeoutMins, 20);
     expect(response.plugins.single.hasIdleTimeoutOverride, isTrue);
     expect(timerScheduler.timers, isEmpty);
   });

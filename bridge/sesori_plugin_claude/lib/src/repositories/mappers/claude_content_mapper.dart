@@ -56,6 +56,60 @@ final class const ClaudeContentMapper() {
     return _mapValue(content: content, state: state).toList(growable: false);
   }
 
+  static const List<String> _internalCommandMarkers = [
+    "<local-command-stdout>",
+    "<local-command-caveat>",
+    "<command-name>",
+    "<command-message>",
+  ];
+
+  /// Whether [blocks] carry the CLI's internal slash-command envelope or local
+  /// command output, which is never rendered as a user message.
+  ///
+  /// The envelope always leads with its tag, so only a block that *starts*
+  /// with a marker is internal. A prompt that merely mentions a marker mid-text
+  /// stays visible — with replay as the only echo source, a substring match
+  /// would silently hide that prompt everywhere.
+  bool containsInternalCommandOutput({required List<ClaudeMappedContentBlock> blocks}) => blocks.any(
+    (block) =>
+        block is ClaudeMappedTextContentBlock &&
+        _internalCommandMarkers.any((marker) => block.text.trimLeft().startsWith(marker)),
+  );
+
+  /// Strips the bridge-owned worktree context envelope from user [content], so
+  /// both the live replay echo and the persisted transcript render only the
+  /// user-authored text.
+  Object? visibleUserContent({required Object? content}) {
+    if (content is String) {
+      final text = _stripBridgeContext(content);
+      return text == null || text.isEmpty ? const <Object?>[] : [{"type": "text", "text": text}];
+    }
+    if (content is! List) return content;
+    final visible = <Object?>[];
+    for (final block in content) {
+      if (block is Map && block["type"] == "text" && block["text"] is String) {
+        final text = _stripBridgeContext(block["text"]! as String);
+        if (text != null && text.isNotEmpty) visible.add({...block.cast<String, Object?>(), "text": text});
+      } else {
+        visible.add(block);
+      }
+    }
+    return visible;
+  }
+
+  String? _stripBridgeContext(String text) {
+    const marker = "[SYSTEM CONTEXT \u2014 IMPORTANT]";
+    final markerIndex = text.indexOf(marker);
+    if (markerIndex < 0) return text;
+    final envelopeEnd = text.indexOf("\n---", markerIndex);
+    if (envelopeEnd < 0) return text;
+    final trailing = text.substring(envelopeEnd + "\n---".length).trim();
+    final prefix = text.substring(0, markerIndex).trim();
+    if (prefix.isEmpty) return trailing.isEmpty ? null : trailing;
+    if (!prefix.startsWith("/")) return text;
+    return trailing.isEmpty ? prefix : "$prefix $trailing";
+  }
+
   List<PluginMessagePart> mapParts({
     required Object? content,
     required String sessionId,

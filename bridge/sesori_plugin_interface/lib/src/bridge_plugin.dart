@@ -8,6 +8,7 @@ import "models/plugin_project.dart";
 import "models/plugin_project_activity_summary.dart";
 import "models/plugin_prompt_part.dart";
 import "models/plugin_provider.dart";
+import "models/plugin_queued_prompt.dart";
 import "models/plugin_session.dart";
 import "models/plugin_session_options.dart";
 import "models/plugin_session_status.dart";
@@ -106,8 +107,25 @@ sealed class BridgePluginApi() {
   /// stay distinguishable from "no messages yet".
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId);
 
+  /// Sends a prompt to a session.
+  ///
+  /// The returned future MUST complete once the prompt is **accepted** —
+  /// durably enqueued by the plugin or taken by the backend — not when its
+  /// agent run (or the runs queued ahead of it) finishes. Callers (bridge
+  /// request handlers serving phones) await this future while holding a
+  /// client request open, so an implementation must never block for the
+  /// duration of a turn. A prompt accepted while another turn runs is
+  /// queued; queue-owning plugins expose it via [getQueuedPrompts] and
+  /// surface later dispatch failures through their [events] stream.
+  ///
+  /// [promptId] is the prompt's stable identity: queue-owning plugins key
+  /// their queued entries by it, refuse a duplicate (already queued or
+  /// recently dispatched) as an idempotent success, and stamp it on the
+  /// resulting user message's `promptId`. Plugins without a queue may
+  /// ignore it.
   Future<void> sendPrompt({
     required String sessionId,
+    required String promptId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
     required String? agent,
@@ -127,12 +145,15 @@ sealed class BridgePluginApi() {
   /// Dispatch failures (unknown command, missing session, backend down) MUST
   /// be thrown so callers can report the send as failed.
   ///
+  /// [promptId] carries the same identity contract as [sendPrompt]'s.
+  ///
   /// [arguments] is the exact backend execution payload and may include
   /// bridge-owned context. [userVisibleArguments] is only the user-authored
   /// portion, or `null` when none was supplied. Implementations that synthesize
   /// a client-facing command message MUST use that value, never [arguments].
   Future<void> sendCommand({
     required String sessionId,
+    required String promptId,
     required String command,
     required String arguments,
     required String? userVisibleArguments,
@@ -140,6 +161,20 @@ sealed class BridgePluginApi() {
     required String? agent,
     required ({String providerID, String modelID})? model,
   });
+
+  /// Returns the prompts accepted for [sessionId] but not yet dispatched to
+  /// the backend, in dispatch order.
+  ///
+  /// The default is an empty list: a plugin that hands every prompt to its
+  /// backend immediately has nothing queued to expose.
+  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
+
+  /// Cancels the queued prompt [promptId] on [sessionId] before dispatch.
+  ///
+  /// Returns whether an entry was removed. The default is `false`: a plugin
+  /// without a queue has nothing to cancel — including an entry that already
+  /// dispatched, which callers treat as benign (the prompt became a turn).
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
 
   Future<void> abortSession({required String sessionId});
 

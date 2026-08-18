@@ -72,7 +72,7 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, const PluginSetupReady());
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "2026.07.23-e383d2b"));
       expect(processes.spawnedExecutables, ["cursor-agent", "cursor-agent"]);
       expect(processes.spawnedArguments, [
         const ["--version"],
@@ -109,7 +109,7 @@ void main() {
                 environment: const <String, String>{},
                 stateDirectory: stateDirectory,
               ),
-              const PluginSetupReady(),
+              const PluginSetupReady.versioned(runtimeVersion: "2026.07.23-e383d2b"),
             );
           },
           stderr: () => _CapturingStdout(stderrLines),
@@ -141,6 +141,39 @@ void main() {
       );
 
       expect(result, isA<PluginSetupRuntimeMissing>());
+    });
+
+    test("reports the managed runtime version selected after PATH is missing", () async {
+      const manifest = CursorRuntimeManifest();
+      final managedBinaryPath = manifest.managedBinaryPath(stateDirectory: stateDirectory);
+      final processes = _ProbeProcessService(
+        spawnOutcomes: [
+          const ProcessException("cursor-agent", ["--version"], "missing", 2),
+          _ProbeProcess(
+            pid: 7,
+            stdoutBytes: utf8.encode("${manifest.bundledVersion}\n"),
+            exitCode: Future<int>.value(0),
+          ),
+          _ProbeProcess(
+            pid: 8,
+            stdoutBytes: utf8.encode("Authenticated\n"),
+            exitCode: Future<int>.value(0),
+          ),
+        ],
+      );
+
+      final result = await const CursorPluginDescriptor().inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(
+        result,
+        PluginSetupReady.versioned(runtimeVersion: manifest.bundledVersion.raw),
+      );
+      expect(processes.spawnedExecutables, ["cursor-agent", managedBinaryPath, managedBinaryPath]);
     });
 
     test("an outdated PATH CLI is installable and never leaks version probe text", () async {
@@ -270,6 +303,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupAuthenticationRequired>());
+      expect(result.runtimeVersion, "2026.07.16");
       expect(processes.spawnedArguments, [
         const ["--version"],
         const ["status"],
@@ -301,6 +335,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupUnknown>());
+      expect(result.runtimeVersion, "2026.07.16");
       expect(result.actionHint, isNot(contains("account-secret-output")));
     });
   });

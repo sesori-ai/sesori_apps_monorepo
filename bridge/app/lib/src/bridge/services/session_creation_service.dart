@@ -7,6 +7,7 @@ import "../../repositories/session_metadata_repository.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
 import "session_mutation_dispatcher.dart";
+import "session_prompt_service.dart";
 import "worktree_service.dart";
 
 class SessionCreationService({
@@ -157,6 +158,7 @@ class SessionCreationService({
     }
     await _sessionRepository.sendCommand(
       sessionId: session.id,
+      promptId: SessionPromptService.generatePromptId(),
       command: command,
       arguments: arguments,
       userVisibleArguments: userVisibleArguments,

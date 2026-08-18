@@ -109,6 +109,11 @@ class ClaudeLaunchSpec({
     "--verbose",
     // Enables the token-level `stream_event` deltas the client renders.
     "--include-partial-messages",
+    // Re-emits every stdin user turn on stdout under its transcript uuid, so
+    // the live user message and the transcript backfill row share one id and
+    // can never duplicate. Verified live: the replay arrives before the turn's
+    // assistant output on both --session-id and --resume launches.
+    "--replay-user-messages",
     ...permissionPromptToolArguments,
     // Pattern-bound rather than null-checked so a later edit cannot separate the
     // check from the dereference.

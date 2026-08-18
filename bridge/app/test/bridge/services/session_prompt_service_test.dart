@@ -62,6 +62,7 @@ void main() {
 
     Future<void> sendCommand({String command = "review"}) {
       return service.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "extra args")],
         variant: null,
@@ -85,6 +86,7 @@ void main() {
 
       await expectLater(
         service.sendPrompt(
+          promptId: "prompt-1",
           sessionId: "s1",
           parts: const [PromptPart.text(text: "hello")],
           variant: null,
@@ -143,6 +145,7 @@ void main() {
         agentModel: null,
       );
       await service.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s-defaults-command",
         parts: const [PromptPart.text(text: "")],
         variant: const SessionVariant(id: "low"),
@@ -177,6 +180,7 @@ void main() {
       final changeFuture = service.promptDefaultsChanges.first;
 
       await service.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s-defaults-event",
         parts: const [PromptPart.text(text: "Hello")],
         variant: const SessionVariant(id: "high"),
@@ -212,6 +216,7 @@ void main() {
       plugin.sendCommandCompleter = commandGate;
 
       final command = service.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "arguments")],
         variant: null,
@@ -224,6 +229,7 @@ void main() {
       }
       final abort = abortService.abortSession(sessionId: "s1");
       final prompt = service.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "later")],
         variant: null,
@@ -244,6 +250,7 @@ void main() {
 
     test("plain prompts are unaffected and delegate to sendPrompt", () async {
       await service.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "Hello")],
         variant: null,

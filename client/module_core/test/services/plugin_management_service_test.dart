@@ -1255,6 +1255,7 @@ PluginLifecycleConflict _conflict(List<PluginLifecycleConflictReason> reasons) {
         id: "one",
         displayName: "One",
         state: PluginSetupState.ready,
+        runtimeVersion: null,
         actionHint: null,
       ),
       runtimeState: PluginRuntimeState.dormant,

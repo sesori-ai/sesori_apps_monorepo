@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/rendering.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
@@ -88,7 +90,8 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
         state.olderMessagesCursor == null &&
         !state.isLoadingOlderMessages &&
         state.sendingSubmission == null &&
-        state.queuedMessages.isEmpty;
+        state.queuedMessages.isEmpty &&
+        state.bridgeQueuedPrompts.isEmpty;
     final questionCount = state.pendingQuestions.fold<int>(0, (sum, q) => sum + q.questions.length);
 
     // The scaffold lets this view fill the full height behind the transparent
@@ -112,6 +115,12 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           messages: state.messages,
                           sendingSubmission: state.sendingSubmission,
                           queuedMessages: state.queuedMessages,
+                          bridgeQueuedPrompts: state.bridgeQueuedPrompts,
+                          onCancelBridgeQueuedPrompt: widget.readOnly
+                              ? null
+                              : (promptId) => unawaited(
+                                  context.read<SessionDetailCubit>().cancelBridgeQueuedPrompt(promptId: promptId),
+                                ),
                           isLoadingOlderMessages: state.isLoadingOlderMessages,
                           streamingText: state.streamingText,
                           children: state.children,
@@ -218,7 +227,8 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                       hasMessages:
                           state.hasRenderableMessages ||
                           state.sendingSubmission != null ||
-                          state.queuedMessages.isNotEmpty,
+                          state.queuedMessages.isNotEmpty ||
+                          state.bridgeQueuedPrompts.isNotEmpty,
                       attachmentsSupported: state.supportsPromptAttachments,
                       isBusy: hasActiveWork(
                         sessionStatus: state.sessionStatus,

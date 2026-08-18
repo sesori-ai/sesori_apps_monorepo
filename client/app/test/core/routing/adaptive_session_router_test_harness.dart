@@ -367,6 +367,7 @@ SessionDetailSnapshot _buildDetailSnapshot({
   );
 
   return SessionDetailSnapshot(
+    bridgeQueuedPrompts: const [],
     projectId: projectId,
     pluginId: "opencode",
     supportsPromptAttachments: false,

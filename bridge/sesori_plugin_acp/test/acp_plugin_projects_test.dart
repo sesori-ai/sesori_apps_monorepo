@@ -398,6 +398,7 @@ void main() {
       expect(s1.projectID, home);
 
       final sending = plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PluginPromptPart.text(text: "resume me")],
         variant: null,
@@ -455,6 +456,7 @@ void main() {
       addTearDown(sub.cancel);
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PluginPromptPart.text(text: "hi")],
         variant: null,
@@ -499,6 +501,7 @@ void main() {
 
       // A running turn surfaces under that project's activity row, not the CWD.
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: session.id,
         parts: const [PluginPromptPart.text(text: "hi")],
         variant: null,
@@ -530,6 +533,7 @@ void main() {
       expect(sessions.single.projectID, opened);
 
       final sending = plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "old-s",
         parts: const [PluginPromptPart.text(text: "again")],
         variant: null,
@@ -563,6 +567,7 @@ void main() {
       );
 
       final sending = plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "cold-s",
         parts: const [PluginPromptPart.text(text: "resume me")],
         variant: null,
@@ -603,6 +608,7 @@ void main() {
         },
       );
       final sending = plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "cold-s",
         parts: const [PluginPromptPart.text(text: "resume me")],
         variant: null,
@@ -631,6 +637,7 @@ void main() {
       plugin.primeSessionDirectory(sessionId: "cold-s", directory: stored);
 
       final sending = plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "cold-s",
         parts: const [PluginPromptPart.text(text: "resume me")],
         variant: null,
@@ -681,6 +688,7 @@ void main() {
       );
 
       final sending = plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "cold-s",
         parts: const [PluginPromptPart.text(text: "resume me")],
         variant: null,
@@ -715,6 +723,7 @@ void main() {
       plugin.primeSessionDirectory(sessionId: "old-s", directory: "/somewhere/stale");
 
       final sending = plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "old-s",
         parts: const [PluginPromptPart.text(text: "again")],
         variant: null,

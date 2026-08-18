@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math";
 
 import "package:bloc/bloc.dart";
 import "package:collection/collection.dart";
@@ -531,6 +532,7 @@ class SessionDetailCubit(
             providers: availableProviders,
             model: preservedSelectedAgentModel,
           );
+          _reconcileStagedWithSnapshot(snapshot: snapshot);
 
           final refreshedSessionStatus = snapshot.statuses[_sessionId] ?? const SessionStatus.idle();
           final retryMessage = switch (refreshedSessionStatus) {
@@ -560,6 +562,7 @@ class SessionDetailCubit(
               retryErrorMessage: retryMessage,
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
               pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
+              bridgeQueuedPrompts: snapshot.bridgeQueuedPrompts,
               agent: latestAssistant?.agent,
               assistantAgentModel: assistantAgentModel,
               children: refreshedChildSessions,
@@ -576,8 +579,8 @@ class SessionDetailCubit(
                 availableCommands: availableCommands,
                 stagedCommand: preservedStagedCommand,
               ),
-              queuedMessages: _promptQueue.items,
-              sendingSubmission: _promptQueue.active,
+              queuedMessages: _visibleStagedItems(bridgePrompts: snapshot.bridgeQueuedPrompts),
+              sendingSubmission: _visibleStagedSending(bridgePrompts: snapshot.bridgeQueuedPrompts),
               isRefreshing: false,
               availableVariants: availableVariants,
             ),
@@ -758,6 +761,8 @@ class SessionDetailCubit(
           _onDataMayBeStale(trigger: _SessionRefreshTrigger.commandExecuted);
         case SesoriSessionPromptDefaultsChanged(:final promptDefaults):
           _onPromptDefaultsChanged(promptDefaults);
+        case SesoriSessionQueuedPrompts(:final prompts):
+          _onBridgeQueueUpdated(prompts);
         case SesoriSessionCreated() ||
             SesoriSessionDeleted() ||
             SesoriSessionDiff() ||
@@ -882,6 +887,9 @@ class SessionDetailCubit(
       SesoriWorktreeReady() ||
       SesoriWorktreeFailed() ||
       SesoriSessionPromptDefaultsChanged() ||
+      // Queued prompts render only for the session itself; own-session events
+      // arrive through the session-scoped stream, not this global path.
+      SesoriSessionQueuedPrompts() ||
       // Unseen-state changes are list-level concerns handled by the tracker;
       // the detail screen does not react to them.
       SesoriSessionUnseenChanged() => false,
@@ -967,6 +975,7 @@ class SessionDetailCubit(
             SesoriWorktreeReady() ||
             SesoriWorktreeFailed() ||
             SesoriSessionUnseenChanged() ||
+            SesoriSessionQueuedPrompts() ||
             SesoriSessionPromptDefaultsChanged():
           break;
       }
@@ -1124,10 +1133,76 @@ class SessionDetailCubit(
           assistantAgentModel: assistantAgentModel,
         ),
       );
+    } else if (message case MessageUser(promptId: final promptId?)) {
+      // The queued bubble transforms into this message: dropping the entry in
+      // the same emission as the message upsert means no frame ever shows
+      // both (or neither). Any stale local copy of the same prompt (a send
+      // whose response was lost) is healed here too.
+      _promptQueue.removeByPromptId(promptId);
+      final bridgePrompts = [
+        for (final prompt in current.bridgeQueuedPrompts)
+          if (prompt.id != promptId) prompt,
+      ];
+      emit(
+        current.copyWith(
+          messages: messages,
+          bridgeQueuedPrompts: bridgePrompts,
+          queuedMessages: _visibleStagedItems(bridgePrompts: bridgePrompts),
+          sendingSubmission: _visibleStagedSending(bridgePrompts: bridgePrompts),
+        ),
+      );
+      // The healed prompt's own send may have stopped the drain on a lost
+      // response; anything staged behind it must not stay parked.
+      _tryDrainQueue();
     } else {
       emit(current.copyWith(messages: messages));
     }
     _drainDeferredPartsForMessage(messageId: message.id);
+  }
+
+  /// Applies a full-list replacement of the bridge-owned queue. Local staged
+  /// sends the bridge now owns leave the display in the same emission (covers
+  /// the event racing ahead of the acceptance response).
+  void _onBridgeQueueUpdated(List<QueuedSessionPrompt> prompts) {
+    if (isClosed) return;
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+    for (final prompt in prompts) {
+      _promptQueue.removeByPromptId(prompt.id);
+    }
+    emit(
+      current.copyWith(
+        bridgeQueuedPrompts: prompts,
+        queuedMessages: _visibleStagedItems(bridgePrompts: prompts),
+        sendingSubmission: _visibleStagedSending(bridgePrompts: prompts),
+      ),
+    );
+  }
+
+  /// Cancels a bridge-queued prompt. The entry leaves the state on the
+  /// bridge's confirmation — including not-found, which means it already
+  /// dispatched or was removed elsewhere; only a transport failure keeps it.
+  Future<void> cancelBridgeQueuedPrompt({required String promptId}) async {
+    final result = await _sessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: promptId);
+    // Only not-found means the entry is gone (dispatched or removed
+    // elsewhere); any other failure proves nothing about the bridge queue.
+    if (result case ErrorResponse(:final error)) {
+      if (error is! NonSuccessCodeError || error.errorCode != 404) return;
+    }
+    _promptQueue.removeByPromptId(promptId);
+    final current = state;
+    if (current is! SessionDetailLoaded || isClosed) return;
+    final bridgePrompts = [
+      for (final prompt in current.bridgeQueuedPrompts)
+        if (prompt.id != promptId) prompt,
+    ];
+    emit(
+      current.copyWith(
+        bridgeQueuedPrompts: bridgePrompts,
+        queuedMessages: _visibleStagedItems(bridgePrompts: bridgePrompts),
+        sendingSubmission: _visibleStagedSending(bridgePrompts: bridgePrompts),
+      ),
+    );
   }
 
   int _messageInsertionIndex({required List<MessageWithParts> messages, required Message message}) {
@@ -1408,8 +1483,12 @@ class SessionDetailCubit(
 
     final selectedAgent = current is SessionDetailLoaded ? current.selectedAgent : null;
     final selectedAgentModel = current is SessionDetailLoaded ? current.selectedAgentModel : null;
+    // The id survives retries of the same submission, so a send whose
+    // response was lost re-lands on the bridge as an idempotent no-op.
+    final promptId = _generatePromptId();
     final submission = normalizedCommand == null
         ? QueuedSessionSubmission.text(
+            promptId: promptId,
             text: trimmed,
             inputMode: inputMode,
             attachments: attachments,
@@ -1417,6 +1496,7 @@ class SessionDetailCubit(
             agentModel: selectedAgentModel,
           )
         : QueuedSessionSubmission.command(
+            promptId: promptId,
             text: trimmed,
             command: normalizedCommand,
             agent: selectedAgent,
@@ -1445,10 +1525,41 @@ class SessionDetailCubit(
     if (current is! SessionDetailLoaded) return;
     emit(
       current.copyWith(
-        queuedMessages: _promptQueue.items,
-        sendingSubmission: _promptQueue.active,
+        queuedMessages: _visibleStagedItems(bridgePrompts: current.bridgeQueuedPrompts),
+        sendingSubmission: _visibleStagedSending(bridgePrompts: current.bridgeQueuedPrompts),
       ),
     );
+  }
+
+  /// Drops staged copies a fresh snapshot proves the bridge already owns —
+  /// listed in its queue or landed as a user message with the same prompt id.
+  void _reconcileStagedWithSnapshot({required SessionDetailSnapshot snapshot}) {
+    for (final prompt in snapshot.bridgeQueuedPrompts) {
+      _promptQueue.removeByPromptId(prompt.id);
+    }
+    for (final message in snapshot.messages) {
+      if (message.info case MessageUser(promptId: final promptId?)) {
+        _promptQueue.removeByPromptId(promptId);
+      }
+    }
+  }
+
+  /// Staged sends not yet owned by the bridge. A staged copy whose id the
+  /// bridge queue already lists renders nowhere; its in-flight send settles
+  /// (or its idempotent retry no-ops) without a second bubble.
+  List<QueuedSessionSubmission> _visibleStagedItems({required List<QueuedSessionPrompt> bridgePrompts}) {
+    if (bridgePrompts.isEmpty) return _promptQueue.items;
+    final bridgeIds = {for (final prompt in bridgePrompts) prompt.id};
+    return [
+      for (final item in _promptQueue.items)
+        if (!bridgeIds.contains(item.promptId)) item,
+    ];
+  }
+
+  QueuedSessionSubmission? _visibleStagedSending({required List<QueuedSessionPrompt> bridgePrompts}) {
+    final active = _promptQueue.active;
+    if (active == null || _promptQueue.isActiveSettledElsewhere) return null;
+    return bridgePrompts.any((prompt) => prompt.id == active.promptId) ? null : active;
   }
 
   Future<void> _drainQueuedMessages() async {
@@ -1472,9 +1583,11 @@ class SessionDetailCubit(
     _emitQueueUpdate(current);
 
     var sendSucceeded = false;
+    var sendSettledElsewhere = false;
     try {
       final result = await _sessionRepository.sendMessage(
         sessionId: _sessionId,
+        promptId: submission.promptId,
         text: submission.text,
         attachments: submission.attachments,
         agent: submission.agent,
@@ -1492,15 +1605,21 @@ class SessionDetailCubit(
           _promptQueue.completeSend();
           _reportAcceptedSubmission(submission: submission);
         case ErrorResponse():
-          _promptQueue.failSend();
+          sendSettledElsewhere = !_promptQueue.failSend();
       }
     } on Object catch (error, stackTrace) {
-      _promptQueue.failSend();
+      sendSettledElsewhere = !_promptQueue.failSend();
       logw("Failed to send queued session submission", error, stackTrace);
     }
 
     _emitQueueUpdate(_latestLoadedState());
 
+    if (sendSettledElsewhere && _isConnected) {
+      // The bridge already owns that prompt; the staged sends behind it must
+      // not stay parked on its moot transport failure.
+      unawaited(_drainQueuedMessages());
+      return;
+    }
     if (!sendSucceeded && sendConnectionGeneration != _connectionGeneration && _isConnected) {
       unawaited(_drainQueuedMessages());
       return;
@@ -1545,6 +1664,17 @@ class SessionDetailCubit(
     ComposerInputMode.typed => AnalyticsInputMode.typed,
     ComposerInputMode.voiceAssisted => AnalyticsInputMode.voiceAssisted,
   };
+
+  static final Random _promptIdRandom = Random.secure();
+
+  /// Client-generated prompt identity, mirroring the bridge's `prm_` shape.
+  static String _generatePromptId() {
+    final buffer = StringBuffer("prm_");
+    for (var index = 0; index < 16; index++) {
+      buffer.write(_promptIdRandom.nextInt(256).toRadixString(16).padLeft(2, "0"));
+    }
+    return buffer.toString();
+  }
 
   void _reportProductEvent({required ProductAnalyticsEvent event}) {
     unawaited(
@@ -1843,6 +1973,12 @@ class SessionDetailCubit(
   Future<void> abort() async {
     try {
       final current = state;
+      // Stop means "run nothing further": staged local sends must not fire on
+      // the next drain. The bridge clears its own queue as part of the abort.
+      if (_promptQueue.isNotEmpty || _promptQueue.isSending) {
+        _promptQueue.clear();
+        _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
+      }
       final futures = <Future<ApiResponse<void>>>[_sessionRepository.abortSession(sessionId: _sessionId)];
 
       // Also abort any active child sessions (busy or retrying).
@@ -1868,6 +2004,7 @@ class SessionDetailCubit(
   }
 
   SessionDetailLoaded _buildLoadedState({required SessionDetailSnapshot snapshot}) {
+    _reconcileStagedWithSnapshot(snapshot: snapshot);
     final latestAssistant = _latestAssistantMessage(snapshot.messages);
     final childSessions = [...snapshot.childSessions];
     _sortChildrenByUpdatedDesc(childSessions);
@@ -1959,6 +2096,7 @@ class SessionDetailCubit(
       retryErrorMessage: initialRetryMessage,
       pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
       pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
+      bridgeQueuedPrompts: snapshot.bridgeQueuedPrompts,
       sessionTitle: snapshot.canonicalSessionTitle,
       pluginId: snapshot.pluginId,
       supportsPromptAttachments: snapshot.supportsPromptAttachments,
@@ -1968,8 +2106,8 @@ class SessionDetailCubit(
       childStatuses: childStatuses,
       isRootSession: snapshot.isRootSession,
       isArchived: snapshot.isArchived,
-      queuedMessages: _promptQueue.items,
-      sendingSubmission: _promptQueue.active,
+      queuedMessages: _visibleStagedItems(bridgePrompts: snapshot.bridgeQueuedPrompts),
+      sendingSubmission: _visibleStagedSending(bridgePrompts: snapshot.bridgeQueuedPrompts),
       availableAgents: agents,
       availableProviders: providers,
       availableCommands: snapshot.commands,

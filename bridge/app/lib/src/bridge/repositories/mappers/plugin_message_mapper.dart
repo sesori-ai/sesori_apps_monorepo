@@ -6,11 +6,12 @@ import "../../plugin_to_shared_mapping.dart";
 /// Maps plugin-level message types to shared [Message] types.
 extension PluginMessageMapper on PluginMessage {
   Message toSharedMessage({required String sessionId}) => switch (this) {
-    PluginMessageUser(:final id, :final agent, :final time) => Message.user(
+    PluginMessageUser(:final id, :final agent, :final time, :final promptId) => Message.user(
       id: id,
       sessionID: sessionId,
       agent: agent,
       time: time.toShared(),
+      promptId: promptId,
     ),
     PluginMessageAssistant(:final id, :final agent, :final modelID, :final providerID, :final time) =>
       Message.assistant(

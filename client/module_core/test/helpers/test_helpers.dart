@@ -347,6 +347,9 @@ void delegateSessionRepositoryToService({
     (invocation) => service.getPendingPermissions(sessionId: invocation.namedArguments[#sessionId]! as String),
   );
   when(
+    () => repository.getQueuedPrompts(sessionId: any(named: "sessionId")),
+  ).thenAnswer((_) async => ApiResponse.success(const QueuedPromptResponse(data: <QueuedSessionPrompt>[])));
+  when(
     () => repository.getChildren(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (invocation) => service.getChildren(sessionId: invocation.namedArguments[#sessionId]! as String),
@@ -388,6 +391,7 @@ void delegateSessionRepositoryToService({
   );
   when(
     () => repository.sendMessage(
+      promptId: any(named: "promptId"),
       attachments: const [],
       sessionId: any(named: "sessionId"),
       text: any(named: "text"),
@@ -398,6 +402,7 @@ void delegateSessionRepositoryToService({
     ),
   ).thenAnswer(
     (invocation) => service.sendMessage(
+      promptId: "prompt-1",
       attachments: const [],
       sessionId: invocation.namedArguments[#sessionId]! as String,
       text: invocation.namedArguments[#text]! as String,

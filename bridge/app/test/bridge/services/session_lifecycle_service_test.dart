@@ -557,6 +557,12 @@ class _FakeWorktreeService({required AppDatabase database}) extends WorktreeServ
 }
 
 class _FakeBridgePlugin() implements NativeProjectsPluginApi {
+  @override
+  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
+
   String? lastArchivedSessionId;
 
   @override
@@ -624,6 +630,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
 
   @override
   Future<void> sendPrompt({
+    required String promptId,
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
@@ -633,6 +640,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
 
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,

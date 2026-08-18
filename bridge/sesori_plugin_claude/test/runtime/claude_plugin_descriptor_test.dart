@@ -42,7 +42,7 @@ void main() {
         stateDirectory: "/state",
       );
 
-      expect(status, const PluginSetupReady());
+      expect(status, const PluginSetupReady.versioned(runtimeVersion: "2.1.226"));
       expect(processes.arguments, [
         const ["--version"],
         const ["auth", "status"],
@@ -101,6 +101,7 @@ void main() {
       );
 
       _expectNonReady<PluginSetupAuthenticationRequired>(status);
+      expect(status.runtimeVersion, "2.1.221");
       expect(status.actionHint, isNot(contains("private@example.com")));
     });
 
@@ -118,6 +119,7 @@ void main() {
       );
 
       _expectNonReady<PluginSetupUnknown>(status);
+      expect(status.runtimeVersion, "2.1.221");
       expect(status.actionHint, isNot(contains("private-account-output")));
     });
 

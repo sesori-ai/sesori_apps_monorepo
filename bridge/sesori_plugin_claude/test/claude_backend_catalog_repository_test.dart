@@ -33,7 +33,7 @@ void main() {
         },
       );
 
-      expect(catalog.agents.map((agent) => agent.name), ["Default", "Plan"]);
+      expect(catalog.agents.map((agent) => agent.name), ["Agent", "Plan"]);
       expect(catalog.agents.every((agent) => agent.model?.modelID == "default"), isTrue);
       final provider = catalog.providers.providers.single;
       expect(provider, isA<PluginProviderAnthropic>());
@@ -78,7 +78,7 @@ void main() {
     test("returns agents but no provider for an empty model catalog", () {
       final catalog = repository.map(handshake: const {});
 
-      expect(catalog.agents.map((agent) => agent.name), ["Default", "Plan"]);
+      expect(catalog.agents.map((agent) => agent.name), ["Agent", "Plan"]);
       expect(catalog.agents.every((agent) => agent.model == null), isTrue);
       expect(catalog.providers.providers, isEmpty);
       expect(catalog.commands, isEmpty);

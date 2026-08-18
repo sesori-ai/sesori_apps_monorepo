@@ -36,6 +36,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
         sessionID: sessionID,
         agent: agent,
         time: PluginMessageTime(created: time.created.toInt(), completed: null),
+        promptId: null,
       ),
       AssistantMessage() => _assistantMessageMapper.map(info),
       // Unknown roles from a newer OpenCode server: fall through to the raw

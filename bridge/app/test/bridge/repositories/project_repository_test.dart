@@ -1211,6 +1211,12 @@ PluginSession _session(
 /// Minimal [BridgePluginApi] fake for plugin activity evidence. Every other
 /// member throws so accidental project open/rename delegation is loud.
 class _FakeBridgePlugin() implements NativeProjectsPluginApi {
+  @override
+  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
+
   List<PluginProject> projectsResult = const [];
   Future<List<PluginProject>>? getProjectsFuture;
   Object? getProjectsError;
@@ -1289,6 +1295,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
 
   @override
   Future<void> sendPrompt({
+    required String promptId,
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
@@ -1298,6 +1305,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
 
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,

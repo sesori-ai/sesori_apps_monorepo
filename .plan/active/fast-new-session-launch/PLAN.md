@@ -713,7 +713,8 @@ six-step titles. Do not combine bridge and client production work.
   and metadata/title failure remains independent from branch failure.
 - Prove only a stored root dedicated session on its original local branch is
   eligible; in-place/fallback sessions, switched or detached worktrees, and an
-  initial branch with an upstream retain their current branch.
+  initial branch with an upstream or matching fetched remote ref retain their
+  current branch.
 - Prove valid metadata renames only the branch, leaves the worktree/directory
   unchanged, uses bounded secure collision fallback, updates durable/current
   branch facts, and emits the existing `session.updated` with
@@ -766,8 +767,8 @@ plugins. Automated tests are not a substitute for that client/plugin boundary.
   initial name, collision retry, and suffix fallback through automated tests.
   A representative dedicated session additionally proves metadata arrives after
   response, renames only the unpublished initial branch, leaves the worktree path
-  stable, updates the client branch, and skips after branch switch/upstream or
-  metadata/Git failure.
+  stable, updates the client branch, and skips after branch switch/upstream,
+  matching remote ref, or metadata/Git failure.
 - **Failure:** definitive rejection plus timeout/relay-loss simulation restoring
   the composer with honest warning; reconnect/discovery completion must not
   erase that warning before another explicit submission or route exit.
@@ -809,8 +810,9 @@ The acceptance criterion is structural, not a brittle wall-clock SLA:
 - Generated title is best-effort and is not persisted as pending work across a
   bridge restart. A session may keep its backend/generic title if shutdown wins.
 - Generated branch refinement is likewise best-effort. Metadata failure, an
-  agent branch switch, an upstream, invalid output, collision/create races, or a
-  Git failure leaves the safe initial `color-animal` branch in place.
+  agent branch switch, an upstream or matching fetched remote ref, invalid output,
+  collision/create races, or a Git failure leaves the safe initial
+  `color-animal` branch in place.
 - The detail snapshot may remain slower than route replacement. It uses the
   same launch view for continuity, but staged transcript rendering and PR-read
   optimization are separate work.

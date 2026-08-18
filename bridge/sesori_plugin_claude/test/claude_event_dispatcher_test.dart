@@ -195,6 +195,24 @@ void main() {
       expect((shared.Message.fromJson(error.info) as shared.MessageError).modelID, "claude-opus-5");
     });
 
+    test("keeps a prompt that merely mentions internal command markers", () {
+      final mentioned = _map(
+        mapper,
+        _user(
+          uuid: "user-mention",
+          content: const [
+            {"type": "text", "text": "What does <command-name> mean in <local-command-stdout> output?"},
+          ],
+        ),
+      );
+
+      expect((mentioned.first as BridgeSseMessageUpdated).info["id"], "user-mention");
+      expect(
+        (mentioned.last as BridgeSseMessagePartUpdated).part.text,
+        "What does <command-name> mean in <local-command-stdout> output?",
+      );
+    });
+
     test("maps tool input and completion with one diff signal", () {
       _startMessage(mapper, messageId: "msg-tool");
       final started = _map(
@@ -366,6 +384,33 @@ void main() {
       expect(user.time?.created, DateTime.utc(2026, 8, 10, 10).millisecondsSinceEpoch);
       expect((visible.last as BridgeSseMessagePartUpdated).part.id, "user-frame-block-0");
       expect(unmatchedResult, isEmpty);
+    });
+
+    test("strips the bridge worktree envelope from a replayed user frame", () {
+      const envelope =
+          "[SYSTEM CONTEXT \u2014 IMPORTANT]\nWorktree path: /private/worktree\n---\n";
+      final replayed = _map(
+        mapper,
+        _user(
+          uuid: "replay-frame",
+          content: [
+            {"type": "text", "text": "${envelope}authored follow-up"},
+          ],
+        ),
+      );
+      final contextOnly = _map(
+        mapper,
+        _user(
+          uuid: "context-frame",
+          content: [
+            {"type": "text", "text": envelope},
+          ],
+        ),
+      );
+
+      expect((replayed.first as BridgeSseMessageUpdated).info["id"], "replay-frame");
+      expect((replayed.last as BridgeSseMessagePartUpdated).part.text, "authored follow-up");
+      expect(contextOnly, isEmpty);
     });
 
     test("maps retry and terminal errors with parseable privacy-safe payloads", () {

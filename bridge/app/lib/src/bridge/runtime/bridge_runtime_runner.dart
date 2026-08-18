@@ -634,6 +634,8 @@ class const BridgeRuntimeRunner._() {
         clock: serverClock,
         environment: environment,
         currentUser: currentUser,
+        resolveIdleTimeoutMins: ({required pluginId}) =>
+            bridgeSettingsRepository.currentSettings.plugins.idleTimeoutMinsFor(pluginId: pluginId),
       );
       final activePluginRuntime = PluginRuntime(
         registrations: [

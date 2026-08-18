@@ -88,6 +88,10 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriCommandExecuted.fromJson(
             json
           );
+                case 'session.queued-prompts':
+          return SesoriSessionQueuedPrompts.fromJson(
+            json
+          );
                 case 'message.updated':
           return SesoriMessageUpdated.fromJson(
             json
@@ -1538,6 +1542,87 @@ as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: 
 as String,arguments: null == arguments ? _self.arguments : arguments // ignore: cast_nullable_to_non_nullable
 as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
 as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class SesoriSessionQueuedPrompts implements SesoriSseEvent, SesoriSessionEvent {
+  const SesoriSessionQueuedPrompts({required this.sessionID, required  List<QueuedSessionPrompt> prompts,  String? $type}): _prompts = prompts,$type = $type ?? 'session.queued-prompts';
+  factory SesoriSessionQueuedPrompts.fromJson(Map<String, dynamic> json) => _$SesoriSessionQueuedPromptsFromJson(json);
+
+ final  String sessionID;
+ final  List<QueuedSessionPrompt> _prompts;
+ List<QueuedSessionPrompt> get prompts {
+  if (_prompts is EqualUnmodifiableListView) return _prompts;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_prompts);
+}
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SesoriSessionQueuedPromptsCopyWith<SesoriSessionQueuedPrompts> get copyWith => _$SesoriSessionQueuedPromptsCopyWithImpl<SesoriSessionQueuedPrompts>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SesoriSessionQueuedPromptsToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionQueuedPrompts&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&const DeepCollectionEquality().equals(other._prompts, _prompts));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,sessionID,const DeepCollectionEquality().hash(_prompts));
+
+@override
+String toString() {
+  return 'SesoriSseEvent.sessionQueuedPrompts(sessionID: $sessionID, prompts: $prompts)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SesoriSessionQueuedPromptsCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
+  factory $SesoriSessionQueuedPromptsCopyWith(SesoriSessionQueuedPrompts value, $Res Function(SesoriSessionQueuedPrompts) _then) = _$SesoriSessionQueuedPromptsCopyWithImpl;
+@useResult
+$Res call({
+ String sessionID, List<QueuedSessionPrompt> prompts
+});
+
+
+
+
+}
+/// @nodoc
+class _$SesoriSessionQueuedPromptsCopyWithImpl<$Res>
+    implements $SesoriSessionQueuedPromptsCopyWith<$Res> {
+  _$SesoriSessionQueuedPromptsCopyWithImpl(this._self, this._then);
+
+  final SesoriSessionQueuedPrompts _self;
+  final $Res Function(SesoriSessionQueuedPrompts) _then;
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? sessionID = null,Object? prompts = null,}) {
+  return _then(SesoriSessionQueuedPrompts(
+sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,prompts: null == prompts ? _self._prompts : prompts // ignore: cast_nullable_to_non_nullable
+as List<QueuedSessionPrompt>,
   ));
 }
 

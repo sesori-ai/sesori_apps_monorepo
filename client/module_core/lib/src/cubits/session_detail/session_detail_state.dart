@@ -46,6 +46,12 @@ sealed class SessionDetailState with _$SessionDetailState {
     required List<QueuedSessionSubmission> queuedMessages,
     // Submission currently awaiting bridge acceptance.
     required QueuedSessionSubmission? sendingSubmission,
+
+    // Prompts the bridge has accepted but not yet dispatched to the harness,
+    // owned by the bridge (snapshot + session.queued-prompts events). Distinct
+    // from [queuedMessages], which only stages sends the bridge has not
+    // accepted yet.
+    @Default([]) List<QueuedSessionPrompt> bridgeQueuedPrompts,
     // Available agents and providers for selection.
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,

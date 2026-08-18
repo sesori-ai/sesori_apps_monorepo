@@ -88,6 +88,26 @@ void main() {
 
       expect(setup, const PluginSetupReady());
     });
+
+    test('versioned setup states retain only the selected runtime version', () {
+      expect(const PluginSetupReady.versioned(runtimeVersion: "1.2.3").runtimeVersion, "1.2.3");
+      expect(
+        const PluginSetupAuthenticationRequired.versioned(
+          actionHint: "Sign in.",
+          runtimeVersion: "2.3.4",
+        ).runtimeVersion,
+        "2.3.4",
+      );
+      expect(
+        const PluginSetupUnknown.versioned(
+          actionHint: "Authentication could not be determined.",
+          runtimeVersion: "3.4.5",
+        ).runtimeVersion,
+        "3.4.5",
+      );
+      expect(const PluginSetupReady().runtimeVersion, isNull);
+      expect(const PluginSetupRuntimeMissing(actionHint: null).runtimeVersion, isNull);
+    });
   });
 
   group('PluginOption', () {

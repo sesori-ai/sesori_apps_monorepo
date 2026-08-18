@@ -7,7 +7,7 @@ enum ClaudeAgentSelection({
   required final ClaudePermissionMode permissionMode,
 }) {
   standard(
-    displayName: "Default",
+    displayName: "Agent",
     description: "Executes tasks and asks before sensitive operations",
     permissionMode: ClaudePermissionMode.standard,
   ),

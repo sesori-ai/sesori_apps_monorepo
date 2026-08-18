@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `fast-new-session-launch`
-- **Implementation base:** `origin/main` at `f7bcdc63e` after Step 4 merge
-- **Current branch:** `async-generated-session-branch-rename`
-- **Series state:** Steps 1-4/6 merged; standalone follow-up 4A is in review in
-  PR #923 before Step 5
-- **Current step:** monitor asynchronous generated branch refinement
-- **Next action:** merge PR #923, then continue to Step 5
+- **Implementation base:** `origin/main` at `9f765e6d5` after follow-up 4A merge
+- **Current branch:** `fast-new-session-launch-step-5`
+- **Series state:** Steps 1-4/6 and standalone follow-up 4A merged; Step 5 is in
+  review in PR #928
+- **Current step:** monitor the Step 5 documentation PR
+- **Next action:** merge PR #928, then execute the Step 6 regression matrix
 
 ## Locked Decisions
 
@@ -68,7 +68,7 @@
 - [x] Reuse that tracked workflow/family lane for branch refinement; add no
   branch registry, watcher, lock, or second mutation stream.
 - [x] Generated branch failure cannot fail creation/title, and a switched,
-  detached, or upstream branch is never renamed.
+  detached, upstream, or matching fetched remote branch is never renamed.
 - [x] Keep the normalized event consumer alive through late-metadata drain, then
   fence mutation producers before draining its listener and event tails.
 - [x] Shared encryption returns preallocated typed bytes without boxed integer
@@ -86,8 +86,8 @@
 | [x] | 2/6 | `🌿 [fast-new-session-launch] feat(bridge): use local workspace names [step 2/6]` | Merged in #908 |
 | [x] | 3/6 | `🚧 [fast-new-session-launch] feat(bridge): return sessions before generated titles [step 3/6]` | Merged in #909 |
 | [x] | 4/6 | `⚙️ [fast-new-session-launch] feat(client): open launching sessions immediately [step 4/6]` | Merged in #913 |
-| [ ] | 4A | `⚙️ Rename generated session branches after launch` | PR #923 open and monitored |
-| [ ] | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | Blocked on follow-up 4A merge |
+| [x] | 4A | `⚙️ Rename generated session branches after launch` | Merged in #923 |
+| [ ] | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | PR #928 open and monitored |
 | [ ] | 6/6 | `🌿 [fast-new-session-launch] test: verify faster new-session launch [step 6/6]` | Blocked on Step 5 merge |
 
 ## Step 1 Checklist
@@ -153,7 +153,8 @@
 - [x] Keep local branch/worktree creation and the canonical response independent
   from metadata latency or failure.
 - [x] Rename only a root dedicated worktree still on its initial branch with no
-  upstream; leave its directory and plugin working path unchanged.
+  upstream or matching fetched remote ref; leave its directory and plugin working
+  path unchanged.
 - [x] Validate the generated ref, apply bounded secure collision fallback, and
   preserve the initial branch on every ineligible/failure outcome.
 - [x] Persist durable/current branch facts under the session-family lane and emit
@@ -161,6 +162,41 @@
 - [x] Preserve independent title application and tracked shutdown ownership.
 - [x] Run codegen, focused tests, strict analysis, cleanup/analytics assessment,
   and architecture reviews; commit, push, open the standalone PR, and monitor it.
+
+## Step 5 Checklist
+
+- [x] Reconcile `session-creation-and-options.md` as the authoritative launch,
+  restoration, metadata, and dedicated-branch contract.
+- [x] Reconcile durable title/branch list updates in
+  `projects-and-sessions.md`.
+- [x] Reconcile memory-only attachment restoration and bounded serialization in
+  `attachments-and-images.md`.
+- [x] Reconcile stable-worktree branch refinement in
+  `diffs-and-source-control.md`.
+- [x] Reconcile generated branch updates and stale-target fencing in
+  `pull-request-monitoring.md`.
+- [x] Inspect `session-turns.md`; leave it unchanged because new-session launch
+  does not alter existing-session send, queue, or turn semantics.
+- [x] Complete the implementation cleanup audit and retain only compatibility or
+  independently used artifacts.
+- [x] Validate the documentation-only diff with `git diff --check`.
+- [x] Measure the merge-base Step 5 diff and reconcile it with the 80-180
+  changed-line target.
+- [x] Commit, push, open Step 5, and monitor it in PR #928.
+
+## Step 5 Cleanup Audit
+
+- [x] Obsolete preferred metadata naming, synchronous title-tail, single-session
+  enrichment, deletion-only listener, loading overlay, and app-level `cue`
+  dependency symbols have no production matches.
+- [x] The bridge metadata model no longer consumes `worktreeName`; the auth
+  response retains it only for released-bridge compatibility outside this repo.
+- [x] Generated metadata activation, durable session/worktree/base facts, explicit
+  user rename, normalized mutation delivery, and shared Prego launch status remain
+  independently required.
+- [x] No database migration, pending-session persistence, branch watcher/lock,
+  retry registry, optimistic transcript, or detail snapshot was introduced.
+- [x] No additional causal cleanup or newly dead implementation was found.
 
 ## Cleanup Ledger
 
@@ -269,6 +305,10 @@
 - Follow-up 4A PR: #923, based on `main` and monitored.
 - Follow-up 4A review fixes passed 144 focused tests, all 2,641 `bridge/app`
   tests, strict analysis, and `git diff --check`.
+- Step 5 merge-base documentation scope:
+  `git diff --numstat "$(git merge-base HEAD origin/main)" -- .plan/active/fast-new-session-launch/{PLAN,TRACKER}.md docs/regression/{attachments-and-images,projects-and-sessions,pull-request-monitoring,session-creation-and-options}.md`.
+- Self-inclusive Step 5 result: `+125 / -33` (158 changed lines), within the
+  80-180 target.
 
 ### Manual matrix
 

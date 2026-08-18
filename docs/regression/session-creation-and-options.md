@@ -37,6 +37,19 @@ variant, and worktree mode, and creating the session with its first input.
 - Prompt and slash-command starts are exclusive; only user-authored text is
   user-visible, and attachments appear only where declared. The session keys on
   the stable project identifier and carries title, defaults, and worktree facts.
+- Send immediately replaces the composer with detail-shaped launch status while
+  the unresolved URI remains `/projects/<projectId>/sessions/new`. Duplicate Send
+  is blocked. Back leaves creation running, and success replaces the route only
+  when that launch route is still current and the returned session is durable.
+- A creation failure on the still-current route restores the exact submitted
+  text/voice spans, command intent, and memory-only attachment identities once,
+  and warns that manual resend can duplicate a session because response loss
+  cannot prove the bridge did not commit. It never auto-resends. Failure after
+  leaving the route does not repopulate shared composer state.
+- Attachment-bearing creation yields incrementally while encoding attachment
+  base64, inner request JSON, and outer relay-envelope JSON/UTF-8. Maximum-size
+  input preserves the exact wire payload without copying attachment buffers to
+  an isolate or blocking launch rendering.
 - A backend creation title may appear in the initial response; otherwise the
   title stays missing until generated metadata succeeds. Generated title is a
   conditional bridge-owned update delivered through the existing
@@ -63,8 +76,8 @@ variant, and worktree mode, and creating the session with its first input.
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
 | L2 Routine | Headless bridge, representative plugin: options return agents, models, commands; explicit refresh forces discovery; cache-only reports unavailable without discovering; dedicated mode produces a local lowercase `color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. |
-| L3 Release | Client end to end (phone), every supporting production plugin: each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; pickers, plugin chooser, loading, and no-harness states render. |
-| L4 Extended | Live plugin, every supporting production plugin: occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/upstream branch, invalid generated ref, branch collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
+| L3 Release | Client end to end (phone), every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; pickers, plugin chooser, detail loading, and no-harness states render. |
+| L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
 
 ## Exploration Guidance
@@ -74,8 +87,11 @@ mode, prompt versus command start, default versus explicit options, and fresh,
 collision-prone, or non-git projects. Also vary fast, slow, failed, and
 shutdown-aborted metadata, plus user rename/deletion while title generation is
 in flight. For dedicated sessions, vary untouched, switched, detached, upstream,
-colliding, and rollback-failing branches while confirming the directory stays
-fixed and title application does not wait for branch refinement.
+matching-remote, colliding, and rollback-failing branches while confirming the
+directory stays fixed and title application does not wait for branch refinement.
+For launch behavior, vary in-route versus background completion, success versus
+definitive rejection versus response loss, navigation before completion, and
+reconnect or option refresh while restoration is pending.
 
 ## Failure Signals
 
@@ -90,9 +106,14 @@ fixed and title application does not wait for branch refinement.
 - Metadata completion delays the create response, creates an unqueryable session,
   overwrites a user title, resurrects a deletion, or loses the local title when
   backend rename fails.
-- Generated branch refinement moves the worktree directory, renames a switched or
-  upstream branch, overwrites a newer current-branch observation, delays title
-  application, persists facts that disagree with Git, or misses its session update.
+- Generated branch refinement moves the worktree directory, renames a switched,
+  upstream, or matching-remote branch, overwrites a newer current-branch
+  observation, delays title application, persists facts that disagree with Git,
+  or misses its session update.
+- Launch status waits for network metadata, changes the route before a durable
+  response, permits duplicate Send, hijacks a later route, loses background work,
+  auto-resends, or restores an incomplete/abandoned draft without the
+  duplicate-risk warning.
 
 ## Known Limitations
 

@@ -1024,6 +1024,9 @@ class _FakeHost({@override required final PluginConfig config}) implements Plugi
   final String stateDirectory = "/runtime";
 
   @override
+  Duration? get pluginIdleTimeout => null;
+
+  @override
   String? provisionedRuntimePath;
 
   @override
