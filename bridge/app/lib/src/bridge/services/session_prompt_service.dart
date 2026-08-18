@@ -107,6 +107,19 @@ class SessionPromptService({
     );
   }
 
+  /// Cancels the queued prompt [promptId] on [sessionId] before dispatch.
+  ///
+  /// Runs on the same serialized family lane as sends, so a cancel cannot
+  /// race the enqueue or dispatch of the entry it names. Returns whether an
+  /// entry was removed.
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) {
+    return _dispatcher.dispatch(
+      sessionId: sessionId,
+      operation: SessionOperation.cancelQueuedPrompt,
+      body: () => _sessionRepository.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId),
+    );
+  }
+
   Future<void> _updatePromptDefaults({
     required String sessionId,
     required SessionVariant? variant,
