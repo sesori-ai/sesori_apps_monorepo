@@ -344,6 +344,130 @@ void main() {
       expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
     });
 
+    test("a cancelled prompt does not resurrect from its late transport failure", () async {
+      final sendCompleter = Completer<ApiResponse<void>>();
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) => sendCompleter.future);
+      when(
+        () => mockSessionRepository.cancelQueuedPrompt(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+      final cubit = await createLoadedCubit();
+      unawaited(
+        cubit.sendMessage(text: "steer it", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
+      );
+      await Future<void>.delayed(Duration.zero);
+      final promptId = (cubit.state as SessionDetailLoaded).sendingSubmission?.promptId;
+      expect(promptId, isNotNull);
+
+      // Accepted by the bridge while the response is still in flight...
+      sessionEvents.add(
+        SesoriSseEvent.sessionQueuedPrompts(
+          sessionID: _sessionId,
+          prompts: [
+            QueuedSessionPrompt(id: promptId ?? "", text: "steer it", command: null, attachmentCount: 0, createdAt: 1),
+          ],
+        ) as SesoriSessionEvent,
+      );
+      await Future<void>.delayed(Duration.zero);
+      // ...then cancelled from this client...
+      await cubit.cancelBridgeQueuedPrompt(promptId: promptId ?? "");
+      sessionEvents.add(
+        const SesoriSseEvent.sessionQueuedPrompts(sessionID: _sessionId, prompts: []) as SesoriSessionEvent,
+      );
+      await Future<void>.delayed(Duration.zero);
+      // ...and only then does the original send fail at the transport layer.
+      sendCompleter.completeError(Exception("response lost"));
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.bridgeQueuedPrompts, isEmpty);
+      expect(state.queuedMessages, isEmpty, reason: "the cancelled prompt must not requeue locally");
+      expect(state.sendingSubmission, isNull);
+      verify(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).called(1);
+    });
+
+    test("a snapshot already holding the prompt's message discards the in-flight send and drains on", () async {
+      final firstSend = Completer<ApiResponse<void>>();
+      final laterSends = <String>[];
+      var sendCalls = 0;
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((invocation) {
+        sendCalls++;
+        if (sendCalls == 1) return firstSend.future;
+        laterSends.add(invocation.namedArguments[#text]! as String);
+        return Future.value(ApiResponse.success(null));
+      });
+      final cubit = await createLoadedCubit();
+      unawaited(
+        cubit.sendMessage(text: "first", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
+      );
+      unawaited(
+        cubit.sendMessage(text: "second", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
+      );
+      await Future<void>.delayed(Duration.zero);
+      final promptId = (cubit.state as SessionDetailLoaded).sendingSubmission?.promptId;
+      expect(promptId, isNotNull);
+
+      // The prompt already dispatched: its message arrives (queue no longer
+      // lists it), then the acceptance response is lost.
+      sessionEvents.add(
+        SesoriMessageUpdated(
+          info: Message.user(
+            id: "echo-1",
+            sessionID: _sessionId,
+            agent: null,
+            time: const MessageTime(created: 400, completed: null),
+            promptId: promptId,
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect((cubit.state as SessionDetailLoaded).sendingSubmission, isNull);
+      firstSend.completeError(Exception("response lost"));
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(laterSends, ["second"], reason: "the staged send behind the settled one must dispatch");
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.queuedMessages, isEmpty);
+      expect(state.sendingSubmission, isNull);
+    });
+
     test("abort drops locally staged sends", () async {
       when(() => mockSessionRepository.abortSession(sessionId: _sessionId)).thenAnswer(
         (_) async => ApiResponse.success(null),

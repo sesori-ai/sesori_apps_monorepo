@@ -1143,13 +1143,12 @@ class SessionDetailCubit(
         for (final prompt in current.bridgeQueuedPrompts)
           if (prompt.id != promptId) prompt,
       ];
-      final visibleSending = _visibleStagedSending(bridgePrompts: bridgePrompts);
       emit(
         current.copyWith(
           messages: messages,
           bridgeQueuedPrompts: bridgePrompts,
           queuedMessages: _visibleStagedItems(bridgePrompts: bridgePrompts),
-          sendingSubmission: visibleSending?.promptId == promptId ? null : visibleSending,
+          sendingSubmission: _visibleStagedSending(bridgePrompts: bridgePrompts),
         ),
       );
       // The healed prompt's own send may have stopped the drain on a lost
@@ -1190,14 +1189,18 @@ class SessionDetailCubit(
     if (result case ErrorResponse(:final error)) {
       if (error is! NonSuccessCodeError || error.errorCode != 404) return;
     }
+    _promptQueue.removeByPromptId(promptId);
     final current = state;
     if (current is! SessionDetailLoaded || isClosed) return;
+    final bridgePrompts = [
+      for (final prompt in current.bridgeQueuedPrompts)
+        if (prompt.id != promptId) prompt,
+    ];
     emit(
       current.copyWith(
-        bridgeQueuedPrompts: [
-          for (final prompt in current.bridgeQueuedPrompts)
-            if (prompt.id != promptId) prompt,
-        ],
+        bridgeQueuedPrompts: bridgePrompts,
+        queuedMessages: _visibleStagedItems(bridgePrompts: bridgePrompts),
+        sendingSubmission: _visibleStagedSending(bridgePrompts: bridgePrompts),
       ),
     );
   }
@@ -1555,7 +1558,7 @@ class SessionDetailCubit(
 
   QueuedSessionSubmission? _visibleStagedSending({required List<QueuedSessionPrompt> bridgePrompts}) {
     final active = _promptQueue.active;
-    if (active == null) return null;
+    if (active == null || _promptQueue.isActiveSettledElsewhere) return null;
     return bridgePrompts.any((prompt) => prompt.id == active.promptId) ? null : active;
   }
 
@@ -1580,6 +1583,7 @@ class SessionDetailCubit(
     _emitQueueUpdate(current);
 
     var sendSucceeded = false;
+    var sendSettledElsewhere = false;
     try {
       final result = await _sessionRepository.sendMessage(
         sessionId: _sessionId,
@@ -1601,15 +1605,21 @@ class SessionDetailCubit(
           _promptQueue.completeSend();
           _reportAcceptedSubmission(submission: submission);
         case ErrorResponse():
-          _promptQueue.failSend();
+          sendSettledElsewhere = !_promptQueue.failSend();
       }
     } on Object catch (error, stackTrace) {
-      _promptQueue.failSend();
+      sendSettledElsewhere = !_promptQueue.failSend();
       logw("Failed to send queued session submission", error, stackTrace);
     }
 
     _emitQueueUpdate(_latestLoadedState());
 
+    if (sendSettledElsewhere && _isConnected) {
+      // The bridge already owns that prompt; the staged sends behind it must
+      // not stay parked on its moot transport failure.
+      unawaited(_drainQueuedMessages());
+      return;
+    }
     if (!sendSucceeded && sendConnectionGeneration != _connectionGeneration && _isConnected) {
       unawaited(_drainQueuedMessages());
       return;
