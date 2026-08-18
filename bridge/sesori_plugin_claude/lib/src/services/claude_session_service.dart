@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:collection";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
@@ -8,14 +9,45 @@ import "../models/claude_effort_level.dart";
 import "../models/claude_permission_mode.dart";
 import "../repositories/claude_session_process_repository.dart";
 
+/// How a dispatched queued turn made its user message visible.
+enum ClaudeQueuedDispatch() {
+  /// The caller emitted the visible user message itself (slash commands emit
+  /// a synthetic bubble); the queued entry is consumed immediately.
+  emittedVisibleMessage,
+
+  /// The CLI's replayed stdin echo will carry the visible user message; the
+  /// queued entry is consumed when that echo arrives.
+  awaitsUserEcho,
+}
+
+/// One prompt accepted for a session but not yet visible as a transcript
+/// message. Stays queued (and cancellable until dispatch) from acceptance
+/// until its user message is emitted.
+final class _QueuedPrompt({
+  required final String id,
+  required final String? displayText,
+  required final String? command,
+  required final int attachmentCount,
+  required final int createdAt,
+}) {
+  bool dispatched = false;
+}
+
 final class _SessionTurnState() {
   Future<void> tail = Future<void>.value();
   int pending = 0;
   int generation = 0;
   int idleGeneration = 0;
+  final List<_QueuedPrompt> queue = [];
+
+  /// Prompt ids dispatched most recently, newest last. Bounds the idempotent
+  /// retry window: a client that lost the acceptance response can re-send the
+  /// same prompt id and be refused as an already-done no-op.
+  final Queue<String> recentlyDispatched = Queue<String>();
 }
 
-/// Serializes Claude turns and owns session work/idle lifecycle policy.
+/// Serializes Claude turns and owns session work/idle lifecycle policy plus
+/// the bridge-owned queued-prompt state.
 final class ClaudeSessionService({
   required final ClaudeSessionProcessRepository _processes,
   required final ClaudeApprovalRegistry _approvals,
@@ -25,6 +57,11 @@ final class ClaudeSessionService({
   this {
     _processEvents = _processes.events.listen(_handleProcessEvent);
   }
+
+  /// See [_SessionTurnState.recentlyDispatched]. 64 comfortably exceeds any
+  /// realistic gap between a lost acceptance response and its retry (the
+  /// retry fires on the next reconnect/refresh drain).
+  static const int _recentlyDispatchedLimit = 64;
 
   final Map<String, _SessionTurnState> _turns = {};
   final Map<String, PluginSessionStatus> _retryStatuses = {};
@@ -47,7 +84,116 @@ final class ClaudeSessionService({
           (entry.value.pending > 0 ? const PluginSessionStatus.busy() : const PluginSessionStatus.idle()),
   });
 
+  /// The session's accepted-but-not-yet-visible prompts, in dispatch order.
+  List<PluginQueuedPrompt> queuedPrompts({required String sessionId}) {
+    final state = _turns[sessionId];
+    if (state == null) return const [];
+    return [
+      for (final entry in state.queue)
+        PluginQueuedPrompt(
+          id: entry.id,
+          text: entry.displayText,
+          command: entry.command,
+          attachmentCount: entry.attachmentCount,
+          createdAt: entry.createdAt,
+        ),
+    ];
+  }
+
+  /// Cancels the not-yet-dispatched queued prompt [promptId].
+  ///
+  /// Returns whether an entry was removed. A dispatched entry refuses: from
+  /// that moment the prompt is a turn, governed by [abort].
+  bool cancelQueuedPrompt({required String sessionId, required String promptId}) {
+    final state = _turns[sessionId];
+    if (state == null) return false;
+    final index = state.queue.indexWhere((entry) => entry.id == promptId && !entry.dispatched);
+    if (index == -1) return false;
+    state.queue.removeAt(index);
+    _emitQueueUpdate(sessionId: sessionId, state: state);
+    return true;
+  }
+
+  /// Removes [promptId]'s queued entry once its user message became visible.
+  ///
+  /// Emits the queue update on the service stream, whose async delivery lands
+  /// after the caller's directly-buffered message events — clients therefore
+  /// always see the message before the entry disappears and can transform the
+  /// queued bubble in place.
+  void consumeQueuedPrompt({required String sessionId, required String promptId}) {
+    final state = _turns[sessionId];
+    if (state == null) return;
+    final index = state.queue.indexWhere((entry) => entry.id == promptId);
+    if (index == -1) return;
+    state.queue.removeAt(index);
+    _emitQueueUpdate(sessionId: sessionId, state: state);
+  }
+
+  /// Queues a prompt or command turn and accepts it immediately.
+  ///
+  /// The returned future completes at enqueue — never after the turns ahead
+  /// of it — so callers holding a client request open respond instantly. A
+  /// [promptId] already queued or recently dispatched is an idempotent
+  /// success no-op (the retry of a send whose response was lost).
+  ///
+  /// [onDispatched] runs right after the turn is written to the CLI and says
+  /// how its user message becomes visible; the queued entry is consumed
+  /// accordingly. Dispatch failures surface as a session error and remove
+  /// the entry — acceptance is not revoked.
   Future<void> enqueueTurn({
+    required String sessionId,
+    required String directory,
+    required bool createNew,
+    required List<PluginPromptPart> parts,
+    required String? model,
+    required ClaudeEffortLevel? effort,
+    required ClaudePermissionMode? permissionMode,
+    required String promptId,
+    required String? displayText,
+    required String? command,
+    required int attachmentCount,
+    required ClaudeQueuedDispatch Function() onDispatched,
+  }) {
+    if (_disposed || parts.isEmpty) {
+      return Future.error(StateError("Claude session cannot accept the turn"));
+    }
+    final state = _turns.putIfAbsent(sessionId, _SessionTurnState.new);
+    final isDuplicate =
+        state.queue.any((entry) => entry.id == promptId) || state.recentlyDispatched.contains(promptId);
+    if (isDuplicate) return Future.value();
+
+    final entry = _QueuedPrompt(
+      id: promptId,
+      displayText: displayText,
+      command: command,
+      attachmentCount: attachmentCount,
+      createdAt: _clock.now().millisecondsSinceEpoch,
+    );
+    state.queue.add(entry);
+    _beginTurnAccounting(sessionId: sessionId, state: state);
+    _emitQueueUpdate(sessionId: sessionId, state: state);
+    final generation = state.generation;
+    state.tail = state.tail.then(
+      (_) => _runTurn(
+        sessionId: sessionId,
+        directory: directory,
+        createNew: createNew,
+        parts: parts,
+        model: model,
+        effort: effort,
+        permissionMode: permissionMode,
+        state: state,
+        generation: generation,
+        mode: _QueuedTurnMode(entry: entry, onDispatched: onDispatched),
+      ),
+    );
+    return Future.value();
+  }
+
+  /// Queues a session's very first turn and completes only when the backend
+  /// accepted it, so session creation can roll back a session whose initial
+  /// prompt never started. Never used for sends to existing sessions.
+  Future<void> enqueueInitialTurn({
     required String sessionId,
     required String directory,
     required bool createNew,
@@ -61,14 +207,7 @@ final class ClaudeSessionService({
     }
     final acceptance = Completer<void>();
     final state = _turns.putIfAbsent(sessionId, _SessionTurnState.new);
-    _retryStatuses.remove(sessionId);
-    state.pending++;
-    state.idleGeneration++;
-    if (state.pending == 1) {
-      _workState.set(PluginWorkState.busy);
-      _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const shared.SessionStatus.busy().toJson()));
-      _emit(const BridgeSseProjectUpdated());
-    }
+    _beginTurnAccounting(sessionId: sessionId, state: state);
     final generation = state.generation;
     state.tail = state.tail.then(
       (_) => _runTurn(
@@ -81,10 +220,21 @@ final class ClaudeSessionService({
         permissionMode: permissionMode,
         state: state,
         generation: generation,
-        acceptance: acceptance,
+        mode: _BlockingTurnMode(acceptance: acceptance),
       ),
     );
     return acceptance.future;
+  }
+
+  void _beginTurnAccounting({required String sessionId, required _SessionTurnState state}) {
+    _retryStatuses.remove(sessionId);
+    state.pending++;
+    state.idleGeneration++;
+    if (state.pending == 1) {
+      _workState.set(PluginWorkState.busy);
+      _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const shared.SessionStatus.busy().toJson()));
+      _emit(const BridgeSseProjectUpdated());
+    }
   }
 
   Future<void> _runTurn({
@@ -97,10 +247,10 @@ final class ClaudeSessionService({
     required ClaudePermissionMode? permissionMode,
     required _SessionTurnState state,
     required int generation,
-    required Completer<void> acceptance,
+    required _TurnMode mode,
   }) async {
-    if (!_isCurrent(sessionId: sessionId, state: state, generation: generation)) {
-      if (!acceptance.isCompleted) acceptance.completeError(StateError("Claude turn was cancelled before acceptance"));
+    if (!_isCurrent(sessionId: sessionId, state: state, generation: generation) || _isCancelled(mode, state)) {
+      mode.settleUnaccepted();
       return _finish(sessionId, state, null);
     }
     try {
@@ -113,24 +263,33 @@ final class ClaudeSessionService({
         permissionMode: permissionMode,
         allowedTools: _approvals.allowedToolsForSession(sessionId: sessionId),
       );
-      if (!_isCurrent(sessionId: sessionId, state: state, generation: generation)) {
-        if (!acceptance.isCompleted) {
-          acceptance.completeError(StateError("Claude turn was cancelled before acceptance"));
-        }
+      if (!_isCurrent(sessionId: sessionId, state: state, generation: generation) || _isCancelled(mode, state)) {
+        mode.settleUnaccepted();
         return _finish(sessionId, state, null);
       }
       final dispatch = _processes.sendTurn(sessionId: sessionId, parts: parts);
       if (!dispatch.accepted) {
         throw StateError("Claude rejected the turn before dispatch");
       }
-      if (!acceptance.isCompleted) acceptance.complete();
+      switch (mode) {
+        case _BlockingTurnMode(:final acceptance):
+          if (!acceptance.isCompleted) acceptance.complete();
+        case _QueuedTurnMode(:final entry, :final onDispatched):
+          entry.dispatched = true;
+          _recordDispatched(state: state, promptId: entry.id);
+          if (onDispatched() == ClaudeQueuedDispatch.emittedVisibleMessage) {
+            consumeQueuedPrompt(sessionId: sessionId, promptId: entry.id);
+          }
+      }
       final outcome = await dispatch.outcome;
+      _settleQueuedEntry(sessionId: sessionId, state: state, mode: mode);
       if (!_isCurrent(sessionId: sessionId, state: state, generation: generation)) {
         return _finish(sessionId, state, null);
       }
       _finish(sessionId, state, outcome);
     } on Object catch (error, stack) {
-      if (!acceptance.isCompleted) acceptance.completeError(error, stack);
+      mode.settleError(error, stack);
+      _settleQueuedEntry(sessionId: sessionId, state: state, mode: mode);
       if (_isCurrent(sessionId: sessionId, state: state, generation: generation)) {
         Log.w("[claude] queued turn failed for $sessionId", error, stack);
         _finish(sessionId, state, const ClaudeTurnFailed());
@@ -138,6 +297,30 @@ final class ClaudeSessionService({
         _finish(sessionId, state, null);
       }
     }
+  }
+
+  /// A cancelled queued entry was already removed from the queue; its chained
+  /// link must settle without dispatching.
+  bool _isCancelled(_TurnMode mode, _SessionTurnState state) =>
+      mode is _QueuedTurnMode && !state.queue.contains(mode.entry) && !mode.entry.dispatched;
+
+  void _recordDispatched({required _SessionTurnState state, required String promptId}) {
+    state.recentlyDispatched.addLast(promptId);
+    while (state.recentlyDispatched.length > _recentlyDispatchedLimit) {
+      state.recentlyDispatched.removeFirst();
+    }
+  }
+
+  /// Removes a queued entry that never became a visible message (interrupt or
+  /// failure between dispatch and echo, or a dispatch that threw).
+  void _settleQueuedEntry({required String sessionId, required _SessionTurnState state, required _TurnMode mode}) {
+    if (mode is! _QueuedTurnMode) return;
+    // A deleted/reset session already dropped this state; a stale turn must
+    // not publish queue updates after BridgeSseSessionDeleted.
+    if (!identical(_turns[sessionId], state)) return;
+    if (!state.queue.contains(mode.entry)) return;
+    state.queue.remove(mode.entry);
+    _emitQueueUpdate(sessionId: sessionId, state: state);
   }
 
   Future<void> abort({required String sessionId}) async {
@@ -149,6 +332,10 @@ final class ClaudeSessionService({
     }
     state.generation++;
     state.idleGeneration++;
+    if (state.queue.isNotEmpty) {
+      state.queue.clear();
+      _emitQueueUpdate(sessionId: sessionId, state: state);
+    }
     _approvals.cancelForSession(sessionId: sessionId);
     try {
       await _processes.interrupt(sessionId: sessionId);
@@ -260,6 +447,15 @@ final class ClaudeSessionService({
     if (!_events.isClosed) _events.add(event);
   }
 
+  void _emitQueueUpdate({required String sessionId, required _SessionTurnState state}) {
+    _emit(
+      BridgeSseQueuedPromptsUpdated(
+        sessionID: sessionId,
+        prompts: queuedPrompts(sessionId: sessionId),
+      ),
+    );
+  }
+
   void recordRetryStatus({required String sessionId, required PluginSessionStatus status}) {
     if (_turns.containsKey(sessionId)) _retryStatuses[sessionId] = status;
   }
@@ -272,5 +468,42 @@ final class ClaudeSessionService({
       case ClaudeSessionProcessExited():
         _approvals.cancelForSession(sessionId: event.sessionId);
     }
+  }
+}
+
+/// How one chained turn reports acceptance and visibility.
+sealed class const _TurnMode() {
+  /// Settles a turn that was dropped before dispatch (stale generation or a
+  /// cancelled queued entry).
+  void settleUnaccepted();
+
+  /// Settles a turn whose dispatch threw.
+  void settleError(Object error, StackTrace stack);
+}
+
+/// A queued-entry turn: accepted at enqueue, visible via [onDispatched].
+final class const _QueuedTurnMode({
+  required final _QueuedPrompt entry,
+  required final ClaudeQueuedDispatch Function() onDispatched,
+}) extends _TurnMode {
+  @override
+  void settleUnaccepted() {}
+
+  @override
+  void settleError(Object error, StackTrace stack) {}
+}
+
+/// The blocking initial turn: acceptance completes only at dispatch.
+final class const _BlockingTurnMode({required final Completer<void> acceptance}) extends _TurnMode {
+  @override
+  void settleUnaccepted() {
+    if (!acceptance.isCompleted) {
+      acceptance.completeError(StateError("Claude turn was cancelled before acceptance"));
+    }
+  }
+
+  @override
+  void settleError(Object error, StackTrace stack) {
+    if (!acceptance.isCompleted) acceptance.completeError(error, stack);
   }
 }

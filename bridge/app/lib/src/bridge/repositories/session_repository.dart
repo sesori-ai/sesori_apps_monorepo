@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:math";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+
     show
         BridgeDerivedProjectsPluginApi,
         BridgePluginApi,
@@ -24,6 +25,7 @@ import "package:sesori_shared/sesori_shared.dart"
         PromptModel,
         PromptPart,
         PullRequestInfo,
+        QueuedSessionPrompt,
         Session,
         SessionStatusResponse,
         SessionVariant;
@@ -35,6 +37,7 @@ import "../../api/database/tables/projects_table.dart" show ProjectDto;
 import "../../api/database/tables/pull_requests_table.dart";
 import "../../api/database/tables/session_table.dart" show SessionDto;
 import "../../repositories/project_catalog_identity_calculator.dart";
+import "../plugin_to_shared_mapping.dart";
 import "../runtime/plugin_runtime.dart";
 import "mappers/plugin_activity_summary_mapper.dart";
 import "mappers/plugin_command_mapper.dart";
@@ -349,6 +352,45 @@ class SessionRepository({
         );
       },
     );
+  }
+
+  /// The prompts accepted for [sessionId] but not yet dispatched to its
+  /// backend, in dispatch order, mapped to the shared wire model.
+  ///
+  /// Deliberately does not start a stopped backend: the queue lives in the
+  /// plugin's memory, so a stopped one holds nothing.
+  Future<List<QueuedSessionPrompt>> getQueuedPrompts({required String sessionId}) async {
+    final binding = await _requireBinding(
+      sessionId: sessionId,
+      operation: SessionOperation.getQueuedPrompts,
+    );
+    final prompts = await _runtime.useIfActive(
+      pluginId: binding.pluginId,
+      operation: SessionOperation.getQueuedPrompts,
+      body: (plugin, _) async =>
+          (await plugin.getQueuedPrompts(sessionId: binding.backendSessionId)).toSharedQueuedPrompts(),
+    );
+    return prompts ?? const [];
+  }
+
+  /// Cancels the queued prompt [promptId] on [sessionId] before dispatch.
+  ///
+  /// Returns whether an entry was removed; `false` covers an unknown id, an
+  /// already-dispatched prompt, and a stopped backend (whose queue is empty).
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async {
+    final binding = await _requireBinding(
+      sessionId: sessionId,
+      operation: SessionOperation.cancelQueuedPrompt,
+    );
+    final removed = await _runtime.useIfActive(
+      pluginId: binding.pluginId,
+      operation: SessionOperation.cancelQueuedPrompt,
+      body: (plugin, _) => plugin.cancelQueuedPrompt(
+        sessionId: binding.backendSessionId,
+        promptId: promptId,
+      ),
+    );
+    return removed ?? false;
   }
 
   /// All messages of [sessionId], mapped to the shared model. The stored
