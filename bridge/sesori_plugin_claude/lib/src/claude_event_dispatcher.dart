@@ -72,9 +72,11 @@ final class ClaudeEventDispatcher({
         ClaudeInitMessage() ||
         ClaudeStatusMessage() ||
         // ponytail: parsed but not surfaced — no client UI consumes thinking
-        // token estimates or subagent task progress yet.
+        // token estimates, subagent task progress, or hook output yet.
         ClaudeThinkingTokensMessage() ||
         ClaudeTaskProgressMessage() ||
+        ClaudeHookStartedMessage() ||
+        ClaudeHookOutputMessage() ||
         ClaudeControlRequestMessage() ||
         ClaudeControlResponseMessage() ||
         ClaudeRateLimitMessage() ||
