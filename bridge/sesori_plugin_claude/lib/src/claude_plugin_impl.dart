@@ -308,8 +308,11 @@ final class ClaudePlugin({
 
   @override
   Future<void> abortSession({required String sessionId}) async {
-    await _sessions.abort(sessionId: sessionId);
+    // Before the await: the aborted turn's expectation must go now, and a
+    // prompt enqueued while the abort settles may install its own, which a
+    // late clear would wrongly wipe.
     _eventDispatcher.clearExpectedUserEcho(sessionId: sessionId);
+    await _sessions.abort(sessionId: sessionId);
   }
 
   @override
