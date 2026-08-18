@@ -32,7 +32,7 @@ void main() {
       );
 
       final observed = options as PluginSessionOptionsDiscoveryObserved;
-      expect(observed.options.agents.map((agent) => agent.name), ["Default", "Plan"]);
+      expect(observed.options.agents.map((agent) => agent.name), ["Agent", "Plan"]);
       expect(observed.options.providers.providers.single.models, hasLength(2));
       expect(observed.options.commands.single.name, "review");
       expect(harness.processes, hasLength(1));
@@ -120,7 +120,7 @@ void main() {
         ],
         userVisibleText: "visible prompt",
         variant: null,
-        agent: "Default",
+        agent: "Agent",
         model: (providerID: "anthropic", modelID: "default"),
       );
       final process = harness.processes.single;
@@ -198,7 +198,7 @@ void main() {
         parts: const [],
         userVisibleText: null,
         variant: null,
-        agent: "Default",
+        agent: "Agent",
         model: (providerID: "anthropic", modelID: "default"),
       );
 
@@ -209,7 +209,7 @@ void main() {
           arguments: "src",
           userVisibleArguments: "src",
           variant: null,
-          agent: "Default",
+          agent: "Agent",
           model: (providerID: "anthropic", modelID: "default"),
         ),
         throwsA(
@@ -233,7 +233,7 @@ void main() {
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "follow-up")],
         variant: null,
-        agent: "Default",
+        agent: "Agent",
         model: (providerID: "anthropic", modelID: "default"),
       );
       await _waitForUserText(first, "follow-up");
@@ -263,7 +263,7 @@ void main() {
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "deeper")],
         variant: const PluginSessionVariant(id: "high"),
-        agent: "Default",
+        agent: "Agent",
         model: (providerID: "anthropic", modelID: "default"),
       );
       for (var attempt = 0; attempt < 50 && harness.processes.length < 2; attempt++) {
@@ -441,7 +441,7 @@ void main() {
 
       final defaults = events.whereType<BridgeSseSessionPromptDefaultsChanged>().single;
       expect(defaults.sessionID, testSessionId);
-      expect(defaults.agent, "Default");
+      expect(defaults.agent, "Agent");
       expect(defaults.model, isNull);
 
       process.emit(_result());
@@ -566,7 +566,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
     parts: const [PluginPromptPart.text(text: "hello")],
     userVisibleText: "hello",
     variant: null,
-    agent: "Default",
+    agent: "Agent",
     model: (providerID: "anthropic", modelID: "default"),
   );
 

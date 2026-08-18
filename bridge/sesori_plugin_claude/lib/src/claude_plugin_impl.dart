@@ -321,7 +321,7 @@ final class ClaudePlugin({
       _eventBuffer.add(
         BridgeSseSessionPromptDefaultsChanged(
           sessionID: sessionId,
-          agent: "Default",
+          agent: ClaudeAgentSelection.standard.displayName,
           model: null,
         ),
       );
