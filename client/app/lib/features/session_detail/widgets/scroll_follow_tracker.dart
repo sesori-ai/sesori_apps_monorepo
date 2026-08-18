@@ -1,3 +1,6 @@
+import "dart:async";
+
+import "package:flutter/foundation.dart" show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import "package:flutter/gestures.dart";
 import "package:flutter/rendering.dart";
 import "package:flutter/widgets.dart";
@@ -39,7 +42,7 @@ class ScrollFollowTracker({
     required final ScrollFollowEdge edge,
     final double _edgeTolerance = 20.0,
   }) extends ChangeNotifier {
-  this : scrollController = ScrollController();
+  this : scrollController = _createScrollController();
 
   final ScrollController scrollController;
 
@@ -200,5 +203,77 @@ class ScrollFollowTracker({
       ScrollFollowEdge.min => metrics.minScrollExtent,
       ScrollFollowEdge.max => metrics.maxScrollExtent,
     };
+  }
+}
+
+ScrollController _createScrollController() {
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS) {
+    return _SmoothPointerScrollController();
+  }
+  return ScrollController();
+}
+
+/// Smooths macOS's discrete physical mouse-wheel deltas without touching its
+/// trackpad path, which Flutter delivers as native pan/zoom gestures.
+class _SmoothPointerScrollController() extends ScrollController {
+  @override
+  ScrollPosition createScrollPosition(
+    ScrollPhysics physics,
+    ScrollContext context,
+    ScrollPosition? oldPosition,
+  ) {
+    return _SmoothPointerScrollPosition(
+      physics: physics,
+      context: context,
+      initialPixels: initialScrollOffset,
+      keepScrollOffset: keepScrollOffset,
+      oldPosition: oldPosition,
+      debugLabel: debugLabel,
+    );
+  }
+}
+
+class _SmoothPointerScrollPosition({
+  required super.physics,
+  required super.context,
+  required super.initialPixels,
+  required super.keepScrollOffset,
+  required super.oldPosition,
+  required super.debugLabel,
+}) extends ScrollPositionWithSingleContext {
+  static const _animationDuration = Duration(milliseconds: 120);
+
+  double? _pointerScrollTarget;
+  bool _startingPointerScroll = false;
+
+  @override
+  void pointerScroll(double delta) {
+    if (delta == 0) {
+      _pointerScrollTarget = null;
+      super.pointerScroll(delta);
+      return;
+    }
+
+    // Add rapid wheel ticks to the destination rather than to the partially
+    // animated current offset. Otherwise each new tick discards the remaining
+    // distance from the previous one and makes fast wheel scrolling feel slow.
+    final target = ((_pointerScrollTarget ?? pixels) + delta).clamp(minScrollExtent, maxScrollExtent).toDouble();
+    _pointerScrollTarget = target;
+    updateUserScrollDirection(delta < 0 ? ScrollDirection.forward : ScrollDirection.reverse);
+
+    _startingPointerScroll = true;
+    try {
+      unawaited(animateTo(target, duration: _animationDuration, curve: Curves.easeOutCubic));
+    } finally {
+      _startingPointerScroll = false;
+    }
+  }
+
+  @override
+  void beginActivity(ScrollActivity? newActivity) {
+    // A drag, trackpad gesture, programmatic scroll, or completed wheel
+    // animation invalidates the accumulated wheel destination.
+    if (!_startingPointerScroll) _pointerScrollTarget = null;
+    super.beginActivity(newActivity);
   }
 }
