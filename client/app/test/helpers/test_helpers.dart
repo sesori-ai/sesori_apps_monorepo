@@ -478,6 +478,13 @@ void delegateSessionRepositoryToService({
     (invocation) => service.getPendingPermissions(sessionId: invocation.namedArguments[#sessionId]! as String),
   );
   when(
+    () => repository.getQueuedPrompts(sessionId: any(named: "sessionId")),
+  ).thenAnswer(
+    (_) => Future<ApiResponse<QueuedPromptResponse>>.value(
+      ApiResponse.success(const QueuedPromptResponse(data: <QueuedSessionPrompt>[])),
+    ),
+  );
+  when(
     () => repository.getChildren(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (invocation) => service.getChildren(sessionId: invocation.namedArguments[#sessionId]! as String),
