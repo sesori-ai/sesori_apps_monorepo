@@ -1,3 +1,4 @@
+import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/cancel_queued_prompt_handler.dart";
 import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
@@ -14,10 +15,11 @@ void main() {
   group("CancelQueuedPromptHandler", () {
     late FakeBridgePlugin plugin;
     late CancelQueuedPromptHandler handler;
+    late AppDatabase db;
 
     setUp(() async {
       plugin = FakeBridgePlugin();
-      final db = createTestDatabase();
+      db = createTestDatabase();
       addTearDown(db.close);
       await recordSessionBinding(
         database: db,
@@ -85,6 +87,26 @@ void main() {
       expect(response, isA<SuccessEmptyResponse>());
       expect(plugin.queuedPrompts, isEmpty);
       expect(plugin.cancelQueuedPromptCalls, [(sessionId: "backend-s-1", promptId: "prm_1")]);
+    });
+
+    test("refuses to cancel on an archived session without reaching the plugin", () async {
+      plugin.queuedPrompts.add(
+        const PluginQueuedPrompt(id: "prm_1", text: "queued", command: null, attachmentCount: 0, createdAt: 1),
+      );
+      await db.sessionDao.setArchived(sessionId: "s-1", archivedAt: 5, updatedAt: 5, projectionUpdatedAt: 5);
+
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/session/prompt/cancel"),
+          body: const CancelQueuedPromptRequest(sessionId: "s-1", promptId: "prm_1"),
+          pathParams: {},
+          queryParams: {},
+          fragment: null,
+        ),
+        throwsA(isA<SessionArchivedReadOnlyException>()),
+      );
+      expect(plugin.cancelQueuedPromptCalls, isEmpty);
+      expect(plugin.queuedPrompts, hasLength(1));
     });
 
     test("returns 404 when the entry no longer exists", () async {
