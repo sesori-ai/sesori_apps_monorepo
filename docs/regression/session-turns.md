@@ -137,8 +137,8 @@ has started.
   triggers a completion notification, or queued sends reorder, vanish, or
   resend. A send to a busy session blocks until the running turn finishes, a
   bridge-queued prompt disappears after leaving and reopening the session, a
-  retried send becomes a duplicate turn, or the queued bubble and its
-  dispatched message render simultaneously. Submitted text disappears while
+  retried send within the dedupe window becomes a duplicate turn, or the
+  queued bubble and its dispatched message render simultaneously. Submitted text disappears while
   bridge acceptance or backend startup is still pending, or queued feedback
   uses a visually unrelated or composer-pinned surface, or renders authored
   Markdown as literal syntax.
