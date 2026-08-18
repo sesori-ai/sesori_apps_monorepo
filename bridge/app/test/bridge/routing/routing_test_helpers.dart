@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
+import "package:sesori_bridge/src/bridge/plugin_to_shared_mapping.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_command_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_message_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
@@ -118,11 +119,23 @@ extension RequestHandlerTestMatching on RequestHandlerBase {
 
 /// Hand-written fake [BridgePluginApi] used across routing handler tests.
 class FakeBridgePlugin() implements NativeProjectsPluginApi {
-  @override
-  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
+  /// Seedable queue returned by [getQueuedPrompts]; [cancelQueuedPrompt]
+  /// removes from it like a real queue owner and records the call.
+  final List<PluginQueuedPrompt> queuedPrompts = [];
+  final List<({String sessionId, String promptId})> cancelQueuedPromptCalls = [];
 
   @override
-  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
+  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async =>
+      List.unmodifiable(queuedPrompts);
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async {
+    cancelQueuedPromptCalls.add((sessionId: sessionId, promptId: promptId));
+    final index = queuedPrompts.indexWhere((prompt) => prompt.id == promptId);
+    if (index == -1) return false;
+    queuedPrompts.removeAt(index);
+    return true;
+  }
 
   final _controller = StreamController<BridgeSseEvent>.broadcast();
 
@@ -841,6 +854,12 @@ class _NoopSessionRepository() implements SessionRepository {
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
 
   @override
+  Future<List<QueuedSessionPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
+
+  @override
   int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;
 
   @override
@@ -1117,6 +1136,14 @@ class FakeSessionRepository({
 }) implements SessionRepository {
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
+
+  @override
+  Future<List<QueuedSessionPrompt>> getQueuedPrompts({required String sessionId}) async =>
+      (await _plugin.getQueuedPrompts(sessionId: sessionId)).toSharedQueuedPrompts();
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) =>
+      _plugin.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId);
 
   @override
   int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;

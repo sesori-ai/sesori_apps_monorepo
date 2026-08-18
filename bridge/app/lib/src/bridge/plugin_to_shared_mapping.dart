@@ -114,3 +114,19 @@ extension PluginMessagePartMapping on PluginMessagePart {
     attachment: attachment?.toShared(),
   );
 }
+
+/// Maps plugin-level queued prompts to the shared wire model.
+extension PluginQueuedPromptMapping on PluginQueuedPrompt {
+  QueuedSessionPrompt toSharedQueuedPrompt() => QueuedSessionPrompt(
+    id: id,
+    text: text,
+    command: command,
+    attachmentCount: attachmentCount,
+    createdAt: createdAt,
+  );
+}
+
+extension PluginQueuedPromptsMapping on Iterable<PluginQueuedPrompt> {
+  List<QueuedSessionPrompt> toSharedQueuedPrompts() =>
+      map((prompt) => prompt.toSharedQueuedPrompt()).toList(growable: false);
+}
