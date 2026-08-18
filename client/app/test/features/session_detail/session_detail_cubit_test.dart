@@ -300,7 +300,8 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(promptId: "prompt-1", 
+          () => mockSessionService.sendMessage(
+            promptId: "prompt-1",
             attachments: const [],
             sessionId: sessionId,
             text: "hi",
@@ -368,7 +369,8 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(promptId: "prompt-1", 
+          () => mockSessionService.sendMessage(
+            promptId: any(named: "promptId"),
             sessionId: sessionId,
             text: "look at this",
             attachments: any(named: "attachments", that: hasLength(1)),
@@ -427,7 +429,8 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(promptId: "prompt-1", 
+          () => mockSessionService.sendMessage(
+            promptId: any(named: "promptId"),
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
             attachments: any(named: "attachments"),
@@ -475,7 +478,8 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(promptId: "prompt-1", 
+          () => mockSessionService.sendMessage(
+            promptId: any(named: "promptId"),
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
             attachments: any(named: "attachments"),
@@ -523,7 +527,8 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(promptId: "prompt-1", 
+          () => mockSessionService.sendMessage(
+            promptId: "prompt-1",
             attachments: const [],
             sessionId: sessionId,
             text: "lib/main.dart",
@@ -621,7 +626,8 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(promptId: "prompt-1", 
+          () => mockSessionService.sendMessage(
+            promptId: "prompt-1",
             attachments: const [],
             sessionId: sessionId,
             text: "hello",
@@ -1578,7 +1584,8 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(promptId: "prompt-1", 
+          () => mockSessionService.sendMessage(
+            promptId: any(named: "promptId"),
             attachments: const [],
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
@@ -1634,7 +1641,8 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(promptId: "prompt-1", 
+          () => mockSessionService.sendMessage(
+            promptId: any(named: "promptId"),
             attachments: const [],
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
@@ -1652,7 +1660,8 @@ void main() {
       "sendMessage re-queues on send failure",
       build: () {
         when(
-          () => mockSessionService.sendMessage(promptId: "prompt-1", 
+          () => mockSessionService.sendMessage(
+            promptId: any(named: "promptId"),
             attachments: const [],
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
@@ -1698,7 +1707,8 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(promptId: "prompt-1", 
+          () => mockSessionService.sendMessage(
+            promptId: "prompt-1",
             attachments: const [],
             sessionId: sessionId,
             text: "hello",
@@ -1791,7 +1801,8 @@ void main() {
       ],
       verify: (_) {
         verifyNever(
-          () => mockSessionService.sendMessage(promptId: "prompt-1", 
+          () => mockSessionService.sendMessage(
+            promptId: any(named: "promptId"),
             attachments: const [],
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
@@ -1869,7 +1880,8 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(promptId: "prompt-1", 
+          () => mockSessionService.sendMessage(
+            promptId: "prompt-1",
             attachments: const [],
             sessionId: sessionId,
             text: "retry me",
@@ -1943,7 +1955,8 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
       verify(
-        () => mockSessionService.sendMessage(promptId: "prompt-1", 
+        () => mockSessionService.sendMessage(
+          promptId: "prompt-1",
           attachments: const [],
           sessionId: sessionId,
           text: "hello",
@@ -2041,7 +2054,8 @@ void main() {
 
       expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
       verify(
-        () => mockSessionService.sendMessage(promptId: "prompt-1", 
+        () => mockSessionService.sendMessage(
+          promptId: "prompt-1",
           attachments: const [],
           sessionId: sessionId,
           text: "lib/main.dart",
@@ -2060,7 +2074,8 @@ void main() {
       final sentTexts = <String>[];
 
       when(
-        () => mockSessionService.sendMessage(promptId: "prompt-1", 
+        () => mockSessionService.sendMessage(
+          promptId: any(named: "promptId"),
           attachments: const [],
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
@@ -2167,7 +2182,8 @@ void main() {
         ),
       );
       when(
-        () => mockSessionService.sendMessage(promptId: "prompt-1", 
+        () => mockSessionService.sendMessage(
+          promptId: any(named: "promptId"),
           attachments: const [],
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
@@ -2224,7 +2240,8 @@ void main() {
       await _awaitQueuedMessages(cubit, isEmpty);
 
       verify(
-        () => mockSessionService.sendMessage(promptId: "prompt-1", 
+        () => mockSessionService.sendMessage(
+          promptId: "prompt-1",
           attachments: const [],
           sessionId: sessionId,
           text: "second",
@@ -2297,7 +2314,8 @@ void main() {
       },
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(promptId: "prompt-1", 
+          () => mockSessionService.sendMessage(
+            promptId: any(named: "promptId"),
             attachments: const [],
             sessionId: sessionId,
             text: "first",
@@ -2309,7 +2327,8 @@ void main() {
           ),
         ).called(1);
         verify(
-          () => mockSessionService.sendMessage(promptId: "prompt-1", 
+          () => mockSessionService.sendMessage(
+            promptId: any(named: "promptId"),
             attachments: const [],
             sessionId: sessionId,
             text: "second",
@@ -2329,7 +2348,8 @@ void main() {
         // Make sendMessage always fail — it is only called during drain,
         // not during initial load, so this is safe.
         when(
-          () => mockSessionService.sendMessage(promptId: "prompt-1", 
+          () => mockSessionService.sendMessage(
+            promptId: any(named: "promptId"),
             attachments: const [],
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
@@ -2409,7 +2429,8 @@ void main() {
       ],
       verify: (_) {
         verify(
-          () => mockSessionService.sendMessage(promptId: "prompt-1", 
+          () => mockSessionService.sendMessage(
+            promptId: any(named: "promptId"),
             attachments: const [],
             sessionId: sessionId,
             text: "will fail",
@@ -2768,7 +2789,8 @@ void _stubAllDefaults(
   ).thenReturn(null);
 
   when(
-    () => sessionService.sendMessage(promptId: "prompt-1", 
+    () => sessionService.sendMessage(
+      promptId: any(named: "promptId"),
       sessionId: any(named: "sessionId"),
       text: any(named: "text"),
       attachments: any(named: "attachments"),

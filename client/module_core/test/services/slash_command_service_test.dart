@@ -88,7 +88,8 @@ void main() {
 
     test("sendMessage forwards raw variant", () async {
       when(
-        () => mockRepository.sendMessage(promptId: "prompt-1", 
+        () => mockRepository.sendMessage(
+          promptId: any(named: "promptId"),
           attachments: const [],
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
@@ -99,7 +100,8 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-      await service.sendMessage(promptId: "prompt-1", 
+      await service.sendMessage(
+        promptId: "prompt-1",
         attachments: const [],
         sessionId: "session-1",
         text: "lib/main.dart",
@@ -111,7 +113,8 @@ void main() {
       );
 
       verify(
-        () => mockRepository.sendMessage(promptId: "prompt-1", 
+        () => mockRepository.sendMessage(
+          promptId: "prompt-1",
           attachments: const [],
           sessionId: "session-1",
           text: "lib/main.dart",
@@ -125,7 +128,8 @@ void main() {
 
     test("sendMessage preserves agent model and variant when command is present", () async {
       when(
-        () => mockRepository.sendMessage(promptId: "prompt-1", 
+        () => mockRepository.sendMessage(
+          promptId: any(named: "promptId"),
           attachments: const [],
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
@@ -136,7 +140,8 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-      await service.sendMessage(promptId: "prompt-1", 
+      await service.sendMessage(
+        promptId: "prompt-1",
         attachments: const [],
         sessionId: "session-1",
         text: "lib/main.dart",
@@ -148,7 +153,8 @@ void main() {
       );
 
       verify(
-        () => mockRepository.sendMessage(promptId: "prompt-1", 
+        () => mockRepository.sendMessage(
+          promptId: "prompt-1",
           attachments: const [],
           sessionId: "session-1",
           text: "lib/main.dart",
@@ -162,7 +168,8 @@ void main() {
 
     test("sendMessage normalizes blank provider and model ids to null", () async {
       when(
-        () => mockRepository.sendMessage(promptId: "prompt-1", 
+        () => mockRepository.sendMessage(
+          promptId: any(named: "promptId"),
           attachments: const [],
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
@@ -173,7 +180,8 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-      await service.sendMessage(promptId: "prompt-1", 
+      await service.sendMessage(
+        promptId: "prompt-1",
         attachments: const [],
         sessionId: "session-1",
         text: "hello",
@@ -185,7 +193,8 @@ void main() {
       );
 
       verify(
-        () => mockRepository.sendMessage(promptId: "prompt-1", 
+        () => mockRepository.sendMessage(
+          promptId: "prompt-1",
           attachments: const [],
           sessionId: "session-1",
           text: "hello",
@@ -199,7 +208,8 @@ void main() {
 
     test("sendMessage treats blank command as null and preserves agent and model ids", () async {
       when(
-        () => mockRepository.sendMessage(promptId: "prompt-1", 
+        () => mockRepository.sendMessage(
+          promptId: any(named: "promptId"),
           attachments: const [],
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
@@ -210,7 +220,8 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-      await service.sendMessage(promptId: "prompt-1", 
+      await service.sendMessage(
+        promptId: "prompt-1",
         attachments: const [],
         sessionId: "session-1",
         text: "hello",
@@ -222,7 +233,8 @@ void main() {
       );
 
       verify(
-        () => mockRepository.sendMessage(promptId: "prompt-1", 
+        () => mockRepository.sendMessage(
+          promptId: "prompt-1",
           attachments: const [],
           sessionId: "session-1",
           text: "hello",

@@ -366,7 +366,8 @@ SessionDetailSnapshot _buildDetailSnapshot({
     orElse: () => adaptiveTestSession(projectId: projectId, id: sessionId, title: "Session"),
   );
 
-  return SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
+  return SessionDetailSnapshot(
+    bridgeQueuedPrompts: const [],
     projectId: projectId,
     pluginId: "opencode",
     supportsPromptAttachments: false,

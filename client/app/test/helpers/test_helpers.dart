@@ -551,7 +551,8 @@ void delegateSessionRepositoryToService({
   });
   registerFallbackValue(const <ComposerAttachment>[]);
   when(
-    () => repository.sendMessage(promptId: "prompt-1", 
+    () => repository.sendMessage(
+      promptId: any(named: "promptId"),
       sessionId: any(named: "sessionId"),
       text: any(named: "text"),
       attachments: any(named: "attachments"),
@@ -561,7 +562,8 @@ void delegateSessionRepositoryToService({
       command: any(named: "command"),
     ),
   ).thenAnswer(
-    (invocation) => service.sendMessage(promptId: "prompt-1", 
+    (invocation) => service.sendMessage(
+      promptId: "prompt-1",
       sessionId: invocation.namedArguments[#sessionId]! as String,
       text: invocation.namedArguments[#text]! as String,
       attachments: invocation.namedArguments[#attachments]! as List<ComposerAttachment>,

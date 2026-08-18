@@ -53,7 +53,7 @@ void main() {
       (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
     );
     when(
-      () => api.sendMessage(promptId: "prompt-1", 
+      () => api.sendMessage(promptId: any(named: "promptId"), 
         attachments: const [],
         sessionId: "session-1",
         text: "hello",

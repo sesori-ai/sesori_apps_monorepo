@@ -163,7 +163,9 @@ void main() {
         attachmentCount: 0,
         createdAt: 100,
       );
-      sessionEvents.add(SesoriSseEvent.sessionQueuedPrompts(sessionID: _sessionId, prompts: [acceptedPrompt]) as SesoriSessionEvent);
+      sessionEvents.add(
+        SesoriSseEvent.sessionQueuedPrompts(sessionID: _sessionId, prompts: [acceptedPrompt]) as SesoriSessionEvent,
+      );
       await Future<void>.delayed(Duration.zero);
 
       final state = cubit.state as SessionDetailLoaded;

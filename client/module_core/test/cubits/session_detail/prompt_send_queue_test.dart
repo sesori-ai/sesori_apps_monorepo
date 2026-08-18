@@ -3,77 +3,88 @@ import "package:sesori_dart_core/src/cubits/session_detail/queued_session_submis
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:test/test.dart";
 
-const _first = QueuedSessionSubmission.text(promptId: "prompt-1", 
+const _first = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "first",
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
 );
-const _second = QueuedSessionSubmission.text(promptId: "prompt-1", 
+const _second = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "second",
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
 );
-const _same = QueuedSessionSubmission.text(promptId: "prompt-1", 
+const _same = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "same",
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
 );
-const _other = QueuedSessionSubmission.text(promptId: "prompt-1", 
+const _other = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "other",
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
 );
-const _a = QueuedSessionSubmission.text(promptId: "prompt-1", 
+const _a = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "a",
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
 );
-const _b = QueuedSessionSubmission.text(promptId: "prompt-1", 
+const _b = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "b",
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
 );
-const _c = QueuedSessionSubmission.text(promptId: "prompt-1", 
+const _c = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "c",
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
 );
-const _existing = QueuedSessionSubmission.text(promptId: "prompt-1", 
+const _existing = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "existing",
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
 );
-const _retried = QueuedSessionSubmission.text(promptId: "prompt-1", 
+const _retried = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "retried",
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
 );
-const _msg1 = QueuedSessionSubmission.text(promptId: "prompt-1", 
+const _msg1 = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "msg1",
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
 );
-const _msg2 = QueuedSessionSubmission.text(promptId: "prompt-1", 
+const _msg2 = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "msg2",
   inputMode: ComposerInputMode.typed,

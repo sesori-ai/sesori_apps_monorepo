@@ -109,7 +109,13 @@ void main() {
     await _awaitLoaded(cubit);
 
     expect(cubit.state, isA<SessionDetailLoaded>());
-    verify(() => mockSessionService.getMessages(sessionId: _sessionId, limit: any(named: "limit"), before: any(named: "before"))).called(1);
+    verify(
+      () => mockSessionService.getMessages(
+        sessionId: _sessionId,
+        limit: any(named: "limit"),
+        before: any(named: "before"),
+      ),
+    ).called(1);
   });
 
   test("reloads immediately when waiting result arrives after connection already recovered", () async {
@@ -158,7 +164,8 @@ void main() {
       ),
     ).thenAnswer(
       (_) async => const SessionDetailLoadResult.loaded(
-        snapshot: SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
+        snapshot: SessionDetailSnapshot(
+          bridgeQueuedPrompts: [],
           projectId: "project-1",
           pluginId: "opencode",
           supportsPromptAttachments: false,
@@ -239,7 +246,8 @@ void main() {
     ).thenAnswer((_) async => ApiResponse.success(null));
 
     const loadedResult = SessionDetailLoadResult.loaded(
-      snapshot: SessionDetailSnapshot(bridgeQueuedPrompts: const [], 
+      snapshot: SessionDetailSnapshot(
+        bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "opencode",
         supportsPromptAttachments: false,
@@ -320,8 +328,14 @@ void main() {
 
 void _stubLoadApis(MockSessionService service) {
   when(
-    () => service.getMessages(sessionId: _sessionId, limit: any(named: "limit"), before: any(named: "before")),
-  ).thenAnswer((_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)));
+    () => service.getMessages(
+      sessionId: _sessionId,
+      limit: any(named: "limit"),
+      before: any(named: "before"),
+    ),
+  ).thenAnswer(
+    (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+  );
   when(
     () => service.getPendingQuestions(sessionId: _sessionId),
   ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));

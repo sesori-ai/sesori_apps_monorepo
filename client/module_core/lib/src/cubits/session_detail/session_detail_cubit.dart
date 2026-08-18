@@ -1178,7 +1178,7 @@ class SessionDetailCubit(
   /// dispatched or was removed elsewhere; only a transport failure keeps it.
   Future<void> cancelBridgeQueuedPrompt({required String promptId}) async {
     final result = await _sessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: promptId);
-    if (result case ErrorResponse(error: final error) when error is! NonSuccessCodeError) return;
+    if (result case ErrorResponse(:final error) when error is! NonSuccessCodeError) return;
     final current = state;
     if (current is! SessionDetailLoaded || isClosed) return;
     emit(
