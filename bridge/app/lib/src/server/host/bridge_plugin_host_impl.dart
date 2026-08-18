@@ -44,6 +44,7 @@ class BridgePluginHostImpl({
   @override required final HostProcessService processes,
   @override required final HostPortService ports,
   @override required final HostJsonStore store,
+  required final Duration? Function() _resolveIdleTimeout,
 }) implements PluginHost {
   static Future<BridgePluginHostImpl> create({
     required PluginConfig config,
@@ -60,6 +61,7 @@ class BridgePluginHostImpl({
     required ProcessUser? currentUser,
     required bool isWindows,
     required String platform,
+    required Duration? Function() resolveIdleTimeout,
   }) async {
     if (!p.isAbsolute(stateDirectory)) {
       throw ArgumentError.value(stateDirectory, "stateDirectory", "must be an absolute path");
@@ -90,8 +92,14 @@ class BridgePluginHostImpl({
       store: BridgeHostJsonStore(
         fileApi: RuntimeFileApi(runtimeDirectory: stateDirectory),
       ),
+      resolveIdleTimeout: resolveIdleTimeout,
     );
   }
+
+  /// Live view over the bridge's runtime-mutable per-plugin idle timeout, so
+  /// a settings change reaches the plugin without a restart.
+  @override
+  Duration? get pluginIdleTimeout => _resolveIdleTimeout();
 
   /// Set by the bridge runner from `ensureRuntime`'s [ProvisionReady] result,
   /// after the host is built and before `start()` runs; `null` when the plugin

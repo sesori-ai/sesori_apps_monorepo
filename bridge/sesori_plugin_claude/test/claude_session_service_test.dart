@@ -203,6 +203,143 @@ void main() {
       expect(completed, isTrue);
     });
 
+    test("defers the idle reap while a ScheduleWakeup is pending", () async {
+      harness.enqueue("first");
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_scheduleWakeupFrame(delaySeconds: 600));
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      harness.clock.elapse();
+      await pump();
+
+      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+    });
+
+    test("reaps a process whose wakeup is one idle timeout stale", () async {
+      harness.enqueue("first");
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_scheduleWakeupFrame(delaySeconds: -100000));
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      harness.clock.elapse();
+      await pump();
+
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+    });
+
+    test("surfaces a CLI self-started wakeup turn as busy and idle again on its result", () async {
+      harness.enqueue("first");
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_scheduleWakeupFrame(delaySeconds: 600));
+      process.emit(_result());
+      await harness.waitForIdle();
+      harness.events.clear();
+
+      // The wakeup fires: the CLI streams a turn the bridge never enqueued.
+      process.emit(_assistantTextFrame(text: "waking up"));
+      await harness.waitForBusy();
+
+      expect(harness.service.currentWorkState, PluginWorkState.busy);
+      expect(await _status(harness), isA<PluginSessionStatusBusy>());
+      expect(harness.events.whereType<BridgeSseSessionStatus>(), isNotEmpty);
+
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      expect(await _status(harness), isA<PluginSessionStatusIdle>());
+      expect(harness.events.whereType<BridgeSseSessionIdle>(), hasLength(1));
+
+      // The finished self-started turn cleared the wakeup and rearmed the reap.
+      harness.clock.elapse();
+      await pump();
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+    });
+
+    test("abort interrupts a self-started wakeup turn", () async {
+      harness.enqueue("first");
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_scheduleWakeupFrame(delaySeconds: 600));
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      process.emit(_assistantTextFrame(text: "waking up"));
+      await harness.waitForBusy();
+
+      final abort = harness.service.abort(sessionId: testSessionId);
+      final interrupt = await _waitForControlSubtype(process, "interrupt");
+      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      await abort;
+      await harness.waitForIdle();
+
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+      expect(harness.service.currentWorkState, PluginWorkState.idle);
+    });
+
+    test("a ScheduleWakeup stop call clears the pending wakeup", () async {
+      harness.enqueue("first");
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_scheduleWakeupFrame(delaySeconds: 600));
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      // The fired turn ends the loop: ScheduleWakeup({stop: true}) then result.
+      process.emit(_scheduleWakeupStopFrame());
+      await harness.waitForBusy();
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      harness.clock.elapse();
+      await pump();
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+    });
+
+    test("reads the idle timeout live at each reap arm", () async {
+      harness.idleTimeout = null;
+      harness.enqueue("first");
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      // Reaping disabled: no delay armed, process stays resident.
+      harness.clock.elapse();
+      await pump();
+      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+
+      // Settings change takes effect at the next idle transition.
+      harness.idleTimeout = const Duration(minutes: 1);
+      harness.enqueue("second");
+      await _waitForUserFrames(process, 2);
+      process.emit(_result());
+      await harness.waitForIdle();
+      harness.clock.elapse();
+      await pump();
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+    });
+
+    test("a process exit clears the pending wakeup", () async {
+      harness.enqueue("first");
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_scheduleWakeupFrame(delaySeconds: 600));
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      process.exit(0);
+      await pump();
+
+      harness.clock.elapse();
+      await pump();
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+    });
+
     test("delete waits for an in-flight idle teardown", () async {
       await harness.dispose();
       harness = _ServiceHarness(stdinCloseCompletes: false);
@@ -228,6 +365,9 @@ void main() {
 }
 
 final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool failInterrupt = false}) {
+  /// Mutable so tests can exercise runtime settings changes.
+  Duration? idleTimeout = const Duration(minutes: 5);
+
   this {
     repository = ClaudeSessionProcessRepository(
       processFactory: _spawn,
@@ -243,7 +383,7 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
       processes: repository,
       approvals: approvals,
       clock: clock,
-      idleTimeout: const Duration(minutes: 5),
+      resolveIdleTimeout: () => idleTimeout,
     );
     subscription = service.events.listen(events.add);
   }
@@ -301,6 +441,10 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
   Future<void> waitForIdle() => service.currentWorkState == PluginWorkState.idle
       ? Future<void>.value()
       : service.workState.firstWhere((state) => state == PluginWorkState.idle);
+
+  Future<void> waitForBusy() => service.currentWorkState == PluginWorkState.busy
+      ? Future<void>.value()
+      : service.workState.firstWhere((state) => state == PluginWorkState.busy);
 
   Future<void> dispose() async {
     await service.dispose();
@@ -371,3 +515,40 @@ Map<String, Object?> _result() => {
   "session_id": testSessionId,
   "is_error": false,
 };
+
+Future<PluginSessionStatus> _status(_ServiceHarness harness) async =>
+    harness.service.sessionStatuses[testSessionId]!;
+
+Map<String, Object?> _scheduleWakeupFrame({required int delaySeconds}) => _assistantFrame(content: [
+  {
+    "type": "tool_use",
+    "id": "wakeup-1",
+    "name": "ScheduleWakeup",
+    "input": {"delaySeconds": delaySeconds, "prompt": "continue the loop"},
+  },
+]);
+
+Map<String, Object?> _scheduleWakeupStopFrame() => _assistantFrame(content: [
+  {
+    "type": "tool_use",
+    "id": "wakeup-2",
+    "name": "ScheduleWakeup",
+    "input": {"stop": true},
+  },
+]);
+
+Map<String, Object?> _assistantTextFrame({required String text}) => _assistantFrame(content: [
+  {"type": "text", "text": text},
+]);
+
+Map<String, Object?> _assistantFrame({required List<Map<String, Object?>> content}) => {
+  "type": "assistant",
+  "session_id": testSessionId,
+  "message": {
+    "id": "msg-${_frameSequence++}",
+    "model": "claude-sonnet-4-5",
+    "content": content,
+  },
+};
+
+int _frameSequence = 0;

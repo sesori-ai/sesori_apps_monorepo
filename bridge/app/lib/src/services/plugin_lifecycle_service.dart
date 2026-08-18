@@ -1327,7 +1327,7 @@ class PluginLifecycleService({
     final currentIds = snapshots.map((snapshot) => snapshot.pluginId).toSet();
     _idleTimers.keys.where((pluginId) => !currentIds.contains(pluginId)).toList().forEach(_cancelIdleTimer);
     for (final snapshot in snapshots) {
-      final timeoutMins = _effectiveIdleTimeoutMins(snapshot.pluginId);
+      final timeoutMins = _suspensionIdleTimeoutMins(snapshot.pluginId);
       if (!_supportsIdleSuspension(pluginId: snapshot.pluginId) || timeoutMins <= 0 || !_isIdleCandidate(snapshot)) {
         _cancelIdleTimer(snapshot.pluginId);
         continue;
@@ -1362,11 +1362,26 @@ class PluginLifecycleService({
         (snapshot.state == PluginRuntimeState.active || snapshot.state == PluginRuntimeState.degraded);
   }
 
+  /// The user-facing configured idle timeout, as shown and edited by clients.
+  ///
+  /// Independent of residency: a resident plugin that keeps the `idleTimeout`
+  /// capability (Claude) consumes this value through
+  /// `PluginHost.pluginIdleTimeout` for its own internal reclamation, so the
+  /// knob stays real even though whole-plugin suspension never runs.
   int _effectiveIdleTimeoutMins(String pluginId) {
+    return _bridgeSettingsRepository.currentSettings.plugins.idleTimeoutMinsFor(pluginId: pluginId);
+  }
+
+  /// The timeout driving whole-plugin idle suspension; `0` disables it.
+  ///
+  /// Resident plugins are never suspended: they either attach to an external
+  /// backend the bridge does not own (OpenCode attach mode) or own idle
+  /// reclamation internally (Claude's per-session process reap).
+  int _suspensionIdleTimeoutMins(String pluginId) {
     final residencyPolicy = _residencyPolicyById?[pluginId];
     if (residencyPolicy == null) throw StateError("Plugin lifecycle has not been registered.");
     if (residencyPolicy == PluginResidencyPolicy.resident) return 0;
-    return _bridgeSettingsRepository.currentSettings.plugins.idleTimeoutMinsFor(pluginId: pluginId);
+    return _effectiveIdleTimeoutMins(pluginId);
   }
 
   Future<void> _stopAfterIdleWindow({
@@ -1377,7 +1392,7 @@ class PluginLifecycleService({
     _idleTimers.remove(pluginId);
     if (!_supportsIdleSuspension(pluginId: pluginId)) return;
     final snapshot = _lifecycleRepository.snapshot.where((entry) => entry.pluginId == pluginId).firstOrNull;
-    final timeoutMins = _effectiveIdleTimeoutMins(pluginId);
+    final timeoutMins = _suspensionIdleTimeoutMins(pluginId);
     if (snapshot == null || timeoutMins <= 0 || !_isIdleCandidate(snapshot)) return;
     Log.d('Plugin "$pluginId" idle timeout elapsed (${timeoutMins}m); requesting safe suspension');
     try {

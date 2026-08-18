@@ -521,7 +521,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
       processes: processRepository,
       approvals: approvals,
       clock: const _NeverIdleClock(),
-      idleTimeout: const Duration(minutes: 5),
+      resolveIdleTimeout: () => const Duration(minutes: 5),
     );
     const content = ClaudeContentMapper();
     final transcripts = ClaudeTranscriptCatalogRepository(

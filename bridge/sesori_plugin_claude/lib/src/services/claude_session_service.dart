@@ -3,6 +3,7 @@ import "dart:async";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
+import "../api/models/claude_stream_message.dart";
 import "../claude_approval_registry.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_permission_mode.dart";
@@ -13,6 +14,23 @@ final class _SessionTurnState() {
   int pending = 0;
   int generation = 0;
   int idleGeneration = 0;
+
+  /// True while the CLI runs a turn the bridge did not enqueue.
+  ///
+  /// A `ScheduleWakeup` loop wakeup starts a turn inside the resident process
+  /// with no `enqueueTurn` call: frames stream while [pending] is zero. The
+  /// flag keeps that turn visible (busy status, work state, abort) until its
+  /// `result` frame lands.
+  bool selfStarted = false;
+
+  /// When the CLI's pending `ScheduleWakeup` timer fires, or null when none
+  /// is scheduled.
+  ///
+  /// The timer lives only inside the resident process — killing the process
+  /// kills the wakeup, and `--resume` does not rearm it (verified against CLI
+  /// 2.1.233) — so the idle reap must not tear the process down before the
+  /// wakeup fires.
+  DateTime? wakeupAt;
 }
 
 /// Serializes Claude turns and owns session work/idle lifecycle policy.
@@ -20,7 +38,11 @@ final class ClaudeSessionService({
   required final ClaudeSessionProcessRepository _processes,
   required final ClaudeApprovalRegistry _approvals,
   required final ServerClock _clock,
-  required final Duration _idleTimeout,
+
+  /// Resolves the current per-session idle timeout, or null when idle reaping
+  /// is disabled. Read at every timer arm so a runtime settings change takes
+  /// effect at the next idle transition.
+  required final Duration? Function() _resolveIdleTimeout,
 }) {
   this {
     _processEvents = _processes.events.listen(_handleProcessEvent);
@@ -44,7 +66,9 @@ final class ClaudeSessionService({
     for (final entry in _turns.entries)
       entry.key:
           _retryStatuses[entry.key] ??
-          (entry.value.pending > 0 ? const PluginSessionStatus.busy() : const PluginSessionStatus.idle()),
+          (entry.value.pending > 0 || entry.value.selfStarted
+              ? const PluginSessionStatus.busy()
+              : const PluginSessionStatus.idle()),
   });
 
   Future<void> enqueueTurn({
@@ -143,12 +167,15 @@ final class ClaudeSessionService({
   Future<void> abort({required String sessionId}) async {
     final state = _turns[sessionId];
     if (state == null) return;
-    if (state.pending == 0) {
+    if (state.pending == 0 && !state.selfStarted) {
       _approvals.cancelForSession(sessionId: sessionId);
       return;
     }
     state.generation++;
     state.idleGeneration++;
+    // Teardown kills the CLI's in-process wakeup timer, and `--resume` does
+    // not rearm it, so a pending wakeup cannot survive an abort.
+    state.wakeupAt = null;
     _approvals.cancelForSession(sessionId: sessionId);
     try {
       await _processes.interrupt(sessionId: sessionId);
@@ -160,13 +187,16 @@ final class ClaudeSessionService({
       // allowing that transport backlog to enter the next user turn.
       await _processes.teardown(sessionId: sessionId);
     }
+    if (state.selfStarted && identical(_turns[sessionId], state)) {
+      _endSelfStartedTurn(sessionId: sessionId, state: state);
+    }
   }
 
   Future<Set<String>> interruptActiveWork({required Duration budget}) {
     return () async {
       final activeSessionIds = <String>{
         for (final entry in _turns.entries)
-          if (entry.value.pending > 0) entry.key,
+          if (entry.value.pending > 0 || entry.value.selfStarted) entry.key,
       };
       if (activeSessionIds.isEmpty) return const <String>{};
       await Future.wait([
@@ -218,7 +248,7 @@ final class ClaudeSessionService({
     if (state.pending > 0) state.pending--;
     if (!identical(_turns[sessionId], state)) return;
     if (outcome is ClaudeTurnFailed) _emit(BridgeSseSessionError(sessionID: sessionId));
-    if (state.pending == 0) {
+    if (state.pending == 0 && !state.selfStarted) {
       _emit(BridgeSseSessionIdle(sessionID: sessionId));
       _emit(const BridgeSseProjectUpdated());
       _syncWorkState();
@@ -228,13 +258,26 @@ final class ClaudeSessionService({
 
   void _scheduleIdleReap({required String sessionId, required _SessionTurnState state}) {
     final generation = ++state.idleGeneration;
+    final idleTimeout = _resolveIdleTimeout();
+    if (idleTimeout == null) return;
     unawaited(() async {
-      await _clock.delay(duration: _idleTimeout);
-      if (_disposed ||
-          !identical(_turns[sessionId], state) ||
-          state.pending != 0 ||
-          state.idleGeneration != generation) {
-        return;
+      while (true) {
+        await _clock.delay(duration: idleTimeout);
+        if (_disposed ||
+            !identical(_turns[sessionId], state) ||
+            state.pending != 0 ||
+            state.selfStarted ||
+            state.idleGeneration != generation) {
+          return;
+        }
+        final wakeupAt = state.wakeupAt;
+        if (wakeupAt == null) break;
+        // Teardown would silently kill the CLI's in-process wakeup timer, so
+        // keep the process resident until the wakeup fires (the fired turn
+        // rearms this reap). A wakeup that never fires — the loop ended
+        // without a frame the bridge observed — stops deferring one idle
+        // timeout past its fire time instead of pinning the process forever.
+        if (_clock.now().isAfter(wakeupAt.add(idleTimeout))) break;
       }
       final teardown = _processes.teardown(sessionId: sessionId);
       _inFlightTeardowns.add(teardown);
@@ -253,8 +296,11 @@ final class ClaudeSessionService({
     }());
   }
 
-  void _syncWorkState() =>
-      _workState.set(_turns.values.any((state) => state.pending > 0) ? PluginWorkState.busy : PluginWorkState.idle);
+  void _syncWorkState() => _workState.set(
+    _turns.values.any((state) => state.pending > 0 || state.selfStarted)
+        ? PluginWorkState.busy
+        : PluginWorkState.idle,
+  );
 
   void _emit(BridgeSseEvent event) {
     if (!_events.isClosed) _events.add(event);
@@ -267,10 +313,80 @@ final class ClaudeSessionService({
   void _handleProcessEvent(ClaudeSessionProcessEvent event) {
     switch (event) {
       case final ClaudeSessionProcessMessage event:
+        // Transition before arming: a frame that both begins a self-started
+        // turn and carries a new `ScheduleWakeup` must keep the new schedule.
+        _trackSelfStartedTurn(sessionId: event.sessionId, message: event.message);
+        _trackWakeupSchedule(sessionId: event.sessionId, message: event.message);
         final request = event.controlRequest;
         if (request != null) _approvals.handle(sessionId: event.sessionId, message: request);
       case ClaudeSessionProcessExited():
+        final state = _turns[event.sessionId];
+        if (state != null) {
+          // The wakeup timer died with the process and `--resume` does not
+          // rearm it.
+          state.wakeupAt = null;
+          if (state.selfStarted) _endSelfStartedTurn(sessionId: event.sessionId, state: state);
+        }
         _approvals.cancelForSession(sessionId: event.sessionId);
     }
+  }
+
+  /// Mirrors the CLI's pending `ScheduleWakeup` timer from the tool calls that
+  /// arm and disarm it.
+  ///
+  /// The CLI clamps the requested delay, so [_SessionTurnState.wakeupAt] is a
+  /// lower-bound estimate; the reap deferral adds the idle timeout as margin.
+  void _trackWakeupSchedule({required String sessionId, required ClaudeStreamMessage message}) {
+    if (message is! ClaudeAssistantMessage) return;
+    final state = _turns[sessionId];
+    if (state == null) return;
+    final content = message.message["content"];
+    if (content is! List) return;
+    for (final block in content) {
+      if (block is! Map || block["type"] != "tool_use" || block["name"] != "ScheduleWakeup") continue;
+      final rawInput = block["input"];
+      if (rawInput is! Map) continue;
+      final input = rawInput.cast<String, Object?>();
+      if (input["stop"] == true) {
+        state.wakeupAt = null;
+      } else if (input["delaySeconds"] case final num delaySeconds) {
+        state.wakeupAt = _clock.now().add(Duration(seconds: delaySeconds.toInt()));
+      }
+    }
+  }
+
+  /// Surfaces a turn the CLI started on its own — a fired `ScheduleWakeup` —
+  /// as busy/idle exactly like an enqueued turn.
+  ///
+  /// Only frames that prove turn activity begin one: token stream, assistant
+  /// content, or a permission ask. Bookkeeping frames (`init`, `status`,
+  /// unknown types) do not, so post-turn stragglers cannot re-busy a session.
+  void _trackSelfStartedTurn({required String sessionId, required ClaudeStreamMessage message}) {
+    final state = _turns[sessionId];
+    if (state == null) return;
+    switch (message) {
+      case ClaudeStreamEventMessage() || ClaudeAssistantMessage() || ClaudeControlRequestMessage():
+        if (state.selfStarted || state.pending > 0) return;
+        state.selfStarted = true;
+        // A live turn supersedes the pending-wakeup estimate that started it.
+        state.wakeupAt = null;
+        state.idleGeneration++;
+        _workState.set(PluginWorkState.busy);
+        _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const shared.SessionStatus.busy().toJson()));
+        _emit(const BridgeSseProjectUpdated());
+      case ClaudeResultMessage():
+        if (state.selfStarted) _endSelfStartedTurn(sessionId: sessionId, state: state);
+      case ClaudeStreamMessage():
+        break;
+    }
+  }
+
+  void _endSelfStartedTurn({required String sessionId, required _SessionTurnState state}) {
+    state.selfStarted = false;
+    if (state.pending != 0) return;
+    _emit(BridgeSseSessionIdle(sessionID: sessionId));
+    _emit(const BridgeSseProjectUpdated());
+    _syncWorkState();
+    _scheduleIdleReap(sessionId: sessionId, state: state);
   }
 }
