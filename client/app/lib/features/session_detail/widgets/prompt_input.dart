@@ -947,13 +947,10 @@ class _PromptInputState() extends State<PromptInput> {
     return DropRegion(
       formats: _imageDropFormats,
       hitTestBehavior: HitTestBehavior.opaque,
-      onDropOver: _handleImageDropOver,
-      onDropEnter: (_) {
-        if (!_isImageDragOver) setState(() => _isImageDragOver = true);
-      },
+      onDropOver: (event) => _handleImageDropOver(event: event),
       onDropLeave: (_) => _clearImageDragOver(),
       onDropEnded: (_) => _clearImageDragOver(),
-      onPerformDrop: _handleImageDrop,
+      onPerformDrop: (event) => _handleImageDrop(event: event),
       child: Stack(
         children: [
           composer,
@@ -998,14 +995,18 @@ class _PromptInputState() extends State<PromptInput> {
     };
   }
 
-  DropOperation _handleImageDropOver(DropOverEvent event) {
-    if (!_imageDropEnabled || !event.session.allowedOperations.contains(DropOperation.copy)) {
-      return DropOperation.none;
+  DropOperation _handleImageDropOver({required DropOverEvent event}) {
+    final acceptsDrop =
+        _imageDropEnabled &&
+        event.session.allowedOperations.contains(DropOperation.copy) &&
+        event.session.items.any((item) => _dropItemContainsImage(item: item));
+    if (_isImageDragOver != acceptsDrop && mounted) {
+      setState(() => _isImageDragOver = acceptsDrop);
     }
-    return event.session.items.any(_dropItemContainsImage) ? DropOperation.copy : DropOperation.none;
+    return acceptsDrop ? DropOperation.copy : DropOperation.none;
   }
 
-  bool _dropItemContainsImage(DropItem item) {
+  bool _dropItemContainsImage({required DropItem item}) {
     for (final format in _imageDropFormats) {
       if (item.canProvide(format)) return true;
     }
@@ -1016,7 +1017,7 @@ class _PromptInputState() extends State<PromptInput> {
     if (_isImageDragOver && mounted) setState(() => _isImageDragOver = false);
   }
 
-  Future<void> _handleImageDrop(PerformDropEvent event) {
+  Future<void> _handleImageDrop({required PerformDropEvent event}) {
     _clearImageDragOver();
     if (!_imageDropEnabled) return Future.value();
 
@@ -1024,7 +1025,7 @@ class _PromptInputState() extends State<PromptInput> {
     final attachmentInputGeneration = _attachmentInputGeneration;
     final files = <Future<_DroppedImageFile?>>[];
     for (final item in event.session.items) {
-      if (_dropItemContainsImage(item)) files.add(_requestDroppedImageFile(item: item));
+      if (_dropItemContainsImage(item: item)) files.add(_requestDroppedImageFile(item: item));
     }
     unawaited(
       _consumeDroppedImageFiles(

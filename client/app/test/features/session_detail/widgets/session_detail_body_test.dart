@@ -2317,6 +2317,59 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  testWidgets("rejected drags do not show the image drop overlay", (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final item = MockDropItem();
+    final session = MockDropSession();
+    when(() => item.canProvide(any())).thenReturn(false);
+    when(() => session.items).thenReturn([item]);
+    when(() => session.allowedOperations).thenReturn({DropOperation.copy});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final region = tester.widget<DropRegion>(find.byType(DropRegion));
+    expect(
+      await Future.value(
+        region.onDropOver(
+          DropOverEvent(
+            session: session,
+            position: DropPosition(local: Offset.zero, global: Offset.zero),
+          ),
+        ),
+      ),
+      DropOperation.none,
+    );
+    region.onDropEnter?.call(DropEvent(session: session));
+    await tester.pump();
+
+    expect(find.text("Drop images to attach"), findsNothing);
+
+    final imageItem = MockDropItem();
+    final noCopySession = MockDropSession();
+    when(() => imageItem.canProvide(any())).thenReturn(true);
+    when(() => noCopySession.items).thenReturn([imageItem]);
+    when(() => noCopySession.allowedOperations).thenReturn({DropOperation.move});
+
+    expect(
+      await Future.value(
+        region.onDropOver(
+          DropOverEvent(
+            session: noCopySession,
+            position: DropPosition(local: Offset.zero, global: Offset.zero),
+          ),
+        ),
+      ),
+      DropOperation.none,
+    );
+    region.onDropEnter?.call(DropEvent(session: noCopySession));
+    await tester.pump();
+
+    expect(find.text("Drop images to attach"), findsNothing);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
   testWidgets("dropping multiple images stages them in drag order", (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
