@@ -123,7 +123,7 @@ one consumer.
 | 5/9 | `⚙️ [hermes-agent-plugin] feat(hermes): register the plugin in the bridge [step 5/9]` | Merged as #919. |
 | 6/9 | `⚙️ [hermes-agent-plugin] feat(client): brand the Hermes harness [step 6/9]` | Merged as #921; corrected supplied artwork and asset contract. |
 | 7/9 | `🚧 [hermes-agent-plugin] fix(hermes): correct runtime and ACP assumptions [step 7/9]` | Merged as #927: auth selection, version semantics, executable revalidation, setup failure classification, null activation retry, exact registry test, plan/docs correction. |
-| 8/9 | `🚧 [hermes-agent-plugin] test(hermes): verify production ACP behavior [step 8/9]` | Merged as #929: supported-version headless/live evidence recorded in `TRACKER.md`; provider and client rows remain blocked. |
+| 8/9 | `🚧 [hermes-agent-plugin] test(hermes): verify production ACP behavior [step 8/9]` | Merged as #929, extended by the 2026-08-18 iOS client E2E run in `TRACKER.md`. Setup/lifecycle, session creation, tools and file changes, images, history and recovery, and deletion now pass; `Questions and permissions`, `Session turns` (reasoning streaming), `Projects and sessions` (failed/cancelled import), and `Compatibility` remain blocked. |
 | 9/9 | `🌱 [hermes-agent-plugin] docs: retire the plan [step 9/9]` | Pending; blocked until every required row below passes. |
 
 ## Regression And Retirement Matrix
@@ -148,8 +148,8 @@ targeted L4 recovery checks; unchanged plugins retain their existing coverage.
 
 Step 9 cannot retire this plan while a required row is unexecuted, partial,
 blocked, or failed unless the owner explicitly accepts that reduction here.
-The 2026-08-15 Step 8 execution in `TRACKER.md` contains blocked rows, so Step 9
-remains prohibited.
+The 2026-08-15 Step 8 execution in `TRACKER.md`, as extended by the 2026-08-18
+iOS client E2E run, still contains blocked rows, so Step 9 remains prohibited.
 
 ## Risks And Test Focus
 
