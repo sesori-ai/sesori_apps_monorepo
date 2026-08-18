@@ -8,12 +8,8 @@ void main() {
       final repository = _FakeSessionRepository(
         cleanupPluginIds: ["cursor", "unavailable", "another"],
         tombstonesByPlugin: {
-          "cursor": {
-            (backendSessionId: "session-c", directory: "/repo-c"),
-            (backendSessionId: "session-a", directory: null),
-            (backendSessionId: "session-b", directory: "/repo-b"),
-          },
-          "another": {(backendSessionId: "session-d", directory: "/repo-d")},
+          "cursor": {"session-c", "session-a", "session-b"},
+          "another": {"session-d"},
         },
         failingTombstoneReads: {"unavailable"},
         failingCleanups: {"cursor:session-b"},
@@ -25,10 +21,10 @@ void main() {
       await service.reconcile();
 
       expect(repository.cleanupCalls, [
-        (pluginId: "cursor", backendSessionId: "session-a", directory: null),
-        (pluginId: "cursor", backendSessionId: "session-b", directory: "/repo-b"),
-        (pluginId: "cursor", backendSessionId: "session-c", directory: "/repo-c"),
-        (pluginId: "another", backendSessionId: "session-d", directory: "/repo-d"),
+        (pluginId: "cursor", backendSessionId: "session-a"),
+        (pluginId: "cursor", backendSessionId: "session-b"),
+        (pluginId: "cursor", backendSessionId: "session-c"),
+        (pluginId: "another", backendSessionId: "session-d"),
       ]);
     });
 
@@ -53,18 +49,18 @@ void main() {
 
 class _FakeSessionRepository({
   required final List<String> cleanupPluginIds,
-  required final Map<String, Set<TombstonedSessionCleanup>> tombstonesByPlugin,
+  required final Map<String, Set<String>> tombstonesByPlugin,
   required final Set<String> failingTombstoneReads,
   required final Set<String> failingCleanups,
 }) implements SessionRepository {
   final List<String> tombstoneReadPluginIds = [];
-  final List<({String pluginId, String backendSessionId, String? directory})> cleanupCalls = [];
+  final List<({String pluginId, String backendSessionId})> cleanupCalls = [];
 
   @override
   Future<List<String>> get persistedSessionCleanupPluginIds async => cleanupPluginIds;
 
   @override
-  Future<Set<TombstonedSessionCleanup>> getTombstonedSessionsForCleanup({required String pluginId}) async {
+  Future<Set<String>> getTombstonedBackendSessionIdsForCleanup({required String pluginId}) async {
     tombstoneReadPluginIds.add(pluginId);
     if (failingTombstoneReads.contains(pluginId)) {
       throw StateError("tombstone read failed");
@@ -76,13 +72,8 @@ class _FakeSessionRepository({
   Future<void> deletePersistedSession({
     required String pluginId,
     required String backendSessionId,
-    required String? directory,
   }) async {
-    cleanupCalls.add((
-      pluginId: pluginId,
-      backendSessionId: backendSessionId,
-      directory: directory,
-    ));
+    cleanupCalls.add((pluginId: pluginId, backendSessionId: backendSessionId));
     if (failingCleanups.contains("$pluginId:$backendSessionId")) {
       throw StateError("cleanup failed");
     }

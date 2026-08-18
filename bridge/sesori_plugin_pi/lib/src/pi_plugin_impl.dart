@@ -244,8 +244,11 @@ final class PiPlugin._({
   }
 
   @override
-  Future<void> deletePersistedSession({required String backendSessionId, required String? directory}) =>
-      _processRepository.deletePersistedSession(sessionId: backendSessionId, directory: directory);
+  Future<void> deletePersistedSession({required String backendSessionId}) =>
+      // Startup-retry cleanup has no directory context; the storage API falls
+      // back to scanning Pi's known session directories and simply misses
+      // files whose cwd is no longer discoverable (accepted low-damage leak).
+      _processRepository.deletePersistedSession(sessionId: backendSessionId, directory: null);
 
   @override
   Future<void> archiveSession({required String sessionId}) async {}

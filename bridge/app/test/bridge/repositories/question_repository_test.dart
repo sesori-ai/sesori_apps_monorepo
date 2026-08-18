@@ -293,7 +293,6 @@ void main() {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "gone",
         pluginId: "codex",
-        directory: null,
         deletedAt: 1,
       );
 
@@ -470,7 +469,6 @@ void main() {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "gone",
         pluginId: "codex",
-        directory: null,
         deletedAt: 1,
       );
       final plugin = _FakeDerivedQuestionPlugin(
@@ -526,7 +524,6 @@ void main() {
         await db.sessionDao.insertSessionTombstone(
           backendSessionId: sessionId,
           pluginId: "codex",
-          directory: null,
           deletedAt: 1,
         );
       }
@@ -573,7 +570,6 @@ void main() {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "gone-root",
         pluginId: "codex",
-        directory: null,
         deletedAt: 1,
       );
       final plugin = _FakeDerivedQuestionPlugin(
@@ -611,7 +607,6 @@ void main() {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "gone-child",
         pluginId: "codex",
-        directory: null,
         deletedAt: 1,
       );
       final plugin = _FakeDerivedQuestionPlugin(
@@ -651,7 +646,6 @@ void main() {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "gone-root",
         pluginId: "codex",
-        directory: null,
         deletedAt: 1,
       );
       final plugin = _FakeDerivedQuestionPlugin(

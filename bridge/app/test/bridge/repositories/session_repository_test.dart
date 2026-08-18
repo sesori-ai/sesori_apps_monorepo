@@ -12,7 +12,6 @@ import "package:sesori_bridge/src/bridge/repositories/models/verified_github_log
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -155,9 +154,6 @@ void main() {
         await db.sessionDao.getTombstonedSessionIds(pluginId: plugin.id),
         contains("sess-tomb"),
       );
-      expect(await db.sessionDao.getTombstonedSessionsForCleanup(pluginId: plugin.id), {
-        (backendSessionId: "sess-tomb", directory: normalizeProjectDirectory(directory: "proj-tomb")),
-      });
       expect(
         await db.sessionDao.getTombstonedSessionIds(pluginId: "other"),
         isNot(contains("sess-tomb")),
@@ -183,27 +179,23 @@ void main() {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "deleted-backend-session",
         pluginId: cleanupPlugin.id,
-        directory: null,
         deletedAt: 1,
       );
 
       expect(await repository.persistedSessionCleanupPluginIds, [cleanupPlugin.id]);
       expect(
-        await repository.getTombstonedSessionsForCleanup(
+        await repository.getTombstonedBackendSessionIdsForCleanup(
           pluginId: cleanupPlugin.id,
         ),
-        {(backendSessionId: "deleted-backend-session", directory: null)},
+        {"deleted-backend-session"},
       );
 
       await repository.deletePersistedSession(
         pluginId: cleanupPlugin.id,
         backendSessionId: "deleted-backend-session",
-        directory: "/authoritative/directory",
       );
 
-      expect(cleanupPlugin.persistedDeleteCalls, [
-        (backendSessionId: "deleted-backend-session", directory: "/authoritative/directory"),
-      ]);
+      expect(cleanupPlugin.persistedDeleteCalls, ["deleted-backend-session"]);
       expect(
         await db.sessionDao.isSessionTombstoned(
           backendSessionId: "deleted-backend-session",
@@ -2284,7 +2276,6 @@ void main() {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "gone",
         pluginId: plugin.id,
-        directory: null,
         deletedAt: 1,
       );
 
@@ -2421,7 +2412,6 @@ void main() {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "gone",
         pluginId: plugin.id,
-        directory: null,
         deletedAt: 1,
       );
 
@@ -2625,7 +2615,6 @@ void main() {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "deleted-s",
         pluginId: "codex",
-        directory: null,
         deletedAt: 1,
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
@@ -2890,14 +2879,11 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
 }
 
 class _FakePersistedCleanupPlugin() extends _FakeBridgePlugin implements PersistedSessionCleanupApi {
-  final List<({String backendSessionId, String? directory})> persistedDeleteCalls = [];
+  final List<String> persistedDeleteCalls = [];
 
   @override
-  Future<void> deletePersistedSession({
-    required String backendSessionId,
-    required String? directory,
-  }) async {
-    persistedDeleteCalls.add((backendSessionId: backendSessionId, directory: directory));
+  Future<void> deletePersistedSession({required String backendSessionId}) async {
+    persistedDeleteCalls.add(backendSessionId);
   }
 }
 

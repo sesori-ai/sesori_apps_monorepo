@@ -346,10 +346,7 @@ class CursorPlugin._({
   }
 
   @override
-  Future<void> deletePersistedSession({
-    required String backendSessionId,
-    required String? directory,
-  }) {
+  Future<void> deletePersistedSession({required String backendSessionId}) {
     return _sessionCleanupService.deletePersistedSession(
       backendSessionId: backendSessionId,
     );

@@ -2042,211 +2042,6 @@ i1.GeneratedColumn<String> _column_56(String aliasedName) =>
       type: i1.DriftSqlType.string,
       $customConstraints: 'NOT NULL',
     );
-
-final class Schema14 extends i0.VersionedSchema {
-  Schema14({required super.database}) : super(version: 14);
-  @override
-  late final List<i1.DatabaseSchemaEntity> entities = [
-    projectsTable,
-    sessionsTable,
-    deletedSessionsTable,
-    pullRequestsTable,
-    catalogHydrationsTable,
-    sessionOptionsCacheTable,
-    idxProjectsPath,
-    idxProjectsUpdated,
-    idxSessionsPluginBackend,
-    idxSessionsRoots,
-    idxSessionsChildren,
-    idxSessionsArchive,
-    idxPullRequestsScope,
-  ];
-  late final Shape16 projectsTable = Shape16(
-    source: i0.VersionedTable(
-      entityName: 'projects_table',
-      withoutRowId: true,
-      isStrict: false,
-      tableConstraints: ['PRIMARY KEY(project_id)'],
-      columns: [
-        _column_0,
-        _column_27,
-        _column_1,
-        _column_2,
-        _column_52,
-        _column_28,
-        _column_12,
-        _column_31,
-        _column_35,
-      ],
-      attachedDatabase: database,
-    ),
-    alias: null,
-  );
-  late final Shape17 sessionsTable = Shape17(
-    source: i0.VersionedTable(
-      entityName: 'sessions_table',
-      withoutRowId: true,
-      isStrict: false,
-      tableConstraints: ['PRIMARY KEY(session_id)'],
-      columns: [
-        _column_4,
-        _column_36,
-        _column_13,
-        _column_37,
-        _column_38,
-        _column_7,
-        _column_8,
-        _column_53,
-        _column_54,
-        _column_9,
-        _column_10,
-        _column_2,
-        _column_11,
-        _column_22,
-        _column_23,
-        _column_12,
-        _column_31,
-        _column_35,
-        _column_24,
-        _column_25,
-        _column_26,
-        _column_30,
-        _column_32,
-        _column_39,
-      ],
-      attachedDatabase: database,
-    ),
-    alias: null,
-  );
-  late final Shape19 deletedSessionsTable = Shape19(
-    source: i0.VersionedTable(
-      entityName: 'deleted_sessions_table',
-      withoutRowId: true,
-      isStrict: false,
-      tableConstraints: [
-        'PRIMARY KEY(owner_identity, plugin_id, backend_session_id)',
-      ],
-      columns: [_column_33, _column_36, _column_30, _column_57, _column_34],
-      attachedDatabase: database,
-    ),
-    alias: null,
-  );
-  late final Shape18 pullRequestsTable = Shape18(
-    source: i0.VersionedTable(
-      entityName: 'pull_requests_table',
-      withoutRowId: true,
-      isStrict: false,
-      tableConstraints: [
-        'PRIMARY KEY(project_id, github_repository_identity, pr_number)',
-      ],
-      columns: [
-        _column_13,
-        _column_55,
-        _column_56,
-        _column_14,
-        _column_6,
-        _column_15,
-        _column_16,
-        _column_17,
-        _column_18,
-        _column_19,
-        _column_20,
-        _column_21,
-        _column_12,
-      ],
-      attachedDatabase: database,
-    ),
-    alias: null,
-  );
-  late final Shape14 catalogHydrationsTable = Shape14(
-    source: i0.VersionedTable(
-      entityName: 'catalog_hydrations_table',
-      withoutRowId: true,
-      isStrict: false,
-      tableConstraints: ['PRIMARY KEY(plugin_id, projection_version)'],
-      columns: [_column_30, _column_40, _column_41],
-      attachedDatabase: database,
-    ),
-    alias: null,
-  );
-  late final Shape15 sessionOptionsCacheTable = Shape15(
-    source: i0.VersionedTable(
-      entityName: 'session_options_cache_table',
-      withoutRowId: true,
-      isStrict: false,
-      tableConstraints: [
-        'PRIMARY KEY(plugin_id, scope, owner_id)',
-        'CHECK(owner_id <> \'\' AND((scope = \'plugin\' AND project_id IS NULL AND captured_project_path IS NULL)OR(scope = \'project\' AND project_id IS NOT NULL AND owner_id = project_id AND captured_project_path IS NOT NULL AND captured_project_path <> \'\')))',
-      ],
-      columns: [
-        _column_30,
-        _column_42,
-        _column_43,
-        _column_44,
-        _column_45,
-        _column_46,
-        _column_47,
-        _column_48,
-        _column_49,
-        _column_50,
-        _column_51,
-      ],
-      attachedDatabase: database,
-    ),
-    alias: null,
-  );
-  final i1.Index idxProjectsPath = i1.Index(
-    'idx_projects_path',
-    'CREATE INDEX idx_projects_path ON projects_table (path)',
-  );
-  final i1.Index idxProjectsUpdated = i1.Index(
-    'idx_projects_updated',
-    'CREATE INDEX idx_projects_updated ON projects_table (updated_at DESC, project_id DESC)',
-  );
-  final i1.Index idxSessionsPluginBackend = i1.Index(
-    'idx_sessions_plugin_backend',
-    'CREATE UNIQUE INDEX idx_sessions_plugin_backend ON sessions_table (plugin_id, backend_session_id)',
-  );
-  final i1.Index idxSessionsRoots = i1.Index(
-    'idx_sessions_roots',
-    'CREATE INDEX idx_sessions_roots ON sessions_table (project_id, parent_session_id, updated_at, session_id)',
-  );
-  final i1.Index idxSessionsChildren = i1.Index(
-    'idx_sessions_children',
-    'CREATE INDEX idx_sessions_children ON sessions_table (parent_session_id, updated_at, session_id)',
-  );
-  final i1.Index idxSessionsArchive = i1.Index(
-    'idx_sessions_archive',
-    'CREATE INDEX idx_sessions_archive ON sessions_table (updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL',
-  );
-  final i1.Index idxPullRequestsScope = i1.Index(
-    'idx_pull_requests_scope',
-    'CREATE INDEX idx_pull_requests_scope ON pull_requests_table (project_id, github_repository_identity, branch_name, github_login)',
-  );
-}
-
-class Shape19 extends i0.VersionedTable {
-  Shape19({required super.source, required super.alias}) : super.aliased();
-  i1.GeneratedColumn<String> get ownerIdentity =>
-      columnsByName['owner_identity']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get backendSessionId =>
-      columnsByName['backend_session_id']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get pluginId =>
-      columnsByName['plugin_id']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get directory =>
-      columnsByName['directory']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<int> get deletedAt =>
-      columnsByName['deleted_at']! as i1.GeneratedColumn<int>;
-}
-
-i1.GeneratedColumn<String> _column_57(String aliasedName) =>
-    i1.GeneratedColumn<String>(
-      'directory',
-      aliasedName,
-      true,
-      type: i1.DriftSqlType.string,
-      $customConstraints: 'NULL',
-    );
 i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
   required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
@@ -2260,7 +2055,6 @@ i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema11 schema) from10To11,
   required Future<void> Function(i1.Migrator m, Schema12 schema) from11To12,
   required Future<void> Function(i1.Migrator m, Schema13 schema) from12To13,
-  required Future<void> Function(i1.Migrator m, Schema14 schema) from13To14,
 }) {
   return (currentVersion, database) async {
     switch (currentVersion) {
@@ -2324,11 +2118,6 @@ i0.MigrationStepWithVersion migrationSteps({
         final migrator = i1.Migrator(database, schema);
         await from12To13(migrator, schema);
         return 13;
-      case 13:
-        final schema = Schema14(database: database);
-        final migrator = i1.Migrator(database, schema);
-        await from13To14(migrator, schema);
-        return 14;
       default:
         throw ArgumentError.value('Unknown migration from $currentVersion');
     }
@@ -2348,7 +2137,6 @@ i1.OnUpgrade stepByStep({
   required Future<void> Function(i1.Migrator m, Schema11 schema) from10To11,
   required Future<void> Function(i1.Migrator m, Schema12 schema) from11To12,
   required Future<void> Function(i1.Migrator m, Schema13 schema) from12To13,
-  required Future<void> Function(i1.Migrator m, Schema14 schema) from13To14,
 }) => i0.VersionedSchema.stepByStepHelper(
   step: migrationSteps(
     from1To2: from1To2,
@@ -2363,6 +2151,5 @@ i1.OnUpgrade stepByStep({
     from10To11: from10To11,
     from11To12: from11To12,
     from12To13: from12To13,
-    from13To14: from13To14,
   ),
 );

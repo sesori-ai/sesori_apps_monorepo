@@ -193,10 +193,8 @@ class OmpPlugin._({
       _ompSessionOptionsService.listProviders(projectId: projectId);
 
   @override
-  Future<void> deletePersistedSession({
-    required String backendSessionId,
-    required String? directory,
-  }) => _cleanupService.deletePersistedSession(backendSessionId: backendSessionId);
+  Future<void> deletePersistedSession({required String backendSessionId}) =>
+      _cleanupService.deletePersistedSession(backendSessionId: backendSessionId);
 
   @override
   Future<void> deleteSession(String sessionId) async {

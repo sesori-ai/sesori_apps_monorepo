@@ -272,11 +272,11 @@ void main() {
       expect(File(harness.sessionPath("root")).existsSync(), isTrue);
     });
 
-    test("persisted cleanup uses nullable directory hints and is idempotent", () async {
+    test("persisted cleanup resolves via scan and is idempotent", () async {
       harness.writeSession(id: "persisted", parentPath: null);
 
-      await harness.plugin.deletePersistedSession(backendSessionId: "persisted", directory: null);
-      await harness.plugin.deletePersistedSession(backendSessionId: "persisted", directory: harness.project.path);
+      await harness.plugin.deletePersistedSession(backendSessionId: "persisted");
+      await harness.plugin.deletePersistedSession(backendSessionId: "persisted");
 
       expect(File(harness.sessionPath("persisted")).existsSync(), isFalse);
     });

@@ -1490,13 +1490,6 @@ mixin $DeletedSessionsTableTableToColumns
   /// The id of the plugin that owned the session. Scoping keeps one plugin's
   /// tombstones from ever touching another plugin's sessions.
   String get pluginId;
-
-  /// Authoritative session directory captured before the session row is removed.
-  ///
-  /// COMPATIBILITY 2026-08-15 (v1.7.1): Public tombstones predate this column
-  /// and have no valid directory backfill. Remove nullability once every
-  /// supported bridge database must have created tombstones after schema v14.
-  String? get directory;
   int get deletedAt;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1504,9 +1497,6 @@ mixin $DeletedSessionsTableTableToColumns
     map['owner_identity'] = Variable<String>(ownerIdentity);
     map['backend_session_id'] = Variable<String>(backendSessionId);
     map['plugin_id'] = Variable<String>(pluginId);
-    if (!nullToAbsent || directory != null) {
-      map['directory'] = Variable<String>(directory);
-    }
     map['deleted_at'] = Variable<int>(deletedAt);
     return map;
   }
@@ -1552,17 +1542,6 @@ class $DeletedSessionsTableTable extends DeletedSessionsTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _directoryMeta = const VerificationMeta(
-    'directory',
-  );
-  @override
-  late final GeneratedColumn<String> directory = GeneratedColumn<String>(
-    'directory',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _deletedAtMeta = const VerificationMeta(
     'deletedAt',
   );
@@ -1579,7 +1558,6 @@ class $DeletedSessionsTableTable extends DeletedSessionsTable
     ownerIdentity,
     backendSessionId,
     pluginId,
-    directory,
     deletedAt,
   ];
   @override
@@ -1622,12 +1600,6 @@ class $DeletedSessionsTableTable extends DeletedSessionsTable
     } else if (isInserting) {
       context.missing(_pluginIdMeta);
     }
-    if (data.containsKey('directory')) {
-      context.handle(
-        _directoryMeta,
-        directory.isAcceptableOrUnknown(data['directory']!, _directoryMeta),
-      );
-    }
     if (data.containsKey('deleted_at')) {
       context.handle(
         _deletedAtMeta,
@@ -1661,10 +1633,6 @@ class $DeletedSessionsTableTable extends DeletedSessionsTable
         DriftSqlType.string,
         data['${effectivePrefix}plugin_id'],
       )!,
-      directory: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}directory'],
-      ),
       deletedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}deleted_at'],
@@ -1685,20 +1653,17 @@ class DeletedSessionsTableCompanion extends UpdateCompanion<DeletedSessionDto> {
   final Value<String> ownerIdentity;
   final Value<String> backendSessionId;
   final Value<String> pluginId;
-  final Value<String?> directory;
   final Value<int> deletedAt;
   const DeletedSessionsTableCompanion({
     this.ownerIdentity = const Value.absent(),
     this.backendSessionId = const Value.absent(),
     this.pluginId = const Value.absent(),
-    this.directory = const Value.absent(),
     this.deletedAt = const Value.absent(),
   });
   DeletedSessionsTableCompanion.insert({
     this.ownerIdentity = const Value.absent(),
     required String backendSessionId,
     required String pluginId,
-    this.directory = const Value.absent(),
     required int deletedAt,
   }) : backendSessionId = Value(backendSessionId),
        pluginId = Value(pluginId),
@@ -1707,14 +1672,12 @@ class DeletedSessionsTableCompanion extends UpdateCompanion<DeletedSessionDto> {
     Expression<String>? ownerIdentity,
     Expression<String>? backendSessionId,
     Expression<String>? pluginId,
-    Expression<String>? directory,
     Expression<int>? deletedAt,
   }) {
     return RawValuesInsertable({
       if (ownerIdentity != null) 'owner_identity': ownerIdentity,
       if (backendSessionId != null) 'backend_session_id': backendSessionId,
       if (pluginId != null) 'plugin_id': pluginId,
-      if (directory != null) 'directory': directory,
       if (deletedAt != null) 'deleted_at': deletedAt,
     });
   }
@@ -1723,14 +1686,12 @@ class DeletedSessionsTableCompanion extends UpdateCompanion<DeletedSessionDto> {
     Value<String>? ownerIdentity,
     Value<String>? backendSessionId,
     Value<String>? pluginId,
-    Value<String?>? directory,
     Value<int>? deletedAt,
   }) {
     return DeletedSessionsTableCompanion(
       ownerIdentity: ownerIdentity ?? this.ownerIdentity,
       backendSessionId: backendSessionId ?? this.backendSessionId,
       pluginId: pluginId ?? this.pluginId,
-      directory: directory ?? this.directory,
       deletedAt: deletedAt ?? this.deletedAt,
     );
   }
@@ -1747,9 +1708,6 @@ class DeletedSessionsTableCompanion extends UpdateCompanion<DeletedSessionDto> {
     if (pluginId.present) {
       map['plugin_id'] = Variable<String>(pluginId.value);
     }
-    if (directory.present) {
-      map['directory'] = Variable<String>(directory.value);
-    }
     if (deletedAt.present) {
       map['deleted_at'] = Variable<int>(deletedAt.value);
     }
@@ -1762,7 +1720,6 @@ class DeletedSessionsTableCompanion extends UpdateCompanion<DeletedSessionDto> {
           ..write('ownerIdentity: $ownerIdentity, ')
           ..write('backendSessionId: $backendSessionId, ')
           ..write('pluginId: $pluginId, ')
-          ..write('directory: $directory, ')
           ..write('deletedAt: $deletedAt')
           ..write(')'))
         .toString();
@@ -4723,7 +4680,6 @@ typedef $$DeletedSessionsTableTableCreateCompanionBuilder =
       Value<String> ownerIdentity,
       required String backendSessionId,
       required String pluginId,
-      Value<String?> directory,
       required int deletedAt,
     });
 typedef $$DeletedSessionsTableTableUpdateCompanionBuilder =
@@ -4731,7 +4687,6 @@ typedef $$DeletedSessionsTableTableUpdateCompanionBuilder =
       Value<String> ownerIdentity,
       Value<String> backendSessionId,
       Value<String> pluginId,
-      Value<String?> directory,
       Value<int> deletedAt,
     });
 
@@ -4756,11 +4711,6 @@ class $$DeletedSessionsTableTableFilterComposer
 
   ColumnFilters<String> get pluginId => $composableBuilder(
     column: $table.pluginId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get directory => $composableBuilder(
-    column: $table.directory,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4794,11 +4744,6 @@ class $$DeletedSessionsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get directory => $composableBuilder(
-    column: $table.directory,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<int> get deletedAt => $composableBuilder(
     column: $table.deletedAt,
     builder: (column) => ColumnOrderings(column),
@@ -4826,9 +4771,6 @@ class $$DeletedSessionsTableTableAnnotationComposer
 
   GeneratedColumn<String> get pluginId =>
       $composableBuilder(column: $table.pluginId, builder: (column) => column);
-
-  GeneratedColumn<String> get directory =>
-      $composableBuilder(column: $table.directory, builder: (column) => column);
 
   GeneratedColumn<int> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
@@ -4880,13 +4822,11 @@ class $$DeletedSessionsTableTableTableManager
                 Value<String> ownerIdentity = const Value.absent(),
                 Value<String> backendSessionId = const Value.absent(),
                 Value<String> pluginId = const Value.absent(),
-                Value<String?> directory = const Value.absent(),
                 Value<int> deletedAt = const Value.absent(),
               }) => DeletedSessionsTableCompanion(
                 ownerIdentity: ownerIdentity,
                 backendSessionId: backendSessionId,
                 pluginId: pluginId,
-                directory: directory,
                 deletedAt: deletedAt,
               ),
           createCompanionCallback:
@@ -4894,13 +4834,11 @@ class $$DeletedSessionsTableTableTableManager
                 Value<String> ownerIdentity = const Value.absent(),
                 required String backendSessionId,
                 required String pluginId,
-                Value<String?> directory = const Value.absent(),
                 required int deletedAt,
               }) => DeletedSessionsTableCompanion.insert(
                 ownerIdentity: ownerIdentity,
                 backendSessionId: backendSessionId,
                 pluginId: pluginId,
-                directory: directory,
                 deletedAt: deletedAt,
               ),
           withReferenceMapper: (p0) => p0

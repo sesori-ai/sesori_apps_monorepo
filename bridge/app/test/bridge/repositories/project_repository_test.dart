@@ -930,7 +930,6 @@ void main() {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "gone",
         pluginId: "codex",
-        directory: null,
         deletedAt: 1,
       );
       await db.projectsDao.setActivity(projectId: "/tmp/proj/alpha", createdAt: 1, updatedAt: 2);
@@ -950,7 +949,6 @@ void main() {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "gone",
         pluginId: "codex",
-        directory: null,
         deletedAt: 1,
       );
 

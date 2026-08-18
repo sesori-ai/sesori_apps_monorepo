@@ -5,10 +5,5 @@
 /// load sessions into the backend process. Implementations must be idempotent:
 /// an already-missing session is a successful cleanup.
 abstract interface class PersistedSessionCleanupApi() {
-  /// [directory] is null only for legacy tombstones that predate persisted
-  /// directory attribution. Global-index implementations may ignore it.
-  Future<void> deletePersistedSession({
-    required String backendSessionId,
-    required String? directory,
-  });
+  Future<void> deletePersistedSession({required String backendSessionId});
 }

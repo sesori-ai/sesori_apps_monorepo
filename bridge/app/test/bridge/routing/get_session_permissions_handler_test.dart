@@ -198,7 +198,6 @@ void main() {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "gone",
         pluginId: derivedPlugin.id,
-        directory: null,
         deletedAt: 1,
       );
       final repository = singlePluginPermissionRepository(
@@ -280,7 +279,6 @@ void main() {
         await db.sessionDao.insertSessionTombstone(
           backendSessionId: sessionId,
           pluginId: derivedPlugin.id,
-          directory: null,
           deletedAt: 1,
         );
       }
@@ -320,7 +318,6 @@ void main() {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "gone-root",
         pluginId: derivedPlugin.id,
-        directory: null,
         deletedAt: 1,
       );
       final repository = singlePluginPermissionRepository(
@@ -362,7 +359,6 @@ void main() {
       await db.sessionDao.insertSessionTombstone(
         backendSessionId: "gone-child",
         pluginId: derivedPlugin.id,
-        directory: null,
         deletedAt: 1,
       );
       final repository = singlePluginPermissionRepository(
