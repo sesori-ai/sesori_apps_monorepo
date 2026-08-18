@@ -307,7 +307,10 @@ final class ClaudePlugin({
       _sessions.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId);
 
   @override
-  Future<void> abortSession({required String sessionId}) => _sessions.abort(sessionId: sessionId);
+  Future<void> abortSession({required String sessionId}) async {
+    await _sessions.abort(sessionId: sessionId);
+    _eventDispatcher.clearExpectedUserEcho(sessionId: sessionId);
+  }
 
   @override
   // Claude declares plugin-scoped options, so projectId does not select a catalog.

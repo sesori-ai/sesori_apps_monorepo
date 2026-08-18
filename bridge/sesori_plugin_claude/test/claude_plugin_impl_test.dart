@@ -353,6 +353,43 @@ void main() {
       await subscription.cancel();
     });
 
+    test("a late echo after abort is not stamped with the aborted prompt id", () async {
+      await harness.createSession();
+      final first = harness.processes.single;
+      await waitForFrame(first, "user");
+      first.emit(_result());
+      await pump();
+
+      await harness.plugin.sendPrompt(
+        promptId: "prm_aborted",
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "interrupted early")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await _waitForUserText(first, "interrupted early");
+      final abort = harness.plugin.abortSession(sessionId: testSessionId);
+      final interrupt = await _waitForControl(first, "interrupt");
+      first.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      await abort;
+
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      // A buffered frame arriving after the abort must not inherit the
+      // aborted turn's identity.
+      final written = first.written.lastWhere((frame) => frame["type"] == "user");
+      first.emit(_replayOf(written, uuid: "late-echo"));
+      await pump();
+      await pump();
+
+      final lateEchoes = events.whereType<BridgeSseMessageUpdated>().where((event) => event.info["id"] == "late-echo");
+      for (final message in lateEchoes) {
+        expect(message.info["promptId"], isNull);
+      }
+      await subscription.cancel();
+    });
+
     test("cancelQueuedPrompt removes a pending steering prompt before dispatch", () async {
       await harness.createSession();
       final first = harness.processes.single;

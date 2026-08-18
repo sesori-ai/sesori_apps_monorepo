@@ -315,6 +315,9 @@ final class ClaudeSessionService({
   /// failure between dispatch and echo, or a dispatch that threw).
   void _settleQueuedEntry({required String sessionId, required _SessionTurnState state, required _TurnMode mode}) {
     if (mode is! _QueuedTurnMode) return;
+    // A deleted/reset session already dropped this state; a stale turn must
+    // not publish queue updates after BridgeSseSessionDeleted.
+    if (!identical(_turns[sessionId], state)) return;
     if (!state.queue.contains(mode.entry)) return;
     state.queue.remove(mode.entry);
     _emitQueueUpdate(sessionId: sessionId, state: state);

@@ -21,8 +21,18 @@ final class ClaudeEventDispatcher({
   void beginTurn({required String sessionId}) {
     _messageIds.remove(sessionId);
     _announcedMessageIds.remove(sessionId);
+    // A leftover expectation belongs to a turn whose echo never arrived
+    // (interrupted between stdin write and CLI read); the new turn must not
+    // inherit it.
+    _expectedUserEcho.remove(sessionId);
     _clearStreamedMessages(sessionId: sessionId);
     _tools.beginTurn(sessionId: sessionId);
+  }
+
+  /// Drops a pending echo expectation whose turn was aborted, so a late
+  /// buffered frame cannot be stamped with the aborted prompt id.
+  void clearExpectedUserEcho({required String sessionId}) {
+    _expectedUserEcho.remove(sessionId);
   }
 
   /// Declares that the session's next replayed stdin echo fulfills

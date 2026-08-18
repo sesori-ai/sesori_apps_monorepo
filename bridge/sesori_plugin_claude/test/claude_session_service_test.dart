@@ -337,6 +337,21 @@ void main() {
       expect(_userFrames(process), hasLength(1));
     });
 
+    test("a turn settling after deleteSession publishes no queue update", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+
+      await harness.service.deleteSession(sessionId: testSessionId);
+      final eventCountAfterDelete = harness.events.length;
+      process.emit(_result());
+      await pump();
+      await pump();
+
+      final lateEvents = harness.events.skip(eventCountAfterDelete);
+      expect(lateEvents.whereType<BridgeSseQueuedPromptsUpdated>(), isEmpty);
+    });
+
     test("blocking initial turn completes acceptance only at dispatch", () async {
       var accepted = false;
       final acceptance = harness.service
