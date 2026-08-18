@@ -123,7 +123,7 @@ one consumer.
 | 5/9 | `⚙️ [hermes-agent-plugin] feat(hermes): register the plugin in the bridge [step 5/9]` | Merged as #919. |
 | 6/9 | `⚙️ [hermes-agent-plugin] feat(client): brand the Hermes harness [step 6/9]` | Merged as #921; corrected supplied artwork and asset contract. |
 | 7/9 | `🚧 [hermes-agent-plugin] fix(hermes): correct runtime and ACP assumptions [step 7/9]` | Merged as #927: auth selection, version semantics, executable revalidation, setup failure classification, null activation retry, exact registry test, plan/docs correction. |
-| 8/9 | `🚧 [hermes-agent-plugin] test(hermes): verify production ACP behavior [step 8/9]` | Merged as #929, extended by the 2026-08-18 iOS client E2E run in `TRACKER.md`. Setup/lifecycle, session creation, tools and file changes, images, history and recovery, and deletion now pass; `Questions and permissions`, `Session turns` (reasoning streaming), `Projects and sessions` (failed/cancelled import), and `Compatibility` remain blocked. |
+| 8/9 | `🚧 [hermes-agent-plugin] test(hermes): verify production ACP behavior [step 8/9]` | Merged as #929, extended by the 2026-08-18 iOS client E2E run in `TRACKER.md`. Session creation, tools and file changes, images, history and recovery, and deletion now pass; `Plugin setup and lifecycle` (L4 idle respawn), `Session turns` (reasoning streaming), `Questions and permissions`, `Projects and sessions` (failed/cancelled import), and `Compatibility` remain blocked. |
 | 9/9 | `🌱 [hermes-agent-plugin] docs: retire the plan [step 9/9]` | Pending; blocked until every required row below passes. |
 
 ## Regression And Retirement Matrix

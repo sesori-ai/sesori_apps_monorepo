@@ -6,7 +6,7 @@
 - **Owner review:** in progress since 2026-08-15
 - **Current open PR:** none
 - **Local successor:** none; Step 9 retirement is blocked
-- **Next action:** exercise the remaining blocked matrix rows — `Questions and permissions`, `Session turns` (reasoning streaming), `Projects and sessions` (failed/cancelled import), and `Compatibility` — or record explicit owner acceptance
+- **Next action:** exercise the remaining blocked matrix rows — `Plugin setup and lifecycle` (L4 idle respawn), `Session turns` (reasoning streaming), `Questions and permissions`, `Projects and sessions` (failed/cancelled import), and `Compatibility` — or record explicit owner acceptance
 - **Retirement:** blocked on the Step 8 matrix in `PLAN.md`
 
 ## Delivery
@@ -120,7 +120,7 @@ local mock.
 
 | Matrix row | Result | Privacy-safe evidence |
 |---|---|---|
-| Plugin setup and lifecycle | **Pass** | Setup reported Hermes Agent `0.20.1` `ready`. The harness picker listed "Hermes Agent" with NousResearch artwork in correct alphabetical position, and the selection persisted into the next new-session screen. Safe restart returned 200 twice mid-session, and disable/enable returned 200. Old-binary handling was exercised with stub executables: a `0.19.0` install reported `unavailable` with "The configured Hermes CLI path points to an unsupported version...", and a pre-ACP install rejecting the `acp` subcommand reported `runtimeMissing` with "The installed Hermes does not expose the `acp` subcommand...". Targeted L4 idle respawn was not exercised; see the note below. |
+| Plugin setup and lifecycle | **Blocked** | Setup reported Hermes Agent `0.20.1` `ready`. The harness picker listed "Hermes Agent" with NousResearch artwork in correct alphabetical position, and the selection persisted into the next new-session screen. Safe restart returned 200 twice mid-session, and disable/enable returned 200. Old-binary handling was exercised with stub executables: a `0.19.0` install reported `unavailable` with "The configured Hermes CLI path points to an unsupported version...", and a pre-ACP install rejecting the `acp` subcommand reported `runtimeMissing` with "The installed Hermes does not expose the `acp` subcommand...". Remaining gap: targeted L4 idle respawn was not exercised, because it needs a controlled idle-timeout window rather than an interactive session. |
 | Session creation and options | **Pass** | A session was created from the phone with the Hermes harness; the bridge attributed it `pluginId: hermes`. A title was generated and a dedicated worktree/branch was provisioned. No model picker was populated, matching the documented configured-model-only scope. |
 | Session turns | **Blocked** | Text streaming, tool streaming, status updates, and abort all passed from the phone, including a 1-to-400 enumeration ending `text_response(finish_reason=stop)`. Concurrent sessions passed: two Hermes sessions created distinct ids and advanced to seven messages each under simultaneous prompts. Call-absence tracing passed: Hermes advertises no `session/close`, and no `session/close`, `elicitation/create`, or `session/set_config_option` call appeared in bridge logs. Remaining gap: an explicit chain-of-thought prompt produced no `agent_thought_chunk`, so reasoning streaming is unverified against this model. |
 | Tools and file changes | **Pass** | A prompt drove `tool_turns=2`. The client rendered `write:` and `read:` tool entries plus the final message. `e2e.txt` was verified on disk containing `OK` inside the session worktree, and the File Changes screen rendered `1 file changed +1 -0` with hunk `@@ -0,0 +1,1 @@`. |
@@ -131,11 +131,14 @@ local mock.
 | Projects and sessions | **Blocked** | Explicit import, non-destructive re-import, and dormant catalog reads passed. A failed or cancelled in-flight import was still not exercised. |
 | Compatibility | **Blocked** | Older-client and older-bridge presentation E2E still requires a second build pair. |
 
-Two required items remain unexercised and keep their rows honest rather than
-being folded into a Pass. Targeted L4 idle respawn was not driven, because it
-needs a controlled idle-timeout window rather than an interactive session. No
-prompt in this run produced an ACP permission request, so the
-questions-and-permissions row has no evidence at all.
+Five matrix rows pass after this run. Five remain Blocked, each on one specific
+unexercised item rather than on a broad failure: `Plugin setup and lifecycle`
+(targeted L4 idle respawn), `Session turns` (reasoning streaming),
+`Questions and permissions` (no ACP permission request was ever emitted, so the
+row has no evidence at all), `Projects and sessions` (failed or cancelled
+in-flight import), and `Compatibility` (a second build pair). A row stays
+Blocked when any required item is unexercised, even where every other item in
+that row passed.
 
 Observed upstream limitation, not a Sesori defect: `cu/*` models returned empty
 completions through this endpoint (`completion_tokens: 0`), so Hermes correctly
