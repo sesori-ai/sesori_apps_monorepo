@@ -227,7 +227,8 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                       hasMessages:
                           state.hasRenderableMessages ||
                           state.sendingSubmission != null ||
-                          state.queuedMessages.isNotEmpty,
+                          state.queuedMessages.isNotEmpty ||
+                          state.bridgeQueuedPrompts.isNotEmpty,
                       attachmentsSupported: state.supportsPromptAttachments,
                       isBusy: hasActiveWork(
                         sessionStatus: state.sessionStatus,

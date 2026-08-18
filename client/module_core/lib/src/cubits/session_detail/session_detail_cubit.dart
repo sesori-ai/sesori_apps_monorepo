@@ -532,6 +532,7 @@ class SessionDetailCubit(
             providers: availableProviders,
             model: preservedSelectedAgentModel,
           );
+          _reconcileStagedWithSnapshot(snapshot: snapshot);
 
           final refreshedSessionStatus = snapshot.statuses[_sessionId] ?? const SessionStatus.idle();
           final retryMessage = switch (refreshedSessionStatus) {
@@ -578,8 +579,8 @@ class SessionDetailCubit(
                 availableCommands: availableCommands,
                 stagedCommand: preservedStagedCommand,
               ),
-              queuedMessages: _promptQueue.items,
-              sendingSubmission: _promptQueue.active,
+              queuedMessages: _visibleStagedItems(bridgePrompts: snapshot.bridgeQueuedPrompts),
+              sendingSubmission: _visibleStagedSending(bridgePrompts: snapshot.bridgeQueuedPrompts),
               isRefreshing: false,
               availableVariants: availableVariants,
             ),
@@ -1138,17 +1139,22 @@ class SessionDetailCubit(
       // both (or neither). Any stale local copy of the same prompt (a send
       // whose response was lost) is healed here too.
       _promptQueue.removeByPromptId(promptId);
+      final bridgePrompts = [
+        for (final prompt in current.bridgeQueuedPrompts)
+          if (prompt.id != promptId) prompt,
+      ];
+      final visibleSending = _visibleStagedSending(bridgePrompts: bridgePrompts);
       emit(
         current.copyWith(
           messages: messages,
-          bridgeQueuedPrompts: [
-            for (final prompt in current.bridgeQueuedPrompts)
-              if (prompt.id != promptId) prompt,
-          ],
-          queuedMessages: _promptQueue.items,
-          sendingSubmission: _promptQueue.active,
+          bridgeQueuedPrompts: bridgePrompts,
+          queuedMessages: _visibleStagedItems(bridgePrompts: bridgePrompts),
+          sendingSubmission: visibleSending?.promptId == promptId ? null : visibleSending,
         ),
       );
+      // The healed prompt's own send may have stopped the drain on a lost
+      // response; anything staged behind it must not stay parked.
+      _tryDrainQueue();
     } else {
       emit(current.copyWith(messages: messages));
     }
@@ -1156,9 +1162,10 @@ class SessionDetailCubit(
   }
 
   /// Applies a full-list replacement of the bridge-owned queue. Local staged
-  /// sends the bridge now owns are dropped in the same emission (covers the
-  /// event racing ahead of the acceptance response).
+  /// sends the bridge now owns leave the display in the same emission (covers
+  /// the event racing ahead of the acceptance response).
   void _onBridgeQueueUpdated(List<QueuedSessionPrompt> prompts) {
+    if (isClosed) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
     for (final prompt in prompts) {
@@ -1167,8 +1174,8 @@ class SessionDetailCubit(
     emit(
       current.copyWith(
         bridgeQueuedPrompts: prompts,
-        queuedMessages: _promptQueue.items,
-        sendingSubmission: _promptQueue.active,
+        queuedMessages: _visibleStagedItems(bridgePrompts: prompts),
+        sendingSubmission: _visibleStagedSending(bridgePrompts: prompts),
       ),
     );
   }
@@ -1178,7 +1185,11 @@ class SessionDetailCubit(
   /// dispatched or was removed elsewhere; only a transport failure keeps it.
   Future<void> cancelBridgeQueuedPrompt({required String promptId}) async {
     final result = await _sessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: promptId);
-    if (result case ErrorResponse(:final error) when error is! NonSuccessCodeError) return;
+    // Only not-found means the entry is gone (dispatched or removed
+    // elsewhere); any other failure proves nothing about the bridge queue.
+    if (result case ErrorResponse(:final error)) {
+      if (error is! NonSuccessCodeError || error.errorCode != 404) return;
+    }
     final current = state;
     if (current is! SessionDetailLoaded || isClosed) return;
     emit(
@@ -1511,10 +1522,41 @@ class SessionDetailCubit(
     if (current is! SessionDetailLoaded) return;
     emit(
       current.copyWith(
-        queuedMessages: _promptQueue.items,
-        sendingSubmission: _promptQueue.active,
+        queuedMessages: _visibleStagedItems(bridgePrompts: current.bridgeQueuedPrompts),
+        sendingSubmission: _visibleStagedSending(bridgePrompts: current.bridgeQueuedPrompts),
       ),
     );
+  }
+
+  /// Drops staged copies a fresh snapshot proves the bridge already owns —
+  /// listed in its queue or landed as a user message with the same prompt id.
+  void _reconcileStagedWithSnapshot({required SessionDetailSnapshot snapshot}) {
+    for (final prompt in snapshot.bridgeQueuedPrompts) {
+      _promptQueue.removeByPromptId(prompt.id);
+    }
+    for (final message in snapshot.messages) {
+      if (message.info case MessageUser(promptId: final promptId?)) {
+        _promptQueue.removeByPromptId(promptId);
+      }
+    }
+  }
+
+  /// Staged sends not yet owned by the bridge. A staged copy whose id the
+  /// bridge queue already lists renders nowhere; its in-flight send settles
+  /// (or its idempotent retry no-ops) without a second bubble.
+  List<QueuedSessionSubmission> _visibleStagedItems({required List<QueuedSessionPrompt> bridgePrompts}) {
+    if (bridgePrompts.isEmpty) return _promptQueue.items;
+    final bridgeIds = {for (final prompt in bridgePrompts) prompt.id};
+    return [
+      for (final item in _promptQueue.items)
+        if (!bridgeIds.contains(item.promptId)) item,
+    ];
+  }
+
+  QueuedSessionSubmission? _visibleStagedSending({required List<QueuedSessionPrompt> bridgePrompts}) {
+    final active = _promptQueue.active;
+    if (active == null) return null;
+    return bridgePrompts.any((prompt) => prompt.id == active.promptId) ? null : active;
   }
 
   Future<void> _drainQueuedMessages() async {
@@ -1952,6 +1994,7 @@ class SessionDetailCubit(
   }
 
   SessionDetailLoaded _buildLoadedState({required SessionDetailSnapshot snapshot}) {
+    _reconcileStagedWithSnapshot(snapshot: snapshot);
     final latestAssistant = _latestAssistantMessage(snapshot.messages);
     final childSessions = [...snapshot.childSessions];
     _sortChildrenByUpdatedDesc(childSessions);
@@ -2053,8 +2096,8 @@ class SessionDetailCubit(
       childStatuses: childStatuses,
       isRootSession: snapshot.isRootSession,
       isArchived: snapshot.isArchived,
-      queuedMessages: _promptQueue.items,
-      sendingSubmission: _promptQueue.active,
+      queuedMessages: _visibleStagedItems(bridgePrompts: snapshot.bridgeQueuedPrompts),
+      sendingSubmission: _visibleStagedSending(bridgePrompts: snapshot.bridgeQueuedPrompts),
       availableAgents: agents,
       availableProviders: providers,
       availableCommands: snapshot.commands,

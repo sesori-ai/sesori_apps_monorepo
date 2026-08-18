@@ -236,6 +236,112 @@ void main() {
         const [_queuedPrompt],
         reason: "an unreachable bridge proves nothing about the entry",
       );
+
+      when(
+        () => mockSessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: "prm_1"),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null)));
+      cubit = await createLoadedCubit(snapshotQueue: const [_queuedPrompt]);
+      await cubit.cancelBridgeQueuedPrompt(promptId: "prm_1");
+      expect(
+        (cubit.state as SessionDetailLoaded).bridgeQueuedPrompts,
+        const [_queuedPrompt],
+        reason: "a server rejection other than not-found must not hide a still-live entry",
+      );
+    });
+
+    test("a snapshot listing an accepted prompt drops its staged local copy", () async {
+      final sendCompleter = Completer<ApiResponse<void>>();
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) => sendCompleter.future);
+      final cubit = await createLoadedCubit();
+      unawaited(
+        cubit.sendMessage(text: "steer it", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
+      );
+      await Future<void>.delayed(Duration.zero);
+      final promptId = (cubit.state as SessionDetailLoaded).sendingSubmission?.promptId;
+      expect(promptId, isNotNull);
+
+      // A refresh whose snapshot already lists the prompt (the acceptance
+      // response was lost) must not leave a duplicate staged copy behind.
+      sessionEvents.add(
+        SesoriSseEvent.sessionQueuedPrompts(
+          sessionID: _sessionId,
+          prompts: [
+            QueuedSessionPrompt(id: promptId ?? "", text: "steer it", command: null, attachmentCount: 0, createdAt: 1),
+          ],
+        ) as SesoriSessionEvent,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.sendingSubmission, isNull);
+      expect(state.queuedMessages, isEmpty);
+      expect(state.bridgeQueuedPrompts.single.id, promptId);
+      sendCompleter.complete(ApiResponse.success(null));
+    });
+
+    test("healing a lost-response prompt re-drains the sends staged behind it", () async {
+      final firstSend = Completer<ApiResponse<void>>();
+      final laterSends = <String>[];
+      var sendCalls = 0;
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((invocation) {
+        sendCalls++;
+        if (sendCalls == 1) return firstSend.future;
+        laterSends.add(invocation.namedArguments[#text]! as String);
+        return Future.value(ApiResponse.success(null));
+      });
+      final cubit = await createLoadedCubit();
+      unawaited(
+        cubit.sendMessage(text: "first", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
+      );
+      unawaited(
+        cubit.sendMessage(text: "second", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
+      );
+      await Future<void>.delayed(Duration.zero);
+      final firstPromptId = (cubit.state as SessionDetailLoaded).sendingSubmission?.promptId;
+      expect(firstPromptId, isNotNull);
+
+      // The first send's response was lost, but its message lands via SSE:
+      // the second staged send must dispatch without an external trigger.
+      firstSend.completeError(Exception("response lost"));
+      await Future<void>.delayed(Duration.zero);
+      sessionEvents.add(
+        SesoriMessageUpdated(
+          info: Message.user(
+            id: "echo-first",
+            sessionID: _sessionId,
+            agent: null,
+            time: const MessageTime(created: 300, completed: null),
+            promptId: firstPromptId,
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(laterSends, ["second"]);
+      expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
     });
 
     test("abort drops locally staged sends", () async {

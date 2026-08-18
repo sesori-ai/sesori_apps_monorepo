@@ -57,10 +57,11 @@ class PromptSendQueue() {
 
   /// Drops every staged copy of [promptId] — the bridge owns that prompt now
   /// (its queue listed it, or its message landed), so a local retry would
-  /// only duplicate it.
+  /// only duplicate it. The active slot is deliberately untouched: its send
+  /// is still in flight and must settle through complete/fail so the drain
+  /// loop stays single-flight; rendering hides it instead.
   void removeByPromptId(String promptId) {
     _items.removeWhere((item) => item.promptId == promptId);
-    if (_active?.promptId == promptId) _active = null;
   }
 
   /// Drops everything staged locally (the user stopped the session).
