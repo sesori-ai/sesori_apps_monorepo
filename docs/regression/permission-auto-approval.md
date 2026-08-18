@@ -15,6 +15,10 @@ user present. It is a bridge policy, not a client feature.
   clients as answerable, and its reply is not surfaced as user activity.
 - Enabling also resolves already-pending permissions, including child-session
   ones, and the same sweep runs when a backend event stream reconnects.
+- A pending-permission snapshot served while the setting is on is resolved
+  through auto-approval first: approved requests disappear from the response,
+  and a request auto-approval could not answer stays visible and answerable
+  instead of being hidden behind a stale awaiting-input badge.
 - Each request is approved at most once. A failed approval is not recorded as
   approved and can be retried.
 - Questions are never auto-answered.

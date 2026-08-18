@@ -38,6 +38,32 @@ class PermissionAutoApprovalService({
     }
   }
 
+  /// Resolves a pending-permission snapshot under YOLO before it is served.
+  ///
+  /// With YOLO off the snapshot passes through untouched. With YOLO on, each
+  /// permission is auto-approved and the ones that could not be approved are
+  /// returned, so a request YOLO cannot answer — one asked before YOLO was
+  /// enabled while no phone listened, or one whose reply failed — surfaces for
+  /// manual action instead of staying invisible behind an "awaiting input"
+  /// badge forever.
+  Future<List<PendingPermission>> resolveSnapshot({required List<PendingPermission> permissions}) async {
+    if (_disposed || permissions.isEmpty || !_bridgeSettingsRepository.currentSettings.yolo) return permissions;
+    final unresolved = <PendingPermission>[];
+    for (final permission in permissions) {
+      try {
+        await approve(requestId: permission.id, sessionId: permission.sessionID);
+      } on Object catch (error, stackTrace) {
+        Log.w(
+          "[permissions] failed to auto-approve snapshot request ${permission.id}; leaving it visible",
+          error,
+          stackTrace,
+        );
+        unresolved.add(permission);
+      }
+    }
+    return unresolved;
+  }
+
   Future<void> approvePending() async {
     if (_disposed) return;
 

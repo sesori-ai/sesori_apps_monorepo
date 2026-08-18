@@ -1,6 +1,6 @@
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_permissions_handler.dart";
-import "package:sesori_bridge/src/services/yolo_settings_service.dart";
+import "package:sesori_bridge/src/bridge/services/permission_auto_approval_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -13,12 +13,12 @@ void main() {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
     late GetSessionPermissionsHandler handler;
-    late _FakeYoloSettingsService yoloSettingsService;
+    late _FakePermissionAutoApprovalService autoApprovalService;
 
     setUp(() async {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
-      yoloSettingsService = _FakeYoloSettingsService(enabled: false);
+      autoApprovalService = _FakePermissionAutoApprovalService();
       await recordSessionBinding(
         database: db,
         sessionId: "root",
@@ -37,7 +37,7 @@ void main() {
       );
       handler = GetSessionPermissionsHandler(
         permissionRepository: singlePluginPermissionRepository(plugin: plugin, sessionDao: db.sessionDao),
-        yoloSettingsService: yoloSettingsService,
+        permissionAutoApprovalService: autoApprovalService,
       );
     });
 
@@ -67,32 +67,9 @@ void main() {
       );
     });
 
-    test("returns 400 for an empty session id when pending permissions are suppressed", () async {
-      final suppressedHandler = GetSessionPermissionsHandler(
-        permissionRepository: singlePluginPermissionRepository(plugin: plugin, sessionDao: db.sessionDao),
-        yoloSettingsService: _FakeYoloSettingsService(enabled: true),
-      );
-
+    test("preserves not-found for an unknown session", () async {
       await expectLater(
-        () => suppressedHandler.handle(
-          makeRequest("POST", "/session/permissions"),
-          body: const SessionIdRequest(sessionId: ""),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
-        ),
-        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
-      );
-    });
-
-    test("preserves not-found for an unknown session when pending permissions are suppressed", () async {
-      final suppressedHandler = GetSessionPermissionsHandler(
-        permissionRepository: singlePluginPermissionRepository(plugin: plugin, sessionDao: db.sessionDao),
-        yoloSettingsService: _FakeYoloSettingsService(enabled: true),
-      );
-
-      await expectLater(
-        suppressedHandler.handle(
+        handler.handle(
           makeRequest("POST", "/session/permissions"),
           body: const SessionIdRequest(sessionId: "unknown"),
           pathParams: {},
@@ -103,34 +80,7 @@ void main() {
       );
     });
 
-    test("returns no pending permissions when snapshot suppression is enabled", () async {
-      plugin.pendingPermissionsResult = [
-        const PluginPendingPermission(
-          id: "p-1",
-          sessionID: "backend-root",
-          displaySessionId: "backend-root",
-          tool: "bash",
-          description: "Run ls",
-          allowAlways: true,
-        ),
-      ];
-      final suppressedHandler = GetSessionPermissionsHandler(
-        permissionRepository: singlePluginPermissionRepository(plugin: plugin, sessionDao: db.sessionDao),
-        yoloSettingsService: _FakeYoloSettingsService(enabled: true),
-      );
-
-      final response = await suppressedHandler.handle(
-        makeRequest("POST", "/session/permissions"),
-        body: const SessionIdRequest(sessionId: "root"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-
-      expect(response, const PendingPermissionResponse(data: []));
-    });
-
-    test("reads snapshot suppression from the live setting", () async {
+    test("serves the auto-approval-resolved snapshot", () async {
       plugin.pendingPermissionsResult = const [
         PluginPendingPermission(
           id: "p-1",
@@ -141,17 +91,9 @@ void main() {
           allowAlways: true,
         ),
       ];
+      autoApprovalService.resolvedSnapshot = const [];
 
-      await yoloSettingsService.update(enabled: true);
-      final suppressed = await handler.handle(
-        makeRequest("POST", "/session/permissions"),
-        body: const SessionIdRequest(sessionId: "root"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
-      );
-      await yoloSettingsService.update(enabled: false);
-      final forwarded = await handler.handle(
+      final response = await handler.handle(
         makeRequest("POST", "/session/permissions"),
         body: const SessionIdRequest(sessionId: "root"),
         pathParams: {},
@@ -159,8 +101,8 @@ void main() {
         fragment: null,
       );
 
-      expect(suppressed.data, isEmpty);
-      expect(forwarded.data.single.id, "p-1");
+      expect(response, const PendingPermissionResponse(data: []));
+      expect(autoApprovalService.resolveCalls.single.single.id, "p-1");
     });
 
     test("maps plugin permissions to shared, preserving displaySessionId", () async {
@@ -206,7 +148,7 @@ void main() {
       );
       final derivedHandler = GetSessionPermissionsHandler(
         permissionRepository: repository,
-        yoloSettingsService: _FakeYoloSettingsService(enabled: false),
+        permissionAutoApprovalService: _FakePermissionAutoApprovalService(),
       );
 
       await expectLater(
@@ -287,7 +229,7 @@ void main() {
           plugin: derivedPlugin,
           sessionDao: db.sessionDao,
         ),
-        yoloSettingsService: _FakeYoloSettingsService(enabled: false),
+        permissionAutoApprovalService: _FakePermissionAutoApprovalService(),
       );
 
       final response = await derivedHandler.handle(
@@ -387,19 +329,20 @@ void main() {
   });
 }
 
-class _FakeYoloSettingsService({required bool enabled}) implements YoloSettingsService {
-  YoloSettingsResponse _settings = YoloSettingsResponse(enabled: enabled);
+class _FakePermissionAutoApprovalService() implements PermissionAutoApprovalService {
+  final List<List<PendingPermission>> resolveCalls = [];
+
+  /// The snapshot to return, or null to pass the input through untouched.
+  List<PendingPermission>? resolvedSnapshot;
 
   @override
-  YoloSettingsResponse get currentSettings => _settings;
-
-  @override
-  Future<YoloSettingsResponse> readCommittedSettings() async => _settings;
-
-  @override
-  Future<YoloSettingsResponse> update({required bool enabled}) async {
-    return _settings = YoloSettingsResponse(enabled: enabled);
+  Future<List<PendingPermission>> resolveSnapshot({required List<PendingPermission> permissions}) async {
+    resolveCalls.add(permissions);
+    return resolvedSnapshot ?? permissions;
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _DerivedPermissionPlugin() implements BridgeDerivedProjectsPluginApi {

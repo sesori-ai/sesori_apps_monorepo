@@ -143,11 +143,17 @@ class SessionDetailLoadService({
 
       final pendingQuestions = switch (questionsResponse) {
         SuccessResponse(:final data) => data.data,
-        ErrorResponse() => <PendingQuestion>[],
+        ErrorResponse(:final error) => () {
+          logw("Failed to load pending questions; treating the session as having none", error);
+          return <PendingQuestion>[];
+        }(),
       };
       final pendingPermissions = switch (permissionsResponse) {
         SuccessResponse(:final data) => data.data,
-        ErrorResponse() => <PendingPermission>[],
+        ErrorResponse(:final error) => () {
+          logw("Failed to load pending permissions; treating the session as having none", error);
+          return <PendingPermission>[];
+        }(),
       };
       // An error is also the old-bridge (unknown route) path: no queue info.
       final bridgeQueuedPrompts = switch (queuedPromptsResponse) {
@@ -156,11 +162,17 @@ class SessionDetailLoadService({
       };
       final childSessions = switch (childrenResponse) {
         SuccessResponse(:final data) => data.items,
-        ErrorResponse() => <Session>[],
+        ErrorResponse(:final error) => () {
+          logw("Failed to load child sessions; treating the session as having none", error);
+          return <Session>[];
+        }(),
       };
       final statuses = switch (statusesResponse) {
         SuccessResponse(:final data) => data.statuses,
-        ErrorResponse() => <String, SessionStatus>{},
+        ErrorResponse(:final error) => () {
+          logw("Failed to load session statuses; falling back to none", error);
+          return <String, SessionStatus>{};
+        }(),
       };
       return SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(

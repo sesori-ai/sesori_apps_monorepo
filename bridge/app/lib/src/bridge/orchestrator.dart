@@ -577,7 +577,7 @@ class Orchestrator({
         GetProjectQuestionsHandler(questionRepository: questionRepository),
         GetSessionPermissionsHandler(
           permissionRepository: permissionRepository,
-          yoloSettingsService: yoloSettingsService,
+          permissionAutoApprovalService: permissionAutoApprovalService,
         ),
         ReplyToQuestionHandler(pendingInteractionService: pendingInteractionService),
         RejectQuestionHandler(pendingInteractionService: pendingInteractionService),

@@ -1,15 +1,19 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../services/yolo_settings_service.dart";
 import "../repositories/permission_repository.dart";
+import "../services/permission_auto_approval_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /session/permissions` — returns the pending permission
 /// requests to surface on a session's screen: its own plus any descendant
 /// (sub-agent) session whose top-most root resolves to this session.
+///
+/// Under YOLO the snapshot is resolved through auto-approval first: approved
+/// requests disappear from the response, while any request YOLO could not
+/// answer stays visible so it can be answered manually.
 class GetSessionPermissionsHandler({
   required final PermissionRepository _permissionRepository,
-  required final YoloSettingsService _yoloSettingsService,
+  required final PermissionAutoApprovalService _permissionAutoApprovalService,
 }) extends BodyRequestHandler<SessionIdRequest, PendingPermissionResponse> {
   this
     : super(
@@ -32,12 +36,8 @@ class GetSessionPermissionsHandler({
     }
 
     final permissions = await _permissionRepository.getPendingPermissions(sessionId: sessionId);
-
-    // Query first to preserve binding/plugin errors; YOLO suppresses only the snapshot response payload.
-    if (_yoloSettingsService.currentSettings.enabled) {
-      return const PendingPermissionResponse(data: []);
-    }
-
-    return PendingPermissionResponse(data: permissions);
+    return PendingPermissionResponse(
+      data: await _permissionAutoApprovalService.resolveSnapshot(permissions: permissions),
+    );
   }
 }
