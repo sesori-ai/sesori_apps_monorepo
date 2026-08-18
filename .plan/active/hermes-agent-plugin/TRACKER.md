@@ -6,7 +6,7 @@
 - **Owner review:** in progress since 2026-08-15
 - **Current open PR:** none
 - **Local successor:** none; Step 9 retirement is blocked
-- **Next action:** execute the blocked matrix rows or record explicit owner acceptance of the reduction
+- **Next action:** exercise the remaining blocked rows (permissions, interrupted import, cross-version compatibility) or record explicit owner acceptance
 - **Retirement:** blocked on the Step 8 matrix in `PLAN.md`
 
 ## Delivery
@@ -102,3 +102,46 @@ evidence accompanied them.
 
 **Retirement status: Blocked.** Step 9 cannot proceed unless all required rows
 pass or the owner explicitly accepts the recorded reduction in `PLAN.md`.
+
+## Step 8 Evidence: iOS Client E2E
+
+Execution date: 2026-08-18. This run resolves rows the 2026-08-15 run recorded
+as Blocked, using a real provider and a real client instead of a deterministic
+local mock.
+
+- Hermes Agent: `0.20.1` (unchanged isolated install).
+- Bridge: `origin/main` at `780f838f4`, slot 1, `--hermes-bin` pointed at the
+  isolated executable.
+- Client: Flutter debug build on iOS simulator `sesori-dev-1`, iPhone 17,
+  iOS 26.5. Traffic went phone -> relay -> bridge -> Hermes, not debug HTTP.
+- Provider: a real OpenAI-compatible endpoint on loopback, exercised with
+  `cu/default` and then `generic-high`. The credential was removed from the
+  isolated Hermes config after the run.
+
+| Matrix row | Result | Privacy-safe evidence |
+|---|---|---|
+| Plugin setup and lifecycle | **Pass** | Setup reported Hermes Agent `0.20.1` `ready`. The harness picker listed "Hermes Agent" with NousResearch artwork in correct alphabetical position, and the selection persisted into the next new-session screen. Safe restart returned 200 twice mid-session. |
+| Session creation and options | **Pass** | A session was created from the phone with the Hermes harness; the bridge attributed it `pluginId: hermes`. A title was generated and a dedicated worktree/branch was provisioned. No model picker was populated, matching the documented configured-model-only scope. |
+| Session turns | **Pass** | Text streamed to the phone across several turns, including a 1-to-400 enumeration. Turn completion reported `text_response(finish_reason=stop)`. |
+| Tools and file changes | **Pass** | A prompt drove `tool_turns=2`. The client rendered `write:` and `read:` tool entries plus the final message. `e2e.txt` was verified on disk containing `OK` inside the session worktree, and the File Changes screen rendered `1 file changed +1 -0` with hunk `@@ -0,0 +1,1 @@`. |
+| Attachments and images | **Pass** | A 64x64 solid-red PNG sent as an image part reached the provider and the model answered with the correct single colour, visible in phone history. An earlier malformed fixture was rejected upstream with "Could not process image"; that was a bad test fixture, not a Sesori defect. |
+| Session history and recovery | **Pass** | After a mid-session plugin restart the phone transcript still rendered every prior turn, and the bridge served 9 persisted messages for the same session. |
+| Session archiving and deletion | **Pass** | Swipe-to-delete warned "Worktree has unstaged changes" and required explicit Force Delete rather than silently discarding work. After confirmation the session left the list, its worktree was removed from disk, and an explicit re-import did not resurrect it while upstream Hermes retained its ACP rows. |
+| Questions and permissions | **Blocked** | The provider completed file tools without emitting an ACP permission request, so once/reject/always and two-session correlation remain unexercised. |
+| Projects and sessions | **Blocked** | Explicit import, non-destructive re-import, and dormant catalog reads passed. A failed or cancelled in-flight import was still not exercised. |
+| Compatibility | **Blocked** | Older-client and older-bridge presentation E2E still requires a second build pair. |
+
+Observed upstream limitation, not a Sesori defect: `cu/*` models returned empty
+completions through this endpoint (`completion_tokens: 0`), so Hermes correctly
+reported `empty_response_exhausted`. The client surfaced that as a bounded,
+actionable message rather than hanging, which is the desired failure behavior.
+`generic-high` returned normal content and was used for the remaining rows.
+
+Turn abort was additionally confirmed: the phone's stop control produced
+`Cancelled session` and `Turn ended: reason=interrupted_during_api_call` with
+the upstream stream force-closed, and the session accepted a normal turn
+immediately afterwards.
+
+Cleanup completed: the app was terminated, the simulator shut down, the slot 1
+bridge stopped, port 9971 released, the temporary project hidden, and the
+provider credential removed from the isolated Hermes configuration.
