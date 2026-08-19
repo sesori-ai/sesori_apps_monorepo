@@ -72,8 +72,12 @@ android {
     println("Flutter Version Name: ${flutter.versionName}")
 
     namespace = "com.sesori.app"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
+
+    buildFeatures {
+        resValues = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21

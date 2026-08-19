@@ -21,7 +21,7 @@ plugins {
 
     // https://developer.android.com/studio/releases/gradle-plugin#updating-gradle
     // AGP (gradle plugin)
-    id("com.android.application") version "8.13.2" apply false
+    id("com.android.application") version "9.1.1" apply false
 
     // START: FlutterFire Configuration
     // https://mvnrepository.com/artifact/com.google.gms/google-services
@@ -32,7 +32,7 @@ plugins {
 
     // Kotlin Version
     // https://plugins.gradle.org/plugin/org.jetbrains.kotlin.android
-    id("org.jetbrains.kotlin.android") version "2.3.10" apply false
+    id("org.jetbrains.kotlin.android") version "2.3.20" apply false
 }
 
 include(":app")

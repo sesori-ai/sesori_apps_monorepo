@@ -404,6 +404,30 @@ if command -v xcodebuild >/dev/null 2>&1; then
 fi
 ```
 
+If the Phase 5.2 pin comparison still reports a mismatch, force a fresh
+**project** resolution after the Flutter configuration has regenerated the
+plugin package. Verified 2026-08-19 with Flutter 3.47.0: `flutter build
+--config-only` can leave the project copy on older valid transitive pins while
+the workspace copy resolves newer pins. Keep the freshly resolved workspace
+copy, delete only the project copy, and use a scratch clone cache to resolve
+the project again:
+
+```bash
+set -e
+if command -v xcodebuild >/dev/null 2>&1; then
+  for platform in ios macos; do
+    rm -f "client/app/$platform/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+    (cd "client/app/$platform" && xcodebuild -resolvePackageDependencies \
+      -project Runner.xcodeproj -scheme Runner \
+      -clonedSourcePackagesDirPath "$(mktemp -d)")
+  done
+fi
+```
+
+This is a fallback only: `flutter build --config-only` remains required first
+to regenerate `FlutterGeneratedPluginSwiftPackage` from the post-update Dart
+plugin graph.
+
 </step>
 
 <step name="5.2">Verify the SwiftPM lockfiles resolved (changes here are expected on most weekly runs, across all four `Package.resolved` files):
