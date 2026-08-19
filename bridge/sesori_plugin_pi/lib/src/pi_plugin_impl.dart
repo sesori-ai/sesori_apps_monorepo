@@ -184,9 +184,9 @@ final class PiPlugin._({
       try {
         await _sessionService.sendPrompt(
           sessionId: sessionId,
-          // createSession carries no client prompt id; the fresh session id
-          // keys this initial turn uniquely.
-          promptId: "initial-$sessionId",
+          // createSession carries no client prompt id; a fresh random id keys
+          // this initial turn without ever colliding with client-supplied ids.
+          promptId: _processRepository.generateSessionId(),
           directory: normalized,
           parts: parts,
           userVisibleText: userVisibleText,

@@ -319,13 +319,17 @@ final class PiEventDispatcher({
     final visibleText = state.userVisibleText;
     final isTurnEcho = textContent?.text == state.executionText;
     final exactText = isTurnEcho ? visibleText : null;
+    // Consumed on the first echo so a later replay with identical text does
+    // not correlate to the same prompt again.
+    final promptId = isTurnEcho ? state.promptId : null;
+    if (isTurnEcho) state.promptId = null;
     final messageId = state.identities.next(role: PiMessageIdentityRole.user, timestamp: message.timestamp);
     final mapped = _historyMapper.mapUserMessage(
       sessionId: sessionId,
       messageId: messageId,
       message: message,
       exactText: exactText,
-      promptId: isTurnEcho ? state.promptId : null,
+      promptId: promptId,
     );
     if (mapped == null) return const [];
     return [

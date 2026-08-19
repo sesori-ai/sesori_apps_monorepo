@@ -24,6 +24,10 @@ final class const PiTurnCancelledException({required final String sessionId}) im
 }
 
 final class _PiSessionTurnState({required final String initialDirectory}) {
+  /// See [recentPromptIds]. 64 comfortably exceeds any realistic gap between
+  /// a lost acceptance response and its retry.
+  static const int _recentPromptIdLimit = 64;
+
   String directory = initialDirectory;
   final List<_PiTurn> queue = [];
   _PiTurn? active;
@@ -32,9 +36,23 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
   int generation = 0;
   int idleGeneration = 0;
 
-  /// Recently admitted prompt ids, retained so the retry of a send whose
+  /// Settled turns' prompt ids, retained so the retry of a send whose
   /// response was lost is an idempotent no-op instead of a duplicate turn.
+  /// Active and queued turns carry their id and are checked live, so only
+  /// settled ids need this bounded window.
   final Queue<String> recentPromptIds = Queue<String>();
+
+  bool isAdmitted({required String promptId}) =>
+      active?.promptId == promptId ||
+      queue.any((turn) => turn.promptId == promptId) ||
+      recentPromptIds.contains(promptId);
+
+  void recordSettledPromptId({required String promptId}) {
+    recentPromptIds.addLast(promptId);
+    while (recentPromptIds.length > _recentPromptIdLimit) {
+      recentPromptIds.removeFirst();
+    }
+  }
 }
 
 final class _PiTurn({
@@ -202,7 +220,7 @@ final class PiSessionService({
   }) {
     if (_disposed) return Future.error(const PiRpcDisposedException());
     final state = _sessions[sessionId];
-    if (state != null && state.recentPromptIds.contains(promptId)) return Future.value();
+    if (state != null && state.isAdmitted(promptId: promptId)) return Future.value();
     if (state?.active != null || (state?.queue.isNotEmpty ?? false)) {
       return Future.error(PiSessionBusyException(sessionId: sessionId));
     }
@@ -226,22 +244,14 @@ final class PiSessionService({
     return acceptance.future;
   }
 
-  /// See [_PiSessionTurnState.recentPromptIds]. 64 comfortably exceeds any
-  /// realistic gap between a lost acceptance response and its retry.
-  static const int _recentPromptIdLimit = 64;
-
   void _admit({required String sessionId, required String directory, required _PiTurn turn}) {
     final state = _sessions.putIfAbsent(sessionId, () => _PiSessionTurnState(initialDirectory: directory));
-    if (state.recentPromptIds.contains(turn.promptId)) {
+    if (state.isAdmitted(promptId: turn.promptId)) {
       // The retry of a send whose response was lost: the turn is already
       // admitted (queued, running, or finished), so accept idempotently.
       final acceptance = turn.commandAcceptance;
       if (acceptance != null && !acceptance.isCompleted) acceptance.complete();
       return;
-    }
-    state.recentPromptIds.addLast(turn.promptId);
-    while (state.recentPromptIds.length > _recentPromptIdLimit) {
-      state.recentPromptIds.removeFirst();
     }
     state.directory = directory;
     state.idleGeneration++;
@@ -459,6 +469,7 @@ final class PiSessionService({
   }) {
     if (turn.settled) return;
     turn.settled = true;
+    state.recordSettledPromptId(promptId: turn.promptId);
     final acceptance = turn.commandAcceptance;
     if (acceptance != null && !acceptance.isCompleted && failed) {
       acceptance.completeError(failure ?? StateError("Pi command failed before acceptance"), StackTrace.current);
