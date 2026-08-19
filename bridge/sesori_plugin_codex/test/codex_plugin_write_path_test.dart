@@ -974,7 +974,7 @@ void main() {
       await idle.timeout(const Duration(seconds: 1));
       final error = await visibleError.timeout(const Duration(seconds: 1));
       expect(plugin.currentWorkState, PluginWorkState.idle);
-      expect(error.id, "codex-turn-error-u-terminal");
+      expect(error.id, "u-terminal");
       expect(error.errorMessage, "turn failed");
     });
 

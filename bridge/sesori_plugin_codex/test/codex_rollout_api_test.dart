@@ -1021,7 +1021,7 @@ void main() {
 
       expect(messages, hasLength(1));
       final error = messages.single.info as PluginMessageError;
-      expect(error.id, "codex-turn-error-turn-quota");
+      expect(error.id, "turn-quota");
       expect(error.modelID, "gpt-5.6");
       expect(error.providerID, "openai");
       expect(error.errorName, "CodexError");

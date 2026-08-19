@@ -1459,7 +1459,7 @@ void main() {
       expect(events, hasLength(3));
       final event = events[1] as BridgeSseMessageUpdated;
       final message = shared.Message.fromJson(event.info) as shared.MessageError;
-      expect(message.id, "codex-turn-error-u-quota");
+      expect(message.id, "u-quota");
       expect(message.sessionID, "t-quota");
       expect(message.errorName, "CodexError");
       expect(message.errorMessage, "You've hit your usage limit.");

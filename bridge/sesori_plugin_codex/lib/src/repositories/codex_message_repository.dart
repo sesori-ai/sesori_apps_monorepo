@@ -189,7 +189,7 @@ class CodexMessageRepository({
         messages.add(
           PluginMessageWithParts(
             info: PluginMessage.error(
-              id: _turnErrorMessageId(turnId),
+              id: turnId,
               sessionID: sessionId,
               agent: "codex",
               modelID: currentModel ?? config.model,
@@ -572,8 +572,6 @@ bool _isGeneratedContext({required String text}) {
   return _GeneratedContextTag.values.any((tag) => tag.wraps(normalized)) ||
       _generatedRepositoryInstructions.hasMatch(normalized);
 }
-
-String _turnErrorMessageId(String turnId) => "codex-turn-error-$turnId";
 
 class _PendingUserMessage({
   required final int slot,

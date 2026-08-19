@@ -258,7 +258,7 @@ class CodexEventMapper({
       return null;
     }
     return PluginMessage.error(
-      id: _turnErrorMessageId(turnId),
+      id: turnId,
       sessionID: threadId,
       agent: "codex",
       modelID: _threadModel[threadId] ?? config.model,
@@ -835,5 +835,3 @@ class CodexEventMapper({
     return null;
   }
 }
-
-String _turnErrorMessageId(String turnId) => "codex-turn-error-$turnId";
