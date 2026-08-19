@@ -168,8 +168,8 @@ Future<void> bootstrapSesoriApp({
   runAppFn(
     LiquidGlassWidgets.wrap(
       child: SesoriApp(initialAppearance: appearance, initialChatInputMode: chatInputMode),
+      brightnessResolver: Theme.maybeBrightnessOf,
       adaptiveQuality: true,
-      // ignore: experimental_member_use
       adaptiveConfig: GlassAdaptiveScopeConfig(
         targetFrameMs: 8,
         minQuality: .minimal,
