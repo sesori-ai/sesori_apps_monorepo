@@ -19,7 +19,7 @@ class const SessionCatalogMapper() {
       directory: row.directory,
       parentID: row.parentSessionId,
       title: row.title ?? row.catalogTitle,
-      time: SessionTime(created: row.createdAt, updated: row.updatedAt, archived: row.archivedAt),
+      time: SessionTime(created: row.createdAt, updated: _latestActivityAt(row), archived: row.archivedAt),
       pullRequest: pullRequest,
       promptDefaults: row.lastAgent == null && row.lastAgentModel == null
           ? null
@@ -28,5 +28,28 @@ class const SessionCatalogMapper() {
       unseen: unseen,
       lastUserActivityAt: row.lastUserMessageAt,
     );
+  }
+
+  /// The newest instant the bridge knows about for this session.
+  ///
+  /// `updated_at` only advances when a backend reports a new time: a catalog
+  /// import, or a plugin that emits an activity-bearing `session.updated`.
+  /// Codex, ACP, and OpenCode do; Claude and Pi emit one only on rename, so a
+  /// session driven entirely on the laptop kept displaying the transcript time
+  /// read at the last import — "2d ago" on a session prompted minutes earlier.
+  ///
+  /// The unseen timestamps are written live for every plugin, so folding them
+  /// in makes the displayed recency honest for all harnesses at once. They are
+  /// blended on read rather than written into `updated_at`, because catalog
+  /// import's staleness detection depends on that column holding only
+  /// backend-reported time (see CatalogImportRepository).
+  ///
+  /// Both are needed: `last_activity_at` coalesces once a session is already
+  /// unseen, and a user message advances only `last_user_message_at`.
+  static int _latestActivityAt(SessionDto row) {
+    var latest = row.updatedAt;
+    if (row.lastActivityAt case final at? when at > latest) latest = at;
+    if (row.lastUserMessageAt case final at? when at > latest) latest = at;
+    return latest;
   }
 }

@@ -102,6 +102,48 @@ void main() {
     expect(session.lastUserActivityAt, 12);
   });
 
+  test("SessionCatalogMapper reports live activity newer than the backend's updated time", () {
+    const mapper = SessionCatalogMapper();
+    const base = SessionDto(
+      sessionId: "sesori-id",
+      backendSessionId: "backend-id",
+      projectId: "project-1",
+      parentSessionId: null,
+      directory: "/projects/one",
+      worktreePath: null,
+      branchName: null,
+      currentBranchName: null,
+      currentGithubRepositoryIdentity: null,
+      isDedicated: false,
+      archivedAt: null,
+      baseBranch: null,
+      baseCommit: null,
+      lastAgent: null,
+      lastAgentModel: null,
+      createdAt: 10,
+      updatedAt: 20,
+      projectionUpdatedAt: 20,
+      lastActivityAt: null,
+      lastSeenAt: null,
+      lastUserMessageAt: null,
+      pluginId: "claude",
+      title: null,
+      catalogTitle: null,
+    );
+
+    Session mapped(SessionDto row) => mapper.map(row: row, pullRequest: null, unseen: false);
+
+    // A plugin that never emits an activity-bearing `session.updated` leaves
+    // `updated_at` at the last imported transcript time; the live unseen
+    // timestamps are what keep the session's recency honest.
+    expect(mapped(base).time?.updated, 20);
+    expect(mapped(base.copyWith(lastActivityAt: 55)).time?.updated, 55);
+    expect(mapped(base.copyWith(lastUserMessageAt: 70)).time?.updated, 70);
+
+    // The backend's own time still wins when it is the newest one known.
+    expect(mapped(base.copyWith(lastActivityAt: 5, lastUserMessageAt: 8)).time?.updated, 20);
+  });
+
   test("StoredSessionMapper projects the fields repository consumers need", () {
     const row = SessionDto(
       sessionId: "sesori-id",
