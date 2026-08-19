@@ -573,8 +573,9 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - Added the backend-neutral `SseToastCubit` in `module_core` mapping
   `tui.toast.show` SSE events into sealed idle/show states with a monotonic
   sequence, so equal repeated guidance re-fires; textless toasts drop and
-  unknown variants degrade to info. The mobile shell renders shows as
-  snackbars through a new root scaffold messenger.
+  unknown variants degrade to info. The mobile shell renders shows through
+  `PregoPopupAlertPresenter` on the root navigator's overlay, reusing the
+  design-system toast surface instead of a plain snackbar.
 - README and the plugin-setup regression doc record Pi's always-`--approve`
   project-code trust, OMP's inherited approval policy, and local-only provider
   login before either backend is selectable.

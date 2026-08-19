@@ -265,6 +265,18 @@ final class PregoPopupAlertPresenter._({
     );
   }
 
+  /// Captures an explicit overlay for callers outside any route's context,
+  /// such as app-wide listeners driven by backend events.
+  static PregoPopupAlertPresenter fromOverlayState(OverlayState overlay) {
+    return PregoPopupAlertPresenter._(
+      overlay: overlay,
+      topInset: pregoTopBarInsetOf(
+        context: overlay.context,
+        fallbackTopPadding: MediaQuery.paddingOf(overlay.context).top,
+      ),
+    );
+  }
+
   /// Shows an alert above the current route and replaces any alert already
   /// visible on the same overlay.
   void show({

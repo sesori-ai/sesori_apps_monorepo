@@ -61,19 +61,14 @@ class const _SplashScreenBody() extends StatelessWidget {
 class const _SplashView() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // A Scaffold registers the root ScaffoldMessenger's only descendant during
-    // startup, so app-wide snackbars (for example backend toast guidance) can
-    // present while the splash route is still active.
-    return const Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(child: SesoriBackgroundWidget()),
-          Align(
-            alignment: .center,
-            child: Hero(tag: SesoriLogo.heroTag, child: SesoriLogo()),
-          ),
-        ],
-      ),
+    return const Stack(
+      children: [
+        Positioned.fill(child: SesoriBackgroundWidget()),
+        Align(
+          alignment: .center,
+          child: Hero(tag: SesoriLogo.heroTag, child: SesoriLogo()),
+        ),
+      ],
     );
   }
 }

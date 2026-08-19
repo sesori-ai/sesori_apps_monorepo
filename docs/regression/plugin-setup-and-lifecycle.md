@@ -27,7 +27,8 @@ idle suspension, the management snapshot, and lifecycle commands.
   skills, and prompt templates are trusted without prompts); OMP inherits the user's
   `tools.approvalMode`. Provider login for both happens locally, never from the phone.
 - Backend `tui.toast.show` SSE events render app-wide through the backend-neutral
-  toast surface: every accepted toast is a new effect (equal repeated guidance
+  toast surface, presented with the design-system popup alert on the root
+  navigator's overlay: every accepted toast is a new effect (equal repeated guidance
   included), toasts with no renderable text are dropped, and unknown variants
   degrade to info.
 - Listings order by display name case-insensitively with the identifier as tie-breaker,

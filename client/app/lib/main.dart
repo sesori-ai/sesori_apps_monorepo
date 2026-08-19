@@ -288,17 +288,12 @@ class const SesoriApp({
   }
 }
 
-/// Root messenger for toasts raised outside any screen's own scaffold context
-/// (backend SSE toast guidance rendered by [_SseToastListener]).
-final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
-
 class const _SesoriAppShell() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeMode = context.watch<AppearanceCubit>().state.themeMode;
 
     return MaterialApp.router(
-      scaffoldMessengerKey: rootScaffoldMessengerKey,
       onGenerateTitle: (context) => context.loc.appTitle,
       themeMode: themeMode,
       theme: ThemeData(
@@ -352,25 +347,30 @@ class const _SesoriAppShell() extends StatelessWidget {
   }
 }
 
-/// Renders backend toast states as snackbars on the root messenger, so
-/// guidance such as a local `/login` hint reaches the user on any screen.
+/// Renders backend toast states through the design-system popup alert
+/// presenter, so guidance such as a local `/login` hint reaches the user on
+/// any screen, including startup routes with no scaffold.
 class const _SseToastListener({required final Widget child}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocListener<SseToastCubit, SseToastState>(
       listener: (context, state) {
         if (state case SseToastShow(:final title, :final message, :final variant)) {
-          final messenger = rootScaffoldMessengerKey.currentState;
-          if (messenger == null) return;
-          final text = title == null ? message : "$title\n$message";
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text(text),
-              duration: switch (variant) {
-                SseToastVariant.error || SseToastVariant.warning => const Duration(seconds: 8),
-                SseToastVariant.info || SseToastVariant.success => const Duration(seconds: 4),
-              },
-            ),
+          final overlay = appRootNavigatorKey.currentState?.overlay;
+          if (overlay == null) return;
+          PregoPopupAlertPresenter.fromOverlayState(overlay).show(
+            title: title ?? message,
+            content: title == null ? const PregoPopupAlertContent() : PregoPopupAlertContent(message: message),
+            variant: switch (variant) {
+              SseToastVariant.info => PregoPopupAlertsNotificationsVariant.info,
+              SseToastVariant.success => PregoPopupAlertsNotificationsVariant.success,
+              SseToastVariant.warning => PregoPopupAlertsNotificationsVariant.warning,
+              SseToastVariant.error => PregoPopupAlertsNotificationsVariant.error,
+            },
+            duration: switch (variant) {
+              SseToastVariant.error || SseToastVariant.warning => const Duration(seconds: 8),
+              SseToastVariant.info || SseToastVariant.success => const Duration(seconds: 4),
+            },
           );
         }
       },
