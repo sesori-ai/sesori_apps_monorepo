@@ -715,6 +715,9 @@ void main() {
     await _pumpListUpdate(tester);
 
     expect(find.text("Sending"), findsOneWidget);
+    // The outgoing status rail cross-fades out; settle it before asserting
+    // the cancel affordance is gone.
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.widgetWithText(TextButton, "Cancel"), findsNothing);
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
   });

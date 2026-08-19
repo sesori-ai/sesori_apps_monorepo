@@ -2836,6 +2836,8 @@ void main() {
     await tester.pump();
 
     expect(identical(tester.element(submissionFinder), before), isTrue);
+    // The outgoing status rail cross-fades out; settle it before counting.
+    await tester.pump(const Duration(milliseconds: 300));
     expect(
       tester
           .widget<UserMessageBubble>(

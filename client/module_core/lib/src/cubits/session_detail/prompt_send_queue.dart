@@ -41,6 +41,27 @@ class PromptSendQueue() {
     _active = null;
   }
 
+  /// Parks the accepted in-flight submission until the bridge's own view of
+  /// the prompt arrives — a queue event, a snapshot, or its delivered
+  /// message, all of which land in [removeByPromptId]. Rendering from here
+  /// covers the gap when the acceptance response outruns the
+  /// `session.queued-prompts` event, so the bubble never blanks between
+  /// "sending" and "queued". A submission the bridge already settled is
+  /// consumed instead of parked.
+  void parkAccepted() {
+    final active = _active;
+    _active = null;
+    if (active == null) return;
+    if (_settledElsewhere.remove(active.promptId)) return;
+    _awaitingBridge.add(active);
+  }
+
+  /// Accepted submissions whose bridge-side representation has not arrived
+  /// yet, oldest first.
+  List<QueuedSessionSubmission> get awaitingBridge => List.unmodifiable(_awaitingBridge);
+
+  final List<QueuedSessionSubmission> _awaitingBridge = [];
+
   /// Restores the active submission at the head after a failed send.
   ///
   /// Returns whether it was requeued. A submission the bridge settled while
@@ -84,12 +105,14 @@ class PromptSendQueue() {
   /// rendering hides it and a late transport failure discards it.
   void removeByPromptId(String promptId) {
     _items.removeWhere((item) => item.promptId == promptId);
+    _awaitingBridge.removeWhere((item) => item.promptId == promptId);
     if (_active?.promptId == promptId) _settledElsewhere.add(promptId);
   }
 
   /// Drops everything staged locally (the user stopped the session).
   void clear() {
     _items.clear();
+    _awaitingBridge.clear();
     _active = null;
     _settledElsewhere.clear();
   }

@@ -116,6 +116,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           sendingSubmission: state.sendingSubmission,
                           queuedMessages: state.queuedMessages,
                           bridgeQueuedPrompts: state.bridgeQueuedPrompts,
+                          awaitingBridgeSubmissions: state.awaitingBridgeSubmissions,
                           onCancelBridgeQueuedPrompt: widget.readOnly
                               ? null
                               : (promptId) => unawaited(

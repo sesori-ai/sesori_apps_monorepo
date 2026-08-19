@@ -25,6 +25,27 @@ class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadSe
 
 const _sessionId = "session-1";
 
+/// The text part that makes [messageId] renderable — production user
+/// envelopes are always followed by one.
+SesoriMessagePartUpdated _textPartFor({required String messageId, required String text}) => SesoriMessagePartUpdated(
+  part: MessagePart(
+    id: "$messageId-text",
+    sessionID: _sessionId,
+    messageID: messageId,
+    type: MessagePartType.text,
+    text: text,
+    tool: null,
+    state: null,
+    prompt: null,
+    description: null,
+    agent: null,
+    agentName: null,
+    attempt: null,
+    retryError: null,
+    attachment: null,
+  ),
+);
+
 const _queuedPrompt = QueuedSessionPrompt(
   id: "prm_1",
   text: "steer it",
@@ -175,7 +196,7 @@ void main() {
       sendCompleter.complete(ApiResponse.success(null));
     });
 
-    test("transforms the queued entry into its message in one emission", () async {
+    test("keeps the queued entry through the bare envelope and releases it on the first part", () async {
       final cubit = await createLoadedCubit(snapshotQueue: const [_queuedPrompt]);
 
       final emissions = <SessionDetailState>[];
@@ -193,17 +214,88 @@ void main() {
       );
       await Future<void>.delayed(Duration.zero);
 
-      final state = cubit.state as SessionDetailLoaded;
+      // The envelope alone cannot render; dropping the entry now would blank
+      // the row until its text part lands.
+      var state = cubit.state as SessionDetailLoaded;
       expect(state.messages.single.info.id, "echo-1");
+      expect(state.bridgeQueuedPrompts, const [_queuedPrompt]);
+
+      sessionEvents.add(_textPartFor(messageId: "echo-1", text: "steer it"));
+      await Future<void>.delayed(Duration.zero);
+
+      state = cubit.state as SessionDetailLoaded;
       expect(state.bridgeQueuedPrompts, isEmpty);
-      final transition = emissions.whereType<SessionDetailLoaded>().firstWhere(
-        (emitted) => emitted.messages.any((message) => message.info.id == "echo-1"),
+      // The no-blank invariant: every emission renders the prompt somewhere —
+      // a renderable message, the bridge entry, or a staged copy.
+      for (final emitted in emissions.whereType<SessionDetailLoaded>()) {
+        final renderableMessage = emitted.messages.any(
+          (message) => message.info.id == "echo-1" && message.parts.any((part) => part.type == MessagePartType.text),
+        );
+        final queued = emitted.bridgeQueuedPrompts.any((prompt) => prompt.id == "prm_1");
+        expect(
+          renderableMessage || queued,
+          isTrue,
+          reason: "no frame may leave the prompt without a renderable source",
+        );
+      }
+      await subscription.cancel();
+    });
+
+    test("an accepted send stays visible until the bridge queue lists it", () async {
+      final send = Completer<ApiResponse<void>>();
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) => send.future);
+      final cubit = await createLoadedCubit();
+      final emissions = <SessionDetailState>[];
+      final subscription = cubit.stream.listen(emissions.add);
+      unawaited(
+        cubit.sendMessage(text: "steer it", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
       );
-      expect(
-        transition.bridgeQueuedPrompts,
-        isEmpty,
-        reason: "no frame may show both the queued bubble and its message",
+      await Future<void>.delayed(Duration.zero);
+      final promptId = (cubit.state as SessionDetailLoaded).sendingSubmission?.promptId;
+      expect(promptId, isNotNull);
+
+      // The acceptance response lands before the session.queued-prompts
+      // event: the submission parks instead of vanishing.
+      send.complete(ApiResponse.success(null));
+      await Future<void>.delayed(Duration.zero);
+      var state = cubit.state as SessionDetailLoaded;
+      expect(state.sendingSubmission, isNull);
+      expect(state.awaitingBridgeSubmissions.map((item) => item.promptId), [promptId]);
+
+      sessionEvents.add(
+        SesoriSseEvent.sessionQueuedPrompts(
+          sessionID: _sessionId,
+          prompts: [
+            QueuedSessionPrompt(id: promptId ?? "", text: "steer it", command: null, attachmentCount: 0, createdAt: 1),
+          ],
+        ) as SesoriSessionEvent,
       );
+      await Future<void>.delayed(Duration.zero);
+      state = cubit.state as SessionDetailLoaded;
+      expect(state.awaitingBridgeSubmissions, isEmpty);
+      expect(state.bridgeQueuedPrompts.map((prompt) => prompt.id), [promptId]);
+
+      // The no-blank invariant: every emission after the send renders the
+      // prompt from at least one surface.
+      for (final emitted in emissions.whereType<SessionDetailLoaded>()) {
+        final visible =
+            emitted.sendingSubmission?.promptId == promptId ||
+            emitted.queuedMessages.any((item) => item.promptId == promptId) ||
+            emitted.awaitingBridgeSubmissions.any((item) => item.promptId == promptId) ||
+            emitted.bridgeQueuedPrompts.any((prompt) => prompt.id == promptId);
+        expect(visible, isTrue, reason: "no frame may leave the accepted send without a surface");
+      }
       await subscription.cancel();
     });
 
@@ -337,6 +429,7 @@ void main() {
           ),
         ),
       );
+      sessionEvents.add(_textPartFor(messageId: "echo-first", text: "first"));
       await Future<void>.delayed(Duration.zero);
       await Future<void>.delayed(Duration.zero);
 
@@ -456,6 +549,7 @@ void main() {
           ),
         ),
       );
+      sessionEvents.add(_textPartFor(messageId: "echo-1", text: "first"));
       await Future<void>.delayed(Duration.zero);
       expect((cubit.state as SessionDetailLoaded).sendingSubmission, isNull);
       firstSend.completeError(Exception("response lost"));
