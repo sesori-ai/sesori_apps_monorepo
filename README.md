@@ -145,6 +145,8 @@ Your laptop and phone perform an ephemeral X25519 key exchange, then encrypt eve
 | [OpenAI Codex CLI](https://github.com/openai/codex) | Beta | Enabled by default in an upcoming release. |
 | [Cursor](https://cursor.com) | Beta | ACP-based Cursor plugin; enabled by default in an upcoming release. |
 | [Claude Code](https://claude.com) | Beta | Native stream-json integration; enabled by default in an upcoming release. |
+| [Pi](https://github.com/badlogic/pi-mono) | Beta | Native JSONL RPC integration. Sessions always run with Pi's `--approve`: project-local Pi settings, extensions, skills, and prompt templates are trusted and applied without prompts, so only open projects whose code you trust. Provider login happens locally via Pi's `/login`. |
+| [Oh My Pi](https://github.com/can1357/oh-my-pi) | Beta | ACP-based integration. Inherits your OMP `tools.approvalMode`: the default `yolo` mode asks nothing; configure a stricter mode locally for approval prompts. Provider login happens locally. |
 
 ---
 

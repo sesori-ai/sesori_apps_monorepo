@@ -21,6 +21,15 @@ idle suspension, the management snapshot, and lifecycle commands.
   while preserving an explicit path as authoritative.
   Model/provider setup remains an out-of-band Hermes CLI action, so authentication-required
   Hermes entries give local setup guidance rather than offering bridge-managed login.
+- Pi and Oh My Pi are registered harnesses with managed installs where a platform
+  archive exists and explicit `--pi-bin`/`--omp-bin` paths stay authoritative. Pi
+  sessions always launch with `--approve` (project-local Pi settings, extensions,
+  skills, and prompt templates are trusted without prompts); OMP inherits the user's
+  `tools.approvalMode`. Provider login for both happens locally, never from the phone.
+- Backend `tui.toast.show` SSE events render app-wide through the backend-neutral
+  toast surface: every accepted toast is a new effect (equal repeated guidance
+  included), toasts with no renderable text are dropped, and unknown variants
+  degrade to info.
 - Listings order by display name case-insensitively with the identifier as tie-breaker,
   and the default is the preferred harness when selectable, else the first selectable.
 - Client-owned branding maps recognized built-in harness ids to their stable names and
