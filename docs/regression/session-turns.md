@@ -28,9 +28,10 @@ defaults and queued client sends coherent.
   sessions, other plugins, the relay read loop, or catalog reads.
 - Streaming produces incremental message and part events and a terminal status
   transition back to idle; retry carries attempt, message, and timing, and
-  finalized messages enter durable history matching a history read. Internal
-  backend command records are not rendered as conversation messages or used as
-  assistant model attribution.
+  finalized messages enter durable history matching a history read. A terminal
+  provider failure appears as an inline error message and remains visible after
+  refresh or reopen. Internal backend command records are not rendered as
+  conversation messages or used as assistant model attribution.
 - Claude user prompts appear in the live transcript from the CLI's replayed
   stdin echo under their transcript uuid, so a follow-up prompt stays visible
   and a later transcript backfill converges on the same message instead of
@@ -136,7 +137,8 @@ has started.
   plugin blocks unrelated sessions, other plugins, or relay traffic.
 - Streaming stalls, duplicates or loses parts, shows an empty user bubble, or
   orders a late envelope at the wrong transcript position; the session never
-  returns to idle.
+  returns to idle. A terminal provider failure returns to idle without showing
+  its error, or the error disappears after refresh or reopen.
 - Internal backend command records or synthetic model attribution appear in
   the conversation or replayed history.
 - Prompt defaults regress, an approved plan exit does not restore Default

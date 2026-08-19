@@ -923,7 +923,7 @@ void main() {
       expect(fake.serverResponseFor(99)["result"], {"decision": "decline"});
     });
 
-    test("error clears provisional busy", () async {
+    test("terminal error sequence clears busy and emits the failure message", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
         const _Response(
@@ -949,13 +949,33 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.busy);
 
       final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+      final visibleError = plugin.events
+          .where((event) => event is BridgeSseMessageUpdated)
+          .cast<BridgeSseMessageUpdated>()
+          .map((event) => shared.Message.fromJson(event.info))
+          .where((message) => message is shared.MessageError)
+          .cast<shared.MessageError>()
+          .first;
       fake.pushNotification("error", {
         "threadId": "t-terminal",
+        "turnId": "u-terminal",
         "error": {"message": "turn failed"},
+        "willRetry": false,
+      });
+      fake.pushNotification("turn/completed", {
+        "threadId": "t-terminal",
+        "turn": {
+          "id": "u-terminal",
+          "status": "failed",
+          "error": {"message": "turn failed"},
+        },
       });
 
       await idle.timeout(const Duration(seconds: 1));
+      final error = await visibleError.timeout(const Duration(seconds: 1));
       expect(plugin.currentWorkState, PluginWorkState.idle);
+      expect(error.id, "codex-turn-error-u-terminal");
+      expect(error.errorMessage, "turn failed");
     });
 
     test("sendPrompt does not re-resume a thread created in this run", () async {

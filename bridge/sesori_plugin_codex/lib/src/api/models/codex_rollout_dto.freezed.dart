@@ -992,10 +992,11 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutTaskCompleteEventDto implements CodexRolloutEventDto {
-  const CodexRolloutTaskCompleteEventDto({@JsonKey(name: "turn_id") required this.turnId,  String? $type}): $type = $type ?? 'task_complete';
+  const CodexRolloutTaskCompleteEventDto({@JsonKey(name: "turn_id") required this.turnId, required this.error,  String? $type}): $type = $type ?? 'task_complete';
   factory CodexRolloutTaskCompleteEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutTaskCompleteEventDtoFromJson(json);
 
 @JsonKey(name: "turn_id") final  String turnId;
+ final  CodexRolloutErrorDto? error;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -1011,16 +1012,16 @@ $CodexRolloutTaskCompleteEventDtoCopyWith<CodexRolloutTaskCompleteEventDto> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTaskCompleteEventDto&&(identical(other.turnId, turnId) || other.turnId == turnId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTaskCompleteEventDto&&(identical(other.turnId, turnId) || other.turnId == turnId)&&(identical(other.error, error) || other.error == error));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,turnId);
+int get hashCode => Object.hash(runtimeType,turnId,error);
 
 @override
 String toString() {
-  return 'CodexRolloutEventDto.taskComplete(turnId: $turnId)';
+  return 'CodexRolloutEventDto.taskComplete(turnId: $turnId, error: $error)';
 }
 
 
@@ -1031,11 +1032,11 @@ abstract mixin class $CodexRolloutTaskCompleteEventDtoCopyWith<$Res> implements 
   factory $CodexRolloutTaskCompleteEventDtoCopyWith(CodexRolloutTaskCompleteEventDto value, $Res Function(CodexRolloutTaskCompleteEventDto) _then) = _$CodexRolloutTaskCompleteEventDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: "turn_id") String turnId
+@JsonKey(name: "turn_id") String turnId, CodexRolloutErrorDto? error
 });
 
 
-
+$CodexRolloutErrorDtoCopyWith<$Res>? get error;
 
 }
 /// @nodoc
@@ -1048,14 +1049,27 @@ class _$CodexRolloutTaskCompleteEventDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexRolloutEventDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? turnId = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? turnId = null,Object? error = freezed,}) {
   return _then(CodexRolloutTaskCompleteEventDto(
 turnId: null == turnId ? _self.turnId : turnId // ignore: cast_nullable_to_non_nullable
-as String,
+as String,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
+as CodexRolloutErrorDto?,
   ));
 }
 
+/// Create a copy of CodexRolloutEventDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CodexRolloutErrorDtoCopyWith<$Res>? get error {
+    if (_self.error == null) {
+    return null;
+  }
 
+  return $CodexRolloutErrorDtoCopyWith<$Res>(_self.error!, (value) {
+    return _then(_self.copyWith(error: value));
+  });
+}
 }
 
 /// @nodoc
@@ -1163,6 +1177,135 @@ String toString() {
 
 
 
+
+
+/// @nodoc
+mixin _$CodexRolloutErrorDto {
+
+ String get message;
+/// Create a copy of CodexRolloutErrorDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexRolloutErrorDtoCopyWith<CodexRolloutErrorDto> get copyWith => _$CodexRolloutErrorDtoCopyWithImpl<CodexRolloutErrorDto>(this as CodexRolloutErrorDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutErrorDto&&(identical(other.message, message) || other.message == message));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,message);
+
+@override
+String toString() {
+  return 'CodexRolloutErrorDto(message: $message)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexRolloutErrorDtoCopyWith<$Res>  {
+  factory $CodexRolloutErrorDtoCopyWith(CodexRolloutErrorDto value, $Res Function(CodexRolloutErrorDto) _then) = _$CodexRolloutErrorDtoCopyWithImpl;
+@useResult
+$Res call({
+ String message
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexRolloutErrorDtoCopyWithImpl<$Res>
+    implements $CodexRolloutErrorDtoCopyWith<$Res> {
+  _$CodexRolloutErrorDtoCopyWithImpl(this._self, this._then);
+
+  final CodexRolloutErrorDto _self;
+  final $Res Function(CodexRolloutErrorDto) _then;
+
+/// Create a copy of CodexRolloutErrorDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? message = null,}) {
+  return _then(CodexRolloutErrorDto(
+message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _CodexRolloutErrorDto implements CodexRolloutErrorDto {
+  const _CodexRolloutErrorDto({required this.message});
+  factory _CodexRolloutErrorDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutErrorDtoFromJson(json);
+
+@override final  String message;
+
+/// Create a copy of CodexRolloutErrorDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$CodexRolloutErrorDtoCopyWith<_CodexRolloutErrorDto> get copyWith => __$CodexRolloutErrorDtoCopyWithImpl<_CodexRolloutErrorDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutErrorDto&&(identical(other.message, message) || other.message == message));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,message);
+
+@override
+String toString() {
+  return 'CodexRolloutErrorDto(message: $message)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$CodexRolloutErrorDtoCopyWith<$Res> implements $CodexRolloutErrorDtoCopyWith<$Res> {
+  factory _$CodexRolloutErrorDtoCopyWith(_CodexRolloutErrorDto value, $Res Function(_CodexRolloutErrorDto) _then) = __$CodexRolloutErrorDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ String message
+});
+
+
+
+
+}
+/// @nodoc
+class __$CodexRolloutErrorDtoCopyWithImpl<$Res>
+    implements _$CodexRolloutErrorDtoCopyWith<$Res> {
+  __$CodexRolloutErrorDtoCopyWithImpl(this._self, this._then);
+
+  final _CodexRolloutErrorDto _self;
+  final $Res Function(_CodexRolloutErrorDto) _then;
+
+/// Create a copy of CodexRolloutErrorDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? message = null,}) {
+  return _then(_CodexRolloutErrorDto(
+message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
 
 
 /// @nodoc

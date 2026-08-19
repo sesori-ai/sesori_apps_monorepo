@@ -985,6 +985,50 @@ void main() {
       expect(messages[1].parts.single.id, "assistant-1-text");
     });
 
+    test("readMessages preserves a terminal Codex failure as an error message", () {
+      const sessionId = "019a0000-1111-2222-3333-eeeeeeeeeeee";
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/19/rollout-terminal-error.jsonl",
+        sessionId: sessionId,
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "type": "turn_context",
+            "payload": {"model": "gpt-5.6"},
+          }),
+          jsonEncode({
+            "timestamp": "2026-08-19T18:06:15.079Z",
+            "type": "event_msg",
+            "payload": {
+              "type": "task_complete",
+              "turn_id": "turn-quota",
+              "error": {
+                "message": "You've hit your usage limit.",
+                "codex_error_info": "usage_limit_exceeded",
+              },
+            },
+          }),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: sessionId,
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages, hasLength(1));
+      final error = messages.single.info as PluginMessageError;
+      expect(error.id, "codex-turn-error-turn-quota");
+      expect(error.modelID, "gpt-5.6");
+      expect(error.providerID, "openai");
+      expect(error.errorName, "CodexError");
+      expect(error.errorMessage, "You've hit your usage limit.");
+      expect(messages.single.parts, isEmpty);
+    });
+
     test("readMessages excludes only generated Codex user context envelopes", () {
       final path = _writeRollout(
         codexHome,
