@@ -409,17 +409,25 @@ If the Phase 5.2 pin comparison still reports a mismatch, force a fresh
 plugin package. Verified 2026-08-19 with Flutter 3.47.0: `flutter build
 --config-only` can leave the project copy on older valid transitive pins while
 the workspace copy resolves newer pins. Keep the freshly resolved workspace
-copy, delete only the project copy, and use a scratch clone cache to resolve
+copy, replace only the project copy, and use a scratch clone cache to resolve
 the project again:
 
 ```bash
 set -e
 if command -v xcodebuild >/dev/null 2>&1; then
   for platform in ios macos; do
-    rm -f "client/app/$platform/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
-    (cd "client/app/$platform" && xcodebuild -resolvePackageDependencies \
+    project_lockfile="client/app/$platform/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+    backup="$(mktemp)"
+    cp "$project_lockfile" "$backup"
+    rm "$project_lockfile"
+    if (cd "client/app/$platform" && xcodebuild -resolvePackageDependencies \
       -project Runner.xcodeproj -scheme Runner \
-      -clonedSourcePackagesDirPath "$(mktemp -d)")
+      -clonedSourcePackagesDirPath "$(mktemp -d)"); then
+      rm "$backup"
+    else
+      mv "$backup" "$project_lockfile"
+      exit 1
+    fi
   done
 fi
 ```
