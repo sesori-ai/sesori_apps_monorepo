@@ -658,7 +658,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   evidence for those targets.
 - Focused fatal analysis passes for bridge app, Pi, OMP, ACP, module_core,
   module_prego, and mobile app; shared plain analysis also passes. Full suites:
-  bridge app 2,675, Pi 255, OMP 51, ACP 242, shared 409, module_core 1,149,
+  bridge app 2,675, Pi 255, OMP 51, ACP 242, shared 409, module_core 1,150,
   module_prego 209, and mobile app 998 tests.
 - Product diff commands: `base=$(git merge-base origin/main HEAD)`, then
   `git diff --numstat "$base"..HEAD -- . ':(exclude).plan/active/pi-harness/TRACKER.md'`.
