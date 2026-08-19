@@ -19,6 +19,8 @@ import "core/extensions/appearance_mode_x.dart";
 import "core/extensions/build_context_x.dart";
 import "core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "core/platform/firebase_analytics_identity_migration.dart";
+import "core/platform/firebase_analytics_startup.dart";
+import "core/platform/firebase_test_lab_environment.dart";
 import "core/routing/app_router.dart";
 import "core/routing/deep_link_service.dart";
 import "firebase_options.dart";
@@ -41,28 +43,11 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 void _configureFirebaseSdk({
-  required bool supportsAnalytics,
   required bool supportsCrashlytics,
 }) {
   getIt<FirebaseMessagingStaticAdapter>().registerBackgroundHandler(
     handler: _firebaseMessagingBackgroundHandler,
   );
-
-  if (supportsAnalytics) {
-    // Explicitly disable any data collection except for the very basic analytics.
-    // These are also disabled by default in Info.plist and AndroidManifest.xml.
-    getIt<FirebaseAnalytics>()
-        .setConsent(
-          adPersonalizationSignalsConsentGranted: false,
-          adStorageConsentGranted: false,
-          adUserDataConsentGranted: false,
-          personalizationStorageConsentGranted: false,
-          securityStorageConsentGranted: false,
-          analyticsStorageConsentGranted: true,
-          functionalityStorageConsentGranted: true,
-        )
-        .ignore();
-  }
 
   if (supportsCrashlytics) {
     final crashlytics = getIt<FirebaseCrashlytics>();
@@ -107,7 +92,6 @@ void main() async {
         analyticsRuntimeCapability: analyticsRuntimeCapability,
       );
       _configureFirebaseSdk(
-        supportsAnalytics: supportsFirebaseAnalytics,
         supportsCrashlytics: supportsFirebaseCrashlytics,
       );
     },
@@ -187,14 +171,22 @@ Future<void> bootstrapSesoriApp({
 Future<AnalyticsRuntimeCapability> _createAnalyticsRuntimeCapability({
   required bool shouldInitializeFirebase,
   required bool supportsFirebaseAnalytics,
-}) {
+}) async {
   if (!shouldInitializeFirebase || !supportsFirebaseAnalytics) {
-    return Future.value(
-      const AnalyticsRuntimeCapability.disabled(reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable),
+    return const AnalyticsRuntimeCapability.disabled(
+      reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
     );
   }
-  return FirebaseAnalyticsIdentityMigration(analytics: FirebaseAnalytics.instance).clearLegacyIdentity(
-    disabledReasonAfterSuccess: kReleaseMode ? null : AnalyticsRuntimeDisabledReason.debugOrProfile,
+
+  final disabledReason = !kReleaseMode
+      ? AnalyticsRuntimeDisabledReason.debugOrProfile
+      : switch (await const FirebaseTestLabEnvironment().detect()) {
+          FirebaseTestLabEnvironmentStatus.notRunning => null,
+          FirebaseTestLabEnvironmentStatus.running => AnalyticsRuntimeDisabledReason.automatedTestEnvironment,
+          FirebaseTestLabEnvironmentStatus.unknown => AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
+        };
+  return await FirebaseAnalyticsStartup(analytics: FirebaseAnalytics.instance).configure(
+    disabledReasonAfterSuccess: disabledReason,
   );
 }
 

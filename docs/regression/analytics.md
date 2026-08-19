@@ -26,16 +26,19 @@ excluded, and the warehouse is external.
 - Screens use the pinned route mapping with vendor automatic reporting disabled. Events fire at authoritative
   outcomes, not taps, capture occurrence time at their seam, and deferred candidates emit at most once, dropping on
   disable, logout, or account switch. Results state SDK acceptance, not delivery.
+- Firebase Analytics collection defaults off at native startup and is enabled only after consent and legacy-identity
+  cleanup in a release process outside Firebase Test Lab. Debug/profile runs and Play pre-launch crawlers emit neither
+  automatic nor Sesori-defined analytics events.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because analytics must never gate the product heartbeat. |
-| L2 Routine | Automated, mobile client, no plugin: wire names and pinned parameters, exhaustive route-to-screen and provider mappings, a check that no variant can carry a free-form string, and preference storage state transitions. |
+| L2 Routine | Automated, mobile client, no plugin: wire names and pinned parameters, exhaustive route-to-screen and provider mappings, a check that no variant can carry a free-form string, preference storage state transitions, native default-off configuration, and Test Lab detection wiring. |
 | L3 Release | Automated with a fake sink: suppression while unknown, disabled, unauthenticated, or non-release; activation only after readiness and enabled preference; bounded deferral emitted once with preserved occurrence time; generation change dropping stale work; outcome seams firing on success only. |
 | L4 Extended | Client end to end on the release-target client platform against the real auth-server preference endpoint: disable and re-enable, pending state after a sync failure, persistence across restart, logout with a pending disable, account switch isolation, and no product event while disabled. |
-| L5 Full | Release build against the real analytics property: expected pinned events and parameters observed upstream, automatic screen reporting confirmed off at runtime, and warehouse checks that exported rows carry no prohibited field and internal accounts are excluded. |
+| L5 Full | Release build against the real analytics property: expected pinned events and parameters observed upstream, automatic screen reporting confirmed off at runtime, a Play pre-launch report producing no Analytics rows, and warehouse checks that exported rows carry no prohibited field and internal accounts are excluded. |
 
 ## Exploration Guidance
 
@@ -49,6 +52,7 @@ account against a real property.
 - Any event carries a prohibited field, a free-form string, or an entity identifier including a hashed one; or a login
   event carries a user key.
 - An account-linked event is emitted while unknown, disabled, unauthenticated, or in a debug or profile build.
+- Any automatic or Sesori-defined event is emitted by a debug/profile process or Firebase Test Lab crawler.
 - Disable is delayed, reported saved while sync failed, or lost across restart or logout; enable activates before
   server success plus local persistence.
 - An event fires on a tap or failed operation, is duplicated after deferral, has a rewritten occurrence time, or
@@ -59,6 +63,8 @@ account against a real property.
 
 - The vendor SDK, property, warehouse, and dashboards are external; their correctness is never passed from client
   evidence. SDK acceptance is not delivery: a missing upstream row may be sampling, latency, retention, or exclusion.
+- Firebase's Active users report counts active app instances, not authenticated Sesori accounts. Internal release
+  installs still appear there; use curated account-keyed reporting for product user counts.
 - The preference governs account-linked events here and server reporting only, and a remote change applies on the next
   authenticated generation, process start, or explicit settings action. Warehouse rollout remains an active plan.
 

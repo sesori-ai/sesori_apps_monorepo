@@ -38,10 +38,12 @@ void main() {
     expect(repository.events.single.parameters, isNot(contains("user_key")));
   });
 
-  test("debug, unsupported, and legacy-clear-failed runtimes emit nothing", () async {
+  test("disabled runtimes emit nothing", () async {
     for (final reason in [
       AnalyticsRuntimeDisabledReason.debugOrProfile,
+      AnalyticsRuntimeDisabledReason.automatedTestEnvironment,
       AnalyticsRuntimeDisabledReason.unsupportedPlatform,
+      AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
       AnalyticsRuntimeDisabledReason.identitySafetyPreconditionFailed,
     ]) {
       final repository = _RecordingAnalyticsRepository();
