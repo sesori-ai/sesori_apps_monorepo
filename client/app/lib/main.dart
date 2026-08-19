@@ -18,7 +18,6 @@ import "core/di/injection.dart";
 import "core/extensions/appearance_mode_x.dart";
 import "core/extensions/build_context_x.dart";
 import "core/platform/firebase/firebase_messaging_static_adapter.dart";
-import "core/platform/firebase_analytics_identity_migration.dart";
 import "core/platform/firebase_analytics_startup.dart";
 import "core/platform/firebase_test_lab_environment.dart";
 import "core/routing/app_router.dart";
@@ -29,10 +28,6 @@ import "l10n/app_localizations.dart";
 @pragma("vm:entry-point")
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  // The background isolate reports nothing itself; it only has to make sure a
-  // legacy user ID left by an older app version cannot ride along on any event
-  // the messaging SDK emits from this process.
-  await FirebaseAnalyticsIdentityMigration(analytics: FirebaseAnalytics.instance).clearLegacyIdentity();
 }
 
 void _configureFirebaseSdk({

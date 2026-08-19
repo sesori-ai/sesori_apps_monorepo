@@ -14,7 +14,6 @@ void main() {
     analytics = MockFirebaseAnalytics();
     startup = FirebaseAnalyticsStartup(analytics: analytics);
     when(() => analytics.setAnalyticsCollectionEnabled(any())).thenAnswer((_) async {});
-    when(() => analytics.setUserId(id: null)).thenAnswer((_) async {});
     when(
       () => analytics.setConsent(
         adPersonalizationSignalsConsentGranted: false,
@@ -28,13 +27,12 @@ void main() {
     ).thenAnswer((_) async {});
   });
 
-  test("enables release collection only after suspension, identity clear, and consent", () async {
+  test("enables a new release install only after suspension and consent", () async {
     final capability = await startup.configure(ineligibilityReason: null);
 
     expect(capability, isA<AnalyticsRuntimeEnabled>());
     verifyInOrder([
       () => analytics.setAnalyticsCollectionEnabled(false),
-      () => analytics.setUserId(id: null),
       () => analytics.setConsent(
         adPersonalizationSignalsConsentGranted: false,
         adStorageConsentGranted: false,
@@ -63,7 +61,6 @@ void main() {
     }
 
     verify(() => analytics.setAnalyticsCollectionEnabled(false)).called(2);
-    verify(() => analytics.setUserId(id: null)).called(2);
     verifyNoMoreInteractions(analytics);
   });
 
@@ -86,28 +83,6 @@ void main() {
     verifyNoMoreInteractions(analytics);
   });
 
-  test("does not re-enable collection when the legacy identity clear fails", () async {
-    when(
-      () => analytics.setUserId(id: null),
-    ).thenAnswer((_) async => throw StateError("clear failed"));
-
-    final capability = await startup.configure(ineligibilityReason: null);
-
-    expect(
-      capability,
-      isA<AnalyticsRuntimeDisabled>().having(
-        (value) => value.reason,
-        "reason",
-        AnalyticsRuntimeDisabledReason.identitySafetyPreconditionFailed,
-      ),
-    );
-    verifyInOrder([
-      () => analytics.setAnalyticsCollectionEnabled(false),
-      () => analytics.setUserId(id: null),
-    ]);
-    verifyNoMoreInteractions(analytics);
-  });
-
   test("fails closed when release collection cannot be enabled", () async {
     when(
       () => analytics.setAnalyticsCollectionEnabled(true),
@@ -125,7 +100,6 @@ void main() {
     );
     verifyInOrder([
       () => analytics.setAnalyticsCollectionEnabled(false),
-      () => analytics.setUserId(id: null),
       () => analytics.setConsent(
         adPersonalizationSignalsConsentGranted: false,
         adStorageConsentGranted: false,

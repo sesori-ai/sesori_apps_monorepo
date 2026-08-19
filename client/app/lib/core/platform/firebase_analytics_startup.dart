@@ -1,8 +1,6 @@
 import "package:firebase_analytics/firebase_analytics.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
-import "firebase_analytics_identity_migration.dart";
-
 class const FirebaseAnalyticsStartup({required final FirebaseAnalytics _analytics}) {
   /// Configures the Firebase analytics SDK for this process and reports the
   /// resulting runtime capability. [ineligibilityReason] states why this
@@ -11,8 +9,8 @@ class const FirebaseAnalyticsStartup({required final FirebaseAnalytics _analytic
     required AnalyticsRuntimeDisabledReason? ineligibilityReason,
   }) async {
     try {
-      // Native configuration defaults collection off, and this also suspends an
-      // enabled value persisted by an older app process before any migration.
+      // Native configuration starts fresh installs off. Enforce that decision
+      // for every process before any custom analytics source starts.
       await _analytics.setAnalyticsCollectionEnabled(false);
     } on Object catch (error, stackTrace) {
       logw("Failed to suspend Firebase analytics collection during startup", error, stackTrace);
@@ -21,14 +19,6 @@ class const FirebaseAnalyticsStartup({required final FirebaseAnalytics _analytic
       );
     }
 
-    final identityCleared = await FirebaseAnalyticsIdentityMigration(
-      analytics: _analytics,
-    ).clearLegacyIdentity();
-    if (!identityCleared) {
-      return const AnalyticsRuntimeCapability.disabled(
-        reason: AnalyticsRuntimeDisabledReason.identitySafetyPreconditionFailed,
-      );
-    }
     if (ineligibilityReason case final reason?) {
       return AnalyticsRuntimeCapability.disabled(reason: reason);
     }

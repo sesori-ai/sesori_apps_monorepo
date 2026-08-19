@@ -45,7 +45,6 @@ void main() {
       AnalyticsRuntimeDisabledReason.environmentDetectionFailed,
       AnalyticsRuntimeDisabledReason.unsupportedPlatform,
       AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
-      AnalyticsRuntimeDisabledReason.identitySafetyPreconditionFailed,
     ]) {
       final repository = _RecordingAnalyticsRepository();
       final service = InstallationAnalyticsService(

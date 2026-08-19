@@ -291,13 +291,12 @@ Privacy/Settings copy must disclose this narrowly bounded operational telemetry;
 new pre-auth exceptions require a separate product/privacy decision and may not
 be added by extending a generic map API.
 
-The one compatibility exception is an earliest-bootstrap `setUserId(null)` to
-clear the hash persisted by current releases. It runs immediately after Firebase
-initialization and before custom sources. Vendor automatic initialization can
-precede that supported reset, so the plan treats possible pre-clear automatic
-rows as legacy raw data rather than promising an impossible zero-width window.
-If clear fails, classify/disclose that whole process as potentially legacy-
-keyed; disabling only custom events is not described as stopping automatic data.
+The client never calls Firebase's global `setUserId`. Fresh installs start with
+native collection disabled, and foreground startup enables it only after the
+process is confirmed as an eligible release outside Firebase Test Lab and
+consent is configured. Account identity exists only as the typed `user_key`
+parameter on authenticated Sesori product events, so vendor automatic events
+remain installation-level.
 
 The product analytics service combines installation-local intent with the server
 preference:
@@ -436,7 +435,7 @@ mixed `src/analytics/` bucket. The concrete dependency direction is:
 | `ProductAnalyticsState`, independent preference/synchronization variants, and closed fixed-capacity `DeferredProductAnalyticsCandidates` under `module_core/lib/src/services/models/` | Layer-3 service state | Represents active/inactive/pending/failure truth plus only activation/project-available/diff-adoption/current-date-session-activity deferred slots without nullable coordination fields or a generic queue; it is not part of the Foundation sink contract. |
 | `ProductAnalyticsPreferenceService` in `module_core/lib/src/services/product_analytics_preference_service.dart` | Layer 3, injected collaborator; requires immutable `AnalyticsRuntimeCapability`, read-only `AuthSession`, and `ProductAnalyticsPreferenceRepository` | Sole owner of authenticated generation, preference reconciliation, local/runtime snapshots, logout preparation, and the replaying `ProductAnalyticsState`. `ProductAnalyticsService` is its single disposal owner. It exposes only validated current/deferrable delivery-generation context to the facade. |
 | `ProductAnalyticsService` in `module_core/lib/src/services/product_analytics_service.dart` | Layer 3 delivery facade, `@lazySingleton`; requires `AnalyticsRepository` and `ProductAnalyticsPreferenceService` | Owns Consumer `logEvent`, generation readiness dispatchers, the fixed same-generation deferred candidate slots, ordered one-shot draining, delivery observability, and facade disposal. Preference/account lifecycle stays in its injected collaborator. It delegates preference commands/state, never polls, never owns raw auth state, and sends no product event without a validated active delivery context. |
-| `InstallationAnalyticsService` in `module_core/lib/src/services/installation_analytics_service.dart` | Layer 3, `@lazySingleton`; requires immutable `AnalyticsRuntimeCapability` and `AnalyticsRepository` | Accepts only typed login-attempt lifecycle methods, maps the sealed auth provider exhaustively to `AnalyticsLoginProvider`, classifies timeout versus bounded authentication/launch failure, and reports best-effort. It has no account/preference state, buffers nothing, and remains inactive in debug/profile/unsupported builds or when legacy-ID cleanup failed. |
+| `InstallationAnalyticsService` in `module_core/lib/src/services/installation_analytics_service.dart` | Layer 3, `@lazySingleton`; requires immutable `AnalyticsRuntimeCapability` and `AnalyticsRepository` | Accepts only typed login-attempt lifecycle methods, maps the sealed auth provider exhaustively to `AnalyticsLoginProvider`, classifies timeout versus bounded authentication/launch failure, and reports best-effort. It has no account/preference state, buffers nothing, and remains inactive whenever the runtime capability is disabled. |
 | `AnalyticsRouteListener` in `module_core/lib/src/routing/analytics_route_listener.dart` | Layer-4 routing listener, `@lazySingleton`; requires `RouteSource` and `ProductAnalyticsService` | Owns route subscription, maps `AppRouteDef` exhaustively to `AnalyticsScreen`, signals readiness on the first non-splash route, and reports stable screens only while active. It never passes a route model/path to Foundation. |
 | `SessionActivityAnalyticsListener` in `module_core/lib/src/consumers/analytics/session_activity_analytics_listener.dart` | Explicit stream listener above Layer-4 state; constructed/owned by one `SessionDetailScreen`, requires its `SessionDetailCubit`, `LifecycleSource`, `ProductAnalyticsService`, and an initial per-instance visibility value | Combines bounded loaded-state classification with resumed lifecycle and a typed `setRouteVisible` intent supplied by the owning Flutter route instance. It never infers visibility from global `AppRouteDef`. It emits first empty once and non-empty at most once per UTC date only while that exact detail page is current; covered parents, nested diffs, and background SSE cannot create false monitoring activity. The service owns any envelope after `deferredUntilPreference`. |
 | `ComposerDraftStorage` in `module_core/lib/src/api/storage/composer_draft_storage.dart` | Layer 1 in-memory data source | Stores only immutable `ComposerDraft` values by existing/session-new-session key for the current process. Whitespace clear removes the row; it owns no edit or analytics decisions. |
@@ -444,7 +443,7 @@ mixed `src/analytics/` bucket. The concrete dependency direction is:
 | `ComposerDraft`, half-open `VoiceOriginSpan(start, end)`, and `ComposerDraftCalculator` under `module_core/lib/src/services/models/` and `services/` | Layer-3 immutable state plus pure shared business transformation | Draft state contains text plus normalized, ordered, non-overlapping voice-origin spans. The calculator applies explicit typed replacement and voice insertion transforms; the model validates data but owns no edit policy. `inputMode` is derived from whether any voice span survives. |
 | `ProductAnalyticsPreferenceCubit` in `module_core/lib/src/cubits/product_analytics_preference/` | Consumer; constructor requires `ProductAnalyticsService` | Subscribes to service state and exposes toggle/retry intents. Mobile Settings constructs it; it is not in DI. |
 | `FirebaseAnalyticsClient` in `app/lib/core/platform/firebase_analytics_client.dart` | Thin mobile Foundation adapter, `@LazySingleton(as: AnalyticsClient)`; requires `FirebaseAnalytics` and immutable `AnalyticsRuntimeCapability` | Rejects all operations unless capability is enabled, serializes only typed product/installation events plus their permitted shared fields, and throws canonical-event failures upward. For `product_screen_viewed`, after the canonical custom event is accepted it also best-effort calls `FirebaseAnalytics.logScreenView` with the same pinned screen name and stable `GoRouter` screen class; mirror failure is logged but does not rewrite canonical delivery. It never applies global identity/collection overrides and contains no route/preference/hash business logic. Firebase-disabled environments use the no-op client plus disabled capability. |
-| `FirebaseAnalyticsIdentityMigration` in `app/lib/core/platform/firebase_analytics_identity_migration.dart` | Mobile-only reusable pre-DI helper; constructed directly with `FirebaseAnalytics.instance` after Firebase initialization in foreground `main` and the FCM background entry point | Awaits `setUserId(id: null)`. Foreground maps concrete Firebase cleanup failure to the surface-neutral `AnalyticsRuntimeCapability.disabled(identitySafetyPreconditionFailed)` for phase-1 DI; Firebase-specific cause and logging stay in the shell. The background handler runs the same idempotent clear immediately after its independent `Firebase.initializeApp` and before handler work; failure logs and ends/classifies that whole background execution as potentially legacy-keyed. Automatic initialization can still precede either clear, so recurring legacy deletion covers that unavoidable window. Keep both calls through minimum-supported-version adoption plus the 90-day raw window, then remove explicitly. |
+| `FirebaseAnalyticsStartup` in `app/lib/core/platform/firebase_analytics_startup.dart` | Mobile-only pre-DI helper; constructed directly with `FirebaseAnalytics.instance` after Firebase initialization in foreground `main` | Enforces collection off before custom sources start. It leaves ineligible processes disabled; eligible releases configure privacy-minimized consent and then enable collection. It never sets Firebase's global user ID. The FCM background handler independently initializes Firebase for messaging and contains no analytics compatibility work. |
 | `NoOpAnalyticsClient` in `desktop/lib/core/platform/no_op_analytics_client.dart` | Desktop phase-1 Foundation adapter | Satisfies shared core DI and accepts operations without collection. No desktop listeners are started. |
 
 `AnalyticsScreen` pins snake-case wire values for login, projects, approved
@@ -474,9 +473,10 @@ product success.
 ### DI and process lifecycle
 
 1. Before mobile phase 1, `main` produces one immutable
-   `AnalyticsRuntimeCapability` from the awaited legacy-ID cleanup. Mobile phase
-   1 registers that exact instance plus `AnalyticsClient`, `SecureStorage`, and
-   `RouteSource`; desktop registers disabled capability plus no-op client.
+   `AnalyticsRuntimeCapability` from Firebase support, build/Test Lab eligibility,
+   and the awaited startup configuration. Mobile phase 1 registers that exact
+   instance plus `AnalyticsClient`, `SecureStorage`, and `RouteSource`; desktop
+   registers disabled capability plus no-op client.
    Existing deep-link wiring remains unrelated because campaign attribution is
    deferred.
 2. Auth phase 2 registers `AuthSession` and the internal HTTP clients, including
@@ -498,25 +498,18 @@ product success.
    dispatch confirmed bounded outcomes to explicit methods on their owning core
    Cubits; widgets never call a Layer-3 analytics service directly.
 
-Before mobile phase 1, `main()` initializes Firebase, constructs
-`FirebaseAnalyticsIdentityMigration` directly with `FirebaseAnalytics.instance`,
-awaits it, and passes the returned immutable capability into
-`configureDependencies`. No Sesori custom event source or core listener exists
-yet. A native automatic startup event can still occur between
-vendor SDK initialization and this earliest supported reset; treat any such
-legacy-keyed row as restricted raw legacy data, exclude automatic events from
-behavioral models, cover it through the legacy `USER_ID` deletion path, and do
-not claim that upgrade retroactively removes it. If the clear fails, this legacy
-classification applies to every automatic event for that whole process—not only
-startup—while all custom events remain disabled. Recurring deletion sweeps keep
-submitting the legacy user key; do not claim automatic collection was stopped.
+Before mobile phase 1, `main()` initializes Firebase, resolves build and Firebase
+Test Lab eligibility, awaits `FirebaseAnalyticsStartup`, and passes the returned
+immutable capability into `configureDependencies`. Native configuration keeps
+fresh installs off before Dart starts. Eligible releases configure consent and
+then enable collection; every ineligible or failed startup remains disabled. No
+Sesori custom event source or core listener exists before that decision, and the
+flow never calls Firebase's global `setUserId`.
 
 The `@pragma("vm:entry-point")` FCM background handler independently initializes
-Firebase, then awaits the same migration helper before doing any message work.
-It never constructs core DI or emits custom analytics. Clear failure is logged
-and the handler returns; automatic events that may precede/follow a failed clear
-are classified as legacy-keyed for that background execution and covered by the
-same deletion/retention disclosure.
+Firebase for messaging. It never constructs core DI, emits custom analytics, or
+performs identity migration. Vendor automatic events remain installation-level
+and are excluded from account-level behavioral models.
 
 ### Preference and lifecycle data flow
 
@@ -1439,18 +1432,18 @@ directory name.
 
 **Repository:** apps monorepo
 
-- Clear the legacy Firebase global user ID before core startup in foreground and
-  FCM-background execution. Register the resulting immutable runtime capability,
-  start `ProductAnalyticsService`, and keep desktop analytics disabled.
+- Keep Firebase Analytics collection off natively, resolve release/Test Lab
+  eligibility before core startup, register the resulting immutable runtime
+  capability, start `ProductAnalyticsService`, and keep desktop analytics
+  disabled.
 - Disable automatic Firebase screen reporting in Android and every Firebase-
   enabled Apple target. Drive screens only from
   `GoRouterRouteSource.currentRouteStream`, map exhaustively to pinned
   `AnalyticsScreen`, emit canonical `product_screen_viewed`, and mirror the same
   name through `FirebaseAnalytics.logScreenView`; never derive names from
   Navigator runtime classes or concrete paths.
-- Remove `AnalyticsUserIdTracker`, clear its persisted global Firebase user ID
-  immediately after Firebase initialization, never set another account key or
-  persisted collection override, gate every account-linked Sesori product event
+- Remove `AnalyticsUserIdTracker`, never replace it with a global Firebase user
+  ID, gate every account-linked Sesori product event
   to post-splash authenticated enabled release builds, while allowing only the separately
   typed, release-only, account-less login catalog; add schema-ready and stable
   GoRouter-backed screen reporting.
@@ -1598,7 +1591,7 @@ acceptance item passes.
 | After 3.A/5 | Typed analytics contracts, account-bound PUT transport, and dormant platform delivery adapters are available without changing production collection. | Step 2 must be deployed. | Revert the dormant client contracts/adapters; product behavior is unchanged. |
 | After 3.B/5 | Durable preference API/storage/repository behavior is available but has no lifecycle consumer or UI. | Step 3.A merged. | Revert the dormant preference stack; server preference data remains intact. |
 | After 3.C/5 | The account-linked lifecycle and fail-closed state machine are testable but not started by a product shell. | Step 3.B merged. | Revert the dormant lifecycle; product behavior is unchanged. |
-| After 3.D/5 | Mobile clears the prior global Firebase user ID before custom sources, can disable/enable account-linked Sesori product events on this installation, and syncs its server reporting/supported-client preference; existing product events and GoRouter-backed screens obey the lifecycle; only the bounded account-less login catalog plus Firebase automatic install events retain the separately disclosed installation behavior; desktop remains no-op. | Both auth endpoints/schema must be live. If legacy-ID clear fails, all custom events stay disabled and all automatic events for that process are classified as potentially legacy-keyed; if preference is unavailable, account-linked events fail closed and disable remains local pending without blocking logout. | **Forward-fix only after public release.** Preserve both legacy-ID cleanup and local product-event gating through their declared floors. For a severe defect, suppress all custom events; do not claim automatic collection stopped on clear failure or that legacy behavior is controlled. Server preference data is never rolled back. |
+| After 3.D/5 | Mobile never sets a global Firebase user ID, keeps collection off until an eligible release configures consent, can disable/enable account-linked Sesori product events on this installation, and syncs its server reporting/supported-client preference; existing product events and GoRouter-backed screens obey the lifecycle; only the bounded account-less login catalog plus Firebase automatic install events retain the separately disclosed installation behavior; desktop remains no-op. | Both auth endpoints/schema must be live. If startup eligibility or configuration fails, analytics remains disabled; if preference is unavailable, account-linked events fail closed and disable remains local pending without blocking logout. | **Forward-fix only after public release.** Preserve local product-event gating through its declared floor. For a severe defect, suppress all custom events; server preference data is never rolled back. |
 | After 4/5 | New activation/engagement events accumulate in GA4 raw export. Product operations remain unchanged if Firebase is unavailable. | Step 3.D custom-key/preference/schema lifecycle must be released. BigQuery needs no GA4 custom-dimension registration. | Forward-fix the app while retaining the step-3 privacy behavior; event-specific defects may be disabled/removed. Missing future event names yield null/zero data, not product failure. |
 | After 5/5 | Auth job, curated models, authorized reporting views, and Looker provide the complete metric contract. | Create same-location datasets/IAM; deploy SQL/tests; schedule auth export; validate its first publish; schedule event transforms; then connect Looker. | Pause or revert reporting transforms, auth export, views, and dashboard sources to the last known-good version. Permanent exclusions, tombstone processing, and recurring upstream deletion enforcement continue; privacy defects receive a privacy-preserving forward fix. Raw GA4 and prior auth published tables remain; app behavior is unaffected. |
 

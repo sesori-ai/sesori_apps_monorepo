@@ -4,7 +4,6 @@ enum AnalyticsRuntimeDisabledReason() {
   environmentDetectionFailed,
   unsupportedPlatform,
   analyticsSinkUnavailable,
-  identitySafetyPreconditionFailed,
 }
 
 sealed class const AnalyticsRuntimeCapability() {

@@ -14,10 +14,9 @@ excluded, and the warehouse is external.
   command names, paths, repository, project, session, branch or worktree names, raw error text, OAuth identity, email,
   or raw or hashed project, session, bridge, or device identifiers. The account-less login funnel's pinned
   login-provider enum is the explicit provider-name exception.
-- Account-linked events require an enabled runtime capability (release build, supported platform, sink present, legacy
-  identity cleared), authentication, and a server preference resolved to enabled for that generation; anything else
-  suppresses them. They carry the validated server-derived key, never a raw account ID, and set no global SDK
-  identity beyond the compatibility clear.
+- Account-linked events require an enabled runtime capability (release build, supported platform, sink present),
+  authentication, and a server preference resolved to enabled for that generation; anything else suppresses them.
+  They carry the validated server-derived key, never a raw account ID, and never set Firebase's global SDK identity.
 - Disable applies immediately here and records durable local intent before any network work; a failed sync shows
   pending, never saved, and survives logout and restart. Enable activates only after server success plus local
   persistence.
@@ -26,9 +25,9 @@ excluded, and the warehouse is external.
 - Screens use the pinned route mapping with vendor automatic reporting disabled. Events fire at authoritative
   outcomes, not taps, capture occurrence time at their seam, and deferred candidates emit at most once, dropping on
   disable, logout, or account switch. Results state SDK acceptance, not delivery.
-- Firebase Analytics collection defaults off at native startup and is enabled only after consent and legacy-identity
-  cleanup in a release process outside Firebase Test Lab. Debug/profile runs and Play pre-launch crawlers emit neither
-  automatic nor Sesori-defined analytics events.
+- Firebase Analytics collection defaults off at native startup and is enabled only after consent in a release process
+  outside Firebase Test Lab. Debug/profile runs and Play pre-launch crawlers emit neither automatic nor Sesori-defined
+  analytics events.
 
 ## Regression Levels
 
