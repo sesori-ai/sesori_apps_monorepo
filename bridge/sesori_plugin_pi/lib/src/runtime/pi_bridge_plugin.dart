@@ -77,7 +77,7 @@ final class PiBridgePlugin({
       firstError = error;
       firstStackTrace = stackTrace;
     }
-    await attempt(() => _plugin.shutdown(shutdownBudget: budget ?? const Duration(seconds: 15)));
+    await attempt(() => _plugin.shutdown(shutdownBudget: budget));
     await attempt(_processFactory.dispose);
     final error = firstError;
     if (error != null) Error.throwWithStackTrace(error, firstStackTrace!);

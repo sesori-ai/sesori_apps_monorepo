@@ -424,10 +424,11 @@ final class PiPlugin._({
   @override
   Future<void> dispose() => _disposeFuture ??= _dispose(shutdownBudget: Duration.zero);
 
-  Future<void> shutdown({required Duration shutdownBudget}) =>
+  /// [shutdownBudget] `null` means the caller imposes no deadline.
+  Future<void> shutdown({required Duration? shutdownBudget}) =>
       _disposeFuture ??= _dispose(shutdownBudget: shutdownBudget);
 
-  Future<void> _dispose({required Duration shutdownBudget}) async {
+  Future<void> _dispose({required Duration? shutdownBudget}) async {
     _disposed = true;
     Object? firstError;
     StackTrace? firstStack;

@@ -665,10 +665,11 @@ final class PiSessionService({
     if (!_events.isClosed) _events.add(event);
   }
 
-  Future<void> dispose({Duration shutdownBudget = const Duration(seconds: 15)}) =>
+  /// [shutdownBudget] `null` means no deadline.
+  Future<void> dispose({Duration? shutdownBudget = const Duration(seconds: 15)}) =>
       _disposeFuture ??= _dispose(shutdownBudget: shutdownBudget);
 
-  Future<void> _dispose({required Duration shutdownBudget}) async {
+  Future<void> _dispose({required Duration? shutdownBudget}) async {
     _disposed = true;
     for (final state in _sessions.values) {
       state.generation++;
