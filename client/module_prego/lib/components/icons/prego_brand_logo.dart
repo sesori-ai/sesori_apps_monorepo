@@ -53,8 +53,7 @@ class const PregoBrandLogo({
         isDark ? "assets/svgs/brands/hermes_dark.svg" : "assets/svgs/brands/hermes_light.svg",
       final id when id == Harness.pi.name =>
         isDark ? "assets/svgs/brands/pi_dark.svg" : "assets/svgs/brands/pi_light.svg",
-      final id when id == Harness.omp.name =>
-        isDark ? "assets/svgs/brands/omp_dark.svg" : "assets/svgs/brands/omp_light.svg",
+      final id when id == Harness.omp.name => "assets/svgs/brands/omp.svg",
       _ => null,
     };
   }

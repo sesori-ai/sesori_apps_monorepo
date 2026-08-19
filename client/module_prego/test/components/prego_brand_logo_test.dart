@@ -56,8 +56,8 @@ void main() {
     ),
     (
       pluginId: Harness.omp.name,
-      lightAsset: "assets/svgs/brands/omp_light.svg",
-      darkAsset: "assets/svgs/brands/omp_dark.svg",
+      lightAsset: "assets/svgs/brands/omp.svg",
+      darkAsset: "assets/svgs/brands/omp.svg",
     ),
   ]) {
     testWidgets("maps ${mapping.pluginId} to its bundled artwork", (tester) async {
