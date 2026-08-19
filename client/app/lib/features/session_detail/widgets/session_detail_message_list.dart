@@ -919,8 +919,18 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   int _signatureOf({required List<MessageWithParts> messages}) {
     // Hash every id so the cache invalidates on any structural change —
     // including a middle insert/delete/replace that preserves length and the
-    // first/last ids. Cheap for chat-sized transcripts and bounded by maxLines
-    // at the render layer.
-    return Object.hashAll(messages.map((m) => m.info.id));
+    // first/last ids. A user message's promptId is part of the map's keys
+    // (the stable prompt row resolves through it), so it participates too:
+    // a live upsert that stamps promptId onto an existing id must rebuild.
+    // Cheap for chat-sized transcripts and bounded by maxLines at the render
+    // layer.
+    return Object.hashAll(
+      messages.map(
+        (m) => switch (m.info) {
+          MessageUser(:final id, :final promptId) => Object.hash(id, promptId),
+          MessageAssistant(:final id) || MessageError(:final id) => id,
+        },
+      ),
+    );
   }
 }
