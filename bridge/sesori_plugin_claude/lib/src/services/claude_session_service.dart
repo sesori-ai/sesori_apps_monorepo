@@ -39,6 +39,11 @@ final class _SessionTurnState() {
   int generation = 0;
   int idleGeneration = 0;
 
+  /// Non-null while abort interrupts and tears down the resident process.
+  /// Sends accepted during that window wait here before establishing fresh
+  /// residency.
+  Completer<void>? aborting;
+
   /// True while the CLI runs a turn the bridge did not enqueue.
   ///
   /// A `ScheduleWakeup` loop wakeup starts a turn inside the resident process
@@ -282,6 +287,12 @@ final class ClaudeSessionService({
       return _finish(sessionId, state, null);
     }
     try {
+      final aborting = state.aborting?.future;
+      if (aborting != null) await aborting;
+      if (!_isCurrent(sessionId: sessionId, state: state, generation: generation) || _isCancelled(mode, state)) {
+        mode.settleUnaccepted();
+        return _finish(sessionId, state, null);
+      }
       if (_requiresTurnBoundary(
         sessionId: sessionId,
         model: model,
@@ -445,32 +456,44 @@ final class ClaudeSessionService({
   Future<void> abort({required String sessionId}) async {
     final state = _turns[sessionId];
     if (state == null) return;
+    final activeAbort = state.aborting;
+    if (activeAbort != null) {
+      await activeAbort.future;
+      return;
+    }
     if (state.pending == 0 && state.selfStartedTurn == null) {
       _approvals.cancelForSession(sessionId: sessionId);
       return;
     }
-    state.generation++;
-    state.idleGeneration++;
-    // Teardown kills the CLI's in-process wakeup timer, and `--resume` does
-    // not rearm it, so a pending wakeup cannot survive an abort.
-    state.wakeupAt = null;
-    if (state.queue.isNotEmpty) {
-      state.queue.clear();
-      _emitQueueUpdate(sessionId: sessionId, state: state);
-    }
-    _approvals.cancelForSession(sessionId: sessionId);
+    final aborting = Completer<void>();
+    state.aborting = aborting;
     try {
-      await _processes.interrupt(sessionId: sessionId);
-    } on Object catch (error, stack) {
-      Log.w("[claude] interrupt failed for $sessionId", error, stack);
+      state.generation++;
+      state.idleGeneration++;
+      // Teardown kills the CLI's in-process wakeup timer, and `--resume` does
+      // not rearm it, so a pending wakeup cannot survive an abort.
+      state.wakeupAt = null;
+      if (state.queue.isNotEmpty) {
+        state.queue.clear();
+        _emitQueueUpdate(sessionId: sessionId, state: state);
+      }
+      _approvals.cancelForSession(sessionId: sessionId);
+      try {
+        await _processes.interrupt(sessionId: sessionId);
+      } on Object catch (error, stack) {
+        Log.w("[claude] interrupt failed for $sessionId", error, stack);
+      } finally {
+        // Claude can emit recovery/meta turns after an acknowledged interrupt.
+        // Resume from the persisted transcript in a fresh process instead of
+        // allowing that transport backlog to enter the next user turn.
+        await _processes.teardown(sessionId: sessionId);
+      }
+      if (state.selfStartedTurn != null && identical(_turns[sessionId], state)) {
+        _endSelfStartedTurn(sessionId: sessionId, state: state);
+      }
     } finally {
-      // Claude can emit recovery/meta turns after an acknowledged interrupt.
-      // Resume from the persisted transcript in a fresh process instead of
-      // allowing that transport backlog to enter the next user turn.
-      await _processes.teardown(sessionId: sessionId);
-    }
-    if (state.selfStartedTurn != null && identical(_turns[sessionId], state)) {
-      _endSelfStartedTurn(sessionId: sessionId, state: state);
+      if (identical(state.aborting, aborting)) state.aborting = null;
+      if (!aborting.isCompleted) aborting.complete();
     }
   }
 

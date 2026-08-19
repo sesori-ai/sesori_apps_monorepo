@@ -81,6 +81,27 @@ void main() {
       expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
     });
 
+    test("holds a prompt accepted during abort for a fresh process", () async {
+      unawaited(harness.enqueue("first"));
+      final first = await harness.firstProcess;
+      await waitForFrame(first, "user");
+      final abort = harness.service.abort(sessionId: testSessionId);
+      final interrupt = await _waitForControlSubtype(first, "interrupt");
+
+      unawaited(harness.enqueue("second"));
+      await pump();
+
+      expect(_userFrames(first), hasLength(1));
+      first.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      await abort;
+      final second = await harness.processAt(1);
+      await waitForFrame(second, "user");
+
+      expect(_userText(second, 0), "second");
+      second.emit(_result());
+      await harness.waitForIdle();
+    });
+
     test("next turn resumes in a fresh process after abort", () async {
       unawaited(harness.enqueue("first", model: "haiku"));
       final first = await harness.firstProcess;
