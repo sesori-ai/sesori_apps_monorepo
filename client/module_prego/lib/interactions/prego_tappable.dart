@@ -2,7 +2,6 @@ import "dart:async";
 
 import "package:flutter/services.dart";
 import "package:material_ui/material_ui.dart";
-import "package:universal_platform/universal_platform.dart";
 
 import "../theme/prego_theme.dart";
 
@@ -36,13 +35,16 @@ final class const _StateAwareBuilders({
 /// Platform-aware interaction wrapper for tappable elements.
 ///
 /// Routes to platform-specific implementations:
-/// - Web: instant press/hover overlays, no animation
+/// - Desktop: instant press/hover overlays, no animation
 /// - iOS: scale overshoot -> settle -> release with shadow interpolation
 /// - Android: Material [InkWell] ripple
 ///
+/// The effective platform comes from [ThemeData.platform], so device previews
+/// can exercise the same interaction path as their native target.
+///
 /// Takes a [containerBuilder] and [child] (content) separately. The wrapping
 /// order is flipped per platform:
-/// - **iOS/Web**: interaction → container → content (scale lifts the whole container)
+/// - **iOS/Desktop**: interaction → container → content (scale lifts the whole container)
 /// - **Android**: container → interaction → content (ripple above bg, below content)
 ///
 /// Pass `onTap: null` to disable interaction (renders `containerBuilder(child)`).
@@ -110,8 +112,7 @@ class PregoTappable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Can hardcode value to test different platform interactions.
-    final UniversalPlatformType platform = UniversalPlatform.value;
+    final platform = Theme.of(context).platform;
 
     // Unwrap sealed builders into unified types.
     final Widget Function({required Set<WidgetState> state}) childBuilder;
@@ -142,10 +143,10 @@ class PregoTappable extends StatelessWidget {
           return null;
         });
 
-    // iOS/Web: interaction wraps container wraps content.
+    // iOS/Desktop: interaction wraps container wraps content.
     // Android: container wraps interaction wraps content.
     return switch (platform) {
-      .Web || .Windows || .Linux || .MacOS => _WebTappable(
+      .windows || .linux || .macOS => _WebTappable(
         onTap: onTap,
         overlayColor: resolvedOverlayColor,
         borderRadius: borderRadius,
@@ -154,7 +155,7 @@ class PregoTappable extends StatelessWidget {
         childBuilder: childBuilder,
         containerBuilder: containerBuilder,
       ),
-      .IOS => _IosTappable(
+      .iOS => _IosTappable(
         onTap: onTap,
         containerBuilder: containerBuilder,
         overlayColor: resolvedOverlayColor,
@@ -163,7 +164,7 @@ class PregoTappable extends StatelessWidget {
         overlayInset: overlayInset,
         childBuilder: childBuilder,
       ),
-      .Android || .Fuchsia => _AndroidTappable(
+      .android || .fuchsia => _AndroidTappable(
         onTap: onTap,
         color: resolvedOverlayColor,
         borderRadius: borderRadius,

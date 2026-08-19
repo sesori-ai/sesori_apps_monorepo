@@ -11,9 +11,11 @@ dependencies:
   cupertino_icons: ^1.0.9
   flutter:
     sdk: flutter
+  flutter_bloc: ^9.1.1
   material_ui: ^1.0.0
   theme_prego:
     path: ../module_prego
+  web: ^1.1.1
   widgetbook: 3.25.0
 
 dev_dependencies:

@@ -50,7 +50,19 @@ Widget _buildPlayground(BuildContext context) {
   final iconOnly = context.knobs.boolean(label: "Icon only");
   final fullWidth = context.knobs.boolean(label: "Full width");
   final leadingIcon = context.knobs.boolean(label: "Leading icon", initialValue: true);
+  final leadingIconGlyph = context.knobs.object.dropdown(
+    label: "Leading icon glyph",
+    options: CatalogButtonIcon.values,
+    initialOption: CatalogButtonIcon.add,
+    labelBuilder: _labelForIcon,
+  );
   final trailingIcon = context.knobs.boolean(label: "Trailing icon");
+  final trailingIconGlyph = context.knobs.object.dropdown(
+    label: "Trailing icon glyph",
+    options: CatalogButtonIcon.values,
+    initialOption: CatalogButtonIcon.arrowRight,
+    labelBuilder: _labelForIcon,
+  );
   final invalidReason = _invalidCombinationReason(hierarchy: hierarchy, tone: tone);
 
   return _PreviewSurface(
@@ -63,8 +75,8 @@ Widget _buildPlayground(BuildContext context) {
             state: state,
             iconOnly: iconOnly,
             fullWidth: fullWidth,
-            leadingIcon: leadingIcon ? material.Icons.add : null,
-            trailingIcon: trailingIcon ? material.Icons.arrow_forward : null,
+            leadingIcon: iconOnly || leadingIcon ? _iconFor(leadingIconGlyph) : null,
+            trailingIcon: trailingIcon ? _iconFor(trailingIconGlyph) : null,
           )
         : _InvalidCombinationNotice(message: invalidReason),
   );
@@ -177,6 +189,12 @@ material.IconData _iconFor(CatalogButtonIcon icon) => switch (icon) {
   CatalogButtonIcon.trash => material.Icons.delete_outline,
 };
 
+String _labelForIcon(CatalogButtonIcon icon) => switch (icon) {
+  CatalogButtonIcon.add => "Add",
+  CatalogButtonIcon.arrowRight => "Arrow right",
+  CatalogButtonIcon.trash => "Trash",
+};
+
 PregoButtonsSolidSize _sizeFor(CatalogButtonSize size) => switch (size) {
   .sm => .sm,
   .md => .md,
@@ -282,8 +300,5 @@ class const _PreviewSurface({
   final Alignment alignment = Alignment.center,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => ColoredBox(
-    color: context.prego.colors.bgSurface2,
-    child: Align(alignment: alignment, child: child),
-  );
+  Widget build(BuildContext context) => Align(alignment: alignment, child: child);
 }
