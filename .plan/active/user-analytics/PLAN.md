@@ -243,7 +243,7 @@ honestly labeled setup trends.
 | `shared/sesori_shared` | No production change | Keep `AuthUser` authentication-only; do not add a product preference to the shared auth/persisted contract. | No bridge/shared migration or compatibility default is introduced. |
 | `client/module_auth` | Existing HTTP client interfaces/implementations/tests | Add named-parameter JSON `PUT` support to `SafeApiClient`, `HttpApiClient`, and `AuthenticatedHttpApiClient`; keep tokens, OAuth, and auth state otherwise unchanged. | `module_core` injects the authenticated client into its Layer-1 preference API; no wrong-verb workaround or compatibility path is introduced. |
 | `client/module_core` | `lib/src/foundation/{models/product_analytics/,platform/analytics_client.dart}`, `lib/src/api/{analytics_api,product_analytics_preference_api.dart,storage/product_analytics_preference_storage.dart}`, `lib/src/repositories/{models/,product_analytics,installation_analytics,product_analytics_preference}_repository.dart`, `lib/src/services/{models/,product_analytics,installation_analytics}_service.dart`, existing `services/draft_store.dart` plus typed composer-draft model, `lib/src/routing/{analytics_route,session_activity_analytics}_listener.dart`, `lib/src/cubits/{product_analytics_preference,settings}/`, existing login/project/session/diff cubits, DI/barrel/generated files | Mirror the declared layers explicitly; own preference HTTP/persistence, validated server-derived pseudonymous-key flow, bounded account-less login telemetry, typed draft/input-origin restoration, route/visibility lifecycle, pre-logout orchestration, Settings state, and authoritative business-outcome emission. | Mobile supplies the Firebase client plus immutable runtime capability. Desktop supplies no-op/disabled Foundation adapters. Cubit constructor call sites/tests update in lockstep. |
-| `client/app` | `lib/core/platform/{firebase_analytics_client,firebase_analytics_identity_migration}.dart`, `lib/core/di/`, `lib/features/{login,settings,project_list,new_session,session_detail,session_diffs}/`, composer widgets/callbacks, `lib/l10n/`, `lib/main.dart`, iOS/macOS/Android analytics defaults | Clear legacy global identity at earliest post-Firebase bootstrap, pass its immutable capability into phase-1 DI, implement the thin Firebase adapter, disable automatic screen reporting, mirror GoRouter-derived screens through `logScreenView`, begin Apple analytics before the native authorization sheet, report successful content-free transcription completion, start core services/listeners, render preference UI, and inject services into core consumers. | Existing app event sources move to core; `AnalyticsUserIdTracker` is removed. The only global Firebase `user_id` call sets null for migration; no account key or runtime collection override is added. Existing `DeepLinkService` remains unchanged because campaign work is deferred. |
+| `client/app` | `lib/core/platform/{firebase_analytics_client,firebase_analytics_startup,firebase_test_lab_environment}.dart`, `lib/core/di/`, `lib/features/{login,settings,project_list,new_session,session_detail,session_diffs}/`, composer widgets/callbacks, `lib/l10n/`, `lib/main.dart`, iOS/macOS/Android analytics defaults | Keep collection off natively, resolve release/Test Lab eligibility before phase-1 DI, configure consent for eligible releases, implement the thin Firebase adapter, disable automatic screen reporting, mirror GoRouter-derived screens through `logScreenView`, begin Apple analytics before the native authorization sheet, report successful content-free transcription completion, start core services/listeners, render preference UI, and inject services into core consumers. | Existing app event sources move to core; `AnalyticsUserIdTracker` is removed and never replaced. No client path calls Firebase's global `setUserId`. Existing `DeepLinkService` remains unchanged because campaign work is deferred. |
 | `client/desktop` | `lib/core/platform/no_op_analytics_client.dart`, DI generated file | Satisfy the shared core platform capability without collecting desktop analytics. | No desktop product events or UI are added. Analyze/test verifies core DI remains resolvable. |
 | `client/module_desktop_core` | No planned production edit; tests/build are downstream validation | Continue unchanged. | Shared core DI/downstream validation only. |
 | `bridge/app` | No planned production or contract edit | Remain outside product analytics. | No additional bridge validation beyond normal CI is caused by this plan. |
@@ -296,7 +296,7 @@ native collection disabled, and foreground startup enables it only after the
 process is confirmed as an eligible release outside Firebase Test Lab and
 consent is configured. Account identity exists only as the typed `user_key`
 parameter on authenticated Sesori product events, so vendor automatic events
-remain installation-level.
+remain installation-level on fresh installs.
 
 The product analytics service combines installation-local intent with the server
 preference:
@@ -508,8 +508,8 @@ flow never calls Firebase's global `setUserId`.
 
 The `@pragma("vm:entry-point")` FCM background handler independently initializes
 Firebase for messaging. It never constructs core DI, emits custom analytics, or
-performs identity migration. Vendor automatic events remain installation-level
-and are excluded from account-level behavioral models.
+changes global identity. Account-level behavioral models exclude vendor
+automatic events.
 
 ### Preference and lifecycle data flow
 
@@ -1623,11 +1623,10 @@ the separately released app.
   same pinned name, no concrete route parameters, and no automatic duplicate.
 - Verify login events carry no `user_key`/attempt identifier and voice events
   carry no transcript, audio metadata, duration, or text-derived value.
-- Seed the current release's global Firebase user ID, upgrade to the new build,
-  and verify null-clear completes before any custom source starts; force clear
-  failure and verify custom events remain disabled while product startup works,
-  then verify the runbook classifies the whole process's automatic rows as
-  potentially legacy-keyed rather than claiming collection stopped.
+- On a fresh install, verify native collection remains off before Dart starts;
+  debug/profile and Firebase Test Lab stay disabled; and an eligible release
+  configures consent before enabling collection. Verify no client path invokes
+  Firebase's global `setUserId`.
 
 ### Auth server
 
@@ -1716,11 +1715,10 @@ extensions only through versioned schema/model changes.
   promises accordingly, use current preference only for supported-client
   account-linked events and reporting eligibility, and never claim account-wide
   enforcement without minimum-version controls.
-- **Legacy global identity on upgrade:** clear it at earliest post-Firebase
-  bootstrap before custom sources and keep the migration for the raw-retention
-  window. Automatic events before a successful reset—or for the whole process
-  when reset fails—remain restricted legacy raw data and are never represented
-  as fully preventable.
+- **Global identity boundary:** current clients never assign Firebase's global
+  `user_id`; authenticated product events carry only the custom HMAC `user_key`.
+  Historical deletion support remains in the privacy pipeline without adding a
+  client migration.
 - **Offline upload after deletion:** permanent source/control tombstones,
   flattened anti-join, and daily upstream resweeps prevent durable reporting and
   repeatedly delete newly discovered keyed installs; the response remains
@@ -1759,9 +1757,9 @@ The work is complete when:
   first-message success path with a pseudonymous custom `user_key`, immediately
   honors installation-local disable/re-enable semantics, preserves pending
   disable/enable sync across logout/restart, bounds preference operations,
-  defers the first same-generation message while preference is unknown, clears
-  legacy global identity before custom sources, and never claims to control
-  legacy or automatic events; duplicate delivery cannot change activation.
+  defers the first same-generation message while preference is unknown, never
+  assigns Firebase's global identity, and never claims to control legacy or
+  automatic events; duplicate delivery cannot change activation.
 - The same release reports typed versus voice-assisted successful submissions
   and content-free transcription completion, reports bounded account-less login
   attempt outcomes without account/attempt identity, and derives every screen
