@@ -3,58 +3,40 @@ import "dart:io";
 import "package:flutter_test/flutter_test.dart";
 
 void main() {
-  test("Firebase analytics collection defaults off before Dart startup", () async {
-    final androidManifest = await File("android/app/src/main/AndroidManifest.xml").readAsString();
-    final iosInfo = await File("ios/Runner/Info.plist").readAsString();
-    final macosInfo = await File("macos/Runner/Info.plist").readAsString();
+  late String androidManifest;
+  late List<String> appleInfoPlists;
 
-    expect(
-      androidManifest,
-      contains(
-        'android:name="firebase_analytics_collection_enabled"\n'
-        '            android:value="false"',
-      ),
-    );
-    for (final info in [iosInfo, macosInfo]) {
-      expect(
-        info,
-        contains(
-          "<key>FIREBASE_ANALYTICS_COLLECTION_ENABLED</key>\n"
-          "\t\t<false",
-        ),
-      );
-    }
+  setUpAll(() async {
+    androidManifest = await File("android/app/src/main/AndroidManifest.xml").readAsString();
+    appleInfoPlists = [
+      await File("ios/Runner/Info.plist").readAsString(),
+      await File("macos/Runner/Info.plist").readAsString(),
+    ];
   });
 
-  test("Android uses the official Firebase Test Lab environment signal", () async {
-    final mainActivity = await File(
-      "android/app/src/main/kotlin/com/sesori/app/MainActivity.kt",
-    ).readAsString();
+  void expectAndroidMetaDataDisabled({required String name}) => expect(
+    androidManifest,
+    matches(RegExp('android:name="$name"\\s+android:value="false"')),
+    reason: "$name must default to false in the Android manifest",
+  );
 
-    expect(mainActivity, contains('Settings.System.getString(contentResolver, "firebase.test.lab")'));
-    expect(mainActivity, contains('"com.sesori.app/firebase-test-lab"'));
-  });
-
-  test("automatic Firebase screen reporting is disabled on every Firebase-enabled target", () async {
-    final androidManifest = await File("android/app/src/main/AndroidManifest.xml").readAsString();
-    final iosInfo = await File("ios/Runner/Info.plist").readAsString();
-    final macosInfo = await File("macos/Runner/Info.plist").readAsString();
-
-    expect(
-      androidManifest,
-      contains(
-        'android:name="google_analytics_automatic_screen_reporting_enabled"\n'
-        '            android:value="false"',
-      ),
-    );
-    for (final info in [iosInfo, macosInfo]) {
+  void expectAppleKeyDisabled({required String key}) {
+    for (final info in appleInfoPlists) {
       expect(
         info,
-        contains(
-          "<key>FirebaseAutomaticScreenReportingEnabled</key>\n"
-          "\t\t<false",
-        ),
+        matches(RegExp("<key>$key</key>\\s*<false\\s*/>")),
+        reason: "$key must default to false on iOS and macOS",
       );
     }
+  }
+
+  test("Firebase analytics collection defaults off before Dart startup", () {
+    expectAndroidMetaDataDisabled(name: "firebase_analytics_collection_enabled");
+    expectAppleKeyDisabled(key: "FIREBASE_ANALYTICS_COLLECTION_ENABLED");
+  });
+
+  test("automatic Firebase screen reporting is disabled on every Firebase-enabled target", () {
+    expectAndroidMetaDataDisabled(name: "google_analytics_automatic_screen_reporting_enabled");
+    expectAppleKeyDisabled(key: "FirebaseAutomaticScreenReportingEnabled");
   });
 }

@@ -2,20 +2,14 @@ import "package:firebase_analytics/firebase_analytics.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 class const FirebaseAnalyticsIdentityMigration({required final FirebaseAnalytics _analytics}) {
-  Future<AnalyticsRuntimeCapability> clearLegacyIdentity({
-    required AnalyticsRuntimeDisabledReason? disabledReasonAfterSuccess,
-  }) async {
+  /// Clears the legacy Firebase user ID, reporting whether the clear is confirmed.
+  Future<bool> clearLegacyIdentity() async {
     try {
       await _analytics.setUserId(id: null);
-      final reason = disabledReasonAfterSuccess;
-      return reason == null
-          ? const AnalyticsRuntimeCapability.enabled()
-          : AnalyticsRuntimeCapability.disabled(reason: reason);
+      return true;
     } on Object catch (error, stackTrace) {
       logw("Failed to clear legacy Firebase analytics identity", error, stackTrace);
-      return const AnalyticsRuntimeCapability.disabled(
-        reason: AnalyticsRuntimeDisabledReason.identitySafetyPreconditionFailed,
-      );
+      return false;
     }
   }
 }

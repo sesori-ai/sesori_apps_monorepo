@@ -4,8 +4,11 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "firebase_analytics_identity_migration.dart";
 
 class const FirebaseAnalyticsStartup({required final FirebaseAnalytics _analytics}) {
+  /// Configures the Firebase analytics SDK for this process and reports the
+  /// resulting runtime capability. [ineligibilityReason] states why this
+  /// process must not report, or is null when it may.
   Future<AnalyticsRuntimeCapability> configure({
-    required AnalyticsRuntimeDisabledReason? disabledReasonAfterSuccess,
+    required AnalyticsRuntimeDisabledReason? ineligibilityReason,
   }) async {
     try {
       // Native configuration defaults collection off, and this also suspends an
@@ -18,10 +21,17 @@ class const FirebaseAnalyticsStartup({required final FirebaseAnalytics _analytic
       );
     }
 
-    final identityCapability = await FirebaseAnalyticsIdentityMigration(
+    final identityCleared = await FirebaseAnalyticsIdentityMigration(
       analytics: _analytics,
-    ).clearLegacyIdentity(disabledReasonAfterSuccess: disabledReasonAfterSuccess);
-    if (identityCapability is AnalyticsRuntimeDisabled) return identityCapability;
+    ).clearLegacyIdentity();
+    if (!identityCleared) {
+      return const AnalyticsRuntimeCapability.disabled(
+        reason: AnalyticsRuntimeDisabledReason.identitySafetyPreconditionFailed,
+      );
+    }
+    if (ineligibilityReason case final reason?) {
+      return AnalyticsRuntimeCapability.disabled(reason: reason);
+    }
 
     try {
       await _analytics.setConsent(
@@ -34,7 +44,7 @@ class const FirebaseAnalyticsStartup({required final FirebaseAnalytics _analytic
         functionalityStorageConsentGranted: true,
       );
       await _analytics.setAnalyticsCollectionEnabled(true);
-      return identityCapability;
+      return const AnalyticsRuntimeCapability.enabled();
     } on Object catch (error, stackTrace) {
       logw("Failed to enable Firebase analytics collection", error, stackTrace);
       return const AnalyticsRuntimeCapability.disabled(

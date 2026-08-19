@@ -1,7 +1,6 @@
 import "package:firebase_analytics/firebase_analytics.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/platform/firebase_analytics_identity_migration.dart";
 
 class MockFirebaseAnalytics() extends Mock implements FirebaseAnalytics;
@@ -16,50 +15,18 @@ void main() {
     when(() => analytics.setUserId(id: null)).thenAnswer((_) async {});
   });
 
-  test("returns enabled capability after clearing the legacy identity", () async {
-    final capability = await migration.clearLegacyIdentity(
-      disabledReasonAfterSuccess: null,
-    );
-
-    expect(capability, isA<AnalyticsRuntimeEnabled>());
+  test("confirms the clear when Firebase accepts it", () async {
+    expect(await migration.clearLegacyIdentity(), isTrue);
     verify(() => analytics.setUserId(id: null)).called(1);
     verifyNoMoreInteractions(analytics);
   });
 
-  test("preserves the requested disabled capability after a successful clear", () async {
-    final capability = await migration.clearLegacyIdentity(
-      disabledReasonAfterSuccess: AnalyticsRuntimeDisabledReason.debugOrProfile,
-    );
-
-    expect(
-      capability,
-      isA<AnalyticsRuntimeDisabled>().having(
-        (value) => value.reason,
-        "reason",
-        AnalyticsRuntimeDisabledReason.debugOrProfile,
-      ),
-    );
-    verify(() => analytics.setUserId(id: null)).called(1);
-    verifyNoMoreInteractions(analytics);
-  });
-
-  test("returns legacy-clear-failed capability when Firebase rejects the clear", () async {
+  test("reports an unconfirmed clear when Firebase rejects it", () async {
     when(
       () => analytics.setUserId(id: null),
     ).thenAnswer((_) async => throw StateError("clear failed"));
 
-    final capability = await migration.clearLegacyIdentity(
-      disabledReasonAfterSuccess: null,
-    );
-
-    expect(
-      capability,
-      isA<AnalyticsRuntimeDisabled>().having(
-        (value) => value.reason,
-        "reason",
-        AnalyticsRuntimeDisabledReason.identitySafetyPreconditionFailed,
-      ),
-    );
+    expect(await migration.clearLegacyIdentity(), isFalse);
     verify(() => analytics.setUserId(id: null)).called(1);
     verifyNoMoreInteractions(analytics);
   });

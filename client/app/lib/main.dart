@@ -29,17 +29,10 @@ import "l10n/app_localizations.dart";
 @pragma("vm:entry-point")
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  final capability =
-      await FirebaseAnalyticsIdentityMigration(
-        analytics: FirebaseAnalytics.instance,
-      ).clearLegacyIdentity(
-        disabledReasonAfterSuccess: kReleaseMode ? null : AnalyticsRuntimeDisabledReason.debugOrProfile,
-      );
-  if (capability case AnalyticsRuntimeDisabled(
-    reason: AnalyticsRuntimeDisabledReason.identitySafetyPreconditionFailed,
-  )) {
-    return;
-  }
+  // The background isolate reports nothing itself; it only has to make sure a
+  // legacy user ID left by an older app version cannot ride along on any event
+  // the messaging SDK emits from this process.
+  await FirebaseAnalyticsIdentityMigration(analytics: FirebaseAnalytics.instance).clearLegacyIdentity();
 }
 
 void _configureFirebaseSdk({
@@ -172,22 +165,27 @@ Future<AnalyticsRuntimeCapability> _createAnalyticsRuntimeCapability({
   required bool shouldInitializeFirebase,
   required bool supportsFirebaseAnalytics,
 }) async {
-  if (!shouldInitializeFirebase || !supportsFirebaseAnalytics) {
-    return const AnalyticsRuntimeCapability.disabled(
-      reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
-    );
+  final capability = !shouldInitializeFirebase || !supportsFirebaseAnalytics
+      ? const AnalyticsRuntimeCapability.disabled(
+          reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
+        )
+      : await FirebaseAnalyticsStartup(analytics: FirebaseAnalytics.instance).configure(
+          ineligibilityReason: await _analyticsIneligibilityReason(),
+        );
+  if (capability case AnalyticsRuntimeDisabled(:final reason)) {
+    logi("Firebase analytics runtime disabled (${reason.name})");
   }
+  return capability;
+}
 
-  final disabledReason = !kReleaseMode
-      ? AnalyticsRuntimeDisabledReason.debugOrProfile
-      : switch (await const FirebaseTestLabEnvironment().detect()) {
-          FirebaseTestLabEnvironmentStatus.notRunning => null,
-          FirebaseTestLabEnvironmentStatus.running => AnalyticsRuntimeDisabledReason.automatedTestEnvironment,
-          FirebaseTestLabEnvironmentStatus.unknown => AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
-        };
-  return await FirebaseAnalyticsStartup(analytics: FirebaseAnalytics.instance).configure(
-    disabledReasonAfterSuccess: disabledReason,
-  );
+/// Why this process must not report analytics, or null when it may.
+Future<AnalyticsRuntimeDisabledReason?> _analyticsIneligibilityReason() async {
+  if (!kReleaseMode) return AnalyticsRuntimeDisabledReason.debugOrProfile;
+  return switch (await const FirebaseTestLabEnvironment().detect()) {
+    FirebaseTestLabEnvironmentStatus.notRunning => null,
+    FirebaseTestLabEnvironmentStatus.running => AnalyticsRuntimeDisabledReason.automatedTestEnvironment,
+    FirebaseTestLabEnvironmentStatus.unknown => AnalyticsRuntimeDisabledReason.environmentDetectionFailed,
+  };
 }
 
 Future<void> startNotificationStartup({

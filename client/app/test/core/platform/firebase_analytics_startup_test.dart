@@ -29,7 +29,7 @@ void main() {
   });
 
   test("enables release collection only after suspension, identity clear, and consent", () async {
-    final capability = await startup.configure(disabledReasonAfterSuccess: null);
+    final capability = await startup.configure(ineligibilityReason: null);
 
     expect(capability, isA<AnalyticsRuntimeEnabled>());
     verifyInOrder([
@@ -54,7 +54,7 @@ void main() {
       AnalyticsRuntimeDisabledReason.debugOrProfile,
       AnalyticsRuntimeDisabledReason.automatedTestEnvironment,
     ]) {
-      final capability = await startup.configure(disabledReasonAfterSuccess: reason);
+      final capability = await startup.configure(ineligibilityReason: reason);
 
       expect(
         capability,
@@ -72,7 +72,7 @@ void main() {
       () => analytics.setAnalyticsCollectionEnabled(false),
     ).thenAnswer((_) async => throw StateError("suspend failed"));
 
-    final capability = await startup.configure(disabledReasonAfterSuccess: null);
+    final capability = await startup.configure(ineligibilityReason: null);
 
     expect(
       capability,
@@ -91,7 +91,7 @@ void main() {
       () => analytics.setUserId(id: null),
     ).thenAnswer((_) async => throw StateError("clear failed"));
 
-    final capability = await startup.configure(disabledReasonAfterSuccess: null);
+    final capability = await startup.configure(ineligibilityReason: null);
 
     expect(
       capability,
@@ -113,7 +113,7 @@ void main() {
       () => analytics.setAnalyticsCollectionEnabled(true),
     ).thenAnswer((_) async => throw StateError("enable failed"));
 
-    final capability = await startup.configure(disabledReasonAfterSuccess: null);
+    final capability = await startup.configure(ineligibilityReason: null);
 
     expect(
       capability,

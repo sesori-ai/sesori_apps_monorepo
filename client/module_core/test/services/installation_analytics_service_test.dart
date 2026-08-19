@@ -42,6 +42,7 @@ void main() {
     for (final reason in [
       AnalyticsRuntimeDisabledReason.debugOrProfile,
       AnalyticsRuntimeDisabledReason.automatedTestEnvironment,
+      AnalyticsRuntimeDisabledReason.environmentDetectionFailed,
       AnalyticsRuntimeDisabledReason.unsupportedPlatform,
       AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
       AnalyticsRuntimeDisabledReason.identitySafetyPreconditionFailed,
