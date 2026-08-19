@@ -1624,9 +1624,6 @@ class SessionDetailCubit(
               _stalePromptOptionsRefreshInFlight = true;
               try {
                 optionsRecovered = await _refreshStalePromptOptions();
-                if (!optionsRecovered) {
-                  _staleOptionsRecoveryAttemptedPromptIds.remove(submission.promptId);
-                }
               } finally {
                 _stalePromptOptionsRefreshInFlight = false;
               }

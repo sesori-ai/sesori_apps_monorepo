@@ -305,6 +305,73 @@ void main() {
       );
     });
 
+    test("does not restart stale-options recovery after forced refresh fails", () async {
+      final staleError = ApiError.nonSuccessCode(
+        errorCode: 409,
+        rawErrorString: jsonEncode(
+          const SendPromptErrorResponse(
+            code: SendPromptErrorCode.staleSessionOptions,
+            message: "unsupported Claude agent",
+          ).toJson(),
+        ),
+      );
+      when(
+        () => mockSessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "claude",
+          mode: SessionOptionsRequestMode.forceRefresh,
+        ),
+      ).thenAnswer((_) async => const SessionOptionsRepositoryRefreshFailedUnavailable());
+      var sendCount = 0;
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: const [],
+          agent: any(named: "agent"),
+          model: null,
+          variant: null,
+          command: null,
+        ),
+      ).thenAnswer((_) async {
+        sendCount++;
+        return ApiResponse.error(staleError);
+      });
+      final cubit = await createLoadedCubit(
+        agents: const [
+          AgentInfo(name: "Default", description: "Default", model: null, mode: AgentMode.primary),
+        ],
+        promptDefaults: const SessionPromptDefaults(agent: "Default", model: null),
+      );
+
+      await cubit.sendMessage(
+        text: "first",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      );
+      await cubit.sendMessage(
+        text: "second",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(sendCount, 2);
+      verify(
+        () => mockSessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "claude",
+          mode: SessionOptionsRequestMode.forceRefresh,
+        ),
+      ).called(1);
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.queuedMessages.map((submission) => submission.text), ["first", "second"]);
+      expect(state.sendingSubmission, isNull);
+    });
+
     test("replaces the queue from the SSE event and drops the accepted local copy", () async {
       final sendCompleter = Completer<ApiResponse<void>>();
       when(
