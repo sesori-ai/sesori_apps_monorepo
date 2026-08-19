@@ -14,15 +14,29 @@ final class const ClaudeBackendCatalog({
 final class const ClaudeBackendCatalogRepository() {
   static const String providerId = "anthropic";
 
+  /// Claude's own catalog entry that resolves to whichever model and effort the
+  /// CLI configuration currently prefers. It is dropped rather than surfaced:
+  /// a picker entry named "Default" tells the user nothing about what will run.
+  static const String _cliDefaultModelId = "default";
+
+  /// Sesori's default selection, named explicitly in place of [_cliDefaultModelId].
+  static const String _defaultModelIdPrefix = "opus";
+  static const ClaudeEffortLevel _defaultEffort = ClaudeEffortLevel.high;
+
   ClaudeBackendCatalog map({required Map<String, Object?> handshake}) {
     final dto = ClaudeBackendCatalogDto.fromJson(handshake);
     final models = [
       for (final model in dto.models) ?_model(model),
     ];
-    final defaultModelId = models.any((model) => model.id == "default") ? "default" : models.firstOrNull?.id;
-    final agentModel = defaultModelId == null
+    final defaultModel =
+        models.where((model) => model.id.startsWith(_defaultModelIdPrefix)).firstOrNull ?? models.firstOrNull;
+    final agentModel = defaultModel == null
         ? null
-        : PluginAgentModel(modelID: defaultModelId, providerID: providerId, variant: null);
+        : PluginAgentModel(
+            modelID: defaultModel.id,
+            providerID: providerId,
+            variant: defaultModel.variants.contains(_defaultEffort.wireValue) ? _defaultEffort.wireValue : null,
+          );
 
     return ClaudeBackendCatalog(
       agents: List.unmodifiable([
@@ -44,7 +58,7 @@ final class const ClaudeBackendCatalogRepository() {
                   name: "Anthropic",
                   authType: PluginProviderAuthType.oauth,
                   models: models,
-                  defaultModelID: defaultModelId,
+                  defaultModelID: defaultModel?.id,
                 ),
               ],
       ),
@@ -56,7 +70,7 @@ final class const ClaudeBackendCatalogRepository() {
 
   PluginModel? _model(ClaudeModelDto dto) {
     final id = dto.value?.trim();
-    if (id == null || id.isEmpty) return null;
+    if (id == null || id.isEmpty || id == _cliDefaultModelId) return null;
     final displayName = dto.displayName?.trim();
     final resolvedModel = dto.resolvedModel?.trim();
     final variants = dto.supportsEffort ?? false

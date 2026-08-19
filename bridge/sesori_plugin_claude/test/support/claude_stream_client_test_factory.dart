@@ -104,6 +104,14 @@ Map<String, Object?> get sampleHandshake => {
       "supportedEffortLevels": ["low", "medium", "high", "xhigh", "max"],
     },
     {
+      "value": "opus[1m]",
+      "resolvedModel": "test-model-large",
+      "displayName": "Opus (1M context)",
+      "description": "Best for everyday tasks",
+      "supportsEffort": true,
+      "supportedEffortLevels": ["low", "medium", "high", "xhigh", "max"],
+    },
+    {
       "value": "small",
       "resolvedModel": "test-model-small",
       "displayName": "Small",
