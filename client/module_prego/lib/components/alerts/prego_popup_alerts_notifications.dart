@@ -266,14 +266,18 @@ final class PregoPopupAlertPresenter._({
   }
 
   /// Captures an explicit overlay for callers outside any route's context,
-  /// such as app-wide listeners driven by backend events.
+  /// such as app-wide listeners driven by backend events. The alert clears
+  /// the top bar and a visible banner through the published root top-bar
+  /// geometry, falling back to the plain top-bar inset when no Prego scaffold
+  /// is mounted.
   static PregoPopupAlertPresenter fromOverlayState(OverlayState overlay) {
     return PregoPopupAlertPresenter._(
       overlay: overlay,
-      topInset: pregoTopBarInsetOf(
-        context: overlay.context,
-        fallbackTopPadding: MediaQuery.paddingOf(overlay.context).top,
-      ),
+      topInset: pregoRootTopBarInsetFor(overlay) ??
+          pregoTopBarInsetOf(
+            context: overlay.context,
+            fallbackTopPadding: MediaQuery.paddingOf(overlay.context).top,
+          ),
     );
   }
 

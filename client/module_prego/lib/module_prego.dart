@@ -23,7 +23,8 @@ export 'components/navigation/prego_glass_scaffold.dart';
 export 'components/navigation/prego_nav_leading_title.dart';
 export 'components/navigation/prego_nav_subtitle.dart';
 export 'components/navigation/prego_nav_title.dart';
-export 'components/navigation/prego_top_bar_inset.dart';
+export 'components/navigation/prego_top_bar_inset.dart'
+    show PregoTopBarInsetBuilder, PregoTopBarInsetScope, pregoTopBarInsetOf;
 export 'components/navigation/prego_top_navigation.dart';
 export 'components/navigation/prego_top_navigation_sheets.dart';
 export 'components/surfaces/prego_bottom_sheet.dart';
