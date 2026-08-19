@@ -314,6 +314,12 @@ void main() {
           PluginMessagePartType.text,
         ]),
       );
+      final finalizedReasoning = parts.indexWhere(
+        (part) => part.type == PluginMessagePartType.reasoning && part.text == "Thinking",
+      );
+      final tool = parts.indexWhere((part) => part.type == PluginMessagePartType.tool);
+      expect(finalizedReasoning, isNonNegative);
+      expect(finalizedReasoning, lessThan(tool));
       expect(parts.where((part) => part.type == PluginMessagePartType.tool).single.state?.output, "tool output");
       final image = parts.where((part) => part.type == PluginMessagePartType.file).single.attachment!;
       expect(image, isA<PluginMessageAttachmentInlineImage>());

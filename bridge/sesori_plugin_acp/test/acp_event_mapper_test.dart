@@ -103,6 +103,45 @@ void main() {
       expect(mapper.finalizeTurn(sessionId: "s1"), isEmpty);
     });
 
+    test("tool activity finalizes active reasoning before the turn ends", () {
+      mapper.beginTurn("s1");
+      mapper.map(
+        update({
+          "sessionUpdate": "agent_thought_chunk",
+          "content": {"type": "text", "text": "Inspecting workflows"},
+        }),
+      );
+
+      final toolEvents = mapper.map(
+        update({
+          "sessionUpdate": "tool_call",
+          "toolCallId": "tool-1",
+          "kind": "search",
+          "status": "pending",
+        }),
+      );
+
+      final parts = toolEvents.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
+      expect(parts, hasLength(2));
+      expect(parts.first.type, PluginMessagePartType.reasoning);
+      expect(parts.first.text, "Inspecting workflows");
+      expect(parts.last.type, PluginMessagePartType.tool);
+
+      final updateEvents = mapper.map(
+        update({
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "tool-1",
+          "status": "completed",
+        }),
+      );
+      expect(
+        updateEvents.whereType<BridgeSseMessagePartUpdated>().where(
+          (event) => event.part.type == PluginMessagePartType.reasoning,
+        ),
+        isEmpty,
+      );
+    });
+
     test("forgetSession drops pending text snapshots", () {
       mapper.beginTurn("s1");
       mapper.map(

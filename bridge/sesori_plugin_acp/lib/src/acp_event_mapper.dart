@@ -345,7 +345,10 @@ class AcpEventMapper({
 
     switch (update["sessionUpdate"] as String?) {
       case "agent_message_chunk":
-        return _assistantContentChunk(sessionId: sessionId, update: update);
+        return _afterReasoning(
+          sessionId: sessionId,
+          events: _assistantContentChunk(sessionId: sessionId, update: update),
+        );
       case "agent_thought_chunk":
         return _textChunk(
           sessionId: sessionId,
@@ -360,9 +363,15 @@ class AcpEventMapper({
         // is reconstructed separately by AcpReplayCollector.
         return const [];
       case "tool_call":
-        return _toolCall(sessionId: sessionId, update: update);
+        return _afterReasoning(
+          sessionId: sessionId,
+          events: _toolCall(sessionId: sessionId, update: update),
+        );
       case "tool_call_update":
-        return _toolCallUpdate(sessionId: sessionId, update: update);
+        return _afterReasoning(
+          sessionId: sessionId,
+          events: _toolCallUpdate(sessionId: sessionId, update: update),
+        );
       case "plan":
         return [BridgeSseTodoUpdated(sessionID: sessionId)];
       case "available_commands_update":
@@ -408,6 +417,38 @@ class AcpEventMapper({
     // session "variant", driven by the plugin, not a message event), and any
     // future standard variants the mobile UI has no renderer for.
     return const [];
+  }
+
+  List<BridgeSseEvent> _afterReasoning({
+    required String sessionId,
+    required List<BridgeSseEvent> events,
+  }) {
+    if (events.isEmpty) return events;
+    return [..._finalizeActiveReasoning(sessionId: sessionId), ...events];
+  }
+
+  List<BridgeSseEvent> _finalizeActiveReasoning({required String sessionId}) {
+    final accumulators = _textPartAccumulators[sessionId];
+    if (accumulators == null) return const [];
+
+    final events = <BridgeSseEvent>[];
+    for (final accumulator in accumulators.values) {
+      if (accumulator.type != PluginMessagePartType.reasoning || !accumulator.isStreaming) continue;
+      accumulator.isStreaming = false;
+      events.add(
+        BridgeSseMessagePartUpdated(
+          part: _part(
+            partId: accumulator.partId,
+            messageId: accumulator.messageId,
+            sessionId: sessionId,
+            type: accumulator.type,
+            text: accumulator.text.toString(),
+            attachment: null,
+          ),
+        ),
+      );
+    }
+    return events;
   }
 
   /// Hook for non-`session/update` notifications (harness extensions such as
@@ -667,6 +708,7 @@ class AcpEventMapper({
       ),
     );
     accumulator.text.write(delta);
+    accumulator.isStreaming = true;
   }
 
   ({String messageId, bool hasAcpMessageId}) _chunkIdentity({
@@ -1062,6 +1104,7 @@ class _TextPartAccumulator({
     required final PluginMessagePartType type,
   }) {
   final StringBuffer text = StringBuffer();
+  bool isStreaming = false;
 }
 
 /// The last-rendered state of one live tool call, so a partial

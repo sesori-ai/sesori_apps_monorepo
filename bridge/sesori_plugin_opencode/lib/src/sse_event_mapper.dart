@@ -4,6 +4,8 @@ import "assistant_message_mapper.dart";
 import "message_part_mapper.dart";
 import "models/openapi/assistant_message.g.dart";
 import "models/openapi/message.g.dart";
+import "models/openapi/reasoning_part.g.dart";
+import "models/openapi/session_status.g.dart";
 import "models/openapi/user_message.g.dart";
 import "models/sse_event_data.g.dart";
 import "question_info_mapper.dart";
@@ -11,10 +13,12 @@ import "question_info_mapper.dart";
 /// Maps OpenCode SSE events and message parts to plugin interface types.
 ///
 /// Extracted from [OpenCodePlugin] to isolate the mapping concern.
-/// This class is stateless — all methods are pure transformations.
+/// Also retains active reasoning deltas until OpenCode emits an explicit final
+/// snapshot or another output phase proves that reasoning has ended.
 class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = const AssistantMessageMapper()}) {
   final MessagePartMapper _messagePartMapper = const MessagePartMapper();
   final QuestionInfoMapper _questionInfoMapper = const QuestionInfoMapper();
+  final Map<String, Map<String, _StreamingReasoningPart>> _reasoningBySession = {};
 
   /// Narrows a union's `Object? toJson()` result to the JSON map the bridge
   /// model carries — without a null-assertion (`!`). Known variants always
@@ -47,14 +51,130 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
     return _asMap(pluginMessage.toJson());
   }
 
-  /// Maps an [SseEventData] to a [BridgeSseEvent], or null if the event
-  /// type has no plugin representation.
+  /// Maps an [SseEventData] to zero or more [BridgeSseEvent]s.
   ///
   /// [displaySessionId] is the already-resolved root session for permission/
   /// question events (see [OpenCodePlugin._displaySessionIdForEvent]); it is
   /// null for all other event types. Kept as a passed-in value so this mapper
-  /// stays a pure, dependency-free transformation.
-  BridgeSseEvent? map(SseEventData event, {String? displaySessionId}) {
+  /// stays dependency-free.
+  List<BridgeSseEvent> map(SseEventData event, {String? displaySessionId}) {
+    final events = _updateReasoning(event);
+    final mapped = _mapOne(event, displaySessionId: displaySessionId);
+    if (mapped != null) events.add(mapped);
+    return events;
+  }
+
+  List<BridgeSseEvent> _updateReasoning(SseEventData event) {
+    switch (event) {
+      case SseMessagePartUpdated(:final ReasoningPart part):
+        if (part.time.end != null) {
+          _removeReasoningPart(sessionId: part.sessionID, partId: part.id);
+          return <BridgeSseEvent>[];
+        }
+        final finalized = _finalizeActiveReasoning(
+          sessionId: part.sessionID,
+          exceptPartId: part.id,
+          removeAfter: false,
+        );
+        _trackReasoningPart(part);
+        return finalized;
+      case SseMessagePartUpdated(:final part):
+        final sessionId = _asMap(part.toJson())["sessionID"] as String?;
+        return sessionId == null
+            ? <BridgeSseEvent>[]
+            : _finalizeActiveReasoning(
+                sessionId: sessionId,
+                exceptPartId: null,
+                removeAfter: false,
+              );
+      case SseMessagePartDelta(:final sessionID, :final partID, :final field, :final delta):
+        if (field == "text") {
+          final tracked = _reasoningBySession[sessionID]?[partID];
+          if (tracked != null) {
+            tracked.text.write(delta);
+            tracked.isStreaming = true;
+          }
+        }
+        return <BridgeSseEvent>[];
+      case SseMessagePartRemoved(:final sessionID, :final partID):
+        _removeReasoningPart(sessionId: sessionID, partId: partID);
+        return <BridgeSseEvent>[];
+      case SseMessageRemoved(:final sessionID, :final messageID):
+        final tracked = _reasoningBySession[sessionID];
+        tracked?.removeWhere((_, reasoning) => reasoning.part.messageID == messageID);
+        if (tracked?.isEmpty ?? false) _reasoningBySession.remove(sessionID);
+        return <BridgeSseEvent>[];
+      case SseSessionIdle(:final sessionID) || SseSessionStatus(:final sessionID, status: SessionStatusIdle()):
+        return _finalizeActiveReasoning(
+          sessionId: sessionID,
+          exceptPartId: null,
+          removeAfter: true,
+        );
+      case SseSessionError(:final sessionID):
+        if (sessionID == null) return <BridgeSseEvent>[];
+        return _finalizeActiveReasoning(
+          sessionId: sessionID,
+          exceptPartId: null,
+          removeAfter: true,
+        );
+      case SseSessionDeleted(:final info):
+        _reasoningBySession.remove(info.id);
+        return <BridgeSseEvent>[];
+      case SseGlobalDisposed():
+        _reasoningBySession.clear();
+        return <BridgeSseEvent>[];
+      default:
+        return <BridgeSseEvent>[];
+    }
+  }
+
+  void _trackReasoningPart(ReasoningPart part) {
+    final mapped = _messagePartMapper.mapPart(part);
+    final tracked = (_reasoningBySession[part.sessionID] ??= {})[part.id];
+    if (tracked == null) {
+      _reasoningBySession[part.sessionID]![part.id] = _StreamingReasoningPart(
+        part: mapped,
+        text: StringBuffer(part.text),
+        isStreaming: part.text.isNotEmpty,
+      );
+      return;
+    }
+    tracked.part = mapped;
+    if (part.text.isNotEmpty) {
+      tracked.text = StringBuffer(part.text);
+      tracked.isStreaming = true;
+    }
+  }
+
+  List<BridgeSseEvent> _finalizeActiveReasoning({
+    required String sessionId,
+    required String? exceptPartId,
+    required bool removeAfter,
+  }) {
+    final tracked = _reasoningBySession[sessionId];
+    if (tracked == null) return <BridgeSseEvent>[];
+
+    final events = <BridgeSseEvent>[];
+    for (final entry in tracked.entries) {
+      if (entry.key == exceptPartId || !entry.value.isStreaming) continue;
+      entry.value.isStreaming = false;
+      events.add(
+        BridgeSseMessagePartUpdated(
+          part: entry.value.part.copyWith(text: entry.value.text.toString()),
+        ),
+      );
+    }
+    if (removeAfter) _reasoningBySession.remove(sessionId);
+    return events;
+  }
+
+  void _removeReasoningPart({required String sessionId, required String partId}) {
+    final tracked = _reasoningBySession[sessionId];
+    tracked?.remove(partId);
+    if (tracked?.isEmpty ?? false) _reasoningBySession.remove(sessionId);
+  }
+
+  BridgeSseEvent? _mapOne(SseEventData event, {required String? displaySessionId}) {
     return switch (event) {
       SseServerConnected() => const BridgeSseServerConnected(),
       SseServerHeartbeat() => const BridgeSseServerHeartbeat(),
@@ -170,3 +290,9 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
     };
   }
 }
+
+class _StreamingReasoningPart({
+  required var PluginMessagePart part,
+  required var StringBuffer text,
+  required var bool isStreaming,
+});
