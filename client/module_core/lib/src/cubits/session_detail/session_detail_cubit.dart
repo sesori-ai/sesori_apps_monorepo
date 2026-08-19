@@ -1572,11 +1572,13 @@ class SessionDetailCubit(
       _promptQueue.removeByPromptId(prompt.id);
     }
     for (final message in snapshot.messages) {
-      // A bare envelope cannot render; releasing on it would blank the row
-      // until its first part arrives — same gate as the live event path.
-      if (!message.hasRenderableUserContent) continue;
       if (message.info case MessageUser(promptId: final promptId?)) {
+        // The snapshot holding the message at all proves the bridge owns the
+        // prompt, so it must never be settled as absent — but a bare envelope
+        // cannot render, and releasing the local copy on it would blank the
+        // row until its first part arrives (same gate as the live path).
         owned.add(promptId);
+        if (!message.hasRenderableUserContent) continue;
         _promptQueue.removeByPromptId(promptId);
       }
     }
