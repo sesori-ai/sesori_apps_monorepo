@@ -593,26 +593,28 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 
 ### Step 19/21
 
-- Step 18 merged as PR #967. Added official Pi and Oh My Pi light/dark SVG
-  artwork to the client brand catalog and stable `Pi` / `Oh My Pi` display-name
-  cases; unknown plugin ids retain the existing raw-id and generic-plug fallback.
+- Step 18 merged as PR #967. Added official Pi light/dark SVG artwork and Oh My
+  Pi's shared light/dark gradient mark to the client brand catalog, with stable
+  `Pi` / `Oh My Pi` display-name cases; unknown plugin ids retain the existing
+  raw-id and generic-plug fallback.
 - Expanded README guidance for managed install and authoritative `--pi-bin` /
   `--omp-bin` overrides, inherited Pi/OMP profiles, local-only provider login,
   OMP's standard-ACP feature boundary, and the unsupported concurrent terminal
-  handoff. Backend headline and feature copy no longer enumerate a fixed set of
-  harnesses.
+  handoff. The headline is scalable while intro, Bridge, and feature copy list
+  and link every supported assistant for discoverability.
 - Updated the plugin lifecycle regression contract for both brand identities.
   No obsolete client state, assets, or copy paths became removable beyond the
   replaced fixed-harness wording.
 - Verification after rebasing onto the Step 18 merge: module_prego fatal
-  analysis and all 209 tests pass; mobile app fatal analysis passes; both new
-  upstream README links return HTTP 200;
+  analysis and all 209 tests pass; mobile app fatal analysis passes; all six
+  linked assistant sites return HTTP 200; the gradient OMP mark renders in the
+  iOS harness picker;
   `git diff --check $(git merge-base origin/main HEAD)..HEAD` passes.
 - User-visible impact is limited to Pi/OMP branding and documentation. No
   database, persisted-data, wire-contract, or runtime behavior change.
 - Product diff excluding this tracker evidence, measured with
   `git diff --numstat $(git merge-base origin/main HEAD)..HEAD -- .
-  ':(exclude).plan/active/pi-harness/TRACKER.md'`: +145/-7 = 152 changed
+  ':(exclude).plan/active/pi-harness/TRACKER.md'`: +122/-7 = 129 changed
   lines; generated lines: 0. This is well below the 500-900 estimate because
   Step 18 already absorbed the shared activation/notification prerequisites;
   this step reused the existing brand catalog and needed only localized assets,
