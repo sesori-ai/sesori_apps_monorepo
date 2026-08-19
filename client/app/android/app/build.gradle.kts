@@ -72,7 +72,8 @@ android {
     println("Flutter Version Name: ${flutter.versionName}")
 
     namespace = "com.sesori.app"
-    compileSdk = 37
+    // flutter_secure_storage 11.0.0 requires Android API 37 or newer.
+    compileSdk = maxOf(flutter.compileSdkVersion, 37)
     ndkVersion = flutter.ndkVersion
 
     buildFeatures {
