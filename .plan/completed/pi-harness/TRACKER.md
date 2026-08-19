@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan slug:** `pi-harness`
-- **Implementation base:** current `origin/main` with Step 19 merged
-- **Series state:** Step 20/21 open as PR #979; Step 21 local
-- **Current step:** 20/21, integration verification in review
+- **Implementation base:** current `origin/main` with Step 20 merged
+- **Series state:** Step 21/21 retirement in progress
+- **Current step:** 21/21, retire the completed plan
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
@@ -27,7 +27,7 @@
 - **Step 18 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/967
 - **Step 19 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/973
 - **Step 20 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/979
-- **Next action:** monitor Step 20 PR, then retire the plan in Step 21
+- **Next action:** raise and monitor the Step 21 retirement PR
 
 ## Locked Decisions
 
@@ -73,8 +73,8 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | Merged as PR #963 |
 | [x] | 18/21 | `⚙️ [pi-harness] feat(bridge): register Pi and OMP [step 18/21]` | 800-1,200 (over-estimate) | Merged as PR #967 |
 | [x] | 19/21 | `🌿 [pi-harness] feat(client): add Pi and OMP branding and guidance [step 19/21]` | 500-900 (over-estimate) | Merged as PR #973 |
-| [ ] | 20/21 | `⚙️ [pi-harness] test(harness): verify Pi and OMP integration [step 20/21]` | 300-700 | Open as PR #979 |
-| [ ] | 21/21 | `🌱 [pi-harness] docs: retire the Pi and OMP harness plan [step 21/21]` | 50-200 | Not started |
+| [x] | 20/21 | `⚙️ [pi-harness] test(harness): verify Pi and OMP integration [step 20/21]` | 300-700 | Merged as PR #979 |
+| [ ] | 21/21 | `🌱 [pi-harness] docs: retire the Pi and OMP harness plan [step 21/21]` | 50-200 | In progress |
 
 ## Working Rules
 
@@ -623,7 +623,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   this step reused the existing brand catalog and needed only localized assets,
   mappings, tests, and guidance. The original budget was an over-estimate.
 
-### Step 20/21 (in progress)
+### Step 20/21
 
 - Source-run bridge slot 1 authenticated, registered, and paired with the
   dedicated `sesori-dev-1` iOS simulator. Pi used PATH `0.84.2`; OMP installed
@@ -666,6 +666,15 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   changed lines, below the 300-700 estimate because most verification produced
   only redacted evidence; generated lines: 0.
 - `git diff --check "$base"..HEAD` passes.
+
+### Step 21/21
+
+- Confirmed Steps 1-20 merged and the tracker plus redacted Pi/OMP E2E evidence
+  are complete.
+- Moved `.plan/active/pi-harness/` to `.plan/completed/pi-harness/` without
+  changing the retained plan or protocol evidence.
+- `git diff --check` passes. This retirement is documentation-only, so no
+  Dart/Flutter suites were run.
 
 ## Findings And Plan Deltas
 
