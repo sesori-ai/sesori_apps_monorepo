@@ -70,6 +70,17 @@ void main() {
     );
 
     blocTest<SseToastCubit, SseToastState>(
+      "normalizes a whitespace-only title to null when the message carries the text",
+      build: buildCubit,
+      act: (cubit) => events.add(
+        SseEvent(data: const SesoriSseEvent.tuiToastShow(title: "  ", message: "Run /login", variant: "warning")),
+      ),
+      expect: () => const [
+        SseToastState.show(sequence: 1, title: null, message: "Run /login", variant: SseToastVariant.warning),
+      ],
+    );
+
+    blocTest<SseToastCubit, SseToastState>(
       "drops toasts with no renderable text and non-toast events",
       build: buildCubit,
       act: (cubit) {

@@ -26,13 +26,14 @@ class SseToastCubit(final ConnectionService _connectionService) extends Cubit<Ss
     if (event.data case SesoriTuiToastShow(:final title, :final message, :final variant)) {
       final trimmedTitle = title?.trim();
       final trimmedMessage = message?.trim();
-      final text = trimmedMessage == null || trimmedMessage.isEmpty ? trimmedTitle : trimmedMessage;
+      final normalizedTitle = trimmedTitle == null || trimmedTitle.isEmpty ? null : trimmedTitle;
+      final text = trimmedMessage == null || trimmedMessage.isEmpty ? normalizedTitle : trimmedMessage;
       if (text == null || text.isEmpty) return;
       if (isClosed) return;
       emit(
         SseToastState.show(
           sequence: ++_sequence,
-          title: trimmedMessage == null || trimmedMessage.isEmpty ? null : trimmedTitle,
+          title: trimmedMessage == null || trimmedMessage.isEmpty ? null : normalizedTitle,
           message: text,
           variant: SseToastVariant.parse(variant),
         ),
