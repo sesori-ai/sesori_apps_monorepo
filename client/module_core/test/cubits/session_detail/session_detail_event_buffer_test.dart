@@ -168,6 +168,64 @@ void main() {
       expect(state.agent, "build");
     });
 
+    test("a live error updates assistant model attribution", () async {
+      final mockLoadService = MockSessionDetailLoadService();
+      when(
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer(
+        (_) async => const SessionDetailLoadResult.loaded(
+          snapshot: SessionDetailSnapshot(
+            bridgeQueuedPrompts: [],
+            projectId: "project-1",
+            pluginId: "opencode",
+            supportsPromptAttachments: false,
+            messages: [],
+            olderMessagesCursor: null,
+            pendingQuestions: [],
+            pendingPermissions: [],
+            childSessions: [],
+            statuses: {},
+            agents: [],
+            providerData: null,
+            commands: [],
+            canonicalSessionTitle: null,
+            promptDefaults: null,
+            isRootSession: true,
+            isArchived: false,
+          ),
+          isBridgeConnected: true,
+        ),
+      );
+      final cubit = createCubit(loadService: mockLoadService);
+      await _awaitLoaded(cubit);
+
+      sessionEvents.add(
+        const SesoriMessageUpdated(
+          info: Message.error(
+            id: "msg-error",
+            sessionID: _sessionId,
+            agent: "build",
+            modelID: "test-model",
+            providerID: "sesori-local",
+            errorName: "ProviderError",
+            errorMessage: "request failed",
+            time: null,
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.agent, "build");
+      expect(
+        state.assistantAgentModel,
+        const AgentModel(providerID: "sesori-local", modelID: "test-model", variant: null),
+      );
+    });
+
     test("buffers global SSE events during loading and replays after loaded", () async {
       final mockLoadService = MockSessionDetailLoadService();
       final completer = Completer<SessionDetailLoadResult>();

@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan slug:** `pi-harness`
-- **Implementation base:** current `origin/main` with Step 15 merged
-- **Series state:** Step 18/21 ready to raise
-- **Current step:** 18/21, Pi and OMP registration implemented
+- **Implementation base:** current `origin/main` with Step 19 merged
+- **Series state:** Step 20/21 open as PR #979; Step 21 local
+- **Current step:** 20/21, integration verification in review
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
@@ -24,7 +24,10 @@
 - **Step 15 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/920
 - **Step 16 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/925
 - **Step 17 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/963
-- **Next action:** raise Step 18 PR and monitor it
+- **Step 18 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/967
+- **Step 19 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/973
+- **Step 20 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/979
+- **Next action:** monitor Step 20 PR, then retire the plan in Step 21
 
 ## Locked Decisions
 
@@ -657,9 +660,12 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   module_prego, and mobile app; shared plain analysis also passes. Full suites:
   bridge app 2,675, Pi 255, OMP 51, ACP 242, shared 409, module_core 1,149,
   module_prego 209, and mobile app 998 tests.
-- Product diff excluding this tracker evidence is +187/-19 = 206 changed
-  lines, below the 300-700 estimate because most verification produced only
-  redacted evidence; generated lines: 0.
+- Product diff commands: `base=$(git merge-base origin/main HEAD)`, then
+  `git diff --numstat "$base"..HEAD -- . ':(exclude).plan/active/pi-harness/TRACKER.md'`.
+  They report +252/-24 = 276
+  changed lines, below the 300-700 estimate because most verification produced
+  only redacted evidence; generated lines: 0.
+- `git diff --check "$base"..HEAD` passes.
 
 ## Findings And Plan Deltas
 

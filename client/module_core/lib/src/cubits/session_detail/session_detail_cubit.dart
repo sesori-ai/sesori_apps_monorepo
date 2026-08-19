@@ -1118,18 +1118,20 @@ class SessionDetailCubit(
 
     if (isClosed) return;
 
-    if (message is MessageAssistant) {
-      final assistantAgentModel = message.providerID != null && message.modelID != null
+    if (message case
+        MessageAssistant(:final providerID, :final modelID, :final agent) ||
+        MessageError(:final providerID, :final modelID, :final agent)) {
+      final assistantAgentModel = providerID != null && modelID != null
           ? _resolveAgentModel(
               agents: current.availableAgents,
-              providerID: message.providerID,
-              modelID: message.modelID,
+              providerID: providerID,
+              modelID: modelID,
             )
           : current.assistantAgentModel;
       emit(
         current.copyWith(
           messages: messages,
-          agent: message.agent ?? current.agent,
+          agent: agent ?? current.agent,
           assistantAgentModel: assistantAgentModel,
         ),
       );
