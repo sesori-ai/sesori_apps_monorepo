@@ -7,7 +7,7 @@
 <h1 align="center">Run your AI coding agents from your phone.</h1>
 
 <p align="center">
-  Sesori is the mobile cockpit for coding sessions across every <a href="#supported-ai-assistants">supported AI assistant</a>.<br/>
+  Sesori is the mobile cockpit for your AI coding sessions — <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">OpenAI Codex CLI</a>, <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>, <a href="https://claude.com" target="_blank" rel="noopener">Claude Code</a>, <a href="https://github.com/badlogic/pi-mono" target="_blank" rel="noopener">Pi</a>, and <a href="https://github.com/can1357/oh-my-pi" target="_blank" rel="noopener">Oh My Pi</a>.<br/>
   Leave your laptop. Take the session.
 </p>
 
@@ -67,7 +67,7 @@ Requires iOS 15 or later, or Android 8.0 or later.
 
 ### 2. Install the Bridge CLI on your machine
 
-The Bridge is a small source-available command-line tool that connects the app to your AI coding assistants.
+The Bridge is a small source-available command-line tool that connects the app to your AI coding assistants ([OpenCode](https://opencode.ai), [OpenAI Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.com), [Claude Code](https://claude.com), [Pi](https://github.com/badlogic/pi-mono), and [Oh My Pi](https://github.com/can1357/oh-my-pi)).
 
 **macOS / Linux:**
 
@@ -99,7 +99,7 @@ Sign in with the **same account** on your phone and your machine. The two pair a
 
 | Feature | What it means |
 |---|---|
-| **Browse projects & sessions** | See your coding-assistant projects and every active session from your phone. |
+| **Browse projects & sessions** | See projects and active sessions from [OpenCode](https://opencode.ai), [OpenAI Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.com), [Claude Code](https://claude.com), [Pi](https://github.com/badlogic/pi-mono), and [Oh My Pi](https://github.com/can1357/oh-my-pi) on your phone. |
 | **Keep agents moving** | Answer questions, approve steps, and stop or restart tasks without returning to your desk. |
 | **Review code and PR status** | Read diffs and keep tabs on pull requests without opening your laptop. |
 | **Voice or type** | Talk to your assistant naturally or use the keyboard — whatever works in the moment. |
