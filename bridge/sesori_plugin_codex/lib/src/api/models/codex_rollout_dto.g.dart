@@ -111,7 +111,7 @@ CodexRolloutTaskCompleteEventDto _$CodexRolloutTaskCompleteEventDtoFromJson(
 CodexRolloutTurnAbortedEventDto _$CodexRolloutTurnAbortedEventDtoFromJson(
   Map json,
 ) => CodexRolloutTurnAbortedEventDto(
-  turnId: json['turn_id'] as String,
+  turnId: json['turn_id'] as String?,
   $type: json['type'] as String?,
 );
 

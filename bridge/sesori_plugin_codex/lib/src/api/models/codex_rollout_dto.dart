@@ -106,7 +106,7 @@ sealed class CodexRolloutEventDto with _$CodexRolloutEventDto {
 
   @FreezedUnionValue("turn_aborted")
   const factory turnAborted({
-    @JsonKey(name: "turn_id") required String turnId,
+    @JsonKey(name: "turn_id") required String? turnId,
   }) = CodexRolloutTurnAbortedEventDto;
 
   const factory unknown() = CodexRolloutUnknownEventDto;

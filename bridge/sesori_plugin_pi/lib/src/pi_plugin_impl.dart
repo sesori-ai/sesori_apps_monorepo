@@ -7,6 +7,7 @@ import "api/pi_process_factory.dart";
 import "api/pi_session_storage_api.dart";
 import "models/pi_notification_type.dart";
 import "models/pi_thinking_level.dart";
+import "pi_identity.dart";
 import "repositories/mappers/pi_history_mapper.dart";
 import "repositories/pi_backend_catalog_repository.dart";
 import "repositories/pi_session_catalog_repository.dart";
@@ -37,7 +38,8 @@ final class PiPlugin._({
 
   factory({
     required String binaryPath,
-    required Map<String, String> environment,
+    required Map<String, String> storageEnvironment,
+    required Map<String, String> processEnvironment,
     required PiProcessFactory processFactory,
     required CommandExecutor commandExecutor,
     required ServerClock clock,
@@ -50,7 +52,7 @@ final class PiPlugin._({
     required Duration editorTimeout,
     required int maxCatalogModels,
   }) {
-    final storage = PiSessionStorageApi(environment: environment);
+    final storage = PiSessionStorageApi(environment: storageEnvironment);
     final catalogRepository = PiSessionCatalogRepository(storageApi: storage);
     final identities = PiMessageIdentityTracker(pluginId: pluginId);
     final history = PiHistoryMapper(pluginId: pluginId);
@@ -58,7 +60,7 @@ final class PiPlugin._({
       storageApi: storage,
       historyStorageApi: PiSessionHistoryStorageApi(storageApi: storage),
       binaryPath: binaryPath,
-      environment: environment,
+      environment: processEnvironment,
       processFactory: processFactory,
       historyMapper: history,
       identityTracker: identities,
@@ -86,7 +88,7 @@ final class PiPlugin._({
     final catalogService = PiCatalogService(
       repository: PiBackendCatalogRepository(
         binaryPath: binaryPath,
-        environment: environment,
+        environment: processEnvironment,
         processFactory: processFactory,
         commandExecutor: commandExecutor,
         healthTimeout: healthTimeout,
@@ -107,7 +109,7 @@ final class PiPlugin._({
     );
   }
 
-  static const String pluginId = "pi";
+  static const String pluginId = PiPluginIdentity.id;
   final List<StreamSubscription<Object?>> _subscriptions = [];
   Future<void>? _disposeFuture;
   bool _disposed = false;
@@ -117,6 +119,10 @@ final class PiPlugin._({
 
   @override
   Stream<BridgeSseEvent> get events => _eventBuffer.stream;
+
+  Stream<PluginWorkState> get workState => _sessionService.workState;
+
+  PluginWorkState get currentWorkState => _sessionService.currentWorkState;
 
   @override
   String get launchDirectory => _launchDirectory;
@@ -363,6 +369,9 @@ final class PiPlugin._({
   @override
   Future<void> abortSession({required String sessionId}) => _sessionService.abort(sessionId: sessionId);
 
+  Future<Set<String>> interruptActiveWork({required Duration budget}) =>
+      _sessionService.interruptActiveWork(budget: budget);
+
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async =>
       (await _catalogService.requireOptions(projectId: projectId)).agents;
@@ -413,9 +422,13 @@ final class PiPlugin._({
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => _sessionService.getActiveSessionsSummary();
 
   @override
-  Future<void> dispose() => _disposeFuture ??= _dispose();
+  Future<void> dispose() => _disposeFuture ??= _dispose(shutdownBudget: Duration.zero);
 
-  Future<void> _dispose() async {
+  /// [shutdownBudget] `null` means the caller imposes no deadline.
+  Future<void> shutdown({required Duration? shutdownBudget}) =>
+      _disposeFuture ??= _dispose(shutdownBudget: shutdownBudget);
+
+  Future<void> _dispose({required Duration? shutdownBudget}) async {
     _disposed = true;
     Object? firstError;
     StackTrace? firstStack;
@@ -428,7 +441,7 @@ final class PiPlugin._({
       }
     }
 
-    await capture(_sessionService.dispose);
+    await capture(() => _sessionService.dispose(shutdownBudget: shutdownBudget));
     for (final subscription in _subscriptions) {
       await capture(subscription.cancel);
     }

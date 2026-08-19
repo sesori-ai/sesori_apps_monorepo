@@ -1065,7 +1065,7 @@ class CodexRolloutTurnAbortedEventDto implements CodexRolloutEventDto {
   const CodexRolloutTurnAbortedEventDto({@JsonKey(name: "turn_id") required this.turnId,  String? $type}): $type = $type ?? 'turn_aborted';
   factory CodexRolloutTurnAbortedEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutTurnAbortedEventDtoFromJson(json);
 
-@JsonKey(name: "turn_id") final  String turnId;
+@JsonKey(name: "turn_id") final  String? turnId;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -1101,7 +1101,7 @@ abstract mixin class $CodexRolloutTurnAbortedEventDtoCopyWith<$Res> implements $
   factory $CodexRolloutTurnAbortedEventDtoCopyWith(CodexRolloutTurnAbortedEventDto value, $Res Function(CodexRolloutTurnAbortedEventDto) _then) = _$CodexRolloutTurnAbortedEventDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: "turn_id") String turnId
+@JsonKey(name: "turn_id") String? turnId
 });
 
 
@@ -1118,10 +1118,10 @@ class _$CodexRolloutTurnAbortedEventDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexRolloutEventDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? turnId = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? turnId = freezed,}) {
   return _then(CodexRolloutTurnAbortedEventDto(
-turnId: null == turnId ? _self.turnId : turnId // ignore: cast_nullable_to_non_nullable
-as String,
+turnId: freezed == turnId ? _self.turnId : turnId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

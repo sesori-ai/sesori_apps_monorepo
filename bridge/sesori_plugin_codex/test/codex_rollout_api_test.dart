@@ -572,7 +572,7 @@ void main() {
         path: "sessions/2026/07/22/rollout-current.jsonl",
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
         cwd: "/repo/app",
-        cliVersion: "0.144.1",
+        cliVersion: "0.147.0",
         extraLines: [
           jsonEncode({
             "type": "response_item",
@@ -594,6 +594,13 @@ void main() {
               ],
             },
           }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "turn_aborted",
+              "reason": "interrupted",
+            },
+          }),
         ],
       );
 
@@ -605,12 +612,20 @@ void main() {
       }, level: LogLevel.verbose);
 
       expect(output, isNot(contains("malformed rollout")));
-      expect(header, hasLength(3));
-      expect(transcript, hasLength(3));
+      expect(header, hasLength(4));
+      expect(transcript, hasLength(4));
       expect(transcript[1], isA<CodexRolloutResponseItemLineDto>());
       expect(_responseItemPayload(line: transcript[1]), isA<CodexRolloutCustomToolCallOutputDto>());
       expect(transcript[2], isA<CodexRolloutResponseItemLineDto>());
       expect(_responseItemPayload(line: transcript[2]), isA<CodexRolloutReasoningDto>());
+      expect(
+        (transcript[3] as CodexRolloutEventMessageLineDto).payload,
+        isA<CodexRolloutTurnAbortedEventDto>().having(
+          (event) => event.turnId,
+          "turnId",
+          isNull,
+        ),
+      );
     });
 
     test("rollout content decodes closed text, image, and unknown variants", () {

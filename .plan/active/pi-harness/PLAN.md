@@ -122,16 +122,16 @@ OMP record. The load-bearing conclusions are:
   Linux glibc arm64/x64, Linux musl arm64/x64, and Windows x64. It publishes no
   Windows arm64 asset.
 
-Pi `v0.84.1` publishes these six checksummed assets:
+Pi `v0.84.2` publishes these six checksummed assets:
 
 | Target | Asset | SHA-256 |
 |---|---|---|
-| macOS arm64 | `pi-darwin-arm64.tar.gz` | `683c84261f40b870b4a7ccf181a48ad6ecd71853b0112d1bb617539530c6121d` |
-| macOS x64 | `pi-darwin-x64.tar.gz` | `f9060962b9cca5438d7fb97b60adae9c9302503d39b68d8aea8b891e2eb3e786` |
-| Linux arm64 | `pi-linux-arm64.tar.gz` | `ab95c058a4651b5ff5d8c878e524edfb776263c7a444f325505f247c056eecfc` |
-| Linux x64 | `pi-linux-x64.tar.gz` | `5634d7ebd18274b63af3371e942f342d74bea012389575c1d1ff15ce6ca80c2f` |
-| Windows arm64 | `pi-windows-arm64.zip` | `d118a96ddc5ba16b0b0ebf5fa4662d62f2a3682e0063d41ce3cf43d922f6eb66` |
-| Windows x64 | `pi-windows-x64.zip` | `20dd3a07cfe0bdc6919dfbc479c694798ec5ea88a9c60f6e12678cecae1e5dfa` |
+| macOS arm64 | `pi-darwin-arm64.tar.gz` | `c996e888b7f7dce44bcf24f69176ac646c44139d3916bd49a6b28e5a8c5e3a65` |
+| macOS x64 | `pi-darwin-x64.tar.gz` | `808cf02a93cd601d3ea05d47dc15c45074b120ac81decc8644cd3e40a35824e6` |
+| Linux arm64 | `pi-linux-arm64.tar.gz` | `d15372da9e4b4c5fef9fd15bed76d7f5f1720dd39fe7cde0ec62e5b65ad63ef1` |
+| Linux x64 | `pi-linux-x64.tar.gz` | `906fbe787fd225c4ac624fe7ebd5b1d55a60e0f5c7ef51795d231564f9ee1c13` |
+| Windows arm64 | `pi-windows-arm64.zip` | `092e2b276e0066efcb3d860465591c2e32ea48ee90395d34ceda0d84d8ff4470` |
+| Windows x64 | `pi-windows-x64.zip` | `741fc1ae1afecb573ac2888e011188ff446b3940f4aabe1583f60bf55be8a3d0` |
 
 Unix archives wrap `pi/`; Windows is flat. Managed install uses the shared
 package-directory layout and never invokes npm or Pi's installer scripts.
@@ -765,9 +765,8 @@ retention policy.
 ### Pi runtime and setup
 
 `PiRuntimeManifest` is a `packageDirectory` manifest with semantic versions.
-The implementation starts from the researched `v0.84.1` pin and refreshes to
-the latest stable release at Step 17 if a newer release exists and passes the
-same protocol/E2E checks.
+The PATH floor remains the researched `v0.84.1`; Step 17 pins managed installs
+to the protocol-verified latest stable `v0.84.2` release.
 
 - PATH executable: `pi`.
 - Managed entry: `pi` / `pi.exe`.

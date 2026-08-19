@@ -550,7 +550,8 @@ Release URL template:
 https://github.com/earendil-works/pi/releases/download/v<version>/<asset>
 ```
 
-`v0.84.1` assets and SHA-256 values are recorded in `PLAN.md`.
+`v0.84.2` assets and SHA-256 values are recorded in `PLAN.md`; the supported
+PATH floor remains `v0.84.1`.
 
 Archive layout:
 
@@ -573,9 +574,15 @@ Pi's own startup network features:
 Sesori owns managed version updates but preserves the latter two user/runtime
 choices.
 
+Step 17 refreshed this evidence against stable `v0.84.2` on macOS arm64. The
+official archive matched GitHub's published SHA-256, retained the complete
+package tree listed above, and reported `0.84.2`. An isolated launch with
+`PI_SKIP_VERSION_CHECK=1`, `--mode rpc --no-session --approve`, and a correlated
+`get_state` request returned a successful response. No credential, prompt, or
+transcript content was retained.
+
 ## 12. Verification Still Required During Implementation
 
-- Refresh all source facts against the exact managed pin selected in Step 17.
 - Capture redacted authenticated event ordering and model readiness for API-key,
   OAuth, and extension-defined providers.
 - Verify cross-platform custom roots and all six assets, including one live host

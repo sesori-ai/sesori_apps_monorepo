@@ -4,8 +4,8 @@
 
 - **Plan slug:** `pi-harness`
 - **Implementation base:** current `origin/main` with Step 15 merged
-- **Series state:** Step 16/21 in review as PR #925
-- **Current step:** 16/21, Pi plugin API in review
+- **Series state:** Step 17/21 in review as PR #963
+- **Current step:** 17/21, Pi managed runtime in review as PR #963
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
@@ -23,7 +23,8 @@
 - **Step 14 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/914
 - **Step 15 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/920
 - **Step 16 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/925
-- **Next action:** monitor Step 16 and begin Step 17 locally
+- **Step 17 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/963
+- **Next action:** monitor Step 17 and continue Step 18 locally
 
 ## Locked Decisions
 
@@ -65,8 +66,8 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 13/21 | `⚙️ [pi-harness] feat(pi): bridge extension dialogs [step 13/21]` | 900-1,300 | Merged as PR #910 |
 | [x] | 14/21 | `🚧 [pi-harness] feat(pi): manage session residency and turns [step 14/21]` | 1,200-1,500 (recorded overage) | Merged as PR #914 |
 | [x] | 15/21 | `⚙️ [pi-harness] feat(pi): expose models and commands [step 15/21]` | 900-1,300 | Merged as PR #920 |
-| [ ] | 16/21 | `🚧 [pi-harness] feat(pi): implement the plugin API [step 16/21]` | 1,100-1,500 (recorded slight overage) | In review as PR #925 |
-| [ ] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | Not started; runtime dependency merged |
+| [x] | 16/21 | `🚧 [pi-harness] feat(pi): implement the plugin API [step 16/21]` | 1,100-1,500 (recorded slight overage) | Merged as PR #925 |
+| [ ] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | In review as PR #963 |
 | [ ] | 18/21 | `⚙️ [pi-harness] feat(bridge): register Pi and OMP [step 18/21]` | 800-1,200 | Not started |
 | [ ] | 19/21 | `⚙️ [pi-harness] feat(client): add Pi and OMP branding and guidance [step 19/21]` | 500-900 | Not started |
 | [ ] | 20/21 | `⚙️ [pi-harness] test(harness): verify Pi and OMP integration [step 20/21]` | 300-700 | Not started |
@@ -521,6 +522,45 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   children would omit active nested forks from the only root summary.
 - Diff metrics stale after the user-directed cleanup slimming; refresh with
   final verification before merge.
+
+### Step 17/21
+
+- Added the semantic `PiRuntimeManifest` with a `0.84.1` PATH floor, exact
+  `0.84.2` managed pin, all six official package-directory archives, and
+  published SHA-256 digests.
+- Added read-only PATH/managed resolution, setup inspection, explicit binary
+  precedence, install capability and package installation, host-backed process
+  spawning, lazy lifecycle status, work-state forwarding, active interruption,
+  and ordered abort-safe shutdown. Pi remains unregistered until Step 18.
+- Pi process launches inherit the bridge process environment, add only
+  `PI_SKIP_VERSION_CHECK=1`, and retain `--approve` for every session and
+  no-session RPC launch. Storage receives the full host environment separately
+  so home and custom Pi roots remain discoverable without explicitly overriding
+  `HOME` in child processes.
+- Official `v0.84.2` macOS arm64 verification matched SHA-256
+  `c996e888b7f7dce44bcf24f69176ac646c44139d3916bd49a6b28e5a8c5e3a65`,
+  preserved the complete package tree, reported `0.84.2`, and returned a
+  successful correlated no-session RPC `get_state` response.
+- Initial architecture review rejected duplicate executable/identity ownership,
+  data-free spawn variants, explicit `pi` ambiguity, and discarded shutdown
+  budgets. The implementation now uses one plugin-local identity, manifest-owned
+  fallback resolution, an enum spawn outcome, nullable option defaults that keep
+  explicit `--pi-bin pi` authoritative, and caller-budgeted resident teardown.
+  The second review found that API-first disposal and an already-running idle
+  reap could still retain a longer timeout. Per user direction, the fix was
+  completed without a third review: API disposal now chooses immediate teardown,
+  lifecycle shutdown tightens in-flight RPC deadlines, and process ownership
+  retains active reaps until the caller budget has been applied.
+- Pi tests pass (255 tests) with fatal analysis after the post-merge sync with
+  Step 16 (prompt-id dedupe). Shared runtime tests pass (132 tests) with fatal
+  analysis; package-directory placement, checksum failure, abort, cleanup, and
+  superseded-version behavior remain covered there. Diff checks pass.
+- No user-visible, database, persisted-data, analytics, registered-plugin, or
+  client/bridge wire impact. The backend-runtime update skill and runtime
+  installation regression matrix now include Pi.
+- Diff before tracker/plan evidence: +1,378/-72 = 1,450 changed lines; generated
+  lines: 0; tests run: 387 automated package checks plus one live managed
+  artifact/version/RPC probe.
 
 ## Findings And Plan Deltas
 
