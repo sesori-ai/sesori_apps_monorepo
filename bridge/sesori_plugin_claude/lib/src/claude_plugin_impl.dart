@@ -568,8 +568,14 @@ final class ClaudePlugin({
       }
       if (message is ClaudeUserMessage &&
           promptId != null &&
-          _sessions.consumeQueuedPrompt(sessionId: event.sessionId, promptId: promptId)) {
-        _eventDispatcher.mapPromptReplay(message: message, promptId: promptId).forEach(_eventBuffer.add);
+          _sessions.queuedPrompts(sessionId: event.sessionId).any((entry) => entry.id == promptId)) {
+        final events = _eventDispatcher.mapPromptReplay(message: message, promptId: promptId);
+        // A replay that maps to nothing visible leaves the queued entry alone:
+        // releasing it without a replacement message would drop the prompt from
+        // the transcript. Turn settlement removes the entry instead.
+        if (events.isEmpty) return;
+        events.forEach(_eventBuffer.add);
+        _sessions.consumeQueuedPrompt(sessionId: event.sessionId, promptId: promptId);
         return;
       }
       _eventDispatcher.map(message: message).forEach(_eventBuffer.add);

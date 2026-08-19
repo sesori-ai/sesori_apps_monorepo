@@ -354,6 +354,40 @@ void main() {
       await subscription.cancel();
     });
 
+    test("a replay that maps to nothing keeps the queued prompt visible", () async {
+      await harness.createSession();
+      final first = harness.processes.single;
+      await waitForFrame(first, "user");
+      first.emit(_result());
+      await pump();
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      await harness.plugin.sendPrompt(
+        promptId: "prm_unmappable",
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "no uuid")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await _waitForUserText(first, "no uuid");
+      final written = first.written.lastWhere((frame) => frame["type"] == "user");
+      // An uuid-less replay produces no visible message; releasing the queued
+      // entry here would erase the prompt from the transcript entirely.
+      first.emit(_replayOf(written, uuid: ""));
+      await pump();
+      await pump();
+
+      expect(
+        events.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == "prm_unmappable"),
+        isEmpty,
+      );
+      final queued = await harness.plugin.getQueuedPrompts(sessionId: testSessionId);
+      expect(queued.single.id, "prm_unmappable");
+      await subscription.cancel();
+    });
+
     test("a late echo after abort is not stamped with the aborted prompt id", () async {
       await harness.createSession();
       final first = harness.processes.single;
