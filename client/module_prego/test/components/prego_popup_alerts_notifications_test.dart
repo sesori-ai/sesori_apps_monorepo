@@ -156,6 +156,28 @@ void main() {
     expect(find.text("Copied"), findsNothing);
   });
 
+  testWidgets("swiping up dismisses the alert before its duration elapses", (tester) async {
+    late PregoPopupAlertPresenter presenter;
+    await tester.pumpWidget(
+      _harness(
+        Builder(
+          builder: (context) {
+            presenter = PregoPopupAlertPresenter.of(context);
+            return const SizedBox.expand();
+          },
+        ),
+      ),
+    );
+
+    presenter.show(title: "Session deleted");
+    await tester.pumpAndSettle();
+
+    await tester.fling(find.text("Session deleted"), const Offset(0, -200), 1000);
+    await tester.pumpAndSettle();
+
+    expect(find.text("Session deleted"), findsNothing);
+  });
+
   testWidgets("sizes to short text and caps long text at 16 pixel side insets", (tester) async {
     late PregoPopupAlertPresenter presenter;
     await tester.pumpWidget(

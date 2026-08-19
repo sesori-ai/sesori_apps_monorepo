@@ -13,6 +13,8 @@ snackbars and render above the current route, below the top navigation bar.
 - A newly presented alert replaces the alert already visible on the same route.
 - Alerts dismiss after three seconds by default and dismiss immediately when
   the close button is tapped.
+- Swiping an alert upwards dismisses it, following the finger and completing on
+  release.
 - Alerts presented from asynchronous operations remain visible when the source
   row or modal is removed.
 - Alerts raised from a modal or full-screen image viewer render above that

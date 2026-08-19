@@ -400,6 +400,14 @@ class _PregoPopupAlertOverlayState() extends State<_PregoPopupAlertOverlay> with
     if (mounted) widget.onDismissed();
   }
 
+  /// [Dismissible] has already animated the card off-screen, so the entry must
+  /// leave the tree immediately instead of replaying the reverse transition.
+  void _dismissBySwipe() {
+    _dismissing = true;
+    _timer?.cancel();
+    widget.onDismissed();
+  }
+
   @override
   Widget build(BuildContext context) {
     return PositionedDirectional(
@@ -417,13 +425,19 @@ class _PregoPopupAlertOverlayState() extends State<_PregoPopupAlertOverlay> with
                   begin: const Offset(0, -0.12),
                   end: Offset.zero,
                 ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic)),
-                child: PregoPopupAlertsNotifications(
-                  title: widget.title,
-                  message: widget.message,
-                  variant: widget.variant,
-                  primaryAction: widget.primaryAction,
-                  secondaryAction: widget.secondaryAction,
-                  onClose: widget.showCloseButton ? _dismiss : null,
+                child: Dismissible(
+                  key: const ValueKey("prego_popup_alert"),
+                  direction: DismissDirection.up,
+                  resizeDuration: null,
+                  onDismissed: (_) => _dismissBySwipe(),
+                  child: PregoPopupAlertsNotifications(
+                    title: widget.title,
+                    message: widget.message,
+                    variant: widget.variant,
+                    primaryAction: widget.primaryAction,
+                    secondaryAction: widget.secondaryAction,
+                    onClose: widget.showCloseButton ? _dismiss : null,
+                  ),
                 ),
               ),
             ),
@@ -437,6 +451,9 @@ class const _CloseButton({required final VoidCallback onPressed}) extends Statel
   @override
   Widget build(BuildContext context) {
     return Semantics(
+      // The swipe-to-dismiss gesture handler above would otherwise merge this
+      // button into the alert's own semantics node.
+      container: true,
       button: true,
       label: "Close notification",
       child: PregoTappable(
