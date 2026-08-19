@@ -28,20 +28,28 @@ void main() {
               "resolvedModel": "claude-haiku-test",
               "displayName": "Haiku",
             },
+            {
+              "value": "opus[1m]",
+              "resolvedModel": "claude-opus-test",
+              "displayName": "Opus (1M context)",
+              "supportsEffort": true,
+              "supportedEffortLevels": ["low", "medium", "future", "high", "xhigh", "max"],
+            },
           ],
           "account": {"email": "private@example.com"},
         },
       );
 
       expect(catalog.agents.map((agent) => agent.name), ["Agent", "Plan"]);
-      expect(catalog.agents.every((agent) => agent.model?.modelID == "default"), isTrue);
+      expect(catalog.agents.every((agent) => agent.model?.modelID == "opus[1m]"), isTrue);
+      expect(catalog.agents.every((agent) => agent.model?.variant == "high"), isTrue);
       final provider = catalog.providers.providers.single;
       expect(provider, isA<PluginProviderAnthropic>());
       expect(provider.id, "anthropic");
-      expect(provider.defaultModelID, "default");
-      expect(provider.models.map((model) => model.id), ["default", "haiku"]);
-      expect(provider.models.first.variants, ["low", "medium", "high", "xhigh", "max"]);
-      expect(provider.models.last.variants, isEmpty);
+      expect(provider.defaultModelID, "opus[1m]");
+      expect(provider.models.map((model) => model.id), ["haiku", "opus[1m]"]);
+      expect(provider.models.first.variants, isEmpty);
+      expect(provider.models.last.variants, ["high", "low", "medium", "xhigh", "max"]);
       expect(
         catalog.commands,
         const [

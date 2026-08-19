@@ -13,6 +13,13 @@ variant, and worktree mode, and creating the session with its first input.
 - Claude's plugin-scoped discovery runs in its host-created state directory,
   never a selected project or the bridge process's launch directory. This keeps
   its global option probe on a valid, stable path when projects move or disappear.
+- Claude's catalog drops the CLI's own `default` model entry and names the
+  selection instead: Opus is the default model and `high` the default effort, so
+  every picker entry states what will actually run.
+- No picker offers an unnamed "Default" option. Plugins declare effort variants
+  default-first, and a model that offers variants always has one selected: the
+  agent's declared variant when valid, otherwise the first available. Selecting a
+  variant is therefore a switch between named levels, never a reset to unset.
 - Hermes Agent is a stock ACP v1 server: its option discovery uses the base
   single-agent synthesis (no model picker — the backend's configured model is
   authoritative), and it advertises image prompt capability so inline attachments

@@ -67,7 +67,7 @@ void main() {
         // With no config, rollout history, or live connection, Codex exposes
         // only Default because Plan requires a resolved model.
         final agents = await plugin.getAgents(projectId: "/repo/example");
-        expect(agents.map((agent) => agent.name), equals(["Default"]));
+        expect(agents.map((agent) => agent.name), equals(["Agent"]));
         expect(agents.every((agent) => agent.model == null), isTrue);
         expect(
           (await plugin.getProviders(projectId: "/repo/example")).providers,
@@ -142,9 +142,9 @@ void main() {
         );
 
         final agents = await plugin.getAgents(projectId: "/repo/example");
-        expect(agents.map((agent) => agent.name), equals(["Default", "Plan"]));
+        expect(agents.map((agent) => agent.name), equals(["Agent", "Plan"]));
         final agent = agents.first;
-        expect(agent.name, equals("Default"));
+        expect(agent.name, equals("Agent"));
         expect(agent.model?.modelID, equals("gpt-5.4-codex"));
         expect(agent.model?.providerID, equals("openai"));
         expect(agents.last.model, equals(agent.model));

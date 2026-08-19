@@ -140,19 +140,6 @@ void main() {
       expect(applied.permissionMode, ClaudePermissionMode.standard);
     });
 
-    test("resets the default model without discarding launch selections", () async {
-      final selected = service.selectModel(sessionId: testSessionId, modelId: "default");
-      final request = await _waitForControl(process, "set_model");
-      expect(_request(request), containsPair("model", null));
-      process.emitControlResponse(requestId: request["request_id"]! as String, payload: const {});
-      await selected;
-
-      final applied = processes.appliedSelection(sessionId: testSessionId)!;
-      expect(applied.model, isNull);
-      expect(applied.effort, ClaudeEffortLevel.low);
-      expect(applied.permissionMode, ClaudePermissionMode.standard);
-    });
-
     test("maps Plan to the control protocol and preserves model selection", () async {
       final selected = service.selectAgent(sessionId: testSessionId, agent: "Plan");
       final request = await _waitForControl(process, "set_permission_mode");

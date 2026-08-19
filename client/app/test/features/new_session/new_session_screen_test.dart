@@ -728,9 +728,7 @@ void main() {
     await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
 
-    // Tapping the variant pill opens a popup listing the Default option plus
-    // the model's variants.
-    expect(_pickerMenuItem("Default"), findsOneWidget);
+    // Tapping the variant pill opens a popup listing the model's variants.
     expect(_pickerMenuItem("xhigh"), findsOneWidget);
 
     await tester.tap(_pickerMenuItem("xhigh"));
@@ -903,7 +901,7 @@ void main() {
 
     expect(find.byIcon(Icons.smart_toy_outlined), findsNothing);
     expect(find.widgetWithText(PregoPickerButton, "Claude 3.5 Sonnet"), findsOneWidget);
-    expect(find.widgetWithText(PregoPickerButton, "Default"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
   });
 
   testWidgets("scrolls plugin and worktree options while keeping the composer pinned", (tester) async {
@@ -1472,7 +1470,7 @@ void main() {
     expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
   });
 
-  testWidgets("selecting Default clears the displayed variant", (tester) async {
+  testWidgets("selecting another variant updates the displayed variant", (tester) async {
     when(
       () => sessionService.listProviders(
         projectId: any(named: "projectId"),
@@ -1513,12 +1511,11 @@ void main() {
     await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
 
-    // Select Default (null variant).
-    await tester.tap(_pickerMenuItem("Default"));
+    // Select the model's other variant.
+    await tester.tap(_pickerMenuItem("low"));
     await tester.pumpAndSettle();
 
-    // The UI should now show "Default".
-    expect(find.widgetWithText(PregoPickerButton, "Default"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "low"), findsOneWidget);
     expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
   });
 

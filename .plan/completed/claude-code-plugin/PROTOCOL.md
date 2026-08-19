@@ -88,6 +88,7 @@ supervised child. Not yet probed; resolve before the descriptor lands.
 |---|---|---|
 | `system` / `init` | `session_id`, `model`, `permissionMode`, `capabilities`, `tools`, `slash_commands`, `agents`, `skills`, `plugins`, `mcp_servers`, `output_style`, `apiKeySource`, `claude_code_version`, `cwd`, `memory_paths`, `uuid` | init handshake, capability detection |
 | `system` / `status` | `status` (e.g. `"requesting"`) | work-state signal |
+| `tool_progress` | `tool_use_id`, `tool_name`, `parent_tool_use_id`, `elapsed_time_seconds`, optional task/subagent metadata | parsed progress signal; not surfaced to clients |
 | `rate_limit_event` | `rate_limit_info` = `{status, resetsAt, rateLimitType, overageStatus, overageDisabledReason, isUsingOverage}` | rate-limit surface |
 | `assistant` | `message` (full Anthropic message), `parent_tool_use_id`, `timestamp`, `request_id` | complete message envelope plus parts |
 | `user` | echoed message; carries `tool_result` blocks | tool completion, matched by `tool_use_id` |

@@ -5,7 +5,7 @@ enum CodexCollaborationMode({
   required final String? defaultReasoningEffort,
 }) {
   defaultMode(
-    agentName: "Default",
+    agentName: "Agent",
     wireValue: "default",
     description: "Executes tasks, making project changes when needed",
     defaultReasoningEffort: null,
@@ -24,6 +24,9 @@ enum CodexCollaborationMode({
       // expect normal execution. Remove this mapping when those app versions
       // are no longer supported.
       null => defaultMode,
+      "agent" => defaultMode,
+      // COMPATIBILITY 2026-08-19 (v1.7.0): This mode was named "Default" until
+      // it was renamed to "Agent". Remove once no supported app can send it.
       "default" => defaultMode,
       "plan" => plan,
       // COMPATIBILITY 2026-07-24 (v1.6.0): Earlier Codex plugins persisted

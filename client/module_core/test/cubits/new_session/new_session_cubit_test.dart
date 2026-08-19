@@ -1096,7 +1096,7 @@ void main() {
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
-        ).thenAnswer((_) async => ApiResponse.success(_providerResponseWithVariants(["xhigh"])));
+        ).thenAnswer((_) async => ApiResponse.success(_providerResponseWithVariants(["high", "xhigh"])));
         when(
           () => mockSessionService.createSessionWithMessage(
             attachments: const [],
@@ -1127,7 +1127,7 @@ void main() {
         isA<NewSessionIdle>().having(
           (state) => state.selectedAgentModel?.variant,
           "selectedAgentModel.variant",
-          isNull,
+          "high",
         ),
         isA<NewSessionIdle>().having(
           (state) => state.selectedAgentModel?.variant,
@@ -1168,7 +1168,7 @@ void main() {
             projectId: any(named: "projectId"),
             pluginId: any(named: "pluginId"),
           ),
-        ).thenAnswer((_) async => ApiResponse.success(_providerResponseWithVariants(["xhigh"])));
+        ).thenAnswer((_) async => ApiResponse.success(_providerResponseWithVariants(["high", "xhigh"])));
         when(
           () => mockSessionService.listAgents(
             projectId: any(named: "projectId"),
@@ -1205,7 +1205,7 @@ void main() {
         isA<NewSessionIdle>().having(
           (state) => state.selectedAgentModel?.variant,
           "initial selectedAgentModel.variant",
-          isNull,
+          "high",
         ),
         isA<NewSessionIdle>().having(
           (state) => state.selectedAgentModel?.variant,
@@ -1332,12 +1332,7 @@ void main() {
       ],
     );
 
-    test("selectModel preserves an explicit Default variant intent", () async {
-      selectionTracker.recordVariant(
-        projectId: "project-1",
-        pluginId: "plugin-1",
-        variant: const NewSessionDefaultVariantIntent(),
-      );
+    test("selectModel resolves the new model's first variant when the previous one is unavailable", () async {
       when(
         () => mockSessionService.listAgents(
           projectId: any(named: "projectId"),
@@ -1377,11 +1372,7 @@ void main() {
 
       expect(
         cubit.state.agentModelData?.agentModel,
-        const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: null),
-      );
-      expect(
-        selectionTracker.read(projectId: "project-1", pluginId: "plugin-1")?.variant,
-        isA<NewSessionDefaultVariantIntent>(),
+        const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
       );
     });
 
@@ -1432,7 +1423,7 @@ void main() {
       expect(cubit.state.agentModelData?.agent, "plan");
       expect(
         cubit.state.agentModelData?.agentModel,
-        const AgentModel(providerID: "openai", modelID: "gpt-4", variant: null),
+        const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
       );
       expect(
         selectionTracker.read(projectId: "project-1", pluginId: "plugin-1")?.model,
@@ -1443,7 +1434,7 @@ void main() {
     });
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "selectModel leaves provider-only model variant at Default",
+      "selectModel resolves a provider-only model to its first variant",
       skip: 2,
       build: () {
         when(
@@ -1504,85 +1495,13 @@ void main() {
             .having(
               (state) => state.selectedAgentModel,
               "selectedAgentModel",
-              const AgentModel(providerID: "openai", modelID: "gpt-5", variant: null),
+              const AgentModel(providerID: "openai", modelID: "gpt-5", variant: "provisional-effort"),
             ),
       ],
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "selectVariant updates selectedAgentModel variant",
-      skip: 2,
-      build: () {
-        when(
-          () => mockSessionService.listAgents(
-            projectId: any(named: "projectId"),
-            pluginId: any(named: "pluginId"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            const Agents(
-              agents: [
-                AgentInfo(
-                  name: "build",
-                  description: "Build",
-                  model: AgentModel(providerID: "openai", modelID: "gpt-4", variant: null),
-                  mode: AgentMode.primary,
-                ),
-              ],
-            ),
-          ),
-        );
-        when(
-          () => mockSessionService.listProviders(
-            projectId: any(named: "projectId"),
-            pluginId: any(named: "pluginId"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            const ProviderListResponse(
-              connectedOnly: false,
-              items: [
-                ProviderInfo(
-                  id: "openai",
-                  name: "OpenAI",
-                  defaultModelID: "gpt-4",
-                  models: {
-                    "gpt-4": ProviderModel(
-                      id: "gpt-4",
-                      providerID: "openai",
-                      name: "GPT-4",
-                      variants: ["fast", "slow"],
-                      family: null,
-                      releaseDate: null,
-                    ),
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        cubit.selectVariant(const SessionVariant(id: "fast"));
-      },
-      expect: () => [
-        isA<NewSessionIdle>().having(
-          (state) => state.selectedAgentModel?.variant,
-          "initial variant",
-          isNull,
-        ),
-        isA<NewSessionIdle>().having(
-          (state) => state.selectedAgentModel?.variant,
-          "variant",
-          "fast",
-        ),
-      ],
-    );
-
-    blocTest<NewSessionCubit, NewSessionState>(
-      "selectVariant to null clears selectedAgentModel variant",
+      "selectVariant switches selectedAgentModel to another available variant",
       skip: 2,
       build: () {
         when(
@@ -1637,7 +1556,7 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        cubit.selectVariant(null);
+        cubit.selectVariant(const SessionVariant(id: "slow"));
       },
       expect: () => [
         isA<NewSessionIdle>().having(
@@ -1648,7 +1567,7 @@ void main() {
         isA<NewSessionIdle>().having(
           (state) => state.selectedAgentModel?.variant,
           "variant",
-          isNull,
+          "slow",
         ),
       ],
     );
@@ -1780,7 +1699,7 @@ void main() {
         expect(saved?.model, isNull);
         expect(
           saved?.variant,
-          isA<NewSessionNamedVariantIntent>().having((variant) => variant.id, "id", "xhigh"),
+          isA<NewSessionVariantIntent>().having((variant) => variant.id, "id", "xhigh"),
         );
       },
     );
@@ -1903,7 +1822,7 @@ void main() {
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "drops a persisted variant the restored model no longer offers",
+      "replaces a persisted variant the restored model no longer offers",
       skip: 2,
       build: () {
         // Seed a model from a DIFFERENT provider than the computed default
@@ -1968,8 +1887,9 @@ void main() {
         isA<NewSessionIdle>().having(
           (state) => state.selectedAgentModel,
           "selectedAgentModel",
-          // Saved model restored; the no-longer-offered "legacy" variant dropped.
-          const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: null),
+          // Saved model restored; the no-longer-offered "legacy" variant falls
+          // back to the model's first available one.
+          const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "fast"),
         ),
       ],
     );
@@ -2101,7 +2021,7 @@ void main() {
         isA<NewSessionIdle>().having(
           (state) => state.selectedAgentModel,
           "selectedAgentModel",
-          const AgentModel(providerID: "openai", modelID: "gpt-4", variant: null),
+          const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
         ),
       ],
     );
@@ -2248,7 +2168,7 @@ void main() {
       expect(saved?.model?.modelId, "gpt-4");
       expect(
         saved?.variant,
-        isA<NewSessionNamedVariantIntent>().having((variant) => variant.id, "id", "high"),
+        isA<NewSessionVariantIntent>().having((variant) => variant.id, "id", "high"),
       );
     });
 
@@ -2299,7 +2219,7 @@ void main() {
       expect(saved?.model?.modelId, model.modelID);
       expect(
         saved?.variant,
-        isA<NewSessionNamedVariantIntent>().having((variant) => variant.id, "id", model.variant),
+        isA<NewSessionVariantIntent>().having((variant) => variant.id, "id", model.variant),
       );
     });
   });
@@ -2318,11 +2238,7 @@ NewSessionSelectionIntent _selectionIntentFromSnapshot({
             providerId: agentModel.providerID,
             modelId: agentModel.modelID,
           ),
-    variant: agentModel == null
-        ? null
-        : variant == null
-        ? const NewSessionDefaultVariantIntent()
-        : NewSessionNamedVariantIntent(id: variant),
+    variant: variant == null ? null : NewSessionVariantIntent(id: variant),
   );
 }
 

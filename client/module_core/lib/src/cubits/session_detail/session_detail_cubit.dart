@@ -1901,16 +1901,17 @@ class SessionDetailCubit(
     if (agentInfo == null) return;
     // A null model means this agent has no model preference of its own.
     final agentModel = agentInfo.model ?? current.selectedAgentModel;
+    final availableVariants = _deriveAvailableVariants(
+      providers: current.availableProviders,
+      model: agentModel,
+    );
 
     if (isClosed) return;
     emit(
       current.copyWith(
         selectedAgent: agent,
-        selectedAgentModel: agentModel,
-        availableVariants: _deriveAvailableVariants(
-          providers: current.availableProviders,
-          model: agentModel,
-        ),
+        selectedAgentModel: _withResolvedVariant(model: agentModel, availableVariants: availableVariants),
+        availableVariants: availableVariants,
       ),
     );
   }
@@ -1925,9 +1926,9 @@ class SessionDetailCubit(
       providers: current.availableProviders,
       model: newModel,
     );
-    final variant = previousVariant != null && availableVariants.any((v) => v.id == previousVariant)
+    final variant = availableVariants.any((v) => v.id == previousVariant)
         ? previousVariant
-        : null;
+        : availableVariants.firstOrNull?.id;
 
     final agentModel = _resolveAgentModel(
       agents: current.availableAgents,
@@ -1944,14 +1945,14 @@ class SessionDetailCubit(
     );
   }
 
-  void selectVariant(SessionVariant? variant) {
+  void selectVariant(SessionVariant variant) {
     final current = state;
     if (current is! SessionDetailLoaded) return;
     final agentModel = current.selectedAgentModel;
     if (agentModel == null) return;
 
     if (isClosed) return;
-    emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant?.id)));
+    emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant.id)));
   }
 
   void stageCommand(CommandInfo command) {
@@ -2112,11 +2113,25 @@ class SessionDetailCubit(
       availableProviders: providers,
       availableCommands: snapshot.commands,
       selectedAgent: defaultAgent,
-      selectedAgentModel: defaultAgentModel,
+      selectedAgentModel: _withResolvedVariant(
+        model: defaultAgentModel,
+        availableVariants: availableVariants,
+      ),
       stagedCommand: null,
       isRefreshing: false,
       availableVariants: availableVariants,
     );
+  }
+
+  /// A model that offers variants always runs at a named one. An unset variant
+  /// resolves to the first available, which plugins declare default-first.
+  AgentModel? _withResolvedVariant({
+    required AgentModel? model,
+    required List<SessionVariant> availableVariants,
+  }) {
+    if (model == null) return null;
+    if (availableVariants.any((variant) => variant.id == model.variant)) return model;
+    return model.copyWith(variant: availableVariants.firstOrNull?.id);
   }
 
   List<SessionVariant> _deriveAvailableVariants({

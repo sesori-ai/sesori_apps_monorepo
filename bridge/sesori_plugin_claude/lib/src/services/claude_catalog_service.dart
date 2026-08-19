@@ -94,16 +94,15 @@ final class ClaudeCatalogService({
     required String sessionId,
     required String modelId,
   }) async {
-    final isDefault = modelId == "default";
     await _processes.sendControlRequest(
       sessionId: sessionId,
       subtype: "set_model",
-      params: {"model": isDefault ? null : modelId},
+      params: {"model": modelId},
     );
     final applied = _processes.appliedSelection(sessionId: sessionId);
     _processes.recordAppliedSelection(
       sessionId: sessionId,
-      model: isDefault ? null : modelId,
+      model: modelId,
       effort: applied?.effort,
       permissionMode: applied?.permissionMode,
     );

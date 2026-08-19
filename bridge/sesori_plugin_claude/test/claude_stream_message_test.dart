@@ -238,6 +238,29 @@ void main() {
       expect(message.durationMs, 4500);
     });
 
+    test("reads top-level tool progress", () {
+      final message =
+          ClaudeStreamMessage.parse({
+                "type": "tool_progress",
+                "tool_use_id": "toolu_1",
+                "tool_name": "Bash",
+                "parent_tool_use_id": "toolu_parent",
+                "elapsed_time_seconds": 2.5,
+                "task_id": "task-1",
+                "heartbeat": true,
+                "subagent_type": "Explore",
+              })
+              as ClaudeToolProgressMessage;
+
+      expect(message.toolUseId, "toolu_1");
+      expect(message.toolName, "Bash");
+      expect(message.parentToolUseId, "toolu_parent");
+      expect(message.elapsedTimeSeconds, 2.5);
+      expect(message.taskId, "task-1");
+      expect(message.heartbeat, isTrue);
+      expect(message.subagentType, "Explore");
+    });
+
     test("reads hook start and hook output frames", () {
       final started =
           ClaudeStreamMessage.parse({

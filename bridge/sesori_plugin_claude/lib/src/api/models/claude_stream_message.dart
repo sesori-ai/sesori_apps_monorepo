@@ -76,6 +76,8 @@ sealed class const ClaudeStreamMessage({
           ),
           _ => ClaudeUnknownMessage(type: type, subtype: subtype, sessionId: sessionId, uuid: uuid, raw: json),
         };
+      case "tool_progress":
+        return ClaudeToolProgressMessage.fromJson(json, sessionId: sessionId, uuid: uuid);
       case "assistant":
         return ClaudeAssistantMessage.fromJson(json, sessionId: sessionId, uuid: uuid);
       case "user":
@@ -111,6 +113,10 @@ sealed class const ClaudeStreamMessage({
 String? _stringOrNull(Object? value) => value is String ? value : null;
 
 int? _intOrNull(Object? value) => value is num ? value.toInt() : null;
+
+double? _doubleOrNull(Object? value) => value is num ? value.toDouble() : null;
+
+bool? _boolOrNull(Object? value) => value is bool ? value : null;
 
 DateTime? _dateTimeOrNull(Object? value) => value is String ? DateTime.tryParse(value) : null;
 
@@ -218,6 +224,37 @@ final class const ClaudeTaskProgressMessage({
       raw: json,
     );
   }
+}
+
+/// `tool_progress` — periodic elapsed-time progress for a running tool call.
+final class const ClaudeToolProgressMessage({
+  required final String? toolUseId,
+  required final String? toolName,
+  required final String? parentToolUseId,
+  required final double? elapsedTimeSeconds,
+  required final String? taskId,
+  required final bool? heartbeat,
+  required final String? subagentType,
+  required super.sessionId,
+  required super.uuid,
+  required super.raw,
+}) extends ClaudeStreamMessage {
+  factory fromJson(
+    Map<String, Object?> json, {
+    required String? sessionId,
+    required String? uuid,
+  }) => ClaudeToolProgressMessage(
+    toolUseId: _stringOrNull(json["tool_use_id"]),
+    toolName: _stringOrNull(json["tool_name"]),
+    parentToolUseId: _stringOrNull(json["parent_tool_use_id"]),
+    elapsedTimeSeconds: _doubleOrNull(json["elapsed_time_seconds"]),
+    taskId: _stringOrNull(json["task_id"]),
+    heartbeat: _boolOrNull(json["heartbeat"]),
+    subagentType: _stringOrNull(json["subagent_type"]),
+    sessionId: sessionId,
+    uuid: uuid,
+    raw: json,
+  );
 }
 
 /// `system`/`hook_started` — a hook began running for a lifecycle event.

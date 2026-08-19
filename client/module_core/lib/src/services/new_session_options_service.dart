@@ -244,12 +244,10 @@ class NewSessionOptionsService({
     required NewSessionVariantIntent? variantIntent,
   }) {
     if (model == null || variantIntent == null) return model;
-    return switch (variantIntent) {
-      NewSessionDefaultVariantIntent() => model.copyWith(variant: null),
-      NewSessionNamedVariantIntent(:final id) => model.copyWith(
-        variant: availableVariants(providers: providers, model: model).any((variant) => variant.id == id) ? id : null,
-      ),
-    };
+    final id = variantIntent.id;
+    return availableVariants(providers: providers, model: model).any((variant) => variant.id == id)
+        ? model.copyWith(variant: id)
+        : model;
   }
 
   NewSessionOptionsData? selectAgent({
@@ -305,7 +303,7 @@ class NewSessionOptionsService({
         ? previousVariant
         : agentVariant != null && variants.any((variant) => variant.id == agentVariant)
         ? agentVariant
-        : null;
+        : variants.firstOrNull?.id;
     final selectedAgentModel = _applyVariantIntent(
       providers: options.providers,
       model: requested.copyWith(variant: selectedVariant),
@@ -325,19 +323,17 @@ class NewSessionOptionsService({
 
   NewSessionOptionsData? selectVariant({
     required NewSessionOptionsData options,
-    required SessionVariant? variant,
+    required SessionVariant variant,
   }) {
     final model = options.selectedAgentModel;
     if (model == null) return null;
-    if (variant != null && !options.availableVariants.any((available) => available.id == variant.id)) {
-      return null;
-    }
+    if (!options.availableVariants.any((available) => available.id == variant.id)) return null;
     return NewSessionOptionsData(
       agents: options.agents,
       providers: options.providers,
       commands: options.commands,
       selectedAgent: options.selectedAgent,
-      selectedAgentModel: model.copyWith(variant: variant?.id),
+      selectedAgentModel: model.copyWith(variant: variant.id),
       stagedCommand: options.stagedCommand,
       availableVariants: options.availableVariants,
     );
@@ -396,7 +392,7 @@ class NewSessionOptionsService({
     final variants = availableVariants(providers: providers, model: model);
     final variant = model.variant;
     return model.copyWith(
-      variant: variant != null && variants.any((available) => available.id == variant) ? variant : null,
+      variant: variants.any((available) => available.id == variant) ? variant : variants.firstOrNull?.id,
     );
   }
 
@@ -407,7 +403,10 @@ class NewSessionOptionsService({
         defaultModelID: provider.defaultModelID,
       );
       if (model != null) {
-        return AgentModel(providerID: provider.id, modelID: model.id, variant: null);
+        return _validatedModel(
+          providers: providers,
+          model: AgentModel(providerID: provider.id, modelID: model.id, variant: null),
+        );
       }
     }
     return null;
