@@ -50,6 +50,12 @@ class PermissionAutoApprovalService({
     if (_disposed || permissions.isEmpty || !_bridgeSettingsRepository.currentSettings.yolo) return permissions;
     final unresolved = <PendingPermission>[];
     for (final permission in permissions) {
+      // Re-read per item: disabling YOLO mid-snapshot makes approve() a no-op,
+      // and hiding the untouched remainder would leave it unanswerable.
+      if (_disposed || !_bridgeSettingsRepository.currentSettings.yolo) {
+        unresolved.add(permission);
+        continue;
+      }
       try {
         await approve(requestId: permission.id, sessionId: permission.sessionID);
       } on Object catch (error, stackTrace) {

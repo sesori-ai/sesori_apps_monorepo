@@ -196,6 +196,32 @@ void main() {
       expect(permissionRepository.requestIds, ["working"]);
     });
 
+    test("disabling yolo mid-snapshot keeps the remaining permissions visible", () async {
+      const first = PendingPermission(
+        id: "first",
+        sessionID: "session-one",
+        displaySessionId: null,
+        tool: "tool",
+        description: "first",
+      );
+      const second = PendingPermission(
+        id: "second",
+        sessionID: "session-one",
+        displaySessionId: null,
+        tool: "tool",
+        description: "second",
+      );
+      permissionRepository.onReply = ({required requestId, required sessionId, required reply}) async {
+        permissionRepository.requestIds.add(requestId);
+        await settingsRepository.updateYolo(enabled: false);
+      };
+
+      final unresolved = await autoApproval.resolveSnapshot(permissions: const [first, second]);
+
+      expect(permissionRepository.requestIds, ["first"]);
+      expect(unresolved.map((permission) => permission.id), ["second"]);
+    });
+
     test("the snapshot passes through untouched when yolo is off", () async {
       await settingsRepository.updateYolo(enabled: false);
       const permission = PendingPermission(
