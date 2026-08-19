@@ -141,7 +141,7 @@ For each pubspec.yaml below, read its `environment` section and update only the 
 | `client/app/pubspec.yaml` | ✅ | — | caret |
 | `client/module_auth/pubspec.yaml` | ✅ | — | caret |
 | `client/module_core/pubspec.yaml` | ✅ | — | caret |
-| `client/module_prego/pubspec.yaml` | ✅ | — | caret |
+| `client/module_prego/pubspec.yaml` | ✅ | ✅ | caret + range |
 | `client/module_desktop_core/pubspec.yaml` | ✅ | — | caret |
 | `client/design_catalog/pubspec.yaml` | ✅ | ✅ | caret + range |
 | `client/desktop/pubspec.yaml` | ✅ | — | caret |
