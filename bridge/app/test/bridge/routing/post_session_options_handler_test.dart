@@ -256,6 +256,12 @@ class _FakeSessionOptionsService() implements SessionOptionsService {
     return _complete();
   }
 
+  @override
+  Future<void> invalidateRejectedSelection({
+    required String pluginId,
+    required String projectId,
+  }) async {}
+
   Future<SessionOptionsOutcome> _complete() async {
     final failure = error;
     if (failure != null) throw failure;

@@ -15,6 +15,26 @@ enum _LegacyOptionsFailureSource() { agents, providers, commands }
 void main() {
   setUpAll(registerAllFallbackValues);
 
+  test("recognizes the structured stale prompt options error", () {
+    final error = ApiError.nonSuccessCode(
+      errorCode: 409,
+      rawErrorString: jsonEncode(
+        const SendPromptErrorResponse(
+          code: SendPromptErrorCode.staleSessionOptions,
+          message: "unsupported agent",
+        ).toJson(),
+      ),
+    );
+
+    expect(SessionRepository.isStalePromptOptionsError(error: error), isTrue);
+  });
+
+  test("does not classify legacy plain-text send failures as stale options", () {
+    final error = ApiError.nonSuccessCode(errorCode: 400, rawErrorString: "unsupported agent");
+
+    expect(SessionRepository.isStalePromptOptionsError(error: error), isFalse);
+  });
+
   test("session detail flows route through session api and repository", () async {
     final api = MockSessionApi();
     final repository = SessionRepository(api: api);

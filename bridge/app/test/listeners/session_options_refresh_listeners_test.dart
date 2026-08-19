@@ -211,6 +211,12 @@ class _FakeSessionOptionsService() implements SessionOptionsService {
       failure: SessionOptionsKnownRefreshFailure(),
     );
   }
+
+  @override
+  Future<void> invalidateRejectedSelection({
+    required String pluginId,
+    required String projectId,
+  }) async {}
 }
 
 class _FakePluginRuntime() implements PluginRuntime {

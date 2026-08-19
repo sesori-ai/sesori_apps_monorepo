@@ -472,6 +472,82 @@ void main() {
       );
     });
 
+    test("stale-send invalidation deletes the rejected row before client discovery", () async {
+      const key = SessionOptionsCacheKey.project(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+        projectPath: "/projects/one",
+      );
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/one"
+        ..captureResult = const SessionOptionsCaptureFailed()
+        ..put(
+          _entry(
+            key: key,
+            response: _response(marker: "rejected"),
+            capturedAt: now,
+          ),
+        );
+      final service = _service(repository: repository, now: now);
+
+      await service.invalidateRejectedSelection(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+      );
+
+      expect(repository.deletedKeys, [key]);
+      expect(repository.stored(key), isNull);
+      expect(repository.captureCalls, isEmpty);
+    });
+
+    test("stale-send invalidation fences in-flight and subsequent refreshes", () async {
+      const key = SessionOptionsCacheKey.project(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+        projectPath: "/projects/one",
+      );
+      final firstCapture = Completer<SessionOptionsCaptureResult>();
+      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/one";
+      repository.captureHandler = (_) => repository.captureCalls.length == 1
+          ? firstCapture.future
+          : Future.value(
+              _observed(
+                marker: "fresh",
+                completeness: PluginSessionOptionsCompleteness.complete,
+                generation: 7,
+              ),
+            );
+      final service = _service(repository: repository, now: now);
+
+      final staleRefresh = service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
+      while (repository.captureCalls.isEmpty) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      final invalidation = service.invalidateRejectedSelection(pluginId: "plugin-1", projectId: "project-1");
+      await Future<void>.delayed(Duration.zero);
+      final freshRefresh = service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
+      await Future<void>.delayed(Duration.zero);
+
+      expect(repository.captureCalls, hasLength(1));
+      expect(repository.deletedKeys, isEmpty);
+      firstCapture.complete(
+        _observed(
+          marker: "stale",
+          completeness: PluginSessionOptionsCompleteness.complete,
+          generation: 7,
+        ),
+      );
+
+      await staleRefresh;
+      await invalidation;
+      final freshOutcome = await freshRefresh;
+      expect(repository.deletedKeys, [key]);
+      expect(repository.captureCalls, hasLength(2));
+      expect(freshOutcome, isA<SessionOptionsAvailable>());
+      expect((freshOutcome as SessionOptionsAvailable).response, _response(marker: "fresh"));
+      expect(repository.stored(key)?.response, _response(marker: "fresh"));
+    });
+
     test("explicit thrown capture retains a privacy-safe typed cause", () async {
       final cause = StateError("private capture details");
       final causeStackTrace = StackTrace.current;

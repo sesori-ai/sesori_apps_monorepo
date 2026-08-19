@@ -56,6 +56,14 @@ class PromptSendQueue() {
     return true;
   }
 
+  /// Rewrites pending submissions in place while preserving FIFO order.
+  void replacePending({required QueuedSessionSubmission Function(QueuedSessionSubmission submission) update}) {
+    final replacements = _items.map(update).toList(growable: false);
+    _items
+      ..clear()
+      ..addAll(replacements);
+  }
+
   /// Remove a submission by index (user cancellation).
   /// Returns the removed submission, or `null` if the index is invalid.
   QueuedSessionSubmission? cancel(int index) {

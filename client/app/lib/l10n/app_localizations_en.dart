@@ -1027,6 +1027,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailSendingMessage => 'Sending';
 
   @override
+  String get sessionDetailPromptOptionsUpdated => 'Prompt options changed. Updated settings and retrying your message.';
+
+  @override
+  String get sessionDetailPromptOptionsRecoveryFailed =>
+      'Couldn’t apply updated prompt options. Your message remains queued.';
+
+  @override
   String get sessionDetailCancelQueued => 'Cancel';
 
   @override

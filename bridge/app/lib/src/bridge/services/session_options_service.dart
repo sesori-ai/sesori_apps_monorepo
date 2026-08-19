@@ -46,6 +46,7 @@ class SessionOptionsService({
 
   final Map<String, PluginSessionOptionsScope> _pluginScopes = Map<String, PluginSessionOptionsScope>.unmodifiable(pluginScopes);
   final Map<SessionOptionsCacheKey, _RefreshCoordinator> _refreshes = {};
+  final Map<SessionOptionsCacheKey, Future<void>> _invalidations = {};
 
   Future<SessionOptionsOutcome> loadDynamic({
     required String pluginId,
@@ -110,7 +111,25 @@ class SessionOptionsService({
   }) async {
     final resolved = await _resolve(pluginId: pluginId, projectId: projectId);
     if (resolved == null) return const SessionOptionsProjectNotFound();
-    return await _coalesce(
+    return await _refreshExplicitResolved(resolved: resolved);
+  }
+
+  /// Discards an options snapshot proven stale by a rejected send. The client
+  /// that receives the typed rejection then requests forced discovery; the
+  /// rejected snapshot cannot be retained if that discovery fails.
+  Future<void> invalidateRejectedSelection({
+    required String pluginId,
+    required String projectId,
+  }) async {
+    final resolved = await _resolve(pluginId: pluginId, projectId: projectId);
+    if (resolved == null) return;
+    await _serializeInvalidation(key: resolved.key);
+  }
+
+  Future<SessionOptionsOutcome> _refreshExplicitResolved({
+    required _ResolvedSessionOptions resolved,
+  }) {
+    return _coalesce(
       key: resolved.key,
       intent: _RefreshIntent.forced,
       generation: null,
@@ -517,6 +536,19 @@ class SessionOptionsService({
     required int? generation,
     required Future<SessionOptionsOutcome> Function() operation,
   }) {
+    final invalidation = _invalidations[key];
+    if (invalidation != null) {
+      return invalidation.then((_) {
+        if (identical(_invalidations[key], invalidation)) _invalidations.remove(key);
+        return _coalesce(
+          key: key,
+          intent: intent,
+          generation: generation,
+          operation: operation,
+        );
+      });
+    }
+
     final existing = _refreshes[key];
     if (existing != null) {
       final forcedTail = existing.forcedTail;
@@ -582,13 +614,41 @@ class SessionOptionsService({
     return running;
   }
 
+  Future<void> _serializeInvalidation({required SessionOptionsCacheKey key}) {
+    final priorInvalidation = _invalidations[key];
+    final priorRefresh = _refreshes[key]?.terminal;
+    Future<void> delete() => _repository.delete(key: key);
+    late final Future<void> invalidation;
+    if (priorInvalidation != null) {
+      invalidation = priorInvalidation.then(
+        (_) => delete(),
+        onError: (Object _, StackTrace _) => delete(),
+      );
+    } else if (priorRefresh != null) {
+      invalidation = priorRefresh.then(
+        (_) => delete(),
+        onError: (Object _, StackTrace _) => delete(),
+      );
+    } else {
+      invalidation = Future<void>.sync(delete);
+    }
+    _invalidations[key] = invalidation;
+
+    void remove() {
+      if (identical(_invalidations[key], invalidation)) _invalidations.remove(key);
+    }
+
+    unawaited(invalidation.then<void>((_) => remove(), onError: (Object _, StackTrace _) => remove()));
+    return invalidation;
+  }
+
   void _removeAfterCompletion({
     required SessionOptionsCacheKey key,
     required _RefreshCoordinator coordinator,
     required Future<SessionOptionsOutcome> future,
   }) {
     void remove() {
-      final terminal = coordinator.forcedTail ?? coordinator.reuseTail ?? coordinator.running;
+      final terminal = coordinator.terminal;
       if (identical(terminal, future) && identical(_refreshes[key], coordinator)) {
         _refreshes.remove(key);
       }
@@ -614,6 +674,8 @@ final class _RefreshCoordinator({
   Future<SessionOptionsOutcome>? reuseTail;
   int? reuseTailGeneration;
   Future<SessionOptionsOutcome>? forcedTail;
+
+  Future<SessionOptionsOutcome> get terminal => forcedTail ?? reuseTail ?? running;
 }
 
 sealed class const _CommitAttempt();

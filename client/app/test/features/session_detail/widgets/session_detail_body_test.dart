@@ -222,6 +222,7 @@ void main() {
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
     when(() => cubit.questionStream).thenAnswer((_) => const Stream.empty());
     when(() => cubit.permissionStream).thenAnswer((_) => const Stream.empty());
+    when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
     when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
     when(
       () => cubit.saveComposerDraft(draft: any(named: "draft")),
@@ -761,6 +762,24 @@ void main() {
     expect(
       tester.widget<UserMessageBubble>(find.byType(UserMessageBubble)).outlined,
       isTrue,
+    );
+  });
+
+  testWidgets("shows an alert when stale prompt options are refreshed automatically", (tester) async {
+    final notices = StreamController<SessionDetailNotice>.broadcast();
+    addTearDown(notices.close);
+    when(() => cubit.noticeStream).thenAnswer((_) => notices.stream);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    notices.add(SessionDetailNotice.promptOptionsUpdated);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(
+      find.text("Prompt options changed. Updated settings and retrying your message."),
+      findsOneWidget,
     );
   });
 

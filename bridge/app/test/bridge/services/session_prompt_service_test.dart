@@ -7,9 +7,12 @@ import "package:sesori_bridge/src/bridge/services/archived_session_validator.dar
 import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
+import "package:sesori_bridge/src/bridge/services/stale_session_prompt_options_exception.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/test_database.dart";
 import "../routing/routing_test_helpers.dart";
 
@@ -19,6 +22,7 @@ void main() {
     late AppDatabase db;
     late SessionRepository sessionRepository;
     late SessionOperationDispatcher dispatcher;
+    late FakeSessionOptionsService optionsService;
     late SessionPromptService service;
 
     setUp(() async {
@@ -32,10 +36,12 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
+      optionsService = FakeSessionOptionsService();
       service = SessionPromptService(
         sessionRepository: sessionRepository,
         dispatcher: dispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
+        sessionOptionsService: optionsService,
       );
       await sessionRepository.insertStoredSession(
         sessionId: "s1",
@@ -261,6 +267,33 @@ void main() {
 
       expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
       expect(plugin.lastSendCommand, isNull);
+    });
+
+    test("invalidates the options cache and rethrows when the plugin reports stale options", () async {
+      plugin.sendPromptError = const PluginStaleOptionsException("sendPrompt", message: "unsupported agent");
+
+      await expectLater(
+        service.sendPrompt(
+          promptId: "prompt-1",
+          sessionId: "s1",
+          parts: const [PromptPart.text(text: "Hello")],
+          variant: null,
+          agent: "removed-agent",
+          model: null,
+          command: null,
+        ),
+        throwsA(
+          isA<StaleSessionPromptOptionsException>().having(
+            (error) => error.cause,
+            "cause",
+            isA<PluginStaleOptionsException>(),
+          ),
+        ),
+      );
+
+      expect(optionsService.explicitInvalidations.single, (pluginId: "fake", projectId: "/repo"));
+      // The rejected selection is not persisted as the session's defaults.
+      expect((await db.sessionDao.getSession(sessionId: "s1"))!.lastAgent, isNull);
     });
   });
 }

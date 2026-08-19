@@ -48,6 +48,7 @@ export "src/persisted_session_cleanup_api.dart";
 export "src/plugin_api_exception.dart";
 export "src/plugin_operation_exception.dart";
 export "src/plugin_permission_reply.dart";
+export "src/plugin_stale_options_exception.dart";
 export "src/process/process_identity.dart";
 export "src/process/process_user.dart";
 export "src/process/server_clock.dart";

@@ -973,6 +973,10 @@ class SessionRepository({
     return (await _sessionDao.getSession(sessionId: sessionId))?.projectId;
   }
 
+  Future<String?> findPluginIdForSession({required String sessionId}) async {
+    return (await _sessionDao.getSession(sessionId: sessionId))?.pluginId;
+  }
+
   Future<void> notifySessionArchived({required String sessionId}) async {
     final binding = await _requireBinding(
       sessionId: sessionId,

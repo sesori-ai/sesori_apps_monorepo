@@ -160,6 +160,27 @@ void main() {
       await subscription.cancel();
     });
 
+    test("rejects a stale agent selection before enqueueing", () async {
+      await harness.createSession();
+
+      await expectLater(
+        harness.plugin.sendPrompt(
+          promptId: "prompt-1",
+          sessionId: testSessionId,
+          parts: const [PluginPromptPart.text(text: "hello")],
+          variant: null,
+          agent: "Default",
+          model: (providerID: "anthropic", modelID: "default"),
+        ),
+        throwsA(
+          isA<PluginStaleOptionsException>()
+              .having((error) => error.statusCode, "status", 409)
+              .having((error) => error.message, "message", "unsupported Claude agent"),
+        ),
+      );
+      expect(await harness.plugin.getQueuedPrompts(sessionId: testSessionId), isEmpty);
+    });
+
     test("dispatches a slash command as an accepted queued turn", () async {
       await harness.createSession();
       final first = harness.processes.single;

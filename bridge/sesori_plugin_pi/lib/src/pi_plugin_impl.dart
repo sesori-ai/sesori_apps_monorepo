@@ -445,21 +445,21 @@ final class PiPlugin._({
     required String operation,
   }) async {
     if (agent != null && agent != "pi") {
-      throw PluginOperationException(operation, statusCode: 400, message: "Unsupported Pi agent.");
+      throw PluginStaleOptionsException(operation, message: "Unsupported Pi agent.");
     }
     if (variant != null && PiThinkingLevel.tryParse(value: variant.id) == null) {
-      throw PluginOperationException(operation, statusCode: 400, message: "Unsupported Pi thinking level.");
+      throw PluginStaleOptionsException(operation, message: "Unsupported Pi thinking level.");
     }
     if (model == null) return;
     final options = await _catalogService.requireOptions(projectId: projectId);
     final provider = options.providers.providers.where((candidate) => candidate.id == model.providerID).firstOrNull;
     if (provider == null || !provider.models.any((candidate) => candidate.id == model.modelID)) {
-      throw PluginOperationException(operation, statusCode: 400, message: "Unsupported Pi model.");
+      throw PluginStaleOptionsException(operation, message: "Unsupported Pi model.");
     }
     if (variant != null) {
       final selected = provider.models.firstWhere((candidate) => candidate.id == model.modelID);
       if (!selected.variants.contains(variant.id)) {
-        throw PluginOperationException(operation, statusCode: 400, message: "Unsupported Pi thinking level.");
+        throw PluginStaleOptionsException(operation, message: "Unsupported Pi thinking level.");
       }
     }
   }

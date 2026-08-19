@@ -166,6 +166,18 @@ void main() {
       expect(queue.items.map((e) => e.displayText), ["retried", "existing"]);
     });
 
+    test("replacePending preserves FIFO while updating selections", () {
+      queue.enqueue(_a);
+      queue.enqueue(_b);
+
+      queue.replacePending(
+        update: (submission) => submission.withSelection(agent: "agent", agentModel: submission.agentModel),
+      );
+
+      expect(queue.items.map((item) => item.displayText), ["a", "b"]);
+      expect(queue.items.map((item) => item.agent), everyElement("agent"));
+    });
+
     test("cancel removes by index and returns the message", () {
       queue.enqueue(_a);
       queue.enqueue(_b);

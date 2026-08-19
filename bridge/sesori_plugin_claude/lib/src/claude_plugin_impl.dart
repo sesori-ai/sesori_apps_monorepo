@@ -518,7 +518,7 @@ final class ClaudePlugin({
   void _validateModel(({String providerID, String modelID})? model, {required String operation}) {
     if (model == null) return;
     if (model.providerID != ClaudeBackendCatalogRepository.providerId || model.modelID.trim().isEmpty) {
-      throw PluginOperationException(operation, statusCode: 400, message: "unsupported model");
+      throw PluginStaleOptionsException(operation, message: "unsupported Claude model");
     }
   }
 
@@ -526,7 +526,7 @@ final class ClaudePlugin({
     if (variant == null) return null;
     final effort = ClaudeEffortLevel.tryParse(variant.id);
     if (effort == null) {
-      throw PluginOperationException(operation, statusCode: 400, message: "unsupported Claude effort");
+      throw PluginStaleOptionsException(operation, message: "unsupported Claude effort");
     }
     return effort;
   }
@@ -535,7 +535,7 @@ final class ClaudePlugin({
     if (agent == null) return null;
     final selection = ClaudeAgentSelection.tryParse(agent);
     if (selection == null) {
-      throw PluginOperationException(operation, statusCode: 400, message: "unsupported Claude agent");
+      throw PluginStaleOptionsException(operation, message: "unsupported Claude agent");
     }
     return selection.permissionMode;
   }

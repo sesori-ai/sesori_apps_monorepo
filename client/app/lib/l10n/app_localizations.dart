@@ -1987,6 +1987,18 @@ abstract class AppLocalizations {
   /// **'Sending'**
   String get sessionDetailSendingMessage;
 
+  /// No description provided for @sessionDetailPromptOptionsUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt options changed. Updated settings and retrying your message.'**
+  String get sessionDetailPromptOptionsUpdated;
+
+  /// No description provided for @sessionDetailPromptOptionsRecoveryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t apply updated prompt options. Your message remains queued.'**
+  String get sessionDetailPromptOptionsRecoveryFailed;
+
   /// No description provided for @sessionDetailCancelQueued.
   ///
   /// In en, this message translates to:

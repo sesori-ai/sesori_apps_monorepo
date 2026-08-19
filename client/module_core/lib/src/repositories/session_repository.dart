@@ -246,6 +246,21 @@ class SessionRepository({
     );
   }
 
+  static bool isStalePromptOptionsError({required ApiError error}) {
+    if (error case NonSuccessCodeError(:final rawErrorString)) {
+      if (rawErrorString != null) {
+        try {
+          final parsed = SendPromptErrorResponse.fromJson(jsonDecodeMap(rawErrorString));
+          return parsed.code == SendPromptErrorCode.staleSessionOptions;
+        } on Object {
+          // Older bridges answer with plain-text errors, which are not this
+          // structured stale-options signal.
+        }
+      }
+    }
+    return false;
+  }
+
   Future<ApiResponse<QueuedPromptResponse>> getQueuedPrompts({required String sessionId}) {
     return _api.getQueuedPrompts(sessionId: sessionId);
   }

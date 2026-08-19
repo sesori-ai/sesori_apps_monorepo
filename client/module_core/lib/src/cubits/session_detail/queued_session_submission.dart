@@ -43,6 +43,28 @@ sealed class const QueuedSessionSubmission() {
       : text;
 
   bool get isCommand => command != null;
+
+  QueuedSessionSubmission withSelection({
+    required String? agent,
+    required AgentModel? agentModel,
+  }) => switch (this) {
+    QueuedTextSubmission(:final promptId, :final text, :final inputMode, :final attachments) =>
+      QueuedSessionSubmission.text(
+        promptId: promptId,
+        text: text,
+        inputMode: inputMode,
+        attachments: attachments,
+        agent: agent,
+        agentModel: agentModel,
+      ),
+    QueuedCommandSubmission(:final promptId, :final text, :final command) => QueuedSessionSubmission.command(
+      promptId: promptId,
+      text: text,
+      command: command,
+      agent: agent,
+      agentModel: agentModel,
+    ),
+  };
 }
 
 final class const QueuedTextSubmission({

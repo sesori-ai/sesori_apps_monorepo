@@ -1,13 +1,15 @@
 import "dart:async";
 import "dart:math";
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
 import "archived_session_validator.dart";
 import "session_operation_dispatcher.dart";
+import "session_options_service.dart";
+import "stale_session_prompt_options_exception.dart";
 
 class const SessionPromptDefaultsChange({
   required final String sessionId,
@@ -18,6 +20,7 @@ class SessionPromptService({
   required final SessionRepository _sessionRepository,
   required final SessionOperationDispatcher _dispatcher,
   required final ArchivedSessionValidator _archivedSessionValidator,
+  required final SessionOptionsService _sessionOptionsService,
 }) {
   final StreamController<SessionPromptDefaultsChange> _promptDefaultsChangesController =
       StreamController<SessionPromptDefaultsChange>.broadcast(sync: true);
@@ -66,13 +69,16 @@ class SessionPromptService({
     // the same family lane.
     await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
     if (normalizedCommand == null || normalizedCommand.isEmpty) {
-      await _sessionRepository.sendPrompt(
+      await _sendInvalidatingStaleOptionsCache(
         sessionId: sessionId,
-        promptId: promptId,
-        parts: parts,
-        variant: variant,
-        agent: agent,
-        model: model,
+        send: () => _sessionRepository.sendPrompt(
+          sessionId: sessionId,
+          promptId: promptId,
+          parts: parts,
+          variant: variant,
+          agent: agent,
+          model: model,
+        ),
       );
       await _updatePromptDefaults(
         sessionId: sessionId,
@@ -89,15 +95,18 @@ class SessionPromptService({
     // backend has accepted the command — not when its run finishes — so
     // awaiting it here never holds the phone's relay request open for the
     // duration of the command's agent run.
-    await _sessionRepository.sendCommand(
+    await _sendInvalidatingStaleOptionsCache(
       sessionId: sessionId,
-      promptId: promptId,
-      command: normalizedCommand,
-      arguments: arguments ?? '',
-      userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
-      variant: variant,
-      agent: agent,
-      model: model,
+      send: () => _sessionRepository.sendCommand(
+        sessionId: sessionId,
+        promptId: promptId,
+        command: normalizedCommand,
+        arguments: arguments ?? '',
+        userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
+        variant: variant,
+        agent: agent,
+        model: model,
+      ),
     );
     await _updatePromptDefaults(
       sessionId: sessionId,
@@ -105,6 +114,32 @@ class SessionPromptService({
       agent: agent,
       model: model,
     );
+  }
+
+  /// Sends through [send]; when the plugin rejects the selection as stale,
+  /// the rejected cache row is gone before the typed failure reaches the
+  /// client and triggers forced discovery.
+  Future<void> _sendInvalidatingStaleOptionsCache({
+    required String sessionId,
+    required Future<void> Function() send,
+  }) async {
+    try {
+      await send();
+    } on PluginStaleOptionsException catch (error, stackTrace) {
+      await _invalidateStaleOptionsCache(sessionId: sessionId);
+      throw StaleSessionPromptOptionsException(cause: error, causeStackTrace: stackTrace);
+    }
+  }
+
+  Future<void> _invalidateStaleOptionsCache({required String sessionId}) async {
+    try {
+      final pluginId = await _sessionRepository.findPluginIdForSession(sessionId: sessionId);
+      final projectId = await _sessionRepository.findProjectIdForSession(sessionId: sessionId);
+      if (pluginId == null || projectId == null) return;
+      await _sessionOptionsService.invalidateRejectedSelection(pluginId: pluginId, projectId: projectId);
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to invalidate stale session options cache for session $sessionId", error, stackTrace);
+    }
   }
 
   /// Cancels the queued prompt [promptId] on [sessionId] before dispatch.

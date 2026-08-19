@@ -14,6 +14,7 @@ import "models/plugin_session_options.dart";
 import "models/plugin_session_status.dart";
 import "models/plugin_session_variant.dart";
 import "plugin_permission_reply.dart";
+import "plugin_stale_options_exception.dart";
 
 // Note: as far as architecture goes, this MUST be treated as part of API layer
 /// The backend contract every bridge plugin fulfils.
@@ -117,6 +118,10 @@ sealed class BridgePluginApi() {
   /// duration of a turn. A prompt accepted while another turn runs is
   /// queued; queue-owning plugins expose it via [getQueuedPrompts] and
   /// surface later dispatch failures through their [events] stream.
+  /// If an implementation rejects the send before acceptance because the
+  /// selected agent, model, or variant is no longer offered, it throws
+  /// [PluginStaleOptionsException] so the bridge can invalidate its catalog
+  /// and the client can refresh and retry.
   ///
   /// [promptId] is the prompt's stable identity: queue-owning plugins key
   /// their queued entries by it, refuse a duplicate (already queued or
@@ -144,6 +149,8 @@ sealed class BridgePluginApi() {
   ///
   /// Dispatch failures (unknown command, missing session, backend down) MUST
   /// be thrown so callers can report the send as failed.
+  /// A no-longer-offered agent, model, or variant uses
+  /// [PluginStaleOptionsException], as documented by [sendPrompt].
   ///
   /// [promptId] carries the same identity contract as [sendPrompt]'s.
   ///

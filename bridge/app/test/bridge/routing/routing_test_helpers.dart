@@ -224,6 +224,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   Completer<void>? archiveSessionCompleter;
   Completer<void>? sendCommandStarted;
   Completer<void>? sendCommandCompleter;
+  Object? sendPromptError;
   int getProjectsCallCount = 0;
 
   // ── BridgePlugin implementation ──────────────────────────────────────────
@@ -394,6 +395,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
+    if (sendPromptError case final error?) throw error;
     lastSendPromptSessionId = sessionId;
     lastSendPromptParts = parts;
     lastSendPromptVariant = variant?.id;
@@ -1060,6 +1062,9 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<String?> findProjectIdForSession({required String sessionId}) async => null;
 
   @override
+  Future<String?> findPluginIdForSession({required String sessionId}) async => null;
+
+  @override
   Future<Session?> getSessionForProject({
     required String projectId,
     required String sessionId,
@@ -1574,6 +1579,9 @@ class FakeSessionRepository({
 
   @override
   Future<String?> findProjectIdForSession({required String sessionId}) async => null;
+
+  @override
+  Future<String?> findPluginIdForSession({required String sessionId}) async => null;
 
   @override
   Future<Session?> getSessionForProject({

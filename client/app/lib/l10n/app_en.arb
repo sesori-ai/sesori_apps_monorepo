@@ -611,6 +611,8 @@
   "sessionDetailQueuedMessage": "Queued",
   "sessionDetailQueuedCommand": "Queued command",
   "sessionDetailSendingMessage": "Sending",
+  "sessionDetailPromptOptionsUpdated": "Prompt options changed. Updated settings and retrying your message.",
+  "sessionDetailPromptOptionsRecoveryFailed": "Couldn’t apply updated prompt options. Your message remains queued.",
   "sessionDetailCancelQueued": "Cancel",
   "sessionDetailPickerAgent": "Agent",
   "sessionDetailPickerModel": "Model",

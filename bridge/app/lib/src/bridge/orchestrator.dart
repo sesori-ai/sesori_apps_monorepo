@@ -435,6 +435,7 @@ class Orchestrator({
       sessionRepository: sessionRepository,
       dispatcher: sessionOperationDispatcher,
       archivedSessionValidator: archivedSessionValidator,
+      sessionOptionsService: sessionOptionsService,
     );
     final chatHistoryService = ChatHistoryService(
       chatHistoryRepository: ChatHistoryRepository(

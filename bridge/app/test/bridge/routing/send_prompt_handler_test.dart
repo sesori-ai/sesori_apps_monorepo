@@ -12,6 +12,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
@@ -629,6 +630,37 @@ void main() {
       expect(plugin.lastSendPromptSessionId, isNull);
       expect(plugin.lastSendCommandSessionId, isNull);
     });
+
+    test("stale options rejection returns 409 with the recognizable error body", () async {
+      plugin.sendPromptError = const PluginStaleOptionsException("sendPrompt", message: "unsupported Claude agent");
+
+      final response = await handler.handleInternal(
+        makeRequest(
+          "POST",
+          "/session/prompt_async",
+          body: jsonEncode(
+            const SendPromptRequest(
+              promptId: null,
+              sessionId: "s1",
+              parts: [PromptPart.text(text: "Hello")],
+              variant: null,
+              agent: "removed-agent",
+              model: null,
+              command: null,
+            ).toJson(),
+          ),
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response.status, 409);
+      expect(response.headers["content-type"], "application/json");
+      final parsed = SendPromptErrorResponse.fromJson(jsonDecode(response.body!) as Map<String, dynamic>);
+      expect(parsed.code, SendPromptErrorCode.staleSessionOptions);
+      expect(parsed.message, "unsupported Claude agent");
+    });
   });
 }
 
@@ -638,6 +670,7 @@ SessionPromptService _buildPromptService(SessionRepository repository) {
     sessionRepository: repository,
     dispatcher: dispatcher,
     archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
+    sessionOptionsService: FakeSessionOptionsService(),
   );
   addTearDown(dispatcher.dispose);
   addTearDown(service.dispose);
