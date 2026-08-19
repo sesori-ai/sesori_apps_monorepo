@@ -436,6 +436,39 @@ release and matched the published digest. In an isolated temporary cwd and
 
 The probe did not use real credentials or send a provider request.
 
+### Step 20 live verification (2026-08-19)
+
+A source-run bridge and development iOS client exercised the production OMP
+descriptor on macOS arm64. Evidence was inspected live and retained only as the
+redacted outcomes below; no credential, raw ACP frame, prompt, transcript,
+project path, or provider/account identifier is committed.
+
+- The production managed-install command downloaded, verified, installed, and
+  enabled official OMP `17.2.13`; a repeated install adopted the existing
+  managed binary. Restart and full bridge restart both reprovisioned that
+  binary and returned OMP to active/idle.
+- The normal inherited OMP profile has no configured provider/model. The bridge
+  reports zero connected providers and explicit options refresh returns
+  `refreshFailedUnavailable`. Selecting Oh My Pi on iOS renders the
+  design-system popup guidance to open OMP locally and run `/login`; creating
+  with defaults remains possible and returns to idle without a partial model
+  selection.
+- Empty-session creation, local-only rename, safe plugin restart, resume/list,
+  idle abort, deletion, and post-restart cleanup all succeeded through
+  production bridge routes. Deleted OMP sessions remained absent after restart
+  and catalog import.
+- Text and PNG requests reached the no-model rejection path without dispatching
+  a provider turn. This verifies bounded missing-model behavior but does not
+  claim successful image replay. A direct terminal OMP prompt also stopped at
+  missing-model setup and created no durable session, so terminal handoff cannot
+  be verified until a model is configured.
+- No Linux, Windows, Docker, glibc, or musl host is available in this workspace.
+  The automated platform-selection/install tests remain the evidence for those
+  targets; no unavailable host check is claimed as live coverage.
+- Successful authenticated text/image/reasoning/tool turns, model/thinking
+  sweeps, permissions, forms, replay, and terminal handoff remain blocked until
+  local OMP provider setup is completed. No success fixture is claimed.
+
 ## 12. Verification Still Required During Implementation
 
 - Refresh source/assets against the exact stable pin selected in Step 9.

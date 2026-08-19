@@ -70,7 +70,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | Merged as PR #963 |
 | [x] | 18/21 | `⚙️ [pi-harness] feat(bridge): register Pi and OMP [step 18/21]` | 800-1,200 (over-estimate) | Merged as PR #967 |
 | [ ] | 19/21 | `🌿 [pi-harness] feat(client): add Pi and OMP branding and guidance [step 19/21]` | 500-900 (over-estimate) | Open as PR #973 |
-| [ ] | 20/21 | `⚙️ [pi-harness] test(harness): verify Pi and OMP integration [step 20/21]` | 300-700 | Not started |
+| [ ] | 20/21 | `⚙️ [pi-harness] test(harness): verify Pi and OMP integration [step 20/21]` | 300-700 | In progress; provider-backed live turns blocked by Pi quota and missing OMP model |
 | [ ] | 21/21 | `🌱 [pi-harness] docs: retire the Pi and OMP harness plan [step 21/21]` | 50-200 | Not started |
 
 ## Working Rules
@@ -619,6 +619,34 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   Step 18 already absorbed the shared activation/notification prerequisites;
   this step reused the existing brand catalog and needed only localized assets,
   mappings, tests, and guidance. The original budget was an over-estimate.
+
+### Step 20/21 (in progress)
+
+- Source-run bridge slot 1 authenticated, registered, and paired with the
+  dedicated `sesori-dev-1` iOS simulator. Pi used PATH `0.84.2`; OMP installed
+  official managed `17.2.13` through the production lifecycle route and reused
+  it after plugin/bridge restart.
+- Phone verification covered the complete harness picker, current Pi/OMP marks,
+  Pi model/thinking controls, OMP missing-model popup guidance, and encrypted
+  reconnect after bridge restart. Screenshot evidence remains local only.
+- Both plugins passed empty-session create/list, local rename, safe restart,
+  idle abort, delete cleanup, and restart/import non-resurrection. Pi additionally
+  imported, renamed, and deleted a terminal-created session after the terminal
+  process exited; its text-plus-PNG transcript retained an inline image before
+  provider rejection.
+- Pi exposes one connected provider with seven models and three commands, but
+  its selected provider returns a usage-limit error. OMP exposes no connected
+  provider/model and explicit refresh returns `refreshFailedUnavailable` with
+  correct local-login guidance. Provider-backed success fixtures and dependent
+  reasoning/tool/dialog/form/replay sweeps remain blocked; no credentials or
+  raw captures are retained or committed.
+- macOS arm64 is the only available live host. Docker/Linux/Windows and live
+  glibc/musl selection are unavailable; automated platform tests remain pending
+  in the final focused suite.
+- Focused fatal analysis passes for bridge app, Pi, OMP, ACP, module_core,
+  module_prego, and mobile app; shared plain analysis also passes. Full suites:
+  bridge app 2,675, Pi 255, OMP 51, ACP 242, shared 409, module_core 1,148,
+  module_prego 209, and mobile app 998 tests.
 
 ## Findings And Plan Deltas
 

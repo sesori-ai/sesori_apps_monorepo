@@ -581,6 +581,35 @@ package tree listed above, and reported `0.84.2`. An isolated launch with
 `get_state` request returned a successful response. No credential, prompt, or
 transcript content was retained.
 
+### Step 20 live verification (2026-08-19)
+
+A source-run bridge and development iOS client used the normal inherited Pi
+profile on macOS arm64. Evidence was inspected live and retained only as the
+redacted outcomes below; no credential, raw frame, prompt, transcript, project
+path, or provider/account identifier is committed.
+
+- PATH Pi `0.84.2` satisfied the `0.84.1` floor, started active, and imported
+  its catalog. A direct RPC probe reported a selected model, seven available
+  models from one connected provider, and an idle stream. The bridge session
+  options path exposed the same seven models and three commands; the iOS
+  composer rendered Pi, its model, and thinking selector.
+- Empty-session creation, local rename, safe plugin restart, bridge restart,
+  resume/list, idle abort, deletion, and post-restart tombstone suppression all
+  succeeded through production bridge routes. The development client lost and
+  re-established its encrypted relay session across the bridge restart.
+- A one-pixel PNG plus text reached the persisted Pi transcript as text and an
+  `image/png` inline-image part before provider execution failed, verifying the
+  bridge/plugin attachment seam without retaining the image payload.
+- A terminal Pi process created a persisted session and exited before explicit
+  bridge import. Sesori imported its user/error history, allowed a local rename,
+  deleted it, and did not re-import the tombstoned artifact. This verifies the
+  documented terminal-to-Sesori handoff ordering, never concurrent ownership.
+- Provider execution currently returns the demonstrated typed Codex
+  usage-limit error. Error mapping remained visible and the session returned to
+  idle, but a successful authenticated response, reasoning/tool stream,
+  extension dialogs, model/provider sweep, and successful image response remain
+  blocked until provider quota is available. No success fixture is claimed.
+
 ## 12. Verification Still Required During Implementation
 
 - Capture redacted authenticated event ordering and model readiness for API-key,
