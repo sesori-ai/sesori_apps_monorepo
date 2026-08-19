@@ -134,14 +134,17 @@ void main() {
     Session mapped(SessionDto row) => mapper.map(row: row, pullRequest: null, unseen: false);
 
     // A plugin that never emits an activity-bearing `session.updated` leaves
-    // `updated_at` at the last imported transcript time; the live unseen
-    // timestamps are what keep the session's recency honest.
+    // `updated_at` at the last imported transcript time; the live user-message
+    // marker is what keeps the session's recency honest.
     expect(mapped(base).time?.updated, 20);
-    expect(mapped(base.copyWith(lastActivityAt: 55)).time?.updated, 55);
     expect(mapped(base.copyWith(lastUserMessageAt: 70)).time?.updated, 70);
 
     // The backend's own time still wins when it is the newest one known.
-    expect(mapped(base.copyWith(lastActivityAt: 5, lastUserMessageAt: 8)).time?.updated, 20);
+    expect(mapped(base.copyWith(lastUserMessageAt: 8)).time?.updated, 20);
+
+    // "Mark as Unread" synthesizes `last_activity_at` from the current clock to
+    // satisfy the unseen formula, so it must never reach the displayed time.
+    expect(mapped(base.copyWith(lastActivityAt: 9999)).time?.updated, 20);
   });
 
   test("StoredSessionMapper projects the fields repository consumers need", () {

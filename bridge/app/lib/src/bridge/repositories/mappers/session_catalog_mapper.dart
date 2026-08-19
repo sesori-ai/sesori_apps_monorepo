@@ -38,18 +38,23 @@ class const SessionCatalogMapper() {
   /// session driven entirely on the laptop kept displaying the transcript time
   /// read at the last import — "2d ago" on a session prompted minutes earlier.
   ///
-  /// The unseen timestamps are written live for every plugin, so folding them
-  /// in makes the displayed recency honest for all harnesses at once. They are
+  /// `last_user_message_at` is written live for every plugin, so folding it in
+  /// makes the displayed recency honest for all harnesses at once. It is
   /// blended on read rather than written into `updated_at`, because catalog
   /// import's staleness detection depends on that column holding only
   /// backend-reported time (see CatalogImportRepository).
   ///
-  /// Both are needed: `last_activity_at` coalesces once a session is already
-  /// unseen, and a user message advances only `last_user_message_at`.
+  /// `last_activity_at` is deliberately excluded even though it covers more
+  /// events: it is an unseen-formula token, not a recency one. "Mark as
+  /// Unread" synthesizes it from the current clock (SessionDao.forceUnseen),
+  /// which would make an untouched session claim it just changed, and
+  /// SessionUnseenService coalesces it to the FIRST event of an unseen streak,
+  /// so it would not follow a long response anyway. The cost of leaving it out
+  /// is that assistant-only work does not advance the displayed time past the
+  /// prompt that started it — conservative, and self-correcting on the next
+  /// user message or import.
   static int _latestActivityAt(SessionDto row) {
-    var latest = row.updatedAt;
-    if (row.lastActivityAt case final at? when at > latest) latest = at;
-    if (row.lastUserMessageAt case final at? when at > latest) latest = at;
-    return latest;
+    if (row.lastUserMessageAt case final at? when at > row.updatedAt) return at;
+    return row.updatedAt;
   }
 }

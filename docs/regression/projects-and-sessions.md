@@ -37,11 +37,12 @@ child sessions with titles, activity, statuses, and unseen state.
   times, worktree and branch facts, prompt defaults, and unseen state that
   advances on activity and clears on view or mark-as-read.
 - A listed session's `session.updated` reports the newest instant the bridge
-  knows: the backend's own updated time, or the live activity and user-message
-  markers when those are newer. A plugin that reports an updated time only at
-  import or rename — Claude and Pi, unlike Codex, ACP, and OpenCode — therefore
-  still shows recent local work as recent, instead of the transcript time read
-  at the last import.
+  knows: the backend's own updated time, or the live user-message marker when
+  that is newer. A plugin that reports an updated time only at import or rename
+  — Claude and Pi, unlike Codex, ACP, and OpenCode — therefore still shows a
+  recently prompted session as recent, instead of the transcript time read at
+  the last import. Marking a session unread never moves that time, and
+  assistant-only work does not advance it past the prompt that started it.
 - A newly committed session can list before generated metadata. Later generated
   title and eligible dedicated-branch refinement reuse `session.updated`; lists
   and detail adopt the durable session facts without marking unseen or moving the
