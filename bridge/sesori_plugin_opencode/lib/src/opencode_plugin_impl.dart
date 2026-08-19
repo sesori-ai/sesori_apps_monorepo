@@ -631,12 +631,13 @@ class OpenCodePlugin._({
           }
 
           final canonicalEvent = _canonicalizeEvent(event);
-          final bridgeEvents = _mapper.map(
+          final bridgeEvent = _mapper.map(
             canonicalEvent,
             displaySessionId: _displaySessionIdForEvent(canonicalEvent),
-            directory: parseResult.directory,
           );
-          bridgeEvents.forEach(_eventBuffer.add);
+          if (bridgeEvent != null) {
+            _eventBuffer.add(bridgeEvent);
+          }
           return;
         case SseParseOutcome.ignoredKnownEvent:
           return;

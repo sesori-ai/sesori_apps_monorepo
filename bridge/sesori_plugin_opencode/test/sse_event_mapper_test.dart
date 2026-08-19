@@ -1,8 +1,5 @@
 import "package:opencode_plugin/src/models/openapi/assistant_message.g.dart";
-import "package:opencode_plugin/src/models/openapi/reasoning_part.g.dart";
 import "package:opencode_plugin/src/models/openapi/session.g.dart";
-import "package:opencode_plugin/src/models/openapi/session_status.g.dart";
-import "package:opencode_plugin/src/models/openapi/text_part.g.dart";
 import "package:opencode_plugin/src/models/sse_event_data.g.dart";
 import "package:opencode_plugin/src/sse_event_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -38,28 +35,22 @@ AssistantMessage _assistantMessage({required Object? error}) {
 
 void main() {
   group("SseEventMapper", () {
-    late SseEventMapper mapper;
-
-    setUp(() {
-      mapper = SseEventMapper();
-    });
+    final mapper = SseEventMapper();
 
     test("maps a live errored assistant message.updated to the error role", () {
-      final result = mapper
-          .map(
-            SseEventData.messageUpdated(
-              info: _assistantMessage(
-                error: <String, dynamic>{
-                  "name": "ProviderAuthError",
-                  "data": <String, dynamic>{"message": "invalid api key"},
-                },
-              ),
-            ),
-          )
-          .single;
+      final result = mapper.map(
+        SseEventData.messageUpdated(
+          info: _assistantMessage(
+            error: <String, dynamic>{
+              "name": "ProviderAuthError",
+              "data": <String, dynamic>{"message": "invalid api key"},
+            },
+          ),
+        ),
+      );
 
       expect(result, isA<BridgeSseMessageUpdated>());
-      final event = result as BridgeSseMessageUpdated;
+      final event = result! as BridgeSseMessageUpdated;
       // The phone parses this via the shared `Message.fromJson` `role`
       // discriminator, so a live error must arrive as `role: "error"` with
       // flat error fields — not as `role: "assistant"` with the error dropped.
@@ -69,10 +60,10 @@ void main() {
     });
 
     test("maps a live non-errored assistant message.updated to the assistant role", () {
-      final result = mapper.map(SseEventData.messageUpdated(info: _assistantMessage(error: null))).single;
+      final result = mapper.map(SseEventData.messageUpdated(info: _assistantMessage(error: null)));
 
       expect(result, isA<BridgeSseMessageUpdated>());
-      final event = result as BridgeSseMessageUpdated;
+      final event = result! as BridgeSseMessageUpdated;
       expect(event.info["role"], equals("assistant"));
       expect(event.info.containsKey("errorName"), isFalse);
     });
@@ -100,9 +91,10 @@ void main() {
         revert: null,
       );
 
-      final result = mapper.map(const SseEventData.sessionCreated(info: session)).single;
+      final result = mapper.map(const SseEventData.sessionCreated(info: session));
 
-      final event = result as BridgeSseSessionCreated;
+      expect(result, isNotNull);
+      final event = result! as BridgeSseSessionCreated;
       expect(event.info["projectID"], equals("/repo"));
       expect(event.info["directory"], equals("/repo/packages/foo"));
       expect(shared.Session.fromJson(event.info).pluginId, shared.legacyMissingPluginId);
@@ -131,9 +123,10 @@ void main() {
         revert: null,
       );
 
-      final result = mapper.map(const SseEventData.sessionUpdated(info: session)).single;
+      final result = mapper.map(const SseEventData.sessionUpdated(info: session));
 
-      final event = result as BridgeSseSessionUpdated;
+      expect(result, isNotNull);
+      final event = result! as BridgeSseSessionUpdated;
       expect(event.info["projectID"], equals("/repo"));
       expect(event.info["directory"], equals("/repo/packages/foo"));
     });
@@ -161,196 +154,12 @@ void main() {
         revert: null,
       );
 
-      final result = mapper.map(const SseEventData.sessionDeleted(info: session)).single;
+      final result = mapper.map(const SseEventData.sessionDeleted(info: session));
 
-      final event = result as BridgeSseSessionDeleted;
+      expect(result, isNotNull);
+      final event = result! as BridgeSseSessionDeleted;
       expect(event.info["projectID"], equals("/repo"));
       expect(event.info["directory"], equals("/repo/packages/foo"));
-    });
-
-    test("finalizes active reasoning before following assistant output", () {
-      mapper.map(
-        const SseEventData.messagePartUpdated(
-          part: ReasoningPart(
-            id: "reasoning-1",
-            sessionID: "session-1",
-            messageID: "message-1",
-            text: "",
-            metadata: null,
-            time: ReasoningPartTime(start: 1, end: null),
-          ),
-        ),
-      );
-      mapper.map(
-        const SseEventData.messagePartDelta(
-          sessionID: "session-1",
-          messageID: "message-1",
-          partID: "reasoning-1",
-          field: "text",
-          delta: "Inspecting workflows",
-        ),
-      );
-
-      final events = mapper.map(
-        const SseEventData.messagePartUpdated(
-          part: TextPart(
-            id: "text-1",
-            sessionID: "session-1",
-            messageID: "message-1",
-            text: "",
-            synthetic: null,
-            ignored: null,
-            time: TextPartTime(start: 2, end: null),
-            metadata: null,
-          ),
-        ),
-      );
-
-      expect(events, hasLength(2));
-      final reasoning = (events.first as BridgeSseMessagePartUpdated).part;
-      expect(reasoning.type, PluginMessagePartType.reasoning);
-      expect(reasoning.text, "Inspecting workflows");
-      expect((events.last as BridgeSseMessagePartUpdated).part.type, PluginMessagePartType.text);
-
-      final idle = mapper.map(
-        const SseEventData.sessionStatus(
-          sessionID: "session-1",
-          status: SessionStatusIdle(),
-        ),
-      );
-      expect(idle, hasLength(1));
-      expect(idle.single, isA<BridgeSseSessionStatus>());
-    });
-
-    test("idle finalizes reasoning when OpenCode omits its final snapshot", () {
-      mapper.map(
-        const SseEventData.messagePartUpdated(
-          part: ReasoningPart(
-            id: "reasoning-idle",
-            sessionID: "session-idle",
-            messageID: "message-idle",
-            text: "",
-            metadata: null,
-            time: ReasoningPartTime(start: 1, end: null),
-          ),
-        ),
-      );
-      mapper.map(
-        const SseEventData.messagePartDelta(
-          sessionID: "session-idle",
-          messageID: "message-idle",
-          partID: "reasoning-idle",
-          field: "text",
-          delta: "Complete thought",
-        ),
-      );
-
-      final events = mapper.map(
-        const SseEventData.sessionStatus(
-          sessionID: "session-idle",
-          status: SessionStatusIdle(),
-        ),
-      );
-
-      expect(events, hasLength(2));
-      expect((events.first as BridgeSseMessagePartUpdated).part.text, "Complete thought");
-      expect(events.last, isA<BridgeSseSessionStatus>());
-    });
-
-    test("reconnect drops incomplete reasoning state", () {
-      mapper.map(
-        const SseEventData.messagePartUpdated(
-          part: ReasoningPart(
-            id: "reasoning-stale",
-            sessionID: "session-stale",
-            messageID: "message-stale",
-            text: "",
-            metadata: null,
-            time: ReasoningPartTime(start: 1, end: null),
-          ),
-        ),
-      );
-      mapper.map(
-        const SseEventData.messagePartDelta(
-          sessionID: "session-stale",
-          messageID: "message-stale",
-          partID: "reasoning-stale",
-          field: "text",
-          delta: "Incomplete before the gap",
-        ),
-      );
-
-      mapper.map(const SseEventData.serverConnected());
-      final events = mapper.map(
-        const SseEventData.messagePartUpdated(
-          part: TextPart(
-            id: "text-after-gap",
-            sessionID: "session-stale",
-            messageID: "message-stale",
-            text: "",
-            synthetic: null,
-            ignored: null,
-            time: TextPartTime(start: 2, end: null),
-            metadata: null,
-          ),
-        ),
-      );
-
-      expect(events, hasLength(1));
-      expect((events.single as BridgeSseMessagePartUpdated).part.type, PluginMessagePartType.text);
-    });
-
-    test("instance disposal clears only reasoning from its directory", () {
-      void startReasoning({required String suffix, required String directory}) {
-        mapper.map(
-          SseEventData.messagePartUpdated(
-            part: ReasoningPart(
-              id: "reasoning-$suffix",
-              sessionID: "session-$suffix",
-              messageID: "message-$suffix",
-              text: "",
-              metadata: null,
-              time: const ReasoningPartTime(start: 1, end: null),
-            ),
-          ),
-          directory: directory,
-        );
-        mapper.map(
-          SseEventData.messagePartDelta(
-            sessionID: "session-$suffix",
-            messageID: "message-$suffix",
-            partID: "reasoning-$suffix",
-            field: "text",
-            delta: "reasoning $suffix",
-          ),
-        );
-      }
-
-      List<BridgeSseEvent> startText(String suffix) => mapper.map(
-        SseEventData.messagePartUpdated(
-          part: TextPart(
-            id: "text-$suffix",
-            sessionID: "session-$suffix",
-            messageID: "message-$suffix",
-            text: "",
-            synthetic: null,
-            ignored: null,
-            time: const TextPartTime(start: 2, end: null),
-            metadata: null,
-          ),
-        ),
-      );
-
-      startReasoning(suffix: "disposed", directory: "/repo/disposed");
-      startReasoning(suffix: "active", directory: "/repo/active");
-      mapper.map(
-        const SseEventData.serverInstanceDisposed(directory: "/repo/disposed"),
-      );
-
-      expect(startText("disposed"), hasLength(1));
-      final active = startText("active");
-      expect(active, hasLength(2));
-      expect((active.first as BridgeSseMessagePartUpdated).part.text, "reasoning active");
     });
   });
 }
