@@ -671,6 +671,7 @@ class CodexPlugin._({
   @override
   Future<void> sendPrompt({
     required String sessionId,
+    required String promptId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
     required String? agent,
@@ -687,8 +688,15 @@ class CodexPlugin._({
   }
 
   @override
+  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
+
+  @override
   Future<void> sendCommand({
     required String sessionId,
+    required String promptId,
     required String command,
     required String arguments,
     required String? userVisibleArguments,

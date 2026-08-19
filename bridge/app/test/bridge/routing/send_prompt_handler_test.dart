@@ -71,6 +71,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s1",
           parts: [PromptPart.text(text: "Hello")],
           variant: null,
@@ -90,6 +91,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s1",
           parts: [
             PromptPart.text(text: "Hello"),
@@ -116,6 +118,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s1",
           parts: [PromptPart.text(text: "Hello")],
           variant: null,
@@ -150,6 +153,7 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s-defaults-prompt",
           parts: [PromptPart.text(text: "Hello")],
           variant: SessionVariant(id: "xhigh"),
@@ -176,6 +180,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s42",
           parts: [PromptPart.text(text: "Ship it")],
           variant: null,
@@ -203,6 +208,7 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s1",
           parts: [PromptPart.text(text: "Hello")],
           variant: null,
@@ -222,6 +228,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s1",
           parts: [PromptPart.text(text: "Hello")],
           variant: null,
@@ -243,6 +250,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s7",
           parts: [PromptPart.text(text: "review this")],
           variant: SessionVariant(id: "xhigh"),
@@ -268,6 +276,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s8",
           parts: [
             PromptPart.filePath(mime: "text/plain", path: "/tmp/f.txt", filename: null),
@@ -292,6 +301,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s8",
           parts: [PromptPart.text(text: "   ")],
           variant: null,
@@ -311,6 +321,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s10",
           parts: [PromptPart.text(text: "review this")],
           variant: null,
@@ -346,6 +357,7 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s-defaults-command",
           parts: [PromptPart.text(text: "review this")],
           variant: SessionVariant(id: "high"),
@@ -397,6 +409,7 @@ void main() {
         () => localHandler.handle(
           makeRequest("POST", "/session/prompt_async"),
           body: const SendPromptRequest(
+            promptId: null,
             sessionId: "s-failing-prompt",
             parts: [PromptPart.text(text: "Hello")],
             variant: SessionVariant(id: "new-variant"),
@@ -449,6 +462,7 @@ void main() {
         () => localHandler.handle(
           makeRequest("POST", "/session/prompt_async"),
           body: const SendPromptRequest(
+            promptId: null,
             sessionId: "s-failing-command",
             parts: [PromptPart.text(text: "review this")],
             variant: SessionVariant(id: "new-variant"),
@@ -489,6 +503,7 @@ void main() {
       final response = await localHandler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s-update-fails",
           parts: [PromptPart.text(text: "Hello")],
           variant: SessionVariant(id: "xhigh"),
@@ -511,6 +526,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s9",
           parts: [PromptPart.text(text: "Hello")],
           variant: null,
@@ -535,6 +551,7 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/session/prompt_async"),
           body: const SendPromptRequest(
+            promptId: null,
             sessionId: "",
             parts: [PromptPart.text(text: "Hello")],
             variant: null,
@@ -557,6 +574,7 @@ void main() {
           "/session/prompt_async",
           body: jsonEncode(
             const SendPromptRequest(
+              promptId: null,
               sessionId: "missing",
               parts: [PromptPart.text(text: "Hello")],
               variant: null,
@@ -592,6 +610,7 @@ void main() {
           "/session/prompt_async",
           body: jsonEncode(
             const SendPromptRequest(
+              promptId: null,
               sessionId: "stale-plugin-session",
               parts: [PromptPart.text(text: "Hello")],
               variant: null,
@@ -652,6 +671,7 @@ Future<void> _insertStoredSession({
 class _ThrowingSendPromptPlugin() extends FakeBridgePlugin {
   @override
   Future<void> sendPrompt({
+    required String promptId,
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
@@ -665,6 +685,7 @@ class _ThrowingSendPromptPlugin() extends FakeBridgePlugin {
 class _ThrowingSendCommandPlugin() extends FakeBridgePlugin {
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,
@@ -678,23 +699,24 @@ class _ThrowingSendCommandPlugin() extends FakeBridgePlugin {
 }
 
 class _ThrowingUpdateSessionRepository({
-    required BridgePluginApi plugin,
-    required AppDatabase database,
-    required super.unseenCalculator,
-  }) extends SessionRepository {
+  required BridgePluginApi plugin,
+  required AppDatabase database,
+  required super.unseenCalculator,
+}) extends SessionRepository {
   int updatePromptDefaultsCallCount = 0;
 
-  this : super(
-         runtime: createTestPluginRuntime(plugins: [plugin]),
-         bridgeDerivedProjectPluginIds: {
-           if (plugin is BridgeDerivedProjectsPluginApi) plugin.id,
-         },
-         sessionDao: database.sessionDao,
-         projectsDao: database.projectsDao,
-         pullRequestDao: database.pullRequestDao,
-         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
-         aggregateSourceDeadline: const Duration(seconds: 5),
-       );
+  this
+    : super(
+        runtime: createTestPluginRuntime(plugins: [plugin]),
+        bridgeDerivedProjectPluginIds: {
+          if (plugin is BridgeDerivedProjectsPluginApi) plugin.id,
+        },
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+        pullRequestDao: database.pullRequestDao,
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        aggregateSourceDeadline: const Duration(seconds: 5),
+      );
 
   @override
   Future<void> updatePromptDefaults({

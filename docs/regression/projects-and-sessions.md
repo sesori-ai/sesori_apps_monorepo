@@ -36,6 +36,11 @@ child sessions with titles, activity, statuses, and unseen state.
 - Session listings are project-scoped and pageable and carry plugin attribution,
   times, worktree and branch facts, prompt defaults, and unseen state that
   advances on activity and clears on view or mark-as-read.
+- A newly committed session can list before generated metadata. Later generated
+  title and eligible dedicated-branch refinement reuse `session.updated`; lists
+  and detail adopt the durable session facts without marking unseen or moving the
+  worktree directory. The initial system prompt remains truthful about the
+  directory and branch that existed when the backend session was created.
 - Pi import discovers persisted JSONL sessions from its inherited environment,
   configured storage, default per-project storage, and bridge-known directories.
   Enumeration is metadata-only and bounded: it reads session headers and
@@ -68,7 +73,7 @@ child sessions with titles, activity, statuses, and unseen state.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: project list and one project's session list return committed data with plugin attribution. |
-| L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed; unseen advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. |
+| L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. |
 | L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; one representative plugin proves two running roots and two projects with running roots reorder after committed user-side activity, inactive session/project order is unchanged, a live patch reorders without another status event or project summary, and omitted ordering facts use updated-time fallbacks. Focused ACP protocol and client ordering tests prove the exact awaiting-only state is not promoted because normal production root prompts remain running while awaiting input. Lists and unseen badges render. |
 | L4 Extended | Relay integration, every supporting production plugin: bridge and plugin restart preserve identity and overrides; a moved backend-native project keeps them while a moved bridge-derived project is discovered as new without mutating the old catalog; a cancelled or failed import leaves the prior catalog intact; reads during import stay consistent; an unavailable plugin is reported while others keep listing. |
 | L5 Full | Client end to end, every supporting production plugin: multiple clients observe consistent listings and unseen transitions; large catalogs and paged listings behave; unattributed payloads resolve to the historical identity. |
@@ -99,6 +104,8 @@ after a marker has been established.
   awaiting-only is promoted, or inactive session/project or child order changes.
 - Unseen never clears, clears without viewing, or an unavailable plugin is idle.
 - Hiding destroys sessions, or a cancelled import destroys the committed catalog.
+- A generated title/branch update fails to reach list/detail, changes unseen,
+  moves the worktree, or rewrites the backend's creation-time system context.
 
 ## Known Limitations
 

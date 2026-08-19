@@ -216,6 +216,7 @@ void main() {
       for (final part in invalidParts) {
         await expectLater(
           plugin.sendPrompt(
+            promptId: "prompt-1",
             sessionId: "t-invalid-image",
             parts: [part],
             variant: null,
@@ -266,6 +267,7 @@ void main() {
 
       final commands = await plugin.getCommands(projectId: "/work/sample");
       await plugin.sendCommand(
+        promptId: "prompt-1",
         sessionId: "t-existing",
         command: "review",
         arguments: "staged changes",
@@ -275,6 +277,7 @@ void main() {
         model: null,
       );
       await plugin.sendCommand(
+        promptId: "prompt-1",
         sessionId: "t-existing",
         command: "compact",
         arguments: "",
@@ -525,6 +528,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "t-existing",
         parts: const [PluginPromptPart.text(text: "go on")],
         variant: null,
@@ -557,6 +561,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "t-default-mode",
         parts: const [PluginPromptPart.text(text: "implement it")],
         variant: null,
@@ -632,6 +637,7 @@ void main() {
       addTearDown(subscription.cancel);
 
       await resolvedPlugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: sessionId,
         parts: const [PluginPromptPart.text(text: "plan this")],
         variant: null,
@@ -670,6 +676,7 @@ void main() {
       ]);
 
       await plugin.sendCommand(
+        promptId: "prompt-1",
         sessionId: "t-command",
         command: "review",
         arguments: "recent changes",
@@ -698,6 +705,7 @@ void main() {
         const _Response(result: null),
       ]);
       await plugin.sendCommand(
+        promptId: "prompt-1",
         sessionId: "t-command-force",
         command: "review",
         arguments: "recent changes",
@@ -746,6 +754,7 @@ void main() {
 
       await expectLater(
         plugin.sendPrompt(
+          promptId: "prompt-1",
           sessionId: "t-rejected",
           parts: const [PluginPromptPart.text(text: "go on")],
           variant: null,
@@ -774,6 +783,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "t-delayed",
         parts: const [PluginPromptPart.text(text: "go on")],
         variant: null,
@@ -816,6 +826,7 @@ void main() {
       };
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "t-early-complete",
         parts: const [PluginPromptPart.text(text: "quick task")],
         variant: null,
@@ -845,6 +856,7 @@ void main() {
       };
 
       final send = plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "t-deleted",
         parts: const [PluginPromptPart.text(text: "quick task")],
         variant: null,
@@ -927,6 +939,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "t-terminal",
         parts: const [PluginPromptPart.text(text: "go on")],
         variant: null,
@@ -972,6 +985,7 @@ void main() {
         model: null,
       );
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "t-fresh",
         parts: const [PluginPromptPart.text(text: "continue")],
         variant: null,
@@ -1019,6 +1033,7 @@ void main() {
         model: null,
       );
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "t-dropped",
         parts: const [PluginPromptPart.text(text: "are you there")],
         variant: null,
@@ -1052,6 +1067,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "t-1",
         parts: const [PluginPromptPart.text(text: "long task")],
         variant: null,
@@ -1091,6 +1107,7 @@ void main() {
         const _Response(result: null),
       ]);
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "t-force",
         parts: const [PluginPromptPart.text(text: "long task")],
         variant: null,
@@ -1132,6 +1149,7 @@ void main() {
         ),
       ]);
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "t-overlap",
         parts: const [PluginPromptPart.text(text: "first task")],
         variant: null,
@@ -1154,6 +1172,7 @@ void main() {
         const _Response(result: null),
       ]);
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "t-overlap",
         parts: const [PluginPromptPart.text(text: "second task")],
         variant: null,
@@ -1206,6 +1225,7 @@ void main() {
 
       await expectLater(
         plugin.sendPrompt(
+          promptId: "prompt-1",
           sessionId: "t-whitespace",
           parts: const [PluginPromptPart.text(text: "continue")],
           variant: null,
@@ -1261,6 +1281,7 @@ void main() {
       final subscription = plugin.events.listen(events.add);
       addTearDown(subscription.cancel);
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: sessionId,
         parts: const [PluginPromptPart.text(text: "run a tool")],
         variant: null,
@@ -1423,6 +1444,7 @@ void main() {
       final subscription = plugin.events.listen(events.add);
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: sessionId,
         parts: const [PluginPromptPart.text(text: "run the live event fixture")],
         variant: null,
@@ -1929,6 +1951,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "t-effort",
         parts: const [PluginPromptPart.text(text: "think hard")],
         variant: const PluginSessionVariant(id: "high"),
@@ -1963,6 +1986,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "t-default",
         parts: const [PluginPromptPart.text(text: "hi")],
         variant: null,

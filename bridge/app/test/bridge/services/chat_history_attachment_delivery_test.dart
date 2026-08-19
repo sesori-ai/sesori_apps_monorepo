@@ -323,6 +323,7 @@ Future<void> _export({required TestChatHistory history}) {
 }
 
 Message _message({required String id}) => Message.user(
+  promptId: null,
   id: id,
   sessionID: "ses_a",
   agent: null,

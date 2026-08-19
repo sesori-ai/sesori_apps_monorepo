@@ -156,6 +156,7 @@ class _MarkdownMessageImageState() extends State<MarkdownMessageImage> {
                     provider: provider,
                     originalUri: _originalUri,
                   ),
+                  heroPresentation: ImageAttachmentHeroPresentation.contained,
                   filename: _displayFilename,
                   heroTag: _heroTag,
                 ),

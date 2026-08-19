@@ -37,7 +37,7 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, const PluginSetupReady());
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "1.18.11"));
       expect(processes.spawnedExecutables, ["opencode"]);
       expect(processes.spawnedArguments, [
         const ["--version"],
@@ -103,7 +103,10 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, const PluginSetupReady());
+      expect(
+        result,
+        PluginSetupReady.versioned(runtimeVersion: manifest.bundledVersion.raw),
+      );
       expect(processes.spawnedExecutables, ["opencode", managedBinaryPath]);
     });
 

@@ -12,6 +12,10 @@ reconciliation, periodic check, in-place apply, and explicit update command.
   `sesori-bridge` launcher, and report the version; installers take the newest
   non-prerelease release carrying the platform archive and its basename-keyed checksum
   manifest, and verify artifacts before installing them.
+- An interactive standalone `run` on a sufficiently wide terminal identifies the bridge
+  with the installer wordmark and current version. It uses the shared color and Unicode
+  capability rules plus a compact ASCII fallback, while supervised starts, redirected
+  output, `--version`, and non-run subcommands stay banner-free.
 - The npm package is bootstrap-only: it installs or refreshes the managed runtime and
   points at the managed launcher. Direct execution from an npm payload is unsupported,
   its removal leaves the managed install, and full uninstall is manual.
@@ -69,6 +73,7 @@ after apply. Use a throwaway machine when mutating an install root.
 ## Sources
 
 - `bridge/RELEASING.md`, `bridge/INSTALL.md`, `install.sh`, `install.ps1`, `app/npm/`
+- `bridge/app/lib/src/foundation/bridge_startup_banner_formatter.dart`
 - `bridge/app/lib/src/updater/` policy, track, lock, repositories, services;
   `bridge/app/bin/bridge.dart` (`update`, `config track`)
 - Tests: `bridge/app/test/updater/`, notably policy and release-contract suites

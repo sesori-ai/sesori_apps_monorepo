@@ -145,6 +145,10 @@ class BridgeEventMapper({
             displaySessionId: displaySessionId,
           ),
         BridgeSseTodoUpdated(:final sessionID) => SesoriSseEvent.todoUpdated(sessionID: sessionID),
+        BridgeSseQueuedPromptsUpdated(:final sessionID, :final prompts) => SesoriSseEvent.sessionQueuedPrompts(
+          sessionID: sessionID,
+          prompts: prompts.toSharedQueuedPrompts(),
+        ),
         // BridgeSseProjectUpdated triggers a full projects-summary rebuild, but
         // the summary needs repository data (the bridge's session→project
         // attribution) — the orchestrator fetches it and builds the event via

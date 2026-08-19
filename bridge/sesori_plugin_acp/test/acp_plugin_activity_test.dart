@@ -101,6 +101,7 @@ void main() {
       // Dispatch a prompt and withhold the session/prompt response so the turn
       // stays in flight (ACP has no turn-complete event: busy == future pending).
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: sessionId,
         parts: const [PluginPromptPart.text(text: "hi")],
         variant: null,

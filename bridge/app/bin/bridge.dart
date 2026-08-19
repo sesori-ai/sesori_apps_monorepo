@@ -25,6 +25,7 @@ import 'package:sesori_bridge/src/bridge/runtime/bridge_logout_runner.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart';
 import 'package:sesori_bridge/src/bridge/runtime/plugin_cli_options_mapper.dart';
 import 'package:sesori_bridge/src/bridge/runtime/plugin_registry.dart';
+import 'package:sesori_bridge/src/foundation/bridge_startup_banner_formatter.dart';
 import 'package:sesori_bridge/src/repositories/app_onboarding_state_repository.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/default_editor_repository.dart';
@@ -169,6 +170,14 @@ class RunCommand() extends cli.Command<void> {
       }
     }
     Log.level = LogLevel.values.byName(options.logLevelName);
+
+    if (!options.isSupervised) {
+      final banner = BridgeStartupBannerFormatter(
+        out: stdout,
+        environment: Platform.environment,
+      ).format(version: appVersion);
+      if (banner != null) Console.message(banner);
+    }
 
     // Surface deprecated-flag usage to the user directly. The legacy flag still
     // worked; this only nudges the user toward the namespaced form, so it must

@@ -85,6 +85,7 @@ void main() {
     }
 
     Future<void> sendPrompt(String text) => plugin.sendPrompt(
+      promptId: "prompt-1",
       sessionId: "old-1",
       parts: [PluginPromptPart.text(text: text)],
       variant: null,

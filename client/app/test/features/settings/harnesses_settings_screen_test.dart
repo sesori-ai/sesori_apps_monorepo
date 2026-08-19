@@ -28,6 +28,7 @@ const _managed = PluginManagementMetadata(
     id: "future-harness",
     displayName: "Future Harness",
     state: PluginSetupState.ready,
+    runtimeVersion: "9.8.7",
     actionHint: null,
   ),
   runtimeState: PluginRuntimeState.active,
@@ -47,6 +48,7 @@ const _externalOpenCode = PluginManagementMetadata(
     id: "opencode",
     displayName: "OpenCode",
     state: PluginSetupState.ready,
+    runtimeVersion: null,
     actionHint: "Run login if requests fail.",
   ),
   runtimeState: PluginRuntimeState.active,
@@ -62,6 +64,7 @@ const _authenticationRequired = PluginManagementMetadata(
     id: "codex",
     displayName: "Codex",
     state: PluginSetupState.authenticationRequired,
+    runtimeVersion: "0.42.0",
     actionHint: "Log in to continue.",
   ),
   runtimeState: PluginRuntimeState.blocked,
@@ -323,6 +326,7 @@ void main() {
 
     expect(find.byKey(const Key("harness_authentication_codex")), findsOneWidget);
     expect(find.text("Log in"), findsOneWidget);
+    expect(find.text("0.42.0"), findsOneWidget);
     expect(find.byKey(const Key("harness_authentication_future-harness")), findsNothing);
 
     snapshots.add(
@@ -777,6 +781,8 @@ void main() {
     expect(find.text("Runtime"), findsNothing);
     expect(find.text("Work"), findsNothing);
     expect(find.text("Idle"), findsNothing);
+    expect(find.text("Version"), findsOneWidget);
+    expect(find.text("9.8.7"), findsOneWidget);
 
     await tester.tap(_switchFor("future-harness"));
     await tester.pump();
@@ -806,6 +812,8 @@ void main() {
     expect(find.byIcon(TablerRegular.plug), findsOneWidget);
     expect(find.text("Default"), findsOneWidget);
     expect(find.text("Run login if requests fail."), findsOneWidget);
+    expect(find.text("Version"), findsOneWidget);
+    expect(find.text("9.8.7"), findsOneWidget);
     expect(find.text("Active"), findsNWidgets(2));
     expect(find.text("Idle"), findsNWidgets(2));
     expect(find.byKey(const Key("harness_management_enabled_future-harness")), findsOneWidget);
@@ -836,6 +844,7 @@ void main() {
     expect(find.byKey(const Key("harness_management_default_timeout")), findsNothing);
     expect(find.text("Active"), findsOneWidget);
     expect(find.text("Idle"), findsOneWidget);
+    expect(find.text("Version"), findsNothing);
 
     snapshots.add(
       PluginManagementLoadResult.supported(

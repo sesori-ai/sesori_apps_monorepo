@@ -99,6 +99,7 @@ void main() {
 
       final accepted = harness.plugin.sendCommand(
         sessionId: session.id,
+        promptId: "prompt-1",
         command: "review",
         arguments: "src",
         userVisibleArguments: "src",
@@ -120,6 +121,7 @@ void main() {
       await expectLater(
         harness.plugin.sendPrompt(
           sessionId: "missing",
+          promptId: "prompt-2",
           parts: const [PluginPromptPart.text(text: "no")],
           variant: null,
           agent: null,
@@ -145,6 +147,7 @@ void main() {
       );
       final command = harness.plugin.sendCommand(
         sessionId: session.id,
+        promptId: "prompt-3",
         command: "review",
         arguments: "src",
         userVisibleArguments: "src",
@@ -228,6 +231,7 @@ void main() {
       await harness.plugin.listAllSessions(knownDirectories: {harness.project.path});
       await harness.plugin.sendPrompt(
         sessionId: "child",
+        promptId: "prompt-4",
         parts: const [PluginPromptPart.text(text: "child work")],
         variant: null,
         agent: null,

@@ -16,18 +16,45 @@ final class ClaudeEventDispatcher({
   final Map<String, Set<int>> _streamedBlocks = {};
   final Map<String, Map<int, PluginMessagePart>> _completedStreamedParts = {};
   final Map<String, Set<String>> _streamedMessageIds = {};
+  final Map<String, ({String promptId, void Function() onConsumed})> _expectedUserEcho = {};
 
   void beginTurn({required String sessionId}) {
     _messageIds.remove(sessionId);
     _announcedMessageIds.remove(sessionId);
+    // A leftover expectation belongs to a turn whose echo never arrived
+    // (interrupted between stdin write and CLI read); the new turn must not
+    // inherit it.
+    _expectedUserEcho.remove(sessionId);
     _clearStreamedMessages(sessionId: sessionId);
     _tools.beginTurn(sessionId: sessionId);
+  }
+
+  /// Drops a pending echo expectation whose turn was aborted, so a late
+  /// buffered frame cannot be stamped with the aborted prompt id.
+  void clearExpectedUserEcho({required String sessionId}) {
+    _expectedUserEcho.remove(sessionId);
+  }
+
+  /// Declares that the session's next replayed stdin echo fulfills
+  /// [promptId]: the echoed user message carries it, and [onConsumed] runs
+  /// after the message events are built (its queue update trails them).
+  ///
+  /// Dispatch is serialized per session, so at most one expectation is live;
+  /// a new dispatch overwrites the previous turn's expectation when its echo
+  /// never arrived (interrupt between stdin write and CLI read).
+  void expectUserEcho({
+    required String sessionId,
+    required String promptId,
+    required void Function() onConsumed,
+  }) {
+    _expectedUserEcho[sessionId] = (promptId: promptId, onConsumed: onConsumed);
   }
 
   void forgetSession({required String sessionId}) {
     _messageIds.remove(sessionId);
     _announcedMessageIds.remove(sessionId);
     _models.remove(sessionId);
+    _expectedUserEcho.remove(sessionId);
     _clearStreamedMessages(sessionId: sessionId);
     _tools.forgetSession(sessionId: sessionId);
   }
@@ -71,6 +98,12 @@ final class ClaudeEventDispatcher({
         ClaudeResultMessage() => _mapResult(sessionId: sessionId, message: message),
         ClaudeInitMessage() ||
         ClaudeStatusMessage() ||
+        // ponytail: parsed but not surfaced — no client UI consumes thinking
+        // token estimates, subagent task progress, or hook output yet.
+        ClaudeThinkingTokensMessage() ||
+        ClaudeTaskProgressMessage() ||
+        ClaudeHookStartedMessage() ||
+        ClaudeHookOutputMessage() ||
         ClaudeControlRequestMessage() ||
         ClaudeControlResponseMessage() ||
         ClaudeRateLimitMessage() ||
@@ -226,7 +259,7 @@ final class ClaudeEventDispatcher({
     _messageIds[sessionId] = messageId;
     if (_realModel(model: message.model) case final model?) _models[sessionId] = model;
     final mapped = _content.map(content: message.message["content"]);
-    if (_containsInternalCommandOutput(blocks: mapped)) return const [];
+    if (_content.containsInternalCommandOutput(blocks: mapped)) return const [];
     final parts = _content.mapParts(content: message.message["content"], sessionId: sessionId, messageId: messageId);
     if (!parts.any((part) => part.type.isVisible)) return const [];
     _announcedMessageIds[sessionId] = messageId;
@@ -268,7 +301,7 @@ final class ClaudeEventDispatcher({
     required ClaudeUserMessage message,
   }) {
     final mapped = _content.map(content: message.message["content"]);
-    if (_containsInternalCommandOutput(blocks: mapped)) return const [];
+    if (_content.containsInternalCommandOutput(blocks: mapped)) return const [];
     final results = mapped.whereType<ClaudeMappedToolResultContentBlock>().toList();
     if (results.isNotEmpty) {
       final events = <BridgeSseEvent>[];
@@ -294,19 +327,30 @@ final class ClaudeEventDispatcher({
 
     final messageId = _nonEmptyString(message.uuid);
     if (messageId == null) return const [];
-    final parts = _content.mapParts(content: message.message["content"], sessionId: sessionId, messageId: messageId);
+    // Replayed stdin turns echo the exact execution payload, so the
+    // bridge-owned worktree context is stripped the same way the transcript
+    // history path strips it.
+    final parts = _content.mapParts(
+      content: _content.visibleUserContent(content: message.message["content"]),
+      sessionId: sessionId,
+      messageId: messageId,
+    );
     if (!parts.any((part) => part.type.isVisible)) return const [];
-    return [
+    final expectation = _expectedUserEcho.remove(sessionId);
+    final events = [
       BridgeSseMessageUpdated(
         info: PluginMessage.user(
           id: messageId,
           sessionID: sessionId,
           agent: null,
           time: _messageTime(message.timestamp),
+          promptId: expectation?.promptId,
         ).toJson(),
       ),
       for (final part in parts) BridgeSseMessagePartUpdated(part: part),
     ];
+    expectation?.onConsumed();
+    return events;
   }
 
   List<BridgeSseEvent> _mapRetry({
@@ -427,14 +471,6 @@ String? _realModel({required String? model}) {
   final normalized = _nonEmptyString(model);
   return normalized == "<synthetic>" ? null : normalized;
 }
-
-bool _containsInternalCommandOutput({required List<ClaudeMappedContentBlock> blocks}) => blocks.any(
-  (block) =>
-      block is ClaudeMappedTextContentBlock &&
-      (block.text.contains("<local-command-stdout>") ||
-          block.text.contains("<local-command-caveat>") ||
-          block.text.contains("<command-name>")),
-);
 
 PluginMessageTime? _messageTime(DateTime? timestamp) =>
     timestamp == null ? null : PluginMessageTime(created: timestamp.millisecondsSinceEpoch, completed: null);

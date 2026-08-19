@@ -112,16 +112,19 @@ class SessionDetailLoadService({
       final questionsFuture = _repository.getPendingQuestions(sessionId: sessionId);
       final permissionsFuture = _repository.getPendingPermissions(sessionId: sessionId);
       final statusesFuture = _repository.getSessionStatuses();
+      final queuedPromptsFuture = _repository.getQueuedPrompts(sessionId: sessionId);
       final (
         messagesResponse,
         questionsResponse,
         permissionsResponse,
         statusesResponse,
+        queuedPromptsResponse,
       ) = await (
         messagesFuture,
         questionsFuture,
         permissionsFuture,
         statusesFuture,
+        queuedPromptsFuture,
       ).wait;
       final (optionsResult, supportsPromptAttachments) = await (
         optionsFuture,
@@ -146,6 +149,11 @@ class SessionDetailLoadService({
         SuccessResponse(:final data) => data.data,
         ErrorResponse() => <PendingPermission>[],
       };
+      // An error is also the old-bridge (unknown route) path: no queue info.
+      final bridgeQueuedPrompts = switch (queuedPromptsResponse) {
+        SuccessResponse(:final data) => data.data,
+        ErrorResponse() => <QueuedSessionPrompt>[],
+      };
       final childSessions = switch (childrenResponse) {
         SuccessResponse(:final data) => data.items,
         ErrorResponse() => <Session>[],
@@ -163,6 +171,7 @@ class SessionDetailLoadService({
           olderMessagesCursor: olderMessagesCursor,
           pendingQuestions: pendingQuestions,
           pendingPermissions: pendingPermissions,
+          bridgeQueuedPrompts: bridgeQueuedPrompts,
           childSessions: childSessions,
           statuses: statuses,
           agents: options.agents,
@@ -331,6 +340,7 @@ class const SessionDetailSnapshot({
   /// pagination and always sends everything.
   required final int? olderMessagesCursor,
   required final List<PendingQuestion> pendingQuestions,
+  required final List<QueuedSessionPrompt> bridgeQueuedPrompts,
   required final List<PendingPermission> pendingPermissions,
   required final List<Session> childSessions,
   required final Map<String, SessionStatus> statuses,

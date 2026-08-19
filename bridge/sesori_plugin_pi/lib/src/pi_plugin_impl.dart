@@ -190,6 +190,9 @@ final class PiPlugin._({
       try {
         await _sessionService.sendPrompt(
           sessionId: sessionId,
+          // createSession carries no client prompt id; a fresh random id keys
+          // this initial turn without ever colliding with client-supplied ids.
+          promptId: _processRepository.generateSessionId(),
           directory: normalized,
           parts: parts,
           userVisibleText: userVisibleText,
@@ -289,6 +292,7 @@ final class PiPlugin._({
   @override
   Future<void> sendPrompt({
     required String sessionId,
+    required String promptId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
     required String? agent,
@@ -307,6 +311,7 @@ final class PiPlugin._({
     );
     await _sessionService.sendPrompt(
       sessionId: sessionId,
+      promptId: promptId,
       directory: session.directory,
       parts: parts,
       userVisibleText: parts.whereType<PluginPromptPartText>().map((part) => part.text).join(),
@@ -318,6 +323,7 @@ final class PiPlugin._({
   @override
   Future<void> sendCommand({
     required String sessionId,
+    required String promptId,
     required String command,
     required String arguments,
     required String? userVisibleArguments,
@@ -342,6 +348,7 @@ final class PiPlugin._({
     try {
       await _sessionService.sendCommand(
         sessionId: sessionId,
+        promptId: promptId,
         directory: session.directory,
         command: command,
         arguments: arguments,

@@ -20,8 +20,8 @@ void main() {
     });
 
     test("serializes queued turns for one session", () async {
-      harness.enqueue("first", model: "haiku");
-      harness.enqueue("second", model: "haiku");
+      unawaited(harness.enqueue("first", model: "haiku"));
+      unawaited(harness.enqueue("second", model: "haiku"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
 
@@ -36,8 +36,8 @@ void main() {
     });
 
     test("abort fences a queued turn and cancels the running turn", () async {
-      harness.enqueue("first", model: "haiku");
-      harness.enqueue("second", model: "haiku");
+      unawaited(harness.enqueue("first", model: "haiku"));
+      unawaited(harness.enqueue("second", model: "haiku"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
 
@@ -53,7 +53,7 @@ void main() {
     });
 
     test("next turn resumes in a fresh process after abort", () async {
-      harness.enqueue("first", model: "haiku");
+      unawaited(harness.enqueue("first", model: "haiku"));
       final first = await harness.firstProcess;
       await waitForFrame(first, "user");
 
@@ -63,7 +63,7 @@ void main() {
       await abort;
       await harness.waitForIdle();
 
-      harness.enqueue("second", model: "haiku");
+      unawaited(harness.enqueue("second", model: "haiku"));
       final second = await harness.processAt(1);
       await waitForFrame(second, "user");
 
@@ -74,7 +74,7 @@ void main() {
     test("abort tears down the process when interrupt fails", () async {
       await harness.dispose();
       harness = _ServiceHarness(failInterrupt: true);
-      harness.enqueue("first");
+      unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
 
@@ -85,7 +85,7 @@ void main() {
     });
 
     test("interruptActiveWork aborts and waits for active sessions within its budget", () async {
-      harness.enqueue("first");
+      unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
 
@@ -101,7 +101,7 @@ void main() {
     });
 
     test("routes control asks and clears them when the process exits", () async {
-      harness.enqueue("first");
+      unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
       process.emit({
@@ -124,7 +124,7 @@ void main() {
     });
 
     test("reaps an idle process and transparently resumes the next turn", () async {
-      harness.enqueue("first", model: "haiku");
+      unawaited(harness.enqueue("first", model: "haiku"));
       final first = await harness.firstProcess;
       await waitForFrame(first, "user");
       first.emit({
@@ -156,7 +156,7 @@ void main() {
       await pump();
       expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
 
-      harness.enqueue("second", model: "haiku");
+      unawaited(harness.enqueue("second", model: "haiku"));
       final second = await harness.processAt(1);
       await waitForFrame(second, "user");
 
@@ -166,7 +166,7 @@ void main() {
     });
 
     test("aborting an idle session preserves its scheduled reap", () async {
-      harness.enqueue("first");
+      unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
       process.emit(_result());
@@ -182,7 +182,7 @@ void main() {
     test("concurrent disposal waits for an in-flight idle teardown", () async {
       await harness.dispose();
       harness = _ServiceHarness(stdinCloseCompletes: false);
-      harness.enqueue("first");
+      unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
       process.emit(_result());
@@ -203,10 +203,320 @@ void main() {
       expect(completed, isTrue);
     });
 
+    test("defers the idle reap while a ScheduleWakeup is pending", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_scheduleWakeupFrame(delaySeconds: 600));
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      harness.clock.elapse();
+      await pump();
+
+      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+    });
+
+    test("reaps a process whose wakeup is one idle timeout stale", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_scheduleWakeupFrame(delaySeconds: -100000));
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      harness.clock.elapse();
+      await pump();
+
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+    });
+
+    test("surfaces a CLI self-started wakeup turn as busy and idle again on its result", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_scheduleWakeupFrame(delaySeconds: 600));
+      process.emit(_result());
+      await harness.waitForIdle();
+      harness.events.clear();
+
+      // The wakeup fires: the CLI streams a turn the bridge never enqueued.
+      process.emit(_assistantTextFrame(text: "waking up"));
+      await harness.waitForBusy();
+
+      expect(harness.service.currentWorkState, PluginWorkState.busy);
+      expect(await _status(harness), isA<PluginSessionStatusBusy>());
+      expect(harness.events.whereType<BridgeSseSessionStatus>(), isNotEmpty);
+
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      expect(await _status(harness), isA<PluginSessionStatusIdle>());
+      expect(harness.events.whereType<BridgeSseSessionIdle>(), hasLength(1));
+
+      // The finished self-started turn cleared the wakeup and rearmed the reap.
+      harness.clock.elapse();
+      await pump();
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+    });
+
+    test("abort interrupts a self-started wakeup turn", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_scheduleWakeupFrame(delaySeconds: 600));
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      process.emit(_assistantTextFrame(text: "waking up"));
+      await harness.waitForBusy();
+
+      final abort = harness.service.abort(sessionId: testSessionId);
+      final interrupt = await _waitForControlSubtype(process, "interrupt");
+      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      await abort;
+      await harness.waitForIdle();
+
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+      expect(harness.service.currentWorkState, PluginWorkState.idle);
+    });
+
+    test("a ScheduleWakeup stop call clears the pending wakeup", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_scheduleWakeupFrame(delaySeconds: 600));
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      // The fired turn ends the loop: ScheduleWakeup({stop: true}) then result.
+      process.emit(_scheduleWakeupStopFrame());
+      await harness.waitForBusy();
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      harness.clock.elapse();
+      await pump();
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+    });
+
+    test("reads the idle timeout live at each reap arm", () async {
+      harness.idleTimeout = null;
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      // Reaping disabled: no delay armed, process stays resident.
+      harness.clock.elapse();
+      await pump();
+      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+
+      // Settings change takes effect at the next idle transition.
+      harness.idleTimeout = const Duration(minutes: 1);
+      unawaited(harness.enqueue("second"));
+      await _waitForUserFrames(process, 2);
+      process.emit(_result());
+      await harness.waitForIdle();
+      harness.clock.elapse();
+      await pump();
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+    });
+
+    test("a process exit clears the pending wakeup", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_scheduleWakeupFrame(delaySeconds: 600));
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      process.exit(0);
+      await pump();
+
+      harness.clock.elapse();
+      await pump();
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+    });
+
+    test("accepts a steering send at enqueue while a turn is running", () async {
+      unawaited(harness.enqueue("first", model: "haiku"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+
+      var accepted = false;
+      unawaited(harness.enqueue("second", model: "haiku").then((_) => accepted = true));
+      await pump();
+
+      expect(accepted, isTrue, reason: "acceptance must not wait for the running turn");
+      expect(_userFrames(process), hasLength(1), reason: "the queued turn must not dispatch mid-turn");
+    });
+
+    test("exposes queued entries until dispatch settles and emits full-list updates", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      unawaited(harness.enqueue("second"));
+      await pump();
+
+      expect(
+        harness.service.queuedPrompts(sessionId: testSessionId).map((prompt) => prompt.id),
+        ["prompt-first", "prompt-second"],
+      );
+      final updates = harness.events.whereType<BridgeSseQueuedPromptsUpdated>().toList();
+      expect(updates.last.prompts.map((prompt) => prompt.id), ["prompt-first", "prompt-second"]);
+
+      process.emit(_result());
+      await _waitForUserFrames(process, 2);
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      expect(harness.service.queuedPrompts(sessionId: testSessionId), isEmpty);
+      final finalUpdate = harness.events.whereType<BridgeSseQueuedPromptsUpdated>().last;
+      expect(finalUpdate.prompts, isEmpty);
+    });
+
+    test("refuses a duplicate prompt id as an accepted no-op", () async {
+      unawaited(harness.enqueue("first", promptId: "prm_dup"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+
+      await harness.enqueue("first-again", promptId: "prm_dup");
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      expect(_userFrames(process), hasLength(1), reason: "the retry must not become a second turn");
+    });
+
+    test("refuses a recently dispatched prompt id after its turn completed", () async {
+      unawaited(harness.enqueue("first", promptId: "prm_done"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      await harness.enqueue("first-retry", promptId: "prm_done");
+      await pump();
+
+      expect(_userFrames(process), hasLength(1));
+    });
+
+    test("cancels a pending entry before dispatch and refuses a dispatched one", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      unawaited(harness.enqueue("second"));
+      await pump();
+
+      expect(
+        harness.service.cancelQueuedPrompt(sessionId: testSessionId, promptId: "prompt-second"),
+        isTrue,
+      );
+      expect(
+        harness.service.cancelQueuedPrompt(sessionId: testSessionId, promptId: "prompt-first"),
+        isFalse,
+        reason: "the dispatched running turn is governed by abort, not cancel",
+      );
+      expect(
+        harness.service.queuedPrompts(sessionId: testSessionId).map((prompt) => prompt.id),
+        ["prompt-first"],
+      );
+
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      expect(_userFrames(process), hasLength(1), reason: "the cancelled turn must never dispatch");
+    });
+
+    test("consumes an entry via emittedVisibleMessage at dispatch", () async {
+      unawaited(
+        harness.enqueue("run-command", onDispatched: () => ClaudeQueuedDispatch.emittedVisibleMessage),
+      );
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      await pump();
+
+      expect(harness.service.queuedPrompts(sessionId: testSessionId), isEmpty);
+      process.emit(_result());
+      await harness.waitForIdle();
+    });
+
+    test("consumeQueuedPrompt removes the echoed entry", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      expect(harness.service.queuedPrompts(sessionId: testSessionId), hasLength(1));
+
+      harness.service.consumeQueuedPrompt(sessionId: testSessionId, promptId: "prompt-first");
+
+      expect(harness.service.queuedPrompts(sessionId: testSessionId), isEmpty);
+      process.emit(_result());
+      await harness.waitForIdle();
+    });
+
+    test("abort clears queued entries and announces the empty queue", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      unawaited(harness.enqueue("second"));
+      await pump();
+
+      final abort = harness.service.abort(sessionId: testSessionId);
+      final interrupt = await _waitForControlSubtype(process, "interrupt");
+      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      await abort;
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      expect(harness.service.queuedPrompts(sessionId: testSessionId), isEmpty);
+      expect(harness.events.whereType<BridgeSseQueuedPromptsUpdated>().last.prompts, isEmpty);
+      expect(_userFrames(process), hasLength(1));
+    });
+
+    test("a turn settling after deleteSession publishes no queue update", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+
+      await harness.service.deleteSession(sessionId: testSessionId);
+      final eventCountAfterDelete = harness.events.length;
+      process.emit(_result());
+      await pump();
+      await pump();
+
+      final lateEvents = harness.events.skip(eventCountAfterDelete);
+      expect(lateEvents.whereType<BridgeSseQueuedPromptsUpdated>(), isEmpty);
+    });
+
+    test("blocking initial turn completes acceptance only at dispatch", () async {
+      var accepted = false;
+      final acceptance = harness.service
+          .enqueueInitialTurn(
+            sessionId: testSessionId,
+            directory: "/tmp/project",
+            createNew: true,
+            parts: [const PluginPromptPart.text(text: "initial")],
+            model: null,
+            effort: null,
+            permissionMode: null,
+          )
+          .then((_) => accepted = true);
+      await pump();
+      expect(accepted, isFalse, reason: "acceptance waits for the spawn and stdin write");
+
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      await acceptance;
+      expect(accepted, isTrue);
+      process.emit(_result());
+      await harness.waitForIdle();
+    });
+
     test("delete waits for an in-flight idle teardown", () async {
       await harness.dispose();
       harness = _ServiceHarness(stdinCloseCompletes: false);
-      harness.enqueue("first");
+      unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
       process.emit(_result());
@@ -228,6 +538,9 @@ void main() {
 }
 
 final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool failInterrupt = false}) {
+  /// Mutable so tests can exercise runtime settings changes.
+  Duration? idleTimeout = const Duration(minutes: 5);
+
   this {
     repository = ClaudeSessionProcessRepository(
       processFactory: _spawn,
@@ -243,7 +556,7 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
       processes: repository,
       approvals: approvals,
       clock: clock,
-      idleTimeout: const Duration(minutes: 5),
+      resolveIdleTimeout: () => idleTimeout,
     );
     subscription = service.events.listen(events.add);
   }
@@ -274,20 +587,28 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
     return process;
   }
 
-  void enqueue(String text, {String? model}) {
-    unawaited(
-      service
-          .enqueueTurn(
-            sessionId: testSessionId,
-            directory: "/tmp/project",
-            createNew: true,
-            parts: [PluginPromptPart.text(text: text)],
-            model: model,
-            effort: null,
-            permissionMode: null,
-          )
-          .catchError((Object _) {}),
-    );
+  Future<void> enqueue(
+    String text, {
+    String? model,
+    String? promptId,
+    ClaudeQueuedDispatch Function()? onDispatched,
+  }) {
+    return service
+        .enqueueTurn(
+          sessionId: testSessionId,
+          directory: "/tmp/project",
+          createNew: true,
+          parts: [PluginPromptPart.text(text: text)],
+          model: model,
+          effort: null,
+          permissionMode: null,
+          promptId: promptId ?? "prompt-$text",
+          displayText: text,
+          command: null,
+          attachmentCount: 0,
+          onDispatched: onDispatched ?? () => ClaudeQueuedDispatch.awaitsUserEcho,
+        )
+        .catchError((Object _) {});
   }
 
   Future<FakeClaudeProcess> processAt(int index) async {
@@ -301,6 +622,10 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
   Future<void> waitForIdle() => service.currentWorkState == PluginWorkState.idle
       ? Future<void>.value()
       : service.workState.firstWhere((state) => state == PluginWorkState.idle);
+
+  Future<void> waitForBusy() => service.currentWorkState == PluginWorkState.busy
+      ? Future<void>.value()
+      : service.workState.firstWhere((state) => state == PluginWorkState.busy);
 
   Future<void> dispose() async {
     await service.dispose();
@@ -371,3 +696,40 @@ Map<String, Object?> _result() => {
   "session_id": testSessionId,
   "is_error": false,
 };
+
+Future<PluginSessionStatus> _status(_ServiceHarness harness) async =>
+    harness.service.sessionStatuses[testSessionId]!;
+
+Map<String, Object?> _scheduleWakeupFrame({required int delaySeconds}) => _assistantFrame(content: [
+  {
+    "type": "tool_use",
+    "id": "wakeup-1",
+    "name": "ScheduleWakeup",
+    "input": {"delaySeconds": delaySeconds, "prompt": "continue the loop"},
+  },
+]);
+
+Map<String, Object?> _scheduleWakeupStopFrame() => _assistantFrame(content: [
+  {
+    "type": "tool_use",
+    "id": "wakeup-2",
+    "name": "ScheduleWakeup",
+    "input": {"stop": true},
+  },
+]);
+
+Map<String, Object?> _assistantTextFrame({required String text}) => _assistantFrame(content: [
+  {"type": "text", "text": text},
+]);
+
+Map<String, Object?> _assistantFrame({required List<Map<String, Object?>> content}) => {
+  "type": "assistant",
+  "session_id": testSessionId,
+  "message": {
+    "id": "msg-${_frameSequence++}",
+    "model": "claude-sonnet-4-5",
+    "content": content,
+  },
+};
+
+int _frameSequence = 0;

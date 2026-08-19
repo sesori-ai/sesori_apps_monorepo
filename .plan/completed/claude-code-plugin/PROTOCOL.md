@@ -27,6 +27,7 @@ And Plan Deltas.
 ```
 claude -p --input-format stream-json --output-format stream-json \
        --verbose --include-partial-messages \
+       --replay-user-messages \
        --permission-prompt-tool stdio \
        [--permission-mode <mode>] [--model <id>] [--effort <level>] \
        [--session-id <uuid> | --resume <uuid>]
@@ -74,7 +75,7 @@ supervised child. Not yet probed; resolve before the descriptor lands.
 | `--agent <agent>` | verified present | Selects a first-party agent. See section 6. |
 | `--permission-mode <mode>` | verified | Choices differ from the control API — see section 6. |
 | `--forward-subagent-text` | verified present | Opt-in; forwards subagent text/thinking with `parent_tool_use_id` set. Not used in v1. |
-| `--replay-user-messages` | verified present | Re-emits stdin user messages on stdout for acknowledgment. Candidate for `sendPrompt` acceptance. |
+| `--replay-user-messages` | verified, used | Re-emits every stdin user turn on stdout under its transcript uuid (`isReplay: true`), before the turn's assistant output, on both `--session-id` and `--resume`. The replay is the live transcript's only user-message source; a slash command's replay is the internal `<command-message>` envelope and is dropped by mapping. |
 | `--include-hook-events` | verified present | Not used. |
 | `--no-session-persistence` | verified present | Must **not** be used — it disables the transcripts the catalog enumerates. |
 

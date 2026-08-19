@@ -258,7 +258,7 @@ class AcpEventMapper({
     final messageId = initialUserMessageId(sessionId);
     return [
       BridgeSseMessageUpdated(
-        info: _messageFor(_ChunkRole.user, messageId, sessionId).toJson(),
+        info: _messageFor(_ChunkRole.user, messageId, sessionId, promptId: null).toJson(),
       ),
       BridgeSseMessagePartUpdated(
         part: _part(
@@ -276,6 +276,7 @@ class AcpEventMapper({
   /// Maps an accepted outbound prompt to its canonical live user message.
   List<BridgeSseEvent> mapSentPrompt({
     required String sessionId,
+    required String promptId,
     required List<PluginPromptPart> parts,
   }) {
     final textParts = parts.whereType<PluginPromptPartText>().where((part) => part.text.isNotEmpty).toList();
@@ -286,7 +287,7 @@ class AcpEventMapper({
     final messageId = "$sessionId-sent-$sequence-user";
     return [
       BridgeSseMessageUpdated(
-        info: _messageFor(_ChunkRole.user, messageId, sessionId).toJson(),
+        info: _messageFor(_ChunkRole.user, messageId, sessionId, promptId: promptId).toJson(),
       ),
       for (var index = 0; index < textParts.length; index++)
         BridgeSseMessagePartUpdated(
@@ -516,7 +517,7 @@ class AcpEventMapper({
     if (started.add(identity.messageId)) {
       events.add(
         BridgeSseMessageUpdated(
-          info: _messageFor(_ChunkRole.assistant, identity.messageId, sessionId).toJson(),
+          info: _messageFor(_ChunkRole.assistant, identity.messageId, sessionId, promptId: null).toJson(),
         ),
       );
     }
@@ -612,7 +613,7 @@ class AcpEventMapper({
     if (started.add(partId)) {
       if (started.add(messageId)) {
         events.add(
-          BridgeSseMessageUpdated(info: _messageFor(role, messageId, sessionId).toJson()),
+          BridgeSseMessageUpdated(info: _messageFor(role, messageId, sessionId, promptId: null).toJson()),
         );
       }
       events.add(
@@ -884,13 +885,14 @@ class AcpEventMapper({
     );
   }
 
-  shared.Message _messageFor(_ChunkRole role, String messageId, String sessionId) {
+  shared.Message _messageFor(_ChunkRole role, String messageId, String sessionId, {required String? promptId}) {
     return switch (role) {
       _ChunkRole.user => shared.Message.user(
         id: messageId,
         sessionID: sessionId,
         agent: null,
         time: null,
+        promptId: promptId,
       ),
       _ChunkRole.assistant => shared.Message.assistant(
         id: messageId,

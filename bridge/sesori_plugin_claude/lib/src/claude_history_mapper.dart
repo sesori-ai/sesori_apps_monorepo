@@ -21,7 +21,7 @@ final class const ClaudeHistoryMapper({
         case ClaudeTranscriptAssistantRecord():
           if (_skipRecord(record: record, sessionId: sessionId)) continue;
           final blocks = _content.map(content: record.content);
-          if (_containsInternalCommandOutput(blocks: blocks)) continue;
+          if (_content.containsInternalCommandOutput(blocks: blocks)) continue;
           final assistant = assistantsByMessageId.putIfAbsent(record.id, () {
             final created = _AssistantHistoryMessage(
               id: record.id,
@@ -43,7 +43,7 @@ final class const ClaudeHistoryMapper({
             continue;
           }
           final blocks = _content.map(content: record.content);
-          if (_containsInternalCommandOutput(blocks: blocks)) continue;
+          if (_content.containsInternalCommandOutput(blocks: blocks)) continue;
           final results = [
             for (final block in blocks)
               if (block is ClaudeMappedToolResultContentBlock) block,
@@ -57,7 +57,7 @@ final class const ClaudeHistoryMapper({
           }
 
           final parts = _content.mapParts(
-            content: _visibleUserContent(record.content),
+            content: _content.visibleUserContent(content: record.content),
             sessionId: sessionId,
             messageId: record.id,
           );
@@ -70,6 +70,7 @@ final class const ClaudeHistoryMapper({
                   sessionID: sessionId,
                   agent: null,
                   time: _messageTime(record.timestamp),
+                  promptId: null,
                 ),
                 parts: parts,
               ),
@@ -155,38 +156,3 @@ final class _AssistantHistoryMessage({
 
 PluginMessageTime? _messageTime(DateTime? timestamp) =>
     timestamp == null ? null : PluginMessageTime(created: timestamp.millisecondsSinceEpoch, completed: null);
-
-Object? _visibleUserContent(Object? content) {
-  if (content is! List) return content;
-  final visible = <Object?>[];
-  for (final block in content) {
-    if (block is Map && block["type"] == "text" && block["text"] is String) {
-      final text = _stripBridgeContext(block["text"]! as String);
-      if (text != null && text.isNotEmpty) visible.add({...block.cast<String, Object?>(), "text": text});
-    } else {
-      visible.add(block);
-    }
-  }
-  return visible;
-}
-
-String? _stripBridgeContext(String text) {
-  const marker = "[SYSTEM CONTEXT \u2014 IMPORTANT]";
-  final markerIndex = text.indexOf(marker);
-  if (markerIndex < 0) return text;
-  final envelopeEnd = text.indexOf("\n---", markerIndex);
-  if (envelopeEnd < 0) return text;
-  final trailing = text.substring(envelopeEnd + "\n---".length).trim();
-  if (markerIndex == 0) return trailing.isEmpty ? null : trailing;
-  final prefix = text.substring(0, markerIndex).trimRight();
-  if (!prefix.startsWith("/")) return text;
-  return trailing.isEmpty ? prefix : "$prefix $trailing";
-}
-
-bool _containsInternalCommandOutput({required List<ClaudeMappedContentBlock> blocks}) => blocks.any(
-  (block) =>
-      block is ClaudeMappedTextContentBlock &&
-      (block.text.contains("<local-command-stdout>") ||
-          block.text.contains("<local-command-caveat>") ||
-          block.text.contains("<command-name>")),
-);

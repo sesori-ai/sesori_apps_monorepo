@@ -433,6 +433,7 @@ const _managementPlugin = PluginManagementMetadata(
     id: "codex",
     displayName: "Codex",
     state: PluginSetupState.ready,
+    runtimeVersion: "0.42.0",
     actionHint: null,
   ),
   runtimeState: PluginRuntimeState.active,

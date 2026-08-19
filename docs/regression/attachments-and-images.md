@@ -9,12 +9,22 @@ content the transcript renders live and after reload.
 ## Required Behavior
 
 - The composer offers image staging only for a backend declaring prompt
-  attachment support. Staged images are memory-only, are cleared when the target
-  stops supporting attachments, the session changes, or the submission completes,
-  never persist in a draft, and travel inline within the staged-attachment size
-  bound so the request fits the relay's message limit. The owning plugin normalizes
-  backend-produced images into a client-safe attachment; host paths never cross
-  that boundary.
+  attachment support. Staged images are memory-only. They are cleared when the
+  target stops supporting attachments, the session changes, or submission
+  succeeds or settles after route exit; current-route failure instead transfers
+  the one-shot snapshot into restoration. They never persist in a draft and travel
+  inline within the staged-attachment size bound so the request fits the relay's
+  message limit. The owning plugin normalizes backend-produced images into a
+  client-safe attachment; host paths never cross that boundary.
+- During new-session submission, one memory-only snapshot retains the exact
+  attachment identities only until success, in-route restoration, or background
+  settlement. A failed current-route launch restores those attachments together
+  with text/voice/command intent before the composer remounts; failure after route
+  exit never restores them. Reconnect and options refresh cannot erase a pending
+  one-shot restoration.
+- Maximum-size staged input is encoded with bounded event-loop yields through
+  attachment base64, request JSON, and relay-envelope JSON/UTF-8. Encoding
+  preserves exact bytes without copying attachment buffers through an isolate.
 - Only bounded raster types are displayable, under per-collection count and
   decoded-byte budgets. Backend transcript output retains up to 20 MiB per image,
   50 MiB aggregate, and four candidates per logical collection. Over-budget,
@@ -40,12 +50,15 @@ content the transcript renders live and after reload.
   copy, share, and save on the original, and an unknown shape degrades safely.
 - Capable clients request stored references for normal history pages and live
   subscriptions. Opening a stored image keeps its thumbnail visible while the
-  original loads and decodes, replaces it in place without resetting viewer
-  state, and enables copy, share, and save only after that decode succeeds.
-  Failure retains the thumbnail with an explicit accessible original retry;
-  closing the viewer releases Cubit bytes and evicts the full-resolution image
-  provider from Flutter's image cache, and scrolling never starts an original
-  request.
+  original loads and decodes. Stored thumbnails preserve the source aspect ratio;
+  only the square collection presentation center-crops them, and the Hero flight
+  reveals the full thumbnail before the decoded original fades in without
+  resetting viewer state. Copy, share, and save enable only after that decode
+  succeeds. Failure retains the thumbnail with an explicit accessible original
+  retry; closing the viewer releases Cubit bytes and evicts the full-resolution
+  image provider from Flutter's image cache, and scrolling never starts an
+  original request. Reduced motion skips the viewer route and image-swap
+  animations.
 - User, tool, and each maximal contiguous run of assistant file attachments use
   the same left-aligned square collection, capped at 320 px and constrained by
   the available parent width. One attachment spans the collection, two split a
@@ -76,9 +89,9 @@ content the transcript renders live and after reload.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, unknown-variant, typed stored-rendition request, scoped coalescing, timeout, sensitive-response redaction, persistent thumbnail cache, corruption recovery, bounded pruning, and auth cleanup behavior holds in its owning suites; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; attachment collections retain square layouts and chronology; stored viewers remain thumbnail-first through original decode, preserve viewer state, gate original actions, retry decode/load failures, and evict/release originals on close. |
+| L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, unknown-variant, typed stored-rendition request, scoped coalescing, timeout, sensitive-response redaction, persistent thumbnail cache, corruption recovery, bounded pruning, and auth cleanup behavior holds in its owning suites; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; stored thumbnails preserve aspect ratio while attachment collections retain center-cropped square layouts and chronology; stored viewers morph that crop into the contained thumbnail, fade in the decoded original, preserve viewer state, gate original actions, retry decode/load failures, and evict/release originals on close. |
 | L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. |
-| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: staged composer images sent and echoed per attachment-capable plugin, generated and tool-output images displayed, text/image/text order preserved live and after reload, viewer copy/share/save. |
+| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: staged composer images sent and echoed per attachment-capable plugin; a failed current-route creation restores exact attachment identities with the rest of the draft while background failure does not; generated and tool-output images display, text/image/text order is preserved live and after reload, and viewer copy/share/save works. |
 | L4 Extended | Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. |
 | L5 Full | Client end to end on alternate client platforms for picker, clipboard, animated formats, archive, and deletion; automated for an older bridge omitting attachment support; packaged or external for the released inline compatibility shape. Every supporting production plugin where supported. |
 
@@ -110,11 +123,16 @@ live, after paging back, or after a reopen, and vary the plugin.
   geometry between states, reorders assistant content, or offers a failed image
   without an accessible retry action.
 - A stored viewer fetches an original before opening, blanks the cached
-  thumbnail while loading or after load/decode failure, resets zoom or drag when
-  the original appears, enables actions before original decode succeeds, or
-  retains original bytes/provider cache entries after closing.
+  thumbnail while loading or after load/decode failure, opens a permanently
+  cropped thumbnail instead of revealing its original aspect ratio, jumps when
+  the original appears, resets zoom or drag, enables actions before original
+  decode succeeds, or retains original bytes/provider cache entries after
+  closing.
 - The composer offers or sends attachments to an unsupporting backend, retains
   staged images after switching to one, or the viewer acts on the wrong image.
+- Failed creation loses, duplicates, or persists submitted attachment bytes;
+  restores them after route exit; reconnect erases pending restoration; or
+  maximum-size serialization blocks launch rendering or changes wire bytes.
 
 ## Known Limitations
 

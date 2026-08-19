@@ -171,6 +171,7 @@ void main() {
       expect(session.id, "s1");
 
       final prompting = plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: session.id,
         parts: const [PluginPromptPart.text(text: "Hello")],
         variant: null,
