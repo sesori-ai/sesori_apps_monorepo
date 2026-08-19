@@ -69,8 +69,8 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 16/21 | `🚧 [pi-harness] feat(pi): implement the plugin API [step 16/21]` | 1,100-1,500 (recorded slight overage) | Merged as PR #925 |
 | [x] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | Merged as PR #963 |
 | [x] | 18/21 | `⚙️ [pi-harness] feat(bridge): register Pi and OMP [step 18/21]` | 800-1,200 (over-estimate) | Merged as PR #967 |
-| [ ] | 19/21 | `🌿 [pi-harness] feat(client): add Pi and OMP branding and guidance [step 19/21]` | 500-900 (over-estimate) | Open as PR #973 |
-| [ ] | 20/21 | `⚙️ [pi-harness] test(harness): verify Pi and OMP integration [step 20/21]` | 300-700 | In progress; provider-backed live turns blocked by Pi quota and missing OMP model |
+| [x] | 19/21 | `🌿 [pi-harness] feat(client): add Pi and OMP branding and guidance [step 19/21]` | 500-900 (over-estimate) | Merged as PR #973 |
+| [ ] | 20/21 | `⚙️ [pi-harness] test(harness): verify Pi and OMP integration [step 20/21]` | 300-700 | In progress; live verification complete and one resume correction implemented |
 | [ ] | 21/21 | `🌱 [pi-harness] docs: retire the Pi and OMP harness plan [step 21/21]` | 50-200 | Not started |
 
 ## Working Rules
@@ -634,19 +634,31 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   imported, renamed, and deleted a terminal-created session after the terminal
   process exited; its text-plus-PNG transcript retained an inline image before
   provider rejection.
-- Pi exposes one connected provider with seven models and three commands, but
-  its selected provider returns a usage-limit error. OMP exposes no connected
-  provider/model and explicit refresh returns `refreshFailedUnavailable` with
-  correct local-login guidance. Provider-backed success fixtures and dependent
-  reasoning/tool/dialog/form/replay sweeps remain blocked; no credentials or
-  raw captures are retained or committed.
+- Missing-provider guidance and the original Pi provider's usage-limit error
+  were verified before a local OpenAI-compatible provider was configured for
+  both CLIs. Both then completed authenticated phone text/tool turns; OMP also
+  rendered reasoning and completed terminal import/resume, while Pi completed
+  direct image inference and terminal import/resume. No credentials, provider
+  account identifiers, raw frames, prompts, or transcripts are committed.
+- Live testing found that a terminal-imported Pi session rendered its transcript
+  model but selected a stale project-catalog default for the next send. The
+  client now prefers a latest assistant/error transcript model after valid
+  persisted prompt defaults and before agent/catalog fallbacks. A regression
+  verifies that the resumed send retains a model absent from the stale cache;
+  the rebuilt iOS client resumed the imported session successfully.
+- OMP emitted an image request but its selected upstream rate-limited it. Its ACP
+  model did not expose `ask`, and the dev bridge auto-approved permissions, so
+  successful OMP image replay, live forms, and live permission cards are not
+  claimed; automated OMP/ACP coverage remains authoritative for those paths.
 - macOS arm64 is the only available live host. Docker/Linux/Windows and live
-  glibc/musl selection are unavailable; automated platform tests remain pending
-  in the final focused suite.
+  glibc/musl selection are unavailable; passing automated platform tests are the
+  evidence for those targets.
 - Focused fatal analysis passes for bridge app, Pi, OMP, ACP, module_core,
   module_prego, and mobile app; shared plain analysis also passes. Full suites:
-  bridge app 2,675, Pi 255, OMP 51, ACP 242, shared 409, module_core 1,148,
+  bridge app 2,675, Pi 255, OMP 51, ACP 242, shared 409, module_core 1,149,
   module_prego 209, and mobile app 998 tests.
+- Product diff excluding this tracker evidence is +375/-285 = 660 changed
+  lines, within the 300-700 estimate; generated lines: 0.
 
 ## Findings And Plan Deltas
 

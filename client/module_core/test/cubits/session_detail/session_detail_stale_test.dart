@@ -430,6 +430,92 @@ void main() {
       ).called(1);
     });
 
+    test("resume forwards the transcript model when the provider cache is stale", () async {
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const MessageWithPartsResponse(
+            messages: [
+              MessageWithParts(
+                info: Message.error(
+                  id: "msg-custom-model",
+                  sessionID: sessionId,
+                  agent: null,
+                  modelID: "test-model",
+                  providerID: "sesori-local",
+                  errorName: "ProviderError",
+                  errorMessage: "request failed",
+                  time: null,
+                ),
+                parts: [],
+              ),
+            ],
+            nextCursor: null,
+          ),
+        ),
+      );
+      when(
+        () => mockSessionRepository.sendMessage(
+          promptId: any(named: "promptId"),
+          attachments: const [],
+          sessionId: sessionId,
+          text: "resume",
+          agent: "coder",
+          model: const PromptModel(providerID: "sesori-local", modelID: "test-model"),
+          variant: null,
+          command: null,
+        ),
+      ).thenAnswer((_) async => ApiResponse<void>.success(null));
+
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      expect(
+        (cubit.state as SessionDetailLoaded).selectedAgentModel,
+        const AgentModel(providerID: "sesori-local", modelID: "test-model", variant: null),
+      );
+
+      await cubit.sendMessage(
+        attachments: const [],
+        text: "resume",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      );
+
+      verify(
+        () => mockSessionRepository.sendMessage(
+          promptId: any(named: "promptId"),
+          attachments: const [],
+          sessionId: sessionId,
+          text: "resume",
+          agent: "coder",
+          model: const PromptModel(providerID: "sesori-local", modelID: "test-model"),
+          variant: null,
+          command: null,
+        ),
+      ).called(1);
+    });
+
     test("delta race: streaming deltas arriving during refresh are preserved", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,

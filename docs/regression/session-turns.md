@@ -75,6 +75,11 @@ defaults and queued client sends coherent.
   failure must not fail the send. Abort stops the turn with an observable
   outcome and no completion notification, and the next turn starts without
   recovery output from the interrupted backend process.
+- Opening an existing session selects valid persisted prompt defaults first and
+  otherwise continues with the latest assistant/error transcript model before
+  falling back to agent or catalog defaults. The transcript model remains
+  authoritative when a retained provider cache does not list it, so a terminal-
+  imported session cannot silently resume on a different provider.
 - The bridge owns queued prompts. A send accepted while another turn runs
   becomes a bridge-queued entry: it appears in the session snapshot and in
   full-list `session.queued-prompts` events, survives leaving the screen,
@@ -136,6 +141,8 @@ has started.
   the conversation or replayed history.
 - Prompt defaults regress, an approved plan exit does not restore Default
   across clients and restart, or a defaults-write failure fails the send.
+- Reopening or importing a session silently switches its latest transcript
+  model to a stale catalog default on the next send.
 - A send or cancel succeeds against an archived session, an aborted turn
   triggers a completion notification, or queued sends reorder, vanish, or
   resend. A send to a busy session blocks until the running turn finishes, a

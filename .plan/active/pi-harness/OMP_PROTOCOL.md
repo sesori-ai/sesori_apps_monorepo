@@ -447,27 +447,33 @@ project path, or provider/account identifier is committed.
   enabled official OMP `17.2.13`; a repeated install adopted the existing
   managed binary. Restart and full bridge restart both reprovisioned that
   binary and returned OMP to active/idle.
-- The normal inherited OMP profile has no configured provider/model. The bridge
-  reports zero connected providers and explicit options refresh returns
-  `refreshFailedUnavailable`. Selecting Oh My Pi on iOS renders the
-  design-system popup guidance to open OMP locally and run `/login`; creating
-  with defaults remains possible and returns to idle without a partial model
-  selection.
+- The normal inherited OMP profile initially had no configured provider/model.
+  The bridge reported zero connected providers, explicit refresh returned
+  `refreshFailedUnavailable`, and iOS rendered the design-system `/login`
+  guidance without a partial model selection. A local OpenAI-compatible provider
+  added afterward was discovered as the phone default and completed authenticated
+  text, reasoning-display, and tool turns through the production bridge.
 - Empty-session creation, local-only rename, safe plugin restart, resume/list,
   idle abort, deletion, and post-restart cleanup all succeeded through
   production bridge routes. Deleted OMP sessions remained absent after restart
   and catalog import.
-- Text and PNG requests reached the no-model rejection path without dispatching
-  a provider turn. This verifies bounded missing-model behavior but does not
-  claim successful image replay. A direct terminal OMP prompt also stopped at
-  missing-model setup and created no durable session, so terminal handoff cannot
-  be verified until a model is configured.
+- Text and PNG requests first reached the no-model rejection path without
+  dispatching a provider turn. After provider setup, text and tool turns
+  completed. OMP emitted a correctly typed OpenAI-compatible image request, but
+  the selected upstream returned a rate-limit error and entered bounded retry;
+  successful image replay is therefore not claimed.
+- A provider-backed terminal OMP session exited before explicit import, appeared
+  in the iOS project/session list with its transcript and model, and resumed
+  successfully from the phone. This verifies terminal-to-Sesori handoff without
+  concurrent ownership.
 - No Linux, Windows, Docker, glibc, or musl host is available in this workspace.
   The automated platform-selection/install tests remain the evidence for those
   targets; no unavailable host check is claimed as live coverage.
-- Successful authenticated text/image/reasoning/tool turns, model/thinking
-  sweeps, permissions, forms, replay, and terminal handoff remain blocked until
-  local OMP provider setup is completed. No success fixture is claimed.
+- The configured test model exposed only its single model and `off` thinking.
+  OMP ACP did not expose the `ask` tool to that model, so a requested form became
+  plain text; the development bridge auto-approved permissions. Automated OMP/
+  ACP coverage remains authoritative for form, permission, and broader option
+  sweeps that this live profile could not produce.
 
 ## 12. Verification Still Required During Implementation
 
