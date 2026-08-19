@@ -49,7 +49,7 @@ void main() {
       expect(provider.defaultModelID, "opus[1m]");
       expect(provider.models.map((model) => model.id), ["haiku", "opus[1m]"]);
       expect(provider.models.first.variants, isEmpty);
-      expect(provider.models.last.variants, ["low", "medium", "high", "xhigh", "max"]);
+      expect(provider.models.last.variants, ["high", "low", "medium", "xhigh", "max"]);
       expect(
         catalog.commands,
         const [

@@ -78,7 +78,10 @@ final class const ClaudeBackendCatalogRepository() {
             for (final raw in dto.supportedEffortLevels)
               if (ClaudeEffortLevel.tryParse(raw) case final level?) level.wireValue,
           ]
-        : const <String>[];
+        : <String>[];
+    // Default-first, matching the ordering clients rely on to resolve an
+    // unspecified variant.
+    if (variants.remove(_defaultEffort.wireValue)) variants.insert(0, _defaultEffort.wireValue);
     return PluginModel(
       id: id,
       name: displayName?.isNotEmpty ?? false

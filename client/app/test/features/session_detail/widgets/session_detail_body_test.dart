@@ -148,7 +148,7 @@ SessionDetailLoaded _loadedState({
     ),
     stagedCommand: null,
     isRefreshing: false,
-    availableVariants: const [SessionVariant(id: "xhigh")],
+    availableVariants: const [SessionVariant(id: "xhigh"), SessionVariant(id: "low")],
     retryErrorMessage: null,
   );
 }
@@ -664,11 +664,11 @@ void main() {
       selectedAgentModel: const AgentModel(
         providerID: "anthropic",
         modelID: "claude-3-5-sonnet",
-        variant: null,
+        variant: "low",
       ),
       stagedCommand: null,
       isRefreshing: false,
-      availableVariants: const [SessionVariant(id: "xhigh")],
+      availableVariants: const [SessionVariant(id: "xhigh"), SessionVariant(id: "low")],
       retryErrorMessage: null,
     );
 
@@ -687,19 +687,19 @@ void main() {
     await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
 
-    // Select Default (null variant).
-    await tester.tap(_pickerMenuItem("Default"));
+    // Select the other available variant.
+    await tester.tap(_pickerMenuItem("low"));
     await tester.pumpAndSettle();
 
-    verify(() => cubit.selectVariant(null)).called(1);
+    verify(() => cubit.selectVariant(const SessionVariant(id: "low"))).called(1);
 
     // Emit the updated state to simulate the cubit update.
     when(() => cubit.state).thenReturn(updatedState);
     controller.add(updatedState);
     await tester.pumpAndSettle();
 
-    // The UI should now show "Default".
-    expect(find.widgetWithText(PregoPickerButton, "Default"), findsOneWidget);
+    // The UI should now show the newly selected variant.
+    expect(find.widgetWithText(PregoPickerButton, "low"), findsOneWidget);
     expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
   });
 

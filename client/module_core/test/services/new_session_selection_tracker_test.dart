@@ -20,7 +20,7 @@ void main() {
         selection: const NewSessionSelectionIntent(
           agentName: "build",
           model: NewSessionModelIntent(providerId: "openai", modelId: "gpt-4"),
-          variant: NewSessionNamedVariantIntent(id: "fast"),
+          variant: NewSessionVariantIntent(id: "fast"),
         ),
       );
       tracker.write(
@@ -29,7 +29,7 @@ void main() {
         selection: const NewSessionSelectionIntent(
           agentName: "plan",
           model: NewSessionModelIntent(providerId: "anthropic", modelId: "claude-3"),
-          variant: NewSessionDefaultVariantIntent(),
+          variant: NewSessionVariantIntent(id: "slow"),
         ),
       );
 
@@ -39,14 +39,14 @@ void main() {
       expect(first?.model?.modelId, "gpt-4");
       expect(
         first?.variant,
-        isA<NewSessionNamedVariantIntent>().having((variant) => variant.id, "id", "fast"),
+        isA<NewSessionVariantIntent>().having((variant) => variant.id, "id", "fast"),
       );
 
       final second = tracker.read(projectId: "project-2", pluginId: "plugin-1");
       expect(second?.agentName, "plan");
       expect(second?.model?.providerId, "anthropic");
       expect(second?.model?.modelId, "claude-3");
-      expect(second?.variant, isA<NewSessionDefaultVariantIntent>());
+      expect(second?.variant, isA<NewSessionVariantIntent>().having((variant) => variant.id, "id", "slow"));
     });
 
     test("recordAgent does not write model or variant defaults", () {
@@ -77,7 +77,7 @@ void main() {
       tracker.recordVariant(
         projectId: "project-1",
         pluginId: "plugin-1",
-        variant: const NewSessionNamedVariantIntent(id: "fast"),
+        variant: const NewSessionVariantIntent(id: "fast"),
       );
 
       final saved = tracker.read(projectId: "project-1", pluginId: "plugin-1");
@@ -85,7 +85,7 @@ void main() {
       expect(saved?.model, isNull);
       expect(
         saved?.variant,
-        isA<NewSessionNamedVariantIntent>().having((variant) => variant.id, "id", "fast"),
+        isA<NewSessionVariantIntent>().having((variant) => variant.id, "id", "fast"),
       );
     });
 
@@ -100,7 +100,7 @@ void main() {
       tracker.recordVariant(
         projectId: "project-1",
         pluginId: "plugin-1",
-        variant: const NewSessionNamedVariantIntent(id: "fast"),
+        variant: const NewSessionVariantIntent(id: "fast"),
       );
 
       tracker.recordAgent(projectId: "project-1", pluginId: "plugin-1", agentName: "plan");
@@ -113,14 +113,14 @@ void main() {
       tracker.recordVariant(
         projectId: "project-1",
         pluginId: "plugin-1",
-        variant: const NewSessionDefaultVariantIntent(),
+        variant: const NewSessionVariantIntent(id: "slow"),
       );
 
       final saved = tracker.read(projectId: "project-1", pluginId: "plugin-1");
       expect(saved?.agentName, "plan");
       expect(saved?.model?.providerId, "anthropic");
       expect(saved?.model?.modelId, "claude-3");
-      expect(saved?.variant, isA<NewSessionDefaultVariantIntent>());
+      expect(saved?.variant, isA<NewSessionVariantIntent>().having((variant) => variant.id, "id", "slow"));
     });
 
     test("write overwrites the previous selection for a project", () {
@@ -130,7 +130,7 @@ void main() {
         selection: const NewSessionSelectionIntent(
           agentName: "build",
           model: NewSessionModelIntent(providerId: "openai", modelId: "gpt-4"),
-          variant: NewSessionDefaultVariantIntent(),
+          variant: NewSessionVariantIntent(id: "slow"),
         ),
       );
       tracker.write(
@@ -139,7 +139,7 @@ void main() {
         selection: const NewSessionSelectionIntent(
           agentName: "plan",
           model: NewSessionModelIntent(providerId: "anthropic", modelId: "claude-3"),
-          variant: NewSessionNamedVariantIntent(id: "deep"),
+          variant: NewSessionVariantIntent(id: "deep"),
         ),
       );
 
@@ -149,7 +149,7 @@ void main() {
       expect(saved?.model?.modelId, "claude-3");
       expect(
         saved?.variant,
-        isA<NewSessionNamedVariantIntent>().having((variant) => variant.id, "id", "deep"),
+        isA<NewSessionVariantIntent>().having((variant) => variant.id, "id", "deep"),
       );
     });
 
