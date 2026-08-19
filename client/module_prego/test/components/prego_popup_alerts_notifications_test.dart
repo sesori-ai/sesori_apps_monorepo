@@ -1,7 +1,11 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/components/navigation/prego_top_bar_inset.dart"
-    show clearPregoRootTopBarInset, pregoRootTopBarInsetFor, publishPregoRootTopBarInset;
+    show
+        PregoRootTopBarInsetOwner,
+        clearPregoRootTopBarInset,
+        pregoRootTopBarInsetFor,
+        publishPregoRootTopBarInset;
 import "package:theme_prego/module_prego.dart";
 
 void main() {
@@ -17,8 +21,8 @@ void main() {
         ),
       ),
     );
-    final underlying = Object();
-    final topmost = Object();
+    final underlying = PregoRootTopBarInsetOwner();
+    final topmost = PregoRootTopBarInsetOwner();
 
     publishPregoRootTopBarInset(overlay: overlay, owner: underlying, inset: 70);
     publishPregoRootTopBarInset(overlay: overlay, owner: topmost, inset: 90);

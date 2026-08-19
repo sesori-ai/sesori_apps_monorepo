@@ -185,6 +185,8 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
   /// The root overlay this scaffold publishes geometry for.
   OverlayState? _rootOverlay;
 
+  final top_bar.PregoRootTopBarInsetOwner _rootInsetOwner = top_bar.PregoRootTopBarInsetOwner();
+
   /// The collapsing title's rendered extent, including its bottom spacing.
   /// Used to paint the refresh indicator below the title without assuming a
   /// fixed text scale or whether a subtitle is present.
@@ -206,7 +208,7 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
     _bannerHeight.removeListener(_publishRootInset);
     final rootOverlay = _rootOverlay;
     if (rootOverlay != null) {
-      top_bar.clearPregoRootTopBarInset(overlay: rootOverlay, owner: this);
+      top_bar.clearPregoRootTopBarInset(overlay: rootOverlay, owner: _rootInsetOwner);
     }
     _scrollController.dispose();
     _bannerHeight.dispose();
@@ -222,7 +224,7 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
     if (rootOverlay == null) return;
     top_bar.publishPregoRootTopBarInset(
       overlay: rootOverlay,
-      owner: this,
+      owner: _rootInsetOwner,
       inset: _baseInset + _bannerHeight.value,
     );
   }
@@ -488,7 +490,7 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
     if (!identical(_rootOverlay, rootOverlay)) {
       final previousOverlay = _rootOverlay;
       if (previousOverlay != null) {
-        top_bar.clearPregoRootTopBarInset(overlay: previousOverlay, owner: this);
+        top_bar.clearPregoRootTopBarInset(overlay: previousOverlay, owner: _rootInsetOwner);
       }
       _rootOverlay = rootOverlay;
     }

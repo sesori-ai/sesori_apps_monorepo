@@ -29,12 +29,16 @@ double pregoTopBarInsetOf({
 
 final Expando<_PregoRootTopBarInsets> _pregoRootTopBarInsetsByOverlay = Expando<_PregoRootTopBarInsets>();
 
+/// Opaque identity for one mounted root-inset publisher. This seam is kept out
+/// of the package barrel and used only by Prego scaffold/presenter internals.
+final class PregoRootTopBarInsetOwner();
+
 /// Publishes the current root inset for [owner]. A newly mounted publisher
 /// becomes active; updates from an older mounted scaffold retain its place so
 /// a covered route cannot displace the topmost route during a shared rebuild.
 void publishPregoRootTopBarInset({
   required OverlayState overlay,
-  required Object owner,
+  required PregoRootTopBarInsetOwner owner,
   required double inset,
 }) {
   final insets = _pregoRootTopBarInsetsByOverlay[overlay] ??= _PregoRootTopBarInsets();
@@ -43,7 +47,7 @@ void publishPregoRootTopBarInset({
 
 /// Removes [owner] and restores the previous mounted scaffold when the active
 /// route unmounts.
-void clearPregoRootTopBarInset({required OverlayState overlay, required Object owner}) {
+void clearPregoRootTopBarInset({required OverlayState overlay, required PregoRootTopBarInsetOwner owner}) {
   _pregoRootTopBarInsetsByOverlay[overlay]?.clear(owner: owner);
 }
 
@@ -52,15 +56,15 @@ void clearPregoRootTopBarInset({required OverlayState overlay, required Object o
 double? pregoRootTopBarInsetFor(OverlayState overlay) => _pregoRootTopBarInsetsByOverlay[overlay]?.activeInset;
 
 final class _PregoRootTopBarInsets() {
-  final Map<Object, double> _mounted = <Object, double>{};
+  final Map<PregoRootTopBarInsetOwner, double> _mounted = <PregoRootTopBarInsetOwner, double>{};
 
   double? get activeInset => _mounted.isEmpty ? null : _mounted.values.last;
 
-  void publish({required Object owner, required double inset}) {
+  void publish({required PregoRootTopBarInsetOwner owner, required double inset}) {
     _mounted[owner] = inset;
   }
 
-  void clear({required Object owner}) {
+  void clear({required PregoRootTopBarInsetOwner owner}) {
     _mounted.remove(owner);
   }
 }
