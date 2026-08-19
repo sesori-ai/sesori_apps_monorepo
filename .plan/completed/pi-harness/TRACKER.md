@@ -4,8 +4,8 @@
 
 - **Plan slug:** `pi-harness`
 - **Implementation base:** current `origin/main` with Step 20 merged
-- **Series state:** Step 21/21 retirement in progress
-- **Current step:** 21/21, retire the completed plan
+- **Series state:** Step 21/21 open as PR #980
+- **Current step:** 21/21, retirement in review
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
@@ -27,7 +27,8 @@
 - **Step 18 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/967
 - **Step 19 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/973
 - **Step 20 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/979
-- **Next action:** raise and monitor the Step 21 retirement PR
+- **Step 21 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/980
+- **Next action:** monitor the Step 21 retirement PR
 
 ## Locked Decisions
 
@@ -74,7 +75,7 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 18/21 | `⚙️ [pi-harness] feat(bridge): register Pi and OMP [step 18/21]` | 800-1,200 (over-estimate) | Merged as PR #967 |
 | [x] | 19/21 | `🌿 [pi-harness] feat(client): add Pi and OMP branding and guidance [step 19/21]` | 500-900 (over-estimate) | Merged as PR #973 |
 | [x] | 20/21 | `⚙️ [pi-harness] test(harness): verify Pi and OMP integration [step 20/21]` | 300-700 | Merged as PR #979 |
-| [ ] | 21/21 | `🌱 [pi-harness] docs: retire the Pi and OMP harness plan [step 21/21]` | 50-200 | In progress |
+| [ ] | 21/21 | `🌱 [pi-harness] docs: retire the Pi and OMP harness plan [step 21/21]` | 50-200 | Open as PR #980 |
 
 ## Working Rules
 
