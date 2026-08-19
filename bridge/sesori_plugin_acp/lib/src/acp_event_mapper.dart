@@ -230,16 +230,17 @@ class AcpEventMapper({
 
     return [
       for (final accumulator in accumulators.values)
-        BridgeSseMessagePartUpdated(
-          part: _part(
-            partId: accumulator.partId,
-            messageId: accumulator.messageId,
-            sessionId: sessionId,
-            type: accumulator.type,
-            text: accumulator.text.toString(),
-            attachment: null,
+        if (accumulator.type != PluginMessagePartType.reasoning || accumulator.isStreaming)
+          BridgeSseMessagePartUpdated(
+            part: _part(
+              partId: accumulator.partId,
+              messageId: accumulator.messageId,
+              sessionId: sessionId,
+              type: accumulator.type,
+              text: accumulator.text.toString(),
+              attachment: null,
+            ),
           ),
-        ),
     ];
   }
 
@@ -519,11 +520,14 @@ class AcpEventMapper({
       identity.messageId,
       AcpContentTracker.new,
     );
-    return _appendAssistantBlocks(
+    return _afterReasoning(
       sessionId: sessionId,
-      identity: identity,
-      tracker: tracker,
-      blocks: blocks,
+      events: _appendAssistantBlocks(
+        sessionId: sessionId,
+        identity: identity,
+        tracker: tracker,
+        blocks: blocks,
+      ),
     );
   }
 

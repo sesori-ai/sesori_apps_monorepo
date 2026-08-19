@@ -64,7 +64,7 @@ void main() {
       expect(second.whereType<BridgeSseMessagePartDelta>().single.delta, "lo");
     });
 
-    test("finalizeTurn emits complete text and reasoning snapshots", () {
+    test("reasoning transition and turn final emit complete snapshots", () {
       mapper.beginTurn("s1");
       mapper.map(
         update({
@@ -72,7 +72,7 @@ void main() {
           "content": {"type": "text", "text": "thinking"},
         }),
       );
-      mapper.map(
+      final transition = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
           "content": {"type": "text", "text": "Hello "},
@@ -85,11 +85,10 @@ void main() {
         }),
       );
 
-      final parts = mapper
-          .finalizeTurn(sessionId: "s1")
-          .whereType<BridgeSseMessagePartUpdated>()
-          .map((event) => event.part)
-          .toList();
+      final parts = [
+        ...transition.whereType<BridgeSseMessagePartUpdated>(),
+        ...mapper.finalizeTurn(sessionId: "s1").whereType<BridgeSseMessagePartUpdated>(),
+      ].map((event) => event.part).where((part) => part.text?.isNotEmpty ?? false).toList();
 
       expect(parts.map((part) => part.id), [
         "s1-t1-assistant-a0-reasoning",
@@ -138,6 +137,15 @@ void main() {
         updateEvents.whereType<BridgeSseMessagePartUpdated>().where(
           (event) => event.part.type == PluginMessagePartType.reasoning,
         ),
+        isEmpty,
+      );
+      expect(
+        mapper
+            .finalizeTurn(sessionId: "s1")
+            .whereType<BridgeSseMessagePartUpdated>()
+            .where(
+              (event) => event.part.type == PluginMessagePartType.reasoning,
+            ),
         isEmpty,
       );
     });

@@ -211,6 +211,32 @@ void main() {
       expect(reasoning.type, PluginMessagePartType.reasoning);
       expect(reasoning.text, "Inspecting workflows");
       expect((events.last as BridgeSseMessagePartUpdated).part.type, PluginMessagePartType.text);
+
+      mapper.map(
+        const SseEventData.messagePartDelta(
+          sessionID: "session-1",
+          messageID: "message-1",
+          partID: "reasoning-1",
+          field: "text",
+          delta: "late",
+        ),
+      );
+      final laterOutput = mapper.map(
+        const SseEventData.messagePartUpdated(
+          part: TextPart(
+            id: "text-2",
+            sessionID: "session-1",
+            messageID: "message-1",
+            text: "answer",
+            synthetic: null,
+            ignored: null,
+            time: TextPartTime(start: 3, end: 4),
+            metadata: null,
+          ),
+        ),
+      );
+      expect(laterOutput, hasLength(1));
+      expect((laterOutput.single as BridgeSseMessagePartUpdated).part.type, PluginMessagePartType.text);
     });
 
     test("idle finalizes reasoning when OpenCode omits its final snapshot", () {
@@ -247,5 +273,53 @@ void main() {
       expect((events.first as BridgeSseMessagePartUpdated).part.text, "Complete thought");
       expect(events.last, isA<BridgeSseSessionStatus>());
     });
+
+    for (final boundary in <(String, SseEventData)>[
+      ("reconnect", const SseEventData.serverConnected()),
+      ("instance disposal", const SseEventData.serverInstanceDisposed(directory: "/repo")),
+    ]) {
+      test("${boundary.$1} drops incomplete reasoning state", () {
+        mapper.map(
+          const SseEventData.messagePartUpdated(
+            part: ReasoningPart(
+              id: "reasoning-stale",
+              sessionID: "session-stale",
+              messageID: "message-stale",
+              text: "",
+              metadata: null,
+              time: ReasoningPartTime(start: 1, end: null),
+            ),
+          ),
+        );
+        mapper.map(
+          const SseEventData.messagePartDelta(
+            sessionID: "session-stale",
+            messageID: "message-stale",
+            partID: "reasoning-stale",
+            field: "text",
+            delta: "Incomplete before the gap",
+          ),
+        );
+
+        mapper.map(boundary.$2);
+        final events = mapper.map(
+          const SseEventData.messagePartUpdated(
+            part: TextPart(
+              id: "text-after-gap",
+              sessionID: "session-stale",
+              messageID: "message-stale",
+              text: "",
+              synthetic: null,
+              ignored: null,
+              time: TextPartTime(start: 2, end: null),
+              metadata: null,
+            ),
+          ),
+        );
+
+        expect(events, hasLength(1));
+        expect((events.single as BridgeSseMessagePartUpdated).part.type, PluginMessagePartType.text);
+      });
+    }
   });
 }

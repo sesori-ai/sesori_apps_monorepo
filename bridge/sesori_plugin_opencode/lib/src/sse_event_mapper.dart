@@ -120,7 +120,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
       case SseSessionDeleted(:final info):
         _reasoningBySession.remove(info.id);
         return <BridgeSseEvent>[];
-      case SseGlobalDisposed():
+      case SseServerConnected() || SseServerInstanceDisposed() || SseGlobalDisposed():
         _reasoningBySession.clear();
         return <BridgeSseEvent>[];
       default:
@@ -155,16 +155,22 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
     if (tracked == null) return <BridgeSseEvent>[];
 
     final events = <BridgeSseEvent>[];
+    final finalizedPartIds = <String>[];
     for (final entry in tracked.entries) {
       if (entry.key == exceptPartId || !entry.value.isStreaming) continue;
-      entry.value.isStreaming = false;
+      finalizedPartIds.add(entry.key);
       events.add(
         BridgeSseMessagePartUpdated(
           part: entry.value.part.copyWith(text: entry.value.text.toString()),
         ),
       );
     }
-    if (removeAfter) _reasoningBySession.remove(sessionId);
+    if (removeAfter) {
+      _reasoningBySession.remove(sessionId);
+    } else {
+      finalizedPartIds.forEach(tracked.remove);
+      if (tracked.isEmpty) _reasoningBySession.remove(sessionId);
+    }
     return events;
   }
 
