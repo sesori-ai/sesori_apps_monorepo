@@ -1145,6 +1145,7 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "session",
+      promptId: "prompt-35",
       directory: "/project",
       parts: [const PluginPromptPart.text(text: "prompt")],
       userVisibleText: "prompt",
