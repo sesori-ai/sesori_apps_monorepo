@@ -14,6 +14,7 @@ class AcpSessionOptionsService({
     final defaults = _configurationTracker.processDefaults;
     final modelId = defaults.modelId;
     final providerId = defaults.providerId ?? _pluginId;
+    final catalog = defaults.availableModels ?? const [];
     return PluginSessionOptions(
       agents: [
         PluginAgent(
@@ -31,24 +32,44 @@ class AcpSessionOptionsService({
         ),
       ],
       providers: PluginProvidersResult(
-        providers: modelId == null
-            ? const []
+        providers: catalog.isEmpty
+            ? (modelId == null
+                  ? const []
+                  : [
+                      PluginProvider.custom(
+                        id: providerId,
+                        name: _agentDisplayName,
+                        authType: PluginProviderAuthType.unknown,
+                        models: [
+                          PluginModel(
+                            id: modelId,
+                            name: modelId,
+                            variants: const [],
+                            family: null,
+                            isAvailable: true,
+                            releaseDate: null,
+                          ),
+                        ],
+                        defaultModelID: modelId,
+                      ),
+                    ])
             : [
                 PluginProvider.custom(
                   id: providerId,
                   name: _agentDisplayName,
                   authType: PluginProviderAuthType.unknown,
                   models: [
-                    PluginModel(
-                      id: modelId,
-                      name: modelId,
-                      variants: const [],
-                      family: null,
-                      isAvailable: true,
-                      releaseDate: null,
-                    ),
+                    for (final entry in catalog)
+                      PluginModel(
+                        id: entry.modelId,
+                        name: entry.name,
+                        variants: const [],
+                        family: null,
+                        isAvailable: true,
+                        releaseDate: null,
+                      ),
                   ],
-                  defaultModelID: modelId,
+                  defaultModelID: catalog.first.modelId,
                 ),
               ],
       ),

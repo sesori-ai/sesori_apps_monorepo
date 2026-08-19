@@ -26,6 +26,7 @@ abstract final class AcpMethods() {
   static const String sessionUpdate = "session/update";
   static const String sessionRequestPermission = "session/request_permission";
   static const String sessionSetConfigOption = "session/set_config_option";
+  static const String sessionSetModel = "session/set_model";
   static const String elicitationCreate = "elicitation/create";
 }
 
@@ -190,14 +191,65 @@ class const AcpNewSessionResult({
 
   /// Optional config options (e.g. Cursor's model selector) — raw.
   required final List<Map<String, dynamic>> configOptions,
+
+  /// Optional model state advertised by the agent (standard ACP
+  /// `SessionModelState` — available models + current model). Empty when the
+  /// agent does not advertise a model catalog.
+  final AcpSessionModelState? models,
+
   required final Map<String, dynamic> raw,
 }) {
   factory fromJson(Map<String, dynamic> json) {
+    final rawModels = json["models"];
     return AcpNewSessionResult(
       sessionId: (json["sessionId"] ?? "") as String,
       modes: _mapList(json["modes"]),
       configOptions: _mapList(json["configOptions"]),
+      models: rawModels is Map
+          ? AcpSessionModelState.fromJson(rawModels.cast<String, dynamic>())
+          : null,
       raw: json,
+    );
+  }
+}
+
+/// One selectable model in an ACP model catalog (`ModelInfo`).
+class const AcpModelInfo({
+  /// Unique identifier for the model. For Hermes this is the encoded
+  /// `provider:model` id accepted by `session/set_model`.
+  required final String modelId,
+
+  /// Human-readable name of the model.
+  required final String name,
+
+  /// Optional description of the model.
+  final String? description,
+}) {
+  factory fromJson(Map<String, dynamic> json) => AcpModelInfo(
+    modelId: (json["modelId"] ?? "") as String,
+    name: (json["name"] ?? "") as String,
+    description: json["description"] as String?,
+  );
+}
+
+/// Standard ACP model state (`SessionModelState`).
+class const AcpSessionModelState({
+  /// The models available to the agent.
+  required final List<AcpModelInfo> availableModels,
+
+  /// The agent's current model id.
+  required final String currentModelId,
+}) {
+  factory fromJson(Map<String, dynamic> json) {
+    final available = json["availableModels"];
+    return AcpSessionModelState(
+      availableModels: available is List
+          ? available
+                .whereType<Map<dynamic, dynamic>>()
+                .map((e) => AcpModelInfo.fromJson(e.cast<String, dynamic>()))
+                .toList(growable: false)
+          : const [],
+      currentModelId: (json["currentModelId"] ?? "") as String,
     );
   }
 }

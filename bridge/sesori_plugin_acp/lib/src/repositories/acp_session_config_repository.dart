@@ -18,4 +18,20 @@ class AcpSessionConfigRepository({required final AcpStdioClient _client}) {
     );
     return raw is Map ? AcpNewSessionResult.fromJson(raw.cast<String, dynamic>()) : null;
   }
+
+  /// Issues a standard ACP `session/set_model` to switch [sessionId] to the
+  /// agent-advertised [modelId]. Returns the (typically empty) result.
+  Future<AcpNewSessionResult?> setModel({
+    required String sessionId,
+    required String modelId,
+  }) async {
+    final raw = await _client.request(
+      method: AcpMethods.sessionSetModel,
+      params: {
+        "sessionId": sessionId,
+        "modelId": modelId,
+      },
+    );
+    return raw is Map ? AcpNewSessionResult.fromJson(raw.cast<String, dynamic>()) : null;
+  }
 }

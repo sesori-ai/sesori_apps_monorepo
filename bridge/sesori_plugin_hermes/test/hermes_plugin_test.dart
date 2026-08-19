@@ -1,5 +1,7 @@
 import "dart:async";
 
+import "package:acp_plugin/acp_plugin.dart"
+    show AcpModelInfo, AcpNewSessionResult, AcpSessionModelState;
 import "package:acp_plugin/acp_testing.dart";
 import "package:hermes_plugin/hermes_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -231,6 +233,145 @@ void main() {
         isEmpty,
         reason: "Hermes does not advertise closeSession, so deletion must be local-only",
       );
+    });
+  });
+
+  group("HermesPlugin model surface", () {
+    late FakeAcpProcess fake;
+    late HermesPlugin plugin;
+    late Set<Object?> handledFrameIds;
+
+    setUp(() {
+      fake = FakeAcpProcess();
+      handledFrameIds = {};
+      plugin = HermesPlugin(
+        binaryPath: HermesBinary.defaultBinary,
+        launchDirectory: "/repo",
+        processFactory: (_) async => fake,
+      );
+    });
+
+    tearDown(() async {
+      await plugin.dispose();
+      await fake.close();
+    });
+
+    Future<void> pump() => Future<void>.delayed(Duration.zero);
+    Future<Map<String, dynamic>> waitForFrame({required String method}) async {
+      for (var i = 0; i < 50; i++) {
+        final matches = fake.written.where(
+          (frame) => frame["method"] == method && !handledFrameIds.contains(frame["id"]),
+        );
+        if (matches.isNotEmpty) {
+          final frame = matches.first;
+          handledFrameIds.add(frame["id"]);
+          return frame;
+        }
+        await pump();
+      }
+      throw StateError("agent never wrote a '$method' frame");
+    }
+
+    Future<void> respond({
+      required String method,
+      required Map<String, dynamic> result,
+    }) async {
+      final frame = await waitForFrame(method: method);
+      fake.emit({"jsonrpc": "2.0", "id": frame["id"], "result": result});
+      await pump();
+    }
+
+    Future<void> connect() async {
+      final connecting = plugin.ensureConnected();
+      await respond(method: "initialize", result: hermesInitializeResult);
+      final authFrame = await waitForFrame(method: "authenticate");
+      fake.emit({"jsonrpc": "2.0", "id": authFrame["id"], "result": <String, dynamic>{}});
+      expect(await connecting, isTrue);
+    }
+
+    const availableModels = [
+      AcpModelInfo(
+        modelId: "opencode-go:deepseek-v4-flash",
+        name: "opencode-go · deepseek-v4-flash",
+      ),
+      AcpModelInfo(
+        modelId: "opencode-go:gpt-5",
+        name: "opencode-go · GPT-5",
+      ),
+    ];
+
+    AcpNewSessionResult modelsResult({required String currentModelId}) {
+      return AcpNewSessionResult(
+        sessionId: "s1",
+        modes: const [],
+        configOptions: const [],
+        models: AcpSessionModelState(
+          availableModels: availableModels,
+          currentModelId: currentModelId,
+        ),
+        raw: const {},
+      );
+    }
+
+    test("captureSessionConfig surfaces the active model in the picker", () async {
+      await connect();
+
+      plugin.captureSessionConfig(
+        modelsResult(currentModelId: "opencode-go:deepseek-v4-flash"),
+        sessionId: "s1",
+        fromNewSession: true,
+      );
+
+      final providers = await plugin.getProviders(projectId: "/repo");
+      expect(providers.providers, hasLength(1));
+      final provider = providers.providers.single;
+      expect(provider.models.map((m) => m.id), contains("opencode-go:deepseek-v4-flash"));
+      expect(provider.defaultModelID, "opencode-go:deepseek-v4-flash");
+    });
+
+    test("captureSessionConfig with no models field leaves the picker empty", () async {
+      await connect();
+
+      plugin.captureSessionConfig(
+        const AcpNewSessionResult(
+          sessionId: "s1",
+          modes: [],
+          configOptions: [],
+          models: null,
+          raw: {},
+        ),
+        sessionId: "s1",
+        fromNewSession: true,
+      );
+
+      final providers = await plugin.getProviders(projectId: "/repo");
+      expect(providers.providers, isEmpty);
+    });
+
+    test("applyTurnSelection issues session/set_model for a user-selected model", () async {
+      await connect();
+
+      final creating = plugin.createSession(
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: const (providerID: "opencode-go", modelID: "opencode-go:gpt-5"),
+      );
+      await respond(method: "session/new", result: const {"sessionId": "s1"});
+
+      final setModelFrame = await waitForFrame(method: "session/set_model");
+      final params = (setModelFrame["params"] as Map).cast<String, dynamic>();
+      expect(params["sessionId"], "s1");
+      expect(params["modelId"], "opencode-go:gpt-5");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": setModelFrame["id"],
+        "result": <String, dynamic>{},
+      });
+      await creating;
     });
   });
 }
