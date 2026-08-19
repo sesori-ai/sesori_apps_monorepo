@@ -489,7 +489,7 @@ class SessionDetailCubit(
       switch (result) {
         case SessionDetailLoadResultLoaded(:final snapshot):
           _waitingForConnection = false;
-          final latestAssistant = _latestAssistantMessage(snapshot.messages);
+          final latestAssistant = _latestAssistantOrErrorMessage(snapshot.messages);
           final childIds = snapshot.childSessions.map((c) => c.id).toSet();
           final childStatuses = Map<String, SessionStatus>.fromEntries(
             snapshot.statuses.entries.where((e) => childIds.contains(e.key)),
@@ -709,11 +709,11 @@ class SessionDetailCubit(
     return availableCommands.firstWhereOrNull((c) => c.name == stagedCommand.name);
   }
 
-  /// Returns the latest assistant [Message] from the list, or null if none.
-  Message? _latestAssistantMessage(List<MessageWithParts> messages) {
+  /// Returns the latest assistant or error [Message] from the list, or null if none.
+  Message? _latestAssistantOrErrorMessage(List<MessageWithParts> messages) {
     for (var i = messages.length - 1; i >= 0; i--) {
       final info = messages[i].info;
-      if (info is MessageAssistant) return info;
+      if (info is MessageAssistant || info is MessageError) return info;
     }
     return null;
   }
@@ -1118,18 +1118,20 @@ class SessionDetailCubit(
 
     if (isClosed) return;
 
-    if (message is MessageAssistant) {
-      final assistantAgentModel = message.providerID != null && message.modelID != null
+    if (message case
+        MessageAssistant(:final providerID, :final modelID, :final agent) ||
+        MessageError(:final providerID, :final modelID, :final agent)) {
+      final assistantAgentModel = providerID != null && modelID != null
           ? _resolveAgentModel(
               agents: current.availableAgents,
-              providerID: message.providerID,
-              modelID: message.modelID,
+              providerID: providerID,
+              modelID: modelID,
             )
           : current.assistantAgentModel;
       emit(
         current.copyWith(
           messages: messages,
-          agent: message.agent ?? current.agent,
+          agent: agent ?? current.agent,
           assistantAgentModel: assistantAgentModel,
         ),
       );
@@ -2006,7 +2008,7 @@ class SessionDetailCubit(
 
   SessionDetailLoaded _buildLoadedState({required SessionDetailSnapshot snapshot}) {
     _reconcileStagedWithSnapshot(snapshot: snapshot);
-    final latestAssistant = _latestAssistantMessage(snapshot.messages);
+    final latestAssistant = _latestAssistantOrErrorMessage(snapshot.messages);
     final childSessions = [...snapshot.childSessions];
     _sortChildrenByUpdatedDesc(childSessions);
     final childIds = childSessions.map((c) => c.id).toSet();
@@ -2032,9 +2034,25 @@ class SessionDetailCubit(
         ? persistedAgent
         : (agents.isNotEmpty ? agents.first.name : "build");
 
+    final assistantAgentModel = switch (latestAssistant) {
+      MessageAssistant(:final modelID, :final providerID) => _resolveAgentModel(
+        agents: agents,
+        providerID: providerID,
+        modelID: modelID,
+      ),
+      MessageError(:final modelID, :final providerID) => _resolveAgentModel(
+        agents: agents,
+        providerID: providerID,
+        modelID: modelID,
+      ),
+      MessageUser() || null => null,
+    };
+
     final AgentModel? defaultAgentModel;
     if (hasValidPersistedModel) {
       defaultAgentModel = persistedModel;
+    } else if (assistantAgentModel != null) {
+      defaultAgentModel = assistantAgentModel;
     } else if (agents.isNotEmpty && agents.first.model != null) {
       defaultAgentModel = agents.first.model;
     } else if (providers.isNotEmpty) {
@@ -2061,20 +2079,6 @@ class SessionDetailCubit(
     } else {
       defaultAgentModel = null;
     }
-
-    final assistantAgentModel = switch (latestAssistant) {
-      MessageAssistant(:final modelID, :final providerID) => _resolveAgentModel(
-        agents: agents,
-        providerID: providerID,
-        modelID: modelID,
-      ),
-      MessageError(:final modelID, :final providerID) => _resolveAgentModel(
-        agents: agents,
-        providerID: providerID,
-        modelID: modelID,
-      ),
-      MessageUser() || null => null,
-    };
 
     final availableVariants = _deriveAvailableVariants(
       providers: providers,

@@ -228,6 +228,7 @@ final class ClaudeEventDispatcher({
     final messageId = _messageIds[sessionId];
     final index = message.blockIndex;
     if (messageId == null || index == null) return const [];
+    _streamedBlocks[messageId]?.remove(index);
     final tool = _tools.stopInput(sessionId: sessionId, messageId: messageId, blockIndex: index);
     final completed = _completedStreamedParts[messageId]?.remove(index);
     return [

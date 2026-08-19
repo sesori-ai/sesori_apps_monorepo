@@ -4,10 +4,10 @@
   </a>
 </p>
 
-<h1 align="center">Run OpenCode, Codex, Cursor, and Claude Code from your phone.</h1>
+<h1 align="center">Run your AI coding agents from your phone.</h1>
 
 <p align="center">
-  Sesori is the mobile cockpit for your AI coding sessions — <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">Codex</a>, <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>, and <a href="https://claude.com" target="_blank" rel="noopener">Claude Code</a>.<br/>
+  Sesori is the mobile cockpit for your AI coding sessions — <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">OpenAI Codex CLI</a>, <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>, <a href="https://claude.com" target="_blank" rel="noopener">Claude Code</a>, <a href="https://github.com/badlogic/pi-mono" target="_blank" rel="noopener">Pi</a>, and <a href="https://github.com/can1357/oh-my-pi" target="_blank" rel="noopener">Oh My Pi</a>.<br/>
   Leave your laptop. Take the session.
 </p>
 
@@ -67,7 +67,7 @@ Requires iOS 15 or later, or Android 8.0 or later.
 
 ### 2. Install the Bridge CLI on your machine
 
-The Bridge is a small source-available command-line tool that connects the app to OpenCode, Codex, and Cursor.
+The Bridge is a small source-available command-line tool that connects the app to your AI coding assistants ([OpenCode](https://opencode.ai), [OpenAI Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.com), [Claude Code](https://claude.com), [Pi](https://github.com/badlogic/pi-mono), and [Oh My Pi](https://github.com/can1357/oh-my-pi)).
 
 **macOS / Linux:**
 
@@ -99,7 +99,7 @@ Sign in with the **same account** on your phone and your machine. The two pair a
 
 | Feature | What it means |
 |---|---|
-| **Browse projects & sessions** | See your OpenCode, Codex, and Cursor projects and every active session from your phone. |
+| **Browse projects & sessions** | See projects and active sessions from [OpenCode](https://opencode.ai), [OpenAI Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.com), [Claude Code](https://claude.com), [Pi](https://github.com/badlogic/pi-mono), and [Oh My Pi](https://github.com/can1357/oh-my-pi) on your phone. |
 | **Keep agents moving** | Answer questions, approve steps, and stop or restart tasks without returning to your desk. |
 | **Review code and PR status** | Read diffs and keep tabs on pull requests without opening your laptop. |
 | **Voice or type** | Talk to your assistant naturally or use the keyboard — whatever works in the moment. |
@@ -145,8 +145,50 @@ Your laptop and phone perform an ephemeral X25519 key exchange, then encrypt eve
 | [OpenAI Codex CLI](https://github.com/openai/codex) | Beta | Enabled by default in an upcoming release. |
 | [Cursor](https://cursor.com) | Beta | ACP-based Cursor plugin; enabled by default in an upcoming release. |
 | [Claude Code](https://claude.com) | Beta | Native stream-json integration; enabled by default in an upcoming release. |
-| [Pi](https://github.com/badlogic/pi-mono) | Beta | Native JSONL RPC integration. Sessions always run with Pi's `--approve`: project-local Pi settings, extensions, skills, and prompt templates are trusted and applied without prompts, so only open projects whose code you trust. Provider login happens locally via Pi's `/login`. |
-| [Oh My Pi](https://github.com/can1357/oh-my-pi) | Beta | ACP-based integration. Inherits your OMP `tools.approvalMode`: the default `yolo` mode asks nothing; configure a stricter mode locally for approval prompts. Provider login happens locally. |
+| [Pi](https://github.com/badlogic/pi-mono) | Beta | Native JSONL RPC integration; see the notes below. |
+| [Oh My Pi](https://github.com/can1357/oh-my-pi) | Beta | ACP-based integration; see the notes below. |
+
+<details>
+<summary><strong>Pi notes</strong></summary>
+
+- **Trust model:** Sesori always launches Pi with `--approve` — project-local Pi
+  settings, extensions, skills, and prompt templates are trusted and applied
+  without prompts. Only open projects whose code you trust.
+- **Install:** the Bridge can install a pinned Pi release for you, or it uses a
+  suitable `pi` from your PATH. Point `--pi-bin <path>` at a specific binary to
+  make it authoritative (managed install is then disabled).
+- **Profile:** your normal Pi data and configuration are used —
+  `PI_CODING_AGENT_DIR`, session directories, and provider credentials are
+  inherited, never replaced with a Sesori-only profile.
+- **Login:** provider login happens locally via Pi's `/login`; there is no
+  phone-driven provider login.
+- **Terminal handoff:** terminal-created sessions can be continued from Sesori,
+  but exit the terminal Pi first. Running the same session concurrently from a
+  terminal and Sesori is unsupported.
+
+</details>
+
+<details>
+<summary><strong>Oh My Pi notes</strong></summary>
+
+- **Approval policy:** Sesori inherits your OMP `tools.approvalMode`. The
+  default `yolo` mode asks nothing; configure a stricter mode locally to get
+  standard approval prompts.
+- **Install:** the Bridge can install a pinned OMP release, or it uses a
+  suitable `omp` from your PATH. Point `--omp-bin <path>` at a specific binary
+  to make it authoritative (managed install is then disabled).
+- **Profile:** your normal OMP profile, models, plugins, and credentials are
+  used — `OMP_PROFILE`, legacy `PI_PROFILE`, and XDG roots are inherited.
+- **Login:** provider login happens locally; there is no phone-driven provider
+  login.
+- **Protocol scope:** Sesori talks to OMP over standard ACP (`omp acp`).
+  OMP-specific features outside ACP — host tools, subagent frames, terminal
+  handoff frames — are not available from Sesori. Parent/child session lineage
+  is not shown because ACP session listings do not expose it.
+- **Terminal handoff:** as with Pi, exit a terminal OMP session before
+  continuing it from Sesori.
+
+</details>
 
 ---
 
