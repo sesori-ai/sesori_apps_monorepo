@@ -49,6 +49,16 @@ void main() {
       lightAsset: "assets/svgs/brands/hermes_light.svg",
       darkAsset: "assets/svgs/brands/hermes_dark.svg",
     ),
+    (
+      pluginId: Harness.pi.name,
+      lightAsset: "assets/svgs/brands/pi_light.svg",
+      darkAsset: "assets/svgs/brands/pi_dark.svg",
+    ),
+    (
+      pluginId: Harness.omp.name,
+      lightAsset: "assets/svgs/brands/omp_light.svg",
+      darkAsset: "assets/svgs/brands/omp_dark.svg",
+    ),
   ]) {
     testWidgets("maps ${mapping.pluginId} to its bundled artwork", (tester) async {
       await tester.pumpWidget(_harness(logo: PregoBrandLogo(pluginId: mapping.pluginId, color: null)));
@@ -89,6 +99,8 @@ void main() {
     expect(PregoBrandLogo.displayNameFor(Harness.cursor.name), "Cursor");
     expect(PregoBrandLogo.displayNameFor(Harness.claude.name), "Claude Code");
     expect(PregoBrandLogo.displayNameFor(Harness.hermes.name), "Hermes Agent");
+    expect(PregoBrandLogo.displayNameFor(Harness.pi.name), "Pi");
+    expect(PregoBrandLogo.displayNameFor(Harness.omp.name), "Oh My Pi");
     expect(PregoBrandLogo.displayNameFor("future-plugin"), "future-plugin");
   });
 

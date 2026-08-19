@@ -51,6 +51,10 @@ class const PregoBrandLogo({
         isDark ? "assets/svgs/brands/claude_dark.svg" : "assets/svgs/brands/claude_light.svg",
       final id when id == Harness.hermes.name =>
         isDark ? "assets/svgs/brands/hermes_dark.svg" : "assets/svgs/brands/hermes_light.svg",
+      final id when id == Harness.pi.name =>
+        isDark ? "assets/svgs/brands/pi_dark.svg" : "assets/svgs/brands/pi_light.svg",
+      final id when id == Harness.omp.name =>
+        isDark ? "assets/svgs/brands/omp_dark.svg" : "assets/svgs/brands/omp_light.svg",
       _ => null,
     };
   }
@@ -67,6 +71,8 @@ class const PregoBrandLogo({
     final id when id == Harness.cursor.name => "Cursor",
     final id when id == Harness.claude.name => "Claude Code",
     final id when id == Harness.hermes.name => "Hermes Agent",
+    final id when id == Harness.pi.name => "Pi",
+    final id when id == Harness.omp.name => "Oh My Pi",
     _ => pluginId,
   };
 }

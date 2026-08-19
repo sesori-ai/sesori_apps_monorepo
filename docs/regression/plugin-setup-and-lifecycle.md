@@ -35,7 +35,9 @@ idle suspension, the management snapshot, and lifecycle commands.
   and the default is the preferred harness when selectable, else the first selectable.
 - Client-owned branding maps recognized built-in harness ids to their stable names and
   theme-specific artwork. Hermes renders as `Hermes Agent` with its light or dark
-  NousResearch logo, while an unknown plugin id retains the generic icon and raw-id fallback.
+  NousResearch logo, Pi as `Pi` with its official glyph, and Oh My Pi as `Oh My Pi`
+  with its official icon, while an unknown plugin id retains the generic icon and
+  raw-id fallback.
 - Harnesses start on demand unless eager; a transient one may suspend after a confirmed
   idle window and a resident one never does, and idle timeouts survive restart.
   Enable, disable, restart, and refresh are offered only where declared, with enable
