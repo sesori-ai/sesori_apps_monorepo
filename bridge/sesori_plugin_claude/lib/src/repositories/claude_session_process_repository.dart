@@ -206,10 +206,11 @@ final class ClaudeSessionProcessRepository({
     // A resident process can absorb several stdin messages into one agent turn.
     // Replayed user frames mark which queued messages joined that turn, and its
     // result settles exactly that started prefix.
+    final turnWasActive = process.turnActive;
     final pending = _PendingTurn(
       promptId: promptId,
       replayContent: promptId == null ? null : content,
-      started: !process.turnActive && process.pendingTurns.every((pending) => pending.settled),
+      started: !turnWasActive && process.pendingTurns.every((pending) => pending.settled),
     );
     process.pendingTurns.addLast(pending);
     if (pending.started) process.turnActive = true;
@@ -217,6 +218,7 @@ final class ClaudeSessionProcessRepository({
       process.client.sendUserMessage(content: content);
     } on Object {
       process.pendingTurns.remove(pending);
+      process.turnActive = turnWasActive;
       rethrow;
     }
     _startedSessions.add(sessionId);

@@ -134,6 +134,33 @@ void main() {
       expect(await second.outcome, isA<ClaudeTurnCompleted>());
     });
 
+    test("restores idle tracking after a failed first stdin write", () async {
+      await _ensure(repository, createNew: true);
+      final process = harness.processes.single;
+      process.failNextStdinWrite();
+
+      expect(
+        () => repository.sendTurn(
+          sessionId: testSessionId,
+          parts: const [PluginPromptPart.text(text: "fails")],
+          promptId: "prompt-fails",
+        ),
+        throwsA(isA<ClaudeControlException>()),
+      );
+      final next = repository.sendTurn(
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "next")],
+        promptId: "prompt-next",
+      );
+      await waitForFrame(process, "user");
+      process.emit(_result());
+
+      expect(
+        await next.outcome.timeout(const Duration(milliseconds: 100)),
+        isA<ClaudeTurnCompleted>(),
+      );
+    });
+
     test("retries a new launch when no first turn was accepted", () async {
       await _ensure(repository, createNew: true);
       await repository.teardown(sessionId: testSessionId);

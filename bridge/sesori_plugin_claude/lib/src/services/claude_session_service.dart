@@ -43,9 +43,9 @@ final class _SessionTurnState() {
   ///
   /// A `ScheduleWakeup` loop wakeup starts a turn inside the resident process
   /// with no `enqueueTurn` call: frames stream while [pending] is zero. The
-  /// flag keeps that turn visible (busy status, work state, abort) until its
-  /// `result` frame lands.
-  bool selfStarted = false;
+  /// completer keeps that turn visible (busy status, work state, abort) and
+  /// gives boundary-requiring sends a future to await until its `result` lands.
+  Completer<void>? selfStartedTurn;
 
   /// When the CLI's pending `ScheduleWakeup` timer fires, or null when none
   /// is scheduled.
@@ -106,7 +106,7 @@ final class ClaudeSessionService({
     for (final entry in _turns.entries)
       entry.key:
           _retryStatuses[entry.key] ??
-          (entry.value.pending > 0 || entry.value.selfStarted
+          (entry.value.pending > 0 || entry.value.selfStartedTurn != null
               ? const PluginSessionStatus.busy()
               : const PluginSessionStatus.idle()),
   });
@@ -146,14 +146,16 @@ final class ClaudeSessionService({
   /// Emits the queue update on the service stream, whose async delivery lands
   /// after the caller's directly-buffered message events — clients therefore
   /// always see the message before the entry disappears and can transform the
-  /// queued bubble in place.
-  void consumeQueuedPrompt({required String sessionId, required String promptId}) {
+  /// queued bubble in place. Returns false when abort or another lifecycle
+  /// transition already removed the entry.
+  bool consumeQueuedPrompt({required String sessionId, required String promptId}) {
     final state = _turns[sessionId];
-    if (state == null) return;
+    if (state == null) return false;
     final index = state.queue.indexWhere((entry) => entry.id == promptId);
-    if (index == -1) return;
+    if (index == -1) return false;
     state.queue.removeAt(index);
     _emitQueueUpdate(sessionId: sessionId, state: state);
+    return true;
   }
 
   /// Queues a prompt or command turn and accepts it immediately.
@@ -287,7 +289,11 @@ final class ClaudeSessionService({
         permissionMode: permissionMode,
         mode: mode,
       )) {
-        await Future.wait(state.settlements.toList(growable: false));
+        final selfStartedTurn = state.selfStartedTurn?.future;
+        await Future.wait([
+          ...state.settlements,
+          ?selfStartedTurn,
+        ]);
       }
       if (!_isCurrent(sessionId: sessionId, state: state, generation: generation) || _isCancelled(mode, state)) {
         mode.settleUnaccepted();
@@ -314,7 +320,7 @@ final class ClaudeSessionService({
       if (!dispatch.accepted) {
         throw StateError("Claude rejected the turn before dispatch");
       }
-      final isSteering = state.settlements.isNotEmpty;
+      final isSteering = state.selfStartedTurn != null || state.settlements.isNotEmpty;
       switch (mode) {
         case _BlockingTurnMode(:final acceptance):
           if (!acceptance.isCompleted) acceptance.complete();
@@ -439,7 +445,7 @@ final class ClaudeSessionService({
   Future<void> abort({required String sessionId}) async {
     final state = _turns[sessionId];
     if (state == null) return;
-    if (state.pending == 0 && !state.selfStarted) {
+    if (state.pending == 0 && state.selfStartedTurn == null) {
       _approvals.cancelForSession(sessionId: sessionId);
       return;
     }
@@ -463,7 +469,7 @@ final class ClaudeSessionService({
       // allowing that transport backlog to enter the next user turn.
       await _processes.teardown(sessionId: sessionId);
     }
-    if (state.selfStarted && identical(_turns[sessionId], state)) {
+    if (state.selfStartedTurn != null && identical(_turns[sessionId], state)) {
       _endSelfStartedTurn(sessionId: sessionId, state: state);
     }
   }
@@ -472,7 +478,7 @@ final class ClaudeSessionService({
     return () async {
       final activeSessionIds = <String>{
         for (final entry in _turns.entries)
-          if (entry.value.pending > 0 || entry.value.selfStarted) entry.key,
+          if (entry.value.pending > 0 || entry.value.selfStartedTurn != null) entry.key,
       };
       if (activeSessionIds.isEmpty) return const <String>{};
       await Future.wait([
@@ -490,6 +496,7 @@ final class ClaudeSessionService({
     if (state != null) {
       state.generation++;
       state.idleGeneration++;
+      _completeSelfStartedTurn(state: state);
     }
     _retryStatuses.remove(sessionId);
     _approvals.forgetSession(sessionId: sessionId);
@@ -507,6 +514,7 @@ final class ClaudeSessionService({
     for (final state in _turns.values) {
       state.generation++;
       state.idleGeneration++;
+      _completeSelfStartedTurn(state: state);
     }
     await _processEvents.cancel();
     _approvals.dispose();
@@ -525,7 +533,7 @@ final class ClaudeSessionService({
     if (state.pending > 0) state.pending--;
     if (!identical(_turns[sessionId], state)) return;
     if (outcome is ClaudeTurnFailed) _emit(BridgeSseSessionError(sessionID: sessionId));
-    if (state.pending == 0 && !state.selfStarted) {
+    if (state.pending == 0 && state.selfStartedTurn == null) {
       _emit(BridgeSseSessionIdle(sessionID: sessionId));
       _emit(const BridgeSseProjectUpdated());
       _syncWorkState();
@@ -543,7 +551,7 @@ final class ClaudeSessionService({
         if (_disposed ||
             !identical(_turns[sessionId], state) ||
             state.pending != 0 ||
-            state.selfStarted ||
+            state.selfStartedTurn != null ||
             state.idleGeneration != generation) {
           return;
         }
@@ -574,7 +582,9 @@ final class ClaudeSessionService({
   }
 
   void _syncWorkState() => _workState.set(
-    _turns.values.any((state) => state.pending > 0 || state.selfStarted) ? PluginWorkState.busy : PluginWorkState.idle,
+    _turns.values.any((state) => state.pending > 0 || state.selfStartedTurn != null)
+        ? PluginWorkState.busy
+        : PluginWorkState.idle,
   );
 
   void _emit(BridgeSseEvent event) {
@@ -609,7 +619,7 @@ final class ClaudeSessionService({
           // The wakeup timer died with the process and `--resume` does not
           // rearm it.
           state.wakeupAt = null;
-          if (state.selfStarted) _endSelfStartedTurn(sessionId: event.sessionId, state: state);
+          if (state.selfStartedTurn != null) _endSelfStartedTurn(sessionId: event.sessionId, state: state);
         }
         _approvals.cancelForSession(sessionId: event.sessionId);
     }
@@ -650,8 +660,8 @@ final class ClaudeSessionService({
     if (state == null) return;
     switch (message) {
       case ClaudeStreamEventMessage() || ClaudeAssistantMessage() || ClaudeControlRequestMessage():
-        if (state.selfStarted || state.pending > 0) return;
-        state.selfStarted = true;
+        if (state.selfStartedTurn != null || state.pending > 0) return;
+        state.selfStartedTurn = Completer<void>();
         // A live turn supersedes the pending-wakeup estimate that started it.
         state.wakeupAt = null;
         state.idleGeneration++;
@@ -659,19 +669,25 @@ final class ClaudeSessionService({
         _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const shared.SessionStatus.busy().toJson()));
         _emit(const BridgeSseProjectUpdated());
       case ClaudeResultMessage():
-        if (state.selfStarted) _endSelfStartedTurn(sessionId: sessionId, state: state);
+        if (state.selfStartedTurn != null) _endSelfStartedTurn(sessionId: sessionId, state: state);
       case ClaudeStreamMessage():
         break;
     }
   }
 
   void _endSelfStartedTurn({required String sessionId, required _SessionTurnState state}) {
-    state.selfStarted = false;
+    _completeSelfStartedTurn(state: state);
     if (state.pending != 0) return;
     _emit(BridgeSseSessionIdle(sessionID: sessionId));
     _emit(const BridgeSseProjectUpdated());
     _syncWorkState();
     _scheduleIdleReap(sessionId: sessionId, state: state);
+  }
+
+  void _completeSelfStartedTurn({required _SessionTurnState state}) {
+    final turn = state.selfStartedTurn;
+    state.selfStartedTurn = null;
+    if (turn != null && !turn.isCompleted) turn.complete();
   }
 }
 

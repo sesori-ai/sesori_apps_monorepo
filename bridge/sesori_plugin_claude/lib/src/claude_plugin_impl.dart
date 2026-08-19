@@ -566,9 +566,10 @@ final class ClaudePlugin({
         _eventDispatcher.map(message: message, now: now).forEach(_eventBuffer.add);
         return;
       }
-      if (message is ClaudeUserMessage && promptId != null) {
+      if (message is ClaudeUserMessage &&
+          promptId != null &&
+          _sessions.consumeQueuedPrompt(sessionId: event.sessionId, promptId: promptId)) {
         _eventDispatcher.mapPromptReplay(message: message, promptId: promptId).forEach(_eventBuffer.add);
-        _sessions.consumeQueuedPrompt(sessionId: event.sessionId, promptId: promptId);
         return;
       }
       _eventDispatcher.map(message: message).forEach(_eventBuffer.add);

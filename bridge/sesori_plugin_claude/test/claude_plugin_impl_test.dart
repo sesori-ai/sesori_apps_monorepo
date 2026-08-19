@@ -370,24 +370,22 @@ void main() {
         model: null,
       );
       await _waitForUserText(first, "interrupted early");
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      final written = first.written.lastWhere((frame) => frame["type"] == "user");
+      first.emit(_replayOf(written, uuid: "late-echo"));
       final abort = harness.plugin.abortSession(sessionId: testSessionId);
       final interrupt = await _waitForControl(first, "interrupt");
       first.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
       await abort;
-
-      final events = <BridgeSseEvent>[];
-      final subscription = harness.plugin.events.listen(events.add);
-      // A buffered frame arriving after the abort must not inherit the
-      // aborted turn's identity.
-      final written = first.written.lastWhere((frame) => frame["type"] == "user");
-      first.emit(_replayOf(written, uuid: "late-echo"));
       await pump();
       await pump();
 
+      // A buffered frame delivered while abort clears the queue must not
+      // inherit the aborted turn's identity.
       final lateEchoes = events.whereType<BridgeSseMessageUpdated>().where((event) => event.info["id"] == "late-echo");
-      for (final message in lateEchoes) {
-        expect(message.info["promptId"], isNull);
-      }
+      expect(lateEchoes, hasLength(1));
+      expect(lateEchoes.single.info["promptId"], isNull);
       await subscription.cancel();
     });
 

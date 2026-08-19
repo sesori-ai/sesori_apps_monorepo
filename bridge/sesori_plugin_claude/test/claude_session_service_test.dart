@@ -289,6 +289,48 @@ void main() {
       expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
     });
 
+    test("classifies a prompt during a self-started wakeup as steering", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_scheduleWakeupFrame(delaySeconds: 600));
+      process.emit(_result());
+      await harness.waitForIdle();
+      process.emit(_assistantTextFrame(text: "waking up"));
+      await harness.waitForBusy();
+      final dispatches = <ClaudeTurnDispatched>[];
+      final subscription = harness.service.dispatches.listen(dispatches.add);
+
+      unawaited(harness.enqueue("steer"));
+      await _waitForUserFrames(process, 2);
+
+      expect(dispatches.single.isSteering, isTrue);
+      process.emit(_replayOf(_userFrames(process).last, uuid: "replay-steer"));
+      process.emit(_result());
+      await harness.waitForIdle();
+      await subscription.cancel();
+    });
+
+    test("holds a command until a self-started wakeup finishes", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_scheduleWakeupFrame(delaySeconds: 600));
+      process.emit(_result());
+      await harness.waitForIdle();
+      process.emit(_assistantTextFrame(text: "waking up"));
+      await harness.waitForBusy();
+
+      unawaited(harness.enqueue("command", command: "review"));
+      await pump();
+
+      expect(_userFrames(process), hasLength(1));
+      process.emit(_result());
+      await _waitForUserFrames(process, 2);
+      process.emit(_result());
+      await harness.waitForIdle();
+    });
+
     test("abort interrupts a self-started wakeup turn", () async {
       unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
