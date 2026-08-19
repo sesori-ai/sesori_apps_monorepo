@@ -365,10 +365,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final previous = <QueuedSessionSubmission>{
       ?oldWidget.sendingSubmission,
       ...oldWidget.queuedMessages,
+      // A fast acceptance can move a send straight to the parked surface
+      // between two builds; it is still the reader's new submission.
+      ...oldWidget.awaitingBridgeSubmissions,
     };
     return [
       ?widget.sendingSubmission,
       ...widget.queuedMessages,
+      ...widget.awaitingBridgeSubmissions,
     ].any((submission) => !previous.contains(submission));
   }
 

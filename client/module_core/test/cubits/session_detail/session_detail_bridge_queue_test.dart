@@ -119,6 +119,35 @@ void main() {
           isBridgeConnected: true,
         ),
       );
+      when(
+        () => mockLoadService.reload(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer(
+        (_) async => const SessionDetailLoadResult.loaded(
+          snapshot: SessionDetailSnapshot(
+            projectId: "project-1",
+            pluginId: "claude",
+            supportsPromptAttachments: false,
+            messages: <MessageWithParts>[],
+            olderMessagesCursor: null,
+            pendingQuestions: <PendingQuestion>[],
+            pendingPermissions: <PendingPermission>[],
+            bridgeQueuedPrompts: <QueuedSessionPrompt>[],
+            childSessions: <Session>[],
+            statuses: <String, SessionStatus>{},
+            agents: <AgentInfo>[],
+            providerData: null,
+            commands: <CommandInfo>[],
+            canonicalSessionTitle: null,
+            promptDefaults: null,
+            isRootSession: true,
+            isArchived: false,
+          ),
+          isBridgeConnected: true,
+        ),
+      );
       when(() => mockConnectionService.sessionEvents(_sessionId)).thenAnswer((_) => sessionEvents.stream);
       when(() => mockConnectionService.events).thenAnswer((_) => globalEvents.stream);
       when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus);
@@ -297,6 +326,58 @@ void main() {
         expect(visible, isTrue, reason: "no frame may leave the accepted send without a surface");
       }
       await subscription.cancel();
+    });
+
+    test("an authoritative refresh settles a parked prompt the bridge no longer owns", () async {
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+      final cubit = await createLoadedCubit();
+      await cubit.sendMessage(text: "lost", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
+      await Future<void>.delayed(Duration.zero);
+      expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, hasLength(1));
+
+      // A refresh whose fetch began after the park returns neither the queue
+      // entry nor the message: the prompt is gone bridge-side, so the parked
+      // ghost settles instead of rendering forever.
+      await cubit.reload();
+
+      expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, isEmpty);
+    });
+
+    test("abort clears a parked-only submission", () async {
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+      when(() => mockSessionRepository.abortSession(sessionId: _sessionId)).thenAnswer(
+        (_) async => ApiResponse.success(null),
+      );
+      final cubit = await createLoadedCubit();
+      await cubit.sendMessage(text: "parked", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
+      await Future<void>.delayed(Duration.zero);
+      expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, hasLength(1));
+
+      await cubit.abort();
+
+      expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, isEmpty);
     });
 
     test("cancel removes the entry on success and on not-found, keeps it on transport failure", () async {

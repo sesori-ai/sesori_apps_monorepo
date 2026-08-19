@@ -91,6 +91,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
         !state.isLoadingOlderMessages &&
         state.sendingSubmission == null &&
         state.queuedMessages.isEmpty &&
+        state.awaitingBridgeSubmissions.isEmpty &&
         state.bridgeQueuedPrompts.isEmpty;
     final questionCount = state.pendingQuestions.fold<int>(0, (sum, q) => sum + q.questions.length);
 
@@ -229,6 +230,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           state.hasRenderableMessages ||
                           state.sendingSubmission != null ||
                           state.queuedMessages.isNotEmpty ||
+                          state.awaitingBridgeSubmissions.isNotEmpty ||
                           state.bridgeQueuedPrompts.isNotEmpty,
                       attachmentsSupported: state.supportsPromptAttachments,
                       isBusy: hasActiveWork(
