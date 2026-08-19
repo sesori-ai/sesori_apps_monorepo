@@ -212,31 +212,14 @@ void main() {
       expect(reasoning.text, "Inspecting workflows");
       expect((events.last as BridgeSseMessagePartUpdated).part.type, PluginMessagePartType.text);
 
-      mapper.map(
-        const SseEventData.messagePartDelta(
+      final idle = mapper.map(
+        const SseEventData.sessionStatus(
           sessionID: "session-1",
-          messageID: "message-1",
-          partID: "reasoning-1",
-          field: "text",
-          delta: "late",
+          status: SessionStatusIdle(),
         ),
       );
-      final laterOutput = mapper.map(
-        const SseEventData.messagePartUpdated(
-          part: TextPart(
-            id: "text-2",
-            sessionID: "session-1",
-            messageID: "message-1",
-            text: "answer",
-            synthetic: null,
-            ignored: null,
-            time: TextPartTime(start: 3, end: 4),
-            metadata: null,
-          ),
-        ),
-      );
-      expect(laterOutput, hasLength(1));
-      expect((laterOutput.single as BridgeSseMessagePartUpdated).part.type, PluginMessagePartType.text);
+      expect(idle, hasLength(1));
+      expect(idle.single, isA<BridgeSseSessionStatus>());
     });
 
     test("idle finalizes reasoning when OpenCode omits its final snapshot", () {
@@ -274,52 +257,100 @@ void main() {
       expect(events.last, isA<BridgeSseSessionStatus>());
     });
 
-    for (final boundary in <(String, SseEventData)>[
-      ("reconnect", const SseEventData.serverConnected()),
-      ("instance disposal", const SseEventData.serverInstanceDisposed(directory: "/repo")),
-    ]) {
-      test("${boundary.$1} drops incomplete reasoning state", () {
-        mapper.map(
-          const SseEventData.messagePartUpdated(
-            part: ReasoningPart(
-              id: "reasoning-stale",
-              sessionID: "session-stale",
-              messageID: "message-stale",
-              text: "",
-              metadata: null,
-              time: ReasoningPartTime(start: 1, end: null),
-            ),
-          ),
-        );
-        mapper.map(
-          const SseEventData.messagePartDelta(
+    test("reconnect drops incomplete reasoning state", () {
+      mapper.map(
+        const SseEventData.messagePartUpdated(
+          part: ReasoningPart(
+            id: "reasoning-stale",
             sessionID: "session-stale",
             messageID: "message-stale",
-            partID: "reasoning-stale",
-            field: "text",
-            delta: "Incomplete before the gap",
+            text: "",
+            metadata: null,
+            time: ReasoningPartTime(start: 1, end: null),
           ),
-        );
+        ),
+      );
+      mapper.map(
+        const SseEventData.messagePartDelta(
+          sessionID: "session-stale",
+          messageID: "message-stale",
+          partID: "reasoning-stale",
+          field: "text",
+          delta: "Incomplete before the gap",
+        ),
+      );
 
-        mapper.map(boundary.$2);
-        final events = mapper.map(
-          const SseEventData.messagePartUpdated(
-            part: TextPart(
-              id: "text-after-gap",
-              sessionID: "session-stale",
-              messageID: "message-stale",
+      mapper.map(const SseEventData.serverConnected());
+      final events = mapper.map(
+        const SseEventData.messagePartUpdated(
+          part: TextPart(
+            id: "text-after-gap",
+            sessionID: "session-stale",
+            messageID: "message-stale",
+            text: "",
+            synthetic: null,
+            ignored: null,
+            time: TextPartTime(start: 2, end: null),
+            metadata: null,
+          ),
+        ),
+      );
+
+      expect(events, hasLength(1));
+      expect((events.single as BridgeSseMessagePartUpdated).part.type, PluginMessagePartType.text);
+    });
+
+    test("instance disposal clears only reasoning from its directory", () {
+      void startReasoning({required String suffix, required String directory}) {
+        mapper.map(
+          SseEventData.messagePartUpdated(
+            part: ReasoningPart(
+              id: "reasoning-$suffix",
+              sessionID: "session-$suffix",
+              messageID: "message-$suffix",
               text: "",
-              synthetic: null,
-              ignored: null,
-              time: TextPartTime(start: 2, end: null),
               metadata: null,
+              time: const ReasoningPartTime(start: 1, end: null),
             ),
           ),
+          directory: directory,
         );
+        mapper.map(
+          SseEventData.messagePartDelta(
+            sessionID: "session-$suffix",
+            messageID: "message-$suffix",
+            partID: "reasoning-$suffix",
+            field: "text",
+            delta: "reasoning $suffix",
+          ),
+        );
+      }
 
-        expect(events, hasLength(1));
-        expect((events.single as BridgeSseMessagePartUpdated).part.type, PluginMessagePartType.text);
-      });
-    }
+      List<BridgeSseEvent> startText(String suffix) => mapper.map(
+        SseEventData.messagePartUpdated(
+          part: TextPart(
+            id: "text-$suffix",
+            sessionID: "session-$suffix",
+            messageID: "message-$suffix",
+            text: "",
+            synthetic: null,
+            ignored: null,
+            time: const TextPartTime(start: 2, end: null),
+            metadata: null,
+          ),
+        ),
+      );
+
+      startReasoning(suffix: "disposed", directory: "/repo/disposed");
+      startReasoning(suffix: "active", directory: "/repo/active");
+      mapper.map(
+        const SseEventData.serverInstanceDisposed(directory: "/repo/disposed"),
+      );
+
+      expect(startText("disposed"), hasLength(1));
+      final active = startText("active");
+      expect(active, hasLength(2));
+      expect((active.first as BridgeSseMessagePartUpdated).part.text, "reasoning active");
+    });
   });
 }

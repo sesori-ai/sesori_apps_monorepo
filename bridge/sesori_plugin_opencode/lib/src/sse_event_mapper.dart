@@ -56,15 +56,20 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
   /// [displaySessionId] is the already-resolved root session for permission/
   /// question events (see [OpenCodePlugin._displaySessionIdForEvent]); it is
   /// null for all other event types. Kept as a passed-in value so this mapper
-  /// stays dependency-free.
-  List<BridgeSseEvent> map(SseEventData event, {String? displaySessionId}) {
-    final events = _updateReasoning(event);
+  /// stays dependency-free. [directory] is the OpenCode event-wrapper scope;
+  /// it lets an instance-disposal event clear only that project's reasoning.
+  List<BridgeSseEvent> map(
+    SseEventData event, {
+    String? displaySessionId,
+    String? directory,
+  }) {
+    final events = _updateReasoning(event, directory: directory);
     final mapped = _mapOne(event, displaySessionId: displaySessionId);
     if (mapped != null) events.add(mapped);
     return events;
   }
 
-  List<BridgeSseEvent> _updateReasoning(SseEventData event) {
+  List<BridgeSseEvent> _updateReasoning(SseEventData event, {required String? directory}) {
     switch (event) {
       case SseMessagePartUpdated(:final ReasoningPart part):
         if (part.time.end != null) {
@@ -76,7 +81,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
           exceptPartId: part.id,
           removeAfter: false,
         );
-        _trackReasoningPart(part);
+        _trackReasoningPart(part, directory: directory);
         return finalized;
       case SseMessagePartUpdated(:final part):
         final sessionId = _asMap(part.toJson())["sessionID"] as String?;
@@ -120,15 +125,23 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
       case SseSessionDeleted(:final info):
         _reasoningBySession.remove(info.id);
         return <BridgeSseEvent>[];
-      case SseServerConnected() || SseServerInstanceDisposed() || SseGlobalDisposed():
+      case SseServerConnected() || SseGlobalDisposed():
         _reasoningBySession.clear();
+        return <BridgeSseEvent>[];
+      case SseServerInstanceDisposed(directory: final disposedDirectory):
+        final target = disposedDirectory ?? directory;
+        if (target == null) return <BridgeSseEvent>[];
+        for (final entry in _reasoningBySession.entries.toList(growable: false)) {
+          entry.value.removeWhere((_, reasoning) => reasoning.directory == target);
+          if (entry.value.isEmpty) _reasoningBySession.remove(entry.key);
+        }
         return <BridgeSseEvent>[];
       default:
         return <BridgeSseEvent>[];
     }
   }
 
-  void _trackReasoningPart(ReasoningPart part) {
+  void _trackReasoningPart(ReasoningPart part, {required String? directory}) {
     final mapped = _messagePartMapper.mapPart(part);
     final tracked = (_reasoningBySession[part.sessionID] ??= {})[part.id];
     if (tracked == null) {
@@ -136,6 +149,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
         part: mapped,
         text: StringBuffer(part.text),
         isStreaming: part.text.isNotEmpty,
+        directory: directory,
       );
       return;
     }
@@ -301,4 +315,5 @@ class _StreamingReasoningPart({
   required var PluginMessagePart part,
   required var StringBuffer text,
   required var bool isStreaming,
+  required final String? directory,
 });

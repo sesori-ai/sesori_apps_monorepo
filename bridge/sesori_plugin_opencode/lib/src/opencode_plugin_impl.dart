@@ -634,6 +634,7 @@ class OpenCodePlugin._({
           final bridgeEvents = _mapper.map(
             canonicalEvent,
             displaySessionId: _displaySessionIdForEvent(canonicalEvent),
+            directory: parseResult.directory,
           );
           bridgeEvents.forEach(_eventBuffer.add);
           return;
