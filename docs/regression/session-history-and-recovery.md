@@ -14,8 +14,10 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
   advanced outside Sesori is detected as stale, re-read, and re-cached.
 - Live streamed messages and parts become queryable immediately after they
   finalize, with the same visibility filtering and tool-output bound a backend
-  fetch returns. Clients request the latest page and page older messages on
-  demand; a client predating pagination gets the full transcript.
+  fetch returns. Final text and reasoning snapshots are retained whether a
+  backend emits them before or after its stream block-stop event. Clients request
+  the latest page and page older messages on demand; a client predating
+  pagination gets the full transcript.
 - After a reconnect inside the replay window, buffered events are delivered;
   after a longer gap, a refresh reconciles without losing finalized content.
   After a backend event-stream gap, that plugin's stored transcripts stay marked
