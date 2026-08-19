@@ -122,6 +122,9 @@ after a marker has been established.
 - A missed live patch self-heals on a later relevant event or list refresh.
 - An old bridge cannot provide per-running-root ordering facts in
   `projects.summary`, so the current app falls back to project updated time.
+- Untested Hermes gap (remove this entry once verified): a failed or cancelled
+  in-flight Hermes import was never exercised; only completed explicit imports
+  and non-destructive re-imports were verified.
 
 ## Sources
 

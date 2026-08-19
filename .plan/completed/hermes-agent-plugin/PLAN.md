@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `hermes-agent-plugin`
-- **Status:** corrective review complete through Step 8; Steps 1-8 merged (#921, #927, #929), Step 9 blocked
+- **Status:** complete; Steps 1-8 merged (#915-#921, #927, #929, extended by #965), Step 9 retires the plan with owner-accepted reduction
 - **Plan date:** 2026-08-13
 - **Owner review:** started 2026-08-15; the contributor-authored plan was not previously approved
 - **Implementation base:** current `origin/main`
@@ -124,7 +124,7 @@ one consumer.
 | 6/9 | `⚙️ [hermes-agent-plugin] feat(client): brand the Hermes harness [step 6/9]` | Merged as #921; corrected supplied artwork and asset contract. |
 | 7/9 | `🚧 [hermes-agent-plugin] fix(hermes): correct runtime and ACP assumptions [step 7/9]` | Merged as #927: auth selection, version semantics, executable revalidation, setup failure classification, null activation retry, exact registry test, plan/docs correction. |
 | 8/9 | `🚧 [hermes-agent-plugin] test(hermes): verify production ACP behavior [step 8/9]` | Merged as #929, extended by the 2026-08-18 iOS client E2E run in `TRACKER.md`. Session creation, tools and file changes, images, history and recovery, and deletion now pass; `Plugin setup and lifecycle` (L4 idle respawn), `Session turns` (reasoning streaming), `Questions and permissions`, `Projects and sessions` (failed/cancelled import), and `Compatibility` remain blocked. |
-| 9/9 | `🌱 [hermes-agent-plugin] docs: retire the plan [step 9/9]` | Pending; blocked until every required row below passes. |
+| 9/9 | `🌱 [hermes-agent-plugin] docs: retire the plan [step 9/9]` | Done; retires the plan under the owner-accepted reduction recorded below. |
 
 ## Regression And Retirement Matrix
 
@@ -148,8 +148,17 @@ targeted L4 recovery checks; unchanged plugins retain their existing coverage.
 
 Step 9 cannot retire this plan while a required row is unexecuted, partial,
 blocked, or failed unless the owner explicitly accepts that reduction here.
-The 2026-08-15 Step 8 execution in `TRACKER.md`, as extended by the 2026-08-18
-iOS client E2E run, still contains blocked rows, so Step 9 remains prohibited.
+
+**Owner acceptance recorded 2026-08-18:** the owner explicitly accepted
+retirement with five rows still Blocked, each on one specific unexercised
+item: `Plugin setup and lifecycle` (targeted L4 idle respawn), `Session turns`
+(reasoning streaming; no `agent_thought_chunk` observed), `Questions and
+permissions` (no ACP permission request was ever emitted), `Projects and
+sessions` (failed/cancelled in-flight import), and `Compatibility` (second
+build pair). Each gap is also recorded as a removable note in the relevant
+feature document under `docs/regression/` so it survives this retirement.
+These remain unverified; no future change may cite this plan as evidence that
+they pass.
 
 ## Risks And Test Focus
 

@@ -119,6 +119,13 @@ timeouts, and sessions afterwards.
 - Hermes model/provider configuration is intentionally unavailable through Sesori and must
   be completed with the Hermes CLI before setup can become ready.
 - Idle windows are minutes-order, so observing a real elapse belongs at L4 or above.
+- Untested Hermes gap (remove this entry once verified): the targeted L4 idle
+  respawn was never exercised for Hermes, because it needs a controlled
+  idle-timeout window rather than an interactive session.
+- Untested Hermes gap (remove this entry once verified): older-client
+  unknown-id fallback and older-bridge presentation were never exercised end to
+  end against a second build pair; only the automated fallback and branding
+  checks passed.
 
 ## Sources
 

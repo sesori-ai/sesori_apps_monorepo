@@ -3,11 +3,13 @@
 ## Current State
 
 - **Plan slug:** `hermes-agent-plugin`
-- **Owner review:** in progress since 2026-08-15
+- **Owner review:** complete
 - **Current open PR:** none
-- **Local successor:** none; Step 9 retirement is blocked
-- **Next action:** exercise the remaining blocked matrix rows — `Plugin setup and lifecycle` (L4 idle respawn), `Session turns` (reasoning streaming), `Questions and permissions`, `Projects and sessions` (failed/cancelled import), and `Compatibility` — or record explicit owner acceptance
-- **Retirement:** blocked on the Step 8 matrix in `PLAN.md`
+- **Local successor:** none; the plan is retired by Step 9 under the owner
+  acceptance recorded in `PLAN.md`
+- **Next action:** none; five unexercised matrix items remain recorded as
+  removable "Untested Hermes gap" notes in `docs/regression/`
+- **Retirement:** accepted by the owner on 2026-08-18 with five blocked rows
 
 ## Delivery
 
@@ -20,8 +22,8 @@
 | [x] | 5/9 | #919 | Merged registration and CI coverage. |
 | [x] | 6/9 | #921 | Merged branding implementation and supplied artwork corrections. |
 | [x] | 7/9 | #927 | Merged corrective plan/runtime/ACP pass. |
-| [x] | 8/9 | #929 | Merged regression evidence; blocked rows prevent retirement. |
-| [ ] | 9/9 | pending | Retirement only after required evidence passes. |
+| [x] | 8/9 | #929 | Merged regression evidence; extended by #955 (iOS E2E) and #965. |
+| [x] | 9/9 | pending | Retires the plan under the owner-accepted reduction in `PLAN.md`. |
 
 ## Owner Decisions
 
@@ -32,6 +34,7 @@
 - Setup remains out of band through Hermes CLI. The bridge never runs terminal setup as authentication.
 - Custom Hermes branding is explicitly approved (2026-08-15) as a narrow presentation exception.
 - Local deletion uses Sesori purge plus plugin-scoped tombstone; no private Hermes database mutation is added.
+- Retirement with five blocked rows is explicitly accepted (2026-08-18); the gaps live on as removable notes in `docs/regression/`.
 
 ## Audit Findings
 
@@ -100,8 +103,10 @@ the approved temporary directory so blocked rows can be resumed. Previous
 contributor claims of a completed live run remain excluded because no durable
 evidence accompanied them.
 
-**Retirement status: Blocked.** Step 9 cannot proceed unless all required rows
-pass or the owner explicitly accepts the recorded reduction in `PLAN.md`.
+**Retirement status: Accepted 2026-08-18.** The owner explicitly accepted
+retirement with the blocked rows above still open; the acceptance is recorded
+in `PLAN.md`, and each gap remains as a removable "Untested Hermes gap" note
+in the owning `docs/regression/` feature document.
 
 ## Step 8 Evidence: iOS Client E2E
 

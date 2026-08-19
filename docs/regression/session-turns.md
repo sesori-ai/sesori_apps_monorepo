@@ -175,6 +175,10 @@ has started.
   shape. Cold replay therefore shows only the slash-command token to avoid
   exposing bridge-owned arguments; live API-command presentation retains only
   the exact user-authored arguments.
+- Untested Hermes gap (remove this entry once verified): reasoning streaming
+  was never observed from Hermes. An explicit chain-of-thought prompt produced
+  no `agent_thought_chunk` against the tested model, so thought-part
+  normalization is unverified for this harness.
 
 ## Sources
 
