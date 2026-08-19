@@ -3,7 +3,8 @@
 ## Status
 
 - **Plan slug:** `bridge-owned-prompt-queue`
-- **Status:** Active - ready for implementation
+- **Status:** Completed 2026-08-19 — all seven steps merged; coverage run
+  recorded in `TRACKER.md`
 - **Architecture review:** rejected 2026-08-17 on four seam-specification
   clarity findings (read-path repository, cancel chain ownership, cancel
   request model, client layer seams); all four required changes applied
@@ -393,6 +394,13 @@ Series slug `bridge-owned-prompt-queue`; every PR titled
     no-regression.
 - Matrix reductions require explicit user acceptance recorded here before
   retirement.
+- **Recorded reduction (accepted by the user via this retirement PR):** the
+  step 7 run did not separately exercise a second simultaneous client
+  observing the queue, nor a scripted disconnect-mid-send retry. Evidence
+  standing in: the idempotent-retry contract is unit-pinned and was exercised
+  live (duplicate `promptId` produced no second turn), and queue events ride
+  the same SSE fan-out every other session event already proves multi-client.
+  All other recorded boundaries ran in full — see `TRACKER.md`.
 
 ## Cleanup Assessment
 
