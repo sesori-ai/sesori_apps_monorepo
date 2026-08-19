@@ -29,7 +29,7 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
         )
         firebaseTestLabChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
-            firebaseTestLabChannelName,
+            FIREBASE_TEST_LAB_CHANNEL_NAME,
         ).also { channel ->
             channel.setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -116,6 +116,6 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
     }
 
     private companion object {
-        const val firebaseTestLabChannelName = "com.sesori.app/firebase-test-lab"
+        const val FIREBASE_TEST_LAB_CHANNEL_NAME = "com.sesori.app/firebase-test-lab"
     }
 }
