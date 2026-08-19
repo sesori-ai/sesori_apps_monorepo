@@ -274,8 +274,8 @@ void main() {
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "steer it")],
         variant: null,
-        agent: null,
-        model: null,
+        agent: "Agent",
+        model: (providerID: "anthropic", modelID: "default"),
       );
       final entry = (await harness.plugin.getQueuedPrompts(sessionId: testSessionId)).single;
       expect(entry.id, "prm_steer");
@@ -288,9 +288,9 @@ void main() {
         "prm_steer",
       );
 
-      first.emit(_result());
       await _waitForUserText(first, "steer it");
       final written = first.written.lastWhere((frame) => frame["type"] == "user");
+      expect(written["priority"], "next");
       first.emit(_replayOf(written, uuid: "replay-steer"));
       await pump();
       await pump();
@@ -331,6 +331,7 @@ void main() {
       final queued = await harness.plugin.getQueuedPrompts(sessionId: testSessionId);
       expect(queued.single.command, "review");
       expect(queued.single.text, "src");
+      expect(_userTexts(first), isNot(contains("/review src")), reason: "commands wait for the active turn");
 
       first.emit(_result());
       await _waitForUserText(first, "/review src");
@@ -399,7 +400,7 @@ void main() {
         promptId: "prm_cancel",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "never runs")],
-        variant: null,
+        variant: const PluginSessionVariant(id: "high"),
         agent: null,
         model: null,
       );
@@ -417,8 +418,6 @@ void main() {
       await harness.createSession();
       final first = harness.processes.single;
       await waitForFrame(first, "user");
-      first.emit(_result());
-      await pump();
 
       await harness.plugin.sendPrompt(
         promptId: "prompt-1",
@@ -428,6 +427,11 @@ void main() {
         agent: "Agent",
         model: (providerID: "anthropic", modelID: "default"),
       );
+      await pump();
+      expect(harness.processes, hasLength(1));
+      expect(_userTexts(first), isNot(contains("deeper")), reason: "effort is launch-only");
+
+      first.emit(_result());
       for (var attempt = 0; attempt < 50 && harness.processes.length < 2; attempt++) {
         await pump();
       }
@@ -724,15 +728,22 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
 
   String _nextId() => _testIds[_idIndex++];
 
-  Future<PluginSession> createSession() => plugin.createSession(
-    directory: "/tmp/project",
-    parentSessionId: null,
-    parts: const [PluginPromptPart.text(text: "hello")],
-    userVisibleText: "hello",
-    variant: null,
-    agent: "Agent",
-    model: (providerID: "anthropic", modelID: "default"),
-  );
+  Future<PluginSession> createSession() async {
+    final session = await plugin.createSession(
+      directory: "/tmp/project",
+      parentSessionId: null,
+      parts: const [PluginPromptPart.text(text: "hello")],
+      userVisibleText: "hello",
+      variant: null,
+      agent: "Agent",
+      model: (providerID: "anthropic", modelID: "default"),
+    );
+    final process = processes.last;
+    final written = process.written.lastWhere((frame) => frame["type"] == "user");
+    process.emit(_replayOf(written, uuid: "initial-${session.id}"));
+    await pump();
+    return session;
+  }
 
   Future<void> close() async {
     await plugin.dispose();

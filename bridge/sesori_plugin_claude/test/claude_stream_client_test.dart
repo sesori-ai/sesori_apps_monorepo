@@ -296,6 +296,7 @@ void main() {
       final frame = await waitForFrame(connected.fake, "user");
 
       expect(frame["session_id"], otherTestSessionId);
+      expect(frame["priority"], "next");
       final message = frame["message"]! as Map;
       expect(message["role"], "user");
       expect((message["content"]! as List).single, {"type": "text", "text": "hello"});

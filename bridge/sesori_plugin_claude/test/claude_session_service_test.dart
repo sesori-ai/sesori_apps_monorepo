@@ -19,15 +19,15 @@ void main() {
       await harness.dispose();
     });
 
-    test("serializes queued turns for one session", () async {
+    test("dispatches same-effort prompts as steering input", () async {
       unawaited(harness.enqueue("first", model: "haiku"));
       unawaited(harness.enqueue("second", model: "haiku"));
       final process = await harness.firstProcess;
-      await waitForFrame(process, "user");
-
-      expect(_userFrames(process), hasLength(1));
-      process.emit(_result());
       await _waitForUserFrames(process, 2);
+
+      expect(_userFrames(process), everyElement(containsPair("priority", "next")));
+      process.emit(_replayOf(_userFrames(process)[0], uuid: "replay-first"));
+      process.emit(_replayOf(_userFrames(process)[1], uuid: "replay-second"));
       process.emit(_result());
       await harness.waitForIdle();
 
@@ -35,11 +35,40 @@ void main() {
       expect(_userText(process, 1), "second");
     });
 
-    test("abort fences a queued turn and cancels the running turn", () async {
+    test("waits for a turn boundary before applying selection changes", () async {
+      unawaited(harness.enqueue("first", model: "haiku"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      unawaited(
+        harness.enqueue(
+          "second",
+          model: "sonnet",
+          permissionMode: ClaudePermissionMode.plan,
+        ),
+      );
+      await pump();
+
+      expect(_userFrames(process), hasLength(1));
+      process.emit(_replayOf(_userFrames(process).single, uuid: "replay-first"));
+      process.emit(_result());
+
+      final model = await _waitForControlSubtype(process, "set_model");
+      expect((model["request"]! as Map)["model"], "sonnet");
+      process.emitControlResponse(requestId: model["request_id"]! as String, payload: const {});
+      final permission = await _waitForControlSubtype(process, "set_permission_mode");
+      expect((permission["request"]! as Map)["mode"], "plan");
+      process.emitControlResponse(requestId: permission["request_id"]! as String, payload: const {});
+      await _waitForUserFrames(process, 2);
+      process.emit(_replayOf(_userFrames(process).last, uuid: "replay-second"));
+      process.emit(_result());
+      await harness.waitForIdle();
+    });
+
+    test("abort cancels the running turn and submitted steering input", () async {
       unawaited(harness.enqueue("first", model: "haiku"));
       unawaited(harness.enqueue("second", model: "haiku"));
       final process = await harness.firstProcess;
-      await waitForFrame(process, "user");
+      await _waitForUserFrames(process, 2);
 
       final abort = harness.service.abort(sessionId: testSessionId);
       final interrupt = await _waitForControlSubtype(process, "interrupt");
@@ -48,7 +77,7 @@ void main() {
       process.emit(_result());
       await harness.waitForIdle();
 
-      expect(_userFrames(process), hasLength(1));
+      expect(_userFrames(process), hasLength(2));
       expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
     });
 
@@ -350,7 +379,8 @@ void main() {
       await pump();
 
       expect(accepted, isTrue, reason: "acceptance must not wait for the running turn");
-      expect(_userFrames(process), hasLength(1), reason: "the queued turn must not dispatch mid-turn");
+      await _waitForUserFrames(process, 2);
+      expect(_userFrames(process).last["priority"], "next");
     });
 
     test("exposes queued entries until dispatch settles and emits full-list updates", () async {
@@ -367,8 +397,9 @@ void main() {
       final updates = harness.events.whereType<BridgeSseQueuedPromptsUpdated>().toList();
       expect(updates.last.prompts.map((prompt) => prompt.id), ["prompt-first", "prompt-second"]);
 
-      process.emit(_result());
       await _waitForUserFrames(process, 2);
+      process.emit(_replayOf(_userFrames(process)[0], uuid: "replay-first"));
+      process.emit(_replayOf(_userFrames(process)[1], uuid: "replay-second"));
       process.emit(_result());
       await harness.waitForIdle();
 
@@ -404,15 +435,14 @@ void main() {
 
     test("cancels a pending entry before dispatch and refuses a dispatched one", () async {
       unawaited(harness.enqueue("first"));
-      final process = await harness.firstProcess;
-      await waitForFrame(process, "user");
       unawaited(harness.enqueue("second"));
-      await pump();
 
       expect(
         harness.service.cancelQueuedPrompt(sessionId: testSessionId, promptId: "prompt-second"),
         isTrue,
       );
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
       expect(
         harness.service.cancelQueuedPrompt(sessionId: testSessionId, promptId: "prompt-first"),
         isFalse,
@@ -429,17 +459,21 @@ void main() {
       expect(_userFrames(process), hasLength(1), reason: "the cancelled turn must never dispatch");
     });
 
-    test("consumes an entry via emittedVisibleMessage at dispatch", () async {
-      unawaited(
-        harness.enqueue("run-command", onDispatched: () => ClaudeQueuedDispatch.emittedVisibleMessage),
-      );
+    test("publishes typed command dispatch before queue consumption", () async {
+      final dispatches = <ClaudeTurnDispatched>[];
+      final subscription = harness.service.dispatches.listen(dispatches.add);
+      unawaited(harness.enqueue("run-command", command: "review"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
       await pump();
 
-      expect(harness.service.queuedPrompts(sessionId: testSessionId), isEmpty);
+      expect(dispatches.single.command, "review");
+      expect(dispatches.single.isSteering, isFalse);
+      expect(harness.service.queuedPrompts(sessionId: testSessionId), hasLength(1));
+      harness.service.consumeQueuedPrompt(sessionId: testSessionId, promptId: "prompt-run-command");
       process.emit(_result());
       await harness.waitForIdle();
+      await subscription.cancel();
     });
 
     test("consumeQueuedPrompt removes the echoed entry", () async {
@@ -471,7 +505,7 @@ void main() {
 
       expect(harness.service.queuedPrompts(sessionId: testSessionId), isEmpty);
       expect(harness.events.whereType<BridgeSseQueuedPromptsUpdated>().last.prompts, isEmpty);
-      expect(_userFrames(process), hasLength(1));
+      expect(_userFrames(process), hasLength(2));
     });
 
     test("a turn settling after deleteSession publishes no queue update", () async {
@@ -591,7 +625,8 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
     String text, {
     String? model,
     String? promptId,
-    ClaudeQueuedDispatch Function()? onDispatched,
+    String? command,
+    ClaudePermissionMode? permissionMode,
   }) {
     return service
         .enqueueTurn(
@@ -601,12 +636,11 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
           parts: [PluginPromptPart.text(text: text)],
           model: model,
           effort: null,
-          permissionMode: null,
+          permissionMode: permissionMode,
           promptId: promptId ?? "prompt-$text",
           displayText: text,
-          command: null,
+          command: command,
           attachmentCount: 0,
-          onDispatched: onDispatched ?? () => ClaudeQueuedDispatch.awaitsUserEcho,
         )
         .catchError((Object _) {});
   }
@@ -697,30 +731,41 @@ Map<String, Object?> _result() => {
   "is_error": false,
 };
 
-Future<PluginSessionStatus> _status(_ServiceHarness harness) async =>
-    harness.service.sessionStatuses[testSessionId]!;
+Map<String, Object?> _replayOf(Map<String, Object?> written, {required String uuid}) => {
+  ...written,
+  "uuid": uuid,
+  "isReplay": true,
+};
 
-Map<String, Object?> _scheduleWakeupFrame({required int delaySeconds}) => _assistantFrame(content: [
-  {
-    "type": "tool_use",
-    "id": "wakeup-1",
-    "name": "ScheduleWakeup",
-    "input": {"delaySeconds": delaySeconds, "prompt": "continue the loop"},
-  },
-]);
+Future<PluginSessionStatus> _status(_ServiceHarness harness) async => harness.service.sessionStatuses[testSessionId]!;
 
-Map<String, Object?> _scheduleWakeupStopFrame() => _assistantFrame(content: [
-  {
-    "type": "tool_use",
-    "id": "wakeup-2",
-    "name": "ScheduleWakeup",
-    "input": {"stop": true},
-  },
-]);
+Map<String, Object?> _scheduleWakeupFrame({required int delaySeconds}) => _assistantFrame(
+  content: [
+    {
+      "type": "tool_use",
+      "id": "wakeup-1",
+      "name": "ScheduleWakeup",
+      "input": {"delaySeconds": delaySeconds, "prompt": "continue the loop"},
+    },
+  ],
+);
 
-Map<String, Object?> _assistantTextFrame({required String text}) => _assistantFrame(content: [
-  {"type": "text", "text": text},
-]);
+Map<String, Object?> _scheduleWakeupStopFrame() => _assistantFrame(
+  content: [
+    {
+      "type": "tool_use",
+      "id": "wakeup-2",
+      "name": "ScheduleWakeup",
+      "input": {"stop": true},
+    },
+  ],
+);
+
+Map<String, Object?> _assistantTextFrame({required String text}) => _assistantFrame(
+  content: [
+    {"type": "text", "text": text},
+  ],
+);
 
 Map<String, Object?> _assistantFrame({required List<Map<String, Object?>> content}) => {
   "type": "assistant",

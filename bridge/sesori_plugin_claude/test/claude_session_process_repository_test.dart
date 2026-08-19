@@ -33,6 +33,7 @@ void main() {
       final turn = repository.sendTurn(
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "hello")],
+        promptId: null,
       );
       expect(turn.accepted, isTrue);
       await waitForFrame(harness.processes.single, "user");
@@ -44,6 +45,93 @@ void main() {
 
       expect(harness.specs, hasLength(2));
       expect(harness.specs.last.launch, isA<ClaudeResumedSession>());
+    });
+
+    test("settles steering input with the result after its replay", () async {
+      await _ensure(repository, createNew: true);
+      final process = harness.processes.single;
+      final first = repository.sendTurn(
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "first")],
+        promptId: "prompt-first",
+      );
+      final second = repository.sendTurn(
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "second")],
+        promptId: "prompt-second",
+      );
+      await _waitForUserFrames(process, 2);
+      var secondSettled = false;
+      unawaited(second.outcome.then((_) => secondSettled = true));
+
+      process.emit(_replayOf(_userFrames(process)[0], uuid: "replay-first"));
+      process.emit(_result());
+      expect(await first.outcome, isA<ClaudeTurnCompleted>());
+      await pump();
+      expect(secondSettled, isFalse);
+
+      process.emit(_replayOf(_userFrames(process)[1], uuid: "replay-second"));
+      process.emit(_result());
+      expect(await second.outcome, isA<ClaudeTurnCompleted>());
+    });
+
+    test("one result settles steering messages absorbed into the active turn", () async {
+      await _ensure(repository, createNew: true);
+      final process = harness.processes.single;
+      final replayPromptIds = <String?>[];
+      final subscription = repository.events
+          .where((event) => event is ClaudeSessionProcessMessage)
+          .cast<ClaudeSessionProcessMessage>()
+          .listen((event) {
+            if (event.message case ClaudeUserMessage(raw: {"isReplay": true})) {
+              replayPromptIds.add(event.promptId);
+            }
+          });
+      final first = repository.sendTurn(
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "first")],
+        promptId: "prompt-first",
+      );
+      final second = repository.sendTurn(
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "second")],
+        promptId: "prompt-second",
+      );
+      await _waitForUserFrames(process, 2);
+
+      process.emit(_internalReplay());
+      process.emit(_replayOf(_userFrames(process)[0], uuid: "replay-first"));
+      process.emit(_replayOf(_userFrames(process)[1], uuid: "replay-second"));
+      process.emit(_result());
+
+      expect(await first.outcome, isA<ClaudeTurnCompleted>());
+      expect(await second.outcome, isA<ClaudeTurnCompleted>());
+      await pump();
+      expect(replayPromptIds, [null, "prompt-first", "prompt-second"]);
+      await subscription.cancel();
+    });
+
+    test("a late replay does not make an idle process look active", () async {
+      await _ensure(repository, createNew: true);
+      final process = harness.processes.single;
+      final first = repository.sendTurn(
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "first")],
+        promptId: "prompt-first",
+      );
+      final firstFrame = await waitForFrame(process, "user");
+      process.emit(_result());
+      await first.outcome;
+
+      process.emit(_replayOf(firstFrame, uuid: "late-first"));
+      final second = repository.sendTurn(
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "second")],
+        promptId: "prompt-second",
+      );
+      process.emit(_result());
+
+      expect(await second.outcome, isA<ClaudeTurnCompleted>());
     });
 
     test("retries a new launch when no first turn was accepted", () async {
@@ -61,6 +149,7 @@ void main() {
       final turn = repository.sendTurn(
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "hello")],
+        promptId: null,
       );
       await waitForFrame(harness.processes.single, "user");
       harness.processes.single.emit({
@@ -84,6 +173,7 @@ void main() {
       final turn = repository.sendTurn(
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "hello")],
+        promptId: null,
       );
       expect(turn.accepted, isTrue);
       await waitForFrame(harness.processes.single, "user");
@@ -102,6 +192,7 @@ void main() {
       final dispatch = repository.sendTurn(
         sessionId: testSessionId,
         parts: const [PluginPromptPart.fileData(mime: "application/pdf", base64: "secret", filename: "a.pdf")],
+        promptId: null,
       );
 
       expect(dispatch.accepted, isFalse);
@@ -141,6 +232,36 @@ Map<String, Object?> _result() => {
   "subtype": "success",
   "session_id": testSessionId,
   "is_error": false,
+};
+
+Map<String, Object?> _internalReplay() => {
+  "type": "user",
+  "session_id": testSessionId,
+  "uuid": "model-switch",
+  "isReplay": true,
+  "message": {
+    "role": "user",
+    "content": [
+      {"type": "text", "text": "<local-command-stdout>Set model to haiku</local-command-stdout>"},
+    ],
+  },
+};
+
+List<Map<String, Object?>> _userFrames(FakeClaudeProcess process) =>
+    process.written.where((frame) => frame["type"] == "user").toList(growable: false);
+
+Future<void> _waitForUserFrames(FakeClaudeProcess process, int count) async {
+  for (var attempt = 0; attempt < 100; attempt++) {
+    if (_userFrames(process).length >= count) return;
+    await pump();
+  }
+  throw StateError("expected $count user frames");
+}
+
+Map<String, Object?> _replayOf(Map<String, Object?> written, {required String uuid}) => {
+  ...written,
+  "uuid": uuid,
+  "isReplay": true,
 };
 
 final class _ProcessHarness() {

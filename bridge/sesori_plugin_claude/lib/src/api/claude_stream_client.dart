@@ -167,6 +167,9 @@ class ClaudeStreamClient({
       "type": "user",
       "message": {"role": "user", "content": content},
       "session_id": _launchSpec.launch.sessionId,
+      // Claude absorbs `next` messages at the next tool boundary when a turn
+      // is active, without interrupting the model response currently streaming.
+      "priority": "next",
     })) {
       throw ClaudeControlException(
         subtype: "<user>",

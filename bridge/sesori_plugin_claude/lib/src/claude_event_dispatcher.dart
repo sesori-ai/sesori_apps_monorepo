@@ -16,45 +16,23 @@ final class ClaudeEventDispatcher({
   final Map<String, Set<int>> _streamedBlocks = {};
   final Map<String, Map<int, PluginMessagePart>> _completedStreamedParts = {};
   final Map<String, Set<String>> _streamedMessageIds = {};
-  final Map<String, ({String promptId, void Function() onConsumed})> _expectedUserEcho = {};
 
-  void beginTurn({required String sessionId}) {
+  void beginTurn({required String sessionId}) => _resetTurn(sessionId: sessionId);
+
+  /// Clears completed-turn stream state.
+  void completeTurn({required String sessionId}) => _resetTurn(sessionId: sessionId);
+
+  void _resetTurn({required String sessionId}) {
     _messageIds.remove(sessionId);
     _announcedMessageIds.remove(sessionId);
-    // A leftover expectation belongs to a turn whose echo never arrived
-    // (interrupted between stdin write and CLI read); the new turn must not
-    // inherit it.
-    _expectedUserEcho.remove(sessionId);
     _clearStreamedMessages(sessionId: sessionId);
     _tools.beginTurn(sessionId: sessionId);
-  }
-
-  /// Drops a pending echo expectation whose turn was aborted, so a late
-  /// buffered frame cannot be stamped with the aborted prompt id.
-  void clearExpectedUserEcho({required String sessionId}) {
-    _expectedUserEcho.remove(sessionId);
-  }
-
-  /// Declares that the session's next replayed stdin echo fulfills
-  /// [promptId]: the echoed user message carries it, and [onConsumed] runs
-  /// after the message events are built (its queue update trails them).
-  ///
-  /// Dispatch is serialized per session, so at most one expectation is live;
-  /// a new dispatch overwrites the previous turn's expectation when its echo
-  /// never arrived (interrupt between stdin write and CLI read).
-  void expectUserEcho({
-    required String sessionId,
-    required String promptId,
-    required void Function() onConsumed,
-  }) {
-    _expectedUserEcho[sessionId] = (promptId: promptId, onConsumed: onConsumed);
   }
 
   void forgetSession({required String sessionId}) {
     _messageIds.remove(sessionId);
     _announcedMessageIds.remove(sessionId);
     _models.remove(sessionId);
-    _expectedUserEcho.remove(sessionId);
     _clearStreamedMessages(sessionId: sessionId);
     _tools.forgetSession(sessionId: sessionId);
   }
@@ -93,7 +71,7 @@ final class ClaudeEventDispatcher({
       return switch (message) {
         ClaudeStreamEventMessage() => _mapStream(sessionId: sessionId, message: message),
         ClaudeAssistantMessage() => _mapAssistant(sessionId: sessionId, message: message),
-        ClaudeUserMessage() => _mapUser(sessionId: sessionId, message: message),
+        ClaudeUserMessage() => _mapUser(sessionId: sessionId, message: message, promptId: null),
         ClaudeApiRetryMessage() => _mapRetry(sessionId: sessionId, message: message, now: now ?? DateTime.now()),
         ClaudeResultMessage() => _mapResult(sessionId: sessionId, message: message),
         ClaudeInitMessage() ||
@@ -111,6 +89,16 @@ final class ClaudeEventDispatcher({
       };
     }
     return const [];
+  }
+
+  /// Maps one bridge-dispatched stdin replay with its authoritative prompt id.
+  List<BridgeSseEvent> mapPromptReplay({
+    required ClaudeUserMessage message,
+    required String promptId,
+  }) {
+    final sessionId = message.sessionId;
+    if (sessionId == null || sessionId.isEmpty || message.parentToolUseId != null) return const [];
+    return _mapUser(sessionId: sessionId, message: message, promptId: promptId);
   }
 
   List<BridgeSseEvent> _mapStream({
@@ -299,6 +287,7 @@ final class ClaudeEventDispatcher({
   List<BridgeSseEvent> _mapUser({
     required String sessionId,
     required ClaudeUserMessage message,
+    required String? promptId,
   }) {
     final mapped = _content.map(content: message.message["content"]);
     if (_content.containsInternalCommandOutput(blocks: mapped)) return const [];
@@ -336,7 +325,6 @@ final class ClaudeEventDispatcher({
       messageId: messageId,
     );
     if (!parts.any((part) => part.type.isVisible)) return const [];
-    final expectation = _expectedUserEcho.remove(sessionId);
     final events = [
       BridgeSseMessageUpdated(
         info: PluginMessage.user(
@@ -344,12 +332,11 @@ final class ClaudeEventDispatcher({
           sessionID: sessionId,
           agent: null,
           time: _messageTime(message.timestamp),
-          promptId: expectation?.promptId,
+          promptId: promptId,
         ).toJson(),
       ),
       for (final part in parts) BridgeSseMessagePartUpdated(part: part),
     ];
-    expectation?.onConsumed();
     return events;
   }
 

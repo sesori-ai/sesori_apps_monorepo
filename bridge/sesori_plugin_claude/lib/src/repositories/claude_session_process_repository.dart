@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:collection";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
@@ -28,6 +29,7 @@ final class const ClaudeSessionProcessMessage({
   required super.sessionId,
   required final ClaudeStreamMessage message,
   required final bool interrupted,
+  required final String? promptId,
 }) extends ClaudeSessionProcessEvent {
   ClaudeControlRequestMessage? get controlRequest => switch (message) {
     final ClaudeControlRequestMessage request => request,
@@ -44,6 +46,17 @@ final class const ClaudeAppliedSelection({
   required final ClaudePermissionMode? permissionMode,
 });
 
+final class _PendingTurn({
+  required final String? promptId,
+  required final List<Map<String, Object?>>? replayContent,
+  required bool started,
+}) {
+  final Completer<ClaudeTurnOutcome> outcome = Completer<ClaudeTurnOutcome>();
+  bool started = started;
+  bool replayObserved = replayContent == null;
+  bool settled = false;
+}
+
 final class _ResidentProcess({
   required final ClaudeStreamClient client,
   required final bool resumed,
@@ -52,7 +65,9 @@ final class _ResidentProcess({
   required var ClaudePermissionMode? appliedPermissionMode,
 }) {
   late final StreamSubscription<ClaudeStreamMessage> messages;
+  final Queue<_PendingTurn> pendingTurns = Queue<_PendingTurn>();
   bool interrupted = false;
+  bool turnActive = false;
 
   Future<void> cancelMessages() => messages.cancel();
 }
@@ -174,6 +189,7 @@ final class ClaudeSessionProcessRepository({
   ClaudeTurnDispatch sendTurn({
     required String sessionId,
     required List<PluginPromptPart> parts,
+    required String? promptId,
   }) {
     final process = _resident[sessionId];
     if (process == null) throw StateError("Claude session is not resident: $sessionId");
@@ -187,22 +203,26 @@ final class ClaudeSessionProcessRepository({
     }
 
     process.interrupted = false;
-    final result = process.client.messages
-        .where((message) => message is ClaudeResultMessage)
-        .cast<ClaudeResultMessage>()
-        .first;
-    final exit = process.client.processExit.then<ClaudeResultMessage?>((_) => null);
-    process.client.sendUserMessage(content: content);
+    // A resident process can absorb several stdin messages into one agent turn.
+    // Replayed user frames mark which queued messages joined that turn, and its
+    // result settles exactly that started prefix.
+    final pending = _PendingTurn(
+      promptId: promptId,
+      replayContent: promptId == null ? null : content,
+      started: !process.turnActive && process.pendingTurns.every((pending) => pending.settled),
+    );
+    process.pendingTurns.addLast(pending);
+    if (pending.started) process.turnActive = true;
+    try {
+      process.client.sendUserMessage(content: content);
+    } on Object {
+      process.pendingTurns.remove(pending);
+      rethrow;
+    }
     _startedSessions.add(sessionId);
     return ClaudeTurnDispatch(
       accepted: true,
-      outcome: Future.any<ClaudeResultMessage?>([result, exit]).then((message) {
-        if (process.interrupted) return const ClaudeTurnInterrupted();
-        if (message == null || message.isError) {
-          return const ClaudeTurnFailed();
-        }
-        return const ClaudeTurnCompleted();
-      }),
+      outcome: pending.outcome.future,
     );
   }
 
@@ -235,6 +255,10 @@ final class ClaudeSessionProcessRepository({
     final connectingClient = _connectingClients[sessionId];
     final process = _resident.remove(sessionId);
     if (process != null) {
+      _settlePendingTurns(
+        process: process,
+        outcome: process.interrupted ? const ClaudeTurnInterrupted() : const ClaudeTurnFailed(),
+      );
       try {
         await process.cancelMessages();
       } on Object catch (error, stack) {
@@ -319,12 +343,14 @@ final class ClaudeSessionProcessRepository({
       if ((current?.resumed ?? false) && current?.appliedModel == null && message is ClaudeAssistantMessage) {
         current?.appliedModel = message.model;
       }
+      final promptId = _trackTurnMessage(process: process, message: message);
       if (!_events.isClosed) {
         _events.add(
           ClaudeSessionProcessMessage(
             sessionId: sessionId,
             message: message,
             interrupted: process.interrupted,
+            promptId: promptId,
           ),
         );
       }
@@ -339,6 +365,10 @@ final class ClaudeSessionProcessRepository({
     if (!_events.isClosed) {
       _events.add(ClaudeSessionProcessExited(sessionId: sessionId, interrupted: process.interrupted));
     }
+    _settlePendingTurns(
+      process: process,
+      outcome: process.interrupted ? const ClaudeTurnInterrupted() : const ClaudeTurnFailed(),
+    );
     try {
       await process.cancelMessages();
     } on Object catch (error, stack) {
@@ -347,6 +377,82 @@ final class ClaudeSessionProcessRepository({
       await process.client.dispose();
     }
   }
+
+  String? _trackTurnMessage({required _ResidentProcess process, required ClaudeStreamMessage message}) {
+    switch (message) {
+      case ClaudeUserMessage(parentToolUseId: null, raw: {"isReplay": true}):
+        for (final pending in process.pendingTurns) {
+          final replayContent = pending.replayContent;
+          if (pending.replayObserved ||
+              replayContent == null ||
+              !_sameJsonValue(replayContent, message.message["content"])) {
+            continue;
+          }
+          pending.replayObserved = true;
+          if (!pending.settled) {
+            pending.started = true;
+            process.turnActive = true;
+          }
+          final promptId = pending.promptId;
+          _removeSettledReplays(process: process);
+          return promptId;
+        }
+      case ClaudeStreamEventMessage() || ClaudeAssistantMessage() || ClaudeControlRequestMessage():
+        process.turnActive = true;
+      case final ClaudeResultMessage message:
+        final outcome = process.interrupted
+            ? const ClaudeTurnInterrupted()
+            : message.isError
+            ? const ClaudeTurnFailed()
+            : const ClaudeTurnCompleted();
+        for (final pending in process.pendingTurns) {
+          if (pending.settled) continue;
+          if (!pending.started) break;
+          pending.settled = true;
+          if (!pending.outcome.isCompleted) pending.outcome.complete(outcome);
+        }
+        _removeSettledReplays(process: process);
+        process.turnActive = false;
+      case ClaudeStreamMessage():
+        break;
+    }
+    return null;
+  }
+
+  void _removeSettledReplays({required _ResidentProcess process}) {
+    while (process.pendingTurns.isNotEmpty) {
+      final pending = process.pendingTurns.first;
+      if (!pending.settled || !pending.replayObserved) return;
+      process.pendingTurns.removeFirst();
+    }
+  }
+
+  void _settlePendingTurns({required _ResidentProcess process, required ClaudeTurnOutcome outcome}) {
+    for (final pending in process.pendingTurns) {
+      pending.settled = true;
+      if (!pending.outcome.isCompleted) pending.outcome.complete(outcome);
+    }
+    process.pendingTurns.clear();
+    process.turnActive = false;
+  }
+}
+
+bool _sameJsonValue(Object? left, Object? right) {
+  if (left is List && right is List) {
+    if (left.length != right.length) return false;
+    for (var index = 0; index < left.length; index++) {
+      if (!_sameJsonValue(left[index], right[index])) return false;
+    }
+    return true;
+  }
+  if (left is Map && right is Map) {
+    if (left.length != right.length) return false;
+    for (final entry in left.entries) {
+      if (!right.containsKey(entry.key) || !_sameJsonValue(entry.value, right[entry.key])) return false;
+    }
+    return true;
+  }
+  return left == right;
 }
 
 List<Map<String, Object?>> _promptContent(List<PluginPromptPart> parts) => [

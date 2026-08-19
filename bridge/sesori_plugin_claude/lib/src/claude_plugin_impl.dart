@@ -35,6 +35,7 @@ final class ClaudePlugin({
 }) extends BridgeDerivedProjectsPluginApi implements PersistedSessionCleanupApi {
   this {
     _sessions.events.listen(_eventBuffer.add).addTo(_subscriptions);
+    _sessions.dispatches.listen(_handleTurnDispatched).addTo(_subscriptions);
     _processes.events.listen(_handleProcessEvent).addTo(_subscriptions);
   }
 
@@ -246,16 +247,6 @@ final class ClaudePlugin({
       displayText: text.isEmpty ? null : text,
       command: null,
       attachmentCount: parts.length - parts.whereType<PluginPromptPartText>().length,
-      onDispatched: () {
-        _unstartedSessions.remove(sessionId);
-        _eventDispatcher.beginTurn(sessionId: sessionId);
-        _eventDispatcher.expectUserEcho(
-          sessionId: sessionId,
-          promptId: promptId,
-          onConsumed: () => _sessions.consumeQueuedPrompt(sessionId: sessionId, promptId: promptId),
-        );
-        return ClaudeQueuedDispatch.awaitsUserEcho;
-      },
     );
   }
 
@@ -285,16 +276,6 @@ final class ClaudePlugin({
       displayText: visible == null || visible.isEmpty ? null : visible,
       command: command,
       attachmentCount: 0,
-      onDispatched: () {
-        _unstartedSessions.remove(sessionId);
-        _eventDispatcher.beginTurn(sessionId: sessionId);
-        _emitVisibleUserMessage(
-          sessionId: sessionId,
-          text: visible == null || visible.isEmpty ? "/$command" : "/$command $visible",
-          promptId: promptId,
-        );
-        return ClaudeQueuedDispatch.emittedVisibleMessage;
-      },
     );
   }
 
@@ -308,10 +289,6 @@ final class ClaudePlugin({
 
   @override
   Future<void> abortSession({required String sessionId}) async {
-    // Before the await: the aborted turn's expectation must go now, and a
-    // prompt enqueued while the abort settles may install its own, which a
-    // late clear would wrongly wipe.
-    _eventDispatcher.clearExpectedUserEcho(sessionId: sessionId);
     await _sessions.abort(sessionId: sessionId);
   }
 
@@ -455,7 +432,6 @@ final class ClaudePlugin({
     required String? displayText,
     required String? command,
     required int attachmentCount,
-    required ClaudeQueuedDispatch Function() onDispatched,
   }) async {
     _validateModel(model, operation: operation);
     final effort = _effort(variant, operation: operation);
@@ -474,7 +450,6 @@ final class ClaudePlugin({
         displayText: displayText,
         command: command,
         attachmentCount: attachmentCount,
-        onDispatched: onDispatched,
       );
     } on PluginOperationException {
       rethrow;
@@ -563,14 +538,20 @@ final class ClaudePlugin({
   String? _directoryForSession(String sessionId) => _findSession(sessionId)?.directory;
 
   void _handleProcessEvent(ClaudeSessionProcessEvent event) {
-    if (event case ClaudeSessionProcessMessage(:final message, :final interrupted)) {
+    if (event case ClaudeSessionProcessMessage(:final message, :final interrupted, :final promptId)) {
       if (message is ClaudeResultMessage) {
         final denialsWereHandled = _approvals.consumeHandledPermissionDenials(
           sessionId: event.sessionId,
           denials: message.permissionDenials,
         );
-        if (interrupted) return;
-        if (!message.isError && message.subtype == ClaudeResultSubtype.success && denialsWereHandled) return;
+        if (interrupted) {
+          _eventDispatcher.completeTurn(sessionId: event.sessionId);
+          return;
+        }
+        if (!message.isError && message.subtype == ClaudeResultSubtype.success && denialsWereHandled) {
+          _eventDispatcher.completeTurn(sessionId: event.sessionId);
+          return;
+        }
       }
       if (message is ClaudeInitMessage && message.sessionId != event.sessionId) {
         Log.e("[claude] backend reported a different session id; stopping the session");
@@ -585,8 +566,28 @@ final class ClaudePlugin({
         _eventDispatcher.map(message: message, now: now).forEach(_eventBuffer.add);
         return;
       }
+      if (message is ClaudeUserMessage && promptId != null) {
+        _eventDispatcher.mapPromptReplay(message: message, promptId: promptId).forEach(_eventBuffer.add);
+        _sessions.consumeQueuedPrompt(sessionId: event.sessionId, promptId: promptId);
+        return;
+      }
       _eventDispatcher.map(message: message).forEach(_eventBuffer.add);
+      if (message is ClaudeResultMessage) _eventDispatcher.completeTurn(sessionId: event.sessionId);
     }
+  }
+
+  void _handleTurnDispatched(ClaudeTurnDispatched event) {
+    _unstartedSessions.remove(event.sessionId);
+    if (!event.isSteering) _eventDispatcher.beginTurn(sessionId: event.sessionId);
+    final command = event.command;
+    if (command == null) return;
+    final visible = event.displayText;
+    _emitVisibleUserMessage(
+      sessionId: event.sessionId,
+      text: visible == null || visible.isEmpty ? "/$command" : "/$command $visible",
+      promptId: event.promptId,
+    );
+    _sessions.consumeQueuedPrompt(sessionId: event.sessionId, promptId: event.promptId);
   }
 
   /// Synthesizes the visible user bubble for a slash command at dispatch.
