@@ -657,8 +657,9 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   module_prego, and mobile app; shared plain analysis also passes. Full suites:
   bridge app 2,675, Pi 255, OMP 51, ACP 242, shared 409, module_core 1,149,
   module_prego 209, and mobile app 998 tests.
-- Product diff excluding this tracker evidence is +375/-285 = 660 changed
-  lines, within the 300-700 estimate; generated lines: 0.
+- Product diff excluding this tracker evidence is +187/-19 = 206 changed
+  lines, below the 300-700 estimate because most verification produced only
+  redacted evidence; generated lines: 0.
 
 ## Findings And Plan Deltas
 
