@@ -1,11 +1,19 @@
 import "package:sesori_bridge/src/bridge/runtime/plugin_registry.dart";
+import "package:sesori_shared/sesori_shared.dart" show Harness;
 import "package:test/test.dart";
 
 void main() {
   test("registry contains every bundled plugin exactly once", () {
     final ids = knownPlugins.map((plugin) => plugin.id).toList();
 
-    expect(ids, unorderedEquals(["opencode", "codex", "cursor", "claude", "hermes"]));
+    expect(ids, unorderedEquals(["opencode", "codex", "cursor", "claude", "hermes", "pi", "omp"]));
+  });
+
+  test("every registered plugin id is a built-in Harness identity", () {
+    final harnessNames = Harness.values.map((harness) => harness.name).toSet();
+    for (final plugin in knownPlugins) {
+      expect(harnessNames, contains(plugin.id));
+    }
   });
 
   test("registered descriptors remain inert declarations", () {

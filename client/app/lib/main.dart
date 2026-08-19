@@ -336,10 +336,45 @@ class const _SesoriAppShell() extends StatelessWidget {
               getIt<ConnectionService>(),
               getIt<RegisteredBridgesService>(),
             ),
-            child: child ?? const SizedBox.shrink(),
+            child: BlocProvider(
+              create: (_) => SseToastCubit(getIt<ConnectionService>()),
+              child: _SseToastListener(child: child ?? const SizedBox.shrink()),
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Renders backend toast states through the design-system popup alert
+/// presenter, so guidance such as a local `/login` hint reaches the user on
+/// any screen, including startup routes with no scaffold.
+class const _SseToastListener({required final Widget child}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<SseToastCubit, SseToastState>(
+      listener: (context, state) {
+        if (state case SseToastShow(:final title, :final message, :final variant)) {
+          final overlay = appRootNavigatorKey.currentState?.overlay;
+          if (overlay == null) return;
+          PregoPopupAlertPresenter.fromOverlayState(overlay).show(
+            title: title ?? message,
+            content: title == null ? const PregoPopupAlertContent() : PregoPopupAlertContent(message: message),
+            variant: switch (variant) {
+              SseToastVariant.info => PregoPopupAlertsNotificationsVariant.info,
+              SseToastVariant.success => PregoPopupAlertsNotificationsVariant.success,
+              SseToastVariant.warning => PregoPopupAlertsNotificationsVariant.warning,
+              SseToastVariant.error => PregoPopupAlertsNotificationsVariant.error,
+            },
+            duration: switch (variant) {
+              SseToastVariant.error || SseToastVariant.warning => const Duration(seconds: 8),
+              SseToastVariant.info || SseToastVariant.success => const Duration(seconds: 4),
+            },
+          );
+        }
+      },
+      child: child,
     );
   }
 }

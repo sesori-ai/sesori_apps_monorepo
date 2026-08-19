@@ -173,7 +173,7 @@ final class ClaudeSessionProcessRepository({
     if (process.appliedModel != model) {
       await process.client.sendControlRequest(
         subtype: "set_model",
-        params: {"model": model == "default" ? null : model},
+        params: {"model": model},
       );
       process.appliedModel = model;
     }

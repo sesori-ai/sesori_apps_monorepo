@@ -4,8 +4,8 @@
 
 - **Plan slug:** `pi-harness`
 - **Implementation base:** current `origin/main` with Step 15 merged
-- **Series state:** Step 17/21 in review as PR #963
-- **Current step:** 17/21, Pi managed runtime in review as PR #963
+- **Series state:** Step 18/21 ready to raise
+- **Current step:** 18/21, Pi and OMP registration implemented
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
@@ -24,7 +24,7 @@
 - **Step 15 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/920
 - **Step 16 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/925
 - **Step 17 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/963
-- **Next action:** monitor Step 17 and continue Step 18 locally
+- **Next action:** raise Step 18 PR and monitor it
 
 ## Locked Decisions
 
@@ -67,8 +67,8 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 14/21 | `🚧 [pi-harness] feat(pi): manage session residency and turns [step 14/21]` | 1,200-1,500 (recorded overage) | Merged as PR #914 |
 | [x] | 15/21 | `⚙️ [pi-harness] feat(pi): expose models and commands [step 15/21]` | 900-1,300 | Merged as PR #920 |
 | [x] | 16/21 | `🚧 [pi-harness] feat(pi): implement the plugin API [step 16/21]` | 1,100-1,500 (recorded slight overage) | Merged as PR #925 |
-| [ ] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | In review as PR #963 |
-| [ ] | 18/21 | `⚙️ [pi-harness] feat(bridge): register Pi and OMP [step 18/21]` | 800-1,200 | Not started |
+| [x] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | Merged as PR #963 |
+| [ ] | 18/21 | `⚙️ [pi-harness] feat(bridge): register Pi and OMP [step 18/21]` | 800-1,200 | Implemented; PR ready to raise |
 | [ ] | 19/21 | `⚙️ [pi-harness] feat(client): add Pi and OMP branding and guidance [step 19/21]` | 500-900 | Not started |
 | [ ] | 20/21 | `⚙️ [pi-harness] test(harness): verify Pi and OMP integration [step 20/21]` | 300-700 | Not started |
 | [ ] | 21/21 | `🌱 [pi-harness] docs: retire the Pi and OMP harness plan [step 21/21]` | 50-200 | Not started |
@@ -561,6 +561,35 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 - Diff before tracker/plan evidence: +1,378/-72 = 1,450 changed lines; generated
   lines: 0; tests run: 387 automated package checks plus one live managed
   artifact/version/RPC probe.
+
+
+### Step 18/21
+
+- Added `Harness.pi` and `Harness.omp`, the `pi_plugin`/`omp_plugin` app
+  dependencies, and both production descriptors to `plugin_registry.dart`.
+  The registry list became `final List.unmodifiable` because both descriptors
+  construct through non-const `production()` factories. OpenCode remains the
+  preferred default; all merged entries are preserved.
+- Added the backend-neutral `SseToastCubit` in `module_core` mapping
+  `tui.toast.show` SSE events into sealed idle/show states with a monotonic
+  sequence, so equal repeated guidance re-fires; textless toasts drop and
+  unknown variants degrade to info. The mobile shell renders shows through
+  `PregoPopupAlertPresenter` on the root navigator's overlay, reusing the
+  design-system toast surface instead of a plain snackbar.
+- README and the plugin-setup regression doc record Pi's always-`--approve`
+  project-code trust, OMP's inherited approval policy, and local-only provider
+  login before either backend is selectable.
+- Registry exact-set fixtures updated; a new test pins every registered id to
+  a built-in `Harness` identity. Toast cubit tests cover monotonic repeats,
+  variant fallback, and empty-drop behavior.
+- Architecture implementation review approved the commit with no findings.
+- Verification: bridge app fatal analysis and full suite (2,674 tests), Pi
+  (255) and OMP (51) suites, shared (409), module_core toast tests, and the
+  mobile shell fatal analysis all pass after the post-merge sync with `main`.
+- No database, persisted-data, or wire-contract change; the app now lists Pi
+  and Oh My Pi as selectable harnesses once their setup is ready.
+- Diff before tracker/plan evidence: +393/-10 = 403 changed lines; generated
+  lines: 46 (one freezed state file).
 
 ## Findings And Plan Deltas
 

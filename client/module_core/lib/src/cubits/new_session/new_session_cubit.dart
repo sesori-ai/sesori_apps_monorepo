@@ -657,7 +657,7 @@ class NewSessionCubit({
     }
   }
 
-  void selectVariant(SessionVariant? variant) {
+  void selectVariant(SessionVariant variant) {
     if (!_canEditComposer) return;
     final options = state.agentModelData?.optionsState.data;
     if (options == null) return;
@@ -669,9 +669,7 @@ class NewSessionCubit({
       _selectionTracker.recordVariant(
         projectId: _projectId,
         pluginId: pluginId,
-        variant: variant == null
-            ? const NewSessionDefaultVariantIntent()
-            : NewSessionNamedVariantIntent(id: variant.id),
+        variant: NewSessionVariantIntent(id: variant.id),
       );
     }
   }

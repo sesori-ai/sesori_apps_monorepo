@@ -29,6 +29,10 @@ import "imperative_pane_route.dart";
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _sessionShellNavigatorKey = GlobalKey<NavigatorState>();
 
+/// The root navigator hosting every app route. Used to present app-wide UI
+/// (for example backend toast guidance) without a screen context.
+GlobalKey<NavigatorState> get appRootNavigatorKey => _rootNavigatorKey;
+
 const _newSessionRouteSegment = "new";
 const _sessionsRouteSegment = ":$projectIdPathParam/sessions";
 const _sessionDetailRouteSegment = ":$sessionIdPathParam";
