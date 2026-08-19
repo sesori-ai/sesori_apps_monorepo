@@ -3,8 +3,9 @@
 ## Status
 
 - **Plan slug:** `bridge-owned-prompt-queue`
-- **Status:** Completed 2026-08-19 — all seven steps merged; coverage run
-  recorded in `TRACKER.md`
+- **Status:** Completed 2026-08-19 — implementation steps 1–6 merged; this
+  retirement PR (step 7/7) is the completion record, with the coverage run in
+  `TRACKER.md`
 - **Architecture review:** rejected 2026-08-17 on four seam-specification
   clarity findings (read-path repository, cancel chain ownership, cancel
   request model, client layer seams); all four required changes applied
@@ -395,12 +396,23 @@ Series slug `bridge-owned-prompt-queue`; every PR titled
 - Matrix reductions require explicit user acceptance recorded here before
   retirement.
 - **Recorded reduction (accepted by the user via this retirement PR):** the
-  step 7 run did not separately exercise a second simultaneous client
-  observing the queue, nor a scripted disconnect-mid-send retry. Evidence
-  standing in: the idempotent-retry contract is unit-pinned and was exercised
-  live (duplicate `promptId` produced no second turn), and queue events ride
-  the same SSE fan-out every other session event already proves multi-client.
-  All other recorded boundaries ran in full — see `TRACKER.md`.
+  step 7 run did not separately exercise, as scripted passes:
+  - a second simultaneous client observing the queue (queue events ride the
+    same SSE fan-out every other session event already proves multi-client);
+  - a disconnect-mid-send retry (the idempotent contract is unit-pinned and
+    was exercised live: a duplicate `promptId` produced no second turn);
+  - a permission ask answered while a prompt sat queued (the deadlock class
+    died with instant lane release — verified live via abort completing while
+    a turn ran and a prompt was queued; approvals are unit-pinned);
+  - live FIFO dispatch of two-plus simultaneously queued entries (serialization
+    is unit-pinned; the live run dispatched a single queued entry in order);
+  - scripted exit/re-enter and lock/unlock passes (the user's on-device
+    testing exercised exit/re-enter organically with correct recovery; final
+    on-device confirmation of the #958 handoff polish follows its merge);
+  - a live send through a second plugin (every plugin's full suite ran green
+    in CI on the lockstep signature change).
+  The boundaries that did run in full are exactly those in `TRACKER.md`'s
+  coverage record.
 
 ## Cleanup Assessment
 

@@ -52,7 +52,10 @@ that merge.
 
 ### Not separately exercised (accepted reduction — see PLAN.md)
 
-A second simultaneous client observing the same queue, and a scripted
-disconnect-mid-send idempotent retry. The retry contract is pinned by unit
-tests and the live duplicate-send check; multi-client delivery uses the same
-SSE fan-out every other session event already exercises.
+Enumerated with stand-in evidence in PLAN.md's recorded-reduction note: a
+second simultaneous client observer, a scripted disconnect-mid-send retry, a
+permission ask answered while a prompt sat queued, live FIFO dispatch of
+two-plus simultaneously queued entries, scripted exit/re-enter and
+lock/unlock passes, and a live send through a second plugin. The pending
+on-device confirmation of the #958 handoff polish is a post-merge follow-up,
+not part of this record.
