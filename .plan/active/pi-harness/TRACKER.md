@@ -606,10 +606,17 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   replaced fixed-harness wording.
 - Verification after rebasing onto the Step 18 merge: module_prego fatal
   analysis and all 209 tests pass; mobile app fatal analysis passes; both new
-  upstream README links return HTTP 200; `git diff --check` passes.
+  upstream README links return HTTP 200;
+  `git diff --check $(git merge-base origin/main HEAD)..HEAD` passes.
 - User-visible impact is limited to Pi/OMP branding and documentation. No
   database, persisted-data, wire-contract, or runtime behavior change.
-- Diff before tracker evidence: +145/-7 = 152 changed lines; generated lines: 0.
+- Product diff excluding this tracker evidence, measured with
+  `git diff --numstat $(git merge-base origin/main HEAD)..HEAD -- .
+  ':(exclude).plan/active/pi-harness/TRACKER.md'`: +145/-7 = 152 changed
+  lines; generated lines: 0. This is well below the 500-900 estimate because
+  Step 18 already absorbed the shared activation/notification prerequisites;
+  this step reused the existing brand catalog and needed only localized assets,
+  mappings, tests, and guidance. The original budget was an over-estimate.
 
 ## Findings And Plan Deltas
 

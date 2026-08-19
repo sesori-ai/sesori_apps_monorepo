@@ -7,7 +7,7 @@
 <h1 align="center">Run your AI coding agents from your phone.</h1>
 
 <p align="center">
-  Sesori is the mobile cockpit for your AI coding sessions — <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">Codex</a>, <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>, <a href="https://claude.com" target="_blank" rel="noopener">Claude Code</a>, and more.<br/>
+  Sesori is the mobile cockpit for coding sessions across every <a href="#supported-ai-assistants">supported AI assistant</a>.<br/>
   Leave your laptop. Take the session.
 </p>
 
