@@ -303,7 +303,7 @@ class NewSessionOptionsService({
         ? previousVariant
         : agentVariant != null && variants.any((variant) => variant.id == agentVariant)
         ? agentVariant
-        : null;
+        : variants.firstOrNull?.id;
     final selectedAgentModel = _applyVariantIntent(
       providers: options.providers,
       model: requested.copyWith(variant: selectedVariant),

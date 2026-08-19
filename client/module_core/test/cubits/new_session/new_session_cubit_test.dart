@@ -1434,7 +1434,7 @@ void main() {
     });
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "selectModel leaves provider-only model variant at Default",
+      "selectModel resolves a provider-only model to its first variant",
       skip: 2,
       build: () {
         when(
@@ -1495,7 +1495,7 @@ void main() {
             .having(
               (state) => state.selectedAgentModel,
               "selectedAgentModel",
-              const AgentModel(providerID: "openai", modelID: "gpt-5", variant: null),
+              const AgentModel(providerID: "openai", modelID: "gpt-5", variant: "provisional-effort"),
             ),
       ],
     );

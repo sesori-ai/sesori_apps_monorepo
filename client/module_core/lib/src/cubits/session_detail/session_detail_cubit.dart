@@ -2131,8 +2131,7 @@ class SessionDetailCubit(
   }) {
     if (model == null) return null;
     if (availableVariants.any((variant) => variant.id == model.variant)) return model;
-    final fallback = availableVariants.firstOrNull;
-    return fallback == null ? model : model.copyWith(variant: fallback.id);
+    return model.copyWith(variant: availableVariants.firstOrNull?.id);
   }
 
   List<SessionVariant> _deriveAvailableVariants({
