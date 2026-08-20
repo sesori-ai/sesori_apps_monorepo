@@ -59,6 +59,10 @@ content the transcript renders live and after reload.
   image provider from Flutter's image cache, and scrolling never starts an
   original request. Reduced motion skips the viewer route and image-swap
   animations.
+- The viewer closes through its close button, a free-form drag, a hardware
+  Escape key, and system back. Back closes only the viewer and keeps the session
+  open, including when the Android back gesture delivers a second pop while the
+  viewer is still fading out.
 - User, tool, and each maximal contiguous run of assistant file attachments use
   the same left-aligned square collection, capped at 320 px and constrained by
   the available parent width. One attachment spans the collection, two split a

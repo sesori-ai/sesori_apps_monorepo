@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:typed_data";
 
+import "package:flutter/services.dart" show LogicalKeyboardKey;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -100,10 +101,19 @@ Future<void> showImageAttachmentViewer({
   // ignore: no_slop_linter/avoid_raw_go_router, this transient Hero route carries an in-memory ImageProvider that cannot be represented in a URL
   final result = rootNavigator.push<void>(viewerRoute);
   sourceRoute.addLocalHistoryEntry(historyEntry);
-  return result.whenComplete(() {
-    shouldDismissViewerWithHistory = false;
-    historyEntry.remove();
-  });
+  // Hold the mirror entry until the viewer's exit transition finishes, not just
+  // until it is popped. Android's back gesture can deliver a second pop right
+  // after the one that dismissed the viewer; while the entry is still there the
+  // session route absorbs it instead of leaving the session.
+  unawaited(
+    viewerRoute.completed.whenComplete(() {
+      shouldDismissViewerWithHistory = false;
+      // The transition also completes when the whole navigator is torn down,
+      // where the session route is already gone and has nothing left to update.
+      if (sourceRoute.isActive) historyEntry.remove();
+    }),
+  );
+  return result;
 }
 
 ImageAttachmentActionsCubit _createActionsCubit({required LoadedMessageImage image}) => ImageAttachmentActionsCubit(
@@ -802,6 +812,13 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
         ),
       ),
     );
-    return viewer;
+    return CallbackShortcuts(
+      bindings: <ShortcutActivator, VoidCallback>{
+        const SingleActivator(LogicalKeyboardKey.escape): _dismiss,
+      },
+      // The viewer holds no focusable chrome of its own, so claim focus for the
+      // route to give Escape somewhere to land.
+      child: Focus(autofocus: true, child: viewer),
+    );
   }
 }
