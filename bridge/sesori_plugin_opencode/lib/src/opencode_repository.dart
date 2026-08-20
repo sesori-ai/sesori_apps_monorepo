@@ -162,6 +162,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
   Future<void> addCompactionInstructions({
     required String sessionId,
     required String? directory,
+    required String? messageId,
     required String instructions,
     required String? agent,
     required PluginSessionVariant? variant,
@@ -170,7 +171,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
     return _sendPrompt(
       sessionId: sessionId,
       directory: directory,
-      messageId: null,
+      messageId: messageId,
       parts: [PluginPromptPart.text(text: instructions)],
       agent: agent,
       variant: variant,

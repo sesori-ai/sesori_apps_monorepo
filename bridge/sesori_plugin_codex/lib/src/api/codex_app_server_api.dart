@@ -113,6 +113,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
   Future<CodexTurnStartResponseDto> startTurn({
     required String threadId,
     required List<CodexTurnInputDto> input,
+    required String? clientUserMessageId,
     required String? model,
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
@@ -120,6 +121,9 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     final params = <String, dynamic>{
       "threadId": threadId,
       "input": input.map((item) => item.toJson()).toList(growable: false),
+      // Codex echoes this back as the user item's `clientId`, which is how the
+      // item it publishes is traced to the send that caused it.
+      "clientUserMessageId": ?clientUserMessageId,
     };
     if (collaborationMode == null) {
       if (model != null) params["model"] = model;

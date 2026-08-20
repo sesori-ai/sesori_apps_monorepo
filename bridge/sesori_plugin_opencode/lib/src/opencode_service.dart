@@ -355,6 +355,7 @@ class OpenCodeService(
         ? _compact(
             sessionId: sessionId,
             directory: directory,
+            messageId: messageId,
             arguments: arguments,
             agent: agent,
             variant: variant,
@@ -414,6 +415,7 @@ class OpenCodeService(
   Future<void> _compact({
     required String sessionId,
     required String? directory,
+    required String? messageId,
     required String arguments,
     required String? agent,
     required PluginSessionVariant? variant,
@@ -426,6 +428,7 @@ class OpenCodeService(
       await repository.addCompactionInstructions(
         sessionId: sessionId,
         directory: directory,
+        messageId: messageId,
         instructions: instructions,
         agent: agent,
         variant: variant,

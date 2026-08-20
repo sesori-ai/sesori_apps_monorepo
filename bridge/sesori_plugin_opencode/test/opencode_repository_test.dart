@@ -1154,6 +1154,7 @@ void main() {
       final repository = OpenCodeRepository(api);
 
       await repository.addCompactionInstructions(
+        messageId: null,
         sessionId: "ses-1",
         directory: " /repo ",
         instructions: "Keep auth decisions",

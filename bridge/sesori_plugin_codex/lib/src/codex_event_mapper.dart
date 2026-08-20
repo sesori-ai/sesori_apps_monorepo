@@ -145,24 +145,6 @@ class CodexEventMapper({
   }
 
   /// Maps a non-thread-start notification to zero or more bridge events.
-  /// Prompt ids for turns this bridge started, keyed by the turn id Codex
-  /// returned. Every item Codex publishes names the turn it belongs to, so the
-  /// user item of a turn we dispatched is correlated exactly — a turn started
-  /// from the Codex CLI carries a turn id that was never recorded here and is
-  /// left unattributed.
-  final Map<String, String> _promptIdsByTurn = {};
-
-  /// Bounds the map against turns whose user item never arrives.
-  static const int _maxRecordedTurns = 64;
-
-  /// Records the prompt a bridge-dispatched turn carries.
-  void recordTurnPrompt({required String turnId, required String promptId}) {
-    _promptIdsByTurn[turnId] = promptId;
-    if (_promptIdsByTurn.length > _maxRecordedTurns) {
-      _promptIdsByTurn.remove(_promptIdsByTurn.keys.first);
-    }
-  }
-
   List<BridgeSseEvent> map(CodexServerNotification notification) {
     final method = notification.method;
     final params = notification.params;
@@ -229,7 +211,6 @@ class CodexEventMapper({
           item: item,
           threadId: threadId,
           completed: method == "item/completed",
-          turnId: params["turnId"] as String?,
         );
 
       case "item/agentMessage/delta":
@@ -332,7 +313,6 @@ class CodexEventMapper({
     required Map<String, dynamic> item,
     required String threadId,
     required bool completed,
-    String? turnId,
   }) {
     final itemId = item["id"] as String?;
     if (itemId == null || itemId.isEmpty) return const [];
@@ -436,9 +416,10 @@ class CodexEventMapper({
             // Live notifications carry no per-message timestamp; the rollout
             // re-fetch is authoritative and fills this in.
             time: null,
-            // The turn this item belongs to identifies the send that caused
-            // it, so a client can retire its own copy of that prompt.
-            promptId: turnId == null ? null : _promptIdsByTurn[turnId],
+            // Codex echoes the id the bridge sent with turn/start, so an
+            // item caused by a bridge send names its prompt; one typed in the
+            // Codex CLI carries none.
+            promptId: item["clientId"] as String?,
           ),
           partType: PluginMessagePartType.text,
           partSuffix: "text",

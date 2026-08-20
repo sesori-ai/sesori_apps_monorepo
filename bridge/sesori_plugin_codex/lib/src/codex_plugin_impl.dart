@@ -719,6 +719,8 @@ class CodexPlugin._({
         threadId: sessionId,
         command: command,
         arguments: arguments,
+        // See _startTurn: Codex echoes this on the command's user item.
+        clientUserMessageId: promptId,
         model: model?.modelID,
         effort: variant?.id,
         collaborationMode: CodexCollaborationMode.fromAgent(agent: agent),
@@ -733,9 +735,6 @@ class CodexPlugin._({
       }
       final turnId = dispatch.turnId;
       if (turnId != null) {
-        // Codex names the turn on every item it publishes, so recording the
-        // prompt here lets the turn's user item carry it back to clients.
-        _eventMapper.recordTurnPrompt(turnId: turnId, promptId: promptId);
         _recordAcceptedTurn(
           threadId: sessionId,
           turnId: turnId,
@@ -828,6 +827,9 @@ class CodexPlugin._({
       final dispatch = await _sessionService.startTurn(
         threadId: threadId,
         parts: parts,
+        // Codex echoes this on the user item it publishes, so that item can
+        // carry the prompt id back to clients.
+        clientUserMessageId: promptId,
         model: model?.modelID,
         effort: effort == null || effort.isEmpty ? null : effort,
         collaborationMode: collaborationMode,
@@ -846,9 +848,6 @@ class CodexPlugin._({
       }
       final turnId = dispatch.turnId;
       if (turnId != null) {
-        // Codex names the turn on every item it publishes, so recording the
-        // prompt here lets the turn's user item carry it back to clients.
-        if (promptId != null) _eventMapper.recordTurnPrompt(turnId: turnId, promptId: promptId);
         _recordAcceptedTurn(
           threadId: threadId,
           turnId: turnId,

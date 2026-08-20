@@ -355,9 +355,7 @@ void main() {
       expect(part.text, "hey");
     });
 
-    test("item userMessage carries the prompt id of the turn that caused it", () {
-      mapper.recordTurnPrompt(turnId: "u-1", promptId: "prm_1");
-
+    test("item userMessage carries the prompt id codex echoes as clientId", () {
       final events = mapper.map(
         const CodexServerNotification(
           method: "item/completed",
@@ -367,6 +365,7 @@ void main() {
             "item": {
               "type": "userMessage",
               "id": "i-user",
+              "clientId": "prm_1",
               "content": [
                 {"type": "text", "text": "hey", "text_elements": <Object?>[]},
               ],
@@ -379,15 +378,13 @@ void main() {
       expect((parsed as shared.MessageUser).promptId, "prm_1");
     });
 
-    test("item userMessage from a turn started outside the bridge stays unattributed", () {
-      mapper.recordTurnPrompt(turnId: "u-1", promptId: "prm_1");
-
+    test("item userMessage typed in the codex CLI stays unattributed", () {
       final events = mapper.map(
         const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "t-1",
-            "turnId": "u-from-cli",
+            "turnId": "u-1",
             "item": {
               "type": "userMessage",
               "id": "i-user",

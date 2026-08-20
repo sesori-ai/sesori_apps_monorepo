@@ -2286,6 +2286,7 @@ class FakeOpenCodeRepository._({
   Future<void> addCompactionInstructions({
     required String sessionId,
     required String? directory,
+    required String? messageId,
     required String instructions,
     required String? agent,
     required PluginSessionVariant? variant,

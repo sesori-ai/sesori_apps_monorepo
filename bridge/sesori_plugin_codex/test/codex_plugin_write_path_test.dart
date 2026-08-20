@@ -580,6 +580,35 @@ void main() {
       });
     });
 
+    test("sendPrompt names the user message so codex echoes the prompt id", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "model": "gpt-5.4-mini",
+            "modelProvider": "openai",
+            "thread": {"id": "t-client-id"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-client-id"},
+          },
+        ),
+      ]);
+
+      await plugin.sendPrompt(
+        promptId: "prm_1",
+        sessionId: "t-client-id",
+        parts: const [PluginPromptPart.text(text: "implement it")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      expect(fake.sentParamsFor("turn/start")["clientUserMessageId"], equals("prm_1"));
+    });
+
     test("collaboration mode stamps live messages with its resolved rollout model", () async {
       const sessionId = "019a0000-1111-2222-3333-eeeeeeeeeeee";
       File(p.join(codexHome.path, "config.toml")).writeAsStringSync(
