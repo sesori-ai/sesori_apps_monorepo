@@ -669,6 +669,75 @@ void main() {
     expect(find.text(loc.newSessionOptionsRefreshFailedUnavailable), findsNothing);
   });
 
+  testWidgets("refresh action stops spinning for a harness the user left behind", (tester) async {
+    when(pluginRepository.listPlugins).thenAnswer(
+      (_) async => ApiResponse.success(
+        PluginDiscoverySnapshot(
+          bridgeId: null,
+          supportsSessionOptions: true,
+          plugins: const [
+            PluginMetadata(
+              id: "plugin-1",
+              displayName: "First Tool",
+              isDefault: true,
+              state: PluginLifecycleState.ready,
+              actionHint: null,
+            ),
+            PluginMetadata(
+              id: "plugin-2",
+              displayName: "Second Tool",
+              isDefault: false,
+              state: PluginLifecycleState.ready,
+              actionHint: null,
+            ),
+          ],
+        ),
+      ),
+    );
+    // The first harness's refresh never answers.
+    final stranded = Completer<SessionOptionsRepositoryResult>();
+    when(
+      () => sessionRepository.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        mode: any(named: "mode"),
+      ),
+    ).thenAnswer((invocation) async {
+      return invocation.namedArguments[#mode] == SessionOptionsRequestMode.forceRefresh
+          ? await stranded.future
+          : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false);
+    });
+    when(
+      () => sessionRepository.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-2",
+        mode: any(named: "mode"),
+      ),
+    ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false));
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final refreshAction = find.byKey(const Key("new_session_options_refresh"));
+
+    await tester.tap(refreshAction);
+    await tester.pump();
+    expect(tester.widget<PregoButtonsSolid>(refreshAction).isLoading, isTrue);
+
+    // Explicit pumps throughout: pumpAndSettle never returns while the
+    // indeterminate spinner is on screen.
+    await tester.tap(find.byKey(const Key("new_session_plugin_trigger")));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(_harnessRow("plugin-2"));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    // The second harness has its own settled options; the first harness's
+    // request is still outstanding and must not hold this action hostage.
+    expect(tester.widget<PregoButtonsSolid>(refreshAction).isLoading, isFalse);
+    expect(tester.widget<PregoButtonsSolid>(refreshAction).onPressed, isNotNull);
+  });
+
   testWidgets("refresh action stays in view and spins while its load runs", (tester) async {
     final refreshed = Completer<SessionOptionsRepositoryResult>();
     when(

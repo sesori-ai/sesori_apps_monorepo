@@ -39,9 +39,12 @@ variant, and worktree mode, and creating the session with its first input.
 - A choice made while a background refresh runs outranks it. The refresh was
   resolved against the agent, model, variant, and staged command as they stood
   when it started, so it is dropped rather than reverting the user.
-- The refresh action stays on screen, in its loading state, for as long as the
-  press it started is still running, and the line explaining where the options
-  came from keeps describing the options still on screen.
+- The refresh action stays on screen for as long as the press it started is
+  still running, and the line explaining where the options came from keeps
+  describing the options still on screen. It spins only while the answers on
+  screen are unsettled: the harness chooser stays live during a refresh, so a
+  press abandoned for another harness must not leave a spinner over that
+  harness's settled options.
 - It is one action under one name in every state. Whether a press repeats
   harness discovery, the project check, or the options themselves is decided
   behind it; the surface never names that split, because the user cannot act on

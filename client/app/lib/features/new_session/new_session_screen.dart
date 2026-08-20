@@ -87,7 +87,7 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
   bool _dedicatedWorktree = true;
   bool _navigatingToCreatedSession = false;
   bool _isSending = false;
-  bool _isRefreshing = false;
+  Future<void>? _refreshPress;
   late final ValueNotifier<PregoComposerSurfaceStyle> _composerSurfaceStyle;
   late PregoPopupAlertPresenter _popupAlertPresenter;
   late String _launchingInBackgroundMessage;
@@ -129,16 +129,29 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
     context.pop();
   }
 
-  /// Runs the refresh action, keeping it in view and spinning for as long as
-  /// the press is still working. Every load it can start also disables the
-  /// action, so without this the only feedback for the press would be the
-  /// action vanishing — at the one moment the user is watching it.
+  /// Runs the refresh action and keeps it on screen while the press is still
+  /// working. Every load it can start also clears the condition that put the
+  /// action there, so without this the only feedback for the press would be
+  /// the action vanishing — at the one moment the user is watching it.
+  ///
+  /// Only the newest press governs: the harness chooser stays live during a
+  /// refresh, so a second press can begin while the first is still outstanding,
+  /// and the first finishing must not retire the action the second is running.
   Future<void> _refreshOptions() async {
-    setState(() => _isRefreshing = true);
+    final press = context.read<NewSessionCubit>().refreshOptions();
+    // Block bodies: an arrow would hand setState the assigned Future, which it
+    // rejects as asynchronous work.
+    setState(() {
+      _refreshPress = press;
+    });
     try {
-      await context.read<NewSessionCubit>().refreshOptions();
+      await press;
     } finally {
-      if (mounted) setState(() => _isRefreshing = false);
+      if (mounted && identical(_refreshPress, press)) {
+        setState(() {
+          _refreshPress = null;
+        });
+      }
     }
   }
 
@@ -270,7 +283,13 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
   /// track a distinction they cannot act on. The line above the composer
   /// already says what is missing. A confirmed empty harness list has its own
   /// notice and no refresh action.
-  Widget _buildOptionsRefresh({required NewSessionCubit cubit}) {
+  /// It spins while a press is running and the answers on screen are still
+  /// unsettled, rather than for the whole life of the press. A press outlives
+  /// its own subject — the harness chooser stays live during a refresh, and the
+  /// harness left behind may take as long as it likes to answer — so a spinner
+  /// tied to the press alone would sit over another harness's settled options,
+  /// on an action the user then cannot press.
+  Widget _buildOptionsRefresh({required NewSessionCubit cubit, required bool isLoading}) {
     return Positioned(
       bottom: _refreshBottomGap,
       left: 0,
@@ -282,7 +301,7 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
           hierarchy: PregoButtonsSolidHierarchy.tertiary,
           size: PregoButtonsSolidSize.sm,
           leadingIcon: TablerRegular.refresh,
-          isLoading: _isRefreshing,
+          isLoading: isLoading,
           onPressed: cubit.canRefreshOptions ? _refreshOptions : null,
         ),
       ),
@@ -376,7 +395,7 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
     // refresh action. Keep discovery retry available only when discovery failed
     // before the bridge could confirm what it runs. A press of its own keeps it
     // on screen: the load it started is exactly what the user wants to watch.
-    final showsRefresh = (needsHarnessDiscovery && !hasNoHarnesses) || optionsStatus != null || _isRefreshing;
+    final showsRefresh = (needsHarnessDiscovery && !hasNoHarnesses) || optionsStatus != null || _refreshPress != null;
     final optionsBottomPadding = showsRefresh
         ? _optionsBottomPadding + _refreshBandHeight(context)
         : _optionsBottomPadding;
@@ -472,7 +491,11 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
                                   hasNoHarnesses: hasNoHarnesses,
                                 ),
                               ),
-                              if (showsRefresh) _buildOptionsRefresh(cubit: cubit),
+                              if (showsRefresh)
+                                _buildOptionsRefresh(
+                                  cubit: cubit,
+                                  isLoading: _refreshPress != null && (composerData?.isLoading ?? false),
+                                ),
                             ],
                           ),
                         ),
