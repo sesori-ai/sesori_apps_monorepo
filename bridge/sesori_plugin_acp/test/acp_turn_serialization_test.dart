@@ -33,6 +33,35 @@ class _GatedSelectionPlugin({
   }
 }
 
+class _FlushControlledAcpProcess() extends FakeAcpProcess {
+  final _FlushControlledIOSink _controlledStdin = _FlushControlledIOSink();
+
+  @override
+  _FlushControlledIOSink get stdin => _controlledStdin;
+
+  @override
+  List<Map<String, dynamic>> get written => _controlledStdin.frames;
+
+  Completer<void> holdNextFlush() => _controlledStdin.holdNextFlush();
+}
+
+class _FlushControlledIOSink() extends CapturingIOSink {
+  Completer<void>? _nextFlush;
+
+  Completer<void> holdNextFlush() {
+    final gate = Completer<void>();
+    _nextFlush = gate;
+    return gate;
+  }
+
+  @override
+  Future<void> flush() {
+    final gate = _nextFlush;
+    _nextFlush = null;
+    return gate?.future ?? Future<void>.value();
+  }
+}
+
 /// Turn-lifecycle robustness:
 ///
 ///  - prompts on one session are serialized (agents reject or drop overlapping
@@ -47,14 +76,15 @@ class _GatedSelectionPlugin({
 ///    turn is in flight.
 void main() {
   group("AcpPlugin turn serialization", () {
-    late FakeAcpProcess fake;
+    late _FlushControlledAcpProcess fake;
     late AcpPlugin plugin;
     final emitted = <BridgeSseEvent>[];
     final streamErrors = <Object>[];
     const cwd = "/repo";
+    var promptSequence = 0;
 
     setUp(() {
-      fake = FakeAcpProcess();
+      fake = _FlushControlledAcpProcess();
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
       plugin = TestAcpPlugin(
@@ -81,6 +111,7 @@ void main() {
       );
       emitted.clear();
       streamErrors.clear();
+      promptSequence = 0;
       plugin.events.listen(emitted.add, onError: streamErrors.add);
     });
 
@@ -140,35 +171,102 @@ void main() {
       return session.id;
     }
 
-    Future<void> sendPrompt(String sessionId, String text) => plugin.sendPrompt(
-      promptId: "prompt-1",
-      sessionId: sessionId,
-      parts: [PluginPromptPart.text(text: text)],
-      variant: null,
-      agent: null,
-      model: null,
-    );
+    Future<String> sendPrompt(String sessionId, String text) async {
+      final promptId = "prompt-${++promptSequence}";
+      await plugin.sendPrompt(
+        promptId: promptId,
+        sessionId: sessionId,
+        parts: [PluginPromptPart.text(text: text)],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      return promptId;
+    }
 
     int busyCount() => emitted.whereType<BridgeSseSessionStatus>().length;
     int idleCount() => emitted.whereType<BridgeSseSessionIdle>().length;
 
-    test("an accepted prompt is emitted immediately as a user message", () async {
+    test("a prompt becomes a user message only when its ACP frame is dispatched", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
       emitted.clear();
 
-      await sendPrompt(sessionId, "visible immediately");
-      await pump();
+      final promptId = await sendPrompt(sessionId, "visible on dispatch");
+      final prompt = await waitForFrame("session/prompt");
 
       final message = emitted.whereType<BridgeSseMessageUpdated>().single;
       expect(message.info["role"], "user");
+      expect(message.info["promptId"], promptId);
       expect(
         emitted.whereType<BridgeSseMessagePartUpdated>().single.part.text,
-        "visible immediately",
+        "visible on dispatch",
+      );
+      final queueUpdates = emitted.whereType<BridgeSseQueuedPromptsUpdated>().toList();
+      expect(queueUpdates.first.prompts.single.id, promptId);
+      expect(queueUpdates.last.prompts, isEmpty);
+      expect(emitted.indexOf(message), lessThan(emitted.indexOf(queueUpdates.last)));
+
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
+    test("a prompt remains queued until its ACP frame flushes", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      final flush = fake.holdNextFlush();
+      final promptId = await sendPrompt(sessionId, "wait for flush");
+      final prompt = await waitForFrame("session/prompt");
+      await pump();
+
+      expect((await plugin.getQueuedPrompts(sessionId: sessionId)).single.id, promptId);
+      expect(
+        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == promptId),
+        isEmpty,
+      );
+      expect(
+        await plugin.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId),
+        isFalse,
+        reason: "the frame write has started and can no longer be withdrawn",
       );
 
-      final prompt = await waitForFrame("session/prompt");
+      flush.complete();
+      for (var i = 0; i < 20 && (await plugin.getQueuedPrompts(sessionId: sessionId)).isNotEmpty; i++) {
+        await pump();
+      }
+
+      expect(await plugin.getQueuedPrompts(sessionId: sessionId), isEmpty);
+      expect(
+        emitted
+            .whereType<BridgeSseMessageUpdated>()
+            .singleWhere((event) => event.info["promptId"] == promptId)
+            .info["promptId"],
+        promptId,
+      );
       respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
+    test("a failed ACP frame flush never marks the prompt sent", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      final flush = fake.holdNextFlush();
+      final promptId = await sendPrompt(sessionId, "broken pipe");
+      await waitForFrame("session/prompt");
+      flush.completeError(StateError("broken pipe"));
+      for (var i = 0; i < 20 && idleCount() == 0; i++) {
+        await pump();
+      }
+
+      expect(await plugin.getQueuedPrompts(sessionId: sessionId), isEmpty);
+      expect(
+        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == promptId),
+        isEmpty,
+      );
+      expect(emitted.whereType<BridgeSseSessionError>(), hasLength(1));
+      expect(streamErrors, isEmpty);
     });
 
     test("an initial create prompt emits its user-visible text only once", () async {
@@ -337,7 +435,7 @@ void main() {
       final firstPrompt = await waitForFrame("session/prompt");
       expect(busyCount(), 1);
 
-      await sendPrompt(sessionId, "second");
+      final secondPromptId = await sendPrompt(sessionId, "second");
       for (var i = 0; i < 10; i++) {
         await pump();
       }
@@ -346,6 +444,12 @@ void main() {
         hasLength(1),
         reason: "the second prompt must wait for the first turn to complete",
       );
+      expect((await plugin.getQueuedPrompts(sessionId: sessionId)).single.id, secondPromptId);
+      expect(
+        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == secondPromptId),
+        isEmpty,
+        reason: "an adapter-owned prompt must remain queued, not sent",
+      );
       expect(busyCount(), 1, reason: "queued turn keeps the one busy signal");
       expect(idleCount(), 0);
 
@@ -353,6 +457,14 @@ void main() {
       final secondPrompt = await waitForFrameCount("session/prompt", 2);
       expect((secondPrompt["params"] as Map)["sessionId"], sessionId);
       await pump();
+      expect(await plugin.getQueuedPrompts(sessionId: sessionId), isEmpty);
+      expect(
+        emitted
+            .whereType<BridgeSseMessageUpdated>()
+            .singleWhere((event) => event.info["promptId"] == secondPromptId)
+            .info["promptId"],
+        secondPromptId,
+      );
       expect(
         idleCount(),
         0,
@@ -369,6 +481,77 @@ void main() {
       expect(idleCount(), 1, reason: "idle only after the last queued turn settles");
       expect(plugin.getActiveSessionsSummary(), isEmpty);
       expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
+    test("a queued prompt can be cancelled before ACP dispatch", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+
+      await sendPrompt(sessionId, "first");
+      final firstPrompt = await waitForFrame("session/prompt");
+      final queuedPromptId = await sendPrompt(sessionId, "cancel me");
+      expect((await plugin.getQueuedPrompts(sessionId: sessionId)).single.id, queuedPromptId);
+
+      expect(
+        await plugin.cancelQueuedPrompt(sessionId: sessionId, promptId: queuedPromptId),
+        isTrue,
+      );
+      expect(await plugin.getQueuedPrompts(sessionId: sessionId), isEmpty);
+
+      respondTo(firstPrompt, {"stopReason": "end_turn"});
+      for (var i = 0; i < 10; i++) {
+        await pump();
+      }
+      expect(frames("session/prompt"), hasLength(1));
+      expect(
+        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == queuedPromptId),
+        isEmpty,
+      );
+    });
+
+    test("a retried ACP prompt id remains one turn while disconnected", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+
+      await sendPrompt(sessionId, "first");
+      final firstPrompt = await waitForFrame("session/prompt");
+      Future<void> sendRetry() => plugin.sendPrompt(
+        promptId: "retry-id",
+        sessionId: sessionId,
+        parts: const [PluginPromptPart.text(text: "only once")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      await sendRetry();
+      await sendRetry();
+      expect(await plugin.getQueuedPrompts(sessionId: sessionId), hasLength(1));
+
+      respondTo(firstPrompt, {"stopReason": "end_turn"});
+      final retriedPrompt = await waitForFrameCount("session/prompt", 2);
+      await sendRetry();
+      await pump();
+      expect(frames("session/prompt"), hasLength(2));
+
+      respondTo(retriedPrompt, {"stopReason": "end_turn"});
+      for (var i = 0; i < 10; i++) {
+        await pump();
+      }
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      await plugin.resetConnectionAfterExit();
+      await sendRetry();
+      await plugin.sendCommand(
+        sessionId: sessionId,
+        promptId: "retry-id",
+        command: "deploy",
+        arguments: "",
+        userVisibleArguments: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(frames("initialize"), hasLength(1));
     });
 
     test("queued reconnect authentication failure surfaces on the event stream", () async {
@@ -585,20 +768,29 @@ void main() {
       await connect();
       final sessionId = await createSession(cwd, "s1");
 
-      await sendPrompt(sessionId, "hi");
+      final flush = fake.holdNextFlush();
+      final promptId = await sendPrompt(sessionId, "hi");
       final promptFrame = await waitForFrame("session/prompt");
 
       await plugin.deleteSession(sessionId);
       expect(frames("session/cancel"), hasLength(1));
+      final queueUpdateCount = emitted.whereType<BridgeSseQueuedPromptsUpdated>().length;
 
-      // The cancelled prompt settles after the delete: its accounting must not
-      // re-create the deleted session's status entry or emit idle for it.
+      // The prompt flushes and settles after the delete: neither dispatch nor
+      // accounting may publish lifecycle events for the detached session.
+      flush.complete();
+      await pump();
       respondTo(promptFrame, {"stopReason": "cancelled"});
       for (var i = 0; i < 10; i++) {
         await pump();
       }
       expect(await plugin.getSessionStatuses(), isEmpty);
       expect(emitted.whereType<BridgeSseSessionIdle>(), isEmpty);
+      expect(
+        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == promptId),
+        isEmpty,
+      );
+      expect(emitted.whereType<BridgeSseQueuedPromptsUpdated>(), hasLength(queueUpdateCount));
     });
 
     test("a queued turn retries a transiently failed resume-load at dispatch", () async {
@@ -816,8 +1008,9 @@ void main() {
       });
       await creating;
 
+      var respawnPromptSequence = 0;
       Future<void> send(String text) => respawning.sendPrompt(
-        promptId: "prompt-1",
+        promptId: "respawn-prompt-${++respawnPromptSequence}",
         sessionId: "s1",
         parts: [PluginPromptPart.text(text: text)],
         variant: null,

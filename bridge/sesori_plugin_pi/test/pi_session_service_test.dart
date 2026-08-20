@@ -386,6 +386,187 @@ void main() {
     expect(prompt["message"], "selected");
   });
 
+  test("accepted prompt stays queued until Pi echoes its user message", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "queued-visible",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "wait for echo")],
+      userVisibleText: "wait for echo",
+      variant: null,
+      model: null,
+    );
+    expect(service.queuedPrompts(sessionId: "session").single.id, "queued-visible");
+
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    expect(
+      service.queuedPrompts(sessionId: "session").single.id,
+      "queued-visible",
+      reason: "dispatch alone must not blank the queued bubble before Pi's echo",
+    );
+
+    process.emit(
+      frame: {
+        "type": "message_end",
+        "message": {
+          "role": "user",
+          "content": [
+            {"type": "text", "text": "wait for echo"},
+          ],
+          "timestamp": 1,
+        },
+      },
+    );
+    await pump();
+
+    expect(service.queuedPrompts(sessionId: "session"), isEmpty);
+    expect(events.whereType<BridgeSseQueuedPromptsUpdated>().first.prompts.single.id, "queued-visible");
+    expect(events.whereType<BridgeSseQueuedPromptsUpdated>().last.prompts, isEmpty);
+    final message = events.whereType<BridgeSseMessageUpdated>().single;
+    final emptyQueue = events.whereType<BridgeSseQueuedPromptsUpdated>().last;
+    expect(events.indexOf(message), lessThan(events.indexOf(emptyQueue)));
+
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
+  test("an active undispatched Pi prompt can be cancelled and immediately retried", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "cancel-queued",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "cancel me")],
+      userVisibleText: "cancel me",
+      variant: null,
+      model: null,
+    );
+    expect(service.queuedPrompts(sessionId: "session"), hasLength(1));
+    expect(
+      service.cancelQueuedPrompt(sessionId: "session", promptId: "cancel-queued"),
+      isTrue,
+    );
+    expect(service.queuedPrompts(sessionId: "session"), isEmpty);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "cancel-queued",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "retry me")],
+      userVisibleText: "retry me",
+      variant: null,
+      model: null,
+    );
+    expect(service.queuedPrompts(sessionId: "session"), hasLength(1));
+
+    await _answerEntries(process);
+    final retried = await waitForCommand(process: process, type: "prompt");
+    expect(retried["message"], "retry me");
+    process.emitResponse(id: retried["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
+    expect(
+      service.cancelQueuedPrompt(sessionId: "session", promptId: "cancel-queued"),
+      isFalse,
+    );
+  });
+
+  test("a cancelled undispatched prompt id remains retryable", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "first",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: null,
+      model: null,
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "retryable",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "retry me")],
+      userVisibleText: "retry me",
+      variant: null,
+      model: null,
+    );
+
+    expect(
+      service.cancelQueuedPrompt(sessionId: "session", promptId: "retryable"),
+      isTrue,
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "retryable",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "retry me")],
+      userVisibleText: "retry me",
+      variant: null,
+      model: null,
+    );
+
+    await _answerEntries(process);
+    final first = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: first["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    final retried = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    expect(retried["message"], "retry me");
+    process.emitResponse(id: retried["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
+  test("a cancelled prompt settles when its selecting process exits", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "cancel-during-selection",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "cancel me")],
+      userVisibleText: "cancel me",
+      variant: null,
+      model: (providerID: "provider", modelID: "model"),
+    );
+    await _answerEntries(process);
+    final model = await waitForCommand(process: process, type: "set_model");
+
+    expect(
+      service.cancelQueuedPrompt(sessionId: "session", promptId: "cancel-during-selection"),
+      isTrue,
+    );
+    expect(model["type"], "set_model");
+    process.exit(code: 9);
+    await _waitForIdle(service: service, sessionId: "session");
+
+    expect(process.written.where((frame) => frame["type"] == "prompt"), isEmpty);
+    expect(events.whereType<BridgeSseSessionError>(), isEmpty);
+  });
+
   test("selection failure prevents prompt dispatch and settles the lane", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
@@ -438,8 +619,14 @@ void main() {
 
     final statuses = events.whereType<BridgeSseSessionStatus>().toList();
     final idleIndex = events.indexWhere((event) => event is BridgeSseSessionIdle);
+    final userMessage = events.whereType<BridgeSseMessageUpdated>().singleWhere(
+      (event) => event.info["promptId"] == "prompt-5",
+    );
+    final emptyQueue = events.whereType<BridgeSseQueuedPromptsUpdated>().last;
     expect(statuses.first.status["type"], "busy");
     expect(statuses.last.status["type"], "idle");
+    expect(userMessage.info["role"], "user");
+    expect(events.indexOf(userMessage), lessThan(events.indexOf(emptyQueue)));
     expect(events.indexOf(statuses.last), lessThan(idleIndex));
   });
 
@@ -461,6 +648,8 @@ void main() {
     );
     var completed = false;
     unawaited(accepted.then((_) => completed = true));
+    expect(service.queuedPrompts(sessionId: "session"), isEmpty);
+    expect(service.cancelQueuedPrompt(sessionId: "session", promptId: "prompt-6"), isFalse);
     await _answerEntries(process);
     final firstPrompt = await waitForCommand(process: process, type: "prompt");
     process.emit(frame: {"type": "agent_start"});
@@ -690,6 +879,51 @@ void main() {
       events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.text),
       contains("/review src"),
     );
+  });
+
+  test("an attachment-only echo correlates without a fallback duplicate", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "image-only",
+      directory: "/project",
+      parts: [
+        const PluginPromptPart.fileData(mime: "image/png", base64: "cG5n", filename: null),
+      ],
+      userVisibleText: null,
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(
+      frame: {
+        "type": "message_end",
+        "message": {
+          "role": "user",
+          "content": [
+            {"type": "image", "data": "cG5n", "mimeType": "image/png"},
+          ],
+          "timestamp": 1,
+        },
+      },
+    );
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+
+    final userMessages = events
+        .whereType<BridgeSseMessageUpdated>()
+        .where((event) => event.info["role"] == "user")
+        .toList();
+    expect(userMessages, hasLength(1));
+    expect(userMessages.single.info["promptId"], "image-only");
   });
 
   test("command rejects busy, accepts dialog-first, and uses no-run state barrier", () async {

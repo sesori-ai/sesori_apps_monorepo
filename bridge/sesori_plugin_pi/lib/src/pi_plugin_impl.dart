@@ -188,7 +188,7 @@ final class PiPlugin._({
     _eventBuffer.add(BridgeSseSessionCreated(info: session.toJson()));
     if (parts.isNotEmpty) {
       try {
-        await _sessionService.sendPrompt(
+        await _sessionService.sendInitialPrompt(
           sessionId: sessionId,
           // createSession carries no client prompt id; a fresh random id keys
           // this initial turn without ever colliding with client-supplied ids.
@@ -319,6 +319,14 @@ final class PiPlugin._({
       model: model,
     );
   }
+
+  @override
+  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async =>
+      _sessionService.queuedPrompts(sessionId: sessionId);
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async =>
+      _sessionService.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId);
 
   @override
   Future<void> sendCommand({

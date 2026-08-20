@@ -127,6 +127,9 @@ class OmpPlugin._({
   bool get serializesPromptsProcessWide => true;
 
   @override
+  bool get cancelsActiveTurnForQueuedInput => true;
+
+  @override
   bool get failsTurnOnSelectionError => true;
 
   @override

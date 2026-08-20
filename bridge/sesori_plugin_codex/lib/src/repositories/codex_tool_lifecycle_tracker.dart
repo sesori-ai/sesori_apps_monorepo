@@ -28,14 +28,17 @@ class CodexToolLifecycleTracker({
     required CodexRolloutLineDto line,
   }) {
     final thread = _threads.putIfAbsent(threadId, _ThreadToolLifecycle.new);
+    final time = _rolloutTime(line.timestamp);
     return switch (line) {
       CodexRolloutResponseItemLineDto(:final payload) => _observeRolloutPayload(
         thread: thread,
         payload: payload,
+        time: time,
       ),
       CodexRolloutEventMessageLineDto(payload: final event) => _observeRolloutEvent(
         thread: thread,
         event: event,
+        time: time,
       ),
       CodexRolloutSessionMetadataLineDto() ||
       CodexRolloutTurnContextLineDto() ||
@@ -51,6 +54,7 @@ class CodexToolLifecycleTracker({
   /// and continue through the existing native event mapping.
   CodexProjectedTool? observeCorrelatableAppServerItem({
     required CodexCorrelatableItemEventDto event,
+    required CodexServerNotification notification,
   }) {
     if (event.lifecycle == CodexCorrelatableItemLifecycle.completed) {
       final retainedCommands = _retainedCommandsByThread[event.threadId];
@@ -59,6 +63,7 @@ class CodexToolLifecycleTracker({
         if (retainedCommands!.isEmpty) {
           _retainedCommandsByThread.remove(event.threadId);
         }
+        _recordAppServerTime(tool: retainedTool, notification: notification);
         return _applyCorrelatableAppServerItem(
           tool: retainedTool,
           event: event,
@@ -108,6 +113,7 @@ class CodexToolLifecycleTracker({
     final tool = thread.tools[canonicalId];
     if (tool == null || !tool.isRolloutCall) return null;
 
+    _recordAppServerTime(tool: tool, notification: notification);
     final snapshot = _applyCorrelatableAppServerItem(
       tool: tool,
       event: event,
@@ -167,17 +173,20 @@ class CodexToolLifecycleTracker({
       );
       final generationId = generation.id;
       if (generationId == null) return null;
+      final turnId = _usefulText(value: params["turnId"]);
       final tool = thread.tools.putIfAbsent(
         generationId,
         () => _TrackedTool(
           id: generationId,
           tool: "image_generation",
           title: null,
-          turnId: null,
+          turnId: turnId,
           chronologySegment: thread.chronologySegment,
           isRolloutCall: false,
         ),
       );
+      tool.turnId ??= turnId;
+      _recordAppServerTime(tool: tool, notification: notification);
       tool.status = _mergeStatus(
         previous: tool.status,
         current: generation.status,
@@ -201,6 +210,7 @@ class CodexToolLifecycleTracker({
         if (retainedCommands!.isEmpty) {
           _retainedCommandsByThread.remove(threadId);
         }
+        _recordAppServerTime(tool: retainedTool, notification: notification);
         return _applyAppServerTool(
           tool: retainedTool,
           item: item,
@@ -217,6 +227,7 @@ class CodexToolLifecycleTracker({
     if (item["type"] == "dynamicToolCall") {
       final tool = thread.tools[itemId];
       if (tool == null || !tool.hasRolloutResult) return null;
+      _recordAppServerTime(tool: tool, notification: notification);
       tool.status = _mergeStatus(
         previous: tool.status,
         current: _appServerStatus(
@@ -302,7 +313,7 @@ class CodexToolLifecycleTracker({
     final updates = <CodexProjectedTool>[];
     if (thread != null) {
       for (final tool in thread.tools.values) {
-        if (!tool.isRolloutCall || tool.status != PluginToolStatus.running) {
+        if (tool.status != PluginToolStatus.running) {
           continue;
         }
         tool.status = terminalStatus;
@@ -333,6 +344,7 @@ class CodexToolLifecycleTracker({
   List<CodexProjectedTool> _observeRolloutPayload({
     required _ThreadToolLifecycle thread,
     required CodexRolloutResponseItemDto payload,
+    required PluginMessageTime? time,
   }) {
     if (payload case final CodexRolloutImageGenerationDto item) {
       final generation = _rolloutToolMapper.mapImageGeneration(item: item);
@@ -349,6 +361,7 @@ class CodexToolLifecycleTracker({
           isRolloutCall: false,
         ),
       );
+      tool.time ??= time;
       tool.status = _mergeStatus(
         previous: tool.status,
         current: generation.status,
@@ -395,6 +408,7 @@ class CodexToolLifecycleTracker({
           isRolloutCall: true,
         ),
       );
+      tool.time ??= time;
       tool.title ??= call.title;
       if (fileChangePatch != null) {
         tool.rolloutOutput ??= _rolloutToolMapper.clipOutput(fileChangePatch);
@@ -428,6 +442,7 @@ class CodexToolLifecycleTracker({
     final canonicalId = waitTarget ?? result.callId;
     final tool = thread.tools[canonicalId];
     if (tool == null || !tool.isRolloutCall) return const [];
+    tool.time ??= time;
 
     final cellIds = switch (result) {
       CodexRolloutToolRunningResult(:final cellIds) => cellIds,
@@ -477,6 +492,7 @@ class CodexToolLifecycleTracker({
   List<CodexProjectedTool> _observeRolloutEvent({
     required _ThreadToolLifecycle thread,
     required CodexRolloutEventDto event,
+    required PluginMessageTime? time,
   }) {
     return switch (event) {
       CodexRolloutUserMessageEventDto() =>
@@ -498,6 +514,7 @@ class CodexToolLifecycleTracker({
       CodexRolloutImageGenerationEndEventDto() => _observeImageGenerationEnd(
         thread: thread,
         event: event,
+        time: time,
       ),
       CodexRolloutUnknownEventDto() => const [],
     };
@@ -506,6 +523,7 @@ class CodexToolLifecycleTracker({
   List<CodexProjectedTool> _observeImageGenerationEnd({
     required _ThreadToolLifecycle thread,
     required CodexRolloutImageGenerationEndEventDto event,
+    required PluginMessageTime? time,
   }) {
     final generation = _rolloutToolMapper.mapImageGenerationEnd(event: event);
     final id = generation.id;
@@ -521,6 +539,7 @@ class CodexToolLifecycleTracker({
         isRolloutCall: false,
       ),
     );
+    tool.time ??= time;
     tool.status = _mergeStatus(
       previous: tool.status,
       current: generation.status,
@@ -537,20 +556,25 @@ class CodexToolLifecycleTracker({
     required _ThreadToolLifecycle thread,
     required String turnId,
   }) {
-    final updates = _advanceChronologySegment(thread: thread);
-    thread.activeTurnId = _usefulText(value: turnId);
+    final usefulTurnId = _usefulText(value: turnId);
+    final updates = _advanceChronologySegment(
+      thread: thread,
+      nextTurnId: usefulTurnId,
+    );
+    thread.activeTurnId = usefulTurnId;
     return updates;
   }
 
   List<CodexProjectedTool> _advanceChronologySegment({
     required _ThreadToolLifecycle thread,
     bool includeNonRolloutCalls = false,
+    String? nextTurnId,
   }) {
     final updates = <CodexProjectedTool>[];
     for (final tool in thread.tools.values) {
       final appliesToCurrentReplay = tool.isRolloutCall
           ? tool.chronologySegment == thread.chronologySegment
-          : includeNonRolloutCalls;
+          : includeNonRolloutCalls || (nextTurnId != null && tool.turnId != null && tool.turnId != nextTurnId);
       if (!appliesToCurrentReplay || tool.status != PluginToolStatus.running) {
         continue;
       }
@@ -752,6 +776,34 @@ class CodexToolLifecycleTracker({
     final trimmed = value.trim();
     return trimmed.isEmpty ? null : trimmed;
   }
+
+  void _recordAppServerTime({
+    required _TrackedTool tool,
+    required CodexServerNotification notification,
+  }) {
+    final previous = tool.time;
+    final created = _milliseconds(notification.params["startedAtMs"]) ?? previous?.created;
+    if (created == null) return;
+    tool.time = PluginMessageTime(
+      created: created,
+      completed: notification.method == "item/completed"
+          ? _milliseconds(notification.params["completedAtMs"]) ?? previous?.completed
+          : previous?.completed,
+    );
+  }
+
+  PluginMessageTime? _rolloutTime(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    final parsed = DateTime.tryParse(raw);
+    return parsed == null
+        ? null
+        : PluginMessageTime(
+            created: parsed.millisecondsSinceEpoch,
+            completed: null,
+          );
+  }
+
+  int? _milliseconds(Object? value) => value is num ? value.round() : null;
 }
 
 class _ThreadToolLifecycle() {
@@ -776,13 +828,14 @@ class _TrackedTool({
   required final String id,
   required final String tool,
   required var String? title,
-  required final String? turnId,
+  required var String? turnId,
   required final int chronologySegment,
   required final bool isRolloutCall,
 }) {
   PluginToolStatus status = PluginToolStatus.running;
   String? rolloutOutput;
   String? appServerOutput;
+  PluginMessageTime? time;
   bool hasRolloutResult = false;
   final List<PluginMessageAttachment> attachments = [];
   final Set<String> outstandingCellIds = {};
@@ -793,6 +846,7 @@ class _TrackedTool({
     title: title,
     status: status,
     output: rolloutOutput ?? appServerOutput,
+    time: time,
     attachments: attachments,
   );
 }

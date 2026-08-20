@@ -27,7 +27,10 @@ void main() {
 
     test("darwin/windows ship .zip, linux ships .tar.gz", () {
       ArchiveRuntimeAsset asset(PlatformOs os, PlatformArch arch) =>
-          manifest.assetFor(target: PlatformTarget(os: os, arch: arch))! as ArchiveRuntimeAsset;
+          manifest.assetFor(
+                target: PlatformTarget(os: os, arch: arch),
+              )!
+              as ArchiveRuntimeAsset;
 
       expect(asset(PlatformOs.macos, PlatformArch.arm64).format, ArchiveFormat.zip);
       expect(asset(PlatformOs.macos, PlatformArch.arm64).assetName, endsWith(".zip"));
@@ -43,11 +46,13 @@ void main() {
       )!;
       expect(
         manifest.downloadUrlFor(asset: asset),
-        equals("https://github.com/anomalyco/opencode/releases/download/v1.18.11/opencode-darwin-arm64.zip"),
+        equals("https://github.com/anomalyco/opencode/releases/download/v1.18.19/opencode-darwin-arm64.zip"),
       );
     });
 
     test("bundled version is at least the minimum supported version", () {
+      expect(OpenCodeRuntimeManifest.targetVersion, "1.18.19");
+      expect(manifest.bundledVersion.toString(), OpenCodeRuntimeManifest.targetVersion);
       expect(manifest.minPathVersion.toString(), "1.14.0");
       expect(
         manifest.bundledVersion.compareTo(manifest.minPathVersion),
