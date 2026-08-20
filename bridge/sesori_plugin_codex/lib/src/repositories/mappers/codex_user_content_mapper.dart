@@ -15,14 +15,9 @@ final class const CodexUserContentMapper() {
   }
 
   String? _stripBridgeContext({required String text}) {
-    const marker = "[SYSTEM CONTEXT \u2014 IMPORTANT]";
-    final markerIndex = text.indexOf(marker);
-    if (markerIndex < 0 || text.substring(0, markerIndex).trim().isNotEmpty) {
-      return text;
-    }
-    final envelopeEnd = text.indexOf("\n---", markerIndex + marker.length);
-    if (envelopeEnd < 0) return text;
-    final trailing = text.substring(envelopeEnd + "\n---".length).trim();
+    final match = _bridgeWorktreeContext.matchAsPrefix(text);
+    if (match == null) return text;
+    final trailing = text.substring(match.end);
     return trailing.isEmpty ? null : trailing;
   }
 
@@ -40,6 +35,16 @@ enum _GeneratedContextTag(final String wireName) {
 
   bool wraps(String text) => text.startsWith("<$wireName>") && text.endsWith("</$wireName>");
 }
+
+final _bridgeWorktreeContext = RegExp(
+  r"^\[SYSTEM CONTEXT — IMPORTANT\]\r?\n"
+  r"A dedicated git worktree and branch have been created for this session:\r?\n"
+  r"- Branch: [^\r\n]+\r?\n"
+  r"- Worktree path: [^\r\n]+\r?\n"
+  r"- Based on: [^\r\n]+\r?\n\r?\n"
+  r"IMPORTANT: Perform all work for this task in this dedicated worktree\. You may use the initial branch above, or switch branches or create additional branches here as needed\. Do NOT create another worktree or working directory — even if other instructions suggest it\.\r?\n\r?\n"
+  r"---\r?\n(?:\r?\n)?",
+);
 
 final _generatedRepositoryInstructions = RegExp(
   r"^# AGENTS\.md instructions(?: for [^\r\n]+)?\r?\n\r?\n"

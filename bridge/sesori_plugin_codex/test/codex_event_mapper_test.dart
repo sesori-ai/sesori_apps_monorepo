@@ -409,7 +409,12 @@ void main() {
     test("item userMessage hides bridge context while preserving authored content", () {
       const worktreeContext = """
 [SYSTEM CONTEXT \u2014 IMPORTANT]
-A dedicated git worktree has been created.
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
 
 ---
 """;
@@ -446,10 +451,77 @@ A dedicated git worktree has been created.
       expect(image.base64, "AA==");
     });
 
+    test("item userMessage preserves authored whitespace after bridge context", () {
+      const text = """
+[SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---
+""" "    authored text  \n";
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-user-whitespace",
+            "turnId": "u-user-whitespace",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user-whitespace",
+              "content": [
+                {"type": "text", "text": text, "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      final part = (events.last as BridgeSseMessagePartUpdated).part;
+      expect(part.text, "    authored text  \n");
+    });
+
+    test("item userMessage preserves authored marker-shaped content", () {
+      const text = """
+[SYSTEM CONTEXT — IMPORTANT]
+Authored explanation.
+
+---
+authored conclusion
+""";
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-user-marker",
+            "turnId": "u-user-marker",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user-marker",
+              "content": [
+                {"type": "text", "text": text, "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      final part = (events.last as BridgeSseMessagePartUpdated).part;
+      expect(part.text, text);
+    });
+
     test("item userMessage keeps an attachment-only prompt after hiding bridge context", () {
       const worktreeContext = """
 [SYSTEM CONTEXT \u2014 IMPORTANT]
-A dedicated git worktree has been created.
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
 
 ---
 """;

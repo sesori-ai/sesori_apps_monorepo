@@ -991,7 +991,12 @@ void main() {
     test("readMessages hides bridge context while preserving authored text and images", () {
       const worktreeContext = """
 [SYSTEM CONTEXT \u2014 IMPORTANT]
-A dedicated git worktree has been created.
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
 
 ---
 """;
@@ -1059,6 +1064,52 @@ A dedicated git worktree has been created.
       expect(messages.last.parts.first.text, isNot(contains("SYSTEM CONTEXT")));
       final image = messages.last.parts.last.attachment! as PluginMessageAttachmentInlineImage;
       expect(image.base64, "AQ==");
+    });
+
+    test("readMessages skips a pending bridge-context-only user message", () {
+      const worktreeContext = """
+[SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---
+""";
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/20/rollout-context-only.jsonl",
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaac",
+        cwd: "/repo/.worktrees/feature",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "context-only",
+              "role": "user",
+              "content": [
+                {"type": "input_text", "text": worktreeContext},
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {"type": "user_message", "message": worktreeContext},
+          }),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaac",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages, isEmpty);
     });
 
     test("readMessages preserves a terminal Codex failure as an error message", () {
@@ -2405,7 +2456,7 @@ CodexRolloutSessionMetadataPayloadDto _sessionMetadataPayload({
   required CodexRolloutLineDto line,
 }) {
   return switch (line) {
-    CodexRolloutSessionMetadataLineDto(: final payload) => payload,
+    CodexRolloutSessionMetadataLineDto(:final payload) => payload,
     _ => throw StateError("Expected session metadata rollout line"),
   };
 }
@@ -2414,7 +2465,7 @@ CodexRolloutTurnContextPayloadDto _turnContextPayload({
   required CodexRolloutLineDto line,
 }) {
   return switch (line) {
-    CodexRolloutTurnContextLineDto(: final payload) => payload,
+    CodexRolloutTurnContextLineDto(:final payload) => payload,
     _ => throw StateError("Expected turn context rollout line"),
   };
 }
@@ -2423,7 +2474,7 @@ CodexRolloutResponseItemDto _responseItemPayload({
   required CodexRolloutLineDto line,
 }) {
   return switch (line) {
-    CodexRolloutResponseItemLineDto(: final payload) => payload,
+    CodexRolloutResponseItemLineDto(:final payload) => payload,
     _ => throw StateError("Expected response item rollout line"),
   };
 }

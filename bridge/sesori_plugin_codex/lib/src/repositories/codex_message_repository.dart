@@ -164,6 +164,10 @@ class CodexMessageRepository({
             ),
           );
         } else {
+          if (submittedText == null && pending.attachments.isEmpty) {
+            pending.resolved = true;
+            continue;
+          }
           final legacyCounter = pending.legacyCounter ?? (messageCounter += 1);
           final messageId = _persistedOrLegacyMessageId(
             persistedId: pending.persistedId,
