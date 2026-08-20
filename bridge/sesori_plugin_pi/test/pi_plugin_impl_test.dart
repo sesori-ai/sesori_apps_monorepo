@@ -81,7 +81,7 @@ void main() {
           agent: "other",
           model: null,
         ),
-        throwsA(isA<PluginStaleOptionsException>()),
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "status", 400)),
       );
       expect(harness.processes.map((entry) => entry.spec.launch), everyElement(isA<PiNoSession>()));
     });

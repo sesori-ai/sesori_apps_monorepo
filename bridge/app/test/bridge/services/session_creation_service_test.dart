@@ -284,6 +284,34 @@ void main() {
       await runtime.dispose();
     });
 
+    test("maps stale command selections during creation to a generic bad request", () async {
+      plugin.sendCommandError = const PluginStaleOptionsException(
+        "sendCommand",
+        message: "unsupported command model",
+      );
+
+      await expectLater(
+        service.createSession(
+          request: const CreateSessionRequest(
+            projectId: "/repo",
+            pluginId: "fake",
+            dedicatedWorktree: false,
+            parts: [PromptPart.text(text: "Review it")],
+            variant: null,
+            agent: null,
+            model: PromptModel(providerID: "provider", modelID: "withdrawn"),
+            command: "review",
+          ),
+        ),
+        throwsA(
+          isA<PluginOperationException>()
+              .having((error) => error.statusCode, "status", 400)
+              .having((error) => error.cause, "cause", isA<PluginStaleOptionsException>()),
+        ),
+      );
+      expect(metadataRepository.generateCalls, isZero);
+    });
+
     test("stores the created root with its explicit plugin and backend binding", () async {
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-one",
@@ -689,6 +717,7 @@ class _FakePlugin() implements NativeProjectsPluginApi {
   String? lastCreateDirectory;
   String? lastCreateUserVisibleText;
   List<PluginPromptPart>? lastCreateParts;
+  Object? sendCommandError;
 
   @override
   String get id => "fake";
@@ -736,6 +765,20 @@ class _FakePlugin() implements NativeProjectsPluginApi {
       title: title,
       time: null,
     );
+  }
+
+  @override
+  Future<void> sendCommand({
+    required String sessionId,
+    required String promptId,
+    required String command,
+    required String arguments,
+    required String? userVisibleArguments,
+    required PluginSessionVariant? variant,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    if (sendCommandError case final error?) throw error;
   }
 
   @override

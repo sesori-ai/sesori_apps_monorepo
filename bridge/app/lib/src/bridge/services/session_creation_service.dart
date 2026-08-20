@@ -1,6 +1,7 @@
 import "dart:async";
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show Log, PluginOperationException, PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../repositories/session_metadata_repository.dart";
@@ -156,16 +157,28 @@ class SessionCreationService({
     if (command == null) {
       return;
     }
-    await _sessionRepository.sendCommand(
-      sessionId: session.id,
-      promptId: SessionPromptService.generatePromptId(),
-      command: command,
-      arguments: arguments,
-      userVisibleArguments: userVisibleArguments,
-      variant: variant,
-      agent: agent,
-      model: model,
-    );
+    try {
+      await _sessionRepository.sendCommand(
+        sessionId: session.id,
+        promptId: SessionPromptService.generatePromptId(),
+        command: command,
+        arguments: arguments,
+        userVisibleArguments: userVisibleArguments,
+        variant: variant,
+        agent: agent,
+        model: model,
+      );
+    } on PluginStaleOptionsException catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        PluginOperationException(
+          SessionOperation.createSession.name,
+          statusCode: 400,
+          message: error.message,
+          cause: error,
+        ),
+        stackTrace,
+      );
+    }
   }
 
   String _buildCommandArguments({

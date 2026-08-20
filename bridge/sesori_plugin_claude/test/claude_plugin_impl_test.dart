@@ -193,7 +193,9 @@ void main() {
           model: (providerID: "anthropic", modelID: "default"),
         ),
         throwsA(
-          isA<PluginStaleOptionsException>().having((error) => error.message, "message", "unsupported Claude agent"),
+          isA<PluginOperationException>()
+              .having((error) => error.statusCode, "status", 400)
+              .having((error) => error.message, "message", "unsupported Claude agent"),
         ),
       );
     });
