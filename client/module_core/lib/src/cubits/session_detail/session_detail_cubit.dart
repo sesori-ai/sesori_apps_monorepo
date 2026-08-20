@@ -85,6 +85,13 @@ class SessionDetailCubit(
   late final StreamSubscription<void> _staleSubscription;
   late final StreamSubscription<LifecycleState> _lifecycleSubscription;
   late final StreamingTextBuffer _streamingBuffer;
+  /// Tracks, per streaming text part id, how many characters of the buffered
+  /// deltas have already been committed into the message part. Used for two
+  /// things: (1) committing only the *new* tail of the buffer on each throttled
+  /// flush, and (2) not re-appending a replayed prefix after a reconnect — a
+  /// fresh snapshot may already carry some of the streamed text, so appending
+  /// the full buffered value would double it.
+  final Map<String, int> _streamingTextCommitWatermark = {};
   Future<void>? _activeRefresh;
   int _commandCatalogGeneration = 0;
   Timer? _eventRefreshCooldown;
@@ -511,6 +518,22 @@ class SessionDetailCubit(
 
           final streamingText = _streamingBuffer.snapshot();
           _streamingBuffer.clear();
+          _streamingTextCommitWatermark.clear();
+          // Re-arm the buffer with the text that was still streaming, so a
+          // mid-turn refresh does not drop it: the next flush (and the emit
+          // below) will commit it onto the refreshed parts. The watermark is
+          // re-seeded from the refreshed part's existing text so a partial
+          // snapshot (already holding some of the streamed prefix) is not
+          // doubled when the remaining deltas are appended.
+          for (final entry in streamingText.entries) {
+            _streamingBuffer.appendDelta(partId: entry.key, delta: entry.value);
+            final existingLength = _partTextLength(
+              messages: snapshot.messages,
+              partId: entry.key,
+            );
+            _streamingTextCommitWatermark[entry.key] =
+                existingLength > entry.value.length ? entry.value.length : existingLength;
+          }
 
           final assistantAgentModel = switch (latestAssistant) {
             MessageAssistant(:final modelID, :final providerID) => _resolveAgentModel(
@@ -1278,39 +1301,15 @@ class SessionDetailCubit(
   // Streaming text
   // ---------------------------------------------------------------------------
 
+  /// Accumulates a streamed text delta. The buffer's throttled flush
+  /// ([_emitStreamingSnapshot]) commits the accumulated text into the message
+  /// part — coalesced to the render throttle rather than once per backend chunk
+  /// — so the committed part is never left empty if the end-of-turn finalize
+  /// snapshot is lost (disconnect/reconnect mid-turn, event loss). The finalize
+  /// snapshot later overwrites the part with identical complete text, so the
+  /// happy path is unchanged.
   void _onPartDelta({required String partId, required String delta}) {
     _streamingBuffer.appendDelta(partId: partId, delta: delta);
-
-    // Keep the committed part's text in sync with the streamed delta. Streamed
-    // deltas are the live source of the response text; the bridge's end-of-turn
-    // snapshot (_onPartUpdated) is a duplicate commit, not the only one. Without
-    // this, text for parts written before their finalize snapshot is lost if that
-    // snapshot never arrives (disconnect/reconnect mid-turn, event loss), leaving
-    // an empty bubble — the "response text disappears" symptom. The finalize
-    // snapshot later overwrites the part with identical complete text, so this is
-    // idempotent on the happy path.
-    final current = state;
-    if (current is! SessionDetailLoaded) return;
-    final messageIndex = current.messages.indexWhere((item) =>
-        item.parts.any((part) => part.id == partId));
-    if (messageIndex < 0) {
-      // The message/part envelope hasn't arrived yet — keep the text only in the
-      // streaming buffer; the envelope + snapshot will commit it when they land.
-      return;
-    }
-    final message = current.messages[messageIndex];
-    final partIndex = message.parts.indexWhere((item) => item.id == partId);
-    if (partIndex < 0) return;
-    final part = message.parts[partIndex];
-    if (part.type != MessagePartType.text) return;
-    final existing = part.text;
-    if (existing == null) return;
-    final messages = List<MessageWithParts>.from(current.messages);
-    final parts = List<MessagePart>.from(message.parts);
-    parts[partIndex] = part.copyWith(text: existing + delta);
-    messages[messageIndex] = message.copyWith(parts: parts);
-    if (isClosed) return;
-    emit(current.copyWith(messages: messages, streamingText: _streamingBuffer.snapshot()));
   }
 
   void _onPartUpdated(MessagePart part) {
@@ -1318,6 +1317,9 @@ class SessionDetailCubit(
     if (current is! SessionDetailLoaded) return;
 
     _streamingBuffer.removePart(part.id);
+    // The part is now committed with (complete) text; drop any commit watermark
+    // so a later flush can't append stale buffered text onto the finalized part.
+    _streamingTextCommitWatermark.remove(part.id);
 
     final messages = List<MessageWithParts>.from(current.messages);
     final messageIndex = messages.indexWhere((item) => item.info.id == part.messageID);
@@ -1400,11 +1402,68 @@ class SessionDetailCubit(
     }
   }
 
+  /// Commits the buffer's accumulated streamed text into the committed message
+  /// parts and emits once, coalesced to the buffer's render throttle. Only the
+  /// not-yet-committed tail of each part is appended (tracked by
+  /// [_streamingTextCommitWatermark]), so a replayed prefix after a reconnect
+  /// cannot double the text. The overflow parts that are still buffered (no
+  /// message envelope yet) are surfaced as [streamingText] as before.
   void _emitStreamingSnapshot() {
     if (isClosed) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
-    emit(current.copyWith(streamingText: _streamingBuffer.snapshot()));
+
+    final buffered = _streamingBuffer.snapshot();
+    final messages = List<MessageWithParts>.from(current.messages);
+    var changed = false;
+    for (final entry in buffered.entries) {
+      final partId = entry.key;
+      final fullText = entry.value;
+      final watermark = _streamingTextCommitWatermark[partId] ?? 0;
+      if (watermark >= fullText.length) continue;
+      final delta = fullText.substring(watermark);
+      if (delta.isEmpty) continue;
+      final messageIndex = messages.indexWhere(
+          (item) => item.parts.any((part) => part.id == partId));
+      if (messageIndex < 0) continue; // envelope not here yet; stays in streamingText
+      final message = messages[messageIndex];
+      final partIndex = message.parts.indexWhere((item) => item.id == partId);
+      if (partIndex < 0) continue;
+      final part = message.parts[partIndex];
+      if (part.type != MessagePartType.text) continue;
+      final existing = part.text;
+      if (existing == null) continue;
+      final next = existing + delta;
+      _streamingTextCommitWatermark[partId] = fullText.length;
+      final parts = List<MessagePart>.from(message.parts);
+      parts[partIndex] = part.copyWith(text: next);
+      messages[messageIndex] = message.copyWith(parts: parts);
+      changed = true;
+    }
+    if (isClosed) return;
+    emit(
+      current.copyWith(
+        messages: changed ? messages : current.messages,
+        streamingText: buffered,
+      ),
+    );
+  }
+
+  /// Length of the committed text for [partId] across [messages], used to seed a
+  /// streamed part's commit watermark after a refresh so a snapshot already
+  /// holding part of the streamed text is not doubled.
+  static int _partTextLength({
+    required List<MessageWithParts> messages,
+    required String partId,
+  }) {
+    for (final message in messages) {
+      for (final part in message.parts) {
+        if (part.id == partId && part.type == MessagePartType.text) {
+          return part.text?.length ?? 0;
+        }
+      }
+    }
+    return 0;
   }
 
   // ---------------------------------------------------------------------------
