@@ -80,12 +80,15 @@ class SessionPromptService({
           agent: agent,
           model: model,
         );
-      } on PluginOperationException {
-        // Only a refusal the plugin reports is definite: it produces no echo,
-        // so the id must not stay pending for another prompt's echo to claim.
-        // Any other failure (transport, timeout) may still have been accepted,
-        // and its echo needs this correlation to survive.
-        _promptEchoCorrelator.forgetPrompt(sessionId: sessionId, promptId: promptId);
+      } on PluginOperationException catch (error) {
+        // Only a refusal is definite enough to retire the correlation: it
+        // produces no echo, so leaving the id pending would let another
+        // prompt's echo claim it. A transport or timeout failure — including
+        // one a plugin wraps in this type — may still have been accepted, and
+        // its echo needs the correlation to survive.
+        if (_isDefiniteRefusal(error)) {
+          _promptEchoCorrelator.forgetPrompt(sessionId: sessionId, promptId: promptId);
+        }
         rethrow;
       }
       await _updatePromptDefaults(
@@ -115,9 +118,11 @@ class SessionPromptService({
         agent: agent,
         model: model,
       );
-    } on PluginOperationException {
-      // See sendPrompt: only a reported refusal retires the correlation.
-      _promptEchoCorrelator.forgetPrompt(sessionId: sessionId, promptId: promptId);
+    } on PluginOperationException catch (error) {
+      // See sendPrompt: only a definite refusal retires the correlation.
+      if (_isDefiniteRefusal(error)) {
+        _promptEchoCorrelator.forgetPrompt(sessionId: sessionId, promptId: promptId);
+      }
       rethrow;
     }
     await _updatePromptDefaults(
@@ -180,6 +185,14 @@ class SessionPromptService({
 
   Future<void> dispose() async {
     await _promptDefaultsChangesController.close();
+  }
+
+  /// Whether the plugin rejected the send outright, rather than failing after
+  /// it may already have reached the backend. Only a client-error status says
+  /// so; a server error or no status at all leaves acceptance unknown.
+  static bool _isDefiniteRefusal(PluginOperationException error) {
+    final statusCode = error.statusCode;
+    return statusCode != null && statusCode >= 400 && statusCode < 500;
   }
 
   static final Random _secureRandom = Random.secure();
