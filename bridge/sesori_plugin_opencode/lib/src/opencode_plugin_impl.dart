@@ -9,6 +9,7 @@ import "../opencode_plugin.dart";
 import "assistant_message_mapper.dart";
 import "models/openapi/user_message.g.dart";
 import "opencode_message_id.dart";
+import "prompt_message_tracker.dart";
 import "sse/sse_connection.dart";
 import "sse_event_mapper.dart";
 
@@ -48,12 +49,7 @@ class OpenCodePlugin._({
   static const AssistantMessageMapper _assistantMessageMapper = AssistantMessageMapper();
   final SseEventMapper _mapper = SseEventMapper(assistantMessageMapper: _assistantMessageMapper);
 
-  /// Prompt ids for user messages this plugin's own sends created, keyed by the
-  /// message id the send named. Bounded against dispatches whose message never
-  /// streams back; an evicted or unknown id simply leaves that echo
-  /// unattributed.
-  final Map<String, String> _promptIdsByMessage = {};
-  static const int _maxRecordedPromptMessages = 64;
+  final PromptMessageTracker _promptMessages = PromptMessageTracker();
   final PluginModelMapper _pluginModelMapper = const PluginModelMapper(
     messagePartMapper: MessagePartMapper(),
     maxTranscriptAttachmentBytes: maxTranscriptImageCollectionBytes,
@@ -399,7 +395,7 @@ class OpenCodePlugin._({
     // the prompt id and clients can retire their own copy of the prompt.
     // Recorded before dispatch because the echo can arrive first.
     final messageId = generateOpenCodeMessageId();
-    _recordPromptMessage(messageId: messageId, promptId: promptId);
+    _promptMessages.record(messageId: messageId, promptId: promptId);
     await _callAndSyncWorkState(
       () => _service.sendPrompt(
         sessionId: sessionId,
@@ -430,7 +426,7 @@ class OpenCodePlugin._({
     required ({String providerID, String modelID})? model,
   }) async {
     final messageId = generateOpenCodeMessageId();
-    _recordPromptMessage(messageId: messageId, promptId: promptId);
+    _promptMessages.record(messageId: messageId, promptId: promptId);
     await _callAndSyncWorkState(
       () => _service.sendCommand(
         sessionId: sessionId,
@@ -739,26 +735,18 @@ class OpenCodePlugin._({
     };
   }
 
-  /// Resolves the root display session for the permission/question events that
-  /// carry it, so a child/sub-agent request can surface on its root session.
-  /// Returns null for all other event types (which are not surfaced cross-session).
-  /// Prompt id for the user message this plugin's own send created, or null for
-  /// any other event or a message authored outside this bridge.
+  /// Prompt id for the user message one of this plugin's own sends created, or
+  /// null for any other event or a message authored outside this bridge.
   String? _promptIdForEvent(SseEventData event) {
     return switch (event) {
-      SseMessageUpdated(info: UserMessage(:final id)) => _promptIdsByMessage[id],
+      SseMessageUpdated(info: UserMessage(:final id)) => _promptMessages.promptIdFor(messageId: id),
       _ => null,
     };
   }
 
-  /// Records that [messageId] names the user message [promptId] created.
-  void _recordPromptMessage({required String messageId, required String promptId}) {
-    _promptIdsByMessage[messageId] = promptId;
-    if (_promptIdsByMessage.length > _maxRecordedPromptMessages) {
-      _promptIdsByMessage.remove(_promptIdsByMessage.keys.first);
-    }
-  }
-
+  /// Resolves the root display session for the permission/question events that
+  /// carry it, so a child/sub-agent request can surface on its root session.
+  /// Returns null for all other event types (which are not surfaced cross-session).
   String? _displaySessionIdForEvent(SseEventData event) {
     final ownerSessionId = switch (event) {
       SsePermissionAsked(:final sessionID) => sessionID,
