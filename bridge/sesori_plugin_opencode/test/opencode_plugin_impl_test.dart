@@ -422,9 +422,13 @@ void main() {
 
     test("sendCommand detaches with the tracked directory and marks the turn busy", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      addTearDown(plugin.dispose);
       await server.waitForSseConnection();
       server.requestLog.clear();
       server.holdCommand = Completer<void>();
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
 
       await plugin.sendCommand(
         promptId: "prompt-1",
@@ -457,6 +461,34 @@ void main() {
         }),
       );
       expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      final messageId = server.reservedMessageIds.single;
+      for (final created in [1, 2]) {
+        await server.emitRawSse(
+          jsonEncode({
+            "directory": "/repo",
+            "payload": {
+              "type": "message.updated",
+              "properties": {
+                "info": {
+                  "id": messageId,
+                  "sessionID": "s-root",
+                  "role": "user",
+                  "agent": "reviewer",
+                  "time": {"created": created},
+                  "model": {"providerID": "openai", "modelID": "gpt-4.1"},
+                },
+              },
+            },
+          }),
+        );
+      }
+      await pumpEventQueue();
+
+      expect(
+        events.whereType<BridgeSseMessageUpdated>().map((event) => event.info["promptId"]),
+        equals(["prompt-1", "prompt-1"]),
+      );
       server.holdCommand!.complete();
     });
 
