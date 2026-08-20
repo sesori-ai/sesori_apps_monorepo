@@ -8,8 +8,8 @@
 - **Current branch:** `fix/codex-new-session-prompt-history`
 - **Series state:** Steps 1-5/6 and standalone follow-up 4A merged; Step 6 began
   and its Codex and ACP blockers were split into approved standalone prerequisites
-- **Current step:** implement and deliver the Codex release prerequisite
-- **Next action:** merge the Codex prerequisite, deliver the ACP prerequisite,
+- **Current step:** monitor Codex prerequisite PR #1002
+- **Next action:** merge PR #1002, deliver the ACP prerequisite,
   then rerun the complete current-build Step 6 matrix
 
 ## Locked Decisions
@@ -92,7 +92,7 @@
 | [x] | 4/6 | `⚙️ [fast-new-session-launch] feat(client): open launching sessions immediately [step 4/6]` | Merged in #913 |
 | [x] | 4A | `⚙️ Rename generated session branches after launch` | Merged in #923 |
 | [x] | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | Merged in #928 |
-| [ ] | Codex prerequisite | `⚙️ Preserve Codex prompt content in transcripts` | Implementation and verification in progress |
+| [ ] | Codex prerequisite | `⚙️ Preserve Codex prompt content in transcripts` | PR #1002 open and monitored |
 | [ ] | ACP prerequisite | `⚙️ Preserve ACP user attachments in transcripts` | Pending Codex prerequisite delivery |
 | [ ] | 6/6 | `🌿 [fast-new-session-launch] test: verify faster new-session launch [step 6/6]` | Matrix started; blocked on standalone prerequisites and live-backend setup |
 
@@ -217,7 +217,7 @@
 - [x] Pass the complete Codex test suite, strict analysis, regression-doc update,
   and cleanup audit.
 - [x] Pass architecture implementation review with no findings.
-- [ ] Commit, push, open the standalone PR, and monitor it.
+- [x] Commit, push, open standalone PR #1002, and monitor it.
 
 ## ACP Release Prerequisite
 
