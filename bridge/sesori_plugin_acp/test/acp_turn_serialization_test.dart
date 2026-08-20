@@ -421,7 +421,7 @@ void main() {
       );
     });
 
-    test("a retried ACP prompt id remains one queued or dispatched turn", () async {
+    test("a retried ACP prompt id remains one turn while disconnected", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
 
@@ -447,6 +447,23 @@ void main() {
       expect(frames("session/prompt"), hasLength(2));
 
       respondTo(retriedPrompt, {"stopReason": "end_turn"});
+      for (var i = 0; i < 10; i++) {
+        await pump();
+      }
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      await plugin.resetConnectionAfterExit();
+      await sendRetry();
+      await plugin.sendCommand(
+        sessionId: sessionId,
+        promptId: "retry-id",
+        command: "deploy",
+        arguments: "",
+        userVisibleArguments: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(frames("initialize"), hasLength(1));
     });
 
     test("queued reconnect authentication failure surfaces on the event stream", () async {

@@ -470,6 +470,88 @@ void main() {
     );
   });
 
+  test("a cancelled undispatched prompt id remains retryable", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "first",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: null,
+      model: null,
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "retryable",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "retry me")],
+      userVisibleText: "retry me",
+      variant: null,
+      model: null,
+    );
+
+    expect(
+      service.cancelQueuedPrompt(sessionId: "session", promptId: "retryable"),
+      isTrue,
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "retryable",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "retry me")],
+      userVisibleText: "retry me",
+      variant: null,
+      model: null,
+    );
+
+    await _answerEntries(process);
+    final first = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: first["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    final retried = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    expect(retried["message"], "retry me");
+    process.emitResponse(id: retried["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
+  test("a cancelled prompt settles when its selecting process exits", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "cancel-during-selection",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "cancel me")],
+      userVisibleText: "cancel me",
+      variant: null,
+      model: (providerID: "provider", modelID: "model"),
+    );
+    await _answerEntries(process);
+    final model = await waitForCommand(process: process, type: "set_model");
+
+    expect(
+      service.cancelQueuedPrompt(sessionId: "session", promptId: "cancel-during-selection"),
+      isTrue,
+    );
+    expect(model["type"], "set_model");
+    process.exit(code: 9);
+    await _waitForIdle(service: service, sessionId: "session");
+
+    expect(process.written.where((frame) => frame["type"] == "prompt"), isEmpty);
+    expect(events.whereType<BridgeSseSessionError>(), isEmpty);
+  });
+
   test("selection failure prevents prompt dispatch and settles the lane", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
@@ -522,8 +604,14 @@ void main() {
 
     final statuses = events.whereType<BridgeSseSessionStatus>().toList();
     final idleIndex = events.indexWhere((event) => event is BridgeSseSessionIdle);
+    final userMessage = events.whereType<BridgeSseMessageUpdated>().singleWhere(
+      (event) => event.info["promptId"] == "prompt-5",
+    );
+    final emptyQueue = events.whereType<BridgeSseQueuedPromptsUpdated>().last;
     expect(statuses.first.status["type"], "busy");
     expect(statuses.last.status["type"], "idle");
+    expect(userMessage.info["role"], "user");
+    expect(events.indexOf(userMessage), lessThan(events.indexOf(emptyQueue)));
     expect(events.indexOf(statuses.last), lessThan(idleIndex));
   });
 
@@ -545,6 +633,8 @@ void main() {
     );
     var completed = false;
     unawaited(accepted.then((_) => completed = true));
+    expect(service.queuedPrompts(sessionId: "session"), isEmpty);
+    expect(service.cancelQueuedPrompt(sessionId: "session", promptId: "prompt-6"), isFalse);
     await _answerEntries(process);
     final firstPrompt = await waitForCommand(process: process, type: "prompt");
     process.emit(frame: {"type": "agent_start"});

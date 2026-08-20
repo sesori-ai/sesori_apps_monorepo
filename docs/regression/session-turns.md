@@ -50,10 +50,15 @@ defaults and queued client sends coherent.
   identity before live frames attach or a turn dispatches; same-session prompts
   remain FIFO. An accepted prompt remains bridge-queued through startup and
   selection until Pi echoes its correlated user message; it can be cancelled
-  before dispatch. Process exit settles current work before queued work reconnects.
+  before dispatch, and its undispatched prompt id remains retryable. If a
+  successful turn omits that echo, Pi maps the stored payload through the same
+  user-message path before clearing the queue. Process exit settles current work
+  before queued work reconnects.
 - Pi slash commands are accepted by their correlated response or a matching
-  extension dialog. Commands reject while that session is busy, and a successful
-  command with no agent run crosses `get_state` before returning the lane idle.
+  extension dialog and remain in the request's sending state until then rather
+  than exposing a cancellable bridge-queue entry. Commands reject while that
+  session is busy, and a successful command with no agent run crosses `get_state`
+  before returning the lane idle.
   Abort rejects queued work and replaces the process so hidden steering or
   follow-up input cannot leak into the next turn.
 - Pi accepts only bounded, valid inline GIF, JPEG, PNG, and WebP data. Paths,

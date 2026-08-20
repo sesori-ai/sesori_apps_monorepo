@@ -824,14 +824,18 @@ abstract class AcpPlugin({
     } else {
       // A fresh session has an empty chain, so this dispatches immediately;
       // the selection is applied inside the turn like every other prompt.
-      _enqueueTurn(
-        sessionId: session.sessionId,
-        parts: parts,
-        model: model,
-        variant: variant,
-        agent: agent,
-        queuedPrompt: null,
-      );
+      final blocks = _contentBlocks(parts);
+      if (blocks.isNotEmpty) {
+        _enqueueTurn(
+          sessionId: session.sessionId,
+          turn: _InitialAcpTurn(
+            blocks: blocks,
+            model: model,
+            variant: variant,
+            agent: agent,
+          ),
+        );
+      }
     }
     return created;
   }
@@ -855,9 +859,11 @@ abstract class AcpPlugin({
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
+    if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
     // Acceptance gate: an unreachable agent fails the send itself; the turn
     // re-resolves the client at dispatch time (see [_runTurn]).
     await _connectedClient();
+    // Another matching send may have been admitted while connection awaited.
     if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
     _recordSessionActivity(sessionId);
     final text = parts
@@ -866,24 +872,28 @@ abstract class AcpPlugin({
         .where((part) => part.trim().isNotEmpty)
         .join("\n")
         .trim();
-    final enqueued = _enqueueTurn(
+    final blocks = _contentBlocks(parts);
+    if (blocks.isEmpty) return;
+    _enqueueTurn(
       sessionId: sessionId,
-      parts: parts,
-      model: model,
-      variant: variant,
-      agent: agent,
-      queuedPrompt: _QueuedAcpPrompt(
-        presentation: PluginQueuedPrompt(
-          id: promptId,
-          text: text.isEmpty ? null : text,
-          command: null,
-          attachmentCount: parts.where((part) => part is! PluginPromptPartText).length,
-          createdAt: DateTime.now().millisecondsSinceEpoch,
+      turn: _QueuedAcpTurn(
+        blocks: blocks,
+        model: model,
+        variant: variant,
+        agent: agent,
+        queuedPrompt: _QueuedAcpPrompt(
+          presentation: PluginQueuedPrompt(
+            id: promptId,
+            text: text.isEmpty ? null : text,
+            command: null,
+            attachmentCount: parts.where((part) => part is! PluginPromptPartText).length,
+            createdAt: DateTime.now().millisecondsSinceEpoch,
+          ),
+          visibleParts: List.unmodifiable(parts),
         ),
-        visibleParts: List.unmodifiable(parts),
       ),
     );
-    if (enqueued) _cancelActiveTurnForQueuedInput(sessionId: sessionId);
+    _cancelActiveTurnForQueuedInput(sessionId: sessionId);
   }
 
   @override
@@ -897,6 +907,7 @@ abstract class AcpPlugin({
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
+    if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
     final backendCommand = commandForDispatch(command: command);
     final body = arguments.isEmpty ? "/$backendCommand" : "/$backendCommand $arguments";
     final visibleArguments = userVisibleArguments?.trim();
@@ -905,26 +916,31 @@ abstract class AcpPlugin({
         : "/$command $userVisibleArguments";
     // Acceptance gate — see [sendPrompt].
     await _connectedClient();
+    // Another matching send may have been admitted while connection awaited.
     if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
     _recordSessionActivity(sessionId);
-    final enqueued = _enqueueTurn(
+    final blocks = _contentBlocks([PluginPromptPart.text(text: body)]);
+    if (blocks.isEmpty) return;
+    _enqueueTurn(
       sessionId: sessionId,
-      parts: [PluginPromptPart.text(text: body)],
-      model: model,
-      variant: variant,
-      agent: agent,
-      queuedPrompt: _QueuedAcpPrompt(
-        presentation: PluginQueuedPrompt(
-          id: promptId,
-          text: visibleArguments == null || visibleArguments.isEmpty ? null : visibleArguments,
-          command: command,
-          attachmentCount: 0,
-          createdAt: DateTime.now().millisecondsSinceEpoch,
+      turn: _QueuedAcpTurn(
+        blocks: blocks,
+        model: model,
+        variant: variant,
+        agent: agent,
+        queuedPrompt: _QueuedAcpPrompt(
+          presentation: PluginQueuedPrompt(
+            id: promptId,
+            text: visibleArguments == null || visibleArguments.isEmpty ? null : visibleArguments,
+            command: command,
+            attachmentCount: 0,
+            createdAt: DateTime.now().millisecondsSinceEpoch,
+          ),
+          visibleParts: [PluginPromptPart.text(text: visibleBody)],
         ),
-        visibleParts: [PluginPromptPart.text(text: visibleBody)],
       ),
     );
-    if (enqueued) _cancelActiveTurnForQueuedInput(sessionId: sessionId);
+    _cancelActiveTurnForQueuedInput(sessionId: sessionId);
   }
 
   @override
@@ -1120,26 +1136,12 @@ abstract class AcpPlugin({
   /// Queues a prompt turn on [sessionId]'s serialization chain. Accepted
   /// existing-session prompts stay in [getQueuedPrompts] until their ACP frame
   /// is written; an initial create turn has no separate queue presentation.
-  bool _enqueueTurn({
+  void _enqueueTurn({
     required String sessionId,
-    required List<PluginPromptPart> parts,
-    required ({String providerID, String modelID})? model,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required _QueuedAcpPrompt? queuedPrompt,
+    required _AcpTurn turn,
   }) {
-    final blocks = parts.map(_promptPartToContentBlock).whereType<Map<String, dynamic>>().toList(growable: false);
-    if (blocks.isEmpty) return false;
-
     final state = _turnStates.putIfAbsent(sessionId, _SessionTurnState.new);
-    final turn = _AcpTurn(
-      blocks: blocks,
-      model: model,
-      variant: variant,
-      agent: agent,
-      queuedPrompt: queuedPrompt,
-    );
-    if (queuedPrompt != null) {
+    if (turn case _QueuedAcpTurn(:final queuedPrompt)) {
       state.queue.add(queuedPrompt);
     }
     state.pending++;
@@ -1154,7 +1156,7 @@ abstract class AcpPlugin({
       );
       _eventBuffer.add(const BridgeSseProjectUpdated());
     }
-    if (queuedPrompt != null) {
+    if (turn is _QueuedAcpTurn) {
       _emitQueueUpdate(sessionId: sessionId, state: state);
     }
     final expectedGeneration = state.generation;
@@ -1167,7 +1169,6 @@ abstract class AcpPlugin({
       turn: turn,
     );
     state.tail = serializesPromptsProcessWide ? _runOnProcessLane(operation) : state.tail.then((_) => operation());
-    return true;
   }
 
   /// Runs one serialized turn: resolves the live client, makes the session
@@ -1290,15 +1291,20 @@ abstract class AcpPlugin({
     required _SessionTurnState state,
     required int expectedGeneration,
     required _AcpTurn turn,
-  }) => state.generation != expectedGeneration || (turn.queuedPrompt?.cancelled ?? false);
+  }) =>
+      state.generation != expectedGeneration ||
+      switch (turn) {
+        _InitialAcpTurn() => false,
+        _QueuedAcpTurn(:final queuedPrompt) => queuedPrompt.cancelled,
+      };
 
   void _markTurnDispatched({
     required String sessionId,
     required _SessionTurnState state,
     required _AcpTurn turn,
   }) {
+    if (turn is! _QueuedAcpTurn) return;
     final queuedPrompt = turn.queuedPrompt;
-    if (queuedPrompt == null) return;
     eventMapper
         .mapSentPrompt(
           sessionId: sessionId,
@@ -1344,8 +1350,7 @@ abstract class AcpPlugin({
       _syncWorkState();
       return;
     }
-    final queuedPrompt = turn.queuedPrompt;
-    if (queuedPrompt != null && state.queue.remove(queuedPrompt)) {
+    if (turn case _QueuedAcpTurn(:final queuedPrompt) when state.queue.remove(queuedPrompt)) {
       _emitQueueUpdate(sessionId: sessionId, state: state);
     }
     eventMapper.finalizeTurn(sessionId: sessionId).forEach(_eventBuffer.add);
@@ -1382,6 +1387,9 @@ abstract class AcpPlugin({
       PluginPromptPartFileData(:final mime, :final base64) => _inlineContentBlock(mime, base64),
     };
   }
+
+  List<Map<String, dynamic>> _contentBlocks(List<PluginPromptPart> parts) =>
+      parts.map(_promptPartToContentBlock).whereType<Map<String, dynamic>>().toList(growable: false);
 
   Map<String, dynamic>? _inlineContentBlock(String mime, String base64) {
     final type = switch (mime.split("/").first.toLowerCase()) {
@@ -1903,13 +1911,27 @@ class _SessionTurnState() {
   int generation = 0;
 }
 
-class const _AcpTurn({
+sealed class const _AcpTurn({
   required final List<Map<String, dynamic>> blocks,
   required final ({String providerID, String modelID})? model,
   required final PluginSessionVariant? variant,
   required final String? agent,
-  required final _QueuedAcpPrompt? queuedPrompt,
 });
+
+final class const _InitialAcpTurn({
+  required super.blocks,
+  required super.model,
+  required super.variant,
+  required super.agent,
+}) extends _AcpTurn;
+
+final class const _QueuedAcpTurn({
+  required super.blocks,
+  required super.model,
+  required super.variant,
+  required super.agent,
+  required final _QueuedAcpPrompt queuedPrompt,
+}) extends _AcpTurn;
 
 class _QueuedAcpPrompt({
   required final PluginQueuedPrompt presentation,
