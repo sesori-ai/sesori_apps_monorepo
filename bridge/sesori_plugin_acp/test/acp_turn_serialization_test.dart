@@ -33,6 +33,35 @@ class _GatedSelectionPlugin({
   }
 }
 
+class _FlushControlledAcpProcess() extends FakeAcpProcess {
+  final _FlushControlledIOSink _controlledStdin = _FlushControlledIOSink();
+
+  @override
+  _FlushControlledIOSink get stdin => _controlledStdin;
+
+  @override
+  List<Map<String, dynamic>> get written => _controlledStdin.frames;
+
+  Completer<void> holdNextFlush() => _controlledStdin.holdNextFlush();
+}
+
+class _FlushControlledIOSink() extends CapturingIOSink {
+  Completer<void>? _nextFlush;
+
+  Completer<void> holdNextFlush() {
+    final gate = Completer<void>();
+    _nextFlush = gate;
+    return gate;
+  }
+
+  @override
+  Future<void> flush() {
+    final gate = _nextFlush;
+    _nextFlush = null;
+    return gate?.future ?? Future<void>.value();
+  }
+}
+
 /// Turn-lifecycle robustness:
 ///
 ///  - prompts on one session are serialized (agents reject or drop overlapping
@@ -47,7 +76,7 @@ class _GatedSelectionPlugin({
 ///    turn is in flight.
 void main() {
   group("AcpPlugin turn serialization", () {
-    late FakeAcpProcess fake;
+    late _FlushControlledAcpProcess fake;
     late AcpPlugin plugin;
     final emitted = <BridgeSseEvent>[];
     final streamErrors = <Object>[];
@@ -55,7 +84,7 @@ void main() {
     var promptSequence = 0;
 
     setUp(() {
-      fake = FakeAcpProcess();
+      fake = _FlushControlledAcpProcess();
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
       plugin = TestAcpPlugin(
@@ -179,6 +208,65 @@ void main() {
       expect(emitted.indexOf(message), lessThan(emitted.indexOf(queueUpdates.last)));
 
       respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
+    test("a prompt remains queued until its ACP frame flushes", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      final flush = fake.holdNextFlush();
+      final promptId = await sendPrompt(sessionId, "wait for flush");
+      final prompt = await waitForFrame("session/prompt");
+      await pump();
+
+      expect((await plugin.getQueuedPrompts(sessionId: sessionId)).single.id, promptId);
+      expect(
+        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == promptId),
+        isEmpty,
+      );
+      expect(
+        await plugin.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId),
+        isFalse,
+        reason: "the frame write has started and can no longer be withdrawn",
+      );
+
+      flush.complete();
+      for (var i = 0; i < 20 && (await plugin.getQueuedPrompts(sessionId: sessionId)).isNotEmpty; i++) {
+        await pump();
+      }
+
+      expect(await plugin.getQueuedPrompts(sessionId: sessionId), isEmpty);
+      expect(
+        emitted
+            .whereType<BridgeSseMessageUpdated>()
+            .singleWhere((event) => event.info["promptId"] == promptId)
+            .info["promptId"],
+        promptId,
+      );
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
+    test("a failed ACP frame flush never marks the prompt sent", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      final flush = fake.holdNextFlush();
+      final promptId = await sendPrompt(sessionId, "broken pipe");
+      await waitForFrame("session/prompt");
+      flush.completeError(StateError("broken pipe"));
+      for (var i = 0; i < 20 && idleCount() == 0; i++) {
+        await pump();
+      }
+
+      expect(await plugin.getQueuedPrompts(sessionId: sessionId), isEmpty);
+      expect(
+        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == promptId),
+        isEmpty,
+      );
+      expect(emitted.whereType<BridgeSseSessionError>(), hasLength(1));
+      expect(streamErrors, isEmpty);
     });
 
     test("an initial create prompt emits its user-visible text only once", () async {

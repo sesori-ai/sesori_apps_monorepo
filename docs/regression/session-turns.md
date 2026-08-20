@@ -83,9 +83,10 @@ defaults and queued client sends coherent.
 - Existing-session ACP prompts remain bridge-queued while an earlier turn,
   process-wide lane, resume, or selection blocks their `session/prompt` frame.
   Their synthetic user transcript message is published only after that frame
-  is written. OMP preserves its active-prompt replacement semantics by cancelling
-  the active turn immediately, then dispatching the newly queued input after
-  cancellation settles; Cursor and Hermes retain ordinary FIFO turn boundaries.
+  flushes successfully to the agent's stdin. OMP preserves its active-prompt
+  replacement semantics by cancelling the active turn immediately, then
+  dispatching the newly queued input after cancellation settles; Cursor and
+  Hermes retain ordinary FIFO turn boundaries.
 - Normalized user-message events feed the durable user-side activity marker used
   to order running roots. Known event times are applied monotonically. Backend
   input represented as a user message, including automatic compaction or other

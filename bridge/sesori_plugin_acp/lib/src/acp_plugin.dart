@@ -956,8 +956,10 @@ abstract class AcpPlugin({
     if (state == null) return false;
     final index = state.queue.indexWhere((entry) => entry.presentation.id == promptId);
     if (index == -1) return false;
-    final entry = state.queue.removeAt(index);
-    entry.cancelled = true;
+    final entry = state.queue[index];
+    if (entry.phase != _QueuedAcpPromptPhase.queued) return false;
+    state.queue.removeAt(index);
+    entry.phase = _QueuedAcpPromptPhase.cancelled;
     _emitQueueUpdate(sessionId: sessionId, state: state);
     return true;
   }
@@ -1260,13 +1262,16 @@ abstract class AcpPlugin({
     _inFlightTurnSessions.add(sessionId);
     _lastTurnSessionId = sessionId;
     try {
-      final response = client.dispatchRequest(
+      if (turn case _QueuedAcpTurn(:final queuedPrompt)) {
+        queuedPrompt.phase = _QueuedAcpPromptPhase.writing;
+      }
+      final dispatched = await client.dispatchRequest(
         method: AcpMethods.sessionPrompt,
         params: {"sessionId": sessionId, "prompt": turn.blocks},
         timeout: const Duration(minutes: 30),
       );
       _markTurnDispatched(sessionId: sessionId, state: state, turn: turn);
-      final raw = await response;
+      final raw = await dispatched.response;
       final result = AcpPromptResult.fromJson(
         (raw as Map?)?.cast<String, dynamic>() ?? const {},
       );
@@ -1295,7 +1300,7 @@ abstract class AcpPlugin({
       state.generation != expectedGeneration ||
       switch (turn) {
         _InitialAcpTurn() => false,
-        _QueuedAcpTurn(:final queuedPrompt) => queuedPrompt.cancelled,
+        _QueuedAcpTurn(:final queuedPrompt) => queuedPrompt.phase == _QueuedAcpPromptPhase.cancelled,
       };
 
   void _markTurnDispatched({
@@ -1410,11 +1415,15 @@ abstract class AcpPlugin({
     final state = _turnStates[sessionId];
     if (state != null) {
       state.generation++;
-      if (state.queue.isNotEmpty) {
-        for (final entry in state.queue) {
-          entry.cancelled = true;
+      var removedQueuedPrompt = false;
+      for (final entry in state.queue) {
+        if (entry.phase == _QueuedAcpPromptPhase.queued) {
+          entry.phase = _QueuedAcpPromptPhase.cancelled;
+          removedQueuedPrompt = true;
         }
-        state.queue.clear();
+      }
+      if (removedQueuedPrompt) {
+        state.queue.removeWhere((entry) => entry.phase == _QueuedAcpPromptPhase.cancelled);
         _emitQueueUpdate(sessionId: sessionId, state: state);
       }
     }
@@ -1937,8 +1946,10 @@ class _QueuedAcpPrompt({
   required final PluginQueuedPrompt presentation,
   required final List<PluginPromptPart> visibleParts,
 }) {
-  bool cancelled = false;
+  _QueuedAcpPromptPhase phase = _QueuedAcpPromptPhase.queued;
 }
+
+enum _QueuedAcpPromptPhase() { queued, writing, cancelled }
 
 class const _TurnSelection({
   required final ({String providerID, String modelID})? model,
