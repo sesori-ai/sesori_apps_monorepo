@@ -81,6 +81,20 @@ void main() {
       expect(logs, isNot(contains("private-project")));
     });
 
+    test("propagates the log level into the scan isolate", () async {
+      final previousLevel = Log.level;
+      try {
+        Log.level = LogLevel.debug;
+        final repository = CodexCatalogRepository(
+          rolloutApi: _LogLevelCheckingRolloutApi(),
+        );
+
+        expect(await repository.listSessionRecordsInIsolate(), isEmpty);
+      } finally {
+        Log.level = previousLevel;
+      }
+    });
+
     test("filters normalized project directories before paginating", () async {
       final repository = _StubCodexCatalogRepository(
         [
@@ -355,6 +369,21 @@ class _DiagnosticsRolloutApi({required final String rolloutId}) extends CodexRol
       ),
     ),
   ];
+}
+
+class _LogLevelCheckingRolloutApi() extends CodexRolloutApi {
+  this : super(environment: const {});
+
+  @override
+  List<String> listRolloutPaths() {
+    if (Log.level != LogLevel.debug) {
+      throw StateError("Expected debug logging in the scan isolate");
+    }
+    return const [];
+  }
+
+  @override
+  List<CodexSessionIndexEntryDto> readSessionIndex() => const [];
 }
 
 class _DeleteFailingRolloutApi() extends CodexRolloutApi {
