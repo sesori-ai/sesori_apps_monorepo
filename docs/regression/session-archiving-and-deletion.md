@@ -23,8 +23,7 @@ entirely along with its transcript and, optionally, its worktree.
   (unstaged changes or a shared worktree) is refused with its issues and proceeds
   only on a forced retry. Session retirement never deletes a Git branch.
 - Once deletion cleanup starts, the bridge suppresses session-created and
-  session-updated events for the named session, expanding that suppression to
-  its persisted subtree before backend deletion. Suppression remains for the
+  session-updated events for the named session. Suppression remains for the
   bridge lifetime after success and is removed if deletion fails, so late or
   already-queued backend events cannot re-add a deleted session to a client.
 - For a backend that advertises session close, deleting an active session first

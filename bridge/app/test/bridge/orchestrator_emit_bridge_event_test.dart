@@ -461,20 +461,8 @@ void main() {
     final laterEventDelivered = harness.composition.session.localWireEvents
         .where((event) => event is SesoriVcsBranchUpdated)
         .first;
-    final deletion = _dispatch(
+    final deletion = _deleteEventSession(
       dispatcher: harness.composition.routedRequestDispatcher,
-      request: makeRequest(
-        "DELETE",
-        "/session/delete",
-        body: jsonEncode(
-          const DeleteSessionRequest(
-            sessionId: "stable-session",
-            deleteWorktree: false,
-            deleteBranch: false,
-            force: false,
-          ).toJson(),
-        ),
-      ),
     );
 
     try {
@@ -532,7 +520,10 @@ void main() {
       plugin.emitEvent(_lateSessionUpdate(pluginId: plugin.id));
       plugin.emitEvent(const BridgeSseVcsBranchUpdated());
       await _waitForCatalogTitle(database: harness.database, title: "Late title");
-      await harness.composition.sessionRepository.deleteSession(sessionId: "stable-session");
+      expect(
+        (await _deleteEventSession(dispatcher: harness.composition.routedRequestDispatcher)).status,
+        200,
+      );
 
       projectReadGate.complete();
       await laterEventDelivered.timeout(const Duration(seconds: 2));
@@ -865,6 +856,24 @@ Future<RelayResponse> _dispatch({
     return (await accepted.pendingRequest.completion).response;
   }
   throw StateError("route was rejected during test setup");
+}
+
+Future<RelayResponse> _deleteEventSession({required RoutedRequestDispatcher dispatcher}) {
+  return _dispatch(
+    dispatcher: dispatcher,
+    request: makeRequest(
+      "DELETE",
+      "/session/delete",
+      body: jsonEncode(
+        const DeleteSessionRequest(
+          sessionId: "stable-session",
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ).toJson(),
+      ),
+    ),
+  );
 }
 
 Future<void> _insertEventSession({required AppDatabase database, required String pluginId}) async {

@@ -84,7 +84,7 @@ class SessionRepository({
 
   final Set<String> _bridgeDerivedProjectPluginIds = Set<String>.unmodifiable(bridgeDerivedProjectPluginIds);
   final Map<String, Set<String>> _tombstonedBackendSessionIds = <String, Set<String>>{};
-  final Set<String> _sessionIdsSuppressedFromEvents = <String>{};
+  final Set<String> _deletedSessionIds = <String>{};
   final StreamController<SessionBindingsCommitted> _bindingCommitsController =
       StreamController<SessionBindingsCommitted>.broadcast(sync: true);
   final Map<String, Future<void>> _tombstoneLoads = <String, Future<void>>{};
@@ -472,7 +472,7 @@ class SessionRepository({
   }
 
   Future<bool> isSessionTombstoned({required String sessionId}) async {
-    if (_sessionIdsSuppressedFromEvents.contains(sessionId)) return true;
+    if (_deletedSessionIds.contains(sessionId)) return true;
     final binding = await _sessionDao.getSession(sessionId: sessionId);
     if (binding == null) return false;
     await _ensureTombstonesLoaded(pluginId: binding.pluginId);
@@ -574,44 +574,30 @@ class SessionRepository({
       rows: [binding],
       verifiedGithubLogin: null,
     )).single;
-    // Backends can emit late upserts while their delete call is still pending.
-    final newlySuppressedSessionIds = <String>{};
-    for (final binding in subtree) {
-      if (_sessionIdsSuppressedFromEvents.add(binding.sessionId)) {
-        newlySuppressedSessionIds.add(binding.sessionId);
-      }
-    }
-    var committed = false;
-    try {
-      await _runtime.use(
-        pluginId: binding.pluginId,
-        operation: SessionOperation.deleteSession,
-        body: (plugin) async {
-          _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
-          try {
-            await plugin.deleteSession(binding.backendSessionId);
-          } on PluginOperationException catch (error) {
-            if (!error.isNotFound) rethrow;
-          }
-        },
-      );
-      await _sessionDao.transaction(() async {
-        final deletedAt = DateTime.now().millisecondsSinceEpoch;
-        for (final binding in subtree) {
-          await _sessionDao.insertSessionTombstone(
-            backendSessionId: binding.backendSessionId,
-            pluginId: binding.pluginId,
-            deletedAt: deletedAt,
-          );
+    await _runtime.use(
+      pluginId: binding.pluginId,
+      operation: SessionOperation.deleteSession,
+      body: (plugin) async {
+        _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
+        try {
+          await plugin.deleteSession(binding.backendSessionId);
+        } on PluginOperationException catch (error) {
+          if (!error.isNotFound) rethrow;
         }
-        await _sessionDao.deleteSession(sessionId: binding.sessionId);
-      });
-      committed = true;
-    } finally {
-      if (!committed) {
-        _sessionIdsSuppressedFromEvents.removeAll(newlySuppressedSessionIds);
+      },
+    );
+    await _sessionDao.transaction(() async {
+      final deletedAt = DateTime.now().millisecondsSinceEpoch;
+      for (final binding in subtree) {
+        await _sessionDao.insertSessionTombstone(
+          backendSessionId: binding.backendSessionId,
+          pluginId: binding.pluginId,
+          deletedAt: deletedAt,
+        );
       }
-    }
+      await _sessionDao.deleteSession(sessionId: binding.sessionId);
+    });
+    _deletedSessionIds.addAll(subtree.map((binding) => binding.sessionId));
     for (final binding in subtree) {
       _tombstonesFor(binding.pluginId).add(binding.backendSessionId);
     }

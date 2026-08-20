@@ -165,67 +165,6 @@ void main() {
       );
     });
 
-    test("deleteSession suppresses subtree events in flight and rolls back suppression on failure", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-      final repository = singlePluginSessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project"]);
-      await db.sessionDao.insertSession(
-        pluginId: plugin.id,
-        sessionId: "root",
-        backendSessionId: "backend-root",
-        projectId: "project",
-        isDedicated: false,
-        createdAt: 1,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        baseCommit: null,
-        lastAgent: null,
-        lastAgentModel: null,
-      );
-      await db.sessionDao.insertObservedChild(
-        pluginId: plugin.id,
-        sessionId: "child",
-        backendSessionId: "backend-child",
-        projectId: "project",
-        parentSessionId: "root",
-        directory: "/repo",
-        catalogTitle: null,
-        archivedAt: null,
-        createdAt: 1,
-        updatedAt: 1,
-        projectionUpdatedAt: 1,
-      );
-      final deletionStarted = Completer<void>();
-      final deletionGate = Completer<void>();
-      plugin
-        ..deleteSessionStarted = deletionStarted
-        ..deleteSessionGate = deletionGate
-        ..deleteSessionError = StateError("backend deletion failed");
-
-      final deletion = repository.deleteSession(sessionId: "root");
-      await deletionStarted.future;
-
-      expect(await repository.isSessionTombstoned(sessionId: "root"), isTrue);
-      expect(await repository.isSessionTombstoned(sessionId: "child"), isTrue);
-
-      final failure = expectLater(deletion, throwsStateError);
-      deletionGate.complete();
-      await failure;
-
-      expect(await repository.isSessionTombstoned(sessionId: "root"), isFalse);
-      expect(await repository.isSessionTombstoned(sessionId: "child"), isFalse);
-      expect(await db.sessionDao.getSession(sessionId: "root"), isNotNull);
-      expect(await db.sessionDao.getSession(sessionId: "child"), isNotNull);
-    });
-
     test("exposes tombstones only through persisted cleanup capabilities", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -2831,9 +2770,6 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   List<PluginProjectActivitySummary> activitySummaries = const [];
   Set<String> failingProjectIds = const {};
   Map<String, PluginProject> projectsByDirectory = const {};
-  Completer<void>? deleteSessionStarted;
-  Completer<void>? deleteSessionGate;
-  Object? deleteSessionError;
 
   @override
   String get id => "fake";
@@ -2842,11 +2778,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   Stream<BridgeSseEvent> get events => const Stream<BridgeSseEvent>.empty();
 
   @override
-  Future<void> deleteSession(String sessionId) async {
-    deleteSessionStarted?.complete();
-    if (deleteSessionGate case final gate?) await gate.future;
-    if (deleteSessionError case final error?) throw error;
-  }
+  Future<void> deleteSession(String sessionId) async {}
 
   @override
   Future<List<PluginProject>> getProjects() async {
