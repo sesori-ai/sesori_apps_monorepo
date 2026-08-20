@@ -26,7 +26,7 @@ void main() {
         isTrue,
         reason: "Hermes advertises prompt image support",
       );
-      expect(HermesPluginDescriptor.minVersion, "0.20.4");
+      expect(HermesPluginDescriptor.minVersion, "0.20.0");
       expect(HermesPluginDescriptor.targetVersion, "0.20.4");
     });
 

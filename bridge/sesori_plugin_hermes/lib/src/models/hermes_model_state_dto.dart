@@ -6,8 +6,8 @@ part "hermes_model_state_dto.g.dart";
 @freezed
 sealed class HermesModelInfoDto with _$HermesModelInfoDto {
   const factory({
-    @Default("") String modelId,
-    @Default("") String name,
+    required String? modelId,
+    required String? name,
     required String? description,
   }) = _HermesModelInfoDto;
 
@@ -18,7 +18,7 @@ sealed class HermesModelInfoDto with _$HermesModelInfoDto {
 sealed class HermesSessionModelStateDto with _$HermesSessionModelStateDto {
   const factory({
     @Default(<HermesModelInfoDto>[]) List<HermesModelInfoDto> availableModels,
-    @Default("") String currentModelId,
+    required String? currentModelId,
   }) = _HermesSessionModelStateDto;
 
   factory fromJson(Map<String, dynamic> json) => _$HermesSessionModelStateDtoFromJson(json);

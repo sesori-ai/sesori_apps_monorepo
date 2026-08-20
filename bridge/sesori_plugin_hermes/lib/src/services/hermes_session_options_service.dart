@@ -17,6 +17,7 @@ class HermesSessionOptionsService({
   HermesModelCatalog? _catalog;
   Future<HermesCatalogDiscoveryResult>? _inFlight;
   final Set<String> _sessionIds = {};
+  int _catalogRevision = 0;
   bool _disposed = false;
 
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
@@ -57,6 +58,7 @@ class HermesSessionOptionsService({
     final current = catalog.currentModel;
     if (fromNewSession) {
       _catalog = catalog;
+      _catalogRevision++;
       if (current != null) {
         _configurationTracker.setProcessDefaults(
           modelId: current.value,
@@ -83,7 +85,7 @@ class HermesSessionOptionsService({
     final requested = model.modelID;
     final currentValue = _configurationTracker.snapshotForSession(sessionId: sessionId).modelId;
     final current = _catalog?.currentModel;
-    if (requested == currentValue || requested == current?.modelId) return;
+    if (requested == currentValue || requested == current?.value) return;
     try {
       await _repository.setModel(
         liveClient: liveClient,
@@ -141,19 +143,23 @@ class HermesSessionOptionsService({
     if (pending != null) return pending;
     if (_disposed) return Future.value(const HermesCatalogDiscoveryFailed());
     late final Future<HermesCatalogDiscoveryResult> operation;
-    operation = _probe().whenComplete(() {
+    operation = _probe(catalogRevision: _catalogRevision).whenComplete(() {
       if (identical(_inFlight, operation)) _inFlight = null;
     });
     _inFlight = operation;
     return operation;
   }
 
-  Future<HermesCatalogDiscoveryResult> _probe() async {
+  Future<HermesCatalogDiscoveryResult> _probe({required int catalogRevision}) async {
     try {
       final catalog = await _repository.discoverCatalog(
         cwd: _launchDirectory,
         timeout: _discoveryTimeout,
       );
+      if (catalogRevision != _catalogRevision) {
+        final liveCatalog = _catalog;
+        return liveCatalog == null ? const HermesCatalogDiscoveryFailed() : HermesCatalogObserved(catalog: liveCatalog);
+      }
       _catalog = catalog;
       final current = catalog.currentModel;
       if (current != null) {

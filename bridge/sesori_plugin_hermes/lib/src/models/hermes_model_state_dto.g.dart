@@ -8,15 +8,15 @@ part of 'hermes_model_state_dto.dart';
 
 _HermesModelInfoDto _$HermesModelInfoDtoFromJson(Map json) =>
     _HermesModelInfoDto(
-      modelId: json['modelId'] as String? ?? "",
-      name: json['name'] as String? ?? "",
+      modelId: json['modelId'] as String?,
+      name: json['name'] as String?,
       description: json['description'] as String?,
     );
 
 Map<String, dynamic> _$HermesModelInfoDtoToJson(_HermesModelInfoDto instance) =>
     <String, dynamic>{
-      'modelId': instance.modelId,
-      'name': instance.name,
+      'modelId': ?instance.modelId,
+      'name': ?instance.name,
       'description': ?instance.description,
     };
 
@@ -31,12 +31,12 @@ _HermesSessionModelStateDto _$HermesSessionModelStateDtoFromJson(Map json) =>
               )
               .toList() ??
           const <HermesModelInfoDto>[],
-      currentModelId: json['currentModelId'] as String? ?? "",
+      currentModelId: json['currentModelId'] as String?,
     );
 
 Map<String, dynamic> _$HermesSessionModelStateDtoToJson(
   _HermesSessionModelStateDto instance,
 ) => <String, dynamic>{
   'availableModels': instance.availableModels.map((e) => e.toJson()).toList(),
-  'currentModelId': instance.currentModelId,
+  'currentModelId': ?instance.currentModelId,
 };

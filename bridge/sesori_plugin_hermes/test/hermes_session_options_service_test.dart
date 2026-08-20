@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:acp_plugin/acp_plugin.dart";
+import "package:hermes_plugin/src/api/hermes_acp_api.dart";
 import "package:hermes_plugin/src/models/hermes_model_catalog.dart";
 import "package:hermes_plugin/src/repositories/hermes_catalog_repository.dart";
 import "package:hermes_plugin/src/services/hermes_session_options_service.dart";
@@ -82,6 +83,50 @@ void main() {
     );
     expect(repository.discoveryCount, 2);
   });
+
+  test("live session capture wins over an older scratch discovery", () async {
+    final discovery = Completer<HermesModelCatalog>();
+    final repository = _FakeCatalogRepository()..discoveries.add(discovery.future);
+    final service = _service(repository: repository);
+    addTearDown(service.dispose);
+
+    final refresh = service.getSessionOptions(
+      discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+    );
+    service.captureSessionConfig(
+      _sessionResult(currentModelId: "opencode-go:gpt-5"),
+      sessionId: "live-session",
+      fromNewSession: true,
+    );
+    discovery.complete(_catalog());
+
+    final options = (await refresh as PluginSessionOptionsDiscoveryObserved).options;
+    expect(options.agents.single.model?.modelID, "opencode-go:gpt-5");
+    final reused = await service.getSessionOptions(
+      discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+    );
+    expect(
+      (reused as PluginSessionOptionsDiscoveryObserved).options.agents.single.model?.modelID,
+      "opencode-go:gpt-5",
+    );
+  });
+
+  test("a provideless value is not confused with a prefixed current model", () async {
+    final repository = _FakeCatalogRepository()..discoveries.add(Future.value(_catalog()));
+    final service = _service(repository: repository);
+    addTearDown(service.dispose);
+    await service.getSessionOptions(
+      discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+    );
+
+    await service.applyTurnSelection(
+      liveClient: _FakeAcpStdioClient(),
+      sessionId: "s1",
+      model: const (providerID: "hermes", modelID: "deepseek-v4-flash"),
+    );
+
+    expect(repository.appliedModels, ["deepseek-v4-flash"]);
+  });
 }
 
 HermesSessionOptionsService _service({required _FakeCatalogRepository repository}) {
@@ -121,8 +166,36 @@ HermesModelCatalog _catalog() => HermesModelCatalog(
   currentModelValue: "opencode-go:deepseek-v4-flash",
 );
 
+AcpNewSessionResult _sessionResult({required String currentModelId}) => AcpNewSessionResult(
+  sessionId: "live-session",
+  modes: const [],
+  configOptions: const [],
+  raw: {
+    "sessionId": "live-session",
+    "models": {
+      "currentModelId": currentModelId,
+      "availableModels": const [
+        {
+          "modelId": "opencode-go:deepseek-v4-flash",
+          "name": "OpenCode Go · deepseek-v4-flash",
+          "description": null,
+        },
+        {
+          "modelId": "opencode-go:gpt-5",
+          "name": "OpenCode Go · GPT-5",
+          "description": null,
+        },
+      ],
+    },
+  },
+);
+
 class _FakeCatalogRepository() implements HermesCatalogRepository {
   final List<Future<HermesModelCatalog>> discoveries = [];
+  final List<String> appliedModels = [];
+  final HermesCatalogRepository _mapper = HermesCatalogRepository(
+    api: _FakeHermesAcpApi(),
+  );
   int discoveryCount = 0;
 
   @override
@@ -138,6 +211,30 @@ class _FakeCatalogRepository() implements HermesCatalogRepository {
   @override
   Future<void> dispose() async {}
 
+  @override
+  HermesModelCatalog? mapSessionResult({required AcpNewSessionResult result}) =>
+      _mapper.mapSessionResult(result: result);
+
+  @override
+  Future<void> setModel({
+    required AcpStdioClient liveClient,
+    required String sessionId,
+    required String modelId,
+    required Duration timeout,
+  }) async {
+    appliedModels.add(modelId);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeAcpStdioClient() implements AcpStdioClient {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeHermesAcpApi() implements HermesAcpApi {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

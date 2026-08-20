@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$HermesModelInfoDto {
 
- String get modelId; String get name; String? get description;
+ String? get modelId; String? get name; String? get description;
 /// Create a copy of HermesModelInfoDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -49,7 +49,7 @@ abstract mixin class $HermesModelInfoDtoCopyWith<$Res>  {
   factory $HermesModelInfoDtoCopyWith(HermesModelInfoDto value, $Res Function(HermesModelInfoDto) _then) = _$HermesModelInfoDtoCopyWithImpl;
 @useResult
 $Res call({
- String modelId, String name, String? description
+ String? modelId, String? name, String? description
 });
 
 
@@ -66,11 +66,11 @@ class _$HermesModelInfoDtoCopyWithImpl<$Res>
 
 /// Create a copy of HermesModelInfoDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? modelId = null,Object? name = null,Object? description = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? modelId = freezed,Object? name = freezed,Object? description = freezed,}) {
   return _then(HermesModelInfoDto(
-modelId: null == modelId ? _self.modelId : modelId // ignore: cast_nullable_to_non_nullable
-as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+modelId: freezed == modelId ? _self.modelId : modelId // ignore: cast_nullable_to_non_nullable
+as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -83,11 +83,11 @@ as String?,
 @JsonSerializable()
 
 class _HermesModelInfoDto implements HermesModelInfoDto {
-  const _HermesModelInfoDto({this.modelId = "", this.name = "", required this.description});
+  const _HermesModelInfoDto({required this.modelId, required this.name, required this.description});
   factory _HermesModelInfoDto.fromJson(Map<String, dynamic> json) => _$HermesModelInfoDtoFromJson(json);
 
-@override@JsonKey() final  String modelId;
-@override@JsonKey() final  String name;
+@override final  String? modelId;
+@override final  String? name;
 @override final  String? description;
 
 /// Create a copy of HermesModelInfoDto
@@ -123,7 +123,7 @@ abstract mixin class _$HermesModelInfoDtoCopyWith<$Res> implements $HermesModelI
   factory _$HermesModelInfoDtoCopyWith(_HermesModelInfoDto value, $Res Function(_HermesModelInfoDto) _then) = __$HermesModelInfoDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String modelId, String name, String? description
+ String? modelId, String? name, String? description
 });
 
 
@@ -140,11 +140,11 @@ class __$HermesModelInfoDtoCopyWithImpl<$Res>
 
 /// Create a copy of HermesModelInfoDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? modelId = null,Object? name = null,Object? description = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? modelId = freezed,Object? name = freezed,Object? description = freezed,}) {
   return _then(_HermesModelInfoDto(
-modelId: null == modelId ? _self.modelId : modelId // ignore: cast_nullable_to_non_nullable
-as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+modelId: freezed == modelId ? _self.modelId : modelId // ignore: cast_nullable_to_non_nullable
+as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -156,7 +156,7 @@ as String?,
 /// @nodoc
 mixin _$HermesSessionModelStateDto {
 
- List<HermesModelInfoDto> get availableModels; String get currentModelId;
+ List<HermesModelInfoDto> get availableModels; String? get currentModelId;
 /// Create a copy of HermesSessionModelStateDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -189,7 +189,7 @@ abstract mixin class $HermesSessionModelStateDtoCopyWith<$Res>  {
   factory $HermesSessionModelStateDtoCopyWith(HermesSessionModelStateDto value, $Res Function(HermesSessionModelStateDto) _then) = _$HermesSessionModelStateDtoCopyWithImpl;
 @useResult
 $Res call({
- List<HermesModelInfoDto> availableModels, String currentModelId
+ List<HermesModelInfoDto> availableModels, String? currentModelId
 });
 
 
@@ -206,11 +206,11 @@ class _$HermesSessionModelStateDtoCopyWithImpl<$Res>
 
 /// Create a copy of HermesSessionModelStateDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? availableModels = null,Object? currentModelId = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? availableModels = null,Object? currentModelId = freezed,}) {
   return _then(HermesSessionModelStateDto(
 availableModels: null == availableModels ? _self.availableModels : availableModels // ignore: cast_nullable_to_non_nullable
-as List<HermesModelInfoDto>,currentModelId: null == currentModelId ? _self.currentModelId : currentModelId // ignore: cast_nullable_to_non_nullable
-as String,
+as List<HermesModelInfoDto>,currentModelId: freezed == currentModelId ? _self.currentModelId : currentModelId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -222,7 +222,7 @@ as String,
 @JsonSerializable()
 
 class _HermesSessionModelStateDto implements HermesSessionModelStateDto {
-  const _HermesSessionModelStateDto({ List<HermesModelInfoDto> availableModels = const <HermesModelInfoDto>[], this.currentModelId = ""}): _availableModels = availableModels;
+  const _HermesSessionModelStateDto({ List<HermesModelInfoDto> availableModels = const <HermesModelInfoDto>[], required this.currentModelId}): _availableModels = availableModels;
   factory _HermesSessionModelStateDto.fromJson(Map<String, dynamic> json) => _$HermesSessionModelStateDtoFromJson(json);
 
  final  List<HermesModelInfoDto> _availableModels;
@@ -232,7 +232,7 @@ class _HermesSessionModelStateDto implements HermesSessionModelStateDto {
   return EqualUnmodifiableListView(_availableModels);
 }
 
-@override@JsonKey() final  String currentModelId;
+@override final  String? currentModelId;
 
 /// Create a copy of HermesSessionModelStateDto
 /// with the given fields replaced by the non-null parameter values.
@@ -267,7 +267,7 @@ abstract mixin class _$HermesSessionModelStateDtoCopyWith<$Res> implements $Herm
   factory _$HermesSessionModelStateDtoCopyWith(_HermesSessionModelStateDto value, $Res Function(_HermesSessionModelStateDto) _then) = __$HermesSessionModelStateDtoCopyWithImpl;
 @override @useResult
 $Res call({
- List<HermesModelInfoDto> availableModels, String currentModelId
+ List<HermesModelInfoDto> availableModels, String? currentModelId
 });
 
 
@@ -284,11 +284,11 @@ class __$HermesSessionModelStateDtoCopyWithImpl<$Res>
 
 /// Create a copy of HermesSessionModelStateDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? availableModels = null,Object? currentModelId = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? availableModels = null,Object? currentModelId = freezed,}) {
   return _then(_HermesSessionModelStateDto(
 availableModels: null == availableModels ? _self._availableModels : availableModels // ignore: cast_nullable_to_non_nullable
-as List<HermesModelInfoDto>,currentModelId: null == currentModelId ? _self.currentModelId : currentModelId // ignore: cast_nullable_to_non_nullable
-as String,
+as List<HermesModelInfoDto>,currentModelId: freezed == currentModelId ? _self.currentModelId : currentModelId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

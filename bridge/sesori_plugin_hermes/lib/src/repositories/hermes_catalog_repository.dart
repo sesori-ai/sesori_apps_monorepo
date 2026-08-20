@@ -9,6 +9,8 @@ import "../models/hermes_model_state_dto.dart";
 
 /// Maps Hermes's model state and owns one disposable discovery transaction.
 class HermesCatalogRepository({required final HermesAcpApi _api}) {
+  /// Hermes Agent 0.20.4 has no pre-session route that lists agents, models,
+  /// or variants, so discovery creates and then deletes a disposable session.
   Future<HermesModelCatalog> discoverCatalog({
     required String cwd,
     required Duration timeout,
@@ -47,7 +49,7 @@ class HermesCatalogRepository({required final HermesAcpApi _api}) {
         timeout: _cleanupTimeout(timeout: timeout, stopwatch: stopwatch),
       );
       processExited = true;
-      if (sessionId != null) {
+      if (sessionId != null && sessionId.isNotEmpty) {
         await _api.deletePersistedSession(
           sessionId: sessionId,
           timeout: _cleanupTimeout(timeout: timeout, stopwatch: stopwatch),
@@ -94,8 +96,8 @@ class HermesCatalogRepository({required final HermesAcpApi _api}) {
     final state = HermesSessionModelStateDto.fromJson(rawModels.cast<String, dynamic>());
     final models = <HermesCatalogModel>[];
     for (final entry in state.availableModels) {
-      final value = entry.modelId.trim();
-      if (value.isEmpty) continue;
+      final value = entry.modelId?.trim();
+      if (value == null || value.isEmpty) continue;
       final split = _splitModelValue(value);
       final display = _splitDisplayName(entry.name);
       models.add(
@@ -108,10 +110,10 @@ class HermesCatalogRepository({required final HermesAcpApi _api}) {
         ),
       );
     }
-    final current = state.currentModelId.trim();
+    final current = state.currentModelId?.trim();
     return HermesModelCatalog(
       models: models,
-      currentModelValue: current.isEmpty ? null : current,
+      currentModelValue: current == null || current.isEmpty ? null : current,
     );
   }
 
@@ -137,15 +139,19 @@ class HermesCatalogRepository({required final HermesAcpApi _api}) {
     );
   }
 
-  ({String? providerName, String? modelName}) _splitDisplayName(String value) {
+  ({String? providerName, String? modelName}) _splitDisplayName(String? value) {
+    final displayValue = value?.trim();
+    if (displayValue == null || displayValue.isEmpty) {
+      return (providerName: null, modelName: null);
+    }
     const separatorToken = " \u00b7 ";
-    final separator = value.indexOf(separatorToken);
-    if (separator <= 0 || separator == value.length - separatorToken.length) {
-      return (providerName: null, modelName: value.trim().isEmpty ? null : value.trim());
+    final separator = displayValue.indexOf(separatorToken);
+    if (separator <= 0 || separator == displayValue.length - separatorToken.length) {
+      return (providerName: null, modelName: displayValue);
     }
     return (
-      providerName: value.substring(0, separator).trim(),
-      modelName: value.substring(separator + separatorToken.length).trim(),
+      providerName: displayValue.substring(0, separator).trim(),
+      modelName: displayValue.substring(separator + separatorToken.length).trim(),
     );
   }
 
