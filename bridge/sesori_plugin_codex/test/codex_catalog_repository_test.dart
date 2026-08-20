@@ -73,7 +73,8 @@ void main() {
         logs,
         contains(
           "rollout catalog scan: files=3, recognizedRollouts=1, "
-          "indexEntries=2, missingMetadata=0, mismatchedMetadata=0, records=1",
+          "indexEntries=2, unreadableOrMissingMetadata=0, "
+          "mismatchedMetadata=0, records=1",
         ),
       );
       expect(logs, isNot(contains(rolloutId)));

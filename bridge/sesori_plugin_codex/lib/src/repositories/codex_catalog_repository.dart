@@ -27,14 +27,14 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     }
 
     final records = <CodexSessionRecord>[];
-    var missingMetadata = 0;
+    var unreadableOrMissingMetadata = 0;
     var mismatchedMetadata = 0;
     for (final id in {...rollouts.keys, ...indexEntries.keys}) {
       final rolloutPath = rollouts[id];
       if (rolloutPath == null) continue;
       final indexEntry = indexEntries[id];
       final metadata = _readMetadata(rolloutPath);
-      if (metadata == null) missingMetadata++;
+      if (metadata == null) unreadableOrMissingMetadata++;
       if (metadata != null && metadata.id != id) {
         mismatchedMetadata++;
         Log.w(
@@ -68,7 +68,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
       "[codex] rollout catalog scan: files=${rolloutPaths.length}, "
       "recognizedRollouts=${rollouts.length}, "
       "indexEntries=${indexEntries.length}, "
-      "missingMetadata=$missingMetadata, "
+      "unreadableOrMissingMetadata=$unreadableOrMissingMetadata, "
       "mismatchedMetadata=$mismatchedMetadata, records=${records.length}",
     );
     return records;
