@@ -210,13 +210,13 @@ class const BridgeRuntimeRunner._() {
     SupervisedExitCode? requestedSupervisedExit;
     // Shared by the ordered pluginDispose phase and the backstop's emergency
     // disposal so the two cannot drift.
-    Future<void> disposePluginApis() => pluginRuntime?.disposeStartedApis() ?? Future<void>.value();
+    Future<void> shutdownStartedPlugins() => pluginRuntime?.shutdownStartedPlugins() ?? Future<void>.value();
     final shutdownCoordinator = BridgeShutdownCoordinator(
       startAbortSignal: startAbortController.signal,
       backstopExitCode: () => requestedSupervisedExit?.code ?? 0,
       // Last resort before a forced exit: stop plugin backends so their agent
       // processes are not orphaned when the teardown (or a phase) hangs.
-      emergencyDisposal: disposePluginApis,
+      emergencyDisposal: shutdownStartedPlugins,
     );
     shutdownCoordinator
       ..addPhase(
@@ -260,7 +260,7 @@ class const BridgeRuntimeRunner._() {
       )
       ..addPhase(
         phase: BridgeShutdownPhase.pluginDispose,
-        action: disposePluginApis,
+        action: shutdownStartedPlugins,
         budget: _pluginShutdownBudget,
       )
       ..addPhase(

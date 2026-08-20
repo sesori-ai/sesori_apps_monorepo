@@ -1564,7 +1564,7 @@ void main() {
     expect(factory.plugins.single.shutdownCount, 1);
   });
 
-  test("shutdown cleans up a plugin that returns after API disposal begins", () async {
+  test("shutdown cleans up a plugin that returns after plugin shutdown begins", () async {
     final startGate = Completer<void>();
     final factory = _FakeGenerationFactory(
       startGate: startGate.future,
@@ -1575,16 +1575,39 @@ void main() {
     await _waitUntil(() => factory.startCount == 1);
 
     runtime.beginShutdown();
-    final disposingApis = runtime.disposeStartedApis();
+    final shuttingDownPlugins = runtime.shutdownStartedPlugins();
     startGate.complete();
 
     await expectLater(starting, throwsA(isA<PluginStartAbortedException>()));
-    await disposingApis;
+    await shuttingDownPlugins;
     expect(factory.plugins.single.shutdownCount, 1);
     await runtime.dispose();
   });
 
-  test("event closure during API disposal does not hide a later shutdown failure", () async {
+  test("plugin shutdown owns API disposal before runtime lifecycle cleanup", () async {
+    final shutdownGate = Completer<void>();
+    final factory = _FakeGenerationFactory(
+      startGate: Future<void>.value(),
+      pluginFactory: (_) => _FakePlugin(
+        api: _FakeApi(),
+        shutdownGate: shutdownGate.future,
+      ),
+    );
+    final runtime = _runtime(factory: factory);
+    await runtime.startEager(pluginIds: const ["one"]);
+
+    runtime.beginShutdown();
+    final shuttingDownPlugins = runtime.shutdownStartedPlugins();
+    await _waitUntil(() => factory.plugins.single.shutdownCount == 1);
+
+    expect(factory.api.disposeCount, 0, reason: "core must not bypass the plugin's teardown ordering");
+    shutdownGate.complete();
+    await shuttingDownPlugins;
+    expect(factory.api.disposeCount, 1);
+    await runtime.dispose();
+  });
+
+  test("event closure during plugin shutdown does not hide its failure", () async {
     final shutdownError = StateError("runtime shutdown failed");
     final factory = _FakeGenerationFactory(
       startGate: Future<void>.value(),
@@ -1597,7 +1620,7 @@ void main() {
     await runtime.startEager(pluginIds: const ["one"]);
 
     runtime.beginShutdown();
-    await runtime.disposeStartedApis();
+    await expectLater(runtime.shutdownStartedPlugins(), throwsA(same(shutdownError)));
     expect(runtime.snapshot.single.state, PluginRuntimeState.active);
 
     await expectLater(runtime.dispose(), throwsA(same(shutdownError)));

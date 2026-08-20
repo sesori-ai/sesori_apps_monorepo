@@ -56,6 +56,9 @@ idle suspension, the management snapshot, and lifecycle commands.
 - A busy harness conflicts explicitly, forcing needs confirmation and is sent once, the
   snapshot changes only on real content change with a new token, and a terminal failure
   removes only that harness's routing and new-session choice.
+- Deliberate bridge shutdown enters each live harness's lifecycle shutdown before closing
+  its transport directly. Managed runtime monitors disarm before transport or process
+  teardown, so a clean owned-runtime exit is neither reported nor restarted as a crash.
 - Interactive authentication is optional per descriptor. A capable harness owns its
   backend process and credentials, exposes only a safe challenge and sanitized terminal
   state, cancels cooperatively, and settles process cleanup before the operation ends.
@@ -86,7 +89,7 @@ idle suspension, the management snapshot, and lifecycle commands.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | A started bridge inspects every registered harness and publishes coherent setup and management snapshots. A ready fixture has a selectable default; a fixture with no usable harness has zero selectable entries and no default without failing startup. Headless bridge; all registered harnesses listed. |
-| L2 Routine | Demand-driven start of a ready harness, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Headless bridge; representative harness for start, every registered harness for listing and ordering. |
+| L2 Routine | Demand-driven start of a ready harness, clean lifecycle-owned bridge shutdown, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Headless bridge; representative managed harness for start and shutdown, every registered harness for listing and ordering. |
 | L3 Release | The management surface as rendered: per-harness selected runtime version when reported, setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, default badge, enable/disable, restart, and idle-timeout default plus override persisted across a bridge restart. Client end to end; every harness declaring the relevant capability must pass. |
 | L4 Extended | Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. |
 | L5 Full | Every registered production harness through inspect, enable, disable, restart, refresh, and idle behavior on a supported platform, plus forward-compatible presentation of an unknown harness or capability and the reported state of a session interrupted by a forced disable. Live plugin and client end to end as each entry requires. |
@@ -121,6 +124,8 @@ timeouts, and sessions afterwards.
   browser/copy failure removing the challenge before the user can retry.
 - One failing harness taking down the rest of the bridge, or an empty picker
   instead of the explicit no-harness state when none is usable.
+- Direct API disposal bypassing lifecycle shutdown, or a deliberate owned-runtime exit
+  being logged, failed, or restarted as an unexpected crash.
 
 ## Known Limitations
 

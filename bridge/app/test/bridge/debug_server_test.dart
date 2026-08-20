@@ -609,7 +609,7 @@ void main() {
       expect(debugDrained, isTrue);
     });
 
-    test("drains and persists a routed mutation before disposing its plugin API", () async {
+    test("drains and persists a routed mutation before plugin teardown", () async {
       final db = createTestDatabase();
       String? persistedTitleAtDispose;
       final plugin = _BlockingMutationPlugin(
@@ -665,7 +665,7 @@ void main() {
             )
             ..addPhase(
               phase: BridgeShutdownPhase.pluginDispose,
-              action: runtimeForLifecycleService(service: harness.lifecycleService).disposeStartedApis,
+              action: runtimeForLifecycleService(service: harness.lifecycleService).shutdownStartedPlugins,
             );
       await debugServer.start();
 

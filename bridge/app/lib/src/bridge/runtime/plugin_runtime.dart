@@ -84,12 +84,10 @@ class PluginRuntime({
   final PublishSubject<SourcedPluginProvisionProgress> _provisionProgressSubject =
       PublishSubject<SourcedPluginProvisionProgress>();
   bool _shuttingDown = false;
-  Future<void>? _disposeStartedApisFuture;
+  Future<void>? _shutdownStartedPluginsFuture;
   Future<void>? _disposeFuture;
-  bool _apiDisposalStarted = false;
   final Set<StartAbortController> _installAbortControllers = <StartAbortController>{};
   final Set<StartAbortController> _authenticationAbortControllers = <StartAbortController>{};
-  final Map<BridgePluginApi, Future<void>> _apiDisposals = Map<BridgePluginApi, Future<void>>.identity();
 
   Stream<List<PluginRuntimeSnapshot>> get snapshots => _snapshotsSubject.stream;
   List<PluginRuntimeSnapshot> get snapshot => List<PluginRuntimeSnapshot>.unmodifiable(_buildSnapshots());
@@ -643,11 +641,11 @@ class PluginRuntime({
     }
   }
 
-  Future<void> disposeStartedApis() => _disposeStartedApisFuture ??= _disposeStartedApis();
+  Future<void> shutdownStartedPlugins() => _shutdownStartedPluginsFuture ??= _shutdownStartedPlugins();
 
-  Future<void> _disposeStartedApis() async {
-    _apiDisposalStarted = true;
+  Future<void> _shutdownStartedPlugins() async {
     final errors = <({Object error, StackTrace stackTrace})>[];
+    final shutdowns = Map<BridgePlugin, Future<void>>.identity();
 
     Future<void> capture(Future<void> operation) async {
       try {
@@ -659,23 +657,28 @@ class PluginRuntime({
       }
     }
 
+    Future<void> shutdown(BridgePlugin plugin) {
+      if (shutdowns.containsKey(plugin)) {
+        return Future<void>.value();
+      }
+      final operation = Future<void>.sync(() => plugin.shutdown(budget: _shutdownBudget));
+      shutdowns[plugin] = operation;
+      return capture(operation);
+    }
+
     final starts = [for (final slot in _slots.values) ?slot.startFuture];
     await Future.wait([
       for (final slot in _slots.values)
-        if (slot.plugin case final plugin?) capture(_disposeApi(plugin.api)),
+        if (slot.plugin case final plugin?) shutdown(plugin),
       for (final start in starts) capture(start.then<void>((_) {})),
     ]);
     await Future.wait([
       for (final slot in _slots.values)
-        if (slot.plugin case final plugin?) capture(_disposeApi(plugin.api)),
+        if (slot.plugin case final plugin?) shutdown(plugin),
     ]);
     if (errors case [final first, ...]) {
       Error.throwWithStackTrace(first.error, first.stackTrace);
     }
-  }
-
-  Future<void> _disposeApi(BridgePluginApi api) {
-    return _apiDisposals.putIfAbsent(api, () => Future<void>.sync(api.dispose));
   }
 
   Future<void> dispose() => _disposeFuture ??= _dispose();
@@ -1494,7 +1497,6 @@ class PluginRuntime({
       );
       _applyStatus(slot: slot, generation: generation, status: started.currentStatus);
       Log.d('Plugin "$pluginId" generation $generation started (${slot.state.name})');
-      if (_apiDisposalStarted) await _disposeApi(started.api);
       return started;
     } on PluginStartAbortedException {
       slot.state = PluginRuntimeState.failed;
