@@ -60,6 +60,20 @@ class PromptSendQueue() {
     _awaitingBridge.add((submission: active, epoch: epoch));
   }
 
+  /// Retires the oldest parked submission, claimed by a delivered user
+  /// message the client cannot attribute by id.
+  ///
+  /// Harnesses without a bridge-side queue publish their echo with no prompt
+  /// id, so identity correlation is unavailable there. Sends leave this queue
+  /// one at a time and their harnesses echo them in the same order, making the
+  /// oldest parked submission the one that message settles. Returns whether a
+  /// submission was retired.
+  bool settleOldestAwaiting() {
+    if (_awaitingBridge.isEmpty) return false;
+    _awaitingBridge.removeAt(0);
+    return true;
+  }
+
   /// Accepted submissions whose bridge-side representation has not arrived
   /// yet, oldest first.
   List<QueuedSessionSubmission> get awaitingBridge =>

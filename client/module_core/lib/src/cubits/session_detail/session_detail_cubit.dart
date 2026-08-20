@@ -85,6 +85,12 @@ class SessionDetailCubit(
   /// way. Parking against that stale silence is what stranded a bubble the
   /// bridge would never mention again.
   int _bridgeQueueStatements = 0;
+
+  /// Delivered user messages that arrived with no prompt id and found nothing
+  /// parked to settle. Each one accounts for a send whose harness echo beat
+  /// its own acceptance response, so that send must not park a copy the echo
+  /// has already replaced.
+  int _unattributedUserMessages = 0;
   final DeferredPartEventBuffer _deferredPartEvents = DeferredPartEventBuffer();
 
   late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
@@ -1177,24 +1183,36 @@ class SessionDetailCubit(
     if (current is! SessionDetailLoaded) return;
     final message = current.messages.where((item) => item.info.id == messageId).firstOrNull;
     if (message == null || !message.hasRenderableUserContent) return;
-    if (message.info case MessageUser(promptId: final promptId?)) {
-      final bridgePrompts = [
-        for (final prompt in current.bridgeQueuedPrompts)
-          if (prompt.id != promptId) prompt,
-      ];
+    final info = message.info;
+    if (info is! MessageUser) return;
+    final promptId = info.promptId;
+    if (promptId == null) {
+      // Harnesses without a bridge-side queue echo their prompts with no id,
+      // so this message can only be paired positionally: it settles the oldest
+      // parked send. With nothing parked the credit is held so the send whose
+      // echo outran its own acceptance response never parks at all.
+      if (!_promptQueue.settleOldestAwaiting()) {
+        _unattributedUserMessages++;
+        return;
+      }
+    } else {
       _promptQueue.removeByPromptId(promptId);
-      emit(
-        current.copyWith(
-          bridgeQueuedPrompts: bridgePrompts,
-          queuedMessages: _visibleStagedItems(bridgePrompts: bridgePrompts),
-          awaitingBridgeSubmissions: _visibleAwaitingBridge(bridgePrompts: bridgePrompts),
-          sendingSubmission: _visibleStagedSending(bridgePrompts: bridgePrompts),
-        ),
-      );
-      // The delivered prompt's own send may have stopped the drain on a lost
-      // response; anything staged behind it must not stay parked.
-      _tryDrainQueue();
     }
+    final bridgePrompts = [
+      for (final prompt in current.bridgeQueuedPrompts)
+        if (prompt.id != promptId) prompt,
+    ];
+    emit(
+      current.copyWith(
+        bridgeQueuedPrompts: bridgePrompts,
+        queuedMessages: _visibleStagedItems(bridgePrompts: bridgePrompts),
+        awaitingBridgeSubmissions: _visibleAwaitingBridge(bridgePrompts: bridgePrompts),
+        sendingSubmission: _visibleStagedSending(bridgePrompts: bridgePrompts),
+      ),
+    );
+    // The delivered prompt's own send may have stopped the drain on a lost
+    // response; anything staged behind it must not stay parked.
+    _tryDrainQueue();
   }
 
   /// Applies a full-list replacement of the bridge-owned queue. Local staged
@@ -1671,7 +1689,11 @@ class SessionDetailCubit(
       switch (result) {
         case SuccessResponse():
           sendSucceeded = true;
-          if (_bridgeQueueStatements == queueStatementsAtSend) {
+          if (_unattributedUserMessages > 0) {
+            // This send's echo already landed unattributed; it renders the row.
+            _unattributedUserMessages--;
+            _promptQueue.completeSend();
+          } else if (_bridgeQueueStatements == queueStatementsAtSend) {
             // The bridge has not published its queue since this send began, so
             // park the copy: it keeps the bubble rendered until the queue event
             // or the delivered message arrives, and acceptance outrunning the
