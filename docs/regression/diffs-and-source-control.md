@@ -33,7 +33,9 @@ that baseline, and the branch and worktree facts a session carries.
   branch facts then update together through the existing session update. Other
   live current-branch and PR refreshes belong to pull request monitoring. A
   mutating tool emits the diff refresh signal; bursts during an in-flight read
-  coalesce into one trailing refresh, and diffs stay encrypted from the relay.
+  coalesce into one trailing refresh, a failed event-driven refresh retries
+  after a delay while the diff screen remains open, and diffs stay encrypted
+  from the relay.
 
 ## Regression Levels
 
