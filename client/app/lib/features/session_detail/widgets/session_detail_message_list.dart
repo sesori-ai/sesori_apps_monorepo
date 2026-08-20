@@ -201,8 +201,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// flush — recompute only when the underlying [ThemeData] changes.
   (ThemeData, chat_core.ChatTheme)? _chatThemeCache;
 
-  /// The chat controller needs string IDs; object identity keeps one row stable
-  /// as the queue moves the same submission from pending to sending.
+  /// Prompts whose queued row would have to move during delivery use the
+  /// backend message id from then on. `flutter_chat_ui` cannot safely move and
+  /// update one animated row together.
+  final Set<String> _promptsUsingMessageEntryId = <String>{};
 
   @override
   void initState() {
@@ -222,6 +224,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
         awaitingBridgeSubmissions: widget.awaitingBridgeSubmissions,
         hasRetryError: widget.retryErrorMessage != null,
+        currentEntries: const <chat_core.Message>[],
       ),
     );
   }
@@ -400,6 +403,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
     required bool hasRetryError,
   }) {
+    final current = _chatController.messages;
     final target = _chatEntriesFor(
       messages: messages,
       sendingSubmission: sendingSubmission,
@@ -407,8 +411,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       bridgeQueuedPrompts: bridgeQueuedPrompts,
       awaitingBridgeSubmissions: awaitingBridgeSubmissions,
       hasRetryError: hasRetryError,
+      currentEntries: current,
     );
-    final current = _chatController.messages;
     if (_entriesMatch(current: current, target: target)) return;
     unawaited(
       _chatController
@@ -441,11 +445,32 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required List<QueuedSessionPrompt> bridgeQueuedPrompts,
     required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
     required bool hasRetryError,
+    required List<chat_core.Message> currentEntries,
   }) {
-    // A prompt keeps one row id from staged send through bridge queue to its
-    // delivered user message, so the animated list updates that row in place
-    // instead of removing one entry and inserting another — the queued→sent
-    // handoff must never blink through a frame with neither rendered.
+    final transientEntryIndexes = <String, int>{
+      for (final (index, entry) in currentEntries.indexed)
+        if (entry.metadata?[_kRoleMetadataKey] == _kTransientSubmissionRole) entry.id: index,
+    };
+    var targetMessageIndex = 0;
+    for (final message in messages) {
+      if (!message.hasRenderableUserContent) continue;
+      if (message.info case MessageUser(promptId: final promptId?)) {
+        final promptEntryId = "$_kPromptRowPrefix$promptId";
+        final currentIndex = transientEntryIndexes[promptEntryId];
+        if (currentIndex != null && currentIndex != targetMessageIndex) {
+          _promptsUsingMessageEntryId.add(promptId);
+        }
+      }
+      targetMessageIndex++;
+    }
+    final deliveredPromptIds = <String>{
+      for (final message in messages)
+        if (message.hasRenderableUserContent)
+          if (message.info case MessageUser(promptId: final promptId?)) promptId,
+    };
+    // Staged and bridge-queued states share one prompt row. The delivered
+    // message keeps it when the handoff is in place, but uses its message id
+    // when a late replay must move backward through the transcript.
     final entries = <chat_core.Message>[
       for (final message in messages)
         if (message.hasRenderableUserContent)
@@ -459,8 +484,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             // Role discriminates assistant from error under the shared
             // agent authorId, so a live assistant→error transition on the
             // same message id is no longer value-equal and forces the row
-            // to re-render as the error card. The same inequality drives the
-            // transient-submission→user transform on a stable prompt row id.
+            // to re-render as the error card. The same inequality drives an
+            // in-place transient-submission→user transform.
             metadata: <String, String>{
               _kRoleMetadataKey: switch (message.info) {
                 MessageUser() => _kUserRole,
@@ -471,17 +496,21 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           ),
       if (hasRetryError) const chat_core.Message.custom(id: _kRetryErrorRowId, authorId: _kAgentAuthorId),
       // Bridge-accepted prompts render before locally staged ones: they were
-      // accepted earlier and dispatch first. A prompt whose message already
-      // landed owns that row id above and renders only as the message.
+      // accepted earlier and dispatch first. A delivered prompt renders only
+      // as its message even if a stale queue copy is still being reconciled.
       for (final prompt in bridgeQueuedPrompts)
-        chat_core.Message.custom(
-          id: "$_kPromptRowPrefix${prompt.id}",
-          authorId: _kUserAuthorId,
-          metadata: const <String, String>{_kRoleMetadataKey: _kTransientSubmissionRole},
-        ),
-      for (final submission in awaitingBridgeSubmissions) _chatEntryFor(submission: submission),
-      if (sendingSubmission != null) _chatEntryFor(submission: sendingSubmission),
-      for (final submission in queuedMessages) _chatEntryFor(submission: submission),
+        if (!deliveredPromptIds.contains(prompt.id))
+          chat_core.Message.custom(
+            id: "$_kPromptRowPrefix${prompt.id}",
+            authorId: _kUserAuthorId,
+            metadata: const <String, String>{_kRoleMetadataKey: _kTransientSubmissionRole},
+          ),
+      for (final submission in awaitingBridgeSubmissions)
+        if (!deliveredPromptIds.contains(submission.promptId)) _chatEntryFor(submission: submission),
+      if (sendingSubmission != null && !deliveredPromptIds.contains(sendingSubmission.promptId))
+        _chatEntryFor(submission: sendingSubmission),
+      for (final submission in queuedMessages)
+        if (!deliveredPromptIds.contains(submission.promptId)) _chatEntryFor(submission: submission),
     ];
     // One row per id: a prompt momentarily present in two sources (its message
     // landed while the queue copy is still being reconciled) keeps its most
@@ -504,7 +533,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   }
 
   String _entryIdForMessage({required Message info}) => switch (info) {
-    MessageUser(promptId: final promptId?) => "$_kPromptRowPrefix$promptId",
+    MessageUser(promptId: final promptId?) =>
+      _promptsUsingMessageEntryId.contains(promptId) ? info.id : "$_kPromptRowPrefix$promptId",
     MessageUser() || MessageAssistant() || MessageError() => info.id,
   };
 
