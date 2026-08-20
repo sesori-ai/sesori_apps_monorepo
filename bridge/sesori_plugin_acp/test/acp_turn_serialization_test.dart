@@ -52,6 +52,7 @@ void main() {
     final emitted = <BridgeSseEvent>[];
     final streamErrors = <Object>[];
     const cwd = "/repo";
+    var promptSequence = 0;
 
     setUp(() {
       fake = FakeAcpProcess();
@@ -81,6 +82,7 @@ void main() {
       );
       emitted.clear();
       streamErrors.clear();
+      promptSequence = 0;
       plugin.events.listen(emitted.add, onError: streamErrors.add);
     });
 
@@ -140,34 +142,42 @@ void main() {
       return session.id;
     }
 
-    Future<void> sendPrompt(String sessionId, String text) => plugin.sendPrompt(
-      promptId: "prompt-1",
-      sessionId: sessionId,
-      parts: [PluginPromptPart.text(text: text)],
-      variant: null,
-      agent: null,
-      model: null,
-    );
+    Future<String> sendPrompt(String sessionId, String text) async {
+      final promptId = "prompt-${++promptSequence}";
+      await plugin.sendPrompt(
+        promptId: promptId,
+        sessionId: sessionId,
+        parts: [PluginPromptPart.text(text: text)],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      return promptId;
+    }
 
     int busyCount() => emitted.whereType<BridgeSseSessionStatus>().length;
     int idleCount() => emitted.whereType<BridgeSseSessionIdle>().length;
 
-    test("an accepted prompt is emitted immediately as a user message", () async {
+    test("a prompt becomes a user message only when its ACP frame is dispatched", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
       emitted.clear();
 
-      await sendPrompt(sessionId, "visible immediately");
-      await pump();
+      final promptId = await sendPrompt(sessionId, "visible on dispatch");
+      final prompt = await waitForFrame("session/prompt");
 
       final message = emitted.whereType<BridgeSseMessageUpdated>().single;
       expect(message.info["role"], "user");
+      expect(message.info["promptId"], promptId);
       expect(
         emitted.whereType<BridgeSseMessagePartUpdated>().single.part.text,
-        "visible immediately",
+        "visible on dispatch",
       );
+      final queueUpdates = emitted.whereType<BridgeSseQueuedPromptsUpdated>().toList();
+      expect(queueUpdates.first.prompts.single.id, promptId);
+      expect(queueUpdates.last.prompts, isEmpty);
+      expect(emitted.indexOf(message), lessThan(emitted.indexOf(queueUpdates.last)));
 
-      final prompt = await waitForFrame("session/prompt");
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
@@ -337,7 +347,7 @@ void main() {
       final firstPrompt = await waitForFrame("session/prompt");
       expect(busyCount(), 1);
 
-      await sendPrompt(sessionId, "second");
+      final secondPromptId = await sendPrompt(sessionId, "second");
       for (var i = 0; i < 10; i++) {
         await pump();
       }
@@ -346,6 +356,12 @@ void main() {
         hasLength(1),
         reason: "the second prompt must wait for the first turn to complete",
       );
+      expect((await plugin.getQueuedPrompts(sessionId: sessionId)).single.id, secondPromptId);
+      expect(
+        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == secondPromptId),
+        isEmpty,
+        reason: "an adapter-owned prompt must remain queued, not sent",
+      );
       expect(busyCount(), 1, reason: "queued turn keeps the one busy signal");
       expect(idleCount(), 0);
 
@@ -353,6 +369,14 @@ void main() {
       final secondPrompt = await waitForFrameCount("session/prompt", 2);
       expect((secondPrompt["params"] as Map)["sessionId"], sessionId);
       await pump();
+      expect(await plugin.getQueuedPrompts(sessionId: sessionId), isEmpty);
+      expect(
+        emitted
+            .whereType<BridgeSseMessageUpdated>()
+            .singleWhere((event) => event.info["promptId"] == secondPromptId)
+            .info["promptId"],
+        secondPromptId,
+      );
       expect(
         idleCount(),
         0,
@@ -369,6 +393,60 @@ void main() {
       expect(idleCount(), 1, reason: "idle only after the last queued turn settles");
       expect(plugin.getActiveSessionsSummary(), isEmpty);
       expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
+    test("a queued prompt can be cancelled before ACP dispatch", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+
+      await sendPrompt(sessionId, "first");
+      final firstPrompt = await waitForFrame("session/prompt");
+      final queuedPromptId = await sendPrompt(sessionId, "cancel me");
+      expect((await plugin.getQueuedPrompts(sessionId: sessionId)).single.id, queuedPromptId);
+
+      expect(
+        await plugin.cancelQueuedPrompt(sessionId: sessionId, promptId: queuedPromptId),
+        isTrue,
+      );
+      expect(await plugin.getQueuedPrompts(sessionId: sessionId), isEmpty);
+
+      respondTo(firstPrompt, {"stopReason": "end_turn"});
+      for (var i = 0; i < 10; i++) {
+        await pump();
+      }
+      expect(frames("session/prompt"), hasLength(1));
+      expect(
+        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == queuedPromptId),
+        isEmpty,
+      );
+    });
+
+    test("a retried ACP prompt id remains one queued or dispatched turn", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+
+      await sendPrompt(sessionId, "first");
+      final firstPrompt = await waitForFrame("session/prompt");
+      Future<void> sendRetry() => plugin.sendPrompt(
+        promptId: "retry-id",
+        sessionId: sessionId,
+        parts: const [PluginPromptPart.text(text: "only once")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      await sendRetry();
+      await sendRetry();
+      expect(await plugin.getQueuedPrompts(sessionId: sessionId), hasLength(1));
+
+      respondTo(firstPrompt, {"stopReason": "end_turn"});
+      final retriedPrompt = await waitForFrameCount("session/prompt", 2);
+      await sendRetry();
+      await pump();
+      expect(frames("session/prompt"), hasLength(2));
+
+      respondTo(retriedPrompt, {"stopReason": "end_turn"});
     });
 
     test("queued reconnect authentication failure surfaces on the event stream", () async {
@@ -816,8 +894,9 @@ void main() {
       });
       await creating;
 
+      var respawnPromptSequence = 0;
       Future<void> send(String text) => respawning.sendPrompt(
-        promptId: "prompt-1",
+        promptId: "respawn-prompt-${++respawnPromptSequence}",
         sessionId: "s1",
         parts: [PluginPromptPart.text(text: text)],
         variant: null,

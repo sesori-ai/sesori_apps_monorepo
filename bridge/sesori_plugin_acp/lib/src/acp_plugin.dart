@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:collection";
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
@@ -193,6 +194,14 @@ abstract class AcpPlugin({
 
   /// Whether prompts across all sessions share one dispatch lane.
   bool get serializesPromptsProcessWide;
+
+  /// Whether accepting another input should cancel this session's active turn.
+  ///
+  /// OMP gives a concurrent ACP prompt this replacement behavior itself. The
+  /// shared adapter serializes requests, so its concrete adapter declares the
+  /// same policy here and the bridge sends the equivalent standard cancel
+  /// before dispatching the queued input.
+  bool get cancelsActiveTurnForQueuedInput;
 
   /// Whether a turn must stop when its requested selection cannot be applied.
   bool get failsTurnOnSelectionError;
@@ -821,6 +830,7 @@ abstract class AcpPlugin({
         model: model,
         variant: variant,
         agent: agent,
+        queuedPrompt: null,
       );
     }
     return created;
@@ -848,15 +858,32 @@ abstract class AcpPlugin({
     // Acceptance gate: an unreachable agent fails the send itself; the turn
     // re-resolves the client at dispatch time (see [_runTurn]).
     await _connectedClient();
+    if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
     _recordSessionActivity(sessionId);
-    eventMapper.mapSentPrompt(sessionId: sessionId, promptId: promptId, parts: parts).forEach(_eventBuffer.add);
-    _enqueueTurn(
+    final text = parts
+        .whereType<PluginPromptPartText>()
+        .map((part) => part.text)
+        .where((part) => part.trim().isNotEmpty)
+        .join("\n")
+        .trim();
+    final enqueued = _enqueueTurn(
       sessionId: sessionId,
       parts: parts,
       model: model,
       variant: variant,
       agent: agent,
+      queuedPrompt: _QueuedAcpPrompt(
+        presentation: PluginQueuedPrompt(
+          id: promptId,
+          text: text.isEmpty ? null : text,
+          command: null,
+          attachmentCount: parts.where((part) => part is! PluginPromptPartText).length,
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+        visibleParts: List.unmodifiable(parts),
+      ),
     );
+    if (enqueued) _cancelActiveTurnForQueuedInput(sessionId: sessionId);
   }
 
   @override
@@ -872,24 +899,60 @@ abstract class AcpPlugin({
   }) async {
     final backendCommand = commandForDispatch(command: command);
     final body = arguments.isEmpty ? "/$backendCommand" : "/$backendCommand $arguments";
-    final visibleBody = userVisibleArguments == null ? "/$command" : "/$command $userVisibleArguments";
+    final visibleArguments = userVisibleArguments?.trim();
+    final visibleBody = visibleArguments == null || visibleArguments.isEmpty
+        ? "/$command"
+        : "/$command $userVisibleArguments";
     // Acceptance gate — see [sendPrompt].
     await _connectedClient();
+    if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
     _recordSessionActivity(sessionId);
-    eventMapper
-        .mapSentPrompt(
-          sessionId: sessionId,
-          promptId: promptId,
-          parts: [PluginPromptPart.text(text: visibleBody)],
-        )
-        .forEach(_eventBuffer.add);
-    _enqueueTurn(
+    final enqueued = _enqueueTurn(
       sessionId: sessionId,
       parts: [PluginPromptPart.text(text: body)],
       model: model,
       variant: variant,
       agent: agent,
+      queuedPrompt: _QueuedAcpPrompt(
+        presentation: PluginQueuedPrompt(
+          id: promptId,
+          text: visibleArguments == null || visibleArguments.isEmpty ? null : visibleArguments,
+          command: command,
+          attachmentCount: 0,
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+        visibleParts: [PluginPromptPart.text(text: visibleBody)],
+      ),
     );
+    if (enqueued) _cancelActiveTurnForQueuedInput(sessionId: sessionId);
+  }
+
+  @override
+  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async {
+    final state = _turnStates[sessionId];
+    if (state == null) return const [];
+    return List.unmodifiable(state.queue.map((entry) => entry.presentation));
+  }
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async {
+    final state = _turnStates[sessionId];
+    if (state == null) return false;
+    final index = state.queue.indexWhere((entry) => entry.presentation.id == promptId);
+    if (index == -1) return false;
+    final entry = state.queue.removeAt(index);
+    entry.cancelled = true;
+    _emitQueueUpdate(sessionId: sessionId, state: state);
+    return true;
+  }
+
+  void _cancelActiveTurnForQueuedInput({required String sessionId}) {
+    if (!cancelsActiveTurnForQueuedInput || !_inFlightTurnSessions.contains(sessionId)) return;
+    _client?.notify(
+      method: AcpMethods.sessionCancel,
+      params: {"sessionId": sessionId},
+    );
+    _approvalRegistry?.cancelForSession(sessionId);
   }
 
   void _recordSessionActivity(String sessionId) {
@@ -1054,23 +1117,31 @@ abstract class AcpPlugin({
     }
   }
 
-  /// Queues a prompt turn on [sessionId]'s serialization chain: marks the
-  /// session busy now (the user's send is accepted), dispatches once the
-  /// session's previous turn finishes, and flips to idle when the last queued
-  /// turn resolves (ACP carries no turn-complete event). Overlapping
-  /// `session/prompt` requests for one session are rejected or dropped by ACP
-  /// agents, so turns must never interleave per session.
-  void _enqueueTurn({
+  /// Queues a prompt turn on [sessionId]'s serialization chain. Accepted
+  /// existing-session prompts stay in [getQueuedPrompts] until their ACP frame
+  /// is written; an initial create turn has no separate queue presentation.
+  bool _enqueueTurn({
     required String sessionId,
     required List<PluginPromptPart> parts,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
     required String? agent,
+    required _QueuedAcpPrompt? queuedPrompt,
   }) {
     final blocks = parts.map(_promptPartToContentBlock).whereType<Map<String, dynamic>>().toList(growable: false);
-    if (blocks.isEmpty) return;
+    if (blocks.isEmpty) return false;
 
     final state = _turnStates.putIfAbsent(sessionId, _SessionTurnState.new);
+    final turn = _AcpTurn(
+      blocks: blocks,
+      model: model,
+      variant: variant,
+      agent: agent,
+      queuedPrompt: queuedPrompt,
+    );
+    if (queuedPrompt != null) {
+      state.queue.add(queuedPrompt);
+    }
     state.pending++;
     if (state.pending == 1) {
       _workState.set(PluginWorkState.busy);
@@ -1083,6 +1154,9 @@ abstract class AcpPlugin({
       );
       _eventBuffer.add(const BridgeSseProjectUpdated());
     }
+    if (queuedPrompt != null) {
+      _emitQueueUpdate(sessionId: sessionId, state: state);
+    }
     final expectedGeneration = state.generation;
     // Each link isolates its own failure (_runTurn never throws), so one
     // failed turn cannot poison the chain for the turns queued behind it.
@@ -1090,12 +1164,10 @@ abstract class AcpPlugin({
       sessionId: sessionId,
       state: state,
       expectedGeneration: expectedGeneration,
-      blocks: blocks,
-      model: model,
-      variant: variant,
-      agent: agent,
+      turn: turn,
     );
     state.tail = serializesPromptsProcessWide ? _runOnProcessLane(operation) : state.tail.then((_) => operation());
+    return true;
   }
 
   /// Runs one serialized turn: resolves the live client, makes the session
@@ -1115,15 +1187,12 @@ abstract class AcpPlugin({
     required String sessionId,
     required _SessionTurnState state,
     required int expectedGeneration,
-    required List<Map<String, dynamic>> blocks,
-    required ({String providerID, String modelID})? model,
-    required PluginSessionVariant? variant,
-    required String? agent,
+    required _AcpTurn turn,
   }) async {
     // Aborted turns were never dispatched, so no per-turn error event — just
     // settle the accounting (idle emission when the count reaches 0).
-    if (state.generation != expectedGeneration) {
-      _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
+    if (_turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn)) {
+      _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
       return;
     }
     state.activeSettlement = Completer<void>();
@@ -1134,9 +1203,9 @@ abstract class AcpPlugin({
       // An abort that landed while the reconnect was in flight already
       // discarded this turn — settle it silently instead of surfacing a
       // session error for a prompt the user cancelled.
-      if (state.generation != expectedGeneration) {
+      if (_turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn)) {
         Log.d("[$id] queued turn on $sessionId aborted during reconnect: $error");
-        _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
+        _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
         return;
       }
       // The send was already accepted, so a dead/unrespawnable agent must
@@ -1145,22 +1214,22 @@ abstract class AcpPlugin({
         _eventBuffer.addError(error, stack);
       }
       Log.w("[$id] could not reach the agent for a queued turn on $sessionId", error, stack);
-      _finishTurn(sessionId: sessionId, state: state, failed: true, refused: false);
+      _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: true, refused: false);
       return;
     }
-    if (state.generation != expectedGeneration) {
-      _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
+    if (_turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn)) {
+      _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
       return;
     }
     await _ensureResident(client, sessionId);
-    if (state.generation != expectedGeneration) {
-      _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
+    if (_turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn)) {
+      _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
       return;
     }
     final pendingSelection = _pendingSelections[sessionId];
-    final selectedModel = model ?? pendingSelection?.model;
-    final selectedVariant = variant ?? pendingSelection?.variant;
-    final selectedAgent = agent ?? pendingSelection?.agent;
+    final selectedModel = turn.model ?? pendingSelection?.model;
+    final selectedVariant = turn.variant ?? pendingSelection?.variant;
+    final selectedAgent = turn.agent ?? pendingSelection?.agent;
     try {
       await applyTurnSelection(
         configRepository: AcpSessionConfigRepository(client: client),
@@ -1173,7 +1242,7 @@ abstract class AcpPlugin({
     } on Object catch (error, stack) {
       if (failsTurnOnSelectionError) {
         Log.w("[$id] applyTurnSelection for $sessionId failed; dropping turn", error, stack);
-        _finishTurn(sessionId: sessionId, state: state, failed: true, refused: false);
+        _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: true, refused: false);
         return;
       }
       Log.w(
@@ -1182,37 +1251,74 @@ abstract class AcpPlugin({
         stack,
       );
     }
-    if (state.generation != expectedGeneration) {
-      _finishTurn(sessionId: sessionId, state: state, failed: false, refused: false);
+    if (_turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn)) {
+      _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
       return;
     }
     eventMapper.beginTurn(sessionId);
     _inFlightTurnSessions.add(sessionId);
     _lastTurnSessionId = sessionId;
     try {
-      final raw = await client.request(
+      final response = client.dispatchRequest(
         method: AcpMethods.sessionPrompt,
-        params: {"sessionId": sessionId, "prompt": blocks},
+        params: {"sessionId": sessionId, "prompt": turn.blocks},
         timeout: const Duration(minutes: 30),
       );
+      _markTurnDispatched(sessionId: sessionId, state: state, turn: turn);
+      final raw = await response;
       final result = AcpPromptResult.fromJson(
         (raw as Map?)?.cast<String, dynamic>() ?? const {},
       );
       _finishTurn(
         sessionId: sessionId,
         state: state,
+        turn: turn,
         failed: false,
         refused: result.stopReason == AcpStopReason.refusal,
       );
     } on Object catch (error, stack) {
-      // The frame was already accepted (the phone's send returned success),
-      // so a later rejection (auth expiry, stale session, bad payload) would
-      // otherwise stop the run with no signal. Log and surface it as a
-      // session error, not a silent idle.
-      Log.w("[$id] session/prompt for $sessionId failed after dispatch", error, stack);
-      _finishTurn(sessionId: sessionId, state: state, failed: true, refused: false);
+      // The phone's send already returned success, so a dispatch or later
+      // backend failure must remain observable rather than silently dropping
+      // the accepted prompt.
+      Log.w("[$id] accepted session/prompt for $sessionId failed", error, stack);
+      _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: true, refused: false);
       mapPromptFailure(sessionId: sessionId, error: error).forEach(_eventBuffer.add);
     }
+  }
+
+  bool _turnWasCancelled({
+    required _SessionTurnState state,
+    required int expectedGeneration,
+    required _AcpTurn turn,
+  }) => state.generation != expectedGeneration || (turn.queuedPrompt?.cancelled ?? false);
+
+  void _markTurnDispatched({
+    required String sessionId,
+    required _SessionTurnState state,
+    required _AcpTurn turn,
+  }) {
+    final queuedPrompt = turn.queuedPrompt;
+    if (queuedPrompt == null) return;
+    eventMapper
+        .mapSentPrompt(
+          sessionId: sessionId,
+          promptId: queuedPrompt.presentation.id,
+          parts: queuedPrompt.visibleParts,
+        )
+        .forEach(_eventBuffer.add);
+    if (state.queue.remove(queuedPrompt)) {
+      state.recordDispatchedPrompt(promptId: queuedPrompt.presentation.id);
+      _emitQueueUpdate(sessionId: sessionId, state: state);
+    }
+  }
+
+  void _emitQueueUpdate({required String sessionId, required _SessionTurnState state}) {
+    _eventBuffer.add(
+      BridgeSseQueuedPromptsUpdated(
+        sessionID: sessionId,
+        prompts: [for (final entry in state.queue) entry.presentation],
+      ),
+    );
   }
 
   /// Settles one finished (or dropped) turn: removes the in-flight marker,
@@ -1221,6 +1327,7 @@ abstract class AcpPlugin({
   void _finishTurn({
     required String sessionId,
     required _SessionTurnState state,
+    required _AcpTurn turn,
     required bool failed,
     required bool refused,
   }) {
@@ -1236,6 +1343,10 @@ abstract class AcpPlugin({
     if (!identical(_turnStates[sessionId], state)) {
       _syncWorkState();
       return;
+    }
+    final queuedPrompt = turn.queuedPrompt;
+    if (queuedPrompt != null && state.queue.remove(queuedPrompt)) {
+      _emitQueueUpdate(sessionId: sessionId, state: state);
     }
     eventMapper.finalizeTurn(sessionId: sessionId).forEach(_eventBuffer.add);
     if (state.pending == 0) {
@@ -1288,7 +1399,17 @@ abstract class AcpPlugin({
     // undispatched turns first so they don't dispatch after the cancel. The
     // in-flight turn (if any) ends via the agent's cancellation, which
     // resolves its `session/prompt` future and settles the accounting.
-    _turnStates[sessionId]?.generation++;
+    final state = _turnStates[sessionId];
+    if (state != null) {
+      state.generation++;
+      if (state.queue.isNotEmpty) {
+        for (final entry in state.queue) {
+          entry.cancelled = true;
+        }
+        state.queue.clear();
+        _emitQueueUpdate(sessionId: sessionId, state: state);
+      }
+    }
     final client = _client;
     if (client == null) return;
     client.notify(
@@ -1749,6 +1870,8 @@ abstract class AcpPlugin({
 /// count of unfinished turns, and the abort generation used to drop
 /// queued-but-undispatched turns.
 class _SessionTurnState() {
+  static const int _recentPromptLimit = 64;
+
   /// Completion of the session's most recently queued turn.
   Future<void> tail = Future<void>.value();
 
@@ -1760,9 +1883,39 @@ class _SessionTurnState() {
   /// Turns enqueued but not yet finished (including the running one).
   int pending = 0;
 
+  /// Existing-session prompts accepted but not yet dispatched to ACP.
+  final List<_QueuedAcpPrompt> queue = [];
+
+  final Queue<String> _recentPromptIds = Queue<String>();
+
+  bool hasAcceptedPrompt({required String promptId}) =>
+      queue.any((entry) => entry.presentation.id == promptId) || _recentPromptIds.contains(promptId);
+
+  void recordDispatchedPrompt({required String promptId}) {
+    _recentPromptIds.addLast(promptId);
+    while (_recentPromptIds.length > _recentPromptLimit) {
+      _recentPromptIds.removeFirst();
+    }
+  }
+
   /// Bumped by abort/delete; a queued turn dispatches only if the generation
   /// it captured at enqueue time is still current.
   int generation = 0;
+}
+
+class const _AcpTurn({
+  required final List<Map<String, dynamic>> blocks,
+  required final ({String providerID, String modelID})? model,
+  required final PluginSessionVariant? variant,
+  required final String? agent,
+  required final _QueuedAcpPrompt? queuedPrompt,
+});
+
+class _QueuedAcpPrompt({
+  required final PluginQueuedPrompt presentation,
+  required final List<PluginPromptPart> visibleParts,
+}) {
+  bool cancelled = false;
 }
 
 class const _TurnSelection({

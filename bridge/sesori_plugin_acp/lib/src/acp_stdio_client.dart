@@ -163,7 +163,18 @@ class AcpStdioClient({
     required String method,
     Object? params,
     Duration timeout = const Duration(seconds: 60),
-  }) async {
+  }) async => await dispatchRequest(method: method, params: params, timeout: timeout);
+
+  /// Writes a JSON-RPC request frame before returning its response future.
+  ///
+  /// Unlike [request], write failures throw synchronously. Turn dispatchers use
+  /// that distinction to publish a user message only after the frame actually
+  /// left the bridge.
+  Future<dynamic> dispatchRequest({
+    required String method,
+    Object? params,
+    Duration timeout = const Duration(seconds: 60),
+  }) {
     final process = _process;
     if (process == null) {
       throw StateError("AcpStdioClient not connected");
@@ -192,8 +203,16 @@ class AcpStdioClient({
       throw StateError("AcpStdioClient failed to write request frame for $method");
     }
 
+    return _awaitResponse(id: id, response: completer.future, timeout: timeout);
+  }
+
+  Future<dynamic> _awaitResponse({
+    required int id,
+    required Future<dynamic> response,
+    required Duration timeout,
+  }) async {
     try {
-      return await completer.future.timeout(timeout);
+      return await response.timeout(timeout);
     } on TimeoutException {
       _pending.remove(id);
       rethrow;

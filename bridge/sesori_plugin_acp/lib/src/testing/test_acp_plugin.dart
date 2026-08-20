@@ -2,16 +2,16 @@ import "../acp_plugin.dart";
 
 /// Neutral ACP adapter for testing the reusable base behavior.
 class TestAcpPlugin({
-    required super.id,
-    required super.agentDisplayName,
-    required super.launchSpec,
-    required super.launchDirectory,
-    required super.eventMapper,
-    required super.contentMapper,
-    required super.commandTracker,
-    required super.sessionOptionsService,
-    super.processFactory,
-  }) extends AcpPlugin {
+  required super.id,
+  required super.agentDisplayName,
+  required super.launchSpec,
+  required super.launchDirectory,
+  required super.eventMapper,
+  required super.contentMapper,
+  required super.commandTracker,
+  required super.sessionOptionsService,
+  super.processFactory,
+}) extends AcpPlugin {
   @override
   String get clientName => "sesori-bridge";
 
@@ -29,6 +29,9 @@ class TestAcpPlugin({
 
   @override
   bool get serializesPromptsProcessWide => false;
+
+  @override
+  bool get cancelsActiveTurnForQueuedInput => false;
 
   @override
   bool get failsTurnOnSelectionError => false;

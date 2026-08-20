@@ -99,6 +99,9 @@ class HermesPlugin._({
   @override
   bool get serializesPromptsProcessWide => false;
 
+  @override
+  bool get cancelsActiveTurnForQueuedInput => false;
+
   /// No harness-specific turn selection exists (base [applyTurnSelection] is
   /// a no-op), so a selection can never fail a turn.
   @override

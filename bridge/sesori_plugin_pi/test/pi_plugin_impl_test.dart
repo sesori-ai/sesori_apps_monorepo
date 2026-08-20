@@ -57,6 +57,7 @@ void main() {
       await pump();
       expect(events.first, isA<BridgeSseSessionCreated>());
       expect(events[1], isA<BridgeSseSessionStatus>());
+      expect(events.whereType<BridgeSseQueuedPromptsUpdated>(), isEmpty);
       expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.mainAgentRunning, isTrue);
       await subscription.cancel();
     });

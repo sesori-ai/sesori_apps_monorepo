@@ -84,8 +84,8 @@ void main() {
       expect(await connecting, isTrue);
     }
 
-    Future<void> sendPrompt(String text) => plugin.sendPrompt(
-      promptId: "prompt-1",
+    Future<void> sendPrompt(String promptId, String text) => plugin.sendPrompt(
+      promptId: promptId,
       sessionId: "old-1",
       parts: [PluginPromptPart.text(text: text)],
       variant: null,
@@ -96,7 +96,7 @@ void main() {
     test("a prior-run session is resumed (not loaded) before the prompt, unsuppressed", () async {
       await connect();
 
-      final sending = sendPrompt("hi");
+      final sending = sendPrompt("prompt-1", "hi");
       final resumeFrame = await waitForFrameCount("session/resume", 1);
       final params = (resumeFrame["params"] as Map).cast<String, dynamic>();
       expect(params["sessionId"], "old-1");
@@ -135,7 +135,7 @@ void main() {
       await pump();
 
       // The now-resident session is not re-resumed on the next turn.
-      final again = sendPrompt("again");
+      final again = sendPrompt("prompt-2", "again");
       final secondPrompt = await waitForFrameCount("session/prompt", 2);
       fake.emit({
         "jsonrpc": "2.0",
@@ -149,7 +149,7 @@ void main() {
     test("a transiently failed resume is retried on the next turn", () async {
       await connect();
 
-      final sending = sendPrompt("hi");
+      final sending = sendPrompt("prompt-1", "hi");
       final firstResume = await waitForFrameCount("session/resume", 1);
       fake.emit({
         "jsonrpc": "2.0",
@@ -165,7 +165,7 @@ void main() {
       });
       await pump();
 
-      final again = sendPrompt("again");
+      final again = sendPrompt("prompt-2", "again");
       final secondResume = await waitForFrameCount("session/resume", 2);
       fake.emit({"jsonrpc": "2.0", "id": secondResume["id"], "result": const <String, dynamic>{}});
       await again;
@@ -175,7 +175,7 @@ void main() {
     test("an unsupported resume (-32601) is memoized", () async {
       await connect();
 
-      final sending = sendPrompt("hi");
+      final sending = sendPrompt("prompt-1", "hi");
       final firstResume = await waitForFrameCount("session/resume", 1);
       fake.emit({
         "jsonrpc": "2.0",
@@ -191,7 +191,7 @@ void main() {
       });
       await pump();
 
-      final again = sendPrompt("again");
+      final again = sendPrompt("prompt-2", "again");
       await waitForFrameCount("session/prompt", 2);
       await again;
       expect(frames("session/resume"), hasLength(1));

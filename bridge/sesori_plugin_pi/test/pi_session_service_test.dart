@@ -386,6 +386,90 @@ void main() {
     expect(prompt["message"], "selected");
   });
 
+  test("accepted prompt stays queued until Pi echoes its user message", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "queued-visible",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "wait for echo")],
+      userVisibleText: "wait for echo",
+      variant: null,
+      model: null,
+    );
+    expect(service.queuedPrompts(sessionId: "session").single.id, "queued-visible");
+
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    expect(
+      service.queuedPrompts(sessionId: "session").single.id,
+      "queued-visible",
+      reason: "dispatch alone must not blank the queued bubble before Pi's echo",
+    );
+
+    process.emit(
+      frame: {
+        "type": "message_end",
+        "message": {
+          "role": "user",
+          "content": [
+            {"type": "text", "text": "wait for echo"},
+          ],
+          "timestamp": 1,
+        },
+      },
+    );
+    await pump();
+
+    expect(service.queuedPrompts(sessionId: "session"), isEmpty);
+    expect(events.whereType<BridgeSseQueuedPromptsUpdated>().first.prompts.single.id, "queued-visible");
+    expect(events.whereType<BridgeSseQueuedPromptsUpdated>().last.prompts, isEmpty);
+    final message = events.whereType<BridgeSseMessageUpdated>().single;
+    final emptyQueue = events.whereType<BridgeSseQueuedPromptsUpdated>().last;
+    expect(events.indexOf(message), lessThan(events.indexOf(emptyQueue)));
+
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
+  test("an undispatched Pi prompt can be cancelled from the bridge queue", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "cancel-queued",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "cancel me")],
+      userVisibleText: "cancel me",
+      variant: null,
+      model: null,
+    );
+    expect(service.queuedPrompts(sessionId: "session"), hasLength(1));
+    expect(
+      service.cancelQueuedPrompt(sessionId: "session", promptId: "cancel-queued"),
+      isTrue,
+    );
+    expect(service.queuedPrompts(sessionId: "session"), isEmpty);
+
+    await _answerEntries(process);
+    await _waitForIdle(service: service, sessionId: "session");
+    expect(process.written.where((frame) => frame["type"] == "prompt"), isEmpty);
+    expect(
+      service.cancelQueuedPrompt(sessionId: "session", promptId: "cancel-queued"),
+      isFalse,
+    );
+  });
+
   test("selection failure prevents prompt dispatch and settles the lane", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
