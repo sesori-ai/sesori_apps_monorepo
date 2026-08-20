@@ -145,6 +145,7 @@ import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
 import "services/project_initialization_service.dart";
 import "services/project_mutation_service.dart";
+import "services/prompt_echo_correlator.dart";
 import "services/session_abort_service.dart";
 import "services/session_creation_service.dart";
 import "services/session_deletion_service.dart";
@@ -431,7 +432,9 @@ class Orchestrator({
       readyPluginIds: _pluginLifecycleService.readyPluginIds,
       catalogImportService: catalogImportService,
     );
+    final promptEchoCorrelator = PromptEchoCorrelator();
     final sessionPromptService = SessionPromptService(
+      promptEchoCorrelator: promptEchoCorrelator,
       sessionRepository: sessionRepository,
       dispatcher: sessionOperationDispatcher,
       archivedSessionValidator: archivedSessionValidator,
@@ -472,6 +475,7 @@ class Orchestrator({
       filesystemRepository: filesystemRepository,
     );
     final sessionEventService = SessionEventService(
+      promptEchoCorrelator: promptEchoCorrelator,
       sessionRepository: sessionRepository,
       pluginRuntime: _pluginRuntime,
       eventMapper: const SessionEventMapper(),

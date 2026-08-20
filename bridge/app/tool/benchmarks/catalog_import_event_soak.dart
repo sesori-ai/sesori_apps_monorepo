@@ -16,6 +16,7 @@ import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/trackers/session_event_tracker.dart";
+import "package:sesori_bridge/src/bridge/services/prompt_echo_correlator.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_service.dart";
 import "package:sesori_bridge/src/bridge/sse/bridge_event_mapper.dart";
 import "package:sesori_bridge/src/bridge/sse/sse_event_delivery.dart";
@@ -158,6 +159,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
       );
       final failureReporter = _BenchmarkFailureReporter();
       final eventService = SessionEventService(
+      promptEchoCorrelator: PromptEchoCorrelator(),
         sessionRepository: sessionRepository,
         pluginRuntime: runtime,
         eventMapper: const SessionEventMapper(),

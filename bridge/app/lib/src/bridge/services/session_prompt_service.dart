@@ -7,6 +7,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
 import "archived_session_validator.dart";
+import "prompt_echo_correlator.dart";
 import "session_operation_dispatcher.dart";
 
 class const SessionPromptDefaultsChange({
@@ -18,6 +19,7 @@ class SessionPromptService({
   required final SessionRepository _sessionRepository,
   required final SessionOperationDispatcher _dispatcher,
   required final ArchivedSessionValidator _archivedSessionValidator,
+  required final PromptEchoCorrelator _promptEchoCorrelator,
 }) {
   final StreamController<SessionPromptDefaultsChange> _promptDefaultsChangesController =
       StreamController<SessionPromptDefaultsChange>.broadcast(sync: true);
@@ -74,6 +76,8 @@ class SessionPromptService({
         agent: agent,
         model: model,
       );
+      // Recorded after acceptance so a refused send never claims an echo.
+      _promptEchoCorrelator.recordDispatched(sessionId: sessionId, promptId: promptId);
       await _updatePromptDefaults(
         sessionId: sessionId,
         variant: variant,
@@ -99,6 +103,7 @@ class SessionPromptService({
       agent: agent,
       model: model,
     );
+    _promptEchoCorrelator.recordDispatched(sessionId: sessionId, promptId: promptId);
     await _updatePromptDefaults(
       sessionId: sessionId,
       variant: variant,

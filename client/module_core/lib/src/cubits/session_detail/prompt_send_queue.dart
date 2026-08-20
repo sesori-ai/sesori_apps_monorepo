@@ -60,44 +60,6 @@ class PromptSendQueue() {
     _awaitingBridge.add((submission: active, epoch: epoch));
   }
 
-  /// Retires the parked submission a delivered echo carries, matched on the
-  /// text it published.
-  ///
-  /// Harnesses without a bridge-side queue publish their echo with no prompt
-  /// id, so identity correlation is unavailable there. Matching the authored
-  /// text keeps another surface's prompt from retiring this client's copy;
-  /// [_echoCarries] tolerates a harness that prefixes bridge-owned context.
-  /// Returns whether a submission was retired.
-  bool settleAwaitingMatching({required String? echoText}) {
-    if (echoText == null) return false;
-    final index = _awaitingBridge.indexWhere(
-      (entry) => _echoCarries(echoText: echoText, submission: entry.submission),
-    );
-    if (index == -1) return false;
-    _awaitingBridge.removeAt(index);
-    return true;
-  }
-
-  /// Marks the in-flight submission settled when [echoText] is its own echo,
-  /// arriving before its acceptance response.
-  ///
-  /// This both keeps the send from parking a second copy and, critically,
-  /// makes a later transport failure discard it: requeueing a prompt the
-  /// harness already started would run the user's turn twice on backends that
-  /// cannot deduplicate by prompt id. Returns whether it was marked.
-  bool markActiveSettledIfEchoed({required String? echoText}) {
-    final active = _active;
-    if (active == null || echoText == null) return false;
-    if (!_echoCarries(echoText: echoText, submission: active)) return false;
-    _settledElsewhere.add(active.promptId);
-    return true;
-  }
-
-  static bool _echoCarries({required String echoText, required QueuedSessionSubmission submission}) {
-    final authored = submission.text.trim();
-    return authored.isNotEmpty && echoText.contains(authored);
-  }
-
   /// Accepted submissions whose bridge-side representation has not arrived
   /// yet, oldest first.
   List<QueuedSessionSubmission> get awaitingBridge =>

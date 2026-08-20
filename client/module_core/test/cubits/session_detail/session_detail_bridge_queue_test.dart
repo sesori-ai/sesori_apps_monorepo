@@ -349,7 +349,7 @@ void main() {
         cubit.sendMessage(text: "steer it", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
       );
       await Future<void>.delayed(Duration.zero);
-      expect((cubit.state as SessionDetailLoaded).sendingSubmission?.promptId, isNotNull);
+      final promptId = (cubit.state as SessionDetailLoaded).sendingSubmission!.promptId;
 
       // An immediately dispatched steering send: the bridge consumed the entry
       // and published the resulting queue before the acceptance response
@@ -363,13 +363,13 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       // The dispatched prompt's own message is what accounts for the row.
       sessionEvents.add(
-        const SesoriMessageUpdated(
+        SesoriMessageUpdated(
           info: Message.user(
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
-            time: MessageTime(created: 300, completed: null),
-            promptId: null,
+            time: const MessageTime(created: 300, completed: null),
+            promptId: promptId,
           ),
         ),
       );
@@ -386,7 +386,7 @@ void main() {
       expect(state.queuedMessages, isEmpty);
     });
 
-    test("a harness echo without a prompt id settles the parked send", () async {
+    test("a bridge-stamped harness echo settles the parked send", () async {
       when(
         () => mockSessionRepository.sendMessage(
           sessionId: _sessionId,
@@ -407,18 +407,18 @@ void main() {
         attachments: const [],
       );
       await Future<void>.delayed(Duration.zero);
-      expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, hasLength(1));
+      final parked = (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.single;
 
-      // Codex and OpenCode publish their echo with no prompt id, so the copy
-      // can only be settled positionally.
+      // Codex and OpenCode author no prompt id of their own; the bridge stamps
+      // its dispatch onto their echo so the client can still correlate it.
       sessionEvents.add(
-        const SesoriMessageUpdated(
+        SesoriMessageUpdated(
           info: Message.user(
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
-            time: MessageTime(created: 200, completed: null),
-            promptId: null,
+            time: const MessageTime(created: 200, completed: null),
+            promptId: parked.promptId,
           ),
         ),
       );
@@ -428,7 +428,7 @@ void main() {
       expect(
         (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions,
         isEmpty,
-        reason: "an unattributable echo must still retire the copy it replaced",
+        reason: "the stamped echo replaced the copy it belongs to",
       );
     });
 
@@ -449,18 +449,19 @@ void main() {
       await cubit.sendMessage(text: "first", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
       await cubit.sendMessage(text: "second", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
       await Future<void>.delayed(Duration.zero);
-      expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, hasLength(2));
+      final parked = (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions;
+      expect(parked, hasLength(2));
 
       // One echo, several updates: the envelope and each of its parts. Only
       // the first may settle a send.
       sessionEvents.add(
-        const SesoriMessageUpdated(
+        SesoriMessageUpdated(
           info: Message.user(
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
-            time: MessageTime(created: 200, completed: null),
-            promptId: null,
+            time: const MessageTime(created: 200, completed: null),
+            promptId: parked.first.promptId,
           ),
         ),
       );
@@ -535,17 +536,18 @@ void main() {
         cubit.sendMessage(text: "steer it", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
       );
       await Future<void>.delayed(Duration.zero);
+      final inFlight = (cubit.state as SessionDetailLoaded).sendingSubmission!.promptId;
 
-      // A queue-less harness echoes at acceptance, so the message can land
-      // before the acceptance response completes.
+      // A queue-less harness echoes at acceptance, so the stamped message can
+      // land before the acceptance response completes.
       sessionEvents.add(
-        const SesoriMessageUpdated(
+        SesoriMessageUpdated(
           info: Message.user(
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
-            time: MessageTime(created: 200, completed: null),
-            promptId: null,
+            time: const MessageTime(created: 200, completed: null),
+            promptId: inFlight,
           ),
         ),
       );

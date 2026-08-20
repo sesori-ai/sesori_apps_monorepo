@@ -1181,18 +1181,13 @@ class SessionDetailCubit(
     // prompt id must still reconcile, while repeated part updates of one
     // association stay idempotent.
     if (!_accountedUserMessages.add("$messageId|${promptId ?? ''}")) return;
-    if (promptId == null) {
-      // Harnesses without a bridge-side queue echo with no id, so the echoed
-      // text is the only correlation available. Matching it keeps another
-      // surface's prompt from retiring this client's copy.
-      final echoText = _renderableUserText(message);
-      final settled =
-          _promptQueue.settleAwaitingMatching(echoText: echoText) ||
-          _promptQueue.markActiveSettledIfEchoed(echoText: echoText);
-      if (!settled) return;
-    } else {
-      _promptQueue.removeByPromptId(promptId);
-    }
+    // Only identity settles a prompt. Content cannot: another surface's echo
+    // may contain this text, identical prompts collide, and an attachment-only
+    // echo carries none — and a wrong match would discard a send the user
+    // still owns. Harness echoes reach the client with an id because the
+    // bridge stamps its own dispatch (see PromptEchoCorrelator).
+    if (promptId == null) return;
+    _promptQueue.removeByPromptId(promptId);
     final bridgePrompts = [
       for (final prompt in current.bridgeQueuedPrompts)
         if (prompt.id != promptId) prompt,
@@ -1208,17 +1203,6 @@ class SessionDetailCubit(
     // The delivered prompt's own send may have stopped the drain on a lost
     // response; anything staged behind it must not stay parked.
     _tryDrainQueue();
-  }
-
-  /// The text a delivered user message published, or null when it carries
-  /// none (an attachment-only echo).
-  static String? _renderableUserText(MessageWithParts message) {
-    final text = message.parts
-        .where((part) => part.type == MessagePartType.text)
-        .map((part) => part.text ?? "")
-        .where((text) => text.isNotEmpty)
-        .join("\n");
-    return text.isEmpty ? null : text;
   }
 
   /// Applies a full-list replacement of the bridge-owned queue. Local staged

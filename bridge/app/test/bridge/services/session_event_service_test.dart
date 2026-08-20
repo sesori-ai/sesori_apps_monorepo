@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/bridge/repositories/mappers/session_event_mapp
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/trackers/session_event_tracker.dart";
+import "package:sesori_bridge/src/bridge/services/prompt_echo_correlator.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_service.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -45,6 +46,7 @@ void main() {
       eventTracker = SessionEventTracker(maxPendingEntriesPerPlugin: 1024);
       failureReporter = CapturingFailureReporter();
       service = SessionEventService(
+      promptEchoCorrelator: PromptEchoCorrelator(),
         sessionRepository: repository,
         pluginRuntime: pluginRuntime,
         eventMapper: const SessionEventMapper(),
