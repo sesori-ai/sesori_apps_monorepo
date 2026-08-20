@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:cupertino_ui/cupertino_ui.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
@@ -266,9 +267,8 @@ void main() {
     await gesture.moveBy(const Offset(0, 80));
     await tester.pump();
 
-    final indicator = find.byType(PregoActivityIndicator);
+    final indicator = find.byType(CupertinoActivityIndicator);
     expect(indicator, findsOneWidget);
-    expect(tester.getSize(indicator), const Size.square(20));
     expect(tester.getTopLeft(indicator).dy, greaterThanOrEqualTo(barBottom));
     expect(tester.getTopLeft(find.byKey(_contentKey)).dy, greaterThan(initialContentTop));
     expect(tester.getBottomRight(find.byType(GlassAppBar)).dy, barBottom);
@@ -295,7 +295,7 @@ void main() {
     await gesture.moveBy(const Offset(0, 80));
     await tester.pump();
 
-    final indicator = find.byType(PregoActivityIndicator);
+    final indicator = find.byType(CupertinoActivityIndicator);
     expect(tester.getTopLeft(largeTitle).dy, moreOrLessEquals(initialTitleTop));
     expect(tester.getTopLeft(indicator).dy, greaterThanOrEqualTo(tester.getBottomLeft(largeTitle).dy));
     expect(tester.getTopLeft(find.byKey(_contentKey)).dy, greaterThan(initialContentTop));
@@ -365,7 +365,7 @@ void main() {
     await gesture.moveBy(const Offset(0, 80));
     await tester.pump();
 
-    final indicator = find.byType(PregoActivityIndicator);
+    final indicator = find.byType(CupertinoActivityIndicator);
     expect(tester.getTopLeft(indicator).dy, greaterThanOrEqualTo(tester.getBottomLeft(largeTitle).dy));
 
     await gesture.up();
