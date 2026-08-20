@@ -1,12 +1,17 @@
 import "dart:async";
 
+import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:hermes_plugin/hermes_plugin.dart";
+import "package:hermes_plugin/src/api/hermes_acp_api.dart";
+import "package:hermes_plugin/src/repositories/hermes_catalog_repository.dart";
+import "package:hermes_plugin/src/services/hermes_session_options_service.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
-/// The `initialize` result Hermes actually advertises (verified 2026-08-15
-/// against Hermes Agent 0.20.1): load/list/resume/fork session capabilities,
+/// The `initialize` result Hermes actually advertises (verified 2026-08-20
+/// against Hermes Agent 0.20.4): load/list/resume/fork session capabilities,
 /// image prompt support, and no `closeSession`. The base must therefore
 /// never call `session/close`. Auth mirrors `build_auth_methods()`: the
 /// configured provider as an agent method first, then a terminal-setup
@@ -46,13 +51,7 @@ void main() {
     setUp(() {
       fake = FakeAcpProcess();
       handledFrameIds = {};
-      plugin = HermesPlugin(
-        binaryPath: HermesBinary.defaultBinary,
-        launchDirectory: "/repo",
-        processFactory: (_) async => fake,
-        configuredModelId: null,
-        configuredProviderId: null,
-      );
+      plugin = _plugin(fake: fake);
     });
 
     tearDown(() async {
@@ -124,7 +123,7 @@ void main() {
       expect(plugin.initializeCapabilityMeta, isNull);
       expect(plugin.supportsFormElicitation, isFalse, reason: "no elicitation/create on Hermes");
       expect(plugin.serializesPromptsProcessWide, isFalse);
-      expect(plugin.failsTurnOnSelectionError, isFalse);
+      expect(plugin.failsTurnOnSelectionError, isTrue);
       expect(plugin.sessionCloseSettlementTimeout, const Duration(seconds: 5));
     });
 
@@ -234,5 +233,186 @@ void main() {
         reason: "Hermes does not advertise closeSession, so deletion must be local-only",
       );
     });
+
+    test("a selected catalog model is applied before session creation completes", () async {
+      await connect();
+
+      final creating = plugin.createSession(
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: const (
+          providerID: "opencode-go",
+          modelID: "opencode-go:gpt-5",
+        ),
+      );
+      await respond(
+        method: "session/new",
+        result: const {
+          "sessionId": "s1",
+          "models": {
+            "currentModelId": "opencode-go:deepseek-v4-flash",
+            "availableModels": [
+              {
+                "modelId": "opencode-go:deepseek-v4-flash",
+                "name": "OpenCode Go · deepseek-v4-flash",
+                "description": "Provider: OpenCode Go • current",
+              },
+              {
+                "modelId": "opencode-go:gpt-5",
+                "name": "OpenCode Go · GPT-5",
+                "description": "Provider: OpenCode Go",
+              },
+            ],
+          },
+        },
+      );
+
+      final setModelFrame = await waitForFrame(method: "session/set_model");
+      expect(
+        (setModelFrame["params"] as Map).cast<String, dynamic>(),
+        {"sessionId": "s1", "modelId": "opencode-go:gpt-5"},
+      );
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": setModelFrame["id"],
+        "result": <String, dynamic>{},
+      });
+
+      expect((await creating).id, "s1");
+    });
+
+    test("a rejected model switch fails the turn before session/prompt", () async {
+      await connect();
+      final creating = plugin.createSession(
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await respond(
+        method: "session/new",
+        result: const {
+          "sessionId": "s1",
+          "models": {
+            "currentModelId": "opencode-go:deepseek-v4-flash",
+            "availableModels": [
+              {
+                "modelId": "opencode-go:deepseek-v4-flash",
+                "name": "OpenCode Go · deepseek-v4-flash",
+                "description": "Provider: OpenCode Go • current",
+              },
+              {
+                "modelId": "opencode-go:gpt-5",
+                "name": "OpenCode Go · GPT-5",
+                "description": "Provider: OpenCode Go",
+              },
+            ],
+          },
+        },
+      );
+      await creating;
+      final failedTurn = plugin.events.where((event) => event is BridgeSseSessionError).first;
+
+      await plugin.sendPrompt(
+        promptId: "prompt-1",
+        sessionId: "s1",
+        parts: const [PluginPromptPart.text(text: "Hello")],
+        variant: null,
+        agent: null,
+        model: const (
+          providerID: "opencode-go",
+          modelID: "opencode-go:gpt-5",
+        ),
+      );
+      final setModelFrame = await waitForFrame(method: "session/set_model");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": setModelFrame["id"],
+        "error": {
+          "code": -32603,
+          "message": "Internal error",
+        },
+      });
+
+      await failedTurn.timeout(const Duration(seconds: 1));
+      expect(
+        fake.written.where((frame) => frame["method"] == "session/prompt"),
+        isEmpty,
+      );
+    });
   });
+}
+
+HermesPlugin _plugin({
+  required FakeAcpProcess fake,
+  String? configuredModelId,
+  String? configuredProviderId,
+}) {
+  final configurationTracker = AcpSessionConfigurationTracker()
+    ..setProcessDefaults(
+      modelId: configuredModelId,
+      providerId: configuredProviderId,
+    );
+  final commandTracker = AcpCommandTracker();
+  final repository = HermesCatalogRepository(
+    api: HermesAcpApi(
+      binaryPath: HermesBinary.defaultBinary,
+      processFactory: (_) async => throw StateError("scratch discovery not expected"),
+      commandExecutor: const _UnusedCommandExecutor(),
+      environment: const {},
+    ),
+  );
+  final optionsService = HermesSessionOptionsService(
+    repository: repository,
+    configurationTracker: configurationTracker,
+    commandTracker: commandTracker,
+    launchDirectory: "/repo",
+    pluginId: "hermes",
+    agentDisplayName: "Hermes Agent",
+    discoveryTimeout: const Duration(seconds: 2),
+  );
+  const contentMapper = AcpContentMapper();
+  return HermesPlugin(
+    launchSpec: HermesBinary.launchSpec(
+      binary: HermesBinary.defaultBinary,
+      cwd: "/repo",
+      environment: const {},
+    ),
+    launchDirectory: "/repo",
+    contentMapper: contentMapper,
+    eventMapper: AcpEventMapper(
+      launchDirectory: "/repo",
+      agentId: "hermes",
+      pluginId: "hermes",
+      configurationTracker: configurationTracker,
+      contentMapper: contentMapper,
+    ),
+    commandTracker: commandTracker,
+    sessionOptionsService: AcpSessionOptionsService(
+      configurationTracker: configurationTracker,
+      commandTracker: commandTracker,
+      pluginId: "hermes",
+      agentDisplayName: "Hermes Agent",
+    ),
+    processFactory: (_) async => fake,
+    hermesSessionOptionsService: optionsService,
+  );
+}
+
+class const _UnusedCommandExecutor() implements CommandExecutor {
+  @override
+  Future<CommandResult> run(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    Duration? timeout,
+  }) => throw StateError("command execution not expected");
 }

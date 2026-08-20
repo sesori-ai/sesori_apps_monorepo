@@ -1,9 +1,8 @@
-import "dart:io" show Directory;
-
 import "package:acp_plugin/acp_plugin.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "hermes_binary.dart";
 import "hermes_identity.dart";
+import "services/hermes_session_options_service.dart";
 
 /// Hermes Agent backend over ACP.
 ///
@@ -11,11 +10,11 @@ import "hermes_identity.dart";
 /// fork/prompt capabilities and streams turns via `session/update`
 /// notifications, so the base [AcpPlugin] machinery owns sessions and turns.
 /// This class declares Hermes-specific protocol policies, including excluding
-/// interactive terminal setup from headless authentication. Version 1 exposes
-/// Hermes's configured model as its sole model option while Hermes remains
-/// authoritative for model/mode changes. It has no managed runtime (Hermes
-/// installs itself; the bridge resolves it on PATH).
-class HermesPlugin._({
+/// interactive terminal setup from headless authentication. Hermes model
+/// discovery and its unstable `session/set_model` extension stay isolated in
+/// this package. It has no managed runtime (Hermes installs itself; the bridge
+/// resolves it on PATH).
+class HermesPlugin({
   required super.launchSpec,
   required super.launchDirectory,
   required super.contentMapper,
@@ -23,51 +22,8 @@ class HermesPlugin._({
   required super.commandTracker,
   required super.sessionOptionsService,
   required super.processFactory,
+  required final HermesSessionOptionsService _hermesSessionOptionsService,
 }) extends AcpPlugin {
-  factory({
-    required String binaryPath,
-    required String? launchDirectory,
-    required AcpProcessFactory processFactory,
-    required String? configuredModelId,
-    required String? configuredProviderId,
-  }) {
-    final cwd = launchDirectory ?? Directory.current.path;
-    final launchSpec = HermesBinary.launchSpec(
-      binary: binaryPath,
-      cwd: cwd,
-      environment: const {},
-    );
-    final commandTracker = AcpCommandTracker();
-    final configurationTracker = AcpSessionConfigurationTracker()
-      ..setProcessDefaults(
-        modelId: configuredModelId,
-        providerId: configuredProviderId,
-      );
-    const contentMapper = AcpContentMapper();
-    final sessionOptionsService = AcpSessionOptionsService(
-      configurationTracker: configurationTracker,
-      commandTracker: commandTracker,
-      pluginId: HermesPluginIdentity.id,
-      agentDisplayName: HermesPluginIdentity.displayName,
-    );
-    final mapper = AcpEventMapper(
-      launchDirectory: cwd,
-      agentId: HermesPluginIdentity.id,
-      pluginId: HermesPluginIdentity.id,
-      configurationTracker: configurationTracker,
-      contentMapper: contentMapper,
-    );
-    return HermesPlugin._(
-      launchSpec: launchSpec,
-      launchDirectory: cwd,
-      contentMapper: contentMapper,
-      eventMapper: mapper,
-      commandTracker: commandTracker,
-      sessionOptionsService: sessionOptionsService,
-      processFactory: processFactory,
-    );
-  }
-
   this
     : super(
         id: HermesPluginIdentity.id,
@@ -109,11 +65,69 @@ class HermesPlugin._({
   @override
   bool get cancelsActiveTurnForQueuedInput => false;
 
-  /// No harness-specific turn selection exists (base [applyTurnSelection] is
-  /// a no-op), so a selection can never fail a turn.
   @override
-  bool get failsTurnOnSelectionError => false;
+  bool get failsTurnOnSelectionError => true;
 
   @override
   Duration get sessionCloseSettlementTimeout => const Duration(seconds: 5);
+
+  @override
+  void captureSessionConfig(
+    AcpNewSessionResult result, {
+    String? sessionId,
+    bool fromNewSession = false,
+  }) => _hermesSessionOptionsService.captureSessionConfig(
+    result,
+    sessionId: sessionId,
+    fromNewSession: fromNewSession,
+  );
+
+  @override
+  Future<void> applyTurnSelection({
+    required AcpSessionConfigRepository configRepository,
+    required String sessionId,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+    required String? agent,
+  }) async {
+    final liveClient = client;
+    if (liveClient == null) throw StateError("Hermes ACP client is not connected");
+    await _hermesSessionOptionsService.applyTurnSelection(
+      liveClient: liveClient,
+      sessionId: sessionId,
+      model: model,
+    );
+  }
+
+  @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => _hermesSessionOptionsService.getSessionOptions(discoveryMode: discoveryMode);
+
+  @override
+  Future<List<PluginAgent>> getAgents({required String projectId}) => _hermesSessionOptionsService.listAgents();
+
+  @override
+  Future<PluginProvidersResult> getProviders({required String projectId}) =>
+      _hermesSessionOptionsService.listProviders();
+
+  @override
+  Future<void> deleteSession(String sessionId) async {
+    await super.deleteSession(sessionId);
+    _hermesSessionOptionsService.forgetSession(sessionId: sessionId);
+  }
+
+  @override
+  void onConnectionReset() => _hermesSessionOptionsService.resetConnection();
+
+  @override
+  Future<void> dispose() async {
+    try {
+      await _hermesSessionOptionsService.dispose();
+    } on Object catch (error, stackTrace) {
+      Log.w("[${HermesPluginIdentity.id}] failed to dispose session options service", error, stackTrace);
+    }
+    await super.dispose();
+  }
 }

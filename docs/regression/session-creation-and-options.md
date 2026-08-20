@@ -20,10 +20,15 @@ variant, and worktree mode, and creating the session with its first input.
   default-first, and a model that offers variants always has one selected: the
   agent's declared variant when valid, otherwise the first available. Selecting a
   variant is therefore a switch between named levels, never a reset to unset.
-- Hermes Agent resolves its configured model and provider by running
-  `hermes status` before starting ACP, then exposes that model through the base
-  single-agent option synthesis. Hermes remains authoritative for model changes;
-  Sesori does not advertise a separate catalog or switch models. Hermes also
+- Hermes Agent seeds its configured model and provider from `hermes status`,
+  then discovers the available model catalog in a separate empty ACP session
+  before the user creates one. The discovery process must exit before Sesori
+  deletes that exact persisted Hermes session; failed cleanup fails discovery
+  rather than caching a catalog that left a known artifact. Reuse is
+  process-scoped, explicit refresh creates a fresh probe, and a failed first
+  probe retains the configured-model fallback. Picker IDs remain the exact
+  Hermes values accepted by `session/set_model`, including named custom
+  providers, and a selected model is applied before the turn. Hermes also
   advertises image prompt capability so inline attachments are accepted.
 - Read intents stay distinct: a normal load may serve a valid cache or discover,
   a cache-only read never discovers and reports cache-unavailable, and an

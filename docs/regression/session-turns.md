@@ -79,8 +79,10 @@ defaults and queued client sends coherent.
 - Hermes runs turns through ACP v1 over `hermes acp`: initialization uses the
   first non-terminal provider authentication method, image prompt parts remain
   available, streamed updates use the shared ACP normalization, and abort uses
-  session cancellation. Version 1 uses the model/mode configured in Hermes and
-  offers no per-turn picker; Sesori does not call form-elicitation or unadvertised
+  session cancellation. Available models come from Hermes's ACP session model
+  state, and the selected exact model ID is applied through Hermes's
+  `session/set_model` extension before each changed-model turn. A rejected model
+  fails before prompting. Sesori does not call form-elicitation or unadvertised
   session-close methods to complete an ordinary turn.
 - Existing-session ACP prompts remain bridge-queued while an earlier turn,
   process-wide lane, resume, or selection blocks their `session/prompt` frame.

@@ -6,9 +6,12 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
     show CommandResult, HostProcessCommandExecutor, SemanticVersion;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../api/hermes_acp_api.dart";
 import "../hermes_binary.dart";
 import "../hermes_identity.dart";
 import "../hermes_plugin_impl.dart";
+import "../repositories/hermes_catalog_repository.dart";
+import "../services/hermes_session_options_service.dart";
 
 const int _setupProbeOutputLimit = 64 * 1024;
 
@@ -24,9 +27,8 @@ const int _setupProbeOutputLimit = 64 * 1024;
 class const HermesPluginDescriptor() extends BridgePluginDescriptor {
   static const Duration _connectBudget = Duration(seconds: 15);
   static const Duration _versionProbeTimeout = Duration(seconds: 10);
-
   /// Oldest Hermes Agent release with the ACP behavior this plugin requires.
-  static const String minVersion = "0.20.0";
+  static const String minVersion = "0.20.4";
 
   /// Latest stable Hermes Agent release validated against this plugin.
   static const String targetVersion = "0.20.4";
@@ -345,20 +347,70 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
 
     // Route the agent subprocess through the host process seam rather than
     // io.Process.start, so the bridge owns identity capture and signalling.
+    final cwd = io.Directory.current.path;
     final processFactory = hostProcessAcpFactory(
       processes: host.processes,
       environment: host.environment,
     );
+    final commandExecutor = HostProcessCommandExecutor(
+      processes: host.processes,
+      runInShell: io.Platform.isWindows,
+      maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+    );
+    final configurationTracker = AcpSessionConfigurationTracker()
+      ..setProcessDefaults(
+        modelId: hasConfiguredModel ? status.model : null,
+        providerId: hasConfiguredModel ? status.provider : null,
+      );
+    final commandTracker = AcpCommandTracker();
+    const contentMapper = AcpContentMapper();
+    final acpSessionOptionsService = AcpSessionOptionsService(
+      configurationTracker: configurationTracker,
+      commandTracker: commandTracker,
+      pluginId: HermesPluginIdentity.id,
+      agentDisplayName: HermesPluginIdentity.displayName,
+    );
+    final eventMapper = AcpEventMapper(
+      launchDirectory: cwd,
+      agentId: HermesPluginIdentity.id,
+      pluginId: HermesPluginIdentity.id,
+      configurationTracker: configurationTracker,
+      contentMapper: contentMapper,
+    );
+    final catalogRepository = HermesCatalogRepository(
+      api: HermesAcpApi(
+        binaryPath: binaryPath,
+        processFactory: processFactory,
+        commandExecutor: commandExecutor,
+        environment: host.environment,
+      ),
+    );
+    final sessionOptionsService = HermesSessionOptionsService(
+      repository: catalogRepository,
+      configurationTracker: configurationTracker,
+      commandTracker: commandTracker,
+      launchDirectory: cwd,
+      pluginId: HermesPluginIdentity.id,
+      agentDisplayName: HermesPluginIdentity.displayName,
+      discoveryTimeout: const Duration(seconds: 20),
+    );
 
     final hermes = HermesPlugin(
-      binaryPath: binaryPath,
+      launchSpec: HermesBinary.launchSpec(
+        binary: binaryPath,
+        cwd: cwd,
+        environment: const {},
+      ),
       // The bridge seeds the launch directory as an always-present project;
       // the bridge itself owns all project/session persistence for this
       // derive-style plugin, so the plugin needs no store of its own.
-      launchDirectory: io.Directory.current.path,
+      launchDirectory: cwd,
+      contentMapper: contentMapper,
+      eventMapper: eventMapper,
+      commandTracker: commandTracker,
+      sessionOptionsService: acpSessionOptionsService,
       processFactory: processFactory,
-      configuredModelId: hasConfiguredModel ? status.model : null,
-      configuredProviderId: hasConfiguredModel ? status.provider : null,
+      hermesSessionOptionsService: sessionOptionsService,
     );
 
     final plugin = AcpBridgePlugin(

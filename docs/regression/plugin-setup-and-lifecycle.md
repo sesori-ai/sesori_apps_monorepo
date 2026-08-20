@@ -16,10 +16,10 @@ idle suspension, the management snapshot, and lifecycle commands.
   never downloads or mutates files, and failure there is non-fatal. The persisted disable
   list is the only durable eligibility policy, with setup deciding blocked versus routable.
 - Hermes is a direct-CLI harness with no managed install. Setup distinguishes a missing or
-  pre-ACP binary, a Hermes Agent release below `0.20.0`, and missing model/provider
+  pre-ACP binary, a Hermes Agent release below `0.20.4`, and missing model/provider
   configuration; startup revalidates the effective PATH or explicit `--hermes-bin` executable
   while preserving an explicit path as authoritative.
-  Model/provider setup remains an out-of-band Hermes CLI action, so authentication-required
+  Provider setup remains an out-of-band Hermes CLI action, so authentication-required
   Hermes entries give local setup guidance rather than offering bridge-managed login.
 - Pi and Oh My Pi are registered harnesses with managed installs where a platform
   archive exists and explicit `--pi-bin`/`--omp-bin` paths stay authoritative. Pi
@@ -96,7 +96,7 @@ idle suspension, the management snapshot, and lifecycle commands.
 Vary which harness runs first and which stays disabled, and the configuration: default
 managed, explicit binary path, externally managed backend. Vary the trigger between app
 and management API, whether a session is idle or working, and fresh versus reused data
-directories. For Hermes, vary missing and pre-ACP installs, a release below `0.20.0`, an
+directories. For Hermes, vary missing and pre-ACP installs, a release below `0.20.4`, an
 unconfigured model/provider, PATH discovery, and `--hermes-bin`. Restore eligibility,
 timeouts, and sessions afterwards.
 
