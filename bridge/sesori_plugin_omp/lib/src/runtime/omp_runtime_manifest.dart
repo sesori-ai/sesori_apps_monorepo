@@ -7,23 +7,28 @@ import "../models/omp_linux_libc.dart";
 import "../omp_identity.dart";
 
 class const OmpRuntimeManifest() extends RuntimeManifest {
-  static final SemanticRuntimeVersion _version = SemanticRuntimeVersion.parse(value: "17.2.13");
+  static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "17.2.13");
+
+  /// The latest stable Oh My Pi release targeted by this plugin.
+  static const String targetVersion = "17.3.8";
+
+  static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: targetVersion);
 
   static const Map<PlatformOs, Map<PlatformArch, DirectBinaryRuntimeAsset>> _assets = {
     PlatformOs.macos: {
       PlatformArch.arm64: DirectBinaryRuntimeAsset(
         assetName: "omp-darwin-arm64",
-        sha256: "2841151eb3381cfe094aaefef3fb7be3c926075821ba6bf3fa77dcb2ffbb8db7",
+        sha256: "84705a1ca833f59afccca2db7aff559e09cb74902e7a5aaf87077a88f3c84b84",
       ),
       PlatformArch.x64: DirectBinaryRuntimeAsset(
         assetName: "omp-darwin-x64",
-        sha256: "07d5f9603b9e3dc0dc918d94cbfd5c6ed50c13f72faed6eec83d677580739d7c",
+        sha256: "8ea335917741cdd6f5a4a671cd4c6238dfdd27b9a303e9ed357c442877768d6c",
       ),
     },
     PlatformOs.windows: {
       PlatformArch.x64: DirectBinaryRuntimeAsset(
         assetName: "omp-windows-x64.exe",
-        sha256: "1f8077b14df8d010533d4fb814de83709215f39d0d550559417eca0c3c1d01dc",
+        sha256: "0a7d4f7e491f9af906f3bdc750023bf51e8934a9e31db481b611ee2cb7909c32",
       ),
     },
   };
@@ -32,21 +37,21 @@ class const OmpRuntimeManifest() extends RuntimeManifest {
     OmpLinuxLibc.glibc: {
       PlatformArch.arm64: DirectBinaryRuntimeAsset(
         assetName: "omp-linux-arm64",
-        sha256: "f8d22cfc74d51b41185e4d7188ad88eb0e1e5e388f762ae2f90c21b095d039dd",
+        sha256: "5d97dba8068c9c3b19bc2949567798e0a839dec5f11c458b4c642bfe0f4d14a0",
       ),
       PlatformArch.x64: DirectBinaryRuntimeAsset(
         assetName: "omp-linux-x64",
-        sha256: "9c6a0ceb2995da1ba0524fc858f85c39127fd0784226ec91d54e556b8028b951",
+        sha256: "efdb54f0054e80afe1c05c09f43d5ced09ce8ec8b75c3fb6b0ca5ce4805b383f",
       ),
     },
     OmpLinuxLibc.musl: {
       PlatformArch.arm64: DirectBinaryRuntimeAsset(
         assetName: "omp-linux-musl-arm64",
-        sha256: "c199ec7b4ac4e59c86b570bae3e9fd3e95843f79fa5807354de8997438107fee",
+        sha256: "1a196dd540056a57e6264b95cc5f0f3578c9e8d0ea4ebe314a92efdbadfc2c4f",
       ),
       PlatformArch.x64: DirectBinaryRuntimeAsset(
         assetName: "omp-linux-musl-x64",
-        sha256: "fbba26125946d1a98ced8fc84c55e381ffb60ef568487e13788ec9690664b0eb",
+        sha256: "7ff5890ea47febcb70999e6d05126d7d56fb09ee86c9f9a707697135ebf917c4",
       ),
     },
   };
@@ -67,10 +72,10 @@ class const OmpRuntimeManifest() extends RuntimeManifest {
   String get binaryFileName => Platform.isWindows ? "omp.exe" : "omp";
 
   @override
-  RuntimeVersion get minPathVersion => _version;
+  RuntimeVersion get minPathVersion => _minPathVersion;
 
   @override
-  RuntimeVersion get bundledVersion => _version;
+  RuntimeVersion get bundledVersion => _bundledVersion;
 
   @override
   RuntimeVersion? parseVersion({required String value}) {

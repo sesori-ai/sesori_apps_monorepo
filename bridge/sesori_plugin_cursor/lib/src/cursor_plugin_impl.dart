@@ -148,6 +148,9 @@ class CursorPlugin._({
   bool get serializesPromptsProcessWide => false;
 
   @override
+  bool get cancelsActiveTurnForQueuedInput => false;
+
+  @override
   bool get failsTurnOnSelectionError => false;
 
   @override

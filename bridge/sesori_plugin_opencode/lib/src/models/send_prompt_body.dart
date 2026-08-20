@@ -1,6 +1,10 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 class const SendPromptBody({
+  /// Id OpenCode should give the user message it creates, or null to let
+  /// OpenCode name it. Naming it here is what links the message OpenCode
+  /// publishes back to the send that caused it.
+  required final String? messageID,
   required final List<PluginPromptPart> parts,
   required final String? agent,
   required final String? variant,
@@ -16,6 +20,7 @@ class const SendPromptBody({
   Map<String, dynamic> toJson() {
     final selectedModel = model;
     return <String, dynamic>{
+      "messageID": ?messageID,
       "parts": parts.map((part) {
         return switch (part) {
           PluginPromptPartText(:final text) => <String, dynamic>{

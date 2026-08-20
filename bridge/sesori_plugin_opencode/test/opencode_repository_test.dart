@@ -1075,6 +1075,7 @@ void main() {
       final repository = OpenCodeRepository(api);
 
       await repository.sendPrompt(
+        messageId: null,
         sessionId: "ses-1",
         directory: " /repo ",
         parts: const [PluginPromptPart.text(text: "Continue")],
@@ -1093,6 +1094,7 @@ void main() {
       final repository = OpenCodeRepository(api);
 
       await repository.sendPrompt(
+        messageId: null,
         sessionId: "ses-null",
         directory: "/repo",
         parts: const [PluginPromptPart.text(text: "Null")],
@@ -1110,6 +1112,7 @@ void main() {
       final repository = OpenCodeRepository(api);
 
       await repository.sendCommand(
+        messageId: null,
         sessionId: "ses-1",
         directory: "/repo",
         command: "/review-work",
@@ -1151,6 +1154,7 @@ void main() {
       final repository = OpenCodeRepository(api);
 
       await repository.addCompactionInstructions(
+        messageId: null,
         sessionId: "ses-1",
         directory: " /repo ",
         instructions: "Keep auth decisions",
@@ -1179,6 +1183,7 @@ void main() {
   group("Send*Body toJson", () {
     test("SendPromptBody emits variant only when provided", () {
       final withVariant = const SendPromptBody(
+        messageID: null,
         parts: [PluginPromptPart.text(text: "Hello")],
         agent: "build",
         variant: "low",
@@ -1186,6 +1191,7 @@ void main() {
         noReply: false,
       ).toJson();
       final withoutVariant = const SendPromptBody(
+        messageID: null,
         parts: [PluginPromptPart.text(text: "Hello")],
         agent: "build",
         variant: null,
@@ -1199,6 +1205,7 @@ void main() {
 
     test("SendCommandBody emits variant only when provided", () {
       final withVariant = const SendCommandBody(
+        messageID: null,
         command: "/review-work",
         arguments: "recent changes",
         agent: "reviewer",
@@ -1206,6 +1213,7 @@ void main() {
         model: null,
       ).toJson();
       final withoutVariant = const SendCommandBody(
+        messageID: null,
         command: "/review-work",
         arguments: "recent changes",
         agent: "reviewer",

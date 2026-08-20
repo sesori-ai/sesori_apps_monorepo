@@ -2815,12 +2815,6 @@ abstract class AppLocalizations {
   /// **'The connected bridge has no coding harness it can run. Install one from Harness settings.'**
   String get newSessionNoHarnessDescription;
 
-  /// No description provided for @newSessionHarnessesRefresh.
-  ///
-  /// In en, this message translates to:
-  /// **'Check for harnesses'**
-  String get newSessionHarnessesRefresh;
-
   /// No description provided for @newSessionOptionsLoadingSemantics.
   ///
   /// In en, this message translates to:
@@ -2832,12 +2826,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Refresh the model list'**
   String get newSessionOptionsRefresh;
-
-  /// No description provided for @newSessionProjectRefresh.
-  ///
-  /// In en, this message translates to:
-  /// **'Retry project check'**
-  String get newSessionProjectRefresh;
 
   /// No description provided for @newSessionProjectUnavailable.
   ///

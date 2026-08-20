@@ -50,6 +50,8 @@ void main() {
         binaryPath: HermesBinary.defaultBinary,
         launchDirectory: "/repo",
         processFactory: (_) async => fake,
+        configuredModelId: null,
+        configuredProviderId: null,
       );
     });
 

@@ -19,10 +19,15 @@ class DiffCubit({
     required final ConnectionService _connectionService,
     required final ProductAnalyticsService _productAnalyticsService,
     required final String sessionId,
+    required final Duration staleRetryDelay,
   }) extends Cubit<DiffState> {
   late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
   late final StreamSubscription<bool> _analyticsStateSubscription;
   Future<void>? _activeRefresh;
+  Timer? _staleRetryTimer;
+  bool _refreshQueued = false;
+  bool _queuedShowLoading = false;
+  bool _staleRefreshPending = false;
   _DiffAnalyticsGuard _emptyDiffAnalytics = _DiffAnalyticsGuard.ready;
   _DiffAnalyticsGuard _nonEmptyDiffAnalytics = _DiffAnalyticsGuard.ready;
 
@@ -38,6 +43,7 @@ class DiffCubit({
 
   void _handleEvent(SesoriSessionEvent event) {
     if (event is! SesoriSessionDiff) return;
+    _staleRefreshPending = true;
     unawaited(_refresh(showLoading: false));
   }
 
@@ -49,31 +55,68 @@ class DiffCubit({
   Future<void> refresh() => _refresh(showLoading: true);
 
   Future<void> _refresh({required bool showLoading}) {
-    final queued = (_activeRefresh ?? Future<void>.value())
-        .catchError((_) {})
-        .then((_) => _fetchAndEmit(showLoading: showLoading));
-    _activeRefresh = queued;
-    return queued;
+    final active = _activeRefresh;
+    if (active != null) {
+      _refreshQueued = true;
+      _queuedShowLoading = _queuedShowLoading || showLoading;
+      return active;
+    }
+    _staleRetryTimer?.cancel();
+    _staleRetryTimer = null;
+    return _activeRefresh = _drainRefreshes(showLoading: showLoading);
   }
 
-  Future<void> _fetchAndEmit({required bool showLoading}) async {
+  Future<void> _drainRefreshes({required bool showLoading}) async {
+    var nextShowLoading = showLoading;
+    try {
+      do {
+        final consumedStaleSignal = _staleRefreshPending;
+        _staleRefreshPending = false;
+        _refreshQueued = false;
+        _queuedShowLoading = false;
+        final applied = await _fetchAndEmit(showLoading: nextShowLoading);
+        nextShowLoading = _queuedShowLoading;
+        if (!applied && consumedStaleSignal) {
+          _staleRefreshPending = true;
+          break;
+        }
+      } while (_refreshQueued && !isClosed);
+    } finally {
+      _activeRefresh = null;
+    }
+    if (_staleRefreshPending) _scheduleStaleRetry(showLoading: nextShowLoading);
+  }
+
+  void _scheduleStaleRetry({required bool showLoading}) {
+    if (isClosed || _staleRetryTimer != null) return;
+    _staleRetryTimer = Timer(staleRetryDelay, () {
+      _staleRetryTimer = null;
+      if (isClosed || !_staleRefreshPending) return;
+      unawaited(_refresh(showLoading: showLoading));
+    });
+  }
+
+  Future<bool> _fetchAndEmit({required bool showLoading}) async {
     if (showLoading) {
       emit(const DiffState.loading());
     }
     try {
       final response = await _sessionRepository.getSessionDiffs(sessionId: sessionId);
-      if (isClosed) return;
+      if (isClosed) return false;
 
       switch (response) {
         case SuccessResponse(:final data):
           emit(DiffState.loaded(files: data.diffs));
           _reportDiffLoaded(isEmpty: data.diffs.isEmpty);
+          return true;
         case ErrorResponse(:final error):
           emit(DiffState.failed(error: error));
+          return false;
       }
     } catch (e) {
-      if (isClosed) return;
+      if (isClosed) return false;
       emit(DiffState.failed(error: e));
+      return false;
     }
   }
 
@@ -137,6 +180,7 @@ class DiffCubit({
 
   @override
   Future<void> close() async {
+    _staleRetryTimer?.cancel();
     await Future.wait([
       _eventSubscription.cancel(),
       _analyticsStateSubscription.cancel(),

@@ -59,6 +59,7 @@ class NewSessionCubit({
   late bool _wasConnected;
   int _loadGeneration = 0;
   int _projectLoadGeneration = 0;
+  ({int generation, NewSessionOptionsData? startedFrom, Future<void> refresh})? _silentRefresh;
 
   void _onConnectionStatusChanged(ConnectionStatus status) {
     if (isClosed) return;
@@ -364,8 +365,27 @@ class NewSessionCubit({
       return;
     }
 
-    final generation = ++_loadGeneration;
     final previousOptions = data.optionsState.data;
+    // A background refresh that can still deliver is already asking the bridge
+    // for exactly this list. Surface it instead of starting a second discovery
+    // that would race it. One that can no longer apply — a superseded selection,
+    // or options the user has since edited — would leave this refresh running
+    // forever, so start a fresh one instead.
+    final pending = _silentRefresh;
+    if (pending != null &&
+        pending.generation == _loadGeneration &&
+        identical(pending.startedFrom, previousOptions)) {
+      _emitStateUpdate(
+        options: _loadingState(previousOptions: previousOptions, source: source),
+        backendScope: null,
+        isPluginDiscoveryInFlight: false,
+        projectWorktreeCapability: null,
+      );
+      await pending.refresh;
+      return;
+    }
+
+    final generation = ++_loadGeneration;
     _emitStateUpdate(
       options: _loadingState(previousOptions: previousOptions, source: source),
       backendScope: null,
@@ -378,6 +398,37 @@ class NewSessionCubit({
       mode: NewSessionOptionsLoadMode.forcedRefresh,
       previousOptions: previousOptions,
       source: source,
+    );
+  }
+
+  /// Brings a cache the bridge served without rediscovering up to date, with no
+  /// loading state — the options on screen stay usable and simply change if the
+  /// backend's answer did. The pending work is held against the selection that
+  /// started it, so an explicit refresh for that same selection joins it rather
+  /// than paying for discovery twice.
+  void _refreshSilently({
+    required String pluginId,
+    required int generation,
+    required NewSessionOptionsSource source,
+  }) {
+    // A reconnect can rediscover and serve the same still-stale cache while the
+    // first background refresh is in flight. One is enough.
+    if (_silentRefresh?.generation == generation) return;
+
+    final startedFrom = state.agentModelData?.optionsState.data;
+    final refresh = _loadOptions(
+      pluginId: pluginId,
+      generation: generation,
+      mode: NewSessionOptionsLoadMode.silentRefresh,
+      previousOptions: startedFrom,
+      source: source,
+    );
+    final pending = (generation: generation, startedFrom: startedFrom, refresh: refresh);
+    _silentRefresh = pending;
+    unawaited(
+      refresh.whenComplete(() {
+        if (_silentRefresh == pending) _silentRefresh = null;
+      }),
     );
   }
 
@@ -406,6 +457,7 @@ class NewSessionCubit({
         error,
         stackTrace,
       );
+      if (!_canApplySilently(mode: mode, startedFrom: previousOptions)) return;
       _emitStateUpdate(
         options: previousOptions != null
             ? NewSessionOptionsFailureRetainedState(options: previousOptions, source: source)
@@ -418,6 +470,7 @@ class NewSessionCubit({
     }
 
     if (!_canApplyLoad(generation: generation, pluginId: pluginId)) return;
+    if (!_canApplySilently(mode: mode, startedFrom: previousOptions)) return;
     // The bridge answers these with an opaque error code rather than an
     // exception, so without this the screen renders a failure no log explains.
     if (result
@@ -453,6 +506,25 @@ class NewSessionCubit({
       isPluginDiscoveryInFlight: false,
       projectWorktreeCapability: null,
     );
+    if (result case NewSessionOptionsLoaded(isStale: true) when mode == NewSessionOptionsLoadMode.dynamicLoad) {
+      _refreshSilently(pluginId: pluginId, generation: generation, source: source);
+    }
+  }
+
+  /// Whether a background refresh may still apply its answer.
+  ///
+  /// Its catalog was resolved against the agent, model, variant, and staged
+  /// command as they stood when it started, and the user could keep editing
+  /// throughout. If they did, their choice outranks a list they never asked to
+  /// reload — the refresh is dropped rather than reverting them. Every edit
+  /// replaces the options instance, so identity is the whole test. A refresh
+  /// the user asked for is theirs to receive either way.
+  bool _canApplySilently({
+    required NewSessionOptionsLoadMode mode,
+    required NewSessionOptionsData? startedFrom,
+  }) {
+    if (mode != NewSessionOptionsLoadMode.silentRefresh) return true;
+    return identical(state.agentModelData?.optionsState.data, startedFrom);
   }
 
   NewSessionOptionsLoadState _loadingState({

@@ -321,7 +321,7 @@ void main() {
           mode: SessionOptionsRequestMode.dynamic,
         ),
       ).thenAnswer(
-        (_) async => SessionOptionsRepositoryAvailable(catalog: _sessionOptionsCatalog()),
+        (_) async => SessionOptionsRepositoryAvailable(catalog: _sessionOptionsCatalog(), isStale: false),
       );
 
       final result = await service.load(sessionId: "session-1", projectId: "project-1");
@@ -493,7 +493,7 @@ void _stubRepositorySnapshot({
       mode: SessionOptionsRequestMode.dynamic,
     ),
   ).thenAnswer(
-    (_) async => SessionOptionsRepositoryAvailable(catalog: _sessionOptionsCatalog()),
+    (_) async => SessionOptionsRepositoryAvailable(catalog: _sessionOptionsCatalog(), isStale: false),
   );
   stubSessionRepositoryGetSession(
     repository: repository,

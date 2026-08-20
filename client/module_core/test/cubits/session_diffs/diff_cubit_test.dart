@@ -37,11 +37,12 @@ void main() {
       await sessionEvents.close();
     });
 
-    DiffCubit buildCubit() => DiffCubit(
+    DiffCubit buildCubit({Duration staleRetryDelay = const Duration(milliseconds: 10)}) => DiffCubit(
       sessionRepository: mockSessionRepository,
       connectionService: mockConnectionService,
       productAnalyticsService: mockProductAnalyticsService,
       sessionId: sessionId,
+      staleRetryDelay: staleRetryDelay,
     );
 
     FileDiff testFileDiff({String? file}) => FileDiff.content(
@@ -317,7 +318,7 @@ void main() {
     );
 
     blocTest<DiffCubit, DiffState>(
-      "session.diff SSE burst: serializes refreshes and keeps latest result",
+      "session.diff SSE burst: coalesces into one trailing refresh",
       build: () {
         var requestCount = 0;
         when(() => mockSessionRepository.getSessionDiffs(sessionId: sessionId)).thenAnswer((_) async {
@@ -342,12 +343,55 @@ void main() {
       },
       skip: 1,
       verify: (cubit) {
+        verify(
+          () => mockSessionRepository.getSessionDiffs(sessionId: sessionId),
+        ).called(2);
         expect(
           cubit.state,
           isA<DiffStateLoaded>().having(
             (state) => state.files.single.file,
             "latest refresh wins",
-            "lib/src/request-4.dart",
+            "lib/src/request-2.dart",
+          ),
+        );
+      },
+    );
+
+    blocTest<DiffCubit, DiffState>(
+      "failed trailing refresh preserves staleness until a retry succeeds",
+      build: () {
+        var requestCount = 0;
+        when(() => mockSessionRepository.getSessionDiffs(sessionId: sessionId)).thenAnswer((_) async {
+          requestCount++;
+          if (requestCount == 1) {
+            await Future<void>.delayed(const Duration(milliseconds: 20));
+          }
+          if (requestCount == 2) return ApiResponse.error(ApiError.generic());
+          return ApiResponse.success(
+            SessionDiffsResponse(
+              diffs: [testFileDiff(file: "lib/src/request-$requestCount.dart")],
+            ),
+          );
+        });
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        sessionEvents.add(const SesoriSessionDiff(sessionID: sessionId));
+        sessionEvents.add(const SesoriSessionDiff(sessionID: sessionId));
+        await Future<void>.delayed(const Duration(milliseconds: 80));
+      },
+      skip: 1,
+      verify: (cubit) {
+        verify(
+          () => mockSessionRepository.getSessionDiffs(sessionId: sessionId),
+        ).called(3);
+        expect(
+          cubit.state,
+          isA<DiffStateLoaded>().having(
+            (state) => state.files.single.file,
+            "retried file",
+            "lib/src/request-3.dart",
           ),
         );
       },

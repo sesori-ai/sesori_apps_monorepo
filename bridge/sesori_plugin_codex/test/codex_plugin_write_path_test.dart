@@ -309,6 +309,45 @@ void main() {
       });
     });
 
+    test("native compaction clears pending turn evidence", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-compact", "cwd": "/work/sample"},
+          },
+        ),
+        const _Response(result: {}),
+      ]);
+
+      await plugin.sendCommand(
+        promptId: "prompt-1",
+        sessionId: "t-compact",
+        command: "compact",
+        arguments: "",
+        userVisibleArguments: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final idle = plugin.events.firstWhere(
+        (event) =>
+            event is BridgeSseSessionStatus &&
+            shared.SessionStatus.fromJson(event.status) is shared.SessionStatusIdle,
+      );
+      fake.pushNotification("thread/status/changed", {
+        "threadId": "t-compact",
+        "status": {"type": "active"},
+      });
+      fake.pushNotification("thread/status/changed", {
+        "threadId": "t-compact",
+        "status": {"type": "idle"},
+      });
+      await idle.timeout(const Duration(seconds: 1));
+
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
     test("a live event emitted during the first turn is scoped to the new session's directory", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
@@ -578,6 +617,35 @@ void main() {
           "model": "gpt-5.4-mini",
         },
       });
+    });
+
+    test("sendPrompt names the user message so codex echoes the prompt id", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "model": "gpt-5.4-mini",
+            "modelProvider": "openai",
+            "thread": {"id": "t-client-id"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-client-id"},
+          },
+        ),
+      ]);
+
+      await plugin.sendPrompt(
+        promptId: "prm_1",
+        sessionId: "t-client-id",
+        parts: const [PluginPromptPart.text(text: "implement it")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      expect(fake.sentParamsFor("turn/start")["clientUserMessageId"], equals("prm_1"));
     });
 
     test("collaboration mode stamps live messages with its resolved rollout model", () async {
@@ -1226,6 +1294,413 @@ void main() {
         "turn": {"id": "u-current"},
       });
       expect(await interruption, {"t-overlap"});
+    });
+
+    test("steered turn response cannot hide the active turn completion", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-steered", "cwd": "/work/sample"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-active"},
+          },
+        ),
+      ]);
+      await plugin.sendPrompt(
+        promptId: "prompt-1",
+        sessionId: "t-steered",
+        parts: const [PluginPromptPart.text(text: "first task")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      fake.pushNotification("turn/started", {
+        "threadId": "t-steered",
+        "turn": {"id": "u-active"},
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      fake.respondInOrder([
+        const _Response(
+          result: {
+            // Codex <=0.147 returned the submission id even though it steered
+            // this input into u-active.
+            "turn": {"id": "u-submission"},
+          },
+        ),
+      ]);
+      await plugin.sendPrompt(
+        promptId: "prompt-2",
+        sessionId: "t-steered",
+        parts: const [PluginPromptPart.text(text: "follow up")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+      fake.pushNotification("turn/completed", {
+        "threadId": "t-steered",
+        "turn": {"id": "u-active"},
+      });
+      await idle.timeout(const Duration(seconds: 1));
+
+      expect((await plugin.getSessionStatuses())["t-steered"], isA<PluginSessionStatusIdle>());
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+      await plugin.abortSession(sessionId: "t-steered");
+      expect(fake.sentMethods.where((method) => method == "turn/interrupt"), isEmpty);
+    });
+
+    test("authoritative turn start replaces a provisional submission id", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-provisional", "cwd": "/work/sample"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-submission"},
+          },
+        ),
+      ]);
+      await plugin.sendPrompt(
+        promptId: "prompt-1",
+        sessionId: "t-provisional",
+        parts: const [PluginPromptPart.text(text: "continue active work")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      fake.pushNotification("turn/started", {
+        "threadId": "t-provisional",
+        "turn": {"id": "u-active"},
+      });
+      await Future<void>.delayed(Duration.zero);
+      final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+      fake.pushNotification("turn/completed", {
+        "threadId": "t-provisional",
+        "turn": {"id": "u-active"},
+      });
+      await idle.timeout(const Duration(seconds: 1));
+
+      expect((await plugin.getSessionStatuses())["t-provisional"], isA<PluginSessionStatusIdle>());
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+    });
+
+    test("a fresh turn start replaces a stale active turn before its response", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-stale-active", "cwd": "/work/sample"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-stale"},
+          },
+        ),
+      ]);
+      await plugin.sendPrompt(
+        promptId: "prompt-1",
+        sessionId: "t-stale-active",
+        parts: const [PluginPromptPart.text(text: "first task")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      fake.pushNotification("turn/started", {
+        "threadId": "t-stale-active",
+        "turn": {"id": "u-stale"},
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      fake.holdNextResponse("turn/start");
+      final secondPrompt = plugin.sendPrompt(
+        promptId: "prompt-2",
+        sessionId: "t-stale-active",
+        parts: const [PluginPromptPart.text(text: "fresh task")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      for (
+        var attempt = 0;
+        attempt < 100 && fake.sentMethods.where((method) => method == "turn/start").length < 2;
+        attempt++
+      ) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      fake.pushNotification("thread/status/changed", {
+        "threadId": "t-stale-active",
+        "status": {"type": "active"},
+      });
+      fake.pushNotification("turn/started", {
+        "threadId": "t-stale-active",
+        "turn": {"id": "u-fresh"},
+      });
+      await Future<void>.delayed(Duration.zero);
+      fake.respondToHeld(
+        "turn/start",
+        const _Response(
+          result: {
+            "turn": {"id": "u-fresh"},
+          },
+        ),
+      );
+      await secondPrompt;
+
+      final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+      fake.pushNotification("turn/completed", {
+        "threadId": "t-stale-active",
+        "turn": {"id": "u-fresh"},
+      });
+      await idle.timeout(const Duration(seconds: 1));
+
+      expect((await plugin.getSessionStatuses())["t-stale-active"], isA<PluginSessionStatusIdle>());
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+    });
+
+    test("abort reconciles an already-idle Codex turn", () async {
+      const sessionId = "019a0000-1111-2222-3333-cccccccccccc";
+      final rollout = File(
+        p.join(
+          codexHome.path,
+          "sessions/2026/07/23/"
+          "rollout-2026-07-23T08-00-00-$sessionId.jsonl",
+        ),
+      )..createSync(recursive: true);
+      rollout.writeAsStringSync(
+        "${jsonEncode({
+          "timestamp": "2026-07-23T08:00:00Z",
+          "type": "session_meta",
+          "payload": {
+            "id": sessionId,
+            "timestamp": "2026-07-23T08:00:00Z",
+            "cwd": "/work/sample",
+            "model_provider": "openai",
+            "cli_version": "0.146.0",
+          },
+        })}\n",
+      );
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": sessionId, "cwd": "/work/sample"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-stale"},
+          },
+        ),
+        const _Response(error: {"code": -32600, "message": "no active turn to interrupt"}),
+      ]);
+      await plugin.sendPrompt(
+        promptId: "prompt-1",
+        sessionId: sessionId,
+        parts: const [PluginPromptPart.text(text: "task")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      fake.pushNotification("turn/started", {
+        "threadId": sessionId,
+        "turn": {"id": "u-stale"},
+      });
+      await Future<void>.delayed(Duration.zero);
+      final idleEvent = plugin.events
+          .where((event) => event is BridgeSseSessionIdle)
+          .cast<BridgeSseSessionIdle>()
+          .first;
+      final terminalTool = plugin.events
+          .where(
+            (event) =>
+                event is BridgeSseMessagePartUpdated &&
+                event.part.messageID == "call-abort" &&
+                event.part.state?.status == PluginToolStatus.error,
+          )
+          .cast<BridgeSseMessagePartUpdated>()
+          .first;
+      final emittedEvents = <BridgeSseEvent>[];
+      final eventSubscription = plugin.events.listen(emittedEvents.add);
+      rollout.writeAsStringSync(
+        "${jsonEncode(_toolCall(
+          id: "fc-abort",
+          callId: "call-abort",
+          name: "exec_command",
+          arguments: '{"cmd":"sleep 30"}',
+          turnId: "u-stale",
+        ))}\n",
+        mode: FileMode.append,
+      );
+
+      await plugin.abortSession(sessionId: sessionId);
+
+      expect((await terminalTool.timeout(const Duration(seconds: 1))).part.state?.status, PluginToolStatus.error);
+      expect((await idleEvent).sessionID, sessionId);
+      expect((await plugin.getSessionStatuses())[sessionId], isA<PluginSessionStatusIdle>());
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(emittedEvents.whereType<BridgeSseSessionUpdated>(), hasLength(1));
+      await eventSubscription.cancel();
+    });
+
+    test("already-idle reconciliation emits a drained rollout failure", () async {
+      const sessionId = "019a0000-1111-2222-3333-dddddddddddd";
+      final rollout = File(
+        p.join(
+          codexHome.path,
+          "sessions/2026/08/20/"
+          "rollout-2026-08-20T08-00-00-$sessionId.jsonl",
+        ),
+      )..createSync(recursive: true);
+      rollout.writeAsStringSync(
+        "${jsonEncode({
+          "timestamp": "2026-08-20T08:00:00Z",
+          "type": "session_meta",
+          "payload": {
+            "id": sessionId,
+            "timestamp": "2026-08-20T08:00:00Z",
+            "cwd": "/work/sample",
+            "model_provider": "openai",
+            "cli_version": "0.146.0",
+          },
+        })}\n",
+      );
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": sessionId, "cwd": "/work/sample"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-failed"},
+          },
+        ),
+        const _Response(error: {"code": -32600, "message": "no active turn to interrupt"}),
+      ]);
+      await plugin.sendPrompt(
+        promptId: "prompt-1",
+        sessionId: sessionId,
+        parts: const [PluginPromptPart.text(text: "task")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      fake.pushNotification("turn/started", {
+        "threadId": sessionId,
+        "turn": {"id": "u-failed"},
+      });
+      await Future<void>.delayed(Duration.zero);
+      final emittedEvents = <BridgeSseEvent>[];
+      final eventSubscription = plugin.events.listen(emittedEvents.add);
+      final idle = plugin.events.firstWhere((event) => event is BridgeSseSessionIdle);
+      rollout.writeAsStringSync(
+        "${jsonEncode({
+          "timestamp": "2026-08-20T08:00:05Z",
+          "type": "event_msg",
+          "payload": {
+            "type": "task_complete",
+            "turn_id": "u-failed",
+            "error": {"message": "You've hit your usage limit."},
+          },
+        })}\n",
+        mode: FileMode.append,
+      );
+
+      await plugin.abortSession(sessionId: sessionId);
+      await idle;
+
+      final errorIndex = emittedEvents.indexWhere(
+        (event) =>
+            event is BridgeSseMessageUpdated &&
+            switch (shared.Message.fromJson(event.info)) {
+              shared.MessageError(errorMessage: "You've hit your usage limit.") => true,
+              _ => false,
+            },
+      );
+      final idleIndex = emittedEvents.indexWhere((event) => event is BridgeSseSessionIdle);
+      expect(errorIndex, greaterThanOrEqualTo(0));
+      expect(idleIndex, greaterThan(errorIndex));
+      final error = shared.Message.fromJson((emittedEvents[errorIndex] as BridgeSseMessageUpdated).info);
+      expect(error.id, "u-failed");
+      expect(
+        error.time,
+        shared.MessageTime(
+          created: DateTime.utc(2026, 8, 20, 8, 0, 5).millisecondsSinceEpoch,
+          completed: null,
+        ),
+      );
+      await eventSubscription.cancel();
+    });
+
+    test("stale abort reconciliation preserves a newer external turn", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-abort-race", "cwd": "/work/sample"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-old"},
+          },
+        ),
+        const _Response(error: {"code": -32600, "message": "no active turn to interrupt"}),
+      ]);
+      await plugin.sendPrompt(
+        promptId: "prompt-1",
+        sessionId: "t-abort-race",
+        parts: const [PluginPromptPart.text(text: "old work")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      fake.pushNotification("turn/started", {
+        "threadId": "t-abort-race",
+        "turn": {"id": "u-old"},
+      });
+      await Future<void>.delayed(Duration.zero);
+      final interruptRequested = Completer<void>();
+      fake.onRequest = (method) {
+        if (method == "turn/interrupt") interruptRequested.complete();
+      };
+      final emittedEvents = <BridgeSseEvent>[];
+      final eventSubscription = plugin.events.listen(emittedEvents.add);
+
+      final abort = plugin.abortSession(sessionId: "t-abort-race");
+      await interruptRequested.future;
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      fake.pushNotification("turn/started", {
+        "threadId": "t-abort-race",
+        "turn": {"id": "u-new"},
+      });
+      await abort;
+
+      expect((await plugin.getSessionStatuses())["t-abort-race"], isA<PluginSessionStatusBusy>());
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+      expect(plugin.getActiveSessionsSummary().single.activeSessions.single.id, "t-abort-race");
+      expect(emittedEvents.whereType<BridgeSseSessionIdle>(), isEmpty);
+
+      final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+      fake.pushNotification("turn/completed", {
+        "threadId": "t-abort-race",
+        "turn": {"id": "u-new"},
+      });
+      await idle.timeout(const Duration(seconds: 1));
+      await eventSubscription.cancel();
     });
 
     test("turn/start rejects a whitespace-only nested turn id", () async {

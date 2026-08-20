@@ -12,7 +12,8 @@ void main() {
     expect(manifest.binaryFileName, "cursor-agent");
     // The publisher's exact strings survive: a normalized 2026.8.4 would 404
     // the download and mis-name the on-disk version directory.
-    expect(manifest.bundledVersion.raw, "2026.08.11-e8db854");
+    expect(CursorRuntimeManifest.targetVersion, "2026.08.11-e8db854");
+    expect(manifest.bundledVersion.raw, CursorRuntimeManifest.targetVersion);
     expect(manifest.minPathVersion.raw, "2026.07.16");
   });
 

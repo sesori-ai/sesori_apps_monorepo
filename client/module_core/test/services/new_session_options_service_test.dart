@@ -258,7 +258,7 @@ void main() {
           pluginId: "plugin-1",
           mode: SessionOptionsRequestMode.dynamic,
         ),
-      ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: catalog));
+      ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: catalog, isStale: false));
 
       final result =
           await service.load(
@@ -301,7 +301,7 @@ void main() {
           pluginId: "plugin-1",
           mode: SessionOptionsRequestMode.dynamic,
         ),
-      ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: catalog));
+      ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: catalog, isStale: false));
 
       final result =
           await service.load(
@@ -347,7 +347,7 @@ void main() {
           pluginId: "plugin-1",
           mode: SessionOptionsRequestMode.dynamic,
         ),
-      ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: catalog));
+      ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: catalog, isStale: false));
 
       final result =
           await service.load(

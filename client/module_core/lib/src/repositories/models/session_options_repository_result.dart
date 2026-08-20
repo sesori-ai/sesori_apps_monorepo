@@ -33,7 +33,7 @@ final class LegacySessionOptionsRepositoryPartial({required final SessionOptions
 
 sealed class const SessionOptionsRepositoryResult();
 
-final class const SessionOptionsRepositoryAvailable({required final SessionOptionsCatalog catalog}) extends SessionOptionsRepositoryResult;
+final class const SessionOptionsRepositoryAvailable({required final SessionOptionsCatalog catalog, required final bool isStale}) extends SessionOptionsRepositoryResult;
 
 final class const SessionOptionsRepositoryCacheUnavailable() extends SessionOptionsRepositoryResult;
 

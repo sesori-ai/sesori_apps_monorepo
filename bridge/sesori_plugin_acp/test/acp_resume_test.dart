@@ -147,7 +147,7 @@ void main() {
       // A second prompt on the now-resident session does NOT re-load.
       final loadsBefore = fake.written.where((f) => f["method"] == "session/load").length;
       final again = plugin.sendPrompt(
-        promptId: "prompt-1",
+        promptId: "prompt-2",
         sessionId: "old-session",
         parts: const [PluginPromptPart.text(text: "again")],
         variant: null,
@@ -187,7 +187,7 @@ void main() {
       await pump();
 
       await plugin.sendPrompt(
-        promptId: "prompt-1",
+        promptId: "prompt-2",
         sessionId: "missing-session",
         parts: const [PluginPromptPart.text(text: "retry")],
         variant: null,

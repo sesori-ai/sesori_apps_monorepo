@@ -355,6 +355,156 @@ void main() {
       expect(part.text, "hey");
     });
 
+    test("item userMessage carries the prompt id codex echoes as clientId", () {
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "turnId": "u-1",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user",
+              "clientId": "prm_1",
+              "content": [
+                {"type": "text", "text": "hey", "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      final parsed = shared.Message.fromJson((events[0] as BridgeSseMessageUpdated).info);
+      expect((parsed as shared.MessageUser).promptId, "prm_1");
+    });
+
+    test("item userMessage typed in the codex CLI stays unattributed", () {
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "turnId": "u-1",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user",
+              "content": [
+                {"type": "text", "text": "hey", "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      final parsed = shared.Message.fromJson((events[0] as BridgeSseMessageUpdated).info);
+      expect((parsed as shared.MessageUser).promptId, isNull);
+    });
+
+    test("item lifecycle timestamps survive live message updates", () {
+      const threadId = "t-timestamps";
+      final userStarted = mapper.map(
+        const CodexServerNotification(
+          method: "item/started",
+          params: {
+            "threadId": threadId,
+            "startedAtMs": 1779293100123,
+            "item": {"type": "userMessage", "id": "i-user-time", "content": <Object?>[]},
+          },
+        ),
+      );
+      final userCompleted = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": threadId,
+            "completedAtMs": 1779293100456,
+            "item": {"type": "userMessage", "id": "i-user-time", "content": <Object?>[]},
+          },
+        ),
+      );
+      final assistantStarted = mapper.map(
+        const CodexServerNotification(
+          method: "item/started",
+          params: {
+            "threadId": threadId,
+            "startedAtMs": 1779293101000,
+            "item": {"type": "agentMessage", "id": "i-agent-time", "text": ""},
+          },
+        ),
+      );
+      final assistantCompleted = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": threadId,
+            "completedAtMs": 1779293102000,
+            "item": {"type": "agentMessage", "id": "i-agent-time", "text": "done"},
+          },
+        ),
+      );
+
+      final startedUser = shared.Message.fromJson((userStarted.first as BridgeSseMessageUpdated).info);
+      final completedUser = shared.Message.fromJson((userCompleted.first as BridgeSseMessageUpdated).info);
+      final startedAssistant = shared.Message.fromJson((assistantStarted.first as BridgeSseMessageUpdated).info);
+      final completedAssistant = shared.Message.fromJson((assistantCompleted.first as BridgeSseMessageUpdated).info);
+      expect(startedUser.time, const shared.MessageTime(created: 1779293100123, completed: null));
+      expect(completedUser.time, startedUser.time);
+      expect(startedAssistant.time, const shared.MessageTime(created: 1779293101000, completed: null));
+      expect(
+        completedAssistant.time,
+        const shared.MessageTime(created: 1779293101000, completed: 1779293102000),
+      );
+    });
+
+    test("late native tool completion keeps its start time after turn completion", () {
+      const threadId = "t-late-tool-time";
+      mapper.map(
+        const CodexServerNotification(
+          method: "item/started",
+          params: {
+            "threadId": threadId,
+            "startedAtMs": 1779293103000,
+            "item": {
+              "type": "commandExecution",
+              "id": "i-late-tool-time",
+              "command": "sleep 1",
+              "status": "inProgress",
+            },
+          },
+        ),
+      );
+      mapper.map(
+        const CodexServerNotification(
+          method: "turn/completed",
+          params: {
+            "threadId": threadId,
+            "turn": {"id": "u-late-tool-time"},
+          },
+        ),
+      );
+
+      final completed = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": threadId,
+            "completedAtMs": 1779293104000,
+            "item": {
+              "type": "commandExecution",
+              "id": "i-late-tool-time",
+              "command": "sleep 1",
+              "status": "completed",
+            },
+          },
+        ),
+      );
+
+      expect(
+        shared.Message.fromJson((completed.first as BridgeSseMessageUpdated).info).time,
+        const shared.MessageTime(created: 1779293103000, completed: 1779293104000),
+      );
+    });
+
     test("contextCompaction emits a durable tool lifecycle and completion signal", () {
       final started = mapper.map(
         const CodexServerNotification(
@@ -652,6 +802,10 @@ void main() {
         (running[1] as BridgeSseMessagePartUpdated).part.state?.title,
         "/usr/bin/false",
       );
+      expect(
+        shared.Message.fromJson((running[0] as BridgeSseMessageUpdated).info).time,
+        shared.MessageTime(created: DateTime.utc(2026, 7, 23, 8).millisecondsSinceEpoch, completed: null),
+      );
       final rawPart = (completed[1] as BridgeSseMessagePartUpdated).part;
       final latePart = (lateItem[1] as BridgeSseMessagePartUpdated).part;
       expect(rawPart.state?.status, PluginToolStatus.error);
@@ -895,11 +1049,27 @@ void main() {
           line: running,
         );
 
+      rolloutLifecycle.map(
+        const CodexServerNotification(
+          method: "item/started",
+          params: {
+            "threadId": "t-completed",
+            "startedAtMs": 1779293200000,
+            "item": {
+              "type": "commandExecution",
+              "id": "call-completed",
+              "status": "inProgress",
+            },
+          },
+        ),
+      );
+
       final events = rolloutLifecycle.map(
         const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "t-completed",
+            "completedAtMs": 1779293201000,
             "item": {
               "type": "commandExecution",
               "id": "call-completed",
@@ -912,6 +1082,10 @@ void main() {
 
       final part = (events[1] as BridgeSseMessagePartUpdated).part;
       expect(part.state?.status, PluginToolStatus.completed);
+      expect(
+        shared.Message.fromJson((events[0] as BridgeSseMessageUpdated).info).time,
+        const shared.MessageTime(created: 1779293200000, completed: 1779293201000),
+      );
       rolloutLifecycle.clearRolloutTurn(threadId: "t-completed");
     });
 
@@ -1450,6 +1624,7 @@ void main() {
                 "message": "You've hit your usage limit.",
                 "codexErrorInfo": "usageLimitExceeded",
               },
+              "startedAt": 1700000005,
               "completedAt": 1700000010,
             },
           },
@@ -1463,6 +1638,7 @@ void main() {
       expect(message.sessionID, "t-quota");
       expect(message.errorName, "CodexError");
       expect(message.errorMessage, "You've hit your usage limit.");
+      expect(message.time, const shared.MessageTime(created: 1700000010000, completed: 1700000010000));
       expect(parseAsSesori(event), isA<shared.SesoriMessageUpdated>());
     });
 
@@ -1479,6 +1655,22 @@ void main() {
           reason: "$method should be dropped",
         );
       }
+    });
+
+    test("skills/changed invalidates the command catalog", () {
+      final events = mapper.map(
+        const CodexServerNotification(method: "skills/changed", params: {}),
+      );
+
+      expect(events, const [BridgeSseCommandCatalogUpdated()]);
+    });
+
+    test("MCP startup changes invalidate MCP tools", () {
+      final events = mapper.map(
+        const CodexServerNotification(method: "mcpServer/startupStatus/updated", params: {}),
+      );
+
+      expect(events, const [BridgeSseMcpToolsChanged()]);
     });
 
     test("regression: real bug-log payloads parse cleanly", () {
@@ -1570,6 +1762,7 @@ class _ToolLifecycleHarness({
           )
         : _toolTracker.observeCorrelatableAppServerItem(
             event: correlatableItem,
+            notification: notification,
           );
     final threadId = correlatableItem?.threadId ?? notification.params["threadId"];
     if (tool == null || threadId is! String) {

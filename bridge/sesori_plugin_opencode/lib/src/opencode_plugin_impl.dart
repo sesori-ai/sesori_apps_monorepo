@@ -7,6 +7,9 @@ import "package:sesori_shared/sesori_shared.dart" show Harness, maxTranscriptIma
 
 import "../opencode_plugin.dart";
 import "assistant_message_mapper.dart";
+import "models/openapi/user_message.g.dart";
+import "opencode_message_id.dart";
+import "prompt_message_tracker.dart";
 import "sse/sse_connection.dart";
 import "sse_event_mapper.dart";
 
@@ -45,6 +48,8 @@ class OpenCodePlugin._({
   // assistant message is collapsed to a `MessageError` identically on both.
   static const AssistantMessageMapper _assistantMessageMapper = AssistantMessageMapper();
   final SseEventMapper _mapper = SseEventMapper(assistantMessageMapper: _assistantMessageMapper);
+
+  final PromptMessageTracker _promptMessages = PromptMessageTracker();
   final PluginModelMapper _pluginModelMapper = const PluginModelMapper(
     messagePartMapper: MessagePartMapper(),
     maxTranscriptAttachmentBytes: maxTranscriptImageCollectionBytes,
@@ -385,9 +390,16 @@ class OpenCodePlugin._({
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) async {
+    // Naming the user message here is the exact link back to this send: the
+    // echo OpenCode publishes carries the same id, so it can be stamped with
+    // the prompt id and clients can retire their own copy of the prompt.
+    // Recorded before dispatch because the echo can arrive first.
+    final messageId = generateOpenCodeMessageId();
+    _promptMessages.record(messageId: messageId, promptId: promptId);
     await _callAndSyncWorkState(
       () => _service.sendPrompt(
         sessionId: sessionId,
+        messageId: messageId,
         parts: parts,
         agent: agent,
         variant: variant,
@@ -413,9 +425,12 @@ class OpenCodePlugin._({
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) async {
+    final messageId = generateOpenCodeMessageId();
+    _promptMessages.record(messageId: messageId, promptId: promptId);
     await _callAndSyncWorkState(
       () => _service.sendCommand(
         sessionId: sessionId,
+        messageId: messageId,
         command: command,
         arguments: arguments,
         agent: agent,
@@ -634,6 +649,7 @@ class OpenCodePlugin._({
           final bridgeEvent = _mapper.map(
             canonicalEvent,
             displaySessionId: _displaySessionIdForEvent(canonicalEvent),
+            promptId: _promptIdForEvent(canonicalEvent),
           );
           if (bridgeEvent != null) {
             _eventBuffer.add(bridgeEvent);
@@ -716,6 +732,15 @@ class OpenCodePlugin._({
         info: _canonicalizeSession(info, info.projectID),
       ),
       _ => event,
+    };
+  }
+
+  /// Prompt id for the user message one of this plugin's own sends created, or
+  /// null for any other event or a message authored outside this bridge.
+  String? _promptIdForEvent(SseEventData event) {
+    return switch (event) {
+      SseMessageUpdated(info: UserMessage(:final id)) => _promptMessages.promptIdFor(messageId: id),
+      _ => null,
     };
   }
 

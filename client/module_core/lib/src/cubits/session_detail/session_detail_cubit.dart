@@ -81,6 +81,11 @@ class SessionDetailCubit(
   /// Monotonic counter stamped on parked sends, so a snapshot can settle only
   /// the parked prompts its fetch actually had a chance to observe.
   int _parkEpoch = 0;
+
+  /// Delivered user messages already accounted for. A message becomes
+  /// renderable through its envelope and then each of its parts, so without
+  /// this every update would settle another prompt.
+  final Set<({String messageId, String? promptId})> _accountedUserMessages = {};
   final DeferredPartEventBuffer _deferredPartEvents = DeferredPartEventBuffer();
 
   late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
@@ -1176,24 +1181,36 @@ class SessionDetailCubit(
     if (current is! SessionDetailLoaded) return;
     final message = current.messages.where((item) => item.info.id == messageId).firstOrNull;
     if (message == null || !message.hasRenderableUserContent) return;
-    if (message.info case MessageUser(promptId: final promptId?)) {
-      final bridgePrompts = [
-        for (final prompt in current.bridgeQueuedPrompts)
-          if (prompt.id != promptId) prompt,
-      ];
-      _promptQueue.removeByPromptId(promptId);
-      emit(
-        current.copyWith(
-          bridgeQueuedPrompts: bridgePrompts,
-          queuedMessages: _visibleStagedItems(bridgePrompts: bridgePrompts),
-          awaitingBridgeSubmissions: _visibleAwaitingBridge(bridgePrompts: bridgePrompts),
-          sendingSubmission: _visibleStagedSending(bridgePrompts: bridgePrompts),
-        ),
-      );
-      // The delivered prompt's own send may have stopped the drain on a lost
-      // response; anything staged behind it must not stay parked.
-      _tryDrainQueue();
-    }
+    final info = message.info;
+    if (info is! MessageUser) return;
+    final promptId = info.promptId;
+    // Keyed by association, not just id: an upsert that later attaches a
+    // prompt id must still reconcile, while repeated part updates of one
+    // association stay idempotent.
+    if (!_accountedUserMessages.add((messageId: messageId, promptId: promptId))) return;
+    // Only identity settles a prompt. Content cannot: another surface's echo
+    // may contain this text, identical prompts collide, and an attachment-only
+    // echo carries none — and a wrong match would discard a send the user
+    // still owns. Harness echoes reach the client with an id because each
+    // plugin stamps the echo of its own dispatch; a harness that publishes no
+    // user echo leaves the staged prompt to snapshot reconciliation.
+    if (promptId == null) return;
+    _promptQueue.removeByPromptId(promptId);
+    final bridgePrompts = [
+      for (final prompt in current.bridgeQueuedPrompts)
+        if (prompt.id != promptId) prompt,
+    ];
+    emit(
+      current.copyWith(
+        bridgeQueuedPrompts: bridgePrompts,
+        queuedMessages: _visibleStagedItems(bridgePrompts: bridgePrompts),
+        awaitingBridgeSubmissions: _visibleAwaitingBridge(bridgePrompts: bridgePrompts),
+        sendingSubmission: _visibleStagedSending(bridgePrompts: bridgePrompts),
+      ),
+    );
+    // The delivered prompt's own send may have stopped the drain on a lost
+    // response; anything staged behind it must not stay parked.
+    _tryDrainQueue();
   }
 
   /// Applies a full-list replacement of the bridge-owned queue. Local staged
@@ -1671,8 +1688,10 @@ class SessionDetailCubit(
         case SuccessResponse():
           sendSucceeded = true;
           // Parked, not dropped: the bubble keeps rendering from the parked
-          // slot until the bridge's queue event or snapshot lists the prompt,
-          // so acceptance outrunning the event never blanks the row.
+          // slot until the bridge's queue statement, its delivered message, or
+          // an authoritative refresh accounts for the prompt, so acceptance
+          // outrunning those never blanks the row. A send whose echo already
+          // landed was marked settled and is consumed here instead.
           _promptQueue.parkAccepted(epoch: ++_parkEpoch);
           _staleOptionsRecoveryAttemptedPromptIds.remove(submission.promptId);
           _reportAcceptedSubmission(submission: submission);

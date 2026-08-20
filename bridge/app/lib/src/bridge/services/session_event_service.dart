@@ -469,12 +469,6 @@ class SessionEventService({
         ),
         null => null,
       },
-      BridgeSseSessionsUpdated(:final sessionID) => switch (await _sessionRepository.findProjectIdForSession(
-        sessionId: sessionID,
-      )) {
-        final projectId? => BridgeSseSessionsUpdated(sessionID: sessionID, projectID: projectId),
-        null => null,
-      },
       _ => translated,
     };
   }

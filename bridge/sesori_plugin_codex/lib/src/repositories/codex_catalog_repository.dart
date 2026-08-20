@@ -12,7 +12,8 @@ import "models/codex_session_record.dart";
 class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
   List<CodexSessionRecord> listSessionRecords() {
     final rollouts = <String, String>{};
-    for (final path in _listRolloutPaths()) {
+    final rolloutPaths = _listRolloutPaths();
+    for (final path in rolloutPaths) {
       final id = _sessionIdFromRolloutName(p.basename(path));
       if (id != null) rollouts[id] = path;
     }
@@ -26,12 +27,16 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     }
 
     final records = <CodexSessionRecord>[];
+    var unreadableOrMissingMetadata = 0;
+    var mismatchedMetadata = 0;
     for (final id in {...rollouts.keys, ...indexEntries.keys}) {
       final rolloutPath = rollouts[id];
       if (rolloutPath == null) continue;
       final indexEntry = indexEntries[id];
       final metadata = _readMetadata(rolloutPath);
+      if (metadata == null) unreadableOrMissingMetadata++;
       if (metadata != null && metadata.id != id) {
+        mismatchedMetadata++;
         Log.w(
           "[codex] rollout session id mismatch: filename=$id header=${metadata.id}",
         );
@@ -59,10 +64,23 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
       if (bTime == null) return -1;
       return bTime.compareTo(aTime);
     });
+    Log.d(
+      "[codex] rollout catalog scan: files=${rolloutPaths.length}, "
+      "recognizedRollouts=${rollouts.length}, "
+      "indexEntries=${indexEntries.length}, "
+      "unreadableOrMissingMetadata=$unreadableOrMissingMetadata, "
+      "mismatchedMetadata=$mismatchedMetadata, records=${records.length}",
+    );
     return records;
   }
 
-  Future<List<CodexSessionRecord>> listSessionRecordsInIsolate() => Isolate.run(listSessionRecords);
+  Future<List<CodexSessionRecord>> listSessionRecordsInIsolate() {
+    final logLevel = Log.level;
+    return Isolate.run(() {
+      Log.level = logLevel;
+      return listSessionRecords();
+    });
+  }
 
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
     final projectlessThreadIds = await _readProjectlessThreadIds();
@@ -75,18 +93,36 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
         ? null
         : normalizeProjectDirectory(directory: documentsCodexDirectory);
     final records = await listSessionRecordsInIsolate();
-    return records
-        .where(
-          (record) => !_isExcludedFromDiscovery(
-            record: record,
-            projectlessThreadIds: projectlessThreadIds,
-            documentsCodexDirectory: excludedDirectory,
-            knownDirectories: normalizedKnownDirectories,
-          ),
-        )
-        .map(_toPluginSession)
-        .nonNulls
-        .toList(growable: false);
+    final sessions = <PluginSession>[];
+    final projectDirectories = <String>{};
+    var noiseExcluded = 0;
+    var missingCwd = 0;
+    for (final record in records) {
+      if (_isExcludedFromDiscovery(
+        record: record,
+        projectlessThreadIds: projectlessThreadIds,
+        documentsCodexDirectory: excludedDirectory,
+        knownDirectories: normalizedKnownDirectories,
+      )) {
+        noiseExcluded++;
+        continue;
+      }
+      final session = _toPluginSession(record);
+      if (session == null) {
+        missingCwd++;
+      } else {
+        sessions.add(session);
+        projectDirectories.add(session.directory);
+      }
+    }
+    Log.d(
+      "[codex] catalog discovery: records=${records.length}, "
+      "knownDirectories=${normalizedKnownDirectories.length}, "
+      "noiseExcluded=$noiseExcluded, missingCwd=$missingCwd, "
+      "projectDirectories=${projectDirectories.length}, "
+      "sessions=${sessions.length}",
+    );
+    return sessions;
   }
 
   /// Filters by normalized rollout CWD before applying pagination.

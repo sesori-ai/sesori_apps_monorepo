@@ -28,12 +28,6 @@ class const BridgeSseSessionCreated({required final Map<String, dynamic> info}) 
 class const BridgeSseSessionUpdated({required final Map<String, dynamic> info, required final bool titleChanged})
     extends BridgeSseEvent;
 
-/// Signals that every session under [projectID] should be re-fetched.
-class const BridgeSseSessionsUpdated({
-  required final String sessionID,
-  required final String projectID,
-}) extends BridgeSseEvent;
-
 /// Signals that session-creation options changed for a backend session.
 ///
 /// This is an internal plugin event. [sessionID] is the backend's session

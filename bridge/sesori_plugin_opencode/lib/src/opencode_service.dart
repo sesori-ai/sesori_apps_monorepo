@@ -294,6 +294,7 @@ class OpenCodeService(
         await repository.sendPrompt(
           sessionId: session.id,
           directory: session.directory,
+          messageId: null,
           parts: parts,
           agent: agent,
           variant: variant,
@@ -318,6 +319,7 @@ class OpenCodeService(
 
   Future<void> sendPrompt({
     required String sessionId,
+    required String? messageId,
     required List<PluginPromptPart> parts,
     required String? agent,
     required PluginSessionVariant? variant,
@@ -327,6 +329,7 @@ class OpenCodeService(
     await repository.sendPrompt(
       sessionId: sessionId,
       directory: directory,
+      messageId: messageId,
       parts: parts,
       agent: agent,
       variant: variant,
@@ -337,6 +340,7 @@ class OpenCodeService(
 
   Future<void> sendCommand({
     required String sessionId,
+    required String? messageId,
     required String command,
     required String arguments,
     required String? agent,
@@ -351,6 +355,7 @@ class OpenCodeService(
         ? _compact(
             sessionId: sessionId,
             directory: directory,
+            messageId: messageId,
             arguments: arguments,
             agent: agent,
             variant: variant,
@@ -359,6 +364,7 @@ class OpenCodeService(
         : repository.sendCommand(
             sessionId: sessionId,
             directory: directory,
+            messageId: messageId,
             command: command,
             arguments: arguments,
             agent: agent,
@@ -409,6 +415,7 @@ class OpenCodeService(
   Future<void> _compact({
     required String sessionId,
     required String? directory,
+    required String? messageId,
     required String arguments,
     required String? agent,
     required PluginSessionVariant? variant,
@@ -421,6 +428,7 @@ class OpenCodeService(
       await repository.addCompactionInstructions(
         sessionId: sessionId,
         directory: directory,
+        messageId: messageId,
         instructions: instructions,
         agent: agent,
         variant: variant,

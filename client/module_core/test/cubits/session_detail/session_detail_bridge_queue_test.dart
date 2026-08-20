@@ -59,6 +59,7 @@ const _queuedPrompt = QueuedSessionPrompt(
 );
 
 SessionOptionsRepositoryResult _freshClaudeOptions() => SessionOptionsRepositoryAvailable(
+  isStale: false,
   catalog: SessionOptionsCatalog(
     agents: const [
       AgentInfo(name: "Agent", description: "Agent", model: null, mode: AgentMode.primary),
@@ -92,6 +93,7 @@ ProviderListResponse _providerDataWithVariants(List<String> variants) => Provide
 );
 
 SessionOptionsRepositoryResult _claudeOptionsWithVariants(List<String> variants) => SessionOptionsRepositoryAvailable(
+  isStale: false,
   catalog: SessionOptionsCatalog(
     agents: const [
       AgentInfo(name: "Agent", description: "Agent", model: null, mode: AgentMode.primary),
@@ -673,6 +675,238 @@ void main() {
         expect(visible, isTrue, reason: "no frame may leave the accepted send without a surface");
       }
       await subscription.cancel();
+    });
+
+    test("a send whose entry was consumed before its response settles on its echo", () async {
+      final send = Completer<ApiResponse<void>>();
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) => send.future);
+      final cubit = await createLoadedCubit();
+      unawaited(
+        cubit.sendMessage(text: "steer it", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
+      );
+      await Future<void>.delayed(Duration.zero);
+      final promptId = (cubit.state as SessionDetailLoaded).sendingSubmission!.promptId;
+
+      // An immediately dispatched steering send: the bridge consumed the entry
+      // and published the resulting queue before the acceptance response
+      // travelled back, so the only statement this client sees omits the
+      // prompt entirely.
+      sessionEvents.add(
+        const SesoriSseEvent.sessionQueuedPrompts(sessionID: _sessionId, prompts: []) as SesoriSessionEvent,
+      );
+      await Future<void>.delayed(Duration.zero);
+      send.complete(ApiResponse.success(null));
+      await Future<void>.delayed(Duration.zero);
+      // The dispatched prompt's own message is what accounts for the row.
+      sessionEvents.add(
+        SesoriMessageUpdated(
+          info: Message.user(
+            id: "echo-1",
+            sessionID: _sessionId,
+            agent: null,
+            time: const MessageTime(created: 300, completed: null),
+            promptId: promptId,
+          ),
+        ),
+      );
+      sessionEvents.add(_textPartFor(messageId: "echo-1", text: "steer it"));
+      await Future<void>.delayed(Duration.zero);
+
+      final state = cubit.state as SessionDetailLoaded;
+      expect(
+        state.awaitingBridgeSubmissions,
+        isEmpty,
+        reason: "the delivered echo replaced the parked copy; leaving it strands a bubble",
+      );
+      expect(state.sendingSubmission, isNull);
+      expect(state.queuedMessages, isEmpty);
+    });
+
+    test("a bridge-stamped harness echo settles the parked send", () async {
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+      final cubit = await createLoadedCubit();
+      await cubit.sendMessage(
+        text: "steer it",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      );
+      await Future<void>.delayed(Duration.zero);
+      final parked = (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.single;
+
+      // Codex and OpenCode author no prompt id of their own; the bridge stamps
+      // its dispatch onto their echo so the client can still correlate it.
+      sessionEvents.add(
+        SesoriMessageUpdated(
+          info: Message.user(
+            id: "echo-1",
+            sessionID: _sessionId,
+            agent: null,
+            time: const MessageTime(created: 200, completed: null),
+            promptId: parked.promptId,
+          ),
+        ),
+      );
+      sessionEvents.add(_textPartFor(messageId: "echo-1", text: "steer it"));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions,
+        isEmpty,
+        reason: "the stamped echo replaced the copy it belongs to",
+      );
+    });
+
+    test("a multi-part echo settles exactly one parked send", () async {
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+      final cubit = await createLoadedCubit();
+      await cubit.sendMessage(text: "first", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
+      await cubit.sendMessage(text: "second", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
+      await Future<void>.delayed(Duration.zero);
+      final parked = (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions;
+      expect(parked, hasLength(2));
+
+      // One echo, several updates: the envelope and each of its parts. Only
+      // the first may settle a send.
+      sessionEvents.add(
+        SesoriMessageUpdated(
+          info: Message.user(
+            id: "echo-1",
+            sessionID: _sessionId,
+            agent: null,
+            time: const MessageTime(created: 200, completed: null),
+            promptId: parked.first.promptId,
+          ),
+        ),
+      );
+      sessionEvents.add(_textPartFor(messageId: "echo-1", text: "first"));
+      sessionEvents.add(_textPartFor(messageId: "echo-1", text: "first (edited)"));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.map((item) => item.text),
+        ["second"],
+        reason: "later updates of one echo must not retire further sends",
+      );
+    });
+
+    test("another surface's echo leaves this client's parked send alone", () async {
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+      final cubit = await createLoadedCubit();
+
+      await cubit.sendMessage(text: "mine", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
+      await Future<void>.delayed(Duration.zero);
+      expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, hasLength(1));
+
+      // Another surface's prompt lands while this client's own copy is parked.
+      sessionEvents.add(
+        const SesoriMessageUpdated(
+          info: Message.user(
+            id: "other-1",
+            sessionID: _sessionId,
+            agent: null,
+            time: MessageTime(created: 100, completed: null),
+            promptId: null,
+          ),
+        ),
+      );
+      sessionEvents.add(_textPartFor(messageId: "other-1", text: "from another device"));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.map((item) => item.text),
+        ["mine"],
+        reason: "a foreign echo carries different text and must not retire this copy",
+      );
+    });
+
+    test("an echo that outruns its acceptance response prevents parking", () async {
+      final send = Completer<ApiResponse<void>>();
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) => send.future);
+      final cubit = await createLoadedCubit();
+      unawaited(
+        cubit.sendMessage(text: "steer it", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
+      );
+      await Future<void>.delayed(Duration.zero);
+      final inFlight = (cubit.state as SessionDetailLoaded).sendingSubmission!.promptId;
+
+      // A queue-less harness echoes at acceptance, so the stamped message can
+      // land before the acceptance response completes.
+      sessionEvents.add(
+        SesoriMessageUpdated(
+          info: Message.user(
+            id: "echo-1",
+            sessionID: _sessionId,
+            agent: null,
+            time: const MessageTime(created: 200, completed: null),
+            promptId: inFlight,
+          ),
+        ),
+      );
+      sessionEvents.add(_textPartFor(messageId: "echo-1", text: "steer it"));
+      await Future<void>.delayed(Duration.zero);
+      send.complete(ApiResponse.success(null));
+      await Future<void>.delayed(Duration.zero);
+
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.awaitingBridgeSubmissions, isEmpty, reason: "the echo already renders this prompt");
+      expect(state.sendingSubmission, isNull);
+      expect(state.messages.single.info.id, "echo-1");
     });
 
     test("an authoritative refresh settles a parked prompt the bridge no longer owns", () async {

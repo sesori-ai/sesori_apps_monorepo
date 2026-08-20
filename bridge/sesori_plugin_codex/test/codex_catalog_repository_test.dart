@@ -6,6 +6,7 @@ import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/models/codex_session_record.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, LogLevel, PluginSession;
 import "package:test/test.dart";
 
 void main() {
@@ -56,6 +57,42 @@ void main() {
         updatedAt.millisecondsSinceEpoch,
       );
       expect(sessions[0].time?.archived, isNull);
+    });
+
+    test("logs privacy-safe aggregate rollout scan diagnostics", () async {
+      const rolloutId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
+      final repository = CodexCatalogRepository(
+        rolloutApi: _DiagnosticsRolloutApi(rolloutId: rolloutId),
+      );
+
+      final logs = await _captureDebugLogs(() async {
+        expect(repository.listSessionRecords(), hasLength(1));
+      });
+
+      expect(
+        logs,
+        contains(
+          "rollout catalog scan: files=3, recognizedRollouts=1, "
+          "indexEntries=2, unreadableOrMissingMetadata=0, "
+          "mismatchedMetadata=0, records=1",
+        ),
+      );
+      expect(logs, isNot(contains(rolloutId)));
+      expect(logs, isNot(contains("private-project")));
+    });
+
+    test("propagates the log level into the scan isolate", () async {
+      final previousLevel = Log.level;
+      try {
+        Log.level = LogLevel.debug;
+        final repository = CodexCatalogRepository(
+          rolloutApi: _LogLevelCheckingRolloutApi(),
+        );
+
+        expect(await repository.listSessionRecordsInIsolate(), isEmpty);
+      } finally {
+        Log.level = previousLevel;
+      }
     });
 
     test("filters normalized project directories before paginating", () async {
@@ -140,14 +177,26 @@ void main() {
         ],
       );
 
-      final discovered = await repository.listAllSessions(
-        knownDirectories: {existingGeneratedChat, existingStateProject},
-      );
+      late List<PluginSession> discovered;
+      final logs = await _captureDebugLogs(() async {
+        discovered = await repository.listAllSessions(
+          knownDirectories: {existingGeneratedChat, existingStateProject},
+        );
+      });
 
       expect(
         discovered.map((session) => session.id),
         ["existing-generated", "existing-state-filtered", "normal", "date-shaped", "similar-name"],
       );
+      expect(
+        logs,
+        contains(
+          "catalog discovery: records=8, knownDirectories=2, "
+          "noiseExcluded=3, missingCwd=0, projectDirectories=5, sessions=5",
+        ),
+      );
+      expect(logs, isNot(contains("generated-child")));
+      expect(logs, isNot(contains(generatedChat)));
       expect(
         (await repository.getSessions(projectId: generatedChat, start: null, limit: null)).map(
           (session) => session.id,
@@ -271,6 +320,72 @@ class _DiscoveryRolloutApi({
   }
 }
 
+class _DiagnosticsRolloutApi({required final String rolloutId}) extends CodexRolloutApi {
+  this : super(environment: const {});
+
+  String get _firstPath => p.join(
+    Directory.systemTemp.path,
+    "private-project",
+    "rollout-2026-08-01T00-00-00-$rolloutId.jsonl",
+  );
+
+  String get _duplicatePath => p.join(
+    Directory.systemTemp.path,
+    "private-project",
+    "rollout-2026-08-02T00-00-00-$rolloutId.jsonl",
+  );
+
+  @override
+  List<String> listRolloutPaths() => [
+    _firstPath,
+    _duplicatePath,
+    p.join(Directory.systemTemp.path, "private-project", "rollout-invalid.jsonl"),
+  ];
+
+  @override
+  List<CodexSessionIndexEntryDto> readSessionIndex() => [
+    CodexSessionIndexEntryDto(
+      id: rolloutId,
+      threadName: "Private title",
+      updatedAt: null,
+    ),
+    const CodexSessionIndexEntryDto(
+      id: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+      threadName: null,
+      updatedAt: null,
+    ),
+  ];
+
+  @override
+  List<CodexRolloutLineDto> readHeader({required String rolloutPath}) => [
+    CodexRolloutLineDto.sessionMetadata(
+      timestamp: "2026-08-01T00:00:00Z",
+      payload: CodexRolloutSessionMetadataPayloadDto(
+        id: rolloutId,
+        cwd: p.join(Directory.systemTemp.path, "private-project"),
+        timestamp: "2026-08-01T00:00:00Z",
+        modelProvider: "openai",
+        cliVersion: "0.147.0",
+      ),
+    ),
+  ];
+}
+
+class _LogLevelCheckingRolloutApi() extends CodexRolloutApi {
+  this : super(environment: const {});
+
+  @override
+  List<String> listRolloutPaths() {
+    if (Log.level != LogLevel.debug) {
+      throw StateError("Expected debug logging in the scan isolate");
+    }
+    return const [];
+  }
+
+  @override
+  List<CodexSessionIndexEntryDto> readSessionIndex() => const [];
+}
+
 class _DeleteFailingRolloutApi() extends CodexRolloutApi {
   this : super(environment: const {});
 
@@ -347,4 +462,28 @@ class _IndexWriteFailingRolloutApi() extends CodexRolloutApi {
   void writeSessionIndex({required List<String> lines}) {
     throw const FileSystemException("denied");
   }
+}
+
+Future<String> _captureDebugLogs(Future<void> Function() action) async {
+  final previousLevel = Log.level;
+  final stderr = _BufferingStdout();
+  try {
+    Log.level = LogLevel.debug;
+    await IOOverrides.runZoned(action, stderr: () => stderr);
+  } finally {
+    Log.level = previousLevel;
+  }
+  return stderr.text;
+}
+
+class _BufferingStdout() implements Stdout {
+  final StringBuffer _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
+  @override
+  void writeln([Object? object = ""]) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }

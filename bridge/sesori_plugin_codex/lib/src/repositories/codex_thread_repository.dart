@@ -73,6 +73,7 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
   Future<String?> startTurn({
     required String threadId,
     required List<PluginPromptPart> parts,
+    required String? clientUserMessageId,
     required String? model,
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
@@ -90,6 +91,7 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
       request: () => _appServerApi.startTurn(
         threadId: threadId,
         input: input,
+        clientUserMessageId: clientUserMessageId,
         model: model,
         effort: effort,
         collaborationMode: collaborationMode,

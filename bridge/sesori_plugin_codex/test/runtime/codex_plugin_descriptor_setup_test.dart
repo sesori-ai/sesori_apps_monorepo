@@ -57,7 +57,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 1,
-            stdoutBytes: utf8.encode("codex 0.146.0\n"),
+            stdoutBytes: utf8.encode("codex 0.148.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -75,7 +75,7 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.146.0"));
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.148.0"));
       expect(processes.spawnedExecutables, ["codex", "codex"]);
       expect(processes.spawnedArguments, [
         const ["--version"],
@@ -138,7 +138,7 @@ void main() {
           const ProcessException("codex", ["--version"], "missing", 2),
           _ProbeProcess(
             pid: 3,
-            stdoutBytes: utf8.encode("codex-cli 0.146.0\n"),
+            stdoutBytes: utf8.encode("codex-cli 0.148.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -159,7 +159,7 @@ void main() {
             stateDirectory: stateDirectory,
           );
 
-      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.146.0"));
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.148.0"));
       expect(processes.spawnedExecutables, ["codex", appCli, appCli]);
     });
 
@@ -281,7 +281,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 3,
-            stdoutBytes: utf8.encode("codex 0.146.0\n"),
+            stdoutBytes: utf8.encode("codex 0.148.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -303,7 +303,7 @@ void main() {
         result,
         const PluginSetupAuthenticationRequired.versioned(
           actionHint: "Sign in to Codex, then retry setup detection.",
-          runtimeVersion: "0.146.0",
+          runtimeVersion: "0.148.0",
         ),
       );
       expect(processes.spawnedArguments, [
@@ -318,7 +318,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 5,
-            stdoutBytes: utf8.encode("codex 0.146.0\n"),
+            stdoutBytes: utf8.encode("codex 0.148.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -337,7 +337,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupUnknown>());
-      expect(result.runtimeVersion, "0.146.0");
+      expect(result.runtimeVersion, "0.148.0");
       expect(result.actionHint, isNot(contains("account-secret-output")));
     });
 
@@ -347,7 +347,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 7,
-            stdoutBytes: utf8.encode("codex 0.146.0\n"),
+            stdoutBytes: utf8.encode("codex 0.148.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -366,7 +366,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupUnknown>());
-      expect(result.runtimeVersion, "0.146.0");
+      expect(result.runtimeVersion, "0.148.0");
     });
   });
 }

@@ -63,9 +63,9 @@ no-op for remote/attach plugins.
 The managed runtime is pinned in `sesori_plugin_opencode/lib/src/runtime/open_code_runtime_manifest.dart`:
 
 1. Pick the new `vX.Y.Z` release of `anomalyco/opencode`.
-2. Update `bundledVersion`.
+2. Update `targetVersion`; `bundledVersion` derives the exact managed pin from it.
 3. Replace all six per-platform `sha256` values from that release's asset digests — GitHub's release API exposes each asset's `digest: "sha256:…"` (`opencode-darwin-{arm64,x64}.zip`, `opencode-linux-{arm64,x64}.tar.gz`, `opencode-windows-{arm64,x64}.zip`).
-4. Raise `minSupportedVersion` only when new bridge code needs a newer OpenCode API than older PATH installs provide (keep it conservative — prefer the user's own install, and never force a download that would migrate a newer OpenCode's local DB).
+4. Preserve `minPathVersion` for target refreshes. Raise it only for a separate explicit requirement where new bridge code needs a newer OpenCode API than older PATH installs provide (keep it conservative — prefer the user's own install, and never force a download that would migrate a newer OpenCode's local DB).
 
 ## Testing
 

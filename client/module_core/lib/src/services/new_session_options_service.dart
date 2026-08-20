@@ -29,9 +29,21 @@ sealed class NewSessionOptionsData with _$NewSessionOptionsData {
 
 sealed class const NewSessionOptionsLoadResult();
 
-enum NewSessionOptionsLoadMode() { dynamicLoad, forcedRefresh }
+/// What asked for a load: the screen opening or reconnecting, the user pressing
+/// refresh, or a stale-reported cache being brought up to date in the
+/// background. A silent refresh reaches the bridge as a forced one; the
+/// distinction is that nobody is waiting on it, so it must not overwrite what
+/// the user does while it runs.
+enum NewSessionOptionsLoadMode() { dynamicLoad, forcedRefresh, silentRefresh }
 
-final class const NewSessionOptionsLoaded({required final NewSessionOptionsData options, required final NewSessionOptionsSource source}) extends NewSessionOptionsLoadResult;
+/// Loaded options, and whether the bridge served them from a snapshot old
+/// enough to be worth refreshing behind the user's back. Only a cache the
+/// bridge chose not to rediscover is stale; anything just discovered is not.
+final class const NewSessionOptionsLoaded({
+    required final NewSessionOptionsData options,
+    required final NewSessionOptionsSource source,
+    required final bool isStale,
+  }) extends NewSessionOptionsLoadResult;
 
 final class const NewSessionOptionsUnsupported() extends NewSessionOptionsLoadResult;
 
@@ -62,7 +74,11 @@ class NewSessionOptionsService({
       if (mode == NewSessionOptionsLoadMode.dynamicLoad) {
         return previousOptions == null
             ? const NewSessionOptionsUnsupported()
-            : NewSessionOptionsLoaded(options: previousOptions, source: NewSessionOptionsSource.legacy);
+            : NewSessionOptionsLoaded(
+                options: previousOptions,
+                source: NewSessionOptionsSource.legacy,
+                isStale: false,
+              );
       }
       return await _loadLegacy(
         projectId: projectId,
@@ -75,18 +91,21 @@ class NewSessionOptionsService({
     final result = await _sessionRepository.loadSessionOptions(
       projectId: projectId,
       pluginId: pluginId,
-      mode: mode == NewSessionOptionsLoadMode.forcedRefresh
-          ? SessionOptionsRequestMode.forceRefresh
-          : SessionOptionsRequestMode.dynamic,
+      mode: switch (mode) {
+        NewSessionOptionsLoadMode.dynamicLoad => SessionOptionsRequestMode.dynamic,
+        NewSessionOptionsLoadMode.forcedRefresh ||
+        NewSessionOptionsLoadMode.silentRefresh => SessionOptionsRequestMode.forceRefresh,
+      },
     );
     return switch (result) {
-      SessionOptionsRepositoryAvailable(:final catalog) => NewSessionOptionsLoaded(
+      SessionOptionsRepositoryAvailable(:final catalog, :final isStale) => NewSessionOptionsLoaded(
         options: _resolve(
           catalog: catalog,
           restoredSelection: restoredSelection,
           previousOptions: previousOptions,
         ),
         source: NewSessionOptionsSource.aggregate,
+        isStale: isStale,
       ),
       SessionOptionsRepositoryUnsupported() => const NewSessionOptionsUnsupported(),
       SessionOptionsRepositoryCacheUnavailable() => const NewSessionOptionsUnavailable(),
@@ -104,6 +123,15 @@ class NewSessionOptionsService({
       SessionOptionsRepositoryRefreshFailedUnavailable() => switch (mode) {
         NewSessionOptionsLoadMode.dynamicLoad => const NewSessionOptionsLoadFailureUnavailable(),
         NewSessionOptionsLoadMode.forcedRefresh => const NewSessionOptionsRefreshFailureUnavailable(),
+        // A refresh nobody asked for must not take working options away. The
+        // bridge served these moments ago, so the honest answer is that the
+        // update failed, not that there is nothing left to choose from.
+        NewSessionOptionsLoadMode.silentRefresh => previousOptions == null
+            ? const NewSessionOptionsRefreshFailureUnavailable()
+            : NewSessionOptionsFailureRetained(
+                options: previousOptions,
+                source: NewSessionOptionsSource.aggregate,
+              ),
       },
       SessionOptionsRepositoryFailure(:final error) => _transientFailure(
         error: error,
@@ -129,6 +157,7 @@ class NewSessionOptionsService({
             previousOptions: previousOptions,
           ),
           source: NewSessionOptionsSource.legacy,
+          isStale: false,
         );
       case LegacySessionOptionsRepositoryPartial(:final catalog, :final errors):
         _logLegacyErrors(errors);
@@ -154,6 +183,7 @@ class NewSessionOptionsService({
             previousOptions: previousOptions,
           ),
           source: NewSessionOptionsSource.legacy,
+          isStale: false,
         );
       case LegacySessionOptionsRepositoryFailure(:final errors):
         _logLegacyErrors(errors);

@@ -107,6 +107,7 @@ void main() {
       threadId: "thread-id",
       command: "review",
       arguments: "staged changes",
+      clientUserMessageId: "prm_1",
       model: "gpt-5.6",
       effort: "high",
       collaborationMode: CodexCollaborationMode.plan,
@@ -116,12 +117,14 @@ void main() {
     expect(input.text, r"$review staged changes");
     expect(threadRepository.lastModel, "gpt-5.6");
     expect(threadRepository.lastEffort, "high");
+    expect(threadRepository.lastClientUserMessageId, "prm_1");
     expect(dispatched.turnId, "turn");
 
     final compacted = await service.sendCommand(
       threadId: "thread-id",
       command: "compact",
       arguments: "",
+      clientUserMessageId: "prm_2",
       model: null,
       effort: null,
       collaborationMode: null,
@@ -545,6 +548,7 @@ class _StubThreadRepository() extends CodexThreadRepository {
   List<PluginPromptPart> lastParts = const [];
   String? lastModel;
   String? lastEffort;
+  String? lastClientUserMessageId;
 
   @override
   Future<CodexThreadRecord> resumeThread({required String threadId}) async {
@@ -564,6 +568,7 @@ class _StubThreadRepository() extends CodexThreadRepository {
   Future<String?> startTurn({
     required String threadId,
     required List<PluginPromptPart> parts,
+    required String? clientUserMessageId,
     required String? model,
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
@@ -571,6 +576,7 @@ class _StubThreadRepository() extends CodexThreadRepository {
     lastParts = parts;
     lastModel = model;
     lastEffort = effort;
+    lastClientUserMessageId = clientUserMessageId;
     return "turn";
   }
 

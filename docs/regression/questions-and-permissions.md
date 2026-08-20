@@ -33,7 +33,9 @@ reaches the backend so the turn continues.
   boundary. A backend requiring exact form correlation must serialize prompts
   process-wide so another session cannot become the attribution target.
 - Resolving a request retires it in the pending list, on every open surface, and
-  in completion-notification suppression.
+  in completion-notification suppression. Raising and resolving a request also
+  refreshes the activity summary, so the session's awaiting-input state appears
+  and clears without waiting for the turn to end.
 - Normalized question and permission replies or rejections feed the existing
   durable user-side activity marker. Lifecycle cleanup that emits those events
   to retire pending UI on abort, thread close, process exit, or disposal can

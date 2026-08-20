@@ -115,6 +115,7 @@ void main() {
 
     test("uses OMP's process-wide and fail-closed policies", () {
       expect(plugin.serializesPromptsProcessWide, isTrue);
+      expect(plugin.cancelsActiveTurnForQueuedInput, isTrue);
       expect(plugin.failsTurnOnSelectionError, isTrue);
       expect(plugin.supportsFormElicitation, isTrue);
     });
@@ -253,6 +254,47 @@ void main() {
       final secondPrompt = await waitForFrame(AcpMethods.sessionPrompt, count: 2);
       expect((secondPrompt["params"] as Map)["sessionId"], second.id);
       respond(secondPrompt, {"stopReason": "end_turn"});
+    });
+
+    test("a prompt queued on the active session cancels that turn before dispatch", () async {
+      await connect();
+      final session = await create("session");
+
+      await plugin.sendPrompt(
+        promptId: "prompt-1",
+        sessionId: session.id,
+        parts: const [PluginPromptPart.text(text: "keep searching")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final firstPrompt = await waitForFrame(AcpMethods.sessionPrompt);
+
+      await plugin.sendPrompt(
+        promptId: "prompt-2",
+        sessionId: session.id,
+        parts: const [PluginPromptPart.text(text: "stop")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final cancel = await waitForFrame(AcpMethods.sessionCancel);
+      expect(cancel["params"], {"sessionId": session.id});
+      expect(frames(AcpMethods.sessionPrompt), hasLength(1));
+      expect((await plugin.getQueuedPrompts(sessionId: session.id)).single.id, "prompt-2");
+
+      respond(firstPrompt, {"stopReason": "cancelled"});
+      final replacement = await waitForFrame(AcpMethods.sessionPrompt, count: 2);
+      expect((replacement["params"] as Map)["sessionId"], session.id);
+      expect(await plugin.getQueuedPrompts(sessionId: session.id), isEmpty);
+      expect(
+        events
+            .whereType<BridgeSseMessageUpdated>()
+            .singleWhere((event) => event.info["promptId"] == "prompt-2")
+            .info["role"],
+        "user",
+      );
+      respond(replacement, {"stopReason": "end_turn"});
     });
 
     test("maps live reasoning, tools, images, and final text", () async {
