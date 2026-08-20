@@ -82,7 +82,9 @@ defaults and queued client sends coherent.
   session cancellation. Available models come from Hermes's ACP session model
   state, and the selected exact model ID is applied through Hermes's
   `session/set_model` extension before each changed-model turn. A rejected model
-  fails before prompting. Sesori does not call form-elicitation or unadvertised
+  fails before prompting. Completed assistant text is finalized at each tool
+  boundary, so earlier prose in a multi-tool turn does not depend on the final
+  turn snapshot. Sesori does not call form-elicitation or unadvertised
   session-close methods to complete an ordinary turn.
 - Existing-session ACP prompts remain bridge-queued while an earlier turn,
   process-wide lane, resume, or selection blocks their `session/prompt` frame.

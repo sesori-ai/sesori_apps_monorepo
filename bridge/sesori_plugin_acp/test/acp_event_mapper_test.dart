@@ -150,6 +150,48 @@ void main() {
       );
     });
 
+    test("tool activity finalizes active assistant text before the turn ends", () {
+      mapper.beginTurn("s1");
+      mapper.map(
+        update({
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": "Before the first tool."},
+        }),
+      );
+
+      final firstToolEvents = mapper.map(
+        update({
+          "sessionUpdate": "tool_call",
+          "toolCallId": "tool-1",
+          "kind": "search",
+          "status": "completed",
+        }),
+      );
+      expect(
+        firstToolEvents.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.text).whereType<String>(),
+        contains("Before the first tool."),
+      );
+
+      mapper.map(
+        update({
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": "Before the second tool."},
+        }),
+      );
+      final secondToolEvents = mapper.map(
+        update({
+          "sessionUpdate": "tool_call",
+          "toolCallId": "tool-2",
+          "kind": "read",
+          "status": "completed",
+        }),
+      );
+      expect(
+        secondToolEvents.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.text).whereType<String>(),
+        contains("Before the second tool."),
+      );
+    });
+
     test("forgetSession drops pending text snapshots", () {
       mapper.beginTurn("s1");
       mapper.map(

@@ -364,7 +364,7 @@ class AcpEventMapper({
         // is reconstructed separately by AcpReplayCollector.
         return const [];
       case "tool_call":
-        return _afterReasoning(
+        return _beforeTool(
           sessionId: sessionId,
           events: _toolCall(sessionId: sessionId, update: update),
         );
@@ -425,16 +425,43 @@ class AcpEventMapper({
     required List<BridgeSseEvent> events,
   }) {
     if (events.isEmpty) return events;
-    return [..._finalizeActiveReasoning(sessionId: sessionId), ...events];
+    return [
+      ..._finalizeActiveTextParts(
+        sessionId: sessionId,
+        partType: PluginMessagePartType.reasoning,
+      ),
+      ...events,
+    ];
   }
 
-  List<BridgeSseEvent> _finalizeActiveReasoning({required String sessionId}) {
+  List<BridgeSseEvent> _beforeTool({
+    required String sessionId,
+    required List<BridgeSseEvent> events,
+  }) {
+    if (events.isEmpty) return events;
+    return [
+      ..._finalizeActiveTextParts(
+        sessionId: sessionId,
+        partType: PluginMessagePartType.reasoning,
+      ),
+      ..._finalizeActiveTextParts(
+        sessionId: sessionId,
+        partType: PluginMessagePartType.text,
+      ),
+      ...events,
+    ];
+  }
+
+  List<BridgeSseEvent> _finalizeActiveTextParts({
+    required String sessionId,
+    required PluginMessagePartType partType,
+  }) {
     final accumulators = _textPartAccumulators[sessionId];
     if (accumulators == null) return const [];
 
     final events = <BridgeSseEvent>[];
     for (final accumulator in accumulators.values) {
-      if (accumulator.type != PluginMessagePartType.reasoning || !accumulator.isStreaming) continue;
+      if (accumulator.type != partType || !accumulator.isStreaming) continue;
       accumulator.isStreaming = false;
       events.add(
         BridgeSseMessagePartUpdated(
