@@ -39,8 +39,8 @@ const _authUser = AuthUser(
   providerUsername: "alice",
 );
 const _pngBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==";
-const _widePngBase64 =
-    "iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAYAAAB/qH1jAAAAEklEQVR4nGP4z8DwHxkzoAsAAA8hD/EEN8afAAAAAElFTkSuQmCC";
+const _portraitPngBase64 =
+    "iVBORw0KGgoAAAANSUhEUgAAAAIAAAAECAIAAAArjXluAAAACXBIWXMAAAABAAAAAQBPJcTWAAAAEElEQVR4nGP8wwACLAxYKAAbdAEKX4LcXQAAAABJRU5ErkJggg==";
 
 class _FakeImageSaver() implements ImageSaver {
   Uint8List? savedBytes;
@@ -817,10 +817,10 @@ void main() {
     expect(find.text("Image copied to clipboard"), findsOneWidget);
   });
 
-  testWidgets("Hero flight reveals the contained image from the square crop", (tester) async {
+  testWidgets("Hero flight targets the contained image bounds from the square crop", (tester) async {
     const attachment = MessageAttachment.inlineImage(
       mime: "image/png",
-      base64: _widePngBase64,
+      base64: _portraitPngBase64,
       filename: "flight.png",
     );
     await tester.pumpWidget(
@@ -857,10 +857,16 @@ void main() {
       closeTo(1, 0.001),
     );
 
+    await tester.pump(const Duration(milliseconds: 129));
+    expect(tester.getSize(crop).aspectRatio, closeTo(0.5, 0.05));
+
     await tester.pumpAndSettle();
     expect(crop, findsNothing);
     expect(full, findsNothing);
-    expect(tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey)).fit, BoxFit.contain);
+    final displayed = find.byKey(ImageAttachmentViewer.imageKey);
+    expect(tester.widget<Image>(displayed).fit, BoxFit.contain);
+    expect(tester.getSize(displayed).aspectRatio, closeTo(0.5, 0.001));
+    expect(tester.getSize(displayed).height, tester.getSize(find.byType(InteractiveViewer)).height);
   });
 
   testWidgets("reduced motion skips image viewer route transitions", (tester) async {

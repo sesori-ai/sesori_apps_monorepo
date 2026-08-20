@@ -334,6 +334,9 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
   static const _zoomDuration = Duration(milliseconds: 220);
 
   final _transformationController = TransformationController();
+  ImageStream? _flightImageStream;
+  ImageStreamListener? _flightImageStreamListener;
+  double? _flightImageAspectRatio;
   late final AnimationController _dragResetController;
   late final AnimationController _zoomController;
   Matrix4Tween? _zoomTween;
@@ -357,11 +360,58 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _resolveFlightImageAspectRatio();
+  }
+
+  @override
+  void didUpdateWidget(covariant ImageAttachmentViewer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.flightImageProvider != widget.flightImageProvider) _resolveFlightImageAspectRatio();
+  }
+
+  @override
   void dispose() {
+    _removeFlightImageStreamListener();
     _dragResetController.dispose();
     _zoomController.dispose();
     _transformationController.dispose();
     super.dispose();
+  }
+
+  void _resolveFlightImageAspectRatio() {
+    final stream = widget.flightImageProvider.resolve(createLocalImageConfiguration(context));
+    if (_flightImageStream?.key == stream.key) return;
+    _removeFlightImageStreamListener();
+    _flightImageAspectRatio = null;
+    final listener = ImageStreamListener(
+      (image, _) {
+        final aspectRatio = image.image.width / image.image.height;
+        image.dispose();
+        _removeFlightImageStreamListener();
+        if (!mounted || _flightImageAspectRatio == aspectRatio) return;
+        setState(() => _flightImageAspectRatio = aspectRatio);
+      },
+      // The visible Image's errorBuilder owns decode failure presentation.
+      onError: (_, _) {
+        _removeFlightImageStreamListener();
+        if (!mounted || _flightImageAspectRatio == null) return;
+        setState(() => _flightImageAspectRatio = null);
+      },
+      reportErrors: false,
+    );
+    _flightImageStream = stream;
+    _flightImageStreamListener = listener;
+    stream.addListener(listener);
+  }
+
+  void _removeFlightImageStreamListener() {
+    final stream = _flightImageStream;
+    final listener = _flightImageStreamListener;
+    if (stream != null && listener != null) stream.removeListener(listener);
+    _flightImageStream = null;
+    _flightImageStreamListener = null;
   }
 
   void _updateDragReset() {
@@ -698,6 +748,11 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
   Widget build(BuildContext context) {
     final prego = context.prego;
     final image = widget.image;
+    final imagePresentation = _buildImage(image: image);
+    final heroChild = switch (_flightImageAspectRatio) {
+      final aspectRatio? => AspectRatio(aspectRatio: aspectRatio, child: imagePresentation),
+      null => SizedBox.expand(child: imagePresentation),
+    };
     final dismissRange = (MediaQuery.sizeOf(context).height * 0.45).clamp(1.0, double.infinity);
     final dismissProgress = (_dragOffset.distance / dismissRange).clamp(0.0, 1.0);
     final chromeOpacity = 1 - dismissProgress;
@@ -750,11 +805,11 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
                         onInteractionStart: (details) => _handleInteractionStart(details: details),
                         onInteractionUpdate: (details) => _handleInteractionUpdate(details: details),
                         onInteractionEnd: (details) => _handleInteractionEnd(details: details),
-                        child: Hero(
-                          tag: widget.heroTag,
-                          flightShuttleBuilder: _buildHeroFlight,
-                          child: SizedBox.expand(
-                            child: _buildImage(image: image),
+                        child: Center(
+                          child: Hero(
+                            tag: widget.heroTag,
+                            flightShuttleBuilder: _buildHeroFlight,
+                            child: heroChild,
                           ),
                         ),
                       ),
