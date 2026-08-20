@@ -1308,6 +1308,7 @@ abstract class AcpPlugin({
     required _SessionTurnState state,
     required _AcpTurn turn,
   }) {
+    if (!identical(_turnStates[sessionId], state)) return;
     if (turn is! _QueuedAcpTurn) return;
     final queuedPrompt = turn.queuedPrompt;
     eventMapper

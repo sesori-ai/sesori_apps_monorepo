@@ -768,20 +768,29 @@ void main() {
       await connect();
       final sessionId = await createSession(cwd, "s1");
 
-      await sendPrompt(sessionId, "hi");
+      final flush = fake.holdNextFlush();
+      final promptId = await sendPrompt(sessionId, "hi");
       final promptFrame = await waitForFrame("session/prompt");
 
       await plugin.deleteSession(sessionId);
       expect(frames("session/cancel"), hasLength(1));
+      final queueUpdateCount = emitted.whereType<BridgeSseQueuedPromptsUpdated>().length;
 
-      // The cancelled prompt settles after the delete: its accounting must not
-      // re-create the deleted session's status entry or emit idle for it.
+      // The prompt flushes and settles after the delete: neither dispatch nor
+      // accounting may publish lifecycle events for the detached session.
+      flush.complete();
+      await pump();
       respondTo(promptFrame, {"stopReason": "cancelled"});
       for (var i = 0; i < 10; i++) {
         await pump();
       }
       expect(await plugin.getSessionStatuses(), isEmpty);
       expect(emitted.whereType<BridgeSseSessionIdle>(), isEmpty);
+      expect(
+        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == promptId),
+        isEmpty,
+      );
+      expect(emitted.whereType<BridgeSseQueuedPromptsUpdated>(), hasLength(queueUpdateCount));
     });
 
     test("a queued turn retries a transiently failed resume-load at dispatch", () async {
