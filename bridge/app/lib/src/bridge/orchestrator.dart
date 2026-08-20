@@ -1610,6 +1610,16 @@ class OrchestratorSession._({
     // Bridge-local consumers observe the released inline shape; only the wire
     // is shaped per subscriber.
     final event = delivery.inlineEvent;
+    final upsertSessionId = switch (event) {
+      SesoriSessionCreated(:final info) || SesoriSessionUpdated(:final info) => info.id,
+      _ => null,
+    };
+    if (upsertSessionId != null &&
+        (_sessionMutationDispatcher.shouldSuppressEventsForSession(sessionId: upsertSessionId) ||
+            await _sessionRepository.isSessionTombstoned(sessionId: upsertSessionId))) {
+      Log.v("[sse] dropping ${event.runtimeType} for a deleting or deleted session");
+      return;
+    }
     Log.v(
       "[sse] mapped to: ${event.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
     );
@@ -1623,6 +1633,11 @@ class OrchestratorSession._({
       await _routeUnseenActivity(event);
     }
     if (!_isCurrentSource(pluginId: pluginId, generation: generation, allowDuringStop: allowDuringStop)) return;
+    if (event is SesoriSessionCreated &&
+        (_sessionMutationDispatcher.shouldSuppressEventsForSession(sessionId: event.info.id) ||
+            await _sessionRepository.isSessionTombstoned(sessionId: event.info.id))) {
+      return;
+    }
     _enqueueDelivery(delivery);
     if (event is! SesoriSessionCreated) {
       try {

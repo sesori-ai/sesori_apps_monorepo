@@ -171,6 +171,31 @@ void main() {
       await subscription.cancel();
     });
 
+    test("suppresses events from deletion start and restores them when cleanup fails", () async {
+      await insertSession();
+      final cleanupStarted = Completer<void>();
+      final cleanupGate = Completer<void>();
+      final deletion = dispatcher.deleteSession(
+        sessionId: "s1",
+        cleanup: () async {
+          cleanupStarted.complete();
+          await cleanupGate.future;
+          throw StateError("cleanup failed");
+        },
+        onDeleted: (_) async {},
+      );
+      await cleanupStarted.future;
+
+      expect(dispatcher.shouldSuppressEventsForSession(sessionId: "s1"), isTrue);
+
+      final failure = expectLater(deletion, throwsStateError);
+      cleanupGate.complete();
+      await failure;
+
+      expect(dispatcher.shouldSuppressEventsForSession(sessionId: "s1"), isFalse);
+      expect(await db.sessionDao.getSession(sessionId: "s1"), isNotNull);
+    });
+
     test("keeps the generated title when plugin propagation fails", () async {
       plugin.renameError = StateError("rename failed");
       await insertSession();

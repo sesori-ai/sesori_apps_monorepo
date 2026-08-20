@@ -32,10 +32,15 @@ class SessionMutationDispatcher({
   final StreamController<LocalSessionMutation> _mutationsController = StreamController<LocalSessionMutation>.broadcast(
     sync: true,
   );
+  final Set<String> _sessionIdsSuppressedFromEvents = <String>{};
   bool _disposed = false;
   Future<void>? _disposeFuture;
 
   Stream<LocalSessionMutation> get mutations => _mutationsController.stream;
+
+  bool shouldSuppressEventsForSession({required String sessionId}) {
+    return _sessionIdsSuppressedFromEvents.contains(sessionId);
+  }
 
   Future<Session> renameSession({required String sessionId, required String title}) {
     if (_disposed) return Future.error(StateError("SessionMutationDispatcher is disposed"));
@@ -83,12 +88,21 @@ class SessionMutationDispatcher({
       sessionId: sessionId,
       operation: SessionOperation.deleteSession,
       body: () async {
-        final cleanupResult = await cleanup();
-        if (cleanupResult is CleanupRejected) return cleanupResult;
-        final deleted = await _sessionRepository.deleteSession(sessionId: sessionId);
-        await onDeleted(deleted.sessionIds);
-        _mutationsController.add(LocalSessionMutation.deleted(session: deleted.session));
-        return cleanupResult;
+        final newlySuppressed = _sessionIdsSuppressedFromEvents.add(sessionId);
+        var committed = false;
+        try {
+          final cleanupResult = await cleanup();
+          if (cleanupResult is CleanupRejected) return cleanupResult;
+          final deleted = await _sessionRepository.deleteSession(sessionId: sessionId);
+          await onDeleted(deleted.sessionIds);
+          _mutationsController.add(LocalSessionMutation.deleted(session: deleted.session));
+          committed = true;
+          return cleanupResult;
+        } finally {
+          if (!committed && newlySuppressed) {
+            _sessionIdsSuppressedFromEvents.remove(sessionId);
+          }
+        }
       },
     );
   }
