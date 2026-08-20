@@ -26,6 +26,7 @@ import "../repositories/codex_tool_lifecycle_tracker.dart";
 import "../repositories/codex_tool_outcome_repository.dart";
 import "../repositories/mappers/codex_image_attachment_mapper.dart";
 import "../repositories/mappers/codex_rollout_tool_mapper.dart";
+import "../repositories/mappers/codex_user_content_mapper.dart";
 import "../services/codex_authentication_service.dart";
 import "../services/codex_rollout_tailer.dart";
 import "../services/codex_session_service.dart";
@@ -64,6 +65,7 @@ CodexManagedApi _defaultBuildApi({
     imageAttachmentMapper: imageAttachmentMapper,
   );
   const imageBearingItemParser = CodexImageBearingItemParser();
+  const userContentMapper = CodexUserContentMapper();
   final catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
   final toolOutcomeRepository = CodexToolOutcomeRepository(
     storage: CodexToolOutcomeStorage(
@@ -80,6 +82,7 @@ CodexManagedApi _defaultBuildApi({
       messageRepository: CodexMessageRepository(
         rolloutApi: rolloutApi,
         rolloutToolMapper: rolloutToolMapper,
+        userContentMapper: userContentMapper,
       ),
       metadataRepository: CodexMetadataRepository(
         configReader: configReader,
@@ -93,6 +96,7 @@ CodexManagedApi _defaultBuildApi({
       imageAttachmentMapper: imageAttachmentMapper,
       imageBearingItemParser: imageBearingItemParser,
       rolloutToolMapper: rolloutToolMapper,
+      userContentMapper: userContentMapper,
       config: configReader.readDefaults(),
     ),
     rolloutTailer: CodexRolloutTailer(

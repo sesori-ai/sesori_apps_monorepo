@@ -432,6 +432,111 @@ void main() {
     await runFuture.timeout(const Duration(seconds: 5));
   });
 
+  test("session upserts emitted during backend deletion stay suppressed", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
+    await relayServer.nextClient();
+    await harness.activatePlugins();
+    await _insertEventSession(database: harness.database, pluginId: "one");
+    final plugin = harness.plugins.single;
+    final deletionStarted = Completer<void>();
+    final deletionGate = Completer<void>();
+    plugin
+      ..deleteSessionStarted = deletionStarted
+      ..deleteSessionGate = deletionGate;
+    final updates = <SesoriSessionUpdated>[];
+    final updateSubscription = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriSessionUpdated)
+        .cast<SesoriSessionUpdated>()
+        .listen(updates.add);
+    final laterEventDelivered = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriVcsBranchUpdated)
+        .first;
+    final deletion = _deleteEventSession(
+      dispatcher: harness.composition.routedRequestDispatcher,
+    );
+
+    try {
+      await deletionStarted.future.timeout(const Duration(seconds: 2));
+      plugin.emitEvent(_lateSessionUpdate(pluginId: plugin.id));
+      plugin.emitEvent(const BridgeSseVcsBranchUpdated());
+      await _waitForCatalogTitle(database: harness.database, title: "Late title");
+      await laterEventDelivered.timeout(const Duration(seconds: 2));
+
+      expect(updates, isEmpty);
+    } finally {
+      if (!deletionGate.isCompleted) deletionGate.complete();
+      expect((await deletion).status, 200);
+      await updateSubscription.cancel();
+      await harness.composition.session.cancel();
+      await runFuture.timeout(const Duration(seconds: 5));
+    }
+  });
+
+  test("queued session upserts are rechecked after deletion", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
+    await relayServer.nextClient();
+    await harness.activatePlugins();
+    await _insertEventSession(database: harness.database, pluginId: "one");
+    final plugin = harness.plugins.single;
+    final projectReadStarted = Completer<void>();
+    final projectReadGate = Completer<void>();
+    _configureBlockingProjectSummary(
+      plugin: plugin,
+      started: projectReadStarted,
+      gate: projectReadGate,
+    );
+    final updates = <SesoriSessionUpdated>[];
+    final updateSubscription = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriSessionUpdated)
+        .cast<SesoriSessionUpdated>()
+        .listen(updates.add);
+    final laterEventDelivered = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriVcsBranchUpdated)
+        .first;
+
+    try {
+      plugin.emitEvent(const BridgeSseProjectUpdated());
+      await projectReadStarted.future.timeout(const Duration(seconds: 2));
+      plugin.emitEvent(_lateSessionUpdate(pluginId: plugin.id));
+      plugin.emitEvent(const BridgeSseVcsBranchUpdated());
+      await _waitForCatalogTitle(database: harness.database, title: "Late title");
+      expect(
+        (await _deleteEventSession(dispatcher: harness.composition.routedRequestDispatcher)).status,
+        200,
+      );
+
+      projectReadGate.complete();
+      await laterEventDelivered.timeout(const Duration(seconds: 2));
+
+      expect(updates, isEmpty);
+    } finally {
+      if (!projectReadGate.isCompleted) projectReadGate.complete();
+      await updateSubscription.cancel();
+      await harness.composition.session.cancel();
+      await runFuture.timeout(const Duration(seconds: 5));
+    }
+  });
+
   test("aggregate project summaries are built and delivered in trigger order across plugins", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(
@@ -753,6 +858,69 @@ Future<RelayResponse> _dispatch({
   throw StateError("route was rejected during test setup");
 }
 
+Future<RelayResponse> _deleteEventSession({required RoutedRequestDispatcher dispatcher}) {
+  return _dispatch(
+    dispatcher: dispatcher,
+    request: makeRequest(
+      "DELETE",
+      "/session/delete",
+      body: jsonEncode(
+        const DeleteSessionRequest(
+          sessionId: "stable-session",
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ).toJson(),
+      ),
+    ),
+  );
+}
+
+Future<void> _insertEventSession({required AppDatabase database, required String pluginId}) async {
+  await database.projectsDao.insertProjectsIfMissing(projectIds: ["project"]);
+  await database.sessionDao.insertSession(
+    pluginId: pluginId,
+    sessionId: "stable-session",
+    backendSessionId: "backend-session",
+    projectId: "project",
+    isDedicated: false,
+    createdAt: 1,
+    worktreePath: null,
+    branchName: null,
+    baseBranch: null,
+    baseCommit: null,
+    lastAgent: null,
+    lastAgentModel: null,
+  );
+}
+
+BridgeSseSessionUpdated _lateSessionUpdate({required String pluginId}) {
+  return BridgeSseSessionUpdated(
+    info: Session(
+      id: "backend-session",
+      pluginId: pluginId,
+      projectID: "project",
+      directory: "/repo",
+      parentID: null,
+      title: "Late title",
+      time: const SessionTime(created: 1, updated: 2, archived: null),
+      pullRequest: null,
+      promptDefaults: null,
+      lastUserActivityAt: null,
+      branchName: null,
+    ).toJson(),
+    titleChanged: true,
+  );
+}
+
+Future<void> _waitForCatalogTitle({required AppDatabase database, required String title}) async {
+  final timeoutAt = DateTime.now().add(const Duration(seconds: 2));
+  while ((await database.sessionDao.getSession(sessionId: "stable-session"))?.catalogTitle != title) {
+    if (DateTime.now().isAfter(timeoutAt)) fail("Timed out waiting for the session projection");
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
+}
+
 void _configureBlockingProjectSummary({
   required _SourcedPlugin plugin,
   required Completer<void> started,
@@ -1004,6 +1172,8 @@ class _SourcedPlugin(final String pluginId) extends FakeBridgePlugin {
   Completer<void>? getProjectStarted;
   Completer<void>? getProjectGate;
   Completer<void>? activeSummaryReadStarted;
+  Completer<void>? deleteSessionStarted;
+  Completer<void>? deleteSessionGate;
   List<PluginProjectActivitySummary> activitySummaries = const [];
 
   @override
@@ -1019,6 +1189,13 @@ class _SourcedPlugin(final String pluginId) extends FakeBridgePlugin {
       if (gate != null) await gate.future;
     }
     return await super.getProject(projectId);
+  }
+
+  @override
+  Future<void> deleteSession(String sessionId) async {
+    deleteSessionStarted?.complete();
+    if (deleteSessionGate case final gate?) await gate.future;
+    await super.deleteSession(sessionId);
   }
 
   @override

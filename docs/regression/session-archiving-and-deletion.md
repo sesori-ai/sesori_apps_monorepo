@@ -22,6 +22,11 @@ entirely along with its transcript and, optionally, its worktree.
   reconciliation. Worktree cleanup happens only when requested; unsafe cleanup
   (unstaged changes or a shared worktree) is refused with its issues and proceeds
   only on a forced retry. Session retirement never deletes a Git branch.
+- Once deletion cleanup starts, the bridge suppresses session-created and
+  session-updated events for the named session and its persisted descendants.
+  Suppression remains for the bridge lifetime after success and is removed if
+  deletion fails, so late or already-queued backend events cannot re-add a
+  deleted session to a client.
 - For a backend that advertises session close, deleting an active session first
   cancels its turn and pending input, waits within a bounded deadline for that
   session to settle, then closes it before local plugin state is removed. A
@@ -70,7 +75,8 @@ and branches that remain after the asserted cleanup behavior.
 - Deletion residue survives startup reconciliation without an observable failure
   and later retry, or cleanup removes a worktree or branch that was not requested.
 - A close-capable backend is closed while its prompt is still settling, emits
-  late events after local removal, or reports timeout/close failure as success.
+  late events after local removal, reports timeout/close failure as success, or
+  a late session upsert makes a deleting or deleted session visible again.
 - Unsafe cleanup proceeds without a forced retry, a refusal omits the blocking
   issues, session retirement deletes a branch, partial cleanup is reported as
   success or deletes the session, a concurrent mutation interleaves, or a client

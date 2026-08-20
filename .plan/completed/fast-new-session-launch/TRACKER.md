@@ -3,12 +3,14 @@
 ## Current State
 
 - **Plan slug:** `fast-new-session-launch`
-- **Implementation base:** `origin/main` at `9f765e6d5` after follow-up 4A merge
-- **Current branch:** `fast-new-session-launch-step-5`
-- **Series state:** Steps 1-4/6 and standalone follow-up 4A merged; Step 5 is in
-  review in PR #928
-- **Current step:** monitor the Step 5 documentation PR
-- **Next action:** merge PR #928, then execute the Step 6 regression matrix
+- **Implementation base:** `origin/main` at `addb95679`
+- **Current branch:** `docs/complete-fast-new-session-launch`
+- **Series state:** Steps 1–5/6 and standalone follow-up 4A merged; Step 6/6
+  retires this plan
+- **Current step:** complete
+- **Next action:** none
+- **Retirement:** owner explicitly accepted on 2026-08-20 with unavailable or
+  unexecuted L3 Release rows waived; those rows are not claimed as passed
 
 ## Locked Decisions
 
@@ -87,8 +89,8 @@
 | [x] | 3/6 | `🚧 [fast-new-session-launch] feat(bridge): return sessions before generated titles [step 3/6]` | Merged in #909 |
 | [x] | 4/6 | `⚙️ [fast-new-session-launch] feat(client): open launching sessions immediately [step 4/6]` | Merged in #913 |
 | [x] | 4A | `⚙️ Rename generated session branches after launch` | Merged in #923 |
-| [ ] | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | PR #928 open and monitored |
-| [ ] | 6/6 | `🌿 [fast-new-session-launch] test: verify faster new-session launch [step 6/6]` | Blocked on Step 5 merge |
+| [x] | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | Merged in #928 |
+| [x] | 6/6 | `🌿 [fast-new-session-launch] test: verify faster new-session launch [step 6/6]` | Completed as this docs-only retirement PR; owner accepted waived unavailable or unexecuted L3 Release rows |
 
 ## Step 1 Checklist
 
@@ -184,6 +186,20 @@
   changed-line target.
 - [x] Commit, push, open Step 5, and monitor it in PR #928.
 
+## Step 6 Completion
+
+- [x] Confirm Steps 1–5 and standalone follow-up 4A merged: #894, #908, #909,
+  #913, #923, and #928.
+- [x] Inspect recorded automated evidence and current planning-document
+  consistency.
+- [x] Record available release-matrix evidence without inferring unexecuted rows.
+- [x] Record the owner's 2026-08-20 explicit acceptance/waiver of unavailable or
+  unexecuted L3 Release coverage.
+- [x] Keep Codex PR #1002 and ACP attachment work standalone follow-ups, not
+  prerequisites for retirement.
+- [x] Move plan from `.plan/active/` to `.plan/completed/`.
+- [x] Validate planning-document diff with `git diff --check`.
+
 ## Step 5 Cleanup Audit
 
 - [x] Obsolete preferred metadata naming, synchronous title-tail, single-session
@@ -219,7 +235,7 @@
 
 ### Automated
 
-- Step 1 merge-base size:
+- Step 1 merge-base size (historical active-plan path):
   `git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- .plan/active/fast-new-session-launch/PLAN.md .plan/active/fast-new-session-launch/TRACKER.md`
 - Informational result including this record, within the 750-900 target:
   `PLAN.md +751`, `TRACKER.md +144`, total `+895 / -0`.
@@ -305,20 +321,41 @@
 - Follow-up 4A PR: #923, based on `main` and monitored.
 - Follow-up 4A review fixes passed 144 focused tests, all 2,641 `bridge/app`
   tests, strict analysis, and `git diff --check`.
-- Step 5 merge-base documentation scope:
+- Step 5 merge-base documentation scope (historical active-plan path):
   `git diff --numstat "$(git merge-base HEAD origin/main)" -- .plan/active/fast-new-session-launch/{PLAN,TRACKER}.md docs/regression/{attachments-and-images,projects-and-sessions,pull-request-monitoring,session-creation-and-options}.md`.
 - Self-inclusive Step 5 result: `+125 / -33` (158 changed lines), within the
   80-180 target.
 
-### Manual matrix
+### Available release-matrix evidence
 
-Pending Step 6. Enumerate `knownPlugins` from the build under test rather than
-copying a historical list here.
+- Merged implementation evidence covers local workspace naming, canonical
+  response-before-metadata behavior, late title/branch mutation, launch-route
+  presentation, submission restoration, bounded serialization, crypto framing,
+  and regression-document reconciliation. Step-specific test and analysis totals
+  remain recorded above.
+- Merged history confirms Steps 1–5 and standalone follow-up 4A: #894, #908,
+  #909, #913, #923, and #928.
+- This Step 6 retirement performed documentation consistency inspection and
+  `git diff --check` only. It did not run Dart/Flutter or release-matrix tests.
 
-### Timing evidence
+### L3 Release matrix and timing gaps — accepted waiver
 
-Pending Step 6. Record only privacy-safe durations for launch view, real route,
-and complete detail snapshot under matched baseline/final conditions.
+The plan required L3 Release coverage. The following are unavailable or
+unexecuted and are deliberately **not** reported as passing:
+
+- release-target phone narrow/wide or split layouts, normal/reduced motion;
+- release-target headless bridge warm/cold plugin start;
+- enumeration and live creation coverage for every production `knownPlugins`
+  entry, including supported attachment and slash-command rows;
+- representative metadata slow/failure, dedicated-worktree branch-refinement,
+  timeout/relay-loss, reconnect/discovery, and client/bridge compatibility rows;
+- matched baseline/final privacy-safe timings for launch view, durable route, and
+  complete detail snapshot.
+
+On 2026-08-20, the owner explicitly accepted retirement with these remaining L3
+rows waived. This records an acceptance of incomplete coverage, not evidence
+that it passed. Codex PR #1002 and ACP attachment work remain standalone
+follow-ups; neither is a prerequisite for this completed plan.
 
 ## Plan Review
 

@@ -40,6 +40,10 @@ defaults and queued client sends coherent.
   duplicating it. The bridge worktree context envelope is stripped from the
   echo, and a slash command renders one synthetic user message because its
   echo is the CLI's internal command envelope.
+- Codex user prompts use the same visible content live and after rollout replay:
+  the bridge worktree context envelope is hidden, authored text remains, and
+  bounded inline images render as file parts. An attachment-only initial prompt
+  therefore remains visible without exposing the generated context.
 - A plain Claude prompt sent while its resident process is working is written
   immediately with `priority: next`. Claude absorbs it at the next tool
   boundary when possible, within the active agent turn; otherwise Claude keeps

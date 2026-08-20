@@ -10,6 +10,7 @@ import "package:codex_plugin/src/api/parsers/codex_image_bearing_item_parser.dar
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:codex_plugin/src/repositories/codex_tool_lifecycle_tracker.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_user_content_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
@@ -24,6 +25,7 @@ void main() {
     const projectCwd = "/repo/app";
     const imageAttachmentMapper = CodexImageAttachmentMapper();
     const imageBearingItemParser = CodexImageBearingItemParser();
+    const userContentMapper = CodexUserContentMapper();
     const rolloutToolMapper = CodexRolloutToolMapper(
       imageAttachmentMapper: imageAttachmentMapper,
     );
@@ -33,6 +35,7 @@ void main() {
       imageAttachmentMapper: imageAttachmentMapper,
       imageBearingItemParser: imageBearingItemParser,
       rolloutToolMapper: rolloutToolMapper,
+      userContentMapper: userContentMapper,
     );
     final rolloutLifecycle = _ToolLifecycleHarness(
       eventMapper: mapper,
@@ -189,6 +192,7 @@ void main() {
         imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
+        userContentMapper: userContentMapper,
       )..setThreadDirectory("t-9", "/repo/app/packages/ui");
 
       final events = scopedMapper.map(
@@ -209,6 +213,7 @@ void main() {
         imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
+        userContentMapper: userContentMapper,
       );
       mapThreadStarted(
         activityMapper,
@@ -256,6 +261,7 @@ void main() {
         imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
+        userContentMapper: userContentMapper,
       );
       mapThreadStarted(
         activityMapper,
@@ -398,6 +404,223 @@ void main() {
 
       final parsed = shared.Message.fromJson((events[0] as BridgeSseMessageUpdated).info);
       expect((parsed as shared.MessageUser).promptId, isNull);
+    });
+
+    test("item userMessage hides bridge context while preserving authored content", () {
+      const worktreeContext = """
+[SYSTEM CONTEXT \u2014 IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---
+""";
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-user-content",
+            "turnId": "u-user-content",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user-content",
+              "clientId": "prm_user_content",
+              "content": [
+                {"type": "text", "text": worktreeContext, "text_elements": <Object?>[]},
+                {"type": "text", "text": "visible prompt", "text_elements": <Object?>[]},
+                {"type": "image", "url": "data:image/png;base64,AA=="},
+              ],
+            },
+          },
+        ),
+      );
+
+      expect(events, hasLength(3));
+      final user = shared.Message.fromJson((events.first as BridgeSseMessageUpdated).info) as shared.MessageUser;
+      expect(user.promptId, "prm_user_content");
+      final parts = events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
+      expect(parts.first.type, PluginMessagePartType.text);
+      expect(parts.first.text, "visible prompt");
+      expect(parts.first.text, isNot(contains("SYSTEM CONTEXT")));
+      expect(parts.last.type, PluginMessagePartType.file);
+      final image = parts.last.attachment! as PluginMessageAttachmentInlineImage;
+      expect(image.mime, "image/png");
+      expect(image.base64, "AA==");
+    });
+
+    test("item userMessage preserves authored whitespace after bridge context", () {
+      const text =
+          """
+[SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---
+"""
+          "    authored text  \n";
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-user-whitespace",
+            "turnId": "u-user-whitespace",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user-whitespace",
+              "content": [
+                {"type": "text", "text": text, "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      final part = (events.last as BridgeSseMessagePartUpdated).part;
+      expect(part.text, "    authored text  \n");
+    });
+
+    test("item userMessage hides bridge context inside a command invocation", () {
+      const text =
+          r"""
+$review [SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---
+
+"""
+          "    authored arguments  \n";
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-command-context",
+            "turnId": "u-command-context",
+            "item": {
+              "type": "userMessage",
+              "id": "i-command-context",
+              "content": [
+                {"type": "text", "text": text, "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      final part = (events.last as BridgeSseMessagePartUpdated).part;
+      expect(
+        part.text,
+        r"$review     authored arguments  "
+        "\n",
+      );
+    });
+
+    test("item userMessage hides bridge context from an argumentless command", () {
+      const text = r"""
+$review [SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---""";
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-argumentless-command-context",
+            "turnId": "u-argumentless-command-context",
+            "item": {
+              "type": "userMessage",
+              "id": "i-argumentless-command-context",
+              "content": [
+                {"type": "text", "text": text, "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      final part = (events.last as BridgeSseMessagePartUpdated).part;
+      expect(part.text, r"$review ");
+    });
+
+    test("item userMessage preserves authored marker-shaped content", () {
+      const text = """
+[SYSTEM CONTEXT — IMPORTANT]
+Authored explanation.
+
+---
+authored conclusion
+""";
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-user-marker",
+            "turnId": "u-user-marker",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user-marker",
+              "content": [
+                {"type": "text", "text": text, "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      final part = (events.last as BridgeSseMessagePartUpdated).part;
+      expect(part.text, text);
+    });
+
+    test("item userMessage keeps an attachment-only prompt after hiding bridge context", () {
+      const worktreeContext = """
+[SYSTEM CONTEXT \u2014 IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---
+""";
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-user-attachment",
+            "turnId": "u-user-attachment",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user-attachment",
+              "content": [
+                {"type": "text", "text": worktreeContext, "text_elements": <Object?>[]},
+                {"type": "image", "url": "data:image/png;base64,AA=="},
+              ],
+            },
+          },
+        ),
+      );
+
+      expect(events, hasLength(2));
+      final part = (events.last as BridgeSseMessagePartUpdated).part;
+      expect(part.type, PluginMessagePartType.file);
+      expect(part.attachment, isA<PluginMessageAttachmentInlineImage>());
     });
 
     test("item lifecycle timestamps survive live message updates", () {
@@ -578,6 +801,7 @@ void main() {
         imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
+        userContentMapper: userContentMapper,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
       // thread/started carries the provider; the mapper remembers it per thread.
@@ -618,6 +842,7 @@ void main() {
         imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
+        userContentMapper: userContentMapper,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
       mapThreadStarted(

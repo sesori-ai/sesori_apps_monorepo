@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/session_cleanup_result.dart";
@@ -64,6 +65,22 @@ void main() {
         baseCommit: null,
         agent: null,
         agentModel: null,
+      );
+    }
+
+    Future<void> insertChild() {
+      return db.sessionDao.insertObservedChild(
+        pluginId: plugin.id,
+        sessionId: "child",
+        backendSessionId: "backend-child",
+        projectId: "/repo",
+        parentSessionId: "s1",
+        directory: "/repo",
+        catalogTitle: null,
+        archivedAt: null,
+        createdAt: 1,
+        updatedAt: 1,
+        projectionUpdatedAt: 1,
       );
     }
 
@@ -169,6 +186,59 @@ void main() {
       expect(plugin.renameCalls, isZero);
       expect(mutations, isEmpty);
       await subscription.cancel();
+    });
+
+    test("suppresses events from deletion start and restores them when cleanup fails", () async {
+      await insertSession();
+      await insertChild();
+      final cleanupStarted = Completer<void>();
+      final cleanupGate = Completer<void>();
+      final deletion = dispatcher.deleteSession(
+        sessionId: "s1",
+        cleanup: () async {
+          cleanupStarted.complete();
+          await cleanupGate.future;
+          throw StateError("cleanup failed");
+        },
+        onDeleted: (_) async {},
+      );
+      await cleanupStarted.future;
+
+      expect(dispatcher.shouldSuppressEventsForSession(sessionId: "s1"), isTrue);
+      expect(dispatcher.shouldSuppressEventsForSession(sessionId: "child"), isTrue);
+
+      final failure = expectLater(deletion, throwsStateError);
+      cleanupGate.complete();
+      await failure;
+
+      expect(dispatcher.shouldSuppressEventsForSession(sessionId: "s1"), isFalse);
+      expect(dispatcher.shouldSuppressEventsForSession(sessionId: "child"), isFalse);
+      expect(await db.sessionDao.getSession(sessionId: "s1"), isNotNull);
+    });
+
+    test("rolls back root suppression when its subtree lookup fails", () async {
+      final gatedRepository = _GatedSubtreeSessionRepository();
+      final gatedOperationDispatcher = SessionOperationDispatcher(sessionRepository: gatedRepository);
+      final gatedDispatcher = SessionMutationDispatcher(
+        sessionRepository: gatedRepository,
+        sessionOperationDispatcher: gatedOperationDispatcher,
+        worktreeService: worktreeService,
+      );
+      final deletion = gatedDispatcher.deleteSession(
+        sessionId: "s1",
+        cleanup: () => throw StateError("cleanup failed"),
+        onDeleted: (_) async {},
+      );
+      await gatedRepository.lookupStarted.future;
+
+      expect(gatedDispatcher.shouldSuppressEventsForSession(sessionId: "s1"), isTrue);
+
+      final failure = expectLater(deletion, throwsStateError);
+      gatedRepository.releaseLookup.complete();
+      await failure;
+      expect(gatedDispatcher.shouldSuppressEventsForSession(sessionId: "s1"), isFalse);
+      await gatedOperationDispatcher.dispose();
+      await gatedDispatcher.dispose();
     });
 
     test("keeps the generated title when plugin propagation fails", () async {
@@ -285,6 +355,7 @@ void main() {
 
     test("owns repository deletion and typed deleted mutations", () async {
       await insertSession();
+      await insertChild();
       final events = expectLater(
         dispatcher.mutations,
         emitsInOrder([
@@ -300,6 +371,8 @@ void main() {
       );
       await dispatcher.dispose();
       await events;
+      expect(dispatcher.shouldSuppressEventsForSession(sessionId: "s1"), isTrue);
+      expect(dispatcher.shouldSuppressEventsForSession(sessionId: "child"), isTrue);
       expect(
         () => dispatcher.deleteSession(
           sessionId: "after-dispose",
@@ -342,6 +415,27 @@ class _FakeWorktreeService() implements WorktreeService {
   }) async {
     rollbackCalls++;
     if (rollbackError case final error?) throw error;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _GatedSubtreeSessionRepository() implements SessionRepository {
+  final Completer<void> lookupStarted = Completer<void>();
+  final Completer<void> releaseLookup = Completer<void>();
+
+  @override
+  Future<SessionFamilyScope> resolveSessionFamily({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async => (rootSessionId: sessionId, pluginId: "codex");
+
+  @override
+  Future<List<String>> getSessionSubtreeIds({required String sessionId}) async {
+    lookupStarted.complete();
+    await releaseLookup.future;
+    throw StateError("subtree lookup failed");
   }
 
   @override

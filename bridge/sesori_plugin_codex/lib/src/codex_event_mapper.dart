@@ -8,6 +8,7 @@ import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
 import "repositories/mappers/codex_image_attachment_mapper.dart";
 import "repositories/mappers/codex_rollout_tool_mapper.dart";
+import "repositories/mappers/codex_user_content_mapper.dart";
 import "repositories/models/codex_projected_tool.dart";
 import "repositories/models/codex_thread_record.dart";
 
@@ -37,6 +38,7 @@ class CodexEventMapper({
   required final CodexImageAttachmentMapper _imageAttachmentMapper,
   required final CodexImageBearingItemParser _imageBearingItemParser,
   required final CodexRolloutToolMapper _rolloutToolMapper,
+  required final CodexUserContentMapper _userContentMapper,
 
   /// Global model/provider fallback from `~/.codex/config.toml`. Live
   /// `item`/`turn` notifications do not carry the model, so streaming
@@ -453,7 +455,7 @@ class CodexEventMapper({
 
     switch (item["type"] as String?) {
       case "userMessage":
-        return _messageEvents(
+        return _userMessageEvents(
           threadId: threadId,
           itemId: itemId,
           message: shared.Message.user(
@@ -466,9 +468,10 @@ class CodexEventMapper({
             // Codex CLI carries none.
             promptId: item["clientId"] as String?,
           ),
-          partType: PluginMessagePartType.text,
-          partSuffix: "text",
-          text: _extractContentText(item["content"]),
+          text: _userContentMapper.mapSubmittedText(
+            text: _extractContentText(item["content"]),
+          ),
+          attachments: _extractUserContentAttachments(item["content"]),
         );
       case "agentMessage":
         return _messageEvents(
@@ -783,25 +786,73 @@ class CodexEventMapper({
   }) {
     return [
       BridgeSseMessageUpdated(info: message.toJson()),
-      BridgeSseMessagePartUpdated(
-        part: PluginMessagePart(
-          id: "$itemId-$partSuffix",
-          sessionID: threadId,
-          messageID: itemId,
-          type: partType,
-          text: text ?? "",
-          tool: null,
-          state: null,
-          prompt: null,
-          description: null,
-          agent: null,
-          agentName: null,
-          attempt: null,
-          retryError: null,
-          attachment: null,
-        ),
+      _messagePartEvent(
+        threadId: threadId,
+        itemId: itemId,
+        partId: "$itemId-$partSuffix",
+        partType: partType,
+        text: text ?? "",
+        attachment: null,
       ),
     ];
+  }
+
+  List<BridgeSseEvent> _userMessageEvents({
+    required String threadId,
+    required String itemId,
+    required shared.Message message,
+    required String? text,
+    required List<PluginMessageAttachment> attachments,
+  }) {
+    return [
+      BridgeSseMessageUpdated(info: message.toJson()),
+      if (text != null)
+        _messagePartEvent(
+          threadId: threadId,
+          itemId: itemId,
+          partId: "$itemId-text",
+          partType: PluginMessagePartType.text,
+          text: text,
+          attachment: null,
+        ),
+      for (var index = 0; index < attachments.length; index++)
+        _messagePartEvent(
+          threadId: threadId,
+          itemId: itemId,
+          partId: "$itemId-file-${index + 1}",
+          partType: PluginMessagePartType.file,
+          text: null,
+          attachment: attachments[index],
+        ),
+    ];
+  }
+
+  BridgeSseMessagePartUpdated _messagePartEvent({
+    required String threadId,
+    required String itemId,
+    required String partId,
+    required PluginMessagePartType partType,
+    required String? text,
+    required PluginMessageAttachment? attachment,
+  }) {
+    return BridgeSseMessagePartUpdated(
+      part: PluginMessagePart(
+        id: partId,
+        sessionID: threadId,
+        messageID: itemId,
+        type: partType,
+        text: text,
+        tool: null,
+        state: null,
+        prompt: null,
+        description: null,
+        agent: null,
+        agentName: null,
+        attempt: null,
+        retryError: null,
+        attachment: attachment,
+      ),
+    );
   }
 
   /// Builds a full [shared.Session] from a normalized Codex thread record.
@@ -915,6 +966,18 @@ class CodexEventMapper({
     }
     final result = buffer.toString();
     return result.isEmpty ? null : result;
+  }
+
+  List<PluginMessageAttachment> _extractUserContentAttachments(Object? content) {
+    if (content is! List) return const [];
+    final entries = content.cast<Object?>();
+    return _imageAttachmentMapper.map(
+      candidates: [
+        for (final entry in entries)
+          if (entry case {"type": "image", "url": final String imageUrl})
+            CodexImageAttachmentCandidate.imageUrl(imageUrl: imageUrl),
+      ],
+    );
   }
 
   /// Pulls reasoning text out of a codex `reasoning` item's `content` and
