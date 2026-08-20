@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/session_cleanup_result.dart";
@@ -215,6 +216,31 @@ void main() {
       expect(await db.sessionDao.getSession(sessionId: "s1"), isNotNull);
     });
 
+    test("suppresses the root while its subtree lookup is pending", () async {
+      final gatedRepository = _GatedSubtreeSessionRepository();
+      final gatedOperationDispatcher = SessionOperationDispatcher(sessionRepository: gatedRepository);
+      final gatedDispatcher = SessionMutationDispatcher(
+        sessionRepository: gatedRepository,
+        sessionOperationDispatcher: gatedOperationDispatcher,
+        worktreeService: worktreeService,
+      );
+      final deletion = gatedDispatcher.deleteSession(
+        sessionId: "s1",
+        cleanup: () => throw StateError("cleanup failed"),
+        onDeleted: (_) async {},
+      );
+      await gatedRepository.lookupStarted.future;
+
+      expect(gatedDispatcher.shouldSuppressEventsForSession(sessionId: "s1"), isTrue);
+
+      final failure = expectLater(deletion, throwsStateError);
+      gatedRepository.releaseLookup.complete();
+      await failure;
+      expect(gatedDispatcher.shouldSuppressEventsForSession(sessionId: "s1"), isFalse);
+      await gatedOperationDispatcher.dispose();
+      await gatedDispatcher.dispose();
+    });
+
     test("keeps the generated title when plugin propagation fails", () async {
       plugin.renameError = StateError("rename failed");
       await insertSession();
@@ -389,6 +415,27 @@ class _FakeWorktreeService() implements WorktreeService {
   }) async {
     rollbackCalls++;
     if (rollbackError case final error?) throw error;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _GatedSubtreeSessionRepository() implements SessionRepository {
+  final Completer<void> lookupStarted = Completer<void>();
+  final Completer<void> releaseLookup = Completer<void>();
+
+  @override
+  Future<SessionFamilyScope> resolveSessionFamily({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async => (rootSessionId: sessionId, pluginId: "codex");
+
+  @override
+  Future<List<String>> getSessionSubtreeIds({required String sessionId}) async {
+    lookupStarted.complete();
+    await releaseLookup.future;
+    return [sessionId];
   }
 
   @override
