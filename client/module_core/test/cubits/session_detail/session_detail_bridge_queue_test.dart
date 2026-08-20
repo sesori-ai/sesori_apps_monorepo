@@ -70,6 +70,38 @@ SessionOptionsRepositoryResult _freshClaudeOptions() => SessionOptionsRepository
   ),
 );
 
+ProviderListResponse _providerDataWithVariants(List<String> variants) => ProviderListResponse(
+  items: [
+    ProviderInfo(
+      id: "anthropic",
+      name: "Anthropic",
+      defaultModelID: "claude-opus",
+      models: {
+        "claude-opus": ProviderModel(
+          id: "claude-opus",
+          providerID: "anthropic",
+          name: "Opus",
+          variants: variants,
+          family: null,
+          releaseDate: null,
+        ),
+      },
+    ),
+  ],
+  connectedOnly: false,
+);
+
+SessionOptionsRepositoryResult _claudeOptionsWithVariants(List<String> variants) => SessionOptionsRepositoryAvailable(
+  catalog: SessionOptionsCatalog(
+    agents: const [
+      AgentInfo(name: "Agent", description: "Agent", model: null, mode: AgentMode.primary),
+    ],
+    providers: _providerDataWithVariants(variants).items,
+    providersConnectedOnly: false,
+    commands: const [],
+  ),
+);
+
 void main() {
   const connectedStatus = ConnectionStatus.connected(
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
@@ -428,6 +460,70 @@ void main() {
       expect(state.queuedMessages.map((submission) => submission.text), ["first", "second"]);
       expect(state.sendingSubmission, isNull);
       expect(state.awaitingBridgeSubmissions, isEmpty);
+    });
+
+    test("retries a withdrawn variant at a supported one rather than unsetting it", () async {
+      final staleError = ApiError.nonSuccessCode(
+        errorCode: 409,
+        rawErrorString: jsonEncode(
+          const SendPromptErrorResponse(
+            code: SendPromptErrorCode.staleSessionOptions,
+            message: "unsupported Claude effort",
+          ).toJson(),
+        ),
+      );
+      when(
+        () => mockSessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "claude",
+          mode: SessionOptionsRequestMode.forceRefresh,
+        ),
+      ).thenAnswer((_) async => _claudeOptionsWithVariants(const ["low"]));
+      var sendCount = 0;
+      final sentVariants = <SessionVariant?>[];
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: "hello",
+          attachments: const [],
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: null,
+        ),
+      ).thenAnswer((invocation) async {
+        sendCount++;
+        sentVariants.add(invocation.namedArguments[#variant] as SessionVariant?);
+        return sendCount == 1 ? ApiResponse.error(staleError) : ApiResponse.success(null);
+      });
+      final cubit = await createLoadedCubit(
+        agents: const [
+          AgentInfo(name: "Agent", description: "Agent", model: null, mode: AgentMode.primary),
+        ],
+        providerData: _providerDataWithVariants(const ["low", "high"]),
+        promptDefaults: const SessionPromptDefaults(
+          agent: "Agent",
+          model: AgentModel(providerID: "anthropic", modelID: "claude-opus", variant: "high"),
+        ),
+      );
+      expect((cubit.state as SessionDetailLoaded).selectedAgentModel?.variant, "high");
+
+      await cubit.sendMessage(
+        text: "hello",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      );
+      for (var attempt = 0; attempt < 20 && sendCount < 2; attempt++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(sendCount, 2);
+      // The composer renders the first available variant when none is
+      // selected, so recovery must land on a real one instead of unsetting it.
+      expect(sentVariants, const [SessionVariant(id: "high"), SessionVariant(id: "low")]);
+      expect((cubit.state as SessionDetailLoaded).selectedAgentModel?.variant, "low");
     });
 
     test("replaces the queue from the SSE event and drops the accepted local copy", () async {

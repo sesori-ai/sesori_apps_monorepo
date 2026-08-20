@@ -173,9 +173,11 @@ has started.
   bridge acceptance or backend startup is still pending, or queued feedback
   uses a visually unrelated or composer-pinned surface, or renders authored
   Markdown as literal syntax.
-- A stale-option rejection retains or recommits the rejected cache row, remains
-  silent, drops the staged prompt, changes FIFO order or prompt identity, or
-  refreshes and retries without a bound.
+- A stale-option rejection retains the rejected cache row, waits on an
+  unrelated options discovery before answering, remains silent, drops the
+  staged prompt, changes FIFO order or prompt identity, refreshes and retries
+  without a bound, or leaves a corrected selection on a variant the picker does
+  not display.
 - An abort, permission reply, or question reply stalls behind a send to a
   busy session on the same session lane.
 - Recovery or interruption artifacts from an aborted turn appear in the next

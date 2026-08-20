@@ -109,9 +109,9 @@ final class ClaudePlugin({
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    _validateModel(model, operation: "createSession", staleOptions: false);
-    _effort(variant, operation: "createSession", staleOptions: false);
-    _permissionMode(agent, operation: "createSession", staleOptions: false);
+    _validateModel(model, operation: "createSession");
+    _effort(variant, operation: "createSession");
+    _permissionMode(agent, operation: "createSession");
     final sessionId = _generateSessionId();
     final normalized = normalizeProjectDirectory(directory: directory);
     final now = _clock.now().millisecondsSinceEpoch;
@@ -433,9 +433,9 @@ final class ClaudePlugin({
     required String? command,
     required int attachmentCount,
   }) async {
-    _validateModel(model, operation: operation, staleOptions: true);
-    final effort = _effort(variant, operation: operation, staleOptions: true);
-    final permissionMode = _permissionMode(agent, operation: operation, staleOptions: true);
+    _validateModel(model, operation: operation);
+    final effort = _effort(variant, operation: operation);
+    final permissionMode = _permissionMode(agent, operation: operation);
     final createNew = _unstartedSessions.contains(sessionId);
     try {
       await _sessions.enqueueTurn(
@@ -469,9 +469,9 @@ final class ClaudePlugin({
     required ({String providerID, String modelID})? model,
     required String operation,
   }) async {
-    _validateModel(model, operation: operation, staleOptions: false);
-    final effort = _effort(variant, operation: operation, staleOptions: false);
-    final permissionMode = _permissionMode(agent, operation: operation, staleOptions: false);
+    _validateModel(model, operation: operation);
+    final effort = _effort(variant, operation: operation);
+    final permissionMode = _permissionMode(agent, operation: operation);
     _eventDispatcher.beginTurn(sessionId: sessionId);
     try {
       await _sessions.enqueueInitialTurn(
@@ -490,45 +490,27 @@ final class ClaudePlugin({
     }
   }
 
-  void _validateModel(
-    ({String providerID, String modelID})? model, {
-    required String operation,
-    required bool staleOptions,
-  }) {
+  void _validateModel(({String providerID, String modelID})? model, {required String operation}) {
     if (model == null) return;
     if (model.providerID != ClaudeBackendCatalogRepository.providerId || model.modelID.trim().isEmpty) {
-      throw staleOptions
-          ? PluginStaleOptionsException(operation, message: "unsupported Claude model")
-          : PluginOperationException(operation, statusCode: 400, message: "unsupported Claude model");
+      throw PluginStaleOptionsException(operation, message: "unsupported Claude model");
     }
   }
 
-  ClaudeEffortLevel? _effort(
-    PluginSessionVariant? variant, {
-    required String operation,
-    required bool staleOptions,
-  }) {
+  ClaudeEffortLevel? _effort(PluginSessionVariant? variant, {required String operation}) {
     if (variant == null) return null;
     final effort = ClaudeEffortLevel.tryParse(variant.id);
     if (effort == null) {
-      throw staleOptions
-          ? PluginStaleOptionsException(operation, message: "unsupported Claude effort")
-          : PluginOperationException(operation, statusCode: 400, message: "unsupported Claude effort");
+      throw PluginStaleOptionsException(operation, message: "unsupported Claude effort");
     }
     return effort;
   }
 
-  ClaudePermissionMode? _permissionMode(
-    String? agent, {
-    required String operation,
-    required bool staleOptions,
-  }) {
+  ClaudePermissionMode? _permissionMode(String? agent, {required String operation}) {
     if (agent == null) return null;
     final selection = ClaudeAgentSelection.tryParse(agent);
     if (selection == null) {
-      throw staleOptions
-          ? PluginStaleOptionsException(operation, message: "unsupported Claude agent")
-          : PluginOperationException(operation, statusCode: 400, message: "unsupported Claude agent");
+      throw PluginStaleOptionsException(operation, message: "unsupported Claude agent");
     }
     return selection.permissionMode;
   }

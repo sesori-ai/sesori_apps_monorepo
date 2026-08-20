@@ -166,7 +166,6 @@ final class PiPlugin._({
       agent: agent,
       model: model,
       operation: "createSession",
-      staleOptions: false,
     );
     final sessionId = await _sessionService.prepareNewSession(
       directory: normalized,
@@ -309,7 +308,6 @@ final class PiPlugin._({
       agent: agent,
       model: model,
       operation: "sendPrompt",
-      staleOptions: true,
     );
     await _sessionService.sendPrompt(
       sessionId: sessionId,
@@ -340,7 +338,6 @@ final class PiPlugin._({
       agent: agent,
       model: model,
       operation: "sendCommand",
-      staleOptions: true,
     );
     final options = await _catalogService.requireOptions(projectId: session.directory);
     if (command.trim() != command ||
@@ -459,32 +456,23 @@ final class PiPlugin._({
     required String? agent,
     required ({String providerID, String modelID})? model,
     required String operation,
-    required bool staleOptions,
   }) async {
     if (agent != null && agent != "pi") {
-      throw staleOptions
-          ? PluginStaleOptionsException(operation, message: "Unsupported Pi agent.")
-          : PluginOperationException(operation, statusCode: 400, message: "Unsupported Pi agent.");
+      throw PluginStaleOptionsException(operation, message: "Unsupported Pi agent.");
     }
     if (variant != null && PiThinkingLevel.tryParse(value: variant.id) == null) {
-      throw staleOptions
-          ? PluginStaleOptionsException(operation, message: "Unsupported Pi thinking level.")
-          : PluginOperationException(operation, statusCode: 400, message: "Unsupported Pi thinking level.");
+      throw PluginStaleOptionsException(operation, message: "Unsupported Pi thinking level.");
     }
     if (model == null) return;
     final options = await _catalogService.requireOptions(projectId: projectId);
     final provider = options.providers.providers.where((candidate) => candidate.id == model.providerID).firstOrNull;
     if (provider == null || !provider.models.any((candidate) => candidate.id == model.modelID)) {
-      throw staleOptions
-          ? PluginStaleOptionsException(operation, message: "Unsupported Pi model.")
-          : PluginOperationException(operation, statusCode: 400, message: "Unsupported Pi model.");
+      throw PluginStaleOptionsException(operation, message: "Unsupported Pi model.");
     }
     if (variant != null) {
       final selected = provider.models.firstWhere((candidate) => candidate.id == model.modelID);
       if (!selected.variants.contains(variant.id)) {
-        throw staleOptions
-            ? PluginStaleOptionsException(operation, message: "Unsupported Pi thinking level.")
-            : PluginOperationException(operation, statusCode: 400, message: "Unsupported Pi thinking level.");
+        throw PluginStaleOptionsException(operation, message: "Unsupported Pi thinking level.");
       }
     }
   }

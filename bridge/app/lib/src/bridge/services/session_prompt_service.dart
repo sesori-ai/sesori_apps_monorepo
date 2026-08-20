@@ -133,10 +133,12 @@ class SessionPromptService({
 
   Future<void> _invalidateStaleOptionsCache({required String sessionId}) async {
     try {
-      final pluginId = await _sessionRepository.findPluginIdForSession(sessionId: sessionId);
-      final projectId = await _sessionRepository.findProjectIdForSession(sessionId: sessionId);
-      if (pluginId == null || projectId == null) return;
-      await _sessionOptionsService.invalidateRejectedSelection(pluginId: pluginId, projectId: projectId);
+      final scope = await _sessionRepository.findSessionOptionsScope(sessionId: sessionId);
+      if (scope == null) return;
+      await _sessionOptionsService.invalidateRejectedSelection(
+        pluginId: scope.pluginId,
+        projectId: scope.projectId,
+      );
     } on Object catch (error, stackTrace) {
       Log.w("Failed to invalidate stale session options cache for session $sessionId", error, stackTrace);
     }

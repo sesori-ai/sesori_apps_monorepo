@@ -1062,7 +1062,7 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<String?> findProjectIdForSession({required String sessionId}) async => null;
 
   @override
-  Future<String?> findPluginIdForSession({required String sessionId}) async => null;
+  Future<({String pluginId, String projectId})?> findSessionOptionsScope({required String sessionId}) async => null;
 
   @override
   Future<Session?> getSessionForProject({
@@ -1581,7 +1581,7 @@ class FakeSessionRepository({
   Future<String?> findProjectIdForSession({required String sessionId}) async => null;
 
   @override
-  Future<String?> findPluginIdForSession({required String sessionId}) async => null;
+  Future<({String pluginId, String projectId})?> findSessionOptionsScope({required String sessionId}) async => null;
 
   @override
   Future<Session?> getSessionForProject({

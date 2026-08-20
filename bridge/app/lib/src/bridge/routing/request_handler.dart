@@ -105,6 +105,9 @@ abstract class BodyRequestHandler<REQ, RES extends Object>(
     } on SessionArchivedReadOnlyException catch (err) {
       return buildArchivedRejectionResponse(request, err.rejection);
     } on StaleSessionPromptOptionsException catch (err) {
+      // The client only learns the opaque code, so this is the sole place that
+      // retains which plugin operation rejected the selection and where.
+      Log.w("${request.method} ${request.path}: stale session options", err.cause, err.causeStackTrace);
       return buildStaleOptionsRejectionResponse(request, err.message);
     } on PluginOperationException catch (err, stackTrace) {
       Log.w("${request.method} ${request.path}: upstream failure", err, stackTrace);

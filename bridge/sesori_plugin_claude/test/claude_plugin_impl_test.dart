@@ -181,7 +181,7 @@ void main() {
       expect(await harness.plugin.getQueuedPrompts(sessionId: testSessionId), isEmpty);
     });
 
-    test("keeps unsupported selections on session creation as bad requests", () async {
+    test("rejects unsupported selections on session creation", () async {
       await expectLater(
         harness.plugin.createSession(
           directory: "/tmp/project",
@@ -193,9 +193,7 @@ void main() {
           model: (providerID: "anthropic", modelID: "default"),
         ),
         throwsA(
-          isA<PluginOperationException>()
-              .having((error) => error.statusCode, "status", 400)
-              .having((error) => error.message, "message", "unsupported Claude agent"),
+          isA<PluginStaleOptionsException>().having((error) => error.message, "message", "unsupported Claude agent"),
         ),
       );
     });

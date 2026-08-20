@@ -500,51 +500,48 @@ void main() {
       expect(repository.captureCalls, isEmpty);
     });
 
-    test("stale-send invalidation fences in-flight and subsequent refreshes", () async {
+    test("stale-send invalidation deletes beside in-flight discovery and gates its commit", () async {
       const key = SessionOptionsCacheKey.project(
         pluginId: "plugin-1",
         projectId: "project-1",
         projectPath: "/projects/one",
       );
-      final firstCapture = Completer<SessionOptionsCaptureResult>();
-      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/one";
-      repository.captureHandler = (_) => repository.captureCalls.length == 1
-          ? firstCapture.future
-          : Future.value(
-              _observed(
-                marker: "fresh",
-                completeness: PluginSessionOptionsCompleteness.complete,
-                generation: 7,
-              ),
-            );
+      final capture = Completer<SessionOptionsCaptureResult>();
+      final deleteGate = Completer<void>();
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/one"
+        ..deleteGate = deleteGate
+        ..put(_entry(key: key, response: _response(marker: "rejected"), capturedAt: now));
+      repository.captureHandler = (_) => capture.future;
       final service = _service(repository: repository, now: now);
 
-      final staleRefresh = service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
+      final refresh = service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
       while (repository.captureCalls.isEmpty) {
         await Future<void>.delayed(Duration.zero);
       }
+      // The delete is issued against the discovery still running, not behind it.
       final invalidation = service.invalidateRejectedSelection(pluginId: "plugin-1", projectId: "project-1");
       await Future<void>.delayed(Duration.zero);
-      final freshRefresh = service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
-      await Future<void>.delayed(Duration.zero);
-
+      expect(repository.deletedKeys, [key]);
       expect(repository.captureCalls, hasLength(1));
-      expect(repository.deletedKeys, isEmpty);
-      firstCapture.complete(
+
+      capture.complete(
         _observed(
-          marker: "stale",
+          marker: "fresh",
           completeness: PluginSessionOptionsCompleteness.complete,
           generation: 7,
         ),
       );
+      // The discovery finished first, so its commit is held until the delete
+      // settles; otherwise the delete would erase the snapshot it just wrote.
+      await Future<void>.delayed(Duration.zero);
+      expect(repository.commitCalls, isEmpty);
 
-      await staleRefresh;
+      deleteGate.complete();
       await invalidation;
-      final freshOutcome = await freshRefresh;
-      expect(repository.deletedKeys, [key]);
-      expect(repository.captureCalls, hasLength(2));
-      expect(freshOutcome, isA<SessionOptionsAvailable>());
-      expect((freshOutcome as SessionOptionsAvailable).response, _response(marker: "fresh"));
+      final outcome = await refresh;
+      expect(outcome, isA<SessionOptionsAvailable>());
+      expect((outcome as SessionOptionsAvailable).response, _response(marker: "fresh"));
       expect(repository.stored(key)?.response, _response(marker: "fresh"));
     });
 
@@ -1367,6 +1364,7 @@ class _FakeSessionOptionsRepository() implements SessionOptionsRepository {
     completeness: PluginSessionOptionsCompleteness.complete,
     generation: 7,
   );
+  Completer<void>? deleteGate;
   Future<SessionOptionsCacheEntry?> Function(SessionOptionsCacheKey key)? readHandler;
   Future<SessionOptionsCaptureResult> Function(_CaptureCall call)? captureHandler;
   Future<bool> Function(_CommitCall call)? commitHandler;
@@ -1422,6 +1420,7 @@ class _FakeSessionOptionsRepository() implements SessionOptionsRepository {
   @override
   Future<void> delete({required SessionOptionsCacheKey key}) async {
     deletedKeys.add(key);
+    await deleteGate?.future;
     remove(key);
   }
 

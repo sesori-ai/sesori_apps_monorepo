@@ -973,8 +973,12 @@ class SessionRepository({
     return (await _sessionDao.getSession(sessionId: sessionId))?.projectId;
   }
 
-  Future<String?> findPluginIdForSession({required String sessionId}) async {
-    return (await _sessionDao.getSession(sessionId: sessionId))?.pluginId;
+  /// The plugin and project that own [sessionId], which together scope its
+  /// session options cache. `null` when the session has no stored row.
+  Future<({String pluginId, String projectId})?> findSessionOptionsScope({required String sessionId}) async {
+    final session = await _sessionDao.getSession(sessionId: sessionId);
+    if (session == null) return null;
+    return (pluginId: session.pluginId, projectId: session.projectId);
   }
 
   Future<void> notifySessionArchived({required String sessionId}) async {

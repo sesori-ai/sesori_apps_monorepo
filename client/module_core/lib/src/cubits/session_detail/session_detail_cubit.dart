@@ -1054,8 +1054,7 @@ class SessionDetailCubit(
 
     final bool hasValidPersistedAgent = persistedAgent != null && agents.any((a) => a.name == persistedAgent);
     final bool hasValidPersistedModel =
-        persistedModel != null &&
-        providers.any((p) => p.id == persistedModel.providerID && p.models.containsKey(persistedModel.modelID));
+        persistedModel != null && _isModelAvailable(model: persistedModel, providers: providers);
 
     final newAgent = hasValidPersistedAgent ? persistedAgent : current.selectedAgent;
     final newModel = hasValidPersistedModel ? persistedModel : current.selectedAgentModel;
@@ -1838,15 +1837,23 @@ class SessionDetailCubit(
     required List<ProviderInfo> providers,
   }) {
     if (candidate == null) return null;
-    final exists = providers.any(
-      (provider) => provider.id == candidate.providerID && provider.models.containsKey(candidate.modelID),
-    );
-    final model = exists ? candidate : _fallbackAgentModel(agents: agents, providers: providers);
+    final model = _isModelAvailable(model: candidate, providers: providers)
+        ? candidate
+        : _fallbackAgentModel(agents: agents, providers: providers);
     if (model == null) return null;
-    final variant = model.variant;
-    if (variant == null) return model;
-    final variants = _deriveAvailableVariants(providers: providers, model: model);
-    return variants.any((available) => available.id == variant) ? model : model.copyWith(variant: null);
+    // Never leave a variant-offering model unset: the composer renders the
+    // first available variant when none is selected, so an unset one would
+    // display an effort the send does not carry.
+    return _withResolvedVariant(
+      model: model,
+      availableVariants: _deriveAvailableVariants(providers: providers, model: model),
+    );
+  }
+
+  bool _isModelAvailable({required AgentModel model, required List<ProviderInfo> providers}) {
+    return providers.any(
+      (provider) => provider.id == model.providerID && provider.models.containsKey(model.modelID),
+    );
   }
 
   AgentModel? _fallbackAgentModel({
@@ -2266,8 +2273,7 @@ class SessionDetailCubit(
 
     final bool hasValidPersistedAgent = persistedAgent != null && agents.any((a) => a.name == persistedAgent);
     final bool hasValidPersistedModel =
-        persistedModel != null &&
-        providers.any((p) => p.id == persistedModel.providerID && p.models.containsKey(persistedModel.modelID));
+        persistedModel != null && _isModelAvailable(model: persistedModel, providers: providers);
 
     final String defaultAgent = hasValidPersistedAgent
         ? persistedAgent
