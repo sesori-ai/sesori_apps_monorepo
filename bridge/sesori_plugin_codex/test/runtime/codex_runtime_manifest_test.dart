@@ -14,7 +14,7 @@ void main() {
     });
 
     test("pinned versions", () {
-      expect(manifest.bundledVersion.toString(), "0.146.0");
+      expect(manifest.bundledVersion.toString(), "0.148.0");
       expect(manifest.minPathVersion.toString(), "0.139.0");
       expect(manifest.runtimeId, const CodexPluginDescriptor().id);
       expect(manifest.pathExecutableName, "codex");
@@ -35,7 +35,10 @@ void main() {
 
     test("darwin/linux ship .tar.gz, windows ships .exe.zip", () {
       ArchiveRuntimeAsset asset(PlatformOs os, PlatformArch arch) =>
-          manifest.assetFor(target: PlatformTarget(os: os, arch: arch))! as ArchiveRuntimeAsset;
+          manifest.assetFor(
+                target: PlatformTarget(os: os, arch: arch),
+              )!
+              as ArchiveRuntimeAsset;
 
       expect(asset(PlatformOs.macos, PlatformArch.arm64).format, ArchiveFormat.tarGz);
       expect(asset(PlatformOs.macos, PlatformArch.arm64).assetName, endsWith(".tar.gz"));
@@ -51,26 +54,26 @@ void main() {
 
     test("archive member is the target-triple name (asset name minus extension)", () {
       expect(
-        (manifest
-            .assetFor(
-              target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
-            )! as ArchiveRuntimeAsset)
+        (manifest.assetFor(
+                  target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
+                )!
+                as ArchiveRuntimeAsset)
             .archiveBinaryName,
         "codex-aarch64-apple-darwin",
       );
       expect(
-        (manifest
-            .assetFor(
-              target: const PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.x64),
-            )! as ArchiveRuntimeAsset)
+        (manifest.assetFor(
+                  target: const PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.x64),
+                )!
+                as ArchiveRuntimeAsset)
             .archiveBinaryName,
         "codex-x86_64-unknown-linux-musl",
       );
       expect(
-        (manifest
-            .assetFor(
-              target: const PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.x64),
-            )! as ArchiveRuntimeAsset)
+        (manifest.assetFor(
+                  target: const PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.x64),
+                )!
+                as ArchiveRuntimeAsset)
             .archiveBinaryName,
         "codex-x86_64-pc-windows-msvc.exe",
       );
@@ -82,7 +85,7 @@ void main() {
       )!;
       expect(
         manifest.downloadUrlFor(asset: asset),
-        equals("https://github.com/openai/codex/releases/download/rust-v0.146.0/codex-aarch64-apple-darwin.tar.gz"),
+        equals("https://github.com/openai/codex/releases/download/rust-v0.148.0/codex-aarch64-apple-darwin.tar.gz"),
       );
     });
 

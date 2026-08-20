@@ -8,14 +8,14 @@ import "package:test/test.dart";
 void main() {
   const manifest = OmpRuntimeManifest();
 
-  test("pins v17.2.13 and parses only the OMP version prefix", () {
+  test("pins v17.3.8 and parses only the OMP version prefix", () {
     expect(manifest.runtimeId, "omp");
     expect(manifest.pathExecutableName, "omp");
     expect(manifest.binaryFileName, Platform.isWindows ? "omp.exe" : "omp");
-    expect(manifest.minPathVersion.raw, "17.2.13");
-    expect(manifest.bundledVersion.raw, "17.2.13");
-    expect(manifest.parseVersion(value: "omp/17.2.13")?.raw, "17.2.13");
-    expect(manifest.parseVersion(value: "17.2.13"), isNull);
+    expect(manifest.minPathVersion.raw, "17.3.8");
+    expect(manifest.bundledVersion.raw, "17.3.8");
+    expect(manifest.parseVersion(value: "omp/17.3.8")?.raw, "17.3.8");
+    expect(manifest.parseVersion(value: "17.3.8"), isNull);
     expect(manifest.parseVersion(value: "omp/not-a-version"), isNull);
   });
 
@@ -65,7 +65,7 @@ void main() {
     )!;
     expect(
       manifest.downloadUrlFor(asset: asset),
-      "https://github.com/can1357/oh-my-pi/releases/download/v17.2.13/omp-darwin-arm64",
+      "https://github.com/can1357/oh-my-pi/releases/download/v17.3.8/omp-darwin-arm64",
     );
   });
 }

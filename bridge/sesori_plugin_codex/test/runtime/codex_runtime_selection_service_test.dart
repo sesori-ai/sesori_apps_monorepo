@@ -139,7 +139,7 @@ void main() {
           CodexRuntimeSelectionFailure.executableMissing,
         ),
         (StateError("spawn failed"), CodexRuntimeSelectionFailure.probeFailed),
-        (_ProbeProcess(stdoutText: "codex 0.146.0\n", exitCode: 1), CodexRuntimeSelectionFailure.nonZeroExit),
+        (_ProbeProcess(stdoutText: "codex 0.148.0\n", exitCode: 1), CodexRuntimeSelectionFailure.nonZeroExit),
         (_ProbeProcess(stdoutText: "not a version\n", exitCode: 0), CodexRuntimeSelectionFailure.unrecognizedVersion),
         (_ProbeProcess(stdoutText: "codex 0.100.0\n", exitCode: 0), CodexRuntimeSelectionFailure.unsupportedVersion),
       ];
@@ -191,7 +191,7 @@ void main() {
 
     test("aborts at the boundary after a completed probe", () async {
       final processes = _FakeHostProcessService([
-        _ProbeProcess(stdoutText: "codex 0.146.0\n", exitCode: 0),
+        _ProbeProcess(stdoutText: "codex 0.148.0\n", exitCode: 0),
       ]);
 
       await expectLater(

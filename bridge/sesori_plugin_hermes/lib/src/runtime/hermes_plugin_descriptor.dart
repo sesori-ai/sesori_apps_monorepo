@@ -24,7 +24,7 @@ const int _setupProbeOutputLimit = 64 * 1024;
 class const HermesPluginDescriptor() extends BridgePluginDescriptor {
   static const Duration _connectBudget = Duration(seconds: 15);
   static const Duration _versionProbeTimeout = Duration(seconds: 10);
-  static final SemanticVersion _minHermesVersion = SemanticVersion.parse(value: "0.20.0");
+  static final SemanticVersion _minHermesVersion = SemanticVersion.parse(value: "0.20.4");
 
   /// CLI option naming the Hermes CLI binary (path or PATH name). Declared
   /// as the bare local name; the bridge's [PluginCliOptionsMapper] namespaces

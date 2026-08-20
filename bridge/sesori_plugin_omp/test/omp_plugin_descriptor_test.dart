@@ -44,7 +44,7 @@ void main() {
     test("ensureRuntime prefers a supported PATH binary", () async {
       final processes = _Processes(
         outputs: const [
-          _Output(stdout: "omp/17.2.13\n", exitCode: 0),
+          _Output(stdout: "omp/17.3.8\n", exitCode: 0),
         ],
       );
       final events = await OmpPluginDescriptor.production().ensureRuntime(host: _Host(processes: processes)).toList();
@@ -56,20 +56,20 @@ void main() {
     test("ensureRuntime falls back to an installed managed binary", () async {
       final processes = _Processes(
         outputs: const [
-          _Output(stdout: "omp/17.2.12\n", exitCode: 0),
-          _Output(stdout: "omp/17.2.13\n", exitCode: 0),
+          _Output(stdout: "omp/17.3.7\n", exitCode: 0),
+          _Output(stdout: "omp/17.3.8\n", exitCode: 0),
         ],
       );
       final events = await OmpPluginDescriptor.production().ensureRuntime(host: _Host(processes: processes)).toList();
 
-      expect((events.last as ProvisionReady).binaryPath, contains("/state/omp/17.2.13/omp"));
-      expect(processes.executables, ["omp", contains("/state/omp/17.2.13/omp")]);
+      expect((events.last as ProvisionReady).binaryPath, contains("/state/omp/17.3.8/omp"));
+      expect(processes.executables, ["omp", contains("/state/omp/17.3.8/omp")]);
     });
 
     test("reports ready from the runtime probe without an ACP or auth probe", () async {
       final processes = _Processes(
         outputs: const [
-          _Output(stdout: "omp/17.2.13\n", exitCode: 0),
+          _Output(stdout: "omp/17.3.8\n", exitCode: 0),
         ],
       );
       final result = await OmpPluginDescriptor.production().inspectSetup(
@@ -79,7 +79,7 @@ void main() {
         stateDirectory: "/state",
       );
 
-      expect(result, const PluginSetupReady.versioned(runtimeVersion: "17.2.13"));
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "17.3.8"));
       expect(processes.arguments, [
         const ["--version"],
       ]);
@@ -90,13 +90,13 @@ void main() {
       final result = await OmpPluginDescriptor.production().inspectSetup(
         config: config,
         processes: _Processes(
-          outputs: const [_Output(stdout: "Oh My Pi omp/17.2.13 stable\n", exitCode: 0)],
+          outputs: const [_Output(stdout: "Oh My Pi omp/17.3.8 stable\n", exitCode: 0)],
         ),
         environment: const {},
         stateDirectory: "/state",
       );
 
-      expect(result, const PluginSetupReady.versioned(runtimeVersion: "17.2.13"));
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "17.3.8"));
     });
 
     test("reports an installable missing runtime after PATH and managed probes", () async {
@@ -131,7 +131,7 @@ void main() {
       final outdated = await descriptor.inspectSetup(
         config: explicit,
         processes: _Processes(
-          outputs: const [_Output(stdout: "omp/17.2.12\n", exitCode: 0)],
+          outputs: const [_Output(stdout: "omp/17.3.7\n", exitCode: 0)],
         ),
         environment: const {},
         stateDirectory: "/state",

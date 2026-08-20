@@ -25,7 +25,7 @@ void main() {
       final processes = _ProbeProcessService(
         process: _ProbeProcess(
           pid: 1,
-          stdoutBytes: utf8.encode("opencode 1.18.11\n"),
+          stdoutBytes: utf8.encode("opencode 1.18.19\n"),
           exitCode: Future<int>.value(0),
         ),
       );
@@ -37,7 +37,7 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, const PluginSetupReady.versioned(runtimeVersion: "1.18.11"));
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "1.18.19"));
       expect(processes.spawnedExecutables, ["opencode"]);
       expect(processes.spawnedArguments, [
         const ["--version"],
