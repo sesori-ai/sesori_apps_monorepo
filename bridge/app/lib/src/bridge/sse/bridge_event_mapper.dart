@@ -24,7 +24,6 @@ class BridgeEventMapper({
         BridgeSseCommandCatalogUpdated() => SesoriSseEvent.commandCatalogUpdated(pluginId: pluginId),
         BridgeSseSessionCreated(:final info) => _tryParseSseEvent({"type": "session.created", "info": info}),
         BridgeSseSessionUpdated(:final info) => _tryParseSseEvent({"type": "session.updated", "info": info}),
-        BridgeSseSessionsUpdated(:final projectID) => SesoriSseEvent.sessionsUpdated(projectID: projectID),
         BridgeSseSessionOptionsChanged() => null,
         BridgeSseSessionPromptDefaultsChanged(
           :final sessionID,

@@ -18,6 +18,7 @@ class const SessionDiffsScreen({
         connectionService: getIt<ConnectionService>(),
         productAnalyticsService: getIt<ProductAnalyticsService>(),
         sessionId: sessionId,
+        staleRetryDelay: const Duration(seconds: 5),
       ),
       // SessionDiffsBody owns the PregoGlassScaffold so its bar subtitle can
       // react to the loaded file/addition/deletion stats.

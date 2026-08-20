@@ -1481,6 +1481,22 @@ void main() {
       }
     });
 
+    test("skills/changed invalidates the command catalog", () {
+      final events = mapper.map(
+        const CodexServerNotification(method: "skills/changed", params: {}),
+      );
+
+      expect(events, const [BridgeSseCommandCatalogUpdated()]);
+    });
+
+    test("MCP startup changes invalidate MCP tools", () {
+      final events = mapper.map(
+        const CodexServerNotification(method: "mcpServer/startupStatus/updated", params: {}),
+      );
+
+      expect(events, const [BridgeSseMcpToolsChanged()]);
+    });
+
     test("regression: real bug-log payloads parse cleanly", () {
       // The exact thread/started payload from the bug report.
       final created = mapThreadStarted(

@@ -229,8 +229,10 @@ class CodexEventMapper({
         return [BridgeSseSessionDiff(sessionID: threadId)];
 
       case "skills/changed":
+        return const [BridgeSseCommandCatalogUpdated()];
+
       case "mcpServer/startupStatus/updated":
-        return const [BridgeSseProjectUpdated()];
+        return const [BridgeSseMcpToolsChanged()];
     }
 
     // Everything else is dropped intentionally:
