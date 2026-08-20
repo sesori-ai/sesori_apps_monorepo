@@ -330,7 +330,7 @@ void main() {
       await subscription.cancel();
     });
 
-    test("a send whose entry was consumed before its response never parks a ghost", () async {
+    test("a send whose entry was consumed before its response settles on its echo", () async {
       final send = Completer<ApiResponse<void>>();
       when(
         () => mockSessionRepository.sendMessage(
@@ -361,12 +361,26 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       send.complete(ApiResponse.success(null));
       await Future<void>.delayed(Duration.zero);
+      // The dispatched prompt's own message is what accounts for the row.
+      sessionEvents.add(
+        const SesoriMessageUpdated(
+          info: Message.user(
+            id: "echo-1",
+            sessionID: _sessionId,
+            agent: null,
+            time: MessageTime(created: 300, completed: null),
+            promptId: null,
+          ),
+        ),
+      );
+      sessionEvents.add(_textPartFor(messageId: "echo-1", text: "steer it"));
+      await Future<void>.delayed(Duration.zero);
 
       final state = cubit.state as SessionDetailLoaded;
       expect(
         state.awaitingBridgeSubmissions,
         isEmpty,
-        reason: "the bridge already spoke without this prompt; a parked copy would never be retired",
+        reason: "the delivered echo replaced the parked copy; leaving it strands a bubble",
       );
       expect(state.sendingSubmission, isNull);
       expect(state.queuedMessages, isEmpty);

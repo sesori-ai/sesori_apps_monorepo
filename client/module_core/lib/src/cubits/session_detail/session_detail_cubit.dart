@@ -78,14 +78,6 @@ class SessionDetailCubit(
   /// the parked prompts its fetch actually had a chance to observe.
   int _parkEpoch = 0;
 
-  /// Counts `session.queued-prompts` events applied for this session. A send
-  /// only parks a local copy while the bridge has not spoken since it began:
-  /// every such event carries the complete queue, so one that omits the
-  /// prompt means the bridge already dispatched it and its message is on the
-  /// way. Parking against that stale silence is what stranded a bubble the
-  /// bridge would never mention again.
-  int _bridgeQueueStatements = 0;
-
   /// Delivered user messages that arrived with no prompt id and found nothing
   /// parked to settle. Each one accounts for a send whose harness echo beat
   /// its own acceptance response, so that send must not park a copy the echo
@@ -1220,7 +1212,6 @@ class SessionDetailCubit(
   /// the event racing ahead of the acceptance response).
   void _onBridgeQueueUpdated(List<QueuedSessionPrompt> prompts) {
     if (isClosed) return;
-    _bridgeQueueStatements++;
     final current = state;
     if (current is! SessionDetailLoaded) return;
     for (final prompt in prompts) {
@@ -1665,7 +1656,6 @@ class SessionDetailCubit(
     final submission = _promptQueue.beginSend();
     if (submission == null) return;
     final sendConnectionGeneration = _connectionGeneration;
-    final queueStatementsAtSend = _bridgeQueueStatements;
 
     _emitQueueUpdate(current);
 
@@ -1690,21 +1680,16 @@ class SessionDetailCubit(
         case SuccessResponse():
           sendSucceeded = true;
           if (_unattributedUserMessages > 0) {
-            // This send's echo already landed unattributed; it renders the row.
+            // This send's echo already landed carrying no prompt id, so it
+            // renders the row: parking would strand a second bubble beside it.
             _unattributedUserMessages--;
             _promptQueue.completeSend();
-          } else if (_bridgeQueueStatements == queueStatementsAtSend) {
-            // The bridge has not published its queue since this send began, so
-            // park the copy: it keeps the bubble rendered until the queue event
-            // or the delivered message arrives, and acceptance outrunning the
-            // event never blanks the row.
-            _promptQueue.parkAccepted(epoch: ++_parkEpoch);
           } else {
-            // The bridge already published a queue that does not hold this
-            // prompt (an immediately dispatched steering send consumes its
-            // entry before the response lands). Its message governs the row
-            // from here; parking would strand a bubble nothing retires.
-            _promptQueue.completeSend();
+            // Parked, not dropped: the bubble keeps rendering from the parked
+            // slot until the bridge's queue statement, its delivered message,
+            // or an authoritative refresh accounts for the prompt, so
+            // acceptance outrunning those never blanks the row.
+            _promptQueue.parkAccepted(epoch: ++_parkEpoch);
           }
           _reportAcceptedSubmission(submission: submission);
         case ErrorResponse():
