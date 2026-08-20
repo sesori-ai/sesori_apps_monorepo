@@ -10,25 +10,9 @@ import "question_info_mapper.dart";
 
 /// Maps OpenCode SSE events and message parts to plugin interface types.
 ///
-/// Extracted from [OpenCodePlugin] to isolate the mapping concern. Mapping is
-/// a pure transformation apart from [recordPromptMessage], which remembers
-/// which prompt created which user message so the echo can carry it back.
+/// Extracted from [OpenCodePlugin] to isolate the mapping concern.
+/// This class is stateless — all methods are pure transformations.
 class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = const AssistantMessageMapper()}) {
-  /// Prompt ids for user messages this bridge's sends created, keyed by the
-  /// message id OpenCode returned for each dispatch.
-  final Map<String, String> _promptIdsByMessage = {};
-
-  /// Bounds the map against dispatches whose message never streams back.
-  static const int _maxRecordedMessages = 64;
-
-  /// Records the prompt that created [messageId].
-  void recordPromptMessage({required String messageId, required String promptId}) {
-    _promptIdsByMessage[messageId] = promptId;
-    if (_promptIdsByMessage.length > _maxRecordedMessages) {
-      _promptIdsByMessage.remove(_promptIdsByMessage.keys.first);
-    }
-  }
-
   final MessagePartMapper _messagePartMapper = const MessagePartMapper();
   final QuestionInfoMapper _questionInfoMapper = const QuestionInfoMapper();
 
@@ -45,7 +29,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
   /// `role: "error"` shape via [AssistantMessageMapper]; forwarding the raw
   /// OpenCode payload would keep `role: "assistant"` and the phone would drop
   /// the error, leaving a blank turn until the session is re-opened.
-  Map<String, dynamic> _mapMessageInfo(Message info) {
+  Map<String, dynamic> _mapMessageInfo(Message info, {required String? promptId}) {
     final pluginMessage = switch (info) {
       UserMessage(:final id, :final sessionID, :final agent, :final time) => PluginMessage.user(
         id: id,
@@ -54,7 +38,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
         time: PluginMessageTime(created: time.created.toInt(), completed: null),
         // Set for a message this bridge's own send created; a message authored
         // anywhere else (the OpenCode TUI, another tool) has none.
-        promptId: _promptIdsByMessage[id],
+        promptId: promptId,
       ),
       AssistantMessage() => _assistantMessageMapper.map(info),
       // Unknown roles from a newer OpenCode server: fall through to the raw
@@ -70,9 +54,11 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
   ///
   /// [displaySessionId] is the already-resolved root session for permission/
   /// question events (see [OpenCodePlugin._displaySessionIdForEvent]); it is
-  /// null for all other event types. Kept as a passed-in value so this mapper
-  /// stays a pure, dependency-free transformation.
-  BridgeSseEvent? map(SseEventData event, {String? displaySessionId}) {
+  /// null for all other event types. [promptId] is likewise resolved by the
+  /// plugin (see [OpenCodePlugin._promptIdForEvent]) for the user message its
+  /// own send created. Both are passed-in values so this mapper stays a pure,
+  /// dependency-free transformation.
+  BridgeSseEvent? map(SseEventData event, {String? displaySessionId, String? promptId}) {
     return switch (event) {
       SseServerConnected() => const BridgeSseServerConnected(),
       SseServerHeartbeat() => const BridgeSseServerHeartbeat(),
@@ -98,7 +84,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
         arguments: arguments,
         messageID: messageID,
       ),
-      SseMessageUpdated(:final info) => BridgeSseMessageUpdated(info: _mapMessageInfo(info)),
+      SseMessageUpdated(:final info) => BridgeSseMessageUpdated(info: _mapMessageInfo(info, promptId: promptId)),
       SseMessageRemoved(:final sessionID, :final messageID) => BridgeSseMessageRemoved(
         sessionID: sessionID,
         messageID: messageID,

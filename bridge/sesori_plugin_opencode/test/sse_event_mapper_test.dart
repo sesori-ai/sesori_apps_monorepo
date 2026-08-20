@@ -177,19 +177,16 @@ void main() {
       expect(event.info["directory"], equals("/repo/packages/foo"));
     });
 
-    test("stamps the prompt id on the user message its own send created", () {
-      final mapper = SseEventMapper();
-      mapper.recordPromptMessage(messageId: "msg-sent", promptId: "prm_1");
-
-      final result = mapper.map(SseEventData.messageUpdated(info: _userMessage(id: "msg-sent")));
+    test("stamps the resolved prompt id on a user message", () {
+      final result = mapper.map(
+        SseEventData.messageUpdated(info: _userMessage(id: "msg-sent")),
+        promptId: "prm_1",
+      );
 
       expect((result! as BridgeSseMessageUpdated).info["promptId"], equals("prm_1"));
     });
 
-    test("leaves a message authored elsewhere unattributed", () {
-      final mapper = SseEventMapper();
-      mapper.recordPromptMessage(messageId: "msg-sent", promptId: "prm_1");
-
+    test("leaves a user message with no resolved prompt unattributed", () {
       final result = mapper.map(SseEventData.messageUpdated(info: _userMessage(id: "msg-from-tui")));
 
       expect((result! as BridgeSseMessageUpdated).info.containsKey("promptId"), isFalse);

@@ -81,7 +81,7 @@ class SessionDetailCubit(
   /// Delivered user messages already accounted for. A message becomes
   /// renderable through its envelope and then each of its parts, so without
   /// this every update would settle another prompt.
-  final Set<String> _accountedUserMessages = {};
+  final Set<({String messageId, String? promptId})> _accountedUserMessages = {};
   final DeferredPartEventBuffer _deferredPartEvents = DeferredPartEventBuffer();
 
   late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
@@ -1180,7 +1180,7 @@ class SessionDetailCubit(
     // Keyed by association, not just id: an upsert that later attaches a
     // prompt id must still reconcile, while repeated part updates of one
     // association stay idempotent.
-    if (!_accountedUserMessages.add("$messageId|${promptId ?? ''}")) return;
+    if (!_accountedUserMessages.add((messageId: messageId, promptId: promptId))) return;
     // Only identity settles a prompt. Content cannot: another surface's echo
     // may contain this text, identical prompts collide, and an attachment-only
     // echo carries none — and a wrong match would discard a send the user

@@ -261,6 +261,50 @@ void main() {
       expect(server.lastPromptBody?['messageID'], startsWith("msg_"));
     });
 
+    test("stamps the prompt id on the echo of the message it named", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await server.waitForSseConnection();
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      await plugin.sendPrompt(
+        promptId: "prm_1",
+        sessionId: "s-root",
+        parts: const [PluginPromptPart.text(text: "Continue")],
+        agent: null,
+        variant: null,
+        model: null,
+      );
+      final messageId = server.lastPromptBody?['messageID'] as String;
+
+      Map<String, dynamic> userMessage({required String id}) => {
+        "id": id,
+        "sessionID": "s-root",
+        "role": "user",
+        "agent": "build",
+        "time": {"created": 1},
+        "model": {"providerID": "openai", "modelID": "gpt-5.4"},
+      };
+      Future<void> emitMessage(String id) => server.emitRawSse(
+        jsonEncode({
+          "directory": "/repo",
+          "payload": {
+            "type": "message.updated",
+            "properties": {"info": userMessage(id: id)},
+          },
+        }),
+      );
+      await emitMessage(messageId);
+      await emitMessage("msg_typed_in_the_tui");
+      await pumpEventQueue();
+
+      final stamped = events.whereType<BridgeSseMessageUpdated>().toList();
+      expect(stamped, hasLength(2));
+      expect(stamped[0].info["promptId"], equals("prm_1"));
+      expect(stamped[1].info.containsKey("promptId"), isFalse);
+    });
+
     test("sendPrompt marks an accepted turn busy before SSE arrives", () async {
       final connected = Completer<void>();
       final plugin = OpenCodePlugin(
