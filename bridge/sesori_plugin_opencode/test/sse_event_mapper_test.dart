@@ -1,5 +1,6 @@
 import "package:opencode_plugin/src/models/openapi/assistant_message.g.dart";
 import "package:opencode_plugin/src/models/openapi/session.g.dart";
+import "package:opencode_plugin/src/models/openapi/user_message.g.dart";
 import "package:opencode_plugin/src/models/sse_event_data.g.dart";
 import "package:opencode_plugin/src/sse_event_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -30,6 +31,20 @@ AssistantMessage _assistantMessage({required Object? error}) {
     structured: null,
     variant: null,
     finish: null,
+  );
+}
+
+UserMessage _userMessage({required String id}) {
+  return UserMessage(
+    id: id,
+    sessionID: "session-1",
+    time: const UserMessageTime(created: 100),
+    format: null,
+    summary: null,
+    agent: "build",
+    model: const UserMessageModel(providerID: "openai", modelID: "gpt-4", variant: null),
+    system: null,
+    tools: null,
   );
 }
 
@@ -160,6 +175,24 @@ void main() {
       final event = result! as BridgeSseSessionDeleted;
       expect(event.info["projectID"], equals("/repo"));
       expect(event.info["directory"], equals("/repo/packages/foo"));
+    });
+
+    test("stamps the prompt id on the user message its own send created", () {
+      final mapper = SseEventMapper();
+      mapper.recordPromptMessage(messageId: "msg-sent", promptId: "prm_1");
+
+      final result = mapper.map(SseEventData.messageUpdated(info: _userMessage(id: "msg-sent")));
+
+      expect((result! as BridgeSseMessageUpdated).info["promptId"], equals("prm_1"));
+    });
+
+    test("leaves a message authored elsewhere unattributed", () {
+      final mapper = SseEventMapper();
+      mapper.recordPromptMessage(messageId: "msg-sent", promptId: "prm_1");
+
+      final result = mapper.map(SseEventData.messageUpdated(info: _userMessage(id: "msg-from-tui")));
+
+      expect((result! as BridgeSseMessageUpdated).info.containsKey("promptId"), isFalse);
     });
   });
 }

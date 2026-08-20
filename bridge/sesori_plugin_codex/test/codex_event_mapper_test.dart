@@ -355,6 +355,54 @@ void main() {
       expect(part.text, "hey");
     });
 
+    test("item userMessage carries the prompt id of the turn that caused it", () {
+      mapper.recordTurnPrompt(turnId: "u-1", promptId: "prm_1");
+
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "turnId": "u-1",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user",
+              "content": [
+                {"type": "text", "text": "hey", "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      final parsed = shared.Message.fromJson((events[0] as BridgeSseMessageUpdated).info);
+      expect((parsed as shared.MessageUser).promptId, "prm_1");
+    });
+
+    test("item userMessage from a turn started outside the bridge stays unattributed", () {
+      mapper.recordTurnPrompt(turnId: "u-1", promptId: "prm_1");
+
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "turnId": "u-from-cli",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user",
+              "content": [
+                {"type": "text", "text": "hey", "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      final parsed = shared.Message.fromJson((events[0] as BridgeSseMessageUpdated).info);
+      expect((parsed as shared.MessageUser).promptId, isNull);
+    });
+
     test("contextCompaction emits a durable tool lifecycle and completion signal", () {
       final started = mapper.map(
         const CodexServerNotification(

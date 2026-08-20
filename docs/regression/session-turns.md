@@ -105,6 +105,14 @@ defaults and queued client sends coherent.
   survive a transient disconnection while the session-detail cubit is alive,
   retain the agent, model, and variant selected at submission, and drain with
   the same prompt id so retries stay idempotent.
+- Each plugin stamps that prompt id onto the user-message echo of its own
+  dispatch, using whatever link its backend exposes — Claude's queue entry,
+  ACP's accepted send, Pi's dispatcher, Codex's turn id, and, for OpenCode,
+  the message id the bridge names in the request itself because the prompt
+  endpoint answers with no body. A message authored in the backend's own UI
+  carries no prompt id and renders as an ordinary transcript message. A
+  harness that publishes no user echo at all leaves the client's own copy to
+  be settled by the next snapshot instead.
 - Queued and sending text render as the newest rows inside the scrollable
   transcript, never as controls pinned above the composer. They use the same
   brand bubble and Markdown rendering as settled user text; a compact status

@@ -741,6 +741,7 @@ void main() {
       const parts = [PluginPromptPart.text(text: "Continue")];
 
       await service.sendPrompt(
+        messageId: null,
         sessionId: "ses-1",
         parts: parts,
         agent: null,
@@ -763,6 +764,7 @@ void main() {
       final service = OpenCodeService(repository, tracker);
 
       await service.sendCommand(
+        messageId: null,
         sessionId: "ses-1",
         command: "/review-work",
         arguments: "recent changes",
@@ -787,6 +789,7 @@ void main() {
       final service = OpenCodeService(repository, tracker);
 
       await service.sendCommand(
+        messageId: null,
         sessionId: "ses-1",
         command: OpenCodeService.compactionCommandName,
         arguments: "",
@@ -811,6 +814,7 @@ void main() {
       final service = OpenCodeService(repository, tracker);
 
       await service.sendCommand(
+        messageId: null,
         sessionId: "ses-1",
         command: OpenCodeService.compactionCommandName,
         arguments: "  Keep auth decisions  ",
@@ -834,6 +838,7 @@ void main() {
 
       await expectLater(
         service.sendCommand(
+          messageId: null,
           sessionId: "ses-1",
           command: OpenCodeService.compactionCommandName,
           arguments: "",
@@ -863,6 +868,7 @@ void main() {
 
       Future<void> sendCommand() {
         return service.sendCommand(
+          messageId: null,
           sessionId: "ses-1",
           command: "/review-work",
           arguments: "",
@@ -2236,6 +2242,7 @@ class FakeOpenCodeRepository._({
   Future<void> sendPrompt({
     required String sessionId,
     required String? directory,
+    required String? messageId,
     required List<PluginPromptPart> parts,
     required String? agent,
     required PluginSessionVariant? variant,
@@ -2256,6 +2263,7 @@ class FakeOpenCodeRepository._({
   Future<void> sendCommand({
     required String sessionId,
     required String? directory,
+    required String? messageId,
     required String command,
     required String arguments,
     required String? agent,

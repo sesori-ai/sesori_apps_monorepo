@@ -139,6 +139,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
   Future<void> sendPrompt({
     required String sessionId,
     required String? directory,
+    required String? messageId,
     required List<PluginPromptPart> parts,
     required String? agent,
     required PluginSessionVariant? variant,
@@ -147,6 +148,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
     return _sendPrompt(
       sessionId: sessionId,
       directory: directory,
+      messageId: messageId,
       parts: parts,
       agent: agent,
       variant: variant,
@@ -168,6 +170,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
     return _sendPrompt(
       sessionId: sessionId,
       directory: directory,
+      messageId: null,
       parts: [PluginPromptPart.text(text: instructions)],
       agent: agent,
       variant: variant,
@@ -179,6 +182,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
   Future<void> _sendPrompt({
     required String sessionId,
     required String? directory,
+    required String? messageId,
     required List<PluginPromptPart> parts,
     required String? agent,
     required PluginSessionVariant? variant,
@@ -189,6 +193,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
       sessionId: sessionId,
       directory: directory?.normalize(),
       body: SendPromptBody(
+        messageID: messageId,
         parts: parts,
         agent: agent,
         variant: variant?.id,
@@ -201,6 +206,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
   Future<void> sendCommand({
     required String sessionId,
     required String? directory,
+    required String? messageId,
     required String command,
     required String arguments,
     required String? agent,
@@ -211,6 +217,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
       sessionId: sessionId,
       directory: directory?.normalize(),
       body: SendCommandBody(
+        messageID: messageId,
         command: command,
         arguments: arguments,
         agent: agent,

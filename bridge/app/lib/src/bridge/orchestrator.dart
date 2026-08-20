@@ -21,7 +21,6 @@ import "../auth/access_token_provider.dart";
 import "../auth/bridge_registration_service.dart";
 import "../auth/token_refresher.dart";
 import "../control/control_status_notifier.dart";
-import "../listeners/aborted_session_correlation_listener.dart";
 import "../listeners/chat_history_activity_listener.dart";
 import "../listeners/chat_history_listener.dart";
 import "../listeners/plugin_catalog_hydration_listener.dart";
@@ -146,7 +145,6 @@ import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
 import "services/project_initialization_service.dart";
 import "services/project_mutation_service.dart";
-import "services/prompt_echo_correlator.dart";
 import "services/session_abort_service.dart";
 import "services/session_creation_service.dart";
 import "services/session_deletion_service.dart";
@@ -433,9 +431,7 @@ class Orchestrator({
       readyPluginIds: _pluginLifecycleService.readyPluginIds,
       catalogImportService: catalogImportService,
     );
-    final promptEchoCorrelator = PromptEchoCorrelator();
     final sessionPromptService = SessionPromptService(
-      promptEchoCorrelator: promptEchoCorrelator,
       sessionRepository: sessionRepository,
       dispatcher: sessionOperationDispatcher,
       archivedSessionValidator: archivedSessionValidator,
@@ -476,7 +472,6 @@ class Orchestrator({
       filesystemRepository: filesystemRepository,
     );
     final sessionEventService = SessionEventService(
-      promptEchoCorrelator: promptEchoCorrelator,
       sessionRepository: sessionRepository,
       pluginRuntime: _pluginRuntime,
       eventMapper: const SessionEventMapper(),
@@ -516,10 +511,6 @@ class Orchestrator({
     final sessionOptionsChangedRefreshListener = SessionOptionsChangedRefreshListener(
       runtime: _pluginRuntime,
       service: sessionOptionsService,
-    );
-    final abortedSessionCorrelationListener = AbortedSessionCorrelationListener(
-      abortService: sessionAbortService,
-      correlator: promptEchoCorrelator,
     );
     final chatHistoryListener = ChatHistoryListener(
       source: sessionEventDispatcher.events,
@@ -621,7 +612,6 @@ class Orchestrator({
       chatHistoryService: chatHistoryService,
       sessionOptionsCreationRefreshListener: sessionOptionsCreationRefreshListener,
       sessionOptionsChangedRefreshListener: sessionOptionsChangedRefreshListener,
-      abortedSessionCorrelationListener: abortedSessionCorrelationListener,
       sessionEventDispatcher: sessionEventDispatcher,
       pluginRuntime: _pluginRuntime,
       pushDispatcher: pushDispatcher,
@@ -720,7 +710,6 @@ class OrchestratorSession._({
     required final ChatHistoryService _chatHistoryService,
     required final SessionOptionsCreationRefreshListener _sessionOptionsCreationRefreshListener,
     required final SessionOptionsChangedRefreshListener _sessionOptionsChangedRefreshListener,
-    required final AbortedSessionCorrelationListener _abortedSessionCorrelationListener,
     required final SessionEventDispatcher _sessionEventDispatcher,
     required final PluginRuntime _pluginRuntime,
     required final PushDispatcher _pushDispatcher,
@@ -901,7 +890,6 @@ class OrchestratorSession._({
     }
     _sessionOptionsCreationRefreshListener.start();
     _sessionOptionsChangedRefreshListener.start();
-    _abortedSessionCorrelationListener.start();
     _viewedProjectPrRefreshListener.start();
     _chatHistoryActivityListener.start();
     final readiness = Completer<OrchestratorSessionStartResult>();
@@ -1121,7 +1109,6 @@ class OrchestratorSession._({
     await Future.wait([
       attempt(_sessionOptionsCreationRefreshListener.dispose),
       attempt(_sessionOptionsChangedRefreshListener.dispose),
-      attempt(_abortedSessionCorrelationListener.dispose),
     ]);
     await attempt(_projectActivityService.dispose);
     Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");

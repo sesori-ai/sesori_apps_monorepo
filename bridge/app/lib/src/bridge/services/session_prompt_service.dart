@@ -1,13 +1,12 @@
 import "dart:async";
 import "dart:math";
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginOperationException;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
 import "archived_session_validator.dart";
-import "prompt_echo_correlator.dart";
 import "session_operation_dispatcher.dart";
 
 class const SessionPromptDefaultsChange({
@@ -19,7 +18,6 @@ class SessionPromptService({
   required final SessionRepository _sessionRepository,
   required final SessionOperationDispatcher _dispatcher,
   required final ArchivedSessionValidator _archivedSessionValidator,
-  required final PromptEchoCorrelator _promptEchoCorrelator,
 }) {
   final StreamController<SessionPromptDefaultsChange> _promptDefaultsChangesController =
       StreamController<SessionPromptDefaultsChange>.broadcast(sync: true);
@@ -68,29 +66,14 @@ class SessionPromptService({
     // the same family lane.
     await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
     if (normalizedCommand == null || normalizedCommand.isEmpty) {
-      // Recorded before dispatch: a backend can publish its echo while this
-      // call is still awaiting, and that echo must already find the id.
-      _promptEchoCorrelator.recordDispatched(sessionId: sessionId, promptId: promptId);
-      try {
-        await _sessionRepository.sendPrompt(
-          sessionId: sessionId,
-          promptId: promptId,
-          parts: parts,
-          variant: variant,
-          agent: agent,
-          model: model,
-        );
-      } on PluginOperationException catch (error) {
-        // Only a refusal is definite enough to retire the correlation: it
-        // produces no echo, so leaving the id pending would let another
-        // prompt's echo claim it. A transport or timeout failure — including
-        // one a plugin wraps in this type — may still have been accepted, and
-        // its echo needs the correlation to survive.
-        if (_isDefiniteRefusal(error)) {
-          _promptEchoCorrelator.forgetPrompt(sessionId: sessionId, promptId: promptId);
-        }
-        rethrow;
-      }
+      await _sessionRepository.sendPrompt(
+        sessionId: sessionId,
+        promptId: promptId,
+        parts: parts,
+        variant: variant,
+        agent: agent,
+        model: model,
+      );
       await _updatePromptDefaults(
         sessionId: sessionId,
         variant: variant,
@@ -106,25 +89,16 @@ class SessionPromptService({
     // backend has accepted the command — not when its run finishes — so
     // awaiting it here never holds the phone's relay request open for the
     // duration of the command's agent run.
-    _promptEchoCorrelator.recordDispatched(sessionId: sessionId, promptId: promptId);
-    try {
-      await _sessionRepository.sendCommand(
-        sessionId: sessionId,
-        promptId: promptId,
-        command: normalizedCommand,
-        arguments: arguments ?? '',
-        userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
-        variant: variant,
-        agent: agent,
-        model: model,
-      );
-    } on PluginOperationException catch (error) {
-      // See sendPrompt: only a definite refusal retires the correlation.
-      if (_isDefiniteRefusal(error)) {
-        _promptEchoCorrelator.forgetPrompt(sessionId: sessionId, promptId: promptId);
-      }
-      rethrow;
-    }
+    await _sessionRepository.sendCommand(
+      sessionId: sessionId,
+      promptId: promptId,
+      command: normalizedCommand,
+      arguments: arguments ?? '',
+      userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
+      variant: variant,
+      agent: agent,
+      model: model,
+    );
     await _updatePromptDefaults(
       sessionId: sessionId,
       variant: variant,
@@ -185,14 +159,6 @@ class SessionPromptService({
 
   Future<void> dispose() async {
     await _promptDefaultsChangesController.close();
-  }
-
-  /// Whether the plugin rejected the send outright, rather than failing after
-  /// it may already have reached the backend. Only a client-error status says
-  /// so; a server error or no status at all leaves acceptance unknown.
-  static bool _isDefiniteRefusal(PluginOperationException error) {
-    final statusCode = error.statusCode;
-    return statusCode != null && statusCode >= 400 && statusCode < 500;
   }
 
   static final Random _secureRandom = Random.secure();

@@ -256,6 +256,9 @@ void main() {
         ]),
       );
       expect(server.lastPromptBody?.containsKey('variant'), isFalse);
+      // Bridge-named so the user message OpenCode publishes can be traced back
+      // to this send.
+      expect(server.lastPromptBody?['messageID'], startsWith("msg_"));
     });
 
     test("sendPrompt marks an accepted turn busy before SSE arrives", () async {
@@ -382,6 +385,9 @@ void main() {
       expect(
         server.lastCommandBody,
         equals({
+          // Bridge-named so the user message OpenCode publishes can be traced
+          // back to this command.
+          "messageID": startsWith("msg_"),
           "command": "/review-work",
           "arguments": "recent changes",
           "agent": "reviewer",

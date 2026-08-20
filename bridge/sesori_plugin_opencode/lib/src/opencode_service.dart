@@ -294,6 +294,7 @@ class OpenCodeService(
         await repository.sendPrompt(
           sessionId: session.id,
           directory: session.directory,
+          messageId: null,
           parts: parts,
           agent: agent,
           variant: variant,
@@ -318,6 +319,7 @@ class OpenCodeService(
 
   Future<void> sendPrompt({
     required String sessionId,
+    required String? messageId,
     required List<PluginPromptPart> parts,
     required String? agent,
     required PluginSessionVariant? variant,
@@ -327,6 +329,7 @@ class OpenCodeService(
     await repository.sendPrompt(
       sessionId: sessionId,
       directory: directory,
+      messageId: messageId,
       parts: parts,
       agent: agent,
       variant: variant,
@@ -337,6 +340,7 @@ class OpenCodeService(
 
   Future<void> sendCommand({
     required String sessionId,
+    required String? messageId,
     required String command,
     required String arguments,
     required String? agent,
@@ -359,6 +363,7 @@ class OpenCodeService(
         : repository.sendCommand(
             sessionId: sessionId,
             directory: directory,
+            messageId: messageId,
             command: command,
             arguments: arguments,
             agent: agent,

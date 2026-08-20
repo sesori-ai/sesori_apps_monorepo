@@ -10,9 +10,25 @@ import "question_info_mapper.dart";
 
 /// Maps OpenCode SSE events and message parts to plugin interface types.
 ///
-/// Extracted from [OpenCodePlugin] to isolate the mapping concern.
-/// This class is stateless — all methods are pure transformations.
+/// Extracted from [OpenCodePlugin] to isolate the mapping concern. Mapping is
+/// a pure transformation apart from [recordPromptMessage], which remembers
+/// which prompt created which user message so the echo can carry it back.
 class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = const AssistantMessageMapper()}) {
+  /// Prompt ids for user messages this bridge's sends created, keyed by the
+  /// message id OpenCode returned for each dispatch.
+  final Map<String, String> _promptIdsByMessage = {};
+
+  /// Bounds the map against dispatches whose message never streams back.
+  static const int _maxRecordedMessages = 64;
+
+  /// Records the prompt that created [messageId].
+  void recordPromptMessage({required String messageId, required String promptId}) {
+    _promptIdsByMessage[messageId] = promptId;
+    if (_promptIdsByMessage.length > _maxRecordedMessages) {
+      _promptIdsByMessage.remove(_promptIdsByMessage.keys.first);
+    }
+  }
+
   final MessagePartMapper _messagePartMapper = const MessagePartMapper();
   final QuestionInfoMapper _questionInfoMapper = const QuestionInfoMapper();
 
@@ -36,7 +52,9 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
         sessionID: sessionID,
         agent: agent,
         time: PluginMessageTime(created: time.created.toInt(), completed: null),
-        promptId: null,
+        // Set for a message this bridge's own send created; a message authored
+        // anywhere else (the OpenCode TUI, another tool) has none.
+        promptId: _promptIdsByMessage[id],
       ),
       AssistantMessage() => _assistantMessageMapper.map(info),
       // Unknown roles from a newer OpenCode server: fall through to the raw

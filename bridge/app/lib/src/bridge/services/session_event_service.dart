@@ -8,7 +8,6 @@ import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
 import "../repositories/trackers/session_event_tracker.dart";
 import "../runtime/plugin_runtime.dart";
-import "prompt_echo_correlator.dart";
 
 typedef SourcedBridgeEvent = ({
   String pluginId,
@@ -23,7 +22,6 @@ class SessionEventService({
   required final SessionRepository _sessionRepository,
   required final PluginRuntime _pluginRuntime,
   required final SessionEventMapper _eventMapper,
-  required final PromptEchoCorrelator _promptEchoCorrelator,
   required final SessionEventTracker _eventTracker,
   required final FailureReporter _failureReporter,
 }) {
@@ -428,20 +426,8 @@ class SessionEventService({
     }
     if (translated == null) return null;
 
-    // Harnesses that cannot supply the prompt id get it here, once the event
-    // carries the bridge's own session id, so both the delivered event and the
-    // persisted history record the correlation.
-    final stamped = switch (translated) {
-      BridgeSseMessageUpdated(:final info) => switch (Message.fromJson(info)) {
-        final message => BridgeSseMessageUpdated(
-          info: _promptEchoCorrelator.stamp(sessionId: message.sessionID, message: message).toJson(),
-        ),
-      },
-      _ => translated,
-    };
-
-    final translatedSession = _eventMapper.sessionInfo(event: stamped);
-    return await switch (stamped) {
+    final translatedSession = _eventMapper.sessionInfo(event: translated);
+    return await switch (translated) {
       BridgeSseSessionPromptDefaultsChanged(
         :final sessionID,
         :final agent,
@@ -483,7 +469,7 @@ class SessionEventService({
         ),
         null => null,
       },
-      _ => stamped,
+      _ => translated,
     };
   }
 

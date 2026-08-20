@@ -217,6 +217,7 @@ void main() {
       await api.sendCommand(
         sessionId: "ses-123",
         body: const SendCommandBody(
+          messageID: null,
           command: "/review-work",
           arguments: "recent changes",
           agent: "reviewer",
@@ -266,6 +267,7 @@ void main() {
       await api.sendPrompt(
         sessionId: "ses-123",
         body: const SendPromptBody(
+          messageID: null,
           parts: [PluginPromptPart.text(text: "Keep auth decisions")],
           agent: "build",
           variant: null,
@@ -333,6 +335,7 @@ void main() {
   group("Send body serialization", () {
     test("SendPromptBody omits variant when null", () {
       const body = SendPromptBody(
+        messageID: null,
         parts: [PluginPromptPart.text(text: "Hello")],
         agent: null,
         variant: null,
@@ -346,6 +349,7 @@ void main() {
 
     test("SendPromptBody includes noReply when enabled", () {
       const body = SendPromptBody(
+        messageID: null,
         parts: [PluginPromptPart.text(text: "Keep auth decisions")],
         agent: "build",
         variant: null,
@@ -358,6 +362,7 @@ void main() {
 
     test("SendCommandBody includes variant when provided", () {
       const body = SendCommandBody(
+        messageID: null,
         command: "/review-work",
         arguments: "recent changes",
         agent: null,

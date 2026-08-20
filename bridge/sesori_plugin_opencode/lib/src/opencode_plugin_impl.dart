@@ -7,6 +7,7 @@ import "package:sesori_shared/sesori_shared.dart" show Harness, maxTranscriptIma
 
 import "../opencode_plugin.dart";
 import "assistant_message_mapper.dart";
+import "opencode_message_id.dart";
 import "sse/sse_connection.dart";
 import "sse_event_mapper.dart";
 
@@ -385,9 +386,16 @@ class OpenCodePlugin._({
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) async {
+    // Naming the user message here is the exact link back to this send: the
+    // echo OpenCode publishes carries the same id, so it can be stamped with
+    // the prompt id and clients can retire their own copy of the prompt.
+    // Recorded before dispatch because the echo can arrive first.
+    final messageId = generateOpenCodeMessageId();
+    _mapper.recordPromptMessage(messageId: messageId, promptId: promptId);
     await _callAndSyncWorkState(
       () => _service.sendPrompt(
         sessionId: sessionId,
+        messageId: messageId,
         parts: parts,
         agent: agent,
         variant: variant,
@@ -413,9 +421,12 @@ class OpenCodePlugin._({
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) async {
+    final messageId = generateOpenCodeMessageId();
+    _mapper.recordPromptMessage(messageId: messageId, promptId: promptId);
     await _callAndSyncWorkState(
       () => _service.sendCommand(
         sessionId: sessionId,
+        messageId: messageId,
         command: command,
         arguments: arguments,
         agent: agent,

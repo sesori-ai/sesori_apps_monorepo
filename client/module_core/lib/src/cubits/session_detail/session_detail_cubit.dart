@@ -1184,8 +1184,9 @@ class SessionDetailCubit(
     // Only identity settles a prompt. Content cannot: another surface's echo
     // may contain this text, identical prompts collide, and an attachment-only
     // echo carries none — and a wrong match would discard a send the user
-    // still owns. Harness echoes reach the client with an id because the
-    // bridge stamps its own dispatch (see PromptEchoCorrelator).
+    // still owns. Harness echoes reach the client with an id because each
+    // plugin stamps the echo of its own dispatch; a harness that publishes no
+    // user echo leaves the staged prompt to snapshot reconciliation.
     if (promptId == null) return;
     _promptQueue.removeByPromptId(promptId);
     final bridgePrompts = [

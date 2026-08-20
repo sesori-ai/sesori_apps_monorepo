@@ -2,7 +2,6 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/cancel_queued_prompt_handler.dart";
 import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
-import "package:sesori_bridge/src/bridge/services/prompt_echo_correlator.dart";
 import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -39,7 +38,6 @@ void main() {
       );
       final dispatcher = SessionOperationDispatcher(sessionRepository: repository);
       final service = SessionPromptService(
-      promptEchoCorrelator: PromptEchoCorrelator(),
         sessionRepository: repository,
         dispatcher: dispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),

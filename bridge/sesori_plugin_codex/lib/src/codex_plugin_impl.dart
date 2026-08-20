@@ -656,6 +656,9 @@ class CodexPlugin._({
       // applied on this first turn (and sticks for subsequent ones).
       await _startTurn(
         threadId: threadId,
+        // A session's first turn carries no client prompt id; its echo simply
+        // stays unattributed, exactly as before.
+        promptId: null,
         parts: parts,
         variant: variant,
         collaborationMode: CodexCollaborationMode.fromAgent(agent: agent),
@@ -680,6 +683,7 @@ class CodexPlugin._({
     await _connectedClient();
     await _startTurn(
       threadId: sessionId,
+      promptId: promptId,
       parts: parts,
       model: model,
       variant: variant,
@@ -729,6 +733,9 @@ class CodexPlugin._({
       }
       final turnId = dispatch.turnId;
       if (turnId != null) {
+        // Codex names the turn on every item it publishes, so recording the
+        // prompt here lets the turn's user item carry it back to clients.
+        _eventMapper.recordTurnPrompt(turnId: turnId, promptId: promptId);
         _recordAcceptedTurn(
           threadId: sessionId,
           turnId: turnId,
@@ -795,6 +802,7 @@ class CodexPlugin._({
 
   Future<void> _startTurn({
     required String threadId,
+    required String? promptId,
     required List<PluginPromptPart> parts,
     ({String providerID, String modelID})? model,
     PluginSessionVariant? variant,
@@ -838,6 +846,9 @@ class CodexPlugin._({
       }
       final turnId = dispatch.turnId;
       if (turnId != null) {
+        // Codex names the turn on every item it publishes, so recording the
+        // prompt here lets the turn's user item carry it back to clients.
+        if (promptId != null) _eventMapper.recordTurnPrompt(turnId: turnId, promptId: promptId);
         _recordAcceptedTurn(
           threadId: threadId,
           turnId: turnId,
