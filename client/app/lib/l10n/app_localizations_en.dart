@@ -1473,16 +1473,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'The connected bridge has no coding harness it can run. Install one from Harness settings.';
 
   @override
-  String get newSessionHarnessesRefresh => 'Check for harnesses';
-
-  @override
   String get newSessionOptionsLoadingSemantics => 'Loading session options';
 
   @override
   String get newSessionOptionsRefresh => 'Refresh the model list';
-
-  @override
-  String get newSessionProjectRefresh => 'Retry project check';
 
   @override
   String get newSessionProjectUnavailable =>

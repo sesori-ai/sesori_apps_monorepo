@@ -39,10 +39,13 @@ variant, and worktree mode, and creating the session with its first input.
 - A choice made while a background refresh runs outranks it. The refresh was
   resolved against the agent, model, variant, and staged command as they stood
   when it started, so it is dropped rather than reverting the user.
-- The refresh action stays on screen, in its loading state and under the name it
-  was pressed as, for as long as that press is still running, and the line
-  explaining where the options came from keeps describing the options still on
-  screen.
+- The refresh action stays on screen, in its loading state, for as long as the
+  press it started is still running, and the line explaining where the options
+  came from keeps describing the options still on screen.
+- It is one action under one name in every state. Whether a press repeats
+  harness discovery, the project check, or the options themselves is decided
+  behind it; the surface never names that split, because the user cannot act on
+  it and the line above the composer already says what is missing.
 - Concurrent requests coalesce; an incomplete observation never replaces a
   complete cached one, and a moved project invalidates its entries.
 - Backend notifications use scoped event domains: Codex skill changes emit a
@@ -129,7 +132,7 @@ reconnect or option refresh while restoration is pending.
   error, or a partial observation overwrites a complete cache.
 - A cache-only read starts a backend, or automatic refresh wakes a stopped one.
 - The refresh action disappears while its own load runs, gives no sign it was
-  pressed, or changes name under its own spinner.
+  pressed, or renames itself after which load it happens to be repeating.
 - A background refresh of a stale cache blocks the composer, shows a loading
   state, runs twice, reverts a choice made while it ran, or leaves an explicit
   refresh waiting on work that can no longer apply.

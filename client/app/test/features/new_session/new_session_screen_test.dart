@@ -517,7 +517,9 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
     expect(find.text(loc.newSessionProjectUnavailable), findsOneWidget);
-    expect(find.widgetWithText(PregoButtonsSolid, loc.newSessionProjectRefresh), findsOneWidget);
+    // The status line above names what is missing; the action keeps the one
+    // name it has in every state.
+    expect(find.widgetWithText(PregoButtonsSolid, loc.newSessionOptionsRefresh), findsOneWidget);
     expect(
       tester
           .widget<IgnorePointer>(
@@ -1428,7 +1430,7 @@ void main() {
 
     expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
     final refresh = find.byKey(const Key("new_session_options_refresh"));
-    expect(tester.widget<PregoButtonsSolid>(refresh).label, loc.newSessionHarnessesRefresh);
+    expect(tester.widget<PregoButtonsSolid>(refresh).label, loc.newSessionOptionsRefresh);
     expect(tester.widget<PregoButtonsSolid>(refresh).onPressed, isNotNull);
     // The bridge never confirmed an empty harness list, so the error banner is
     // the honest explanation and discovery remains retryable.
