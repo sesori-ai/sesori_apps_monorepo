@@ -78,12 +78,6 @@ class SessionDetailCubit(
   /// the parked prompts its fetch actually had a chance to observe.
   int _parkEpoch = 0;
 
-  /// Delivered user messages that arrived with no prompt id and found nothing
-  /// parked to settle. Each one accounts for an in-flight send whose harness
-  /// echo beat its own acceptance response, so that send must not park a copy
-  /// the echo has already replaced.
-  int _unattributedUserMessages = 0;
-
   /// Delivered user messages already accounted for. A message becomes
   /// renderable through its envelope and then each of its parts, so without
   /// this every update would settle another prompt.
@@ -1183,17 +1177,19 @@ class SessionDetailCubit(
     final info = message.info;
     if (info is! MessageUser) return;
     final promptId = info.promptId;
-    if (!_accountedUserMessages.add(messageId)) return;
+    // Keyed by association, not just id: an upsert that later attaches a
+    // prompt id must still reconcile, while repeated part updates of one
+    // association stay idempotent.
+    if (!_accountedUserMessages.add("$messageId|${promptId ?? ''}")) return;
     if (promptId == null) {
-      // Harnesses without a bridge-side queue echo their prompts with no id,
-      // so this message can only be paired positionally: it settles the oldest
-      // parked send. With nothing parked, the credit is held only while a send
-      // still awaits its acceptance response — that send's echo outran it. An
-      // echo with nothing in flight belongs to another surface and is ignored.
-      if (!_promptQueue.settleOldestAwaiting()) {
-        if (_promptQueue.isSending) _unattributedUserMessages++;
-        return;
-      }
+      // Harnesses without a bridge-side queue echo with no id, so the echoed
+      // text is the only correlation available. Matching it keeps another
+      // surface's prompt from retiring this client's copy.
+      final echoText = _renderableUserText(message);
+      final settled =
+          _promptQueue.settleAwaitingMatching(echoText: echoText) ||
+          _promptQueue.markActiveSettledIfEchoed(echoText: echoText);
+      if (!settled) return;
     } else {
       _promptQueue.removeByPromptId(promptId);
     }
@@ -1212,6 +1208,17 @@ class SessionDetailCubit(
     // The delivered prompt's own send may have stopped the drain on a lost
     // response; anything staged behind it must not stay parked.
     _tryDrainQueue();
+  }
+
+  /// The text a delivered user message published, or null when it carries
+  /// none (an attachment-only echo).
+  static String? _renderableUserText(MessageWithParts message) {
+    final text = message.parts
+        .where((part) => part.type == MessagePartType.text)
+        .map((part) => part.text ?? "")
+        .where((text) => text.isNotEmpty)
+        .join("\n");
+    return text.isEmpty ? null : text;
   }
 
   /// Applies a full-list replacement of the bridge-owned queue. Local staged
@@ -1686,18 +1693,12 @@ class SessionDetailCubit(
       switch (result) {
         case SuccessResponse():
           sendSucceeded = true;
-          if (_unattributedUserMessages > 0) {
-            // This send's echo already landed carrying no prompt id, so it
-            // renders the row: parking would strand a second bubble beside it.
-            _unattributedUserMessages--;
-            _promptQueue.completeSend();
-          } else {
-            // Parked, not dropped: the bubble keeps rendering from the parked
-            // slot until the bridge's queue statement, its delivered message,
-            // or an authoritative refresh accounts for the prompt, so
-            // acceptance outrunning those never blanks the row.
-            _promptQueue.parkAccepted(epoch: ++_parkEpoch);
-          }
+          // Parked, not dropped: the bubble keeps rendering from the parked
+          // slot until the bridge's queue statement, its delivered message, or
+          // an authoritative refresh accounts for the prompt, so acceptance
+          // outrunning those never blanks the row. A send whose echo already
+          // landed was marked settled and is consumed here instead.
+          _promptQueue.parkAccepted(epoch: ++_parkEpoch);
           _reportAcceptedSubmission(submission: submission);
         case ErrorResponse():
           sendSettledElsewhere = !_promptQueue.failSend();
@@ -2071,7 +2072,6 @@ class SessionDetailCubit(
       final current = state;
       // Stop means "run nothing further": staged local sends must not fire on
       // the next drain. The bridge clears its own queue as part of the abort.
-      _unattributedUserMessages = 0;
       if (_promptQueue.isNotEmpty || _promptQueue.isSending || _promptQueue.awaitingBridge.isNotEmpty) {
         _promptQueue.clear();
         _emitQueueUpdate(current is SessionDetailLoaded ? current : null);

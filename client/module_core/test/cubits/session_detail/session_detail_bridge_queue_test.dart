@@ -475,7 +475,7 @@ void main() {
       );
     });
 
-    test("an echo with nothing in flight never credits a future send", () async {
+    test("another surface's echo leaves this client's parked send alone", () async {
       when(
         () => mockSessionRepository.sendMessage(
           sessionId: _sessionId,
@@ -490,7 +490,11 @@ void main() {
       ).thenAnswer((_) async => ApiResponse.success(null));
       final cubit = await createLoadedCubit();
 
-      // Another surface's prompt lands while this client has nothing pending.
+      await cubit.sendMessage(text: "mine", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
+      await Future<void>.delayed(Duration.zero);
+      expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, hasLength(1));
+
+      // Another surface's prompt lands while this client's own copy is parked.
       sessionEvents.add(
         const SesoriMessageUpdated(
           info: Message.user(
@@ -505,13 +509,10 @@ void main() {
       sessionEvents.add(_textPartFor(messageId: "other-1", text: "from another device"));
       await Future<void>.delayed(Duration.zero);
 
-      await cubit.sendMessage(text: "mine", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
-      await Future<void>.delayed(Duration.zero);
-
       expect(
         (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.map((item) => item.text),
         ["mine"],
-        reason: "a foreign echo must not stop this send from parking",
+        reason: "a foreign echo carries different text and must not retire this copy",
       );
     });
 
