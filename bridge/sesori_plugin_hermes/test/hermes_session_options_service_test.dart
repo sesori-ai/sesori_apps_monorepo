@@ -127,6 +127,31 @@ void main() {
 
     expect(repository.appliedModels, ["deepseek-v4-flash"]);
   });
+
+  test("a session can switch back to the catalog default model", () async {
+    final repository = _FakeCatalogRepository()..discoveries.add(Future.value(_catalog()));
+    final service = _service(repository: repository);
+    addTearDown(service.dispose);
+    await service.getSessionOptions(
+      discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+    );
+    service.captureSessionConfig(
+      _sessionResult(currentModelId: "opencode-go:gpt-5"),
+      sessionId: "s1",
+      fromNewSession: false,
+    );
+
+    await service.applyTurnSelection(
+      liveClient: _FakeAcpStdioClient(),
+      sessionId: "s1",
+      model: const (
+        providerID: "opencode-go",
+        modelID: "opencode-go:deepseek-v4-flash",
+      ),
+    );
+
+    expect(repository.appliedModels, ["opencode-go:deepseek-v4-flash"]);
+  });
 }
 
 HermesSessionOptionsService _service({required _FakeCatalogRepository repository}) {

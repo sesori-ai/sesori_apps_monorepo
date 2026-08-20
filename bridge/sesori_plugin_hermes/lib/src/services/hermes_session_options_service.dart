@@ -84,8 +84,7 @@ class HermesSessionOptionsService({
     if (model == null) return;
     final requested = model.modelID;
     final currentValue = _configurationTracker.snapshotForSession(sessionId: sessionId).modelId;
-    final current = _catalog?.currentModel;
-    if (requested == currentValue || requested == current?.value) return;
+    if (requested == currentValue) return;
     try {
       await _repository.setModel(
         liveClient: liveClient,
