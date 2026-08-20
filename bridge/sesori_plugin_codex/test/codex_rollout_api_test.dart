@@ -1066,6 +1066,54 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(image.base64, "AQ==");
     });
 
+    test("readMessages hides bridge context inside a command invocation", () {
+      const invocation = r"""
+$review [SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---
+
+authored arguments
+""";
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/20/rollout-command-context.jsonl",
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaad",
+        cwd: "/repo/.worktrees/feature",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "command-context",
+              "role": "user",
+              "content": [
+                {"type": "input_text", "text": invocation},
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {"type": "user_message", "message": invocation},
+          }),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaad",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages.single.parts.single.text, r"$review authored arguments" "\n");
+    });
+
     test("readMessages skips a pending bridge-context-only user message", () {
       const worktreeContext = """
 [SYSTEM CONTEXT — IMPORTANT]

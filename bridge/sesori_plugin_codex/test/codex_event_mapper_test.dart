@@ -452,7 +452,8 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
     });
 
     test("item userMessage preserves authored whitespace after bridge context", () {
-      const text = """
+      const text =
+          """
 [SYSTEM CONTEXT — IMPORTANT]
 A dedicated git worktree and branch have been created for this session:
 - Branch: feature
@@ -462,7 +463,8 @@ A dedicated git worktree and branch have been created for this session:
 IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
 
 ---
-""" "    authored text  \n";
+"""
+          "    authored text  \n";
       final events = mapper.map(
         const CodexServerNotification(
           method: "item/completed",
@@ -482,6 +484,46 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
 
       final part = (events.last as BridgeSseMessagePartUpdated).part;
       expect(part.text, "    authored text  \n");
+    });
+
+    test("item userMessage hides bridge context inside a command invocation", () {
+      const text =
+          r"""
+$review [SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---
+
+"""
+          "    authored arguments  \n";
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-command-context",
+            "turnId": "u-command-context",
+            "item": {
+              "type": "userMessage",
+              "id": "i-command-context",
+              "content": [
+                {"type": "text", "text": text, "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      final part = (events.last as BridgeSseMessagePartUpdated).part;
+      expect(
+        part.text,
+        r"$review     authored arguments  "
+        "\n",
+      );
     });
 
     test("item userMessage preserves authored marker-shaped content", () {
