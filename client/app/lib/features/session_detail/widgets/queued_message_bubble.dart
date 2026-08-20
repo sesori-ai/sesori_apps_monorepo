@@ -38,12 +38,7 @@ class const QueuedMessageBubble({
         icon: ExcludeSemantics(
           child: SizedBox.square(
             dimension: 14,
-            child: CircularProgressIndicator(
-              value: reducedMotion ? 0.75 : null,
-              strokeWidth: 1.5,
-              strokeCap: StrokeCap.round,
-              color: prego.colors.textTertiary,
-            ),
+            child: PregoActivityIndicator(color: prego.colors.textTertiary),
           ),
         ),
         label: loc.sessionDetailSendingMessage,

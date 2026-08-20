@@ -1,6 +1,7 @@
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
 import "../home/home_placeholder.dart";
@@ -26,7 +27,9 @@ class const AuthGateView({super.key}) extends StatelessWidget {
     return BlocBuilder<AuthGateCubit, AuthGateState>(
       builder: (context, state) {
         return switch (state) {
-          AuthGateChecking() => const Scaffold(body: Center(child: CircularProgressIndicator())),
+          AuthGateChecking() => Scaffold(
+            body: Center(child: PregoActivityIndicator(color: Theme.of(context).colorScheme.primary)),
+          ),
           AuthGateSignedOut() => const LoginScreen(),
           AuthGateSignedIn(:final user) => HomePlaceholder(user: user),
         };

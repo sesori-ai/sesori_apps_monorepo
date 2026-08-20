@@ -136,7 +136,7 @@ class const SessionListPanel({
       ],
     );
     if (state is SessionListLoaded) {
-      scrollView = RefreshIndicator(
+      scrollView = RefreshIndicator.noSpinner(
         onRefresh: () => refreshSessionList(context),
         child: scrollView,
       );

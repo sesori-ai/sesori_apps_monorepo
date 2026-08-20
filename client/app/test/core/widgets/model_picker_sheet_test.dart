@@ -122,12 +122,12 @@ void main() {
     // The sheet is open (title visible) but the model list is still being
     // computed in the background isolate: loading indicator, no models yet.
     expect(find.text("Select Model"), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(PregoActivityIndicator), findsOneWidget);
     expect(find.text("Claude Sonnet"), findsNothing);
 
     await _waitForModels(tester, until: find.text("Claude Sonnet"));
 
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byType(PregoActivityIndicator), findsNothing);
     expect(find.text("Anthropic"), findsOneWidget);
     expect(find.text("Zeta AI"), findsOneWidget);
     expect(find.text("Zeta One"), findsOneWidget);

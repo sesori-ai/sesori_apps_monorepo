@@ -638,10 +638,7 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
                   padding: EdgeInsets.all(prego.spacing.md),
                   child: SizedBox.square(
                     dimension: prego.spacing.x2l,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: prego.colors.fgBrandPrimary,
-                    ),
+                    child: PregoActivityIndicator(color: prego.colors.fgBrandPrimary),
                   ),
                 )
               else ...[
@@ -757,10 +754,7 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
                     PositionedDirectional(
                       bottom: prego.spacing.lg,
                       end: prego.spacing.lg,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: prego.colors.fgBrandPrimary,
-                      ),
+                      child: PregoActivityIndicator(color: prego.colors.fgBrandPrimary),
                     ),
                   if (widget.originalPresentation == ImageAttachmentOriginalPresentation.failed)
                     Align(

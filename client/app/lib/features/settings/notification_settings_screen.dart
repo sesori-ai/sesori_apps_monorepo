@@ -55,9 +55,9 @@ class const _NotificationSettingsBody() extends StatelessWidget {
               vertical: _contentTopPadding,
             ),
             child: switch (state) {
-              NotificationPreferencesLoading() => const Padding(
-                padding: EdgeInsetsDirectional.only(top: PregoSpacing.x4l),
-                child: Center(child: CircularProgressIndicator()),
+              NotificationPreferencesLoading() => Padding(
+                padding: const EdgeInsetsDirectional.only(top: PregoSpacing.x4l),
+                child: Center(child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)),
               ),
               NotificationPreferencesAccountUnavailable() => const _NotificationPreferencesUnavailable(),
               NotificationPreferencesLoadFailed() => const _NotificationPreferencesFailure(),

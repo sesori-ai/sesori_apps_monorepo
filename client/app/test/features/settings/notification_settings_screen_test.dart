@@ -101,7 +101,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Notification preferences unavailable"), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byType(PregoActivityIndicator), findsNothing);
     verifyNever(() => service.getAll());
   });
 

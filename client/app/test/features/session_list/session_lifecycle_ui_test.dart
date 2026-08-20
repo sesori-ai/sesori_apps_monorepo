@@ -124,7 +124,7 @@ class const _TestSessionListBody() extends StatelessWidget {
           );
         },
       ),
-      _ => const Center(child: CircularProgressIndicator()),
+      _ => Center(child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)),
     };
   }
 

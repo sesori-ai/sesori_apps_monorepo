@@ -109,10 +109,10 @@ class _RenameProjectDialogState() extends State<RenameProjectDialog> {
             child: FilledButton(
               onPressed: _actionLoading || _nameController.text.trim().isEmpty ? null : _onSave,
               child: _actionLoading
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: PregoActivityIndicator(color: context.prego.colors.textWhite),
                     )
                   : Text(loc.renameSave),
             ),

@@ -7,6 +7,9 @@ import "../../module_prego.dart";
 import "../../utils/color_extensions.dart";
 import "prego_top_bar_inset.dart" as top_bar;
 
+const double _refreshIndicatorSize = 20;
+const double _refreshIndicatorTopMargin = 14;
+
 /// Where [PregoGlassScaffold] parks its
 /// [PregoGlassScaffold.floatingActionButton].
 enum PregoFloatingActionAlignment() {
@@ -354,12 +357,11 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
             onRefresh: onRefresh,
             builder: (context, refreshState, pulledExtent, triggerDistance, indicatorExtent) {
               _refreshPulledExtent = refreshState == RefreshIndicatorMode.inactive ? 0 : pulledExtent;
-              final indicator = CupertinoSliverRefreshControl.buildRefreshIndicator(
-                context,
-                refreshState,
-                pulledExtent,
-                triggerDistance,
-                indicatorExtent,
+              final indicator = _buildRefreshIndicator(
+                context: context,
+                refreshState: refreshState,
+                pulledExtent: pulledExtent,
+                triggerDistance: triggerDistance,
               );
               // A non-extended body already begins below the bar, but its
               // collapsing title still precedes the caller-provided content.
@@ -505,6 +507,41 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
         baseInset: topPad + PregoTopNavigation.barHeight,
         bannerHeight: _bannerHeight,
         child: scaffold,
+      ),
+    );
+  }
+
+  Widget _buildRefreshIndicator({
+    required BuildContext context,
+    required RefreshIndicatorMode refreshState,
+    required double pulledExtent,
+    required double triggerDistance,
+  }) {
+    if (refreshState == RefreshIndicatorMode.inactive) return const SizedBox.shrink();
+
+    final progress = (pulledExtent / triggerDistance).clamp(0.0, 1.0);
+    final opacity = switch (refreshState) {
+      RefreshIndicatorMode.drag || RefreshIndicatorMode.done => progress,
+      RefreshIndicatorMode.armed || RefreshIndicatorMode.refresh => 1.0,
+      RefreshIndicatorMode.inactive => 0.0,
+    };
+    return Center(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            top: _refreshIndicatorTopMargin,
+            left: 0,
+            right: 0,
+            child: Opacity(
+              opacity: opacity,
+              child: SizedBox.square(
+                dimension: _refreshIndicatorSize,
+                child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -3,6 +3,7 @@ import "package:material_ui/material_ui.dart";
 import "../../icons/tabler_icons.g.dart";
 import "../../theme/prego_theme.dart";
 import "../buttons/prego_buttons_solid.dart";
+import "../loaders/prego_activity_indicator.dart";
 
 /// Visual type for [PregoInlineAlertsNotifications] — the Figma component's
 /// `Type` property.
@@ -229,10 +230,7 @@ class const PregoInlineAlertsNotifications({
     if (_isLoading) {
       return SizedBox.square(
         dimension: _spinnerSize,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation<Color>(colors.buttonPrimaryIcon),
-        ),
+        child: PregoActivityIndicator(color: colors.buttonPrimaryIcon),
       );
     }
     return Icon(icon ?? _defaultIcon, size: _iconSize, color: _iconColor(colors));

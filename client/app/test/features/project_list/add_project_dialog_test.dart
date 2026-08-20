@@ -95,7 +95,9 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
             child: const Icon(Icons.add),
           ),
           body: switch (state) {
-            ProjectListLoading() => const Center(child: CircularProgressIndicator()),
+            ProjectListLoading() => Center(
+              child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
+            ),
             ProjectListLoaded() => Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,

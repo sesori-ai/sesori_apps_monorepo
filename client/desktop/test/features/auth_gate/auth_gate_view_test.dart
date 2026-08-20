@@ -7,6 +7,7 @@ import "package:sesori_desktop/features/auth_gate/auth_gate.dart";
 import "package:sesori_desktop/features/home/home_placeholder.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/module_prego.dart";
 
 class _MockAuthGateCubit() extends MockCubit<AuthGateState> implements AuthGateCubit;
 
@@ -40,7 +41,7 @@ void main() {
 
     await pumpGate(tester);
 
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(PregoActivityIndicator), findsOneWidget);
   });
 
   testWidgets("signedIn renders the home placeholder with the account", (WidgetTester tester) async {

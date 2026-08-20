@@ -106,10 +106,10 @@ class const _ProfileBody() extends StatelessWidget {
                         icon: TablerRegular.logout,
                         title: Text(loc.settingsLogout),
                         trailing: isLoggingOut
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
                               )
                             : null,
                         onTap: isLoggingOut ? null : () => context.read<SettingsCubit>().logout(),

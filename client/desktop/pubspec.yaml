@@ -33,6 +33,8 @@ dependencies:
     path: ../module_desktop_core
   sesori_shared:
     path: ../../shared/sesori_shared
+  theme_prego:
+    path: ../module_prego
   url_launcher: ^6.3.2
 
 dev_dependencies:

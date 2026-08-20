@@ -1,4 +1,3 @@
-import "package:cupertino_ui/cupertino_ui.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_mobile/features/login/login_provider_buttons.dart";
@@ -39,28 +38,27 @@ void main() {
         _buildApp(isLoading: true, loadingOption: LoginOption.google),
       );
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(PregoActivityIndicator), findsOneWidget);
       expect(find.byIcon(VESPRSolid.google), findsNothing);
       expect(find.byIcon(VESPRSolid.github), findsOneWidget);
       expect(find.byIcon(VESPRSolid.apple), findsOneWidget);
     });
 
     testWidgets(
-      "spinner is the adaptive Cupertino variant on iOS",
+      "spinner uses the native Prego indicator on iOS",
       (tester) async {
         await tester.pumpWidget(
           _buildApp(isLoading: true, loadingOption: LoginOption.github),
         );
 
-        expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
+        expect(find.byType(PregoActivityIndicator), findsOneWidget);
+        expect(find.byType(UiKitView), findsOneWidget);
         expect(find.byIcon(VESPRSolid.github), findsNothing);
 
         // The indicator must carry the button's foreground colour — the
         // default gray ticks are invisible on the dark provider buttons.
-        final indicator = tester.widget<CupertinoActivityIndicator>(
-          find.byType(CupertinoActivityIndicator),
-        );
-        expect(indicator.color, isNotNull);
+        final platformView = tester.widget<UiKitView>(find.byType(UiKitView));
+        expect(platformView.creationParams, isA<int>());
       },
       variant: TargetPlatformVariant.only(TargetPlatform.iOS),
     );
@@ -127,7 +125,7 @@ void main() {
         _buildApp(isLoading: true, loadingOption: null),
       );
 
-      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.byType(PregoActivityIndicator), findsNothing);
       expect(find.byIcon(VESPRSolid.github), findsOneWidget);
       expect(find.byIcon(VESPRSolid.apple), findsOneWidget);
       expect(find.byIcon(VESPRSolid.google), findsOneWidget);

@@ -144,7 +144,7 @@ class _CommandPickerSheetState() extends State<CommandPickerSheet> {
           const SizedBox(height: 8),
           Expanded(
             child: switch (_filtered) {
-              null => const Center(child: CircularProgressIndicator()),
+              null => Center(child: PregoActivityIndicator(color: prego.colors.fgBrandPrimary)),
               final filtered when filtered.isEmpty => Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),

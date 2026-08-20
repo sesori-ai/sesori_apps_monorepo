@@ -2883,7 +2883,7 @@ void main() {
 
     expect(find.text("Cancel"), findsNothing);
     expect(find.text("Sending"), findsOneWidget);
-    expect(tester.widget<CircularProgressIndicator>(find.byType(CircularProgressIndicator)).value, 0.75);
+    expect(find.byType(PregoActivityIndicator), findsOneWidget);
   });
 
   testWidgets("an in-flight submission stays visible without a cancel action", (tester) async {

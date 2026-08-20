@@ -396,8 +396,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    final indicator = tester.widget<CircularProgressIndicator>(find.byType(CircularProgressIndicator));
-    expect(indicator.value, isNotNull);
+    expect(find.byType(PregoActivityIndicator), findsOneWidget);
     expect(find.byType(AspectRatio), findsOneWidget);
     expect(find.text("image/png / 8 bytes"), findsOneWidget);
   });

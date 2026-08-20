@@ -1,8 +1,8 @@
-import "package:cupertino_ui/cupertino_ui.dart" show CupertinoActivityIndicator;
 import "package:material_ui/material_ui.dart";
 
 import "../../interactions/prego_tappable.dart";
 import "../../theme/prego_theme.dart";
+import "../loaders/prego_activity_indicator.dart";
 
 // Horizontal padding for md size — not a named spacing token.
 // Figma specifies 14px for md (between spacing-lg=12 and spacing-xl=16).
@@ -859,26 +859,13 @@ class _SkeuomorphicPainter({
       innerBorderColor != oldDelegate.innerBorderColor || bottomShadowColor != oldDelegate.bottomShadowColor;
 }
 
-/// A small circular progress indicator used in the button loading state.
+/// A compact activity indicator used in the button loading state.
 class const _LoadingSpinner({required final Color color, required final double size}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // Not CircularProgressIndicator.adaptive: its Cupertino variant takes the
-    // tick colour from backgroundColor, not valueColor, so the themed colour
-    // is dropped and the default gray ticks are invisible on dark buttons.
-    switch (Theme.of(context).platform) {
-      case TargetPlatform.iOS:
-      case TargetPlatform.macOS:
-        return CupertinoActivityIndicator(color: color, radius: size / 2);
-      case TargetPlatform.android:
-      case TargetPlatform.fuchsia:
-      case TargetPlatform.linux:
-      case TargetPlatform.windows:
-        return CircularProgressIndicator(
-          constraints: BoxConstraints.tight(Size(size, size)),
-          strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation<Color>(color),
-        );
-    }
+    return SizedBox.square(
+      dimension: size,
+      child: PregoActivityIndicator(color: color),
+    );
   }
 }

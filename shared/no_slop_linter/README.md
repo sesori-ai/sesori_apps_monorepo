@@ -9,6 +9,7 @@ A custom Dart linter to prevent sloppy code patterns. Built with `analysis_serve
 | `avoid_bang_operator`       | Prevents usage of the null assertion operator (`!`)                                       | WARNING  |
 | `avoid_dynamic_return_type` | Prevents implicit or `dynamic` return types on functions                                  | WARNING  |
 | `avoid_implicit_tostring`   | Prevents implicit `toString()` in string interpolation (except String, int, double, bool) | WARNING  |
+| `avoid_flutter_spinners` | Prevents direct Flutter spinner widgets; use `PregoActivityIndicator` | WARNING |
 | `avoid_legacy_flutter_design_imports` | Prevents SDK Material and Cupertino imports; use the standalone UI packages | WARNING |
 
 > **Note:** All rules use WARNING severity to allow incremental cleanup. CI is configured to fail if any changed files contain warnings, encouraging cleanup of files you touch.
