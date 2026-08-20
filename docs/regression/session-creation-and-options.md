@@ -30,12 +30,19 @@ variant, and worktree mode, and creating the session with its first input.
 - A normal load reports whether the cache it served has aged past the bridge's
   freshness window, and the client then refreshes it in the background: the
   options stay on screen and usable, with no loading state, and simply change if
-  the backend's answer did. An explicit refresh during that background work
-  joins it instead of asking the bridge to discover a second time. The failure
-  fallback never reports staleness, so a failed refresh is not retried at once.
-- The refresh action stays on screen, in its loading state, for as long as the
-  press it started is still running, and the line explaining where the options
-  came from keeps describing the options still on screen.
+  the backend's answer did. The failure fallback never reports staleness, so a
+  failed refresh is not retried at once.
+- One background refresh runs per selection, and an explicit refresh joins it
+  rather than discovering twice. It joins only a refresh that can still deliver:
+  one belonging to a superseded selection, or to options the user has since
+  edited, is left behind and the press starts its own.
+- A choice made while a background refresh runs outranks it. The refresh was
+  resolved against the agent, model, variant, and staged command as they stood
+  when it started, so it is dropped rather than reverting the user.
+- The refresh action stays on screen, in its loading state and under the name it
+  was pressed as, for as long as that press is still running, and the line
+  explaining where the options came from keeps describing the options still on
+  screen.
 - Concurrent requests coalesce; an incomplete observation never replaces a
   complete cached one, and a moved project invalidates its entries.
 - Backend notifications use scoped event domains: Codex skill changes emit a
@@ -122,8 +129,10 @@ reconnect or option refresh while restoration is pending.
   error, or a partial observation overwrites a complete cache.
 - A cache-only read starts a backend, or automatic refresh wakes a stopped one.
 - The refresh action disappears while its own load runs, gives no sign it was
-  pressed, or a background refresh of a stale cache blocks the composer, shows a
-  loading state, or runs twice when the user presses refresh during it.
+  pressed, or changes name under its own spinner.
+- A background refresh of a stale cache blocks the composer, shows a loading
+  state, runs twice, reverts a choice made while it ran, or leaves an explicit
+  refresh waiting on work that can no longer apply.
 - Recorded worktree, branch, base branch, or base commit disagrees with git.
 - A dedicated workspace name comes from generated metadata, is not lowercase
   `color-animal` form, or collides with an existing branch or path.
