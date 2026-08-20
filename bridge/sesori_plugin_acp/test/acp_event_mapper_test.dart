@@ -64,7 +64,7 @@ void main() {
       expect(second.whereType<BridgeSseMessagePartDelta>().single.delta, "lo");
     });
 
-    test("finalizeTurn emits complete text and reasoning snapshots", () {
+    test("reasoning transition and turn final emit complete snapshots", () {
       mapper.beginTurn("s1");
       mapper.map(
         update({
@@ -72,7 +72,7 @@ void main() {
           "content": {"type": "text", "text": "thinking"},
         }),
       );
-      mapper.map(
+      final transition = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
           "content": {"type": "text", "text": "Hello "},
@@ -85,11 +85,10 @@ void main() {
         }),
       );
 
-      final parts = mapper
-          .finalizeTurn(sessionId: "s1")
-          .whereType<BridgeSseMessagePartUpdated>()
-          .map((event) => event.part)
-          .toList();
+      final parts = [
+        ...transition.whereType<BridgeSseMessagePartUpdated>(),
+        ...mapper.finalizeTurn(sessionId: "s1").whereType<BridgeSseMessagePartUpdated>(),
+      ].map((event) => event.part).where((part) => part.text?.isNotEmpty ?? false).toList();
 
       expect(parts.map((part) => part.id), [
         "s1-t1-assistant-a0-reasoning",
@@ -101,6 +100,54 @@ void main() {
       ]);
       expect(parts.map((part) => part.text), ["thinking", "Hello world"]);
       expect(mapper.finalizeTurn(sessionId: "s1"), isEmpty);
+    });
+
+    test("tool activity finalizes active reasoning before the turn ends", () {
+      mapper.beginTurn("s1");
+      mapper.map(
+        update({
+          "sessionUpdate": "agent_thought_chunk",
+          "content": {"type": "text", "text": "Inspecting workflows"},
+        }),
+      );
+
+      final toolEvents = mapper.map(
+        update({
+          "sessionUpdate": "tool_call",
+          "toolCallId": "tool-1",
+          "kind": "search",
+          "status": "pending",
+        }),
+      );
+
+      final parts = toolEvents.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
+      expect(parts, hasLength(2));
+      expect(parts.first.type, PluginMessagePartType.reasoning);
+      expect(parts.first.text, "Inspecting workflows");
+      expect(parts.last.type, PluginMessagePartType.tool);
+
+      final updateEvents = mapper.map(
+        update({
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "tool-1",
+          "status": "completed",
+        }),
+      );
+      expect(
+        updateEvents.whereType<BridgeSseMessagePartUpdated>().where(
+          (event) => event.part.type == PluginMessagePartType.reasoning,
+        ),
+        isEmpty,
+      );
+      expect(
+        mapper
+            .finalizeTurn(sessionId: "s1")
+            .whereType<BridgeSseMessagePartUpdated>()
+            .where(
+              (event) => event.part.type == PluginMessagePartType.reasoning,
+            ),
+        isEmpty,
+      );
     });
 
     test("forgetSession drops pending text snapshots", () {

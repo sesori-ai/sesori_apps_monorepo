@@ -751,6 +751,10 @@ clean zero-finding audit.
   service-own already-observed deferred session activity; isolate deletion
   targets from auth-export access; and overlap deletion sweeps across mutable
   late-arrival partitions plus watermark gaps.
+- [x] Apply the 2026-08-19 product decision superseding the client identity
+  cleanup above: remove the migration and its runtime failure state. Current
+  clients never call Firebase's global `setUserId`; account identity exists only
+  as the typed `user_key` parameter on authenticated product events.
 - [x] Replace enumerable ObjectId SHA-256 join keys with server-derived
   HMAC-SHA-256. The authenticated preference API carries the derived key to
   clients; one shared secret serves web/export/suppression runtimes, while a
@@ -917,9 +921,9 @@ patches in one umbrella diff.
   reactivate another account, and clients observe remote preference changes on
   next auth generation/process start or explicit online Settings refresh without
   polling.
-- [ ] Upgrade clears legacy Firebase global identity before custom sources, and
-  forced clear failure suppresses custom events without blocking the product or
-  pretending the process's automatic events lost legacy identity.
+- [ ] A fresh release install starts with Firebase collection off, enables only
+  after consent and release/Test Lab eligibility, emits nothing in debug/profile
+  or Firebase Test Lab, and never assigns Firebase's global user ID.
 - [ ] First production full-activation event joins its auth milestone row and a
   timely per-account `analytics_activation_ready` exposure from the outcome
   release; foundation-only binaries remain unmeasurable and preference-unknown

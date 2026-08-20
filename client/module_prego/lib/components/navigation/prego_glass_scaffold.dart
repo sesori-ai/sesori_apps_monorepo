@@ -178,6 +178,15 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
   /// content tracks the moving bar and is exact at rest.
   final ValueNotifier<double> _bannerHeight = ValueNotifier<double>(0);
 
+  /// The base inset captured during the latest build, combined with
+  /// [_bannerHeight] when publishing to [top_bar.pregoRootTopBarInset].
+  double _baseInset = 0;
+
+  /// The root overlay this scaffold publishes geometry for.
+  OverlayState? _rootOverlay;
+
+  final top_bar.PregoRootTopBarInsetOwner _rootInsetOwner = top_bar.PregoRootTopBarInsetOwner();
+
   /// The collapsing title's rendered extent, including its bottom spacing.
   /// Used to paint the refresh indicator below the title without assuming a
   /// fixed text scale or whether a subtitle is present.
@@ -189,10 +198,35 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
   double _refreshPulledExtent = 0;
 
   @override
+  void initState() {
+    super.initState();
+    _bannerHeight.addListener(_publishRootInset);
+  }
+
+  @override
   void dispose() {
+    _bannerHeight.removeListener(_publishRootInset);
+    final rootOverlay = _rootOverlay;
+    if (rootOverlay != null) {
+      top_bar.clearPregoRootTopBarInset(overlay: rootOverlay, owner: _rootInsetOwner);
+    }
     _scrollController.dispose();
     _bannerHeight.dispose();
     super.dispose();
+  }
+
+  /// Publishes this scaffold's live top-bar inset so app-wide presentation
+  /// outside any route can clear the top bar and a visible banner. The most
+  /// recently built (topmost) scaffold wins.
+  void _publishRootInset() {
+    if (!mounted) return;
+    final rootOverlay = _rootOverlay;
+    if (rootOverlay == null) return;
+    top_bar.publishPregoRootTopBarInset(
+      overlay: rootOverlay,
+      owner: _rootInsetOwner,
+      inset: _baseInset + _bannerHeight.value,
+    );
   }
 
   /// The floating action handed to the standalone [Scaffold], positioned per
@@ -449,6 +483,19 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
             valueListenable: _bannerHeight,
             builder: (context, bannerHeight, _) => buildScaffold(bannerHeight),
           );
+
+    // Publish the root inset seam before building the bar area so app-wide
+    // presentation created during this frame already sees current geometry.
+    final rootOverlay = Overlay.maybeOf(context, rootOverlay: true);
+    if (!identical(_rootOverlay, rootOverlay)) {
+      final previousOverlay = _rootOverlay;
+      if (previousOverlay != null) {
+        top_bar.clearPregoRootTopBarInset(overlay: previousOverlay, owner: _rootInsetOwner);
+      }
+      _rootOverlay = rootOverlay;
+    }
+    _baseInset = topPad + PregoTopNavigation.barHeight;
+    _publishRootInset();
 
     // Remove this wrapper once liquid_glass_widgets migrates from the Flutter SDK Material and Cupertino libraries to material_ui and cupertino_ui.
     return Scaffold(

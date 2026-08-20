@@ -436,6 +436,45 @@ release and matched the published digest. In an isolated temporary cwd and
 
 The probe did not use real credentials or send a provider request.
 
+### Step 20 live verification (2026-08-19)
+
+A source-run bridge and development iOS client exercised the production OMP
+descriptor on macOS arm64. Evidence was inspected live and retained only as the
+redacted outcomes below; no credential, raw ACP frame, prompt, transcript,
+project path, or provider/account identifier is committed.
+
+- The production managed-install command downloaded, verified, installed, and
+  enabled official OMP `17.2.13`; a repeated install adopted the existing
+  managed binary. Restart and full bridge restart both reprovisioned that
+  binary and returned OMP to active/idle.
+- The normal inherited OMP profile initially had no configured provider/model.
+  The bridge reported zero connected providers, explicit refresh returned
+  `refreshFailedUnavailable`, and iOS rendered the design-system `/login`
+  guidance without a partial model selection. A local OpenAI-compatible provider
+  added afterward was discovered as the phone default and completed authenticated
+  text, reasoning-display, and tool turns through the production bridge.
+- Empty-session creation, local-only rename, safe plugin restart, resume/list,
+  idle abort, deletion, and post-restart cleanup all succeeded through
+  production bridge routes. Deleted OMP sessions remained absent after restart
+  and catalog import.
+- Text and PNG requests first reached the no-model rejection path without
+  dispatching a provider turn. After provider setup, text and tool turns
+  completed. OMP emitted a correctly typed OpenAI-compatible image request, but
+  the selected upstream returned a rate-limit error and entered bounded retry;
+  successful image replay is therefore not claimed.
+- A provider-backed terminal OMP session exited before explicit import, appeared
+  in the iOS project/session list with its transcript and model, and resumed
+  successfully from the phone. This verifies terminal-to-Sesori handoff without
+  concurrent ownership.
+- No Linux, Windows, Docker, glibc, or musl host is available in this workspace.
+  The automated platform-selection/install tests remain the evidence for those
+  targets; no unavailable host check is claimed as live coverage.
+- The configured test model exposed only its single model and `off` thinking.
+  OMP ACP did not expose the `ask` tool to that model, so a requested form became
+  plain text; the development bridge auto-approved permissions. Automated OMP/
+  ACP coverage remains authoritative for form, permission, and broader option
+  sweeps that this live profile could not produce.
+
 ## 12. Verification Still Required During Implementation
 
 - Refresh source/assets against the exact stable pin selected in Step 9.

@@ -18,7 +18,8 @@ import "core/di/injection.dart";
 import "core/extensions/appearance_mode_x.dart";
 import "core/extensions/build_context_x.dart";
 import "core/platform/firebase/firebase_messaging_static_adapter.dart";
-import "core/platform/firebase_analytics_identity_migration.dart";
+import "core/platform/firebase_analytics_startup.dart";
+import "core/platform/firebase_test_lab_environment.dart";
 import "core/routing/app_router.dart";
 import "core/routing/deep_link_service.dart";
 import "firebase_options.dart";
@@ -27,42 +28,14 @@ import "l10n/app_localizations.dart";
 @pragma("vm:entry-point")
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  final capability =
-      await FirebaseAnalyticsIdentityMigration(
-        analytics: FirebaseAnalytics.instance,
-      ).clearLegacyIdentity(
-        disabledReasonAfterSuccess: kReleaseMode ? null : AnalyticsRuntimeDisabledReason.debugOrProfile,
-      );
-  if (capability case AnalyticsRuntimeDisabled(
-    reason: AnalyticsRuntimeDisabledReason.identitySafetyPreconditionFailed,
-  )) {
-    return;
-  }
 }
 
 void _configureFirebaseSdk({
-  required bool supportsAnalytics,
   required bool supportsCrashlytics,
 }) {
   getIt<FirebaseMessagingStaticAdapter>().registerBackgroundHandler(
     handler: _firebaseMessagingBackgroundHandler,
   );
-
-  if (supportsAnalytics) {
-    // Explicitly disable any data collection except for the very basic analytics.
-    // These are also disabled by default in Info.plist and AndroidManifest.xml.
-    getIt<FirebaseAnalytics>()
-        .setConsent(
-          adPersonalizationSignalsConsentGranted: false,
-          adStorageConsentGranted: false,
-          adUserDataConsentGranted: false,
-          personalizationStorageConsentGranted: false,
-          securityStorageConsentGranted: false,
-          analyticsStorageConsentGranted: true,
-          functionalityStorageConsentGranted: true,
-        )
-        .ignore();
-  }
 
   if (supportsCrashlytics) {
     final crashlytics = getIt<FirebaseCrashlytics>();
@@ -107,7 +80,6 @@ void main() async {
         analyticsRuntimeCapability: analyticsRuntimeCapability,
       );
       _configureFirebaseSdk(
-        supportsAnalytics: supportsFirebaseAnalytics,
         supportsCrashlytics: supportsFirebaseCrashlytics,
       );
     },
@@ -168,8 +140,8 @@ Future<void> bootstrapSesoriApp({
   runAppFn(
     LiquidGlassWidgets.wrap(
       child: SesoriApp(initialAppearance: appearance, initialChatInputMode: chatInputMode),
+      brightnessResolver: Theme.maybeBrightnessOf,
       adaptiveQuality: true,
-      // ignore: experimental_member_use
       adaptiveConfig: GlassAdaptiveScopeConfig(
         targetFrameMs: 8,
         minQuality: .minimal,
@@ -187,15 +159,28 @@ Future<void> bootstrapSesoriApp({
 Future<AnalyticsRuntimeCapability> _createAnalyticsRuntimeCapability({
   required bool shouldInitializeFirebase,
   required bool supportsFirebaseAnalytics,
-}) {
-  if (!shouldInitializeFirebase || !supportsFirebaseAnalytics) {
-    return Future.value(
-      const AnalyticsRuntimeCapability.disabled(reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable),
-    );
+}) async {
+  final capability = !shouldInitializeFirebase || !supportsFirebaseAnalytics
+      ? const AnalyticsRuntimeCapability.disabled(
+          reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
+        )
+      : await FirebaseAnalyticsStartup(analytics: FirebaseAnalytics.instance).configure(
+          ineligibilityReason: await _analyticsIneligibilityReason(),
+        );
+  if (capability case AnalyticsRuntimeDisabled(:final reason)) {
+    logi("Firebase analytics runtime disabled (${reason.name})");
   }
-  return FirebaseAnalyticsIdentityMigration(analytics: FirebaseAnalytics.instance).clearLegacyIdentity(
-    disabledReasonAfterSuccess: kReleaseMode ? null : AnalyticsRuntimeDisabledReason.debugOrProfile,
-  );
+  return capability;
+}
+
+/// Why this process must not report analytics, or null when it may.
+Future<AnalyticsRuntimeDisabledReason?> _analyticsIneligibilityReason() async {
+  if (!kReleaseMode) return AnalyticsRuntimeDisabledReason.debugOrProfile;
+  return switch (await const FirebaseTestLabEnvironment().detect()) {
+    FirebaseTestLabEnvironmentStatus.notRunning => null,
+    FirebaseTestLabEnvironmentStatus.running => AnalyticsRuntimeDisabledReason.automatedTestEnvironment,
+    FirebaseTestLabEnvironmentStatus.unknown => AnalyticsRuntimeDisabledReason.environmentDetectionFailed,
+  };
 }
 
 Future<void> startNotificationStartup({
@@ -336,10 +321,45 @@ class const _SesoriAppShell() extends StatelessWidget {
               getIt<ConnectionService>(),
               getIt<RegisteredBridgesService>(),
             ),
-            child: child ?? const SizedBox.shrink(),
+            child: BlocProvider(
+              create: (_) => SseToastCubit(getIt<ConnectionService>()),
+              child: _SseToastListener(child: child ?? const SizedBox.shrink()),
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Renders backend toast states through the design-system popup alert
+/// presenter, so guidance such as a local `/login` hint reaches the user on
+/// any screen, including startup routes with no scaffold.
+class const _SseToastListener({required final Widget child}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<SseToastCubit, SseToastState>(
+      listener: (context, state) {
+        if (state case SseToastShow(:final title, :final message, :final variant)) {
+          final overlay = appRootNavigatorKey.currentState?.overlay;
+          if (overlay == null) return;
+          PregoPopupAlertPresenter.fromOverlayState(overlay).show(
+            title: title ?? message,
+            content: title == null ? const PregoPopupAlertContent() : PregoPopupAlertContent(message: message),
+            variant: switch (variant) {
+              SseToastVariant.info => PregoPopupAlertsNotificationsVariant.info,
+              SseToastVariant.success => PregoPopupAlertsNotificationsVariant.success,
+              SseToastVariant.warning => PregoPopupAlertsNotificationsVariant.warning,
+              SseToastVariant.error => PregoPopupAlertsNotificationsVariant.error,
+            },
+            duration: switch (variant) {
+              SseToastVariant.error || SseToastVariant.warning => const Duration(seconds: 8),
+              SseToastVariant.info || SseToastVariant.success => const Duration(seconds: 4),
+            },
+          );
+        }
+      },
+      child: child,
     );
   }
 }

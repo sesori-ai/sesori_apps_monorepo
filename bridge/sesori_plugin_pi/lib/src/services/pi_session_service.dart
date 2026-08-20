@@ -552,6 +552,23 @@ final class PiSessionService({
     _scheduleIdleReap(sessionId: sessionId, state: state);
   }
 
+  Future<Set<String>> interruptActiveWork({required Duration budget}) {
+    return () async {
+      final activeSessionIds = <String>{
+        for (final entry in _sessions.entries)
+          if (entry.value.active != null || entry.value.queue.isNotEmpty) entry.key,
+      };
+      if (activeSessionIds.isEmpty) return const <String>{};
+      await Future.wait([
+        for (final sessionId in activeSessionIds) abort(sessionId: sessionId),
+      ]);
+      if (currentWorkState != PluginWorkState.idle) {
+        await workState.firstWhere((state) => state == PluginWorkState.idle);
+      }
+      return Set<String>.unmodifiable(activeSessionIds);
+    }().timeout(budget);
+  }
+
   Future<void> forgetSession({required String sessionId}) async {
     final state = _sessions.remove(sessionId);
     if (state != null) {
@@ -648,9 +665,11 @@ final class PiSessionService({
     if (!_events.isClosed) _events.add(event);
   }
 
-  Future<void> dispose() => _disposeFuture ??= _dispose();
+  /// [shutdownBudget] `null` means no deadline.
+  Future<void> dispose({Duration? shutdownBudget = const Duration(seconds: 15)}) =>
+      _disposeFuture ??= _dispose(shutdownBudget: shutdownBudget);
 
-  Future<void> _dispose() async {
+  Future<void> _dispose({required Duration? shutdownBudget}) async {
     _disposed = true;
     for (final state in _sessions.values) {
       state.generation++;
@@ -665,8 +684,7 @@ final class PiSessionService({
     await _frameSubscription.cancel();
     await _exitSubscription.cancel();
     await _extensionUi.dispose();
-    await Future.wait(_activeIdleReaps.toList());
-    await _processes.dispose();
+    await _processes.dispose(shutdownBudget: shutdownBudget);
     _sessions.clear();
     _pendingNewDirectories.clear();
     await _events.close();

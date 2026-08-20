@@ -5,7 +5,7 @@ publish_to: none
 resolution: workspace
 
 environment:
-  sdk: ^3.13.0-0
+  sdk: ^3.13.0
 
 dependencies:
   args: ^2.7.0
@@ -38,6 +38,10 @@ dependencies:
     path: ../sesori_plugin_claude
   hermes_plugin:
     path: ../sesori_plugin_hermes
+  pi_plugin:
+    path: ../sesori_plugin_pi
+  omp_plugin:
+    path: ../sesori_plugin_omp
   meta: ^1.19.0
   # Keep runtime and codegen on the same patch; skew breaks the Drift schema verifier.
   drift: 2.34.3

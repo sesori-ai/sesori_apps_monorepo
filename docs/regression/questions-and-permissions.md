@@ -93,6 +93,10 @@ different combination than the previous recorded run.
 - Plugin scope follows currently registered plugins and their declared
   capabilities, not a fixed list. A plugin that does not expose a request kind
   is not a failure.
+- Untested Hermes gap (remove this entry once verified): no Hermes permission
+  request was ever observed. The tested provider completed file tools without
+  emitting an ACP permission request, so once/reject/always handling and
+  two-session correlation are unexercised for this harness.
 
 ## Sources
 

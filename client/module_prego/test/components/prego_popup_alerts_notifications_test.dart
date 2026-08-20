@@ -1,8 +1,40 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
+import "package:theme_prego/components/navigation/prego_top_bar_inset.dart"
+    show
+        PregoRootTopBarInsetOwner,
+        clearPregoRootTopBarInset,
+        pregoRootTopBarInsetFor,
+        publishPregoRootTopBarInset;
 import "package:theme_prego/module_prego.dart";
 
 void main() {
+  testWidgets("root top-bar inset retains and restores mounted scaffold order", (tester) async {
+    late OverlayState overlay;
+    await tester.pumpWidget(
+      _harness(
+        Builder(
+          builder: (context) {
+            overlay = Overlay.of(context, rootOverlay: true);
+            return const SizedBox.expand();
+          },
+        ),
+      ),
+    );
+    final underlying = PregoRootTopBarInsetOwner();
+    final topmost = PregoRootTopBarInsetOwner();
+
+    publishPregoRootTopBarInset(overlay: overlay, owner: underlying, inset: 70);
+    publishPregoRootTopBarInset(overlay: overlay, owner: topmost, inset: 90);
+    publishPregoRootTopBarInset(overlay: overlay, owner: underlying, inset: 80);
+    expect(pregoRootTopBarInsetFor(overlay), 90);
+
+    clearPregoRootTopBarInset(overlay: overlay, owner: topmost);
+    expect(pregoRootTopBarInsetFor(overlay), 80);
+    clearPregoRootTopBarInset(overlay: overlay, owner: underlying);
+    expect(pregoRootTopBarInsetFor(overlay), isNull);
+  });
+
   testWidgets("renders each visual variant and optional content", (tester) async {
     for (final variant in PregoPopupAlertsNotificationsVariant.values) {
       await tester.pumpWidget(
@@ -180,7 +212,9 @@ void main() {
       lessThan(800 - 2 * PregoSpacing.xl),
     );
     final contentRight = tester.getTopRight(find.text("Your changes were saved successfully")).dx;
-    final buttonRight = tester.getTopRight(find.ancestor(of: find.text("Open"), matching: find.byType(Semantics)).first).dx;
+    final buttonRight = tester
+        .getTopRight(find.ancestor(of: find.text("Open"), matching: find.byType(Semantics)).first)
+        .dx;
     expect(buttonRight, contentRight);
   });
 
@@ -293,6 +327,31 @@ void main() {
     await tester.pumpAndSettle();
 
     final presenter = PregoPopupAlertPresenter.of(presentationContext);
+    presenter.show(title: "Below banner", duration: null);
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getTopLeft(find.byType(PregoPopupAlertsNotifications)).dy,
+      PregoTopNavigation.barHeight + 30 + PregoSpacing.xl,
+    );
+  });
+
+  testWidgets("explicit-overlay presenter clears the active scaffold banner", (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.dark]),
+        home: const PregoGlassScaffold(
+          title: "Screen",
+          banner: SizedBox(height: 30),
+          slivers: [SliverFillRemaining(child: SizedBox.expand())],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final presenter = PregoPopupAlertPresenter.fromOverlayState(
+      tester.state<OverlayState>(find.byType(Overlay).first),
+    );
     presenter.show(title: "Below banner", duration: null);
     await tester.pumpAndSettle();
 

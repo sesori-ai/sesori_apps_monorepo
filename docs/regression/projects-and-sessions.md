@@ -36,6 +36,13 @@ child sessions with titles, activity, statuses, and unseen state.
 - Session listings are project-scoped and pageable and carry plugin attribution,
   times, worktree and branch facts, prompt defaults, and unseen state that
   advances on activity and clears on view or mark-as-read.
+- A listed session's `session.updated` reports the newest instant the bridge
+  knows: the backend's own updated time, or the live user-message marker when
+  that is newer. A plugin that reports an updated time only at import or rename
+  — Claude and Pi, unlike Codex, ACP, and OpenCode — therefore still shows a
+  recently prompted session as recent, instead of the transcript time read at
+  the last import. Marking a session unread never moves that time, and
+  assistant-only work does not advance it past the prompt that started it.
 - A newly committed session can list before generated metadata. Later generated
   title and eligible dedicated-branch refinement reuse `session.updated`; lists
   and detail adopt the durable session facts without marking unseen or moving the
@@ -102,6 +109,8 @@ after a marker has been established.
 - A running root or project stays alphabetically ordered, a stale marker masks
   newer committed activity, a null marker fails to use updated time,
   awaiting-only is promoted, or inactive session/project or child order changes.
+- A session prompted minutes ago reports a days-old updated time, or sorts to
+  the top of its list while still displaying that stale time.
 - Unseen never clears, clears without viewing, or an unavailable plugin is idle.
 - Hiding destroys sessions, or a cancelled import destroys the committed catalog.
 - A generated title/branch update fails to reach list/detail, changes unseen,
@@ -122,6 +131,9 @@ after a marker has been established.
 - A missed live patch self-heals on a later relevant event or list refresh.
 - An old bridge cannot provide per-running-root ordering facts in
   `projects.summary`, so the current app falls back to project updated time.
+- Untested Hermes gap (remove this entry once verified): a failed or cancelled
+  in-flight Hermes import was never exercised; only completed explicit imports
+  and non-destructive re-imports were verified.
 
 ## Sources
 

@@ -269,7 +269,7 @@ void main() {
                 restoredSelection: const NewSessionSelectionIntent(
                   agentName: "review",
                   model: NewSessionModelIntent(providerId: "provider-a", modelId: "model-a"),
-                  variant: NewSessionNamedVariantIntent(id: "low"),
+                  variant: NewSessionVariantIntent(id: "low"),
                 ),
                 previousOptions: null,
               )
@@ -312,7 +312,7 @@ void main() {
                 restoredSelection: const NewSessionSelectionIntent(
                   agentName: "missing",
                   model: NewSessionModelIntent(providerId: "provider-a", modelId: "unavailable"),
-                  variant: NewSessionDefaultVariantIntent(),
+                  variant: NewSessionVariantIntent(id: "stale"),
                 ),
                 previousOptions: null,
               )
@@ -323,7 +323,7 @@ void main() {
       expect(result.options.selectedAgentModel?.modelID, "model-a");
     });
 
-    test("drops stale variants and revalidates a staged command by name", () async {
+    test("replaces stale variants and revalidates a staged command by name", () async {
       final priorCommand = _command(name: "review", description: "old");
       final refreshedCommand = _command(name: "review", description: "new");
       final previous = NewSessionOptionsData(
@@ -358,13 +358,13 @@ void main() {
                 restoredSelection: const NewSessionSelectionIntent(
                   agentName: "build",
                   model: NewSessionModelIntent(providerId: "provider-a", modelId: "model-a"),
-                  variant: NewSessionNamedVariantIntent(id: "removed"),
+                  variant: NewSessionVariantIntent(id: "removed"),
                 ),
                 previousOptions: previous,
               )
               as NewSessionOptionsLoaded;
 
-      expect(result.options.selectedAgentModel?.variant, isNull);
+      expect(result.options.selectedAgentModel?.variant, "high");
       expect(identical(result.options.stagedCommand, refreshedCommand), isTrue);
     });
 

@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan slug:** `pi-harness`
-- **Implementation base:** current `origin/main` with Step 15 merged
-- **Series state:** Step 16/21 in review as PR #925
-- **Current step:** 16/21, Pi plugin API in review
+- **Implementation base:** current `origin/main` with Step 20 merged
+- **Series state:** Step 21/21 open as PR #980
+- **Current step:** 21/21, retirement in review
 - **Plan PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/811
 - **Step 2 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/819
 - **Step 3 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/820
@@ -23,7 +23,12 @@
 - **Step 14 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/914
 - **Step 15 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/920
 - **Step 16 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/925
-- **Next action:** monitor Step 16 and begin Step 17 locally
+- **Step 17 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/963
+- **Step 18 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/967
+- **Step 19 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/973
+- **Step 20 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/979
+- **Step 21 PR:** https://github.com/sesori-ai/sesori_apps_monorepo/pull/980
+- **Next action:** monitor the Step 21 retirement PR
 
 ## Locked Decisions
 
@@ -65,12 +70,12 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
 | [x] | 13/21 | `⚙️ [pi-harness] feat(pi): bridge extension dialogs [step 13/21]` | 900-1,300 | Merged as PR #910 |
 | [x] | 14/21 | `🚧 [pi-harness] feat(pi): manage session residency and turns [step 14/21]` | 1,200-1,500 (recorded overage) | Merged as PR #914 |
 | [x] | 15/21 | `⚙️ [pi-harness] feat(pi): expose models and commands [step 15/21]` | 900-1,300 | Merged as PR #920 |
-| [ ] | 16/21 | `🚧 [pi-harness] feat(pi): implement the plugin API [step 16/21]` | 1,100-1,500 (recorded slight overage) | In review as PR #925 |
-| [ ] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | Not started; runtime dependency merged |
-| [ ] | 18/21 | `⚙️ [pi-harness] feat(bridge): register Pi and OMP [step 18/21]` | 800-1,200 | Not started |
-| [ ] | 19/21 | `⚙️ [pi-harness] feat(client): add Pi and OMP branding and guidance [step 19/21]` | 500-900 | Not started |
-| [ ] | 20/21 | `⚙️ [pi-harness] test(harness): verify Pi and OMP integration [step 20/21]` | 300-700 | Not started |
-| [ ] | 21/21 | `🌱 [pi-harness] docs: retire the Pi and OMP harness plan [step 21/21]` | 50-200 | Not started |
+| [x] | 16/21 | `🚧 [pi-harness] feat(pi): implement the plugin API [step 16/21]` | 1,100-1,500 (recorded slight overage) | Merged as PR #925 |
+| [x] | 17/21 | `🚧 [pi-harness] feat(pi): add managed runtime and lifecycle [step 17/21]` | 1,100-1,500 | Merged as PR #963 |
+| [x] | 18/21 | `⚙️ [pi-harness] feat(bridge): register Pi and OMP [step 18/21]` | 800-1,200 (over-estimate) | Merged as PR #967 |
+| [x] | 19/21 | `🌿 [pi-harness] feat(client): add Pi and OMP branding and guidance [step 19/21]` | 500-900 (over-estimate) | Merged as PR #973 |
+| [x] | 20/21 | `⚙️ [pi-harness] test(harness): verify Pi and OMP integration [step 20/21]` | 300-700 | Merged as PR #979 |
+| [ ] | 21/21 | `🌱 [pi-harness] docs: retire the Pi and OMP harness plan [step 21/21]` | 50-200 | Open as PR #980 |
 
 ## Working Rules
 
@@ -521,6 +526,156 @@ binary install. `OMP_PROTOCOL.md` records the supporting evidence.
   children would omit active nested forks from the only root summary.
 - Diff metrics stale after the user-directed cleanup slimming; refresh with
   final verification before merge.
+
+### Step 17/21
+
+- Added the semantic `PiRuntimeManifest` with a `0.84.1` PATH floor, exact
+  `0.84.2` managed pin, all six official package-directory archives, and
+  published SHA-256 digests.
+- Added read-only PATH/managed resolution, setup inspection, explicit binary
+  precedence, install capability and package installation, host-backed process
+  spawning, lazy lifecycle status, work-state forwarding, active interruption,
+  and ordered abort-safe shutdown. Pi remains unregistered until Step 18.
+- Pi process launches inherit the bridge process environment, add only
+  `PI_SKIP_VERSION_CHECK=1`, and retain `--approve` for every session and
+  no-session RPC launch. Storage receives the full host environment separately
+  so home and custom Pi roots remain discoverable without explicitly overriding
+  `HOME` in child processes.
+- Official `v0.84.2` macOS arm64 verification matched SHA-256
+  `c996e888b7f7dce44bcf24f69176ac646c44139d3916bd49a6b28e5a8c5e3a65`,
+  preserved the complete package tree, reported `0.84.2`, and returned a
+  successful correlated no-session RPC `get_state` response.
+- Initial architecture review rejected duplicate executable/identity ownership,
+  data-free spawn variants, explicit `pi` ambiguity, and discarded shutdown
+  budgets. The implementation now uses one plugin-local identity, manifest-owned
+  fallback resolution, an enum spawn outcome, nullable option defaults that keep
+  explicit `--pi-bin pi` authoritative, and caller-budgeted resident teardown.
+  The second review found that API-first disposal and an already-running idle
+  reap could still retain a longer timeout. Per user direction, the fix was
+  completed without a third review: API disposal now chooses immediate teardown,
+  lifecycle shutdown tightens in-flight RPC deadlines, and process ownership
+  retains active reaps until the caller budget has been applied.
+- Pi tests pass (255 tests) with fatal analysis after the post-merge sync with
+  Step 16 (prompt-id dedupe). Shared runtime tests pass (132 tests) with fatal
+  analysis; package-directory placement, checksum failure, abort, cleanup, and
+  superseded-version behavior remain covered there. Diff checks pass.
+- No user-visible, database, persisted-data, analytics, registered-plugin, or
+  client/bridge wire impact. The backend-runtime update skill and runtime
+  installation regression matrix now include Pi.
+- Diff before tracker/plan evidence: +1,378/-72 = 1,450 changed lines; generated
+  lines: 0; tests run: 387 automated package checks plus one live managed
+  artifact/version/RPC probe.
+
+
+### Step 18/21
+
+- Added `Harness.pi` and `Harness.omp`, the `pi_plugin`/`omp_plugin` app
+  dependencies, and both production descriptors to `plugin_registry.dart`.
+  The registry list became `final List.unmodifiable` because both descriptors
+  construct through non-const `production()` factories. OpenCode remains the
+  preferred default; all merged entries are preserved.
+- Added the backend-neutral `SseToastCubit` in `module_core` mapping
+  `tui.toast.show` SSE events into sealed idle/show states with a monotonic
+  sequence, so equal repeated guidance re-fires; textless toasts drop and
+  unknown variants degrade to info. The mobile shell renders shows through
+  `PregoPopupAlertPresenter` on the root navigator's overlay, reusing the
+  design-system toast surface instead of a plain snackbar.
+- README and the plugin-setup regression doc record Pi's always-`--approve`
+  project-code trust, OMP's inherited approval policy, and local-only provider
+  login before either backend is selectable.
+- Registry exact-set fixtures updated; a new test pins every registered id to
+  a built-in `Harness` identity. Toast cubit tests cover monotonic repeats,
+  variant fallback, and empty-drop behavior.
+- Architecture implementation review approved the commit with no findings.
+- Verification: bridge app fatal analysis and full suite (2,674 tests), Pi
+  (255) and OMP (51) suites, shared (409), module_core toast tests, and the
+  mobile shell fatal analysis all pass after the post-merge sync with `main`.
+- No database, persisted-data, or wire-contract change; the app now lists Pi
+  and Oh My Pi as selectable harnesses once their setup is ready.
+- Diff before tracker/plan evidence: +393/-10 = 403 changed lines; generated
+  lines: 46 (one freezed state file).
+
+### Step 19/21
+
+- Step 18 merged as PR #967. Added official Pi light/dark SVG artwork and Oh My
+  Pi's shared light/dark gradient mark to the client brand catalog, with stable
+  `Pi` / `Oh My Pi` display-name cases; unknown plugin ids retain the existing
+  raw-id and generic-plug fallback.
+- Expanded README guidance for managed install and authoritative `--pi-bin` /
+  `--omp-bin` overrides, inherited Pi/OMP profiles, local-only provider login,
+  OMP's standard-ACP feature boundary, and the unsupported concurrent terminal
+  handoff. The headline is scalable while intro, Bridge, and feature copy list
+  and link every supported assistant for discoverability.
+- Updated the plugin lifecycle regression contract for both brand identities.
+  No obsolete client state, assets, or copy paths became removable beyond the
+  replaced fixed-harness wording.
+- Verification after rebasing onto the Step 18 merge: module_prego fatal
+  analysis and all 209 tests pass; mobile app fatal analysis passes; all six
+  linked assistant sites return HTTP 200; the gradient OMP mark renders in the
+  iOS harness picker;
+  `git diff --check $(git merge-base origin/main HEAD)..HEAD` passes.
+- User-visible impact is limited to Pi/OMP branding and documentation. No
+  database, persisted-data, wire-contract, or runtime behavior change.
+- Product diff excluding this tracker evidence, measured with
+  `git diff --numstat $(git merge-base origin/main HEAD)..HEAD -- .
+  ':(exclude).plan/active/pi-harness/TRACKER.md'`: +122/-7 = 129 changed
+  lines; generated lines: 0. This is well below the 500-900 estimate because
+  Step 18 already absorbed the shared activation/notification prerequisites;
+  this step reused the existing brand catalog and needed only localized assets,
+  mappings, tests, and guidance. The original budget was an over-estimate.
+
+### Step 20/21
+
+- Source-run bridge slot 1 authenticated, registered, and paired with the
+  dedicated `sesori-dev-1` iOS simulator. Pi used PATH `0.84.2`; OMP installed
+  official managed `17.2.13` through the production lifecycle route and reused
+  it after plugin/bridge restart.
+- Phone verification covered the complete harness picker, current Pi/OMP marks,
+  Pi model/thinking controls, OMP missing-model popup guidance, and encrypted
+  reconnect after bridge restart. Screenshot evidence remains local only.
+- Both plugins passed empty-session create/list, local rename, safe restart,
+  idle abort, delete cleanup, and restart/import non-resurrection. Pi additionally
+  imported, renamed, and deleted a terminal-created session after the terminal
+  process exited; its text-plus-PNG transcript retained an inline image before
+  provider rejection.
+- Missing-provider guidance and the original Pi provider's usage-limit error
+  were verified before a local OpenAI-compatible provider was configured for
+  both CLIs. Both then completed authenticated phone text/tool turns; OMP also
+  rendered reasoning and completed terminal import/resume, while Pi completed
+  direct image inference and terminal import/resume. No credentials, provider
+  account identifiers, raw frames, prompts, or transcripts are committed.
+- Live testing found that a terminal-imported Pi session rendered its transcript
+  model but selected a stale project-catalog default for the next send. The
+  client now prefers a latest assistant/error transcript model after valid
+  persisted prompt defaults and before agent/catalog fallbacks. A regression
+  verifies that the resumed send retains a model absent from the stale cache;
+  the rebuilt iOS client resumed the imported session successfully.
+- OMP emitted an image request but its selected upstream rate-limited it. Its ACP
+  model did not expose `ask`, and the dev bridge auto-approved permissions, so
+  successful OMP image replay, live forms, and live permission cards are not
+  claimed; automated OMP/ACP coverage remains authoritative for those paths.
+- macOS arm64 is the only available live host. Docker/Linux/Windows and live
+  glibc/musl selection are unavailable; passing automated platform tests are the
+  evidence for those targets.
+- Focused fatal analysis passes for bridge app, Pi, OMP, ACP, module_core,
+  module_prego, and mobile app; shared plain analysis also passes. Full suites:
+  bridge app 2,675, Pi 255, OMP 51, ACP 242, shared 409, module_core 1,150,
+  module_prego 209, and mobile app 998 tests.
+- Product diff commands: `base=$(git merge-base origin/main HEAD)`, then
+  `git diff --numstat "$base"..HEAD -- . ':(exclude).plan/active/pi-harness/TRACKER.md'`.
+  They report +252/-24 = 276
+  changed lines, below the 300-700 estimate because most verification produced
+  only redacted evidence; generated lines: 0.
+- `git diff --check "$base"..HEAD` passes.
+
+### Step 21/21
+
+- Confirmed Steps 1-20 merged and the tracker plus redacted Pi/OMP E2E evidence
+  are complete.
+- Moved `.plan/active/pi-harness/` to `.plan/completed/pi-harness/` without
+  changing the retained plan or protocol evidence.
+- `git diff --check` passes. This retirement is documentation-only, so no
+  Dart/Flutter suites were run.
 
 ## Findings And Plan Deltas
 

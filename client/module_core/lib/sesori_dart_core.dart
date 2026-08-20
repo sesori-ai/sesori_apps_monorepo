@@ -100,6 +100,8 @@ export "src/cubits/settings/settings_cubit.dart";
 export "src/cubits/settings/settings_state.dart";
 export "src/cubits/splash/splash_cubit.dart";
 export "src/cubits/splash/splash_state.dart";
+export "src/cubits/sse_toast/sse_toast_cubit.dart";
+export "src/cubits/sse_toast/sse_toast_state.dart";
 // DI
 export "src/di/injection.dart";
 // Errors

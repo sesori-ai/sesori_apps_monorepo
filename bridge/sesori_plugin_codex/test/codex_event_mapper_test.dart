@@ -1437,6 +1437,35 @@ void main() {
       expect((events.single as BridgeSseSessionError).sessionID, "t-1");
     });
 
+    test("failed turn/completed emits a visible error message", () {
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "turn/completed",
+          params: {
+            "threadId": "t-quota",
+            "turn": {
+              "id": "u-quota",
+              "status": "failed",
+              "error": {
+                "message": "You've hit your usage limit.",
+                "codexErrorInfo": "usageLimitExceeded",
+              },
+              "completedAt": 1700000010,
+            },
+          },
+        ),
+      );
+
+      expect(events, hasLength(3));
+      final event = events[1] as BridgeSseMessageUpdated;
+      final message = shared.Message.fromJson(event.info) as shared.MessageError;
+      expect(message.id, "u-quota");
+      expect(message.sessionID, "t-quota");
+      expect(message.errorName, "CodexError");
+      expect(message.errorMessage, "You've hit your usage limit.");
+      expect(parseAsSesori(event), isA<shared.SesoriMessageUpdated>());
+    });
+
     test("notifications with no bridge analog are dropped", () {
       for (final method in const [
         "account/rateLimits/updated",

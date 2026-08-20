@@ -91,6 +91,37 @@ void main() {
       expect(part.sessionID, "s-image");
     });
 
+    test("cursor/generate_image finalizes active reasoning before the image", () async {
+      final imageMapper = buildMapper();
+      imageMapper.beginTurn("s-thinking-image");
+      imageMapper.map(
+        const AcpNotification(
+          method: "session/update",
+          params: {
+            "sessionId": "s-thinking-image",
+            "update": {
+              "sessionUpdate": "agent_thought_chunk",
+              "content": {"type": "text", "text": "Designing the image"},
+            },
+          },
+        ),
+      );
+      final file = writeTempPng("cursor-reasoning-image");
+
+      final events = imageMapper.map(
+        AcpNotification(
+          method: "cursor/generate_image",
+          params: {"sessionId": "s-thinking-image", "filePath": file.path},
+        ),
+      );
+
+      final parts = events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
+      expect(parts, hasLength(2));
+      expect(parts.first.type, PluginMessagePartType.reasoning);
+      expect(parts.first.text, "Designing the image");
+      expect(parts.last.type, PluginMessagePartType.file);
+    });
+
     test("cursor/generate_image accepts legacy path params", () async {
       mapper.beginTurn("s-image-legacy");
       final file = writeTempPng("cursor-event-mapper-legacy");

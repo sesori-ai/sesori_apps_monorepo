@@ -21,7 +21,8 @@ signal that a tool changed files.
 - Sub-agent, subtask, and agent parts identify their agent and stay attributed
   to the correct session, including work done by a child. Tool state survives a
   reload with the same identity, status, and output; unknown status renders as
-  the fallback.
+  the fallback. A backend abort without a turn identifier still finalizes tools
+  in the active turn.
 
 ## Regression Levels
 

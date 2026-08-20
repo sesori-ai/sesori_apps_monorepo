@@ -492,7 +492,7 @@ class CodexToolLifecycleTracker({
       ),
       CodexRolloutTurnAbortedEventDto(:final turnId) => _finishTurn(
         thread: thread,
-        turnId: turnId,
+        turnId: turnId ?? thread.activeTurnId,
         status: PluginToolStatus.error,
       ),
       CodexRolloutImageGenerationEndEventDto() => _observeImageGenerationEnd(
@@ -566,7 +566,7 @@ class CodexToolLifecycleTracker({
 
   List<CodexProjectedTool> _finishTurn({
     required _ThreadToolLifecycle thread,
-    required String turnId,
+    required String? turnId,
     required PluginToolStatus status,
   }) {
     final usefulTurnId = _usefulText(value: turnId);
