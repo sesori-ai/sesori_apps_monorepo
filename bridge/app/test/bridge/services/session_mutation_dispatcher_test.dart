@@ -67,6 +67,22 @@ void main() {
       );
     }
 
+    Future<void> insertChild() {
+      return db.sessionDao.insertObservedChild(
+        pluginId: plugin.id,
+        sessionId: "child",
+        backendSessionId: "backend-child",
+        projectId: "/repo",
+        parentSessionId: "s1",
+        directory: "/repo",
+        catalogTitle: null,
+        archivedAt: null,
+        createdAt: 1,
+        updatedAt: 1,
+        projectionUpdatedAt: 1,
+      );
+    }
+
     test("rejects a rename when its root binding does not exist", () async {
       await expectLater(
         dispatcher.renameSession(sessionId: "s1", title: "User rename"),
@@ -173,6 +189,7 @@ void main() {
 
     test("suppresses events from deletion start and restores them when cleanup fails", () async {
       await insertSession();
+      await insertChild();
       final cleanupStarted = Completer<void>();
       final cleanupGate = Completer<void>();
       final deletion = dispatcher.deleteSession(
@@ -187,12 +204,14 @@ void main() {
       await cleanupStarted.future;
 
       expect(dispatcher.shouldSuppressEventsForSession(sessionId: "s1"), isTrue);
+      expect(dispatcher.shouldSuppressEventsForSession(sessionId: "child"), isTrue);
 
       final failure = expectLater(deletion, throwsStateError);
       cleanupGate.complete();
       await failure;
 
       expect(dispatcher.shouldSuppressEventsForSession(sessionId: "s1"), isFalse);
+      expect(dispatcher.shouldSuppressEventsForSession(sessionId: "child"), isFalse);
       expect(await db.sessionDao.getSession(sessionId: "s1"), isNotNull);
     });
 
@@ -310,6 +329,7 @@ void main() {
 
     test("owns repository deletion and typed deleted mutations", () async {
       await insertSession();
+      await insertChild();
       final events = expectLater(
         dispatcher.mutations,
         emitsInOrder([
@@ -325,6 +345,8 @@ void main() {
       );
       await dispatcher.dispose();
       await events;
+      expect(dispatcher.shouldSuppressEventsForSession(sessionId: "s1"), isTrue);
+      expect(dispatcher.shouldSuppressEventsForSession(sessionId: "child"), isTrue);
       expect(
         () => dispatcher.deleteSession(
           sessionId: "after-dispose",
