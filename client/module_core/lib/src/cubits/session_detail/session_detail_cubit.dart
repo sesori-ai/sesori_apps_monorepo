@@ -1280,6 +1280,37 @@ class SessionDetailCubit(
 
   void _onPartDelta({required String partId, required String delta}) {
     _streamingBuffer.appendDelta(partId: partId, delta: delta);
+
+    // Keep the committed part's text in sync with the streamed delta. Streamed
+    // deltas are the live source of the response text; the bridge's end-of-turn
+    // snapshot (_onPartUpdated) is a duplicate commit, not the only one. Without
+    // this, text for parts written before their finalize snapshot is lost if that
+    // snapshot never arrives (disconnect/reconnect mid-turn, event loss), leaving
+    // an empty bubble — the "response text disappears" symptom. The finalize
+    // snapshot later overwrites the part with identical complete text, so this is
+    // idempotent on the happy path.
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+    final messageIndex = current.messages.indexWhere((item) =>
+        item.parts.any((part) => part.id == partId));
+    if (messageIndex < 0) {
+      // The message/part envelope hasn't arrived yet — keep the text only in the
+      // streaming buffer; the envelope + snapshot will commit it when they land.
+      return;
+    }
+    final message = current.messages[messageIndex];
+    final partIndex = message.parts.indexWhere((item) => item.id == partId);
+    if (partIndex < 0) return;
+    final part = message.parts[partIndex];
+    if (part.type != MessagePartType.text) return;
+    final existing = part.text;
+    if (existing == null) return;
+    final messages = List<MessageWithParts>.from(current.messages);
+    final parts = List<MessagePart>.from(message.parts);
+    parts[partIndex] = part.copyWith(text: existing + delta);
+    messages[messageIndex] = message.copyWith(parts: parts);
+    if (isClosed) return;
+    emit(current.copyWith(messages: messages, streamingText: _streamingBuffer.snapshot()));
   }
 
   void _onPartUpdated(MessagePart part) {

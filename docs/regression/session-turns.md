@@ -148,6 +148,12 @@ has started.
   orders a late envelope at the wrong transcript position; the session never
   returns to idle. A terminal provider failure returns to idle without showing
   its error, or the error disappears after refresh or reopen.
+- Streamed assistant text disappears from the committed transcript after a
+  mid-turn disconnect/reconnect (fixed 2026-08-20): text streamed as part
+  deltas is now committed into the message part on the client as it arrives,
+  not only via the end-of-turn snapshot, so a lost finalize snapshot can no
+  longer leave an empty response bubble. Regression-covered in
+  `session_detail_streaming_text_regression_test.dart`.
 - Internal backend command records or synthetic model attribution appear in
   the conversation or replayed history.
 - Prompt defaults regress, an approved plan exit does not restore Default
