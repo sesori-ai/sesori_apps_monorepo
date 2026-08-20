@@ -777,14 +777,18 @@ abstract class AcpPlugin({
       time: PluginSessionTime(created: createdAt, updated: createdAt, archived: null),
     );
     emitEvent(eventMapper.mapCreatedSession(session: created));
-    if (userVisibleText != null && userVisibleText.trim().isNotEmpty) {
+    final visibleParts = [
+      if (userVisibleText != null && userVisibleText.trim().isNotEmpty)
+        PluginPromptPart.text(text: userVisibleText),
+      ...parts.whereType<PluginPromptPartFileData>(),
+    ];
+    final initialPromptEvents = eventMapper.mapInitialPrompt(
+      sessionId: session.sessionId,
+      parts: visibleParts,
+    );
+    if (initialPromptEvents.isNotEmpty) {
       _syntheticInitialPromptSessions.add(session.sessionId);
-      eventMapper
-          .mapInitialPrompt(
-            sessionId: session.sessionId,
-            text: userVisibleText,
-          )
-          .forEach(emitEvent);
+      initialPromptEvents.forEach(emitEvent);
     }
     if (parts.isEmpty) {
       // No first turn to carry the selection: apply it now so the session's

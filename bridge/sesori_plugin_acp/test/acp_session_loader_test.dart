@@ -112,36 +112,56 @@ void main() {
       });
     }
 
-    test("reuses the synthetic identity for the first replayed user message", () {
-      final collector = AcpReplayCollector(
-        sessionId: "s1",
-        agentId: "Cursor",
-        modelId: null,
-        providerId: null,
-        initialUserMessageId: "s1-initial-user",
-        haltClassifier: null,
-        contentMapper: const AcpContentMapper(),
-      )
-        ..consume(
-          upd({
-            "sessionUpdate": "user_message_chunk",
-            "content": {"type": "text", "text": "Hello"},
-          }),
+    for (final content in [
+      const [
+        {"type": "text", "text": "before"},
+        {"type": "image", "data": "AA==", "mimeType": "image/png", "uri": "file:///private/image.png"},
+        {"type": "text", "text": "after"},
+      ],
+      const [
+        {"type": "image", "data": "AA==", "mimeType": "image/png", "uri": "file:///private/image.png"},
+      ],
+    ]) {
+      test("replays ${content.length == 1 ? "attachment-only" : "mixed"} user content with stable initial identity", () {
+        final collector = AcpReplayCollector(
+          sessionId: "s1",
+          agentId: "Cursor",
+          modelId: null,
+          providerId: null,
+          initialUserMessageId: "s1-initial-user",
+          haltClassifier: null,
+          contentMapper: const AcpContentMapper(),
         )
-        ..consume(
-          upd({
-            "sessionUpdate": "agent_message_chunk",
-            "content": {"type": "text", "text": "Hi"},
-          }),
-        );
+          ..consume(
+            upd({
+              "sessionUpdate": "user_message_chunk",
+              "content": content,
+            }),
+          )
+          ..consume(
+            upd({
+              "sessionUpdate": "agent_message_chunk",
+              "content": {"type": "text", "text": "Hi"},
+            }),
+          );
 
-      final messages = collector.build();
-      final initial = messages.first;
-      expect(initial.info.id, "s1-initial-user");
-      expect(initial.parts.single.id, "s1-initial-user-text");
-      expect(initial.parts.single.messageID, initial.info.id);
-      expect(messages.last.info.id, "s1-h1-assistant");
-    });
+        final messages = collector.build();
+        final initial = messages.first;
+        expect(initial.info.id, "s1-initial-user");
+        expect(initial.parts.map((part) => part.type), [
+          if (content.length > 1) PluginMessagePartType.text,
+          PluginMessagePartType.file,
+          if (content.length > 1) PluginMessagePartType.text,
+        ]);
+        expect(initial.parts.first.id, content.length == 1 ? "s1-initial-user-image-1" : "s1-initial-user-text");
+        expect(initial.parts.every((part) => part.messageID == initial.info.id), isTrue);
+        final attachment = initial.parts.where((part) => part.type == PluginMessagePartType.file).single.attachment;
+        expect(attachment, isA<PluginMessageAttachmentInlineImage>());
+        expect((attachment! as PluginMessageAttachmentInlineImage).base64, "AA==");
+        expect(initial.parts.toString(), isNot(contains("/private/image.png")));
+        expect(messages.last.info.id, "s1-h1-assistant");
+      });
+    }
 
     test("reconstructs a user/tool/assistant exchange in order", () {
       final collector = AcpReplayCollector(

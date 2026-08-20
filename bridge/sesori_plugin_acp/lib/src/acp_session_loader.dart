@@ -49,8 +49,7 @@ class AcpReplayCollector({
         final t = _contentMapper.text(content: update["content"]);
         if (t != null) _assistant(messageId: _chunkMessageId(update)).reasoning.write(t);
       case "user_message_chunk":
-        final t = _contentMapper.text(content: update["content"]);
-        if (t != null) _user(messageId: _chunkMessageId(update)).text.write(t);
+        _consumeUserContent(update: update);
       case "tool_call":
         final id = update["toolCallId"] as String?;
         if (id == null) return;
@@ -124,6 +123,17 @@ class AcpReplayCollector({
         }
         if (update.containsKey("title")) draft.title = _toolTitle(update);
         draft.contentTracker.apply(mutation: contentMutation);
+    }
+  }
+
+  void _consumeUserContent({required Map<String, dynamic> update}) {
+    final draft = _user(messageId: _chunkMessageId(update));
+    final blocks = _contentMapper.mapScoped(
+      content: update["content"],
+      scope: draft.contentTracker.mappingScope,
+    );
+    for (final mutation in draft.contentTracker.append(blocks: blocks)) {
+      draft.entries.add(_AssistantContentEntry(mutation: mutation));
     }
   }
 

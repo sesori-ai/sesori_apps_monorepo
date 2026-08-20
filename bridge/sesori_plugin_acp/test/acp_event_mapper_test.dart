@@ -382,20 +382,55 @@ void main() {
       );
     });
 
+    for (final parts in [
+      const [
+        PluginPromptPart.text(text: "before"),
+        PluginPromptPart.fileData(mime: "image/png", base64: "AA==", filename: "private.png"),
+        PluginPromptPart.text(text: "after"),
+      ],
+      const [
+        PluginPromptPart.fileData(mime: "image/png", base64: "AA==", filename: "private.png"),
+      ],
+    ]) {
+      test("an accepted prompt preserves ${parts.length == 1 ? "attachment-only" : "mixed"} content", () {
+        final events = mapper.mapSentPrompt(
+          promptId: "prompt-1",
+          sessionId: "s1",
+          parts: parts,
+        );
+
+        final mapped = events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
+        expect(mapped.map((part) => part.type), [
+          if (parts.length > 1) PluginMessagePartType.text,
+          PluginMessagePartType.file,
+          if (parts.length > 1) PluginMessagePartType.text,
+        ]);
+        final attachment = mapped.where((part) => part.type == PluginMessagePartType.file).single.attachment;
+        expect(attachment, isA<PluginMessageAttachmentInlineImage>());
+        expect((attachment! as PluginMessageAttachmentInlineImage).base64, "AA==");
+        expect(events.toString(), isNot(contains("private.png")));
+      });
+    }
+
     test("an initial prompt uses the history-stable message and part identity", () {
       final events = mapper.mapInitialPrompt(
         sessionId: "s1",
-        text: "Hello",
+        parts: const [
+          PluginPromptPart.text(text: "Hello"),
+          PluginPromptPart.fileData(mime: "image/png", base64: "AA==", filename: "private.png"),
+        ],
       );
 
       final message = shared.Message.fromJson(
         events.whereType<BridgeSseMessageUpdated>().single.info,
       );
-      final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
+      final parts = events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
       expect(message.id, "s1-initial-user");
-      expect(part.id, "s1-initial-user-text");
-      expect(part.messageID, message.id);
-      expect(part.text, "Hello");
+      expect(parts.map((part) => part.id), ["s1-initial-user-text", "s1-initial-user-image-1"]);
+      expect(parts.every((part) => part.messageID == message.id), isTrue);
+      expect(parts.first.text, "Hello");
+      expect(parts.last.attachment, isA<PluginMessageAttachmentInlineImage>());
+      expect(events.toString(), isNot(contains("private.png")));
     });
 
     test("a live agent user echo is dropped", () {

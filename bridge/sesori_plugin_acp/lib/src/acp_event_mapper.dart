@@ -253,26 +253,13 @@ class AcpEventMapper({
   /// let the client upsert either arrival order instead of rendering both.
   List<BridgeSseEvent> mapInitialPrompt({
     required String sessionId,
-    required String text,
-  }) {
-    if (text.trim().isEmpty) return const [];
-    final messageId = initialUserMessageId(sessionId);
-    return [
-      BridgeSseMessageUpdated(
-        info: _messageFor(_ChunkRole.user, messageId, sessionId, promptId: null).toJson(),
-      ),
-      BridgeSseMessagePartUpdated(
-        part: _part(
-          partId: "$messageId-text",
-          messageId: messageId,
-          sessionId: sessionId,
-          type: PluginMessagePartType.text,
-          text: text,
-          attachment: null,
-        ),
-      ),
-    ];
-  }
+    required List<PluginPromptPart> parts,
+  }) => _mapUserPrompt(
+    sessionId: sessionId,
+    messageId: initialUserMessageId(sessionId),
+    promptId: null,
+    parts: parts,
+  );
 
   /// Maps an accepted outbound prompt to its canonical live user message.
   List<BridgeSseEvent> mapSentPrompt({
@@ -280,26 +267,67 @@ class AcpEventMapper({
     required String promptId,
     required List<PluginPromptPart> parts,
   }) {
-    final textParts = parts.whereType<PluginPromptPartText>().where((part) => part.text.isNotEmpty).toList();
-    if (textParts.isEmpty) return const [];
-
     final sequence = (_sentUserSeq[sessionId] ?? 0) + 1;
-    _sentUserSeq[sessionId] = sequence;
-    final messageId = "$sessionId-sent-$sequence-user";
+    final events = _mapUserPrompt(
+      sessionId: sessionId,
+      messageId: "$sessionId-sent-$sequence-user",
+      promptId: promptId,
+      parts: parts,
+    );
+    if (events.isNotEmpty) _sentUserSeq[sessionId] = sequence;
+    return events;
+  }
+
+  List<BridgeSseEvent> _mapUserPrompt({
+    required String sessionId,
+    required String messageId,
+    required String? promptId,
+    required List<PluginPromptPart> parts,
+  }) {
+    final content = <Map<String, dynamic>>[
+      for (final part in parts)
+        switch (part) {
+          PluginPromptPartText(:final text) => {"type": "text", "text": text},
+          PluginPromptPartFileData(:final mime, :final base64) => {
+            "type": "image",
+            "mimeType": mime,
+            "data": base64,
+          },
+          PluginPromptPartFilePath() || PluginPromptPartFileUrl() => const {},
+        },
+    ];
+    final tracker = AcpContentTracker();
+    final mutations = tracker.append(
+      blocks: _contentMapper.mapScoped(
+        content: content.where((block) => block.isNotEmpty).toList(growable: false),
+        scope: tracker.mappingScope,
+      ),
+    );
+    if (mutations.isEmpty) return const [];
     return [
       BridgeSseMessageUpdated(
         info: _messageFor(_ChunkRole.user, messageId, sessionId, promptId: promptId).toJson(),
       ),
-      for (var index = 0; index < textParts.length; index++)
+      for (final mutation in mutations)
         BridgeSseMessagePartUpdated(
-          part: _part(
-            partId: "$messageId-text-$index",
-            messageId: messageId,
-            sessionId: sessionId,
-            type: PluginMessagePartType.text,
-            text: textParts[index].text,
-            attachment: null,
-          ),
+          part: switch (mutation) {
+            AcpTextDeltaMutation(:final partIdSuffix, :final delta) => _part(
+              partId: "$messageId-$partIdSuffix",
+              messageId: messageId,
+              sessionId: sessionId,
+              type: PluginMessagePartType.text,
+              text: delta,
+              attachment: null,
+            ),
+            AcpImageMutation(:final partIdSuffix, :final attachment) => _part(
+              partId: "$messageId-$partIdSuffix",
+              messageId: messageId,
+              sessionId: sessionId,
+              type: PluginMessagePartType.file,
+              text: null,
+              attachment: attachment,
+            ),
+          },
         ),
     ];
   }

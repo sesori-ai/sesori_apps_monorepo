@@ -317,6 +317,49 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
+    for (final attachmentOnly in [false, true]) {
+      test("an initial ${attachmentOnly ? "attachment-only" : "mixed"} prompt dispatches and projects images", () async {
+        await connect();
+        emitted.clear();
+
+        final creating = plugin.createSession(
+          directory: cwd,
+          parentSessionId: null,
+          parts: [
+            const PluginPromptPart.text(text: "[SYSTEM CONTEXT — IMPORTANT] internal"),
+            if (!attachmentOnly) const PluginPromptPart.text(text: "visible prompt"),
+            const PluginPromptPart.fileData(
+              mime: "image/png",
+              base64: "AA==",
+              filename: "/private/image.png",
+            ),
+          ],
+          userVisibleText: attachmentOnly ? null : "visible prompt",
+          variant: null,
+          agent: null,
+          model: null,
+        );
+        respondTo(await waitForFrame("session/new"), {"sessionId": "s1"});
+        await creating;
+
+        final prompt = await waitForFrame("session/prompt");
+        final content = (prompt["params"] as Map)["prompt"] as List;
+        expect(content.where((block) => (block as Map)["type"] == "image"), hasLength(1));
+        final projected = emitted.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
+        expect(projected.map((part) => part.type), [
+          if (!attachmentOnly) PluginMessagePartType.text,
+          PluginMessagePartType.file,
+        ]);
+        expect(
+          projected.where((part) => part.type == PluginMessagePartType.file).single.attachment,
+          isA<PluginMessageAttachmentInlineImage>(),
+        );
+        expect(emitted.toString(), isNot(contains("SYSTEM CONTEXT")));
+        expect(emitted.toString(), isNot(contains("/private/image.png")));
+        respondTo(prompt, {"stopReason": "end_turn"});
+      });
+    }
+
     test("a command emits only its user-visible arguments", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
