@@ -268,6 +268,7 @@ void main() {
 
     final indicator = find.byType(PregoActivityIndicator);
     expect(indicator, findsOneWidget);
+    expect(tester.getSize(indicator), const Size.square(20));
     expect(tester.getTopLeft(indicator).dy, greaterThanOrEqualTo(barBottom));
     expect(tester.getTopLeft(find.byKey(_contentKey)).dy, greaterThan(initialContentTop));
     expect(tester.getBottomRight(find.byType(GlassAppBar)).dy, barBottom);

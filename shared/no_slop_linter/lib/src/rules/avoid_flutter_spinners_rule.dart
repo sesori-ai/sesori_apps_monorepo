@@ -34,7 +34,7 @@ class AvoidFlutterSpinnersRule extends NoSlopRule {
   }
 }
 
-const _spinnerLibraries = {
+const _spinnerPackages = {
   'CircularProgressIndicator': 'material_ui',
   'RefreshProgressIndicator': 'material_ui',
   'CupertinoActivityIndicator': 'cupertino_ui',
@@ -62,16 +62,19 @@ class _Visitor extends SimpleAstVisitor<void> {
     final libraryIdentifier = constructorName.element?.library.identifier;
     if (libraryIdentifier == null) return;
 
-    final spinnerLibrary = _spinnerLibraries[typeName];
-    if (spinnerLibrary != null && libraryIdentifier.contains(spinnerLibrary)) {
+    final spinnerPackage = _spinnerPackages[typeName];
+    if (spinnerPackage != null && _isFromPackage(libraryIdentifier, spinnerPackage)) {
       rule.reportAtNode(constructorName);
       return;
     }
 
     if (typeName == 'RefreshIndicator' &&
         constructorName.name?.name != 'noSpinner' &&
-        libraryIdentifier.contains('material_ui')) {
+        _isFromPackage(libraryIdentifier, 'material_ui')) {
       rule.reportAtNode(constructorName);
     }
   }
+
+  bool _isFromPackage(String libraryIdentifier, String packageName) =>
+      libraryIdentifier.startsWith('package:$packageName/');
 }

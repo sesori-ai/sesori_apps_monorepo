@@ -33,6 +33,14 @@ class CupertinoActivityIndicator {
   const CupertinoActivityIndicator.partiallyRevealed();
 }
 ''');
+    newPackage('custom_material_ui').addFile('lib/custom_material_ui.dart', r'''
+class CircularProgressIndicator {
+  const CircularProgressIndicator();
+}
+class RefreshIndicator {
+  const RefreshIndicator();
+}
+''');
     super.setUp();
   }
 
@@ -148,6 +156,17 @@ class CupertinoActivityIndicator {
 void build() {
   const CircularProgressIndicator();
   const CupertinoActivityIndicator();
+}
+''');
+  }
+
+  void test_allowsSimilarlyNamedPackages() async {
+    await assertNoDiagnostics(r'''
+import 'package:custom_material_ui/custom_material_ui.dart';
+
+void build() {
+  const CircularProgressIndicator();
+  const RefreshIndicator();
 }
 ''');
   }

@@ -17,7 +17,7 @@ no-spinner controller when the surface already exposes refresh progress.
 | L1 Smoke | Automated: lint fixtures reject every blocked Flutter spinner constructor and allow only the wrapper fallback suppression and `RefreshIndicator.noSpinner`; widget tests verify Prego fallback, native-view selection, semantics, reduced motion, compact loading states, and pull-to-refresh composition. |
 | L2 Routine | Client end to end: exercise full-screen, inline, button, and pull-to-refresh loading states on iOS and one non-iOS client target; confirm each state uses the expected colour and remains correctly sized. |
 | L3 Release | Packaged iOS: verify repeated insertion and removal uses the native indicator without stale platform views, clipping defects, or visible animation cadence regressions. |
-| L4 Extended | Repeat with reduced motion enabled and while moving loading rows into and out of a scroll viewport. |
+| L4 Extended | Client end to end: repeat with reduced motion enabled and while moving loading rows into and out of a scroll viewport. |
 | L5 Full | No additional coverage. |
 
 ## Maintenance Sources

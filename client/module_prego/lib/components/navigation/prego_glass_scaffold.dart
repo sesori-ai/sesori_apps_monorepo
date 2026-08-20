@@ -533,11 +533,13 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
             top: _refreshIndicatorTopMargin,
             left: 0,
             right: 0,
-            child: Opacity(
-              opacity: opacity,
-              child: SizedBox.square(
-                dimension: _refreshIndicatorSize,
-                child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
+            child: Center(
+              child: Opacity(
+                opacity: opacity,
+                child: SizedBox.square(
+                  dimension: _refreshIndicatorSize,
+                  child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
+                ),
               ),
             ),
           ),
