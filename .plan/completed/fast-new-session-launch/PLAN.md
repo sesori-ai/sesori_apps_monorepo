@@ -3,13 +3,15 @@
 ## Status
 
 - **Plan slug:** `fast-new-session-launch`
-- **Status:** Active - plan ready for review
+- **Status:** Completed 2026-08-20 — Steps 1–5 and standalone follow-up 4A
+  merged; this Step 6/6 retirement PR records available release-matrix evidence
+  and the owner's accepted L3 coverage waiver
 - **Plan date:** 2026-08-13
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Implementation base:** `origin/main` at `f7bcdc63e` after Step 4 merge
-- **Current branch:** `async-generated-session-branch-rename`
+- **Implementation base:** `origin/main` at `addb95679`
+- **Current branch:** `docs/complete-fast-new-session-launch`
 - **Delivery:** six numbered PRs plus one approved standalone follow-up between
-  Steps 4 and 5; Step 1 raised this plan before production work
+  Steps 4 and 5; Step 6 retires this plan
 
 This plan and `TRACKER.md` are the authority for implementation. The code and
 released product behavior remain authoritative where this document becomes
@@ -635,7 +637,7 @@ reconciliation machinery, stop and ask before expanding scope.
 | 4/6 | `⚙️ [fast-new-session-launch] feat(client): open launching sessions immediately [step 4/6]` | 800-1,400 lines | Add sealed submission restoration, reusable Prego launch status, detail-shaped launch/loading, honest error warning, delete overlay/dependency/tests, regenerate state/localization. |
 | 4A | `⚙️ Rename generated session branches after launch` | 350-700 lines | Standalone approved follow-up: consume generated branch metadata, conditionally rename only the unpublished initial dedicated branch off the response path, persist both branch facts, and publish the existing session update. |
 | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | 80-180 lines | Reconcile affected regression docs and complete cleanup audit against actual implementation. |
-| 6/6 | `🌿 [fast-new-session-launch] test: verify faster new-session launch [step 6/6]` | 80-250 lines | Run the recorded level/matrix, record automated/manual results and timings, then move this plan from `active` to `completed` only on full required coverage. |
+| 6/6 | `🌿 [fast-new-session-launch] test: verify faster new-session launch [step 6/6]` | 80-250 lines | Record available automated and release-matrix evidence, record unexecuted coverage and timing gaps honestly, then retire this plan under the owner's explicit acceptance of those gaps. |
 
 Each implementation PR must stay below the 1,500 changed-line soft cap. If a
 step exceeds its target, prefer removing unnecessary machinery or splitting
@@ -822,6 +824,21 @@ The acceptance criterion is structural, not a brittle wall-clock SLA:
 - Auth-server branch generation is intentionally live again for current bridges.
   Worktree-name generation remains wasted until released bridge compatibility
   allows that field to be removed.
+
+## Completion Record
+
+Steps 1–5 and standalone follow-up 4A merged in PRs #894, #908, #909, #913,
+#923, and #928. Step 6 records the available automated evidence in `TRACKER.md`.
+
+The required L3 Release matrix was not executed. No release-target phone/bridge
+run, production-plugin enumeration, compatibility exercise, manual failure
+simulation, or matched baseline/final timing measurement is claimed. On
+2026-08-20, the owner explicitly accepted retirement with those unavailable or
+unexecuted L3 rows waived. That waiver does not convert them into passing
+coverage.
+
+Codex PR #1002 and ACP attachment work are standalone follow-ups. Neither blocks
+this plan's completed implementation or retirement.
 
 ## Expected Result
 
