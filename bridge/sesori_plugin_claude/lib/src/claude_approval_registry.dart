@@ -141,7 +141,7 @@ final class ClaudeApprovalRegistry({
       };
       _pending[id] = pending;
       _emitActivity(
-        BridgeSseQuestionAsked(
+        event: BridgeSseQuestionAsked(
           id: id,
           sessionID: attributedSessionId,
           displaySessionId: attributedSessionId,
@@ -164,7 +164,7 @@ final class ClaudeApprovalRegistry({
     );
     _pending[id] = pending;
     _emitActivity(
-      BridgeSsePermissionAsked(
+      event: BridgeSsePermissionAsked(
         requestID: id,
         sessionID: attributedSessionId,
         displaySessionId: attributedSessionId,
@@ -256,7 +256,7 @@ final class ClaudeApprovalRegistry({
     }
     _pending.remove(id);
     _emitActivity(
-      BridgeSsePermissionReplied(
+      event: BridgeSsePermissionReplied(
         requestID: id,
         sessionID: entry.sessionId,
         displaySessionId: entry.sessionId,
@@ -281,7 +281,7 @@ final class ClaudeApprovalRegistry({
     }
     _pending.remove(id);
     _emitActivity(
-      BridgeSseQuestionReplied(requestID: id, sessionID: entry.sessionId, displaySessionId: entry.sessionId),
+      event: BridgeSseQuestionReplied(requestID: id, sessionID: entry.sessionId, displaySessionId: entry.sessionId),
     );
     return true;
   }
@@ -292,7 +292,7 @@ final class ClaudeApprovalRegistry({
     if (!_deny(entry: entry, message: "User rejected the request.")) return false;
     _pending.remove(id);
     _emitActivity(
-      BridgeSseQuestionRejected(requestID: id, sessionID: entry.sessionId, displaySessionId: entry.sessionId),
+      event: BridgeSseQuestionRejected(requestID: id, sessionID: entry.sessionId, displaySessionId: entry.sessionId),
     );
     return true;
   }
@@ -326,7 +326,7 @@ final class ClaudeApprovalRegistry({
     switch (entry) {
       case _PendingPermission():
         _emitActivity(
-          BridgeSsePermissionReplied(
+          event: BridgeSsePermissionReplied(
             requestID: entry.id,
             sessionID: entry.sessionId,
             displaySessionId: entry.sessionId,
@@ -335,7 +335,7 @@ final class ClaudeApprovalRegistry({
         );
       case _PendingQuestion():
         _emitActivity(
-          BridgeSseQuestionRejected(
+          event: BridgeSseQuestionRejected(
             requestID: entry.id,
             sessionID: entry.sessionId,
             displaySessionId: entry.sessionId,
@@ -346,7 +346,7 @@ final class ClaudeApprovalRegistry({
 
   /// Pending approvals feed the awaiting-input flag in the activity summary,
   /// so invalidate that summary after every approval transition.
-  void _emitActivity(BridgeSseEvent event) {
+  void _emitActivity({required BridgeSseEvent event}) {
     _emit(event);
     _emit(const BridgeSseProjectUpdated());
   }
