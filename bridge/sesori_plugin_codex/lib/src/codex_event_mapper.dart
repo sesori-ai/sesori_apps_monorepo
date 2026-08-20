@@ -716,11 +716,12 @@ class CodexEventMapper({
   }
 
   PluginMessageTime? _turnMessageTime(Map<String, dynamic>? turn) {
-    final created = _secondsToMilliseconds(turn?["startedAt"]);
+    final completed = _secondsToMilliseconds(turn?["completedAt"]);
+    final created = completed ?? _secondsToMilliseconds(turn?["startedAt"]);
     if (created == null) return null;
     return PluginMessageTime(
       created: created,
-      completed: _secondsToMilliseconds(turn?["completedAt"]),
+      completed: completed,
     );
   }
 

@@ -311,7 +311,7 @@ class CodexToolLifecycleTracker({
     final updates = <CodexProjectedTool>[];
     if (thread != null) {
       for (final tool in thread.tools.values) {
-        if (!tool.isRolloutCall || tool.status != PluginToolStatus.running) {
+        if (tool.status != PluginToolStatus.running) {
           continue;
         }
         tool.status = terminalStatus;

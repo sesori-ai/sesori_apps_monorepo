@@ -1593,7 +1593,7 @@ void main() {
       expect(message.sessionID, "t-quota");
       expect(message.errorName, "CodexError");
       expect(message.errorMessage, "You've hit your usage limit.");
-      expect(message.time, const shared.MessageTime(created: 1700000005000, completed: 1700000010000));
+      expect(message.time, const shared.MessageTime(created: 1700000010000, completed: 1700000010000));
       expect(parseAsSesori(event), isA<shared.SesoriMessageUpdated>());
     });
 

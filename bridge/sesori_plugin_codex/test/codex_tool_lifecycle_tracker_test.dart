@@ -525,8 +525,7 @@ void main() {
         "type": "custom_tool_call",
         "call_id": "call-directed-image-wrapper-with-trailing-code",
         "name": "exec",
-        "input":
-            "// @exec: {\"yield-time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); console.log('keep visible');",
+        "input": "// @exec: {\"yield-time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); console.log('keep visible');",
       },
     });
     final directedWrapperWithCallLikePrompt = CodexRolloutLineDto.fromJson({
@@ -717,6 +716,39 @@ void main() {
     );
     final attachment = durable.single.attachments.single as PluginMessageAttachmentInlineImage;
     expect(attachment.filename, "final.png");
+  });
+
+  test("terminal notification errors a running app-server image", () {
+    final target = tracker();
+    target.observeAppServerTool(
+      notification: const CodexServerNotification(
+        method: "item/started",
+        params: {
+          "threadId": "thread-1",
+          "startedAtMs": 1779293200000,
+          "item": {
+            "type": "imageGeneration",
+            "id": "image-running",
+          },
+        },
+      ),
+      imageGeneration: const CodexImageGenerationItemDto(
+        id: "image-running",
+        status: CodexImageGenerationStatus.inProgress,
+        revisedPrompt: null,
+        result: "",
+        savedPath: null,
+      ),
+    );
+
+    final terminal = target
+        .observeTerminalNotification(
+          notification: _terminalNotification(method: "error"),
+        )
+        .single;
+
+    expect(terminal.canonicalId, "image-running");
+    expect(terminal.status, PluginToolStatus.error);
   });
 
   test("suppresses wait calls and projects their result onto the shell call", () {

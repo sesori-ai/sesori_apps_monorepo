@@ -1326,6 +1326,80 @@ void main() {
       expect(plugin.getActiveSessionsSummary(), isEmpty);
     });
 
+    test("a fresh turn start replaces a stale active turn before its response", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-stale-active", "cwd": "/work/sample"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-stale"},
+          },
+        ),
+      ]);
+      await plugin.sendPrompt(
+        promptId: "prompt-1",
+        sessionId: "t-stale-active",
+        parts: const [PluginPromptPart.text(text: "first task")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      fake.pushNotification("turn/started", {
+        "threadId": "t-stale-active",
+        "turn": {"id": "u-stale"},
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      fake.holdNextResponse("turn/start");
+      final secondPrompt = plugin.sendPrompt(
+        promptId: "prompt-2",
+        sessionId: "t-stale-active",
+        parts: const [PluginPromptPart.text(text: "fresh task")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      for (
+        var attempt = 0;
+        attempt < 100 && fake.sentMethods.where((method) => method == "turn/start").length < 2;
+        attempt++
+      ) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      fake.pushNotification("thread/status/changed", {
+        "threadId": "t-stale-active",
+        "status": {"type": "active"},
+      });
+      fake.pushNotification("turn/started", {
+        "threadId": "t-stale-active",
+        "turn": {"id": "u-fresh"},
+      });
+      await Future<void>.delayed(Duration.zero);
+      fake.respondToHeld(
+        "turn/start",
+        const _Response(
+          result: {
+            "turn": {"id": "u-fresh"},
+          },
+        ),
+      );
+      await secondPrompt;
+
+      final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+      fake.pushNotification("turn/completed", {
+        "threadId": "t-stale-active",
+        "turn": {"id": "u-fresh"},
+      });
+      await idle.timeout(const Duration(seconds: 1));
+
+      expect((await plugin.getSessionStatuses())["t-stale-active"], isA<PluginSessionStatusIdle>());
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+    });
+
     test("abort reconciles an already-idle Codex turn", () async {
       const sessionId = "019a0000-1111-2222-3333-cccccccccccc";
       final rollout = File(
@@ -1388,6 +1462,8 @@ void main() {
           )
           .cast<BridgeSseMessagePartUpdated>()
           .first;
+      final emittedEvents = <BridgeSseEvent>[];
+      final eventSubscription = plugin.events.listen(emittedEvents.add);
       rollout.writeAsStringSync(
         "${jsonEncode(_toolCall(
           id: "fc-abort",
@@ -1406,6 +1482,8 @@ void main() {
       expect((await plugin.getSessionStatuses())[sessionId], isA<PluginSessionStatusIdle>());
       expect(plugin.currentWorkState, PluginWorkState.idle);
       expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(emittedEvents.whereType<BridgeSseSessionUpdated>(), hasLength(1));
+      await eventSubscription.cancel();
     });
 
     test("stale abort reconciliation preserves a newer external turn", () async {

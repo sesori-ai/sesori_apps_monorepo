@@ -104,6 +104,10 @@ class CodexPlugin._({
   /// exposing codex turn identifiers outside the plugin.
   final Set<String> _provisionalAcceptedTurnThreadIds = {};
 
+  /// In-flight turn requests authorize the next authoritative `turn/started`
+  /// to replace a stale active id left behind by a missing terminal event.
+  final Map<String, int> _pendingTurnRequestRevisionByThread = {};
+
   /// Advances whenever authoritative turn evidence wins a `turn/start`
   /// response race, preventing that response from restoring stale busy state.
   final Map<String, int> _turnEvidenceRevisionByThread = {};
@@ -258,6 +262,7 @@ class CodexPlugin._({
       _eventBuffer.add(const BridgeSseProjectUpdated());
     }
     _provisionalAcceptedTurnThreadIds.clear();
+    _pendingTurnRequestRevisionByThread.clear();
     _turnEvidenceRevisionByThread.keys.toList().forEach(_advanceTurnEvidenceRevision);
     _workState.set(PluginWorkState.unknown);
     _onDisconnected?.call();
@@ -473,7 +478,9 @@ class CodexPlugin._({
 
     final activeTurnId = _activeTurnByThread[threadId];
     final notificationTurnId = _notificationTurnId(notification.params);
-    if (notification.method == "turn/started" && _provisionalAcceptedTurnThreadIds.contains(threadId)) {
+    final hasPendingTurnRequest = _hasCurrentPendingTurnRequest(threadId);
+    if (notification.method == "turn/started" &&
+        (_provisionalAcceptedTurnThreadIds.contains(threadId) || hasPendingTurnRequest)) {
       return false;
     }
     if (activeTurnId != null && notificationTurnId != null && activeTurnId != notificationTurnId) {
@@ -482,7 +489,7 @@ class CodexPlugin._({
     return notification.method == "thread/status/changed" &&
         _eventMapper.isIdleThreadStatus(notification.params["status"]) &&
         notificationTurnId == null &&
-        (activeTurnId != null || _provisionalAcceptedTurnThreadIds.contains(threadId));
+        (activeTurnId != null || _provisionalAcceptedTurnThreadIds.contains(threadId) || hasPendingTurnRequest);
   }
 
   String? _notificationTurnId(Map<String, dynamic> params) {
@@ -518,8 +525,10 @@ class CodexPlugin._({
         return _setSessionStatus(threadId, const PluginSessionStatus.idle());
       case "thread/status/changed":
         if (threadId == null) return false;
-        if (!_recordAuthoritativeTurnEvidence(threadId)) return false;
         final idle = _eventMapper.isIdleThreadStatus(params["status"]);
+        if ((idle || !_hasCurrentPendingTurnRequest(threadId)) && !_recordAuthoritativeTurnEvidence(threadId)) {
+          return false;
+        }
         if (idle) _activeTurnByThread.remove(threadId);
         return _setSessionStatus(
           threadId,
@@ -714,7 +723,7 @@ class CodexPlugin._({
       _eventMapper.setThreadModel(sessionId, model.modelID);
     }
     _rolloutTailer.start(sessionId: sessionId);
-    final evidenceRevision = _turnEvidenceRevisionByThread[sessionId] ?? 0;
+    final evidenceRevision = _recordPendingTurnRequest(sessionId);
     try {
       final dispatch = await _sessionService.sendCommand(
         threadId: sessionId,
@@ -742,6 +751,10 @@ class CodexPlugin._({
       }
       _syncWorkState();
     } on Object {
+      _clearPendingTurnRequest(
+        threadId: sessionId,
+        evidenceRevision: evidenceRevision,
+      );
       _rolloutTailer.stop(sessionId: sessionId);
       rethrow;
     }
@@ -788,13 +801,23 @@ class CodexPlugin._({
     required String sessionId,
     required String turnId,
   }) async {
+    final terminal = CodexServerNotification(
+      method: "turn/completed",
+      params: {
+        "threadId": sessionId,
+        "turn": {"id": turnId, "status": "interrupted"},
+      },
+    );
     int? retiredTurnRevision;
     final drain = _notificationWork.then<void>((_) async {
       if (_activeTurnByThread[sessionId] != turnId) return;
       if (!_recordAuthoritativeTurnEvidence(sessionId)) return;
       _activeTurnByThread.remove(sessionId);
       retiredTurnRevision = _turnEvidenceRevisionByThread[sessionId];
-      await _finishAlreadyIdleTurn(sessionId: sessionId, turnId: turnId);
+      await _finishAlreadyIdleTurn(
+        sessionId: sessionId,
+        terminal: terminal,
+      );
     });
     final guardedDrain = drain.catchError((Object error, StackTrace stackTrace) {
       Log.e(
@@ -813,7 +836,7 @@ class CodexPlugin._({
         return;
       }
       final activityChanged = _setSessionStatus(sessionId, const PluginSessionStatus.idle());
-      _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));
+      _eventMapper.map(terminal).forEach(_eventBuffer.add);
       if (activityChanged) _eventBuffer.add(const BridgeSseProjectUpdated());
     });
     final guarded = reconciliation.catchError((Object error, StackTrace stackTrace) {
@@ -827,7 +850,10 @@ class CodexPlugin._({
     await guarded;
   }
 
-  Future<void> _finishAlreadyIdleTurn({required String sessionId, required String turnId}) async {
+  Future<void> _finishAlreadyIdleTurn({
+    required String sessionId,
+    required CodexServerNotification terminal,
+  }) async {
     try {
       await _rolloutTailer.finish(sessionId: sessionId);
     } on Object catch (error, stackTrace) {
@@ -838,13 +864,6 @@ class CodexPlugin._({
         stackTrace,
       );
     }
-    final terminal = CodexServerNotification(
-      method: "turn/completed",
-      params: {
-        "threadId": sessionId,
-        "turn": {"id": turnId, "status": "interrupted"},
-      },
-    );
     for (final tool in _toolLifecycleTracker.observeTerminalNotification(notification: terminal)) {
       _eventMapper.mapProjectedTool(threadId: sessionId, tool: tool).forEach(_eventBuffer.add);
     }
@@ -895,7 +914,7 @@ class CodexPlugin._({
     // Capture the current EOF before Codex can append this turn's response
     // items. `start` is idempotent when turn/started arrives afterwards.
     _rolloutTailer.start(sessionId: threadId);
-    final evidenceRevision = _turnEvidenceRevisionByThread[threadId] ?? 0;
+    final evidenceRevision = _recordPendingTurnRequest(threadId);
     try {
       final dispatch = await _sessionService.startTurn(
         threadId: threadId,
@@ -905,6 +924,10 @@ class CodexPlugin._({
         collaborationMode: collaborationMode,
       );
       if (!dispatch.started) {
+        _clearPendingTurnRequest(
+          threadId: threadId,
+          evidenceRevision: evidenceRevision,
+        );
         _rolloutTailer.stop(sessionId: threadId);
         return;
       }
@@ -926,6 +949,10 @@ class CodexPlugin._({
       }
       _syncWorkState();
     } on Object {
+      _clearPendingTurnRequest(
+        threadId: threadId,
+        evidenceRevision: evidenceRevision,
+      );
       _rolloutTailer.stop(sessionId: threadId);
       rethrow;
     }
@@ -951,6 +978,7 @@ class CodexPlugin._({
   bool _recordAuthoritativeTurnEvidence(String threadId) {
     if (_deletedThreadIds.contains(threadId)) return false;
     _provisionalAcceptedTurnThreadIds.remove(threadId);
+    _pendingTurnRequestRevisionByThread.remove(threadId);
     _advanceTurnEvidenceRevision(threadId);
     return true;
   }
@@ -958,7 +986,26 @@ class CodexPlugin._({
   void _recordAuthoritativeThreadCreation(String threadId) {
     _deletedThreadIds.remove(threadId);
     _provisionalAcceptedTurnThreadIds.remove(threadId);
+    _pendingTurnRequestRevisionByThread.remove(threadId);
     _advanceTurnEvidenceRevision(threadId);
+  }
+
+  int _recordPendingTurnRequest(String threadId) {
+    final revision = _turnEvidenceRevisionByThread[threadId] ?? 0;
+    _pendingTurnRequestRevisionByThread[threadId] = revision;
+    return revision;
+  }
+
+  bool _hasCurrentPendingTurnRequest(String threadId) =>
+      _pendingTurnRequestRevisionByThread[threadId] == (_turnEvidenceRevisionByThread[threadId] ?? 0);
+
+  void _clearPendingTurnRequest({
+    required String threadId,
+    required int evidenceRevision,
+  }) {
+    if (_pendingTurnRequestRevisionByThread[threadId] == evidenceRevision) {
+      _pendingTurnRequestRevisionByThread.remove(threadId);
+    }
   }
 
   void _advanceTurnEvidenceRevision(String threadId) {
@@ -1076,6 +1123,7 @@ class CodexPlugin._({
   Future<void> deleteSession(String sessionId) async {
     _deletedThreadIds.add(sessionId);
     _provisionalAcceptedTurnThreadIds.remove(sessionId);
+    _pendingTurnRequestRevisionByThread.remove(sessionId);
     _advanceTurnEvidenceRevision(sessionId);
     if (_activeTurnByThread.containsKey(sessionId)) {
       try {
