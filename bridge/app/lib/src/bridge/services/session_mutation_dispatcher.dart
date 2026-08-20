@@ -89,16 +89,16 @@ class SessionMutationDispatcher({
       operation: SessionOperation.deleteSession,
       body: () async {
         final newlySuppressedSessionIds = <String>{};
-        if (_sessionIdsSuppressedFromEvents.add(sessionId)) {
-          newlySuppressedSessionIds.add(sessionId);
-        }
-        for (final subtreeSessionId in await _sessionRepository.getSessionSubtreeIds(sessionId: sessionId)) {
-          if (_sessionIdsSuppressedFromEvents.add(subtreeSessionId)) {
-            newlySuppressedSessionIds.add(subtreeSessionId);
-          }
-        }
         var deletionCommitted = false;
         try {
+          if (_sessionIdsSuppressedFromEvents.add(sessionId)) {
+            newlySuppressedSessionIds.add(sessionId);
+          }
+          for (final subtreeSessionId in await _sessionRepository.getSessionSubtreeIds(sessionId: sessionId)) {
+            if (_sessionIdsSuppressedFromEvents.add(subtreeSessionId)) {
+              newlySuppressedSessionIds.add(subtreeSessionId);
+            }
+          }
           final cleanupResult = await cleanup();
           if (cleanupResult is CleanupRejected) return cleanupResult;
           final deleted = await _sessionRepository.deleteSession(sessionId: sessionId);

@@ -216,7 +216,7 @@ void main() {
       expect(await db.sessionDao.getSession(sessionId: "s1"), isNotNull);
     });
 
-    test("suppresses the root while its subtree lookup is pending", () async {
+    test("rolls back root suppression when its subtree lookup fails", () async {
       final gatedRepository = _GatedSubtreeSessionRepository();
       final gatedOperationDispatcher = SessionOperationDispatcher(sessionRepository: gatedRepository);
       final gatedDispatcher = SessionMutationDispatcher(
@@ -435,7 +435,7 @@ class _GatedSubtreeSessionRepository() implements SessionRepository {
   Future<List<String>> getSessionSubtreeIds({required String sessionId}) async {
     lookupStarted.complete();
     await releaseLookup.future;
-    return [sessionId];
+    throw StateError("subtree lookup failed");
   }
 
   @override
