@@ -44,10 +44,15 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
   /// settled ids need this bounded window.
   final Queue<String> recentPromptIds = Queue<String>();
 
-  bool isAdmitted({required String promptId}) =>
-      active?.promptId == promptId ||
-      queue.any((turn) => turn.promptId == promptId) ||
-      recentPromptIds.contains(promptId);
+  bool isAdmitted({required String promptId}) {
+    final activeTurn = active;
+    final activeAccepted =
+        activeTurn?.promptId == promptId &&
+        (activeTurn is! _PiQueuedPromptTurn || activeTurn.queueState != _PiQueueState.cancelled);
+    return activeAccepted ||
+        queue.any((turn) => turn.promptId == promptId) ||
+        recentPromptIds.contains(promptId);
+  }
 
   void recordSettledPromptId({required String promptId}) {
     recentPromptIds.addLast(promptId);

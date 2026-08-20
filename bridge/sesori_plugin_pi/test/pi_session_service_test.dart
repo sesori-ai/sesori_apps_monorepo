@@ -439,7 +439,7 @@ void main() {
     await _waitForIdle(service: service, sessionId: "session");
   });
 
-  test("an undispatched Pi prompt can be cancelled from the bridge queue", () async {
+  test("an active undispatched Pi prompt can be cancelled and immediately retried", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
     addTearDown(fixture.dispose);
@@ -461,9 +461,24 @@ void main() {
     );
     expect(service.queuedPrompts(sessionId: "session"), isEmpty);
 
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "cancel-queued",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "retry me")],
+      userVisibleText: "retry me",
+      variant: null,
+      model: null,
+    );
+    expect(service.queuedPrompts(sessionId: "session"), hasLength(1));
+
     await _answerEntries(process);
+    final retried = await waitForCommand(process: process, type: "prompt");
+    expect(retried["message"], "retry me");
+    process.emitResponse(id: retried["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
-    expect(process.written.where((frame) => frame["type"] == "prompt"), isEmpty);
+    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
     expect(
       service.cancelQueuedPrompt(sessionId: "session", promptId: "cancel-queued"),
       isFalse,

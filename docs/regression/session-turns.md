@@ -51,10 +51,10 @@ defaults and queued client sends coherent.
   remain FIFO. An accepted prompt remains bridge-queued through startup and
   selection until Pi echoes its correlated user message, including an
   attachment-only echo; it can be cancelled before dispatch, and its
-  undispatched prompt id remains retryable. If a successful turn omits that
-  echo, Pi maps the stored payload through the same user-message path before
-  clearing the queue. Process exit settles current work before queued work
-  reconnects.
+  undispatched prompt id remains immediately retryable while cancellation
+  settles. If a successful turn omits that echo, Pi maps the stored payload
+  through the same user-message path before clearing the queue. Process exit
+  settles current work before queued work reconnects.
 - Pi slash commands are accepted by their correlated response or a matching
   extension dialog and remain in the request's sending state until then rather
   than exposing a cancellable bridge-queue entry. Commands reject while that
