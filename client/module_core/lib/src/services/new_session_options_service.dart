@@ -122,8 +122,16 @@ class NewSessionOptionsService({
               ),
       SessionOptionsRepositoryRefreshFailedUnavailable() => switch (mode) {
         NewSessionOptionsLoadMode.dynamicLoad => const NewSessionOptionsLoadFailureUnavailable(),
-        NewSessionOptionsLoadMode.forcedRefresh ||
-        NewSessionOptionsLoadMode.silentRefresh => const NewSessionOptionsRefreshFailureUnavailable(),
+        NewSessionOptionsLoadMode.forcedRefresh => const NewSessionOptionsRefreshFailureUnavailable(),
+        // A refresh nobody asked for must not take working options away. The
+        // bridge served these moments ago, so the honest answer is that the
+        // update failed, not that there is nothing left to choose from.
+        NewSessionOptionsLoadMode.silentRefresh => previousOptions == null
+            ? const NewSessionOptionsRefreshFailureUnavailable()
+            : NewSessionOptionsFailureRetained(
+                options: previousOptions,
+                source: NewSessionOptionsSource.aggregate,
+              ),
       },
       SessionOptionsRepositoryFailure(:final error) => _transientFailure(
         error: error,

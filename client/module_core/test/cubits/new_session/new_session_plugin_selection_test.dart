@@ -571,6 +571,35 @@ void main() {
       expect(cubit.state.agentModelData?.agents.single.name, "fresh-agent");
     });
 
+    test("a failed background refresh keeps the options it was refreshing", () async {
+      when(
+        pluginRepository.listPlugins,
+      ).thenAnswer((_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])));
+      final refreshed = Completer<SessionOptionsRepositoryResult>();
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+          mode: any(named: "mode"),
+        ),
+      ).thenAnswer((invocation) async {
+        return invocation.namedArguments[#mode] == SessionOptionsRequestMode.dynamic
+            ? _optionsCatalog(agentName: "cached-agent", providers: const [], isStale: true)
+            : await refreshed.future;
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+
+      refreshed.complete(const SessionOptionsRepositoryRefreshFailedUnavailable());
+      await _settle();
+
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsFailureRetainedState>());
+      expect(cubit.state.agentModelData?.agents.single.name, "cached-agent");
+      expect(cubit.canCreateSession, isTrue);
+    });
+
     test("a background refresh from a superseded selection is not joined", () async {
       when(pluginRepository.listPlugins).thenAnswer(
         (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA, pluginB])),
