@@ -364,7 +364,7 @@ class AcpEventMapper({
         // is reconstructed separately by AcpReplayCollector.
         return const [];
       case "tool_call":
-        return _beforeTool(
+        return _afterReasoning(
           sessionId: sessionId,
           events: _toolCall(sessionId: sessionId, update: update),
         );
@@ -429,24 +429,7 @@ class AcpEventMapper({
       ..._finalizeActiveTextParts(
         sessionId: sessionId,
         partType: PluginMessagePartType.reasoning,
-      ),
-      ...events,
-    ];
-  }
-
-  List<BridgeSseEvent> _beforeTool({
-    required String sessionId,
-    required List<BridgeSseEvent> events,
-  }) {
-    if (events.isEmpty) return events;
-    return [
-      ..._finalizeActiveTextParts(
-        sessionId: sessionId,
-        partType: PluginMessagePartType.reasoning,
-      ),
-      ..._finalizeActiveTextParts(
-        sessionId: sessionId,
-        partType: PluginMessagePartType.text,
+        messageId: null,
       ),
       ...events,
     ];
@@ -455,13 +438,18 @@ class AcpEventMapper({
   List<BridgeSseEvent> _finalizeActiveTextParts({
     required String sessionId,
     required PluginMessagePartType partType,
+    required String? messageId,
   }) {
     final accumulators = _textPartAccumulators[sessionId];
     if (accumulators == null) return const [];
 
     final events = <BridgeSseEvent>[];
     for (final accumulator in accumulators.values) {
-      if (accumulator.type != partType || !accumulator.isStreaming) continue;
+      if (accumulator.type != partType ||
+          !accumulator.isStreaming ||
+          (messageId != null && accumulator.messageId != messageId)) {
+        continue;
+      }
       accumulator.isStreaming = false;
       events.add(
         BridgeSseMessagePartUpdated(
@@ -477,6 +465,15 @@ class AcpEventMapper({
       );
     }
     return events;
+  }
+
+  List<BridgeSseEvent> _finalizeCurrentIdlessAssistantText({required String sessionId}) {
+    if (!_openIdlessAssistant.contains(sessionId)) return const [];
+    return _finalizeActiveTextParts(
+      sessionId: sessionId,
+      partType: PluginMessagePartType.text,
+      messageId: _currentIdlessAssistantMessageId(sessionId),
+    );
   }
 
   /// Hook for non-`session/update` notifications (harness extensions such as
@@ -800,6 +797,9 @@ class AcpEventMapper({
     final toolCallId = update["toolCallId"] as String?;
     if (toolCallId == null || toolCallId.isEmpty) return const [];
     final prior = _liveTools[sessionId]?[toolCallId];
+    final boundaryEvents = prior == null
+        ? _finalizeCurrentIdlessAssistantText(sessionId: sessionId)
+        : const <BridgeSseEvent>[];
     if (prior == null) {
       _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     }
@@ -830,6 +830,7 @@ class AcpEventMapper({
     );
     (_liveTools[sessionId] ??= {})[toolCallId] = state;
     final events = <BridgeSseEvent>[
+      ...boundaryEvents,
       if (prior == null) _toolEnvelope(sessionId: sessionId, messageId: messageId),
       _toolPartEvent(sessionId: sessionId, messageId: messageId, state: state),
     ];
@@ -855,6 +856,9 @@ class AcpEventMapper({
     // which would blank an existing tool card. Mirrors the replay collector,
     // which already merges — keeping live and history renderings consistent.
     final prior = _liveTools[sessionId]?[toolCallId];
+    final boundaryEvents = prior == null
+        ? _finalizeCurrentIdlessAssistantText(sessionId: sessionId)
+        : const <BridgeSseEvent>[];
     if (prior == null) {
       _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     }
@@ -885,6 +889,7 @@ class AcpEventMapper({
       hasExplicitStatus: (prior?.hasExplicitStatus ?? false) || mappedStatus != null,
     );
     final events = <BridgeSseEvent>[
+      ...boundaryEvents,
       // ACP events can be reordered (reconnect / resume / replay), so a
       // `tool_call_update` may arrive before its `tool_call`. When it is
       // first-seen, synthesize the message envelope — like `_textChunk` does —
@@ -912,13 +917,15 @@ class AcpEventMapper({
   }
 
   void _closeCurrentIdlessAssistantContent({required String sessionId}) {
-    final messageId =
-        "$sessionId-t${_turn(sessionId)}-${_ChunkRole.assistant.name}-a${_idlessAssistantSeq[sessionId] ?? 0}";
+    final messageId = _currentIdlessAssistantMessageId(sessionId);
     final sessionTrackers = _contentTrackers[sessionId];
     sessionTrackers?.remove(messageId);
     if (sessionTrackers?.isEmpty ?? false) _contentTrackers.remove(sessionId);
     _closeIdlessAssistantEnvelope(sessionId);
   }
+
+  String _currentIdlessAssistantMessageId(String sessionId) =>
+      "$sessionId-t${_turn(sessionId)}-${_ChunkRole.assistant.name}-a${_idlessAssistantSeq[sessionId] ?? 0}";
 
   BridgeSseMessageUpdated _toolEnvelope({required String sessionId, required String messageId}) {
     return BridgeSseMessageUpdated(

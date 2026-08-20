@@ -192,6 +192,69 @@ void main() {
       );
     });
 
+    test("a first-seen tool update finalizes active id-less assistant text", () {
+      mapper.beginTurn("s1");
+      mapper.map(
+        update({
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": "Before the reordered tool update."},
+        }),
+      );
+
+      final toolEvents = mapper.map(
+        update({
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "tool-1",
+          "kind": "search",
+          "status": "completed",
+        }),
+      );
+
+      expect(
+        toolEvents.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.text).whereType<String>(),
+        contains("Before the reordered tool update."),
+      );
+    });
+
+    test("a tool call does not finalize an explicit assistant message", () {
+      mapper.beginTurn("s1");
+      mapper.map(
+        update({
+          "sessionUpdate": "agent_message_chunk",
+          "messageId": "m1",
+          "content": {"type": "text", "text": "Before the tool."},
+        }),
+      );
+
+      final toolEvents = mapper.map(
+        update({
+          "sessionUpdate": "tool_call",
+          "toolCallId": "tool-1",
+          "kind": "search",
+          "status": "completed",
+        }),
+      );
+      expect(
+        toolEvents.whereType<BridgeSseMessagePartUpdated>().where(
+          (event) => event.part.type == PluginMessagePartType.text,
+        ),
+        isEmpty,
+      );
+
+      final afterTool = mapper.map(
+        update({
+          "sessionUpdate": "agent_message_chunk",
+          "messageId": "m1",
+          "content": {"type": "text", "text": " After the tool."},
+        }),
+      );
+      expect(afterTool.whereType<BridgeSseMessagePartDelta>().single.delta, " After the tool.");
+      expect(
+        mapper.finalizeTurn(sessionId: "s1").whereType<BridgeSseMessagePartUpdated>().single.part.text,
+        "Before the tool. After the tool.",
+      );
+    });
+
     test("forgetSession drops pending text snapshots", () {
       mapper.beginTurn("s1");
       mapper.map(
