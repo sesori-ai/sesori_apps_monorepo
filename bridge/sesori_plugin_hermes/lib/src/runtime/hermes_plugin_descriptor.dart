@@ -24,7 +24,14 @@ const int _setupProbeOutputLimit = 64 * 1024;
 class const HermesPluginDescriptor() extends BridgePluginDescriptor {
   static const Duration _connectBudget = Duration(seconds: 15);
   static const Duration _versionProbeTimeout = Duration(seconds: 10);
-  static final SemanticVersion _minHermesVersion = SemanticVersion.parse(value: "0.20.4");
+
+  /// Oldest Hermes Agent release with the ACP behavior this plugin requires.
+  static const String minVersion = "0.20.0";
+
+  /// Latest stable Hermes Agent release validated against this plugin.
+  static const String targetVersion = "0.20.4";
+
+  static final SemanticVersion _minHermesVersion = SemanticVersion.parse(value: minVersion);
 
   /// CLI option naming the Hermes CLI binary (path or PATH name). Declared
   /// as the bare local name; the bridge's [PluginCliOptionsMapper] namespaces

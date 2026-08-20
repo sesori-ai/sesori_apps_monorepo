@@ -28,7 +28,7 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 /// install capability.
 ///
 /// ## Bumping Cursor
-/// Change [_bundledVersion], re-download all four assets, recompute their
+/// Change [targetVersion], re-download all four assets, recompute their
 /// SHA-256 values, and raise [minPathVersion] only when bridge behavior needs a
 /// newer Cursor capability.
 class const CursorRuntimeManifest() extends RuntimeManifest {
@@ -37,11 +37,14 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
   /// silently no-op them, so the experience breaks invisibly.
   static final CalendarRuntimeVersion _minPathVersion = CalendarRuntimeVersion.parse(value: "2026.07.16");
 
+  /// The latest official-installer Cursor build targeted by this plugin.
+  static const String targetVersion = "2026.08.11-e8db854";
+
   /// The exact Cursor CLI build the managed runtime installs, preserved
   /// verbatim: [CalendarRuntimeVersion] keeps the publisher's string, so the
   /// download URL and the on-disk version directory both use it unchanged.
   static final CalendarRuntimeVersion _bundledVersion = CalendarRuntimeVersion.parse(
-    value: "2026.08.11-e8db854",
+    value: targetVersion,
   );
 
   static const String _downloadBaseUrl = "https://downloads.cursor.com/lab";

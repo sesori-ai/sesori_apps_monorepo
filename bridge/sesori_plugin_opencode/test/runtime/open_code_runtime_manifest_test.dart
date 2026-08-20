@@ -51,6 +51,8 @@ void main() {
     });
 
     test("bundled version is at least the minimum supported version", () {
+      expect(OpenCodeRuntimeManifest.targetVersion, "1.18.19");
+      expect(manifest.bundledVersion.toString(), OpenCodeRuntimeManifest.targetVersion);
       expect(manifest.minPathVersion.toString(), "1.14.0");
       expect(
         manifest.bundledVersion.compareTo(manifest.minPathVersion),

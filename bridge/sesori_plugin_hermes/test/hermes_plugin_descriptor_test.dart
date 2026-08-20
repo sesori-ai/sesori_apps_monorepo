@@ -26,6 +26,8 @@ void main() {
         isTrue,
         reason: "Hermes advertises prompt image support",
       );
+      expect(HermesPluginDescriptor.minVersion, "0.20.0");
+      expect(HermesPluginDescriptor.targetVersion, "0.20.4");
     });
 
     test("declares only the binary option and no install capability", () {
@@ -271,7 +273,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 1,
-            stdoutBytes: utf8.encode("0.20.3\n"),
+            stdoutBytes: utf8.encode("0.19.0\n"),
             stderrBytes: const [],
             exitCode: Future<int>.value(0),
           ),
@@ -295,7 +297,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 1,
-            stdoutBytes: utf8.encode("0.20.3\n"),
+            stdoutBytes: utf8.encode("0.19.0\n"),
             stderrBytes: const [],
             exitCode: Future<int>.value(0),
           ),

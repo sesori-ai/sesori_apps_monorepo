@@ -8,7 +8,11 @@ import "../pi_identity.dart";
 /// Pinned official Pi package archives used by managed installation.
 class const PiRuntimeManifest() extends RuntimeManifest {
   static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "0.84.1");
-  static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: "0.84.2");
+
+  /// The latest stable Pi release targeted by this plugin.
+  static const String targetVersion = "0.84.2";
+
+  static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: targetVersion);
 
   static const Map<PlatformOs, Map<PlatformArch, RuntimeAsset>> _assets = {
     PlatformOs.macos: {

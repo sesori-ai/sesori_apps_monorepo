@@ -1,46 +1,47 @@
 ---
 name: update-backend-runtimes
-description: Update the targeted OpenCode, Codex, Cursor, Claude Code, Hermes Agent, Pi, and OMP CLI versions used by the Sesori bridge. Use when asked to update, bump, or refresh coding harness targets, minimum versions, managed runtimes, or release checksums.
+description: Update the target OpenCode, Codex, Cursor, Claude Code, Hermes Agent, Pi, and OMP CLI versions used by the Sesori bridge. Use when asked to update, bump, or refresh coding harness targets, managed runtimes, or release checksums while preserving compatibility minimums.
 ---
 
 # Update Plugin Harness Targets
 
 Update every registered bridge harness target to its latest stable release. This
-includes managed-runtime pins and direct-CLI compatibility floors and is
-separate from the general Dart/Flutter dependency update workflow.
+includes managed-runtime pins and direct-CLI validation metadata, never an
+implicit compatibility-floor increase, and is separate from the general
+Dart/Flutter dependency update workflow.
 
 ## Scope
 
-- OpenCode managed runtime and PATH minimum:
+- OpenCode managed target and PATH minimum:
   `bridge/sesori_plugin_opencode/lib/src/runtime/open_code_runtime_manifest.dart`
 - OpenCode API surface metadata:
   `bridge/sesori_plugin_opencode/tool/opencode_v1_surface.json`
 - OpenCode manifest tests:
   `bridge/sesori_plugin_opencode/test/runtime/open_code_runtime_manifest_test.dart`
-- Codex managed runtime and PATH minimum:
+- Codex managed target and PATH minimum:
   `bridge/sesori_plugin_codex/lib/src/runtime/codex_runtime_manifest.dart`
 - Codex manifest tests:
   `bridge/sesori_plugin_codex/test/runtime/codex_runtime_manifest_test.dart`
-- Claude Code direct-CLI minimum:
+- Claude Code direct-CLI target and minimum:
   `bridge/sesori_plugin_claude/lib/src/runtime/claude_plugin_descriptor.dart`
 - Claude Code descriptor tests:
   `bridge/sesori_plugin_claude/test/runtime/claude_plugin_descriptor_test.dart`
-- Cursor managed runtime, PATH minimum, and per-platform checksums:
+- Cursor managed target, PATH minimum, and per-platform checksums:
   `bridge/sesori_plugin_cursor/lib/src/runtime/cursor_runtime_manifest.dart`
 - Cursor manifest tests:
   `bridge/sesori_plugin_cursor/test/runtime/cursor_runtime_manifest_test.dart`
 - Cursor availability tests:
   `bridge/sesori_plugin_cursor/test/cursor_plugin_descriptor_availability_test.dart`
-- Hermes Agent direct-CLI minimum:
+- Hermes Agent direct-CLI target and minimum:
   `bridge/sesori_plugin_hermes/lib/src/runtime/hermes_plugin_descriptor.dart`
 - Hermes Agent descriptor tests:
   `bridge/sesori_plugin_hermes/test/hermes_plugin_descriptor_test.dart`
-- Pi managed runtime, PATH minimum, package archives, and per-platform checksums:
+- Pi managed target, PATH minimum, package archives, and per-platform checksums:
   `bridge/sesori_plugin_pi/lib/src/runtime/pi_runtime_manifest.dart`
 - Pi runtime and lifecycle tests:
   `bridge/sesori_plugin_pi/test/pi_runtime_manifest_test.dart`
   `bridge/sesori_plugin_pi/test/pi_plugin_descriptor_test.dart`
-- OMP managed runtime, PATH minimum, direct assets, and per-platform checksums:
+- OMP managed target, PATH minimum, direct assets, and per-platform checksums:
   `bridge/sesori_plugin_omp/lib/src/runtime/omp_runtime_manifest.dart`
 - OMP runtime and lifecycle tests:
   `bridge/sesori_plugin_omp/test/omp_runtime_manifest_test.dart`
@@ -59,28 +60,41 @@ Pi. Shared interface, runtime, and ACP packages are not harnesses. If the
 registry has gained another harness, extend this skill for it as part of the
 same change instead of silently skipping it.
 
+Every harness must expose an independent compatibility minimum and target:
+
+| Harness | Compatibility minimum | Latest target |
+| --- | --- | --- |
+| OpenCode | `OpenCodeRuntimeManifest.minPathVersion` | `OpenCodeRuntimeManifest.targetVersion` |
+| Codex | `CodexRuntimeManifest.minPathVersion` | `CodexRuntimeManifest.targetVersion` |
+| Claude Code | `ClaudePluginDescriptor.minVersion` | `ClaudePluginDescriptor.targetVersion` |
+| Cursor | `CursorRuntimeManifest.minPathVersion` | `CursorRuntimeManifest.targetVersion` |
+| Hermes Agent | `HermesPluginDescriptor.minVersion` | `HermesPluginDescriptor.targetVersion` |
+| Pi | `PiRuntimeManifest.minPathVersion` | `PiRuntimeManifest.targetVersion` |
+| Oh My Pi | `OmpRuntimeManifest.minPathVersion` | `OmpRuntimeManifest.targetVersion` |
+
+For managed runtimes, `bundledVersion` is the parsed exact target used for
+download and installation. Direct-CLI targets record the latest release whose
+surface was validated; they do not gate otherwise-compatible local installs.
+
 ## Version Policy
 
-- Update OpenCode's `bundledVersion` to the latest stable `anomalyco/opencode` GitHub release.
-- Update Codex's `bundledVersion` to the latest stable `openai/codex` GitHub release.
-- Update Claude Code's direct-CLI `minVersion` to the latest stable
+- A target refresh preserves every compatibility minimum byte-for-byte. Never
+  derive a minimum from the latest target or raise one merely because a newer
+  release exists.
+- Update OpenCode's `targetVersion` to the latest stable `anomalyco/opencode` GitHub release.
+- Update Codex's `targetVersion` to the latest stable `openai/codex` GitHub release.
+- Update Claude Code's direct-CLI `targetVersion` to the latest stable
   `anthropics/claude-code` release after the candidate stream-json surface
-  probe passes. Claude has no Sesori-managed runtime, so this floor is its
-  target version.
-- Update Cursor's bundled runtime to the current build advertised by the official installer at `https://cursor.com/install`.
-- Update Hermes Agent's direct-CLI minimum to the semantic package version in
-  the latest stable `NousResearch/hermes-agent` release after its ACP v1 probe
-  passes. Hermes has no Sesori-managed runtime, and its calendar release tag is
-  not the CLI version.
-- Update Pi's bundled runtime to the latest stable `earendil-works/pi` GitHub release only after its JSONL RPC probe passes.
-- Update OMP's bundled runtime to the latest stable `can1357/oh-my-pi` GitHub release only after its ACP v1 probe passes.
-- Do not raise OpenCode's `minPathVersion` unless the user gives a specific minimum or bridge code requires a newer API. If it changes, keep `opencode_v1_surface.json` metadata aligned.
-- Do not raise Codex's `minPathVersion` unless bridge code requires a newer app-server capability or the user explicitly requests it.
-- Do not raise Cursor's `minPathVersion` unless bridge behavior requires a newer capability or the user explicitly requests it.
-- Do not raise Pi's `minPathVersion` unless bridge behavior requires a newer JSONL RPC capability or the user explicitly requests it.
-- OMP intentionally uses one verified version for both PATH compatibility and
-  the managed pin. Updating OMP therefore raises both; do not split them merely
-  to preserve the older floor.
+  probe passes.
+- Update Cursor's `targetVersion` to the current build advertised by the official installer at `https://cursor.com/install`.
+- Update Hermes Agent's direct-CLI `targetVersion` to the semantic package
+  version in the latest stable `NousResearch/hermes-agent` release after its
+  ACP v1 probe passes. Its calendar release tag is not the CLI version.
+- Update Pi's `targetVersion` to the latest stable `earendil-works/pi` GitHub release only after its JSONL RPC probe passes.
+- Update OMP's `targetVersion` to the latest stable `can1357/oh-my-pi` GitHub release only after its ACP v1 probe passes.
+- Change a compatibility minimum only for a separate, explicit requirement
+  backed by a concrete newer capability. If OpenCode's minimum changes under
+  such a requirement, keep `opencode_v1_surface.json` metadata aligned.
 - Ignore prereleases. Confirm GitHub's `latest` release and the corresponding npm package version agree for OpenCode, Codex, and Claude Code when npm is available.
 
 ## Discover Releases
@@ -174,7 +188,7 @@ done
 shasum -a 256 "$D"/*.tar.gz
 ```
 
-Write `_bundledVersion` as the exact published build string (for example `2026.08.11-e8db854`). Preserve its `CalendarRuntimeVersion.raw` value in the download URL and version directory. There is no Windows package — leave `PlatformOs.windows` absent so the install capability stays off there.
+Write `targetVersion` as the exact published build string (for example `2026.08.11-e8db854`) and derive `_bundledVersion` from it. Preserve its `CalendarRuntimeVersion.raw` value in the download URL and version directory. There is no Windows package — leave `PlatformOs.windows` absent so the install capability stays off there.
 
 Cursor ships a `dist-package/` directory whose `cursor-agent` entry binary loads sibling files, so its assets use `RuntimeAssetLayout.packageDirectory`. If a future build ships a single self-contained binary instead, switch the layout rather than flattening the tree.
 
@@ -223,18 +237,17 @@ Before changing the pin, run the official candidate in an isolated temporary cwd
 
 ## Edit
 
-1. Update OpenCode's bundled version and all six matching SHA-256 values.
-2. Apply an explicitly requested OpenCode minimum and synchronize the API surface metadata comment; otherwise preserve the existing minimum.
-3. Update Codex's bundled version, release-version documentation, and all six matching SHA-256 values.
-4. Preserve the Codex minimum unless a concrete requirement says otherwise.
-5. Update Claude Code's direct-CLI minimum and descriptor test fixtures after the candidate probe passes.
-6. Update `CursorRuntimeManifest`'s `_bundledVersion` to the official current build and refresh all four computed SHA-256 values. Preserve its minimum unless a concrete requirement says otherwise.
-7. Update Hermes Agent's direct-CLI minimum and descriptor test fixtures after the tagged-source ACP probe passes.
-8. Update `PiRuntimeManifest` only after the isolated JSONL RPC probe passes; refresh all six SHA-256 values and preserve complete package-directory placement.
-9. Update `OmpRuntimeManifest` only after the isolated ACP probe passes; refresh all seven SHA-256 values and preserve glibc/musl and unsupported Windows arm64 mapping.
-10. Update hard-coded version URLs, version assertions, and recent-version fixtures in all manifest/availability tests.
-11. Search the affected plugin packages for the replaced target versions. Update only references that describe the current pin or floor; preserve historical comments and protocol-shape observations tied to older versions.
-12. Update the setup/lifecycle regression document when a user-visible compatibility floor changes, then run `dart format` on changed Dart files.
+1. Update OpenCode's target version and all six matching SHA-256 values.
+2. Update Codex's target version, release-version documentation, and all six matching SHA-256 values.
+3. Update Claude Code's direct-CLI target and descriptor test fixtures after the candidate probe passes.
+4. Update `CursorRuntimeManifest.targetVersion` to the official current build and refresh all four computed SHA-256 values.
+5. Update Hermes Agent's direct-CLI target and descriptor test fixtures after the tagged-source ACP probe passes.
+6. Update `PiRuntimeManifest.targetVersion` only after the isolated JSONL RPC probe passes; refresh all six SHA-256 values and preserve complete package-directory placement.
+7. Update `OmpRuntimeManifest.targetVersion` only after the isolated ACP probe passes; refresh all seven SHA-256 values and preserve glibc/musl and unsupported Windows arm64 mapping.
+8. Verify every minimum is unchanged from the base branch. A target-only update must not modify a minimum-version line or an outdated-version test boundary.
+9. Update hard-coded version URLs, version assertions, and recent-target fixtures in all manifest/availability tests.
+10. Search the affected plugin packages for the replaced target versions. Update only references that describe the current target; preserve minimum-version fixtures, historical comments, and protocol-shape observations tied to older versions.
+11. Update the setup/lifecycle regression document only for a separately requested compatibility-floor change, then run `dart format` on changed Dart files.
 
 Use `apply_patch` for manual edits.
 
@@ -266,12 +279,12 @@ If tests fail only because old versions are hard-coded in manifest assertions or
 
 Before finishing, report:
 
-- old and new bundled/minimum versions for every registered harness
-- whether OpenCode or Codex compatibility floors changed and why
+- old and new target versions plus the unchanged minimum for every registered harness
+- confirmation that no compatibility floor changed
 - whether all twelve GitHub asset digests were refreshed
-- Claude Code's stable GitHub/npm version, matching Agent SDK version, direct-CLI floor, and stream-json surface probe result
+- Claude Code's stable GitHub/npm target, matching Agent SDK version, unchanged direct-CLI floor, and stream-json surface probe result
 - Cursor's installer-advertised build, and whether its four managed-runtime digests were recomputed
-- Hermes Agent's calendar release tag, semantic CLI version/direct-CLI floor, and isolated ACP probe result
+- Hermes Agent's calendar release tag, semantic CLI target, unchanged direct-CLI floor, and isolated ACP probe result
 - Pi's release, six verified package-archive digests, and JSONL RPC probe result
 - OMP's release, seven verified bare-executable digests, and ACP probe result
 - test and analyzer results

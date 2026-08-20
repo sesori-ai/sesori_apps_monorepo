@@ -7,7 +7,12 @@ import "../models/omp_linux_libc.dart";
 import "../omp_identity.dart";
 
 class const OmpRuntimeManifest() extends RuntimeManifest {
-  static final SemanticRuntimeVersion _version = SemanticRuntimeVersion.parse(value: "17.3.8");
+  static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "17.2.13");
+
+  /// The latest stable Oh My Pi release targeted by this plugin.
+  static const String targetVersion = "17.3.8";
+
+  static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: targetVersion);
 
   static const Map<PlatformOs, Map<PlatformArch, DirectBinaryRuntimeAsset>> _assets = {
     PlatformOs.macos: {
@@ -67,10 +72,10 @@ class const OmpRuntimeManifest() extends RuntimeManifest {
   String get binaryFileName => Platform.isWindows ? "omp.exe" : "omp";
 
   @override
-  RuntimeVersion get minPathVersion => _version;
+  RuntimeVersion get minPathVersion => _minPathVersion;
 
   @override
-  RuntimeVersion get bundledVersion => _version;
+  RuntimeVersion get bundledVersion => _bundledVersion;
 
   @override
   RuntimeVersion? parseVersion({required String value}) {

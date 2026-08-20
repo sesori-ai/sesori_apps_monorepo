@@ -12,10 +12,11 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 ///   managed runtime. `0.139.0` is the floor the bridge's `app-server` v2
 ///   protocol assumes (see `codex_app_server_client.dart`, which opts into a
 ///   capability codex added in 0.139.0).
-/// - [_bundledVersion] is the exact version the managed runtime downloads.
+/// - [targetVersion] is the latest stable release targeted by the plugin, and
+///   [_bundledVersion] is the exact version the managed runtime downloads.
 ///
 /// ## Bumping codex
-/// Bumping codex is a deliberate release-engineering act: change [_bundledVersion],
+/// Bumping codex is a deliberate release-engineering act: change [targetVersion],
 /// refresh the matching SHA-256 hashes in [_assets] from the GitHub release's
 /// published asset digests (the release asset `digest` field, verified against
 /// the downloaded archive), confirm the [_assets] filenames still match the
@@ -26,8 +27,11 @@ class const CodexRuntimeManifest() extends RuntimeManifest {
   /// Minimum pre-installed codex version the bridge will use as-is.
   static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "0.139.0");
 
+  /// The latest stable codex release targeted by this plugin.
+  static const String targetVersion = "0.148.0";
+
   /// The exact codex version the managed runtime installs.
-  static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: "0.148.0");
+  static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: targetVersion);
 
   static const String _releaseBaseUrl = "https://github.com/openai/codex/releases/download";
 

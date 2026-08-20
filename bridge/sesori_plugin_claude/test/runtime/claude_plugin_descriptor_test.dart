@@ -19,7 +19,8 @@ void main() {
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
       expect(descriptor.supportsPromptAttachments, isTrue);
       expect(descriptor.options.single.name, "bin");
-      expect(ClaudePluginDescriptor.minVersion, "2.1.237");
+      expect(ClaudePluginDescriptor.minVersion, "2.1.221");
+      expect(ClaudePluginDescriptor.targetVersion, "2.1.237");
     });
 
     test("reports ready after ordered version and typed auth probes", () async {
@@ -68,7 +69,7 @@ void main() {
 
     test("reports unavailable and skips auth for an outdated runtime", () async {
       final processes = _ProcessService([
-        _ProbeProcess(stdoutText: "2.1.236 (Claude Code)\n", exitCode: Future.value(0)),
+        _ProbeProcess(stdoutText: "2.1.220 (Claude Code)\n", exitCode: Future.value(0)),
       ]);
 
       final status = await const ClaudePluginDescriptor().inspectSetup(

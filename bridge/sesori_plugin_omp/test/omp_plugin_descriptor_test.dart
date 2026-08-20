@@ -44,7 +44,7 @@ void main() {
     test("ensureRuntime prefers a supported PATH binary", () async {
       final processes = _Processes(
         outputs: const [
-          _Output(stdout: "omp/17.3.8\n", exitCode: 0),
+          _Output(stdout: "omp/17.2.13\n", exitCode: 0),
         ],
       );
       final events = await OmpPluginDescriptor.production().ensureRuntime(host: _Host(processes: processes)).toList();
@@ -56,7 +56,7 @@ void main() {
     test("ensureRuntime falls back to an installed managed binary", () async {
       final processes = _Processes(
         outputs: const [
-          _Output(stdout: "omp/17.3.7\n", exitCode: 0),
+          _Output(stdout: "omp/17.2.12\n", exitCode: 0),
           _Output(stdout: "omp/17.3.8\n", exitCode: 0),
         ],
       );
@@ -131,7 +131,7 @@ void main() {
       final outdated = await descriptor.inspectSetup(
         config: explicit,
         processes: _Processes(
-          outputs: const [_Output(stdout: "omp/17.3.7\n", exitCode: 0)],
+          outputs: const [_Output(stdout: "omp/17.2.12\n", exitCode: 0)],
         ),
         environment: const {},
         stateDirectory: "/state",

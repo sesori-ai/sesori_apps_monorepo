@@ -8,12 +8,13 @@ import "package:test/test.dart";
 void main() {
   const manifest = OmpRuntimeManifest();
 
-  test("pins v17.3.8 and parses only the OMP version prefix", () {
+  test("keeps the PATH floor and targets v17.3.8", () {
     expect(manifest.runtimeId, "omp");
     expect(manifest.pathExecutableName, "omp");
     expect(manifest.binaryFileName, Platform.isWindows ? "omp.exe" : "omp");
-    expect(manifest.minPathVersion.raw, "17.3.8");
-    expect(manifest.bundledVersion.raw, "17.3.8");
+    expect(manifest.minPathVersion.raw, "17.2.13");
+    expect(OmpRuntimeManifest.targetVersion, "17.3.8");
+    expect(manifest.bundledVersion.raw, OmpRuntimeManifest.targetVersion);
     expect(manifest.parseVersion(value: "omp/17.3.8")?.raw, "17.3.8");
     expect(manifest.parseVersion(value: "17.3.8"), isNull);
     expect(manifest.parseVersion(value: "omp/not-a-version"), isNull);

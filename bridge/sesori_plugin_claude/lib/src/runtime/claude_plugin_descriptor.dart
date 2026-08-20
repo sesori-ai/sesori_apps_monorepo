@@ -54,7 +54,13 @@ final class const ClaudePluginDescriptor({
 }) extends BridgePluginDescriptor {
   static const String binOption = "bin";
   static const String defaultBinary = "claude";
-  static const String minVersion = "2.1.237";
+
+  /// Oldest Claude Code release with the CLI behavior this plugin requires.
+  static const String minVersion = "2.1.221";
+
+  /// Latest stable Claude Code release validated against this plugin.
+  static const String targetVersion = "2.1.237";
+
   static final Random _secureRandom = Random.secure();
 
   static const List<PluginOption> cliOptions = [

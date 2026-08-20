@@ -16,7 +16,7 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 ///
 /// ## Bumping the bundled runtime
 /// 1. Pick the new `vX.Y.Z` release of `anomalyco/opencode`.
-/// 2. Update [_bundledVersion].
+/// 2. Update [targetVersion].
 /// 3. Replace all six [_assets] SHA-256 values with that release's asset digests
 ///    (GitHub's release API exposes each asset's `digest: "sha256:…"`).
 /// 4. Raise [_minPathVersion] only if the new bridge code requires a newer
@@ -27,8 +27,11 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
   /// only download the managed runtime for genuinely old installs.
   static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "1.14.0");
 
+  /// The latest stable OpenCode release targeted by this plugin.
+  static const String targetVersion = "1.18.19";
+
   /// The exact OpenCode version the managed runtime installs.
-  static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: "1.18.19");
+  static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: targetVersion);
 
   static const String _releaseBaseUrl = "https://github.com/anomalyco/opencode/releases/download";
 
