@@ -30,7 +30,9 @@ defaults and queued client sends coherent.
   transition back to idle; retry carries attempt, message, and timing, and
   finalized messages enter durable history matching a history read. A terminal
   provider failure appears as an inline error message and remains visible after
-  refresh or reopen. Internal backend command records are not rendered as
+  refresh or reopen. Backend-provided message timestamps remain present through
+  live updates and durable-history reloads, using the backend's authoritative
+  source for each path. Internal backend command records are not rendered as
   conversation messages or used as assistant model attribution.
 - Claude user prompts appear in the live transcript from the CLI's replayed
   stdin echo under their transcript uuid, so a follow-up prompt stays visible
@@ -147,7 +149,8 @@ has started.
 - Streaming stalls, duplicates or loses parts, shows an empty user bubble, or
   orders a late envelope at the wrong transcript position; the session never
   returns to idle. A terminal provider failure returns to idle without showing
-  its error, or the error disappears after refresh or reopen.
+  its error, the error disappears after refresh or reopen, or a live update
+  removes a backend-provided message timestamp.
 - Internal backend command records or synthetic model attribution appear in
   the conversation or replayed history.
 - Prompt defaults regress, an approved plan exit does not restore Default

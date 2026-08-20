@@ -62,6 +62,11 @@ class CodexEventMapper({
   final Map<String, int> _threadCreatedAt = {};
   final Map<String, int> _threadUpdatedAt = {};
 
+  /// Live app-server updates carry item lifecycle timestamps separately from
+  /// the item itself. Retain them so completion and canonical tool upserts do
+  /// not replace a timestamped message envelope with an undated one.
+  final Map<({String threadId, String itemId}), shared.MessageTime> _itemTimes = {};
+
   /// Records the model codex resolved for [threadId] so subsequent
   /// live-streamed assistant messages are stamped with the model actually in
   /// use. Passing a null/empty [model] clears the override (falls back to the
@@ -126,7 +131,10 @@ class CodexEventMapper({
     _threadModel.remove(threadId);
     _threadProvider.remove(threadId);
     _threadDirectory.remove(threadId);
+    _forgetItemTimes(threadId);
   }
+
+  void resetLiveItemTimes() => _itemTimes.clear();
 
   /// The project id a live session event should carry for [threadId]: the
   /// plugin-fed directory, else the notification's own [cwd], else the launch
@@ -207,11 +215,22 @@ class CodexEventMapper({
         final item = _asMap(params["item"]);
         final threadId = params["threadId"] as String?;
         if (item == null || threadId == null) return const [];
-        return _itemToEvents(
+        final itemId = item["id"] as String?;
+        _recordAppServerItemTime(
+          params: params,
+          threadId: threadId,
+          itemId: itemId,
+          completed: method == "item/completed",
+        );
+        final events = _itemToEvents(
           item: item,
           threadId: threadId,
           completed: method == "item/completed",
         );
+        if (method == "item/completed" && itemId != null) {
+          _itemTimes.remove((threadId: threadId, itemId: itemId));
+        }
+        return events;
 
       case "item/agentMessage/delta":
         return _deltaEvent(params: params, partSuffix: "text");
@@ -222,6 +241,11 @@ class CodexEventMapper({
 
       case "error":
         return [BridgeSseSessionError(sessionID: params["threadId"] as String?)];
+
+      case "thread/closed":
+        final threadId = params["threadId"] as String?;
+        if (threadId != null) _forgetItemTimes(threadId);
+        return const [];
 
       case "turn/diff/updated":
         final threadId = params["threadId"] as String?;
@@ -267,7 +291,7 @@ class CodexEventMapper({
       providerID: _threadProvider[threadId] ?? config.modelProvider ?? "openai",
       errorName: "CodexError",
       errorMessage: message,
-      time: null,
+      time: _turnMessageTime(turn),
     );
   }
 
@@ -282,6 +306,7 @@ class CodexEventMapper({
     title: tool.title,
     status: tool.status,
     output: tool.output,
+    time: _sharedMessageTime(tool.time),
     attachments: tool.attachments,
   );
 
@@ -316,6 +341,7 @@ class CodexEventMapper({
   }) {
     final itemId = item["id"] as String?;
     if (itemId == null || itemId.isEmpty) return const [];
+    final time = _itemTimes[(threadId: threadId, itemId: itemId)];
 
     final imageBearingItem = _imageBearingItemParser.parse(item: item);
     switch (imageBearingItem) {
@@ -333,6 +359,7 @@ class CodexEventMapper({
           itemId: itemId,
           tool: "image_generation",
           status: toolStatus,
+          time: time,
           attachments: toolStatus == PluginToolStatus.completed
               ? _imageAttachmentMapper.map(
                   candidates: [
@@ -358,6 +385,7 @@ class CodexEventMapper({
           tool: tool ?? "mcp",
           title: _mcpToolTitle(server: server, tool: tool),
           status: _parsedToolStatus(status: status, completed: completed),
+          time: time,
           output: _imageBearingToolOutput(content: content),
           error: error,
           attachments: _imageAttachmentMapper.map(
@@ -387,6 +415,7 @@ class CodexEventMapper({
             status: status,
             completed: completed,
           ),
+          time: time,
           output: _rolloutToolMapper.clipOutput(
             _imageBearingToolOutput(content: content),
           ),
@@ -413,9 +442,7 @@ class CodexEventMapper({
             id: itemId,
             sessionID: threadId,
             agent: null,
-            // Live notifications carry no per-message timestamp; the rollout
-            // re-fetch is authoritative and fills this in.
-            time: null,
+            time: time == null ? null : shared.MessageTime(created: time.created, completed: null),
             promptId: null,
           ),
           partType: PluginMessagePartType.text,
@@ -426,7 +453,7 @@ class CodexEventMapper({
         return _messageEvents(
           threadId: threadId,
           itemId: itemId,
-          message: _assistantMessage(itemId: itemId, threadId: threadId),
+          message: _assistantMessage(itemId: itemId, threadId: threadId, time: time),
           partType: PluginMessagePartType.text,
           partSuffix: "text",
           text: item["text"] as String? ?? _extractContentText(item["content"]),
@@ -435,7 +462,7 @@ class CodexEventMapper({
         return _messageEvents(
           threadId: threadId,
           itemId: itemId,
-          message: _assistantMessage(itemId: itemId, threadId: threadId),
+          message: _assistantMessage(itemId: itemId, threadId: threadId, time: time),
           partType: PluginMessagePartType.reasoning,
           partSuffix: "reasoning",
           text: _extractReasoningText(item),
@@ -453,6 +480,7 @@ class CodexEventMapper({
             item["command"] as String?,
           ),
           status: appServerStatus,
+          time: time,
           output: _rolloutToolMapper.clipOutput(
             item["aggregatedOutput"] as String?,
           ),
@@ -465,6 +493,7 @@ class CodexEventMapper({
           tool: "edit",
           title: _fileChangeTitle(item["changes"]),
           status: _toolStatus(item["status"], completed: completed),
+          time: time,
           output: _fileChangeOutput(item["changes"]),
           attachments: const [],
         );
@@ -476,6 +505,7 @@ class CodexEventMapper({
           title: item["query"] as String?,
           // webSearch items carry no status field.
           status: completed ? PluginToolStatus.completed : PluginToolStatus.running,
+          time: time,
           attachments: const [],
         );
       case "contextCompaction":
@@ -486,6 +516,7 @@ class CodexEventMapper({
             tool: "compact",
             title: completed ? "Context compacted" : "Compacting context",
             status: completed ? PluginToolStatus.completed : PluginToolStatus.running,
+            time: time,
             attachments: const [],
           ),
           if (completed) BridgeSseSessionCompacted(sessionID: threadId),
@@ -509,6 +540,7 @@ class CodexEventMapper({
     required String itemId,
     required String tool,
     required PluginToolStatus status,
+    required shared.MessageTime? time,
     required List<PluginMessageAttachment> attachments,
     String? title,
     String? output,
@@ -516,7 +548,7 @@ class CodexEventMapper({
   }) {
     return [
       BridgeSseMessageUpdated(
-        info: _assistantMessage(itemId: itemId, threadId: threadId).toJson(),
+        info: _assistantMessage(itemId: itemId, threadId: threadId, time: time).toJson(),
       ),
       BridgeSseMessagePartUpdated(
         part: PluginMessagePart(
@@ -652,6 +684,7 @@ class CodexEventMapper({
   shared.Message _assistantMessage({
     required String itemId,
     required String threadId,
+    required shared.MessageTime? time,
   }) {
     return shared.Message.assistant(
       id: itemId,
@@ -659,11 +692,50 @@ class CodexEventMapper({
       agent: "codex",
       modelID: _threadModel[threadId] ?? config.model,
       providerID: _threadProvider[threadId] ?? config.modelProvider ?? "openai",
-      // Live notifications carry no per-message timestamp; the rollout
-      // re-fetch is authoritative and fills this in.
-      time: null,
+      time: time,
     );
   }
+
+  shared.MessageTime? _recordAppServerItemTime({
+    required Map<String, dynamic> params,
+    required String threadId,
+    required String? itemId,
+    required bool completed,
+  }) {
+    if (itemId == null || itemId.isEmpty) return null;
+    final key = (threadId: threadId, itemId: itemId);
+    final previous = _itemTimes[key];
+    final created = _milliseconds(params["startedAtMs"]) ?? previous?.created;
+    if (created == null) return previous;
+    final time = shared.MessageTime(
+      created: created,
+      completed: completed ? _milliseconds(params["completedAtMs"]) ?? previous?.completed : previous?.completed,
+    );
+    _itemTimes[key] = time;
+    return time;
+  }
+
+  PluginMessageTime? _turnMessageTime(Map<String, dynamic>? turn) {
+    final created = _secondsToMilliseconds(turn?["startedAt"]);
+    if (created == null) return null;
+    return PluginMessageTime(
+      created: created,
+      completed: _secondsToMilliseconds(turn?["completedAt"]),
+    );
+  }
+
+  int? _milliseconds(Object? value) => value is num ? value.round() : null;
+
+  int? _secondsToMilliseconds(Object? value) => value is num ? (value * Duration.millisecondsPerSecond).round() : null;
+
+  shared.MessageTime? _sharedMessageTime(PluginMessageTime? time) => time == null
+      ? null
+      : shared.MessageTime(
+          created: time.created,
+          completed: time.completed,
+        );
+
+  void _forgetItemTimes(String threadId) => _itemTimes.removeWhere((key, _) => key.threadId == threadId);
 
   /// Emits the message envelope and its (single) content part. The part id
   /// matches the `$itemId-$partSuffix` convention used by [_deltaEvent] so

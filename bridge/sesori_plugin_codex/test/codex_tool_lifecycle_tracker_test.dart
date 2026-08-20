@@ -1293,6 +1293,10 @@ void main() {
     expect(aborted.status, PluginToolStatus.error);
     expect(lateCompletion?.canonicalId, "call-exec");
     expect(lateCompletion?.status, PluginToolStatus.error);
+    expect(
+      lateCompletion?.time,
+      const PluginMessageTime(created: 1779293200000, completed: 1779293201000),
+    );
     expect(lateCompletion?.output, contains("late command output"));
     expect(
       RegExp("early output").allMatches(lateCompletion?.output ?? ""),
@@ -2001,6 +2005,8 @@ CodexServerNotification _commandNotification({
     params: {
       "threadId": "thread-1",
       "turnId": ?turnId,
+      if (method == "item/started") "startedAtMs": 1779293200000,
+      if (method == "item/completed") "completedAtMs": 1779293201000,
       "item": {
         "type": "commandExecution",
         "id": itemId,
@@ -2055,7 +2061,10 @@ extension on CodexToolLifecycleTracker {
             notification: notification,
             imageGeneration: imageGeneration,
           )
-        : observeCorrelatableAppServerItem(event: correlatableItem);
+        : observeCorrelatableAppServerItem(
+            event: correlatableItem,
+            notification: notification,
+          );
   }
 }
 

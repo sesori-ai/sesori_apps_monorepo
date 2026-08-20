@@ -244,6 +244,7 @@ class CodexPlugin._({
     _sessionService.detachAppServerRepositories();
     _rolloutTailer.stopAll();
     _toolLifecycleTracker.clear();
+    _eventMapper.resetLiveItemTimes();
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
     _approvalRegistry = null;
@@ -345,6 +346,7 @@ class CodexPlugin._({
           )
         : _toolLifecycleTracker.observeCorrelatableAppServerItem(
             event: correlatableItem,
+            notification: notification,
           );
     if (command != null && projectedTool != null && !_deletedThreadIds.contains(command.threadId)) {
       try {
@@ -471,6 +473,9 @@ class CodexPlugin._({
 
     final activeTurnId = _activeTurnByThread[threadId];
     final notificationTurnId = _notificationTurnId(notification.params);
+    if (notification.method == "turn/started" && _provisionalAcceptedTurnThreadIds.contains(threadId)) {
+      return false;
+    }
     if (activeTurnId != null && notificationTurnId != null && activeTurnId != notificationTurnId) {
       return true;
     }
@@ -755,6 +760,7 @@ class CodexPlugin._({
       _syncWorkState();
       return;
     }
+    var backendAlreadyIdle = false;
     try {
       await client.request(
         method: "turn/interrupt",
@@ -763,10 +769,84 @@ class CodexPlugin._({
     } on CodexRpcException catch (error) {
       // If the turn already completed before our interrupt arrived,
       // codex returns a "not found" — treat as already-aborted.
-      if (error.code != -32602) rethrow;
+      final noActiveTurn = error.code == -32600 && error.message == "no active turn to interrupt";
+      if (error.code != -32602 && !noActiveTurn) rethrow;
+      backendAlreadyIdle = true;
+      await _queueAlreadyIdleTurnReconciliation(
+        sessionId: sessionId,
+        turnId: turnId,
+      );
     } finally {
-      _activeTurnByThread.remove(sessionId);
+      if (!backendAlreadyIdle && _activeTurnByThread[sessionId] == turnId) {
+        _activeTurnByThread.remove(sessionId);
+      }
       _syncWorkState();
+    }
+  }
+
+  Future<void> _queueAlreadyIdleTurnReconciliation({
+    required String sessionId,
+    required String turnId,
+  }) async {
+    int? retiredTurnRevision;
+    final drain = _notificationWork.then<void>((_) async {
+      if (_activeTurnByThread[sessionId] != turnId) return;
+      if (!_recordAuthoritativeTurnEvidence(sessionId)) return;
+      _activeTurnByThread.remove(sessionId);
+      retiredTurnRevision = _turnEvidenceRevisionByThread[sessionId];
+      await _finishAlreadyIdleTurn(sessionId: sessionId, turnId: turnId);
+    });
+    final guardedDrain = drain.catchError((Object error, StackTrace stackTrace) {
+      Log.e(
+        "[codex] failed to drain an already-completed abort for $sessionId/$turnId",
+        error,
+        stackTrace,
+      );
+    });
+    _notificationWork = guardedDrain;
+    await guardedDrain;
+
+    final revision = retiredTurnRevision;
+    if (revision == null) return;
+    final reconciliation = _notificationWork.then<void>((_) {
+      if ((_turnEvidenceRevisionByThread[sessionId] ?? 0) != revision || _activeTurnByThread.containsKey(sessionId)) {
+        return;
+      }
+      final activityChanged = _setSessionStatus(sessionId, const PluginSessionStatus.idle());
+      _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));
+      if (activityChanged) _eventBuffer.add(const BridgeSseProjectUpdated());
+    });
+    final guarded = reconciliation.catchError((Object error, StackTrace stackTrace) {
+      Log.e(
+        "[codex] failed to reconcile an already-completed abort for $sessionId/$turnId",
+        error,
+        stackTrace,
+      );
+    });
+    _notificationWork = guarded;
+    await guarded;
+  }
+
+  Future<void> _finishAlreadyIdleTurn({required String sessionId, required String turnId}) async {
+    try {
+      await _rolloutTailer.finish(sessionId: sessionId);
+    } on Object catch (error, stackTrace) {
+      _rolloutTailer.stop(sessionId: sessionId);
+      Log.w(
+        "[codex] failed to drain the completed rollout while reconciling abort for $sessionId",
+        error,
+        stackTrace,
+      );
+    }
+    final terminal = CodexServerNotification(
+      method: "turn/completed",
+      params: {
+        "threadId": sessionId,
+        "turn": {"id": turnId, "status": "interrupted"},
+      },
+    );
+    for (final tool in _toolLifecycleTracker.observeTerminalNotification(notification: terminal)) {
+      _eventMapper.mapProjectedTool(threadId: sessionId, tool: tool).forEach(_eventBuffer.add);
     }
   }
 
@@ -859,8 +939,13 @@ class CodexPlugin._({
     if (_deletedThreadIds.contains(threadId) || (_turnEvidenceRevisionByThread[threadId] ?? 0) != evidenceRevision) {
       return;
     }
-    _activeTurnByThread[threadId] = turnId;
-    _provisionalAcceptedTurnThreadIds.add(threadId);
+    // COMPATIBILITY 2026-08-20 (Codex app-server <=0.147): a steered input can
+    // return a fresh submission id instead of the existing active turn id.
+    // Preserve authoritative lifecycle evidence until its terminal event.
+    if (!_activeTurnByThread.containsKey(threadId)) {
+      _activeTurnByThread[threadId] = turnId;
+      _provisionalAcceptedTurnThreadIds.add(threadId);
+    }
   }
 
   bool _recordAuthoritativeTurnEvidence(String threadId) {
