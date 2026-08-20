@@ -79,10 +79,15 @@ class SessionDetailCubit(
   int _parkEpoch = 0;
 
   /// Delivered user messages that arrived with no prompt id and found nothing
-  /// parked to settle. Each one accounts for a send whose harness echo beat
-  /// its own acceptance response, so that send must not park a copy the echo
-  /// has already replaced.
+  /// parked to settle. Each one accounts for an in-flight send whose harness
+  /// echo beat its own acceptance response, so that send must not park a copy
+  /// the echo has already replaced.
   int _unattributedUserMessages = 0;
+
+  /// Delivered user messages already accounted for. A message becomes
+  /// renderable through its envelope and then each of its parts, so without
+  /// this every update would settle another prompt.
+  final Set<String> _accountedUserMessages = {};
   final DeferredPartEventBuffer _deferredPartEvents = DeferredPartEventBuffer();
 
   late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
@@ -1178,13 +1183,15 @@ class SessionDetailCubit(
     final info = message.info;
     if (info is! MessageUser) return;
     final promptId = info.promptId;
+    if (!_accountedUserMessages.add(messageId)) return;
     if (promptId == null) {
       // Harnesses without a bridge-side queue echo their prompts with no id,
       // so this message can only be paired positionally: it settles the oldest
-      // parked send. With nothing parked the credit is held so the send whose
-      // echo outran its own acceptance response never parks at all.
+      // parked send. With nothing parked, the credit is held only while a send
+      // still awaits its acceptance response — that send's echo outran it. An
+      // echo with nothing in flight belongs to another surface and is ignored.
       if (!_promptQueue.settleOldestAwaiting()) {
-        _unattributedUserMessages++;
+        if (_promptQueue.isSending) _unattributedUserMessages++;
         return;
       }
     } else {
@@ -2064,6 +2071,7 @@ class SessionDetailCubit(
       final current = state;
       // Stop means "run nothing further": staged local sends must not fire on
       // the next drain. The bridge clears its own queue as part of the abort.
+      _unattributedUserMessages = 0;
       if (_promptQueue.isNotEmpty || _promptQueue.isSending || _promptQueue.awaitingBridge.isNotEmpty) {
         _promptQueue.clear();
         _emitQueueUpdate(current is SessionDetailLoaded ? current : null);

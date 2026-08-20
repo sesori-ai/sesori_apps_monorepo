@@ -432,6 +432,89 @@ void main() {
       );
     });
 
+    test("a multi-part echo settles exactly one parked send", () async {
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+      final cubit = await createLoadedCubit();
+      await cubit.sendMessage(text: "first", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
+      await cubit.sendMessage(text: "second", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
+      await Future<void>.delayed(Duration.zero);
+      expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, hasLength(2));
+
+      // One echo, several updates: the envelope and each of its parts. Only
+      // the first may settle a send.
+      sessionEvents.add(
+        const SesoriMessageUpdated(
+          info: Message.user(
+            id: "echo-1",
+            sessionID: _sessionId,
+            agent: null,
+            time: MessageTime(created: 200, completed: null),
+            promptId: null,
+          ),
+        ),
+      );
+      sessionEvents.add(_textPartFor(messageId: "echo-1", text: "first"));
+      sessionEvents.add(_textPartFor(messageId: "echo-1", text: "first (edited)"));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.map((item) => item.text),
+        ["second"],
+        reason: "later updates of one echo must not retire further sends",
+      );
+    });
+
+    test("an echo with nothing in flight never credits a future send", () async {
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+      final cubit = await createLoadedCubit();
+
+      // Another surface's prompt lands while this client has nothing pending.
+      sessionEvents.add(
+        const SesoriMessageUpdated(
+          info: Message.user(
+            id: "other-1",
+            sessionID: _sessionId,
+            agent: null,
+            time: MessageTime(created: 100, completed: null),
+            promptId: null,
+          ),
+        ),
+      );
+      sessionEvents.add(_textPartFor(messageId: "other-1", text: "from another device"));
+      await Future<void>.delayed(Duration.zero);
+
+      await cubit.sendMessage(text: "mine", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.map((item) => item.text),
+        ["mine"],
+        reason: "a foreign echo must not stop this send from parking",
+      );
+    });
+
     test("an echo that outruns its acceptance response prevents parking", () async {
       final send = Completer<ApiResponse<void>>();
       when(
