@@ -317,7 +317,11 @@ final class PiEventDispatcher({
     final state = _session(sessionId);
     final textContent = message.content.whereType<PiTextContentDto>().singleOrNull;
     final visibleText = state.userVisibleText;
-    final isTurnEcho = textContent?.text == state.executionText;
+    final isAttachmentOnlyEcho =
+        (state.executionText?.isEmpty ?? false) &&
+        message.content.isNotEmpty &&
+        message.content.every((content) => content is PiImageContentDto);
+    final isTurnEcho = textContent?.text == state.executionText || isAttachmentOnlyEcho;
     final exactText = isTurnEcho ? visibleText : null;
     // Consumed on the first echo so a later replay with identical text does
     // not correlate to the same prompt again.

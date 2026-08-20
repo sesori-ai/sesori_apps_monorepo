@@ -866,6 +866,51 @@ void main() {
     );
   });
 
+  test("an attachment-only echo correlates without a fallback duplicate", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "image-only",
+      directory: "/project",
+      parts: [
+        const PluginPromptPart.fileData(mime: "image/png", base64: "cG5n", filename: null),
+      ],
+      userVisibleText: null,
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(
+      frame: {
+        "type": "message_end",
+        "message": {
+          "role": "user",
+          "content": [
+            {"type": "image", "data": "cG5n", "mimeType": "image/png"},
+          ],
+          "timestamp": 1,
+        },
+      },
+    );
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+
+    final userMessages = events
+        .whereType<BridgeSseMessageUpdated>()
+        .where((event) => event.info["role"] == "user")
+        .toList();
+    expect(userMessages, hasLength(1));
+    expect(userMessages.single.info["promptId"], "image-only");
+  });
+
   test("command rejects busy, accepts dialog-first, and uses no-run state barrier", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
