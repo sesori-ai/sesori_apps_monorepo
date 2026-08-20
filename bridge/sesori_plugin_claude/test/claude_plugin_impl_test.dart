@@ -181,6 +181,25 @@ void main() {
       expect(await harness.plugin.getQueuedPrompts(sessionId: testSessionId), isEmpty);
     });
 
+    test("keeps unsupported selections on session creation as bad requests", () async {
+      await expectLater(
+        harness.plugin.createSession(
+          directory: "/tmp/project",
+          parentSessionId: null,
+          parts: const [],
+          userVisibleText: null,
+          variant: null,
+          agent: "Default",
+          model: (providerID: "anthropic", modelID: "default"),
+        ),
+        throwsA(
+          isA<PluginOperationException>()
+              .having((error) => error.statusCode, "status", 400)
+              .having((error) => error.message, "message", "unsupported Claude agent"),
+        ),
+      );
+    });
+
     test("dispatches a slash command as an accepted queued turn", () async {
       await harness.createSession();
       final first = harness.processes.single;

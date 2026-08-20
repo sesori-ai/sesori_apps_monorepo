@@ -53,6 +53,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
   }
 
   void _showNotice(SessionDetailNotice notice) {
+    if (!_isCurrentPage) return;
     final (title, variant) = switch (notice) {
       SessionDetailNotice.promptOptionsUpdated => (
         context.loc.sessionDetailPromptOptionsUpdated,
