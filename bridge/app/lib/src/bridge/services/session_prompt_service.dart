@@ -68,16 +68,24 @@ class SessionPromptService({
     // the same family lane.
     await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
     if (normalizedCommand == null || normalizedCommand.isEmpty) {
-      await _sessionRepository.sendPrompt(
-        sessionId: sessionId,
-        promptId: promptId,
-        parts: parts,
-        variant: variant,
-        agent: agent,
-        model: model,
-      );
-      // Recorded after acceptance so a refused send never claims an echo.
+      // Recorded before dispatch: a backend can publish its echo while this
+      // call is still awaiting, and that echo must already find the id.
       _promptEchoCorrelator.recordDispatched(sessionId: sessionId, promptId: promptId);
+      try {
+        await _sessionRepository.sendPrompt(
+          sessionId: sessionId,
+          promptId: promptId,
+          parts: parts,
+          variant: variant,
+          agent: agent,
+          model: model,
+        );
+      } on Object {
+        // A refused dispatch produces no echo; leaving the id pending would
+        // let the next prompt's echo claim it.
+        _promptEchoCorrelator.forgetPrompt(sessionId: sessionId, promptId: promptId);
+        rethrow;
+      }
       await _updatePromptDefaults(
         sessionId: sessionId,
         variant: variant,
@@ -93,17 +101,22 @@ class SessionPromptService({
     // backend has accepted the command — not when its run finishes — so
     // awaiting it here never holds the phone's relay request open for the
     // duration of the command's agent run.
-    await _sessionRepository.sendCommand(
-      sessionId: sessionId,
-      promptId: promptId,
-      command: normalizedCommand,
-      arguments: arguments ?? '',
-      userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
-      variant: variant,
-      agent: agent,
-      model: model,
-    );
     _promptEchoCorrelator.recordDispatched(sessionId: sessionId, promptId: promptId);
+    try {
+      await _sessionRepository.sendCommand(
+        sessionId: sessionId,
+        promptId: promptId,
+        command: normalizedCommand,
+        arguments: arguments ?? '',
+        userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
+        variant: variant,
+        agent: agent,
+        model: model,
+      );
+    } on Object {
+      _promptEchoCorrelator.forgetPrompt(sessionId: sessionId, promptId: promptId);
+      rethrow;
+    }
     await _updatePromptDefaults(
       sessionId: sessionId,
       variant: variant,

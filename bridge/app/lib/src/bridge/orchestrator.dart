@@ -647,6 +647,7 @@ class Orchestrator({
       yoloSettingsService: yoloSettingsService,
       pendingInteractionService: pendingInteractionService,
       sessionAbortService: sessionAbortService,
+      promptEchoCorrelator: promptEchoCorrelator,
       sessionOperationDispatcher: sessionOperationDispatcher,
       sessionMutationDispatcher: sessionMutationDispatcher,
       sessionCreationService: sessionCreationService,
@@ -745,6 +746,7 @@ class OrchestratorSession._({
     required final YoloSettingsService _yoloSettingsService,
     required final PendingInteractionService _pendingInteractionService,
     required final SessionAbortService _sessionAbortService,
+    required final PromptEchoCorrelator _promptEchoCorrelator,
     required final SessionOperationDispatcher _sessionOperationDispatcher,
     required final SessionMutationDispatcher _sessionMutationDispatcher,
     required final SessionCreationService _sessionCreationService,
@@ -863,6 +865,11 @@ class OrchestratorSession._({
 
     _sessionAbortService.abortStartedSessions.listen(_completionListener.markSessionAbortPending).addTo(_subscriptions);
     _sessionAbortService.abortedSessions.listen(_completionListener.markSessionAborted).addTo(_subscriptions);
+    // An aborted turn's prompts never echo, so their pending correlations must
+    // not be inherited by the next prompt sent to that session.
+    _sessionAbortService.abortedSessions
+        .listen((sessionId) => _promptEchoCorrelator.forgetSession(sessionId: sessionId))
+        .addTo(_subscriptions);
     _sessionAbortService.abortFailedSessions.listen(_completionListener.clearPendingAbort).addTo(_subscriptions);
     _completionListener.start();
     _normalizedEventSubscription = _pluginEvents.listen(

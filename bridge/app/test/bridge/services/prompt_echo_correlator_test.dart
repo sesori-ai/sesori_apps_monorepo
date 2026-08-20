@@ -80,6 +80,42 @@ void main() {
       expect(correlator.stamp(sessionId: "s-1", message: assistant), same(assistant));
     });
 
+    test("repeated envelopes of one message resolve to the same prompt", () {
+      final correlator = PromptEchoCorrelator();
+      correlator.recordDispatched(sessionId: "s-1", promptId: "prm_1");
+      correlator.recordDispatched(sessionId: "s-1", promptId: "prm_2");
+
+      // A backend that publishes started/completed pairs updates one message
+      // twice; the second update must not consume the next send's id.
+      final first = correlator.stamp(
+        sessionId: "s-1",
+        message: _userMessage(id: "msg-1"),
+      ) as MessageUser;
+      final repeat = correlator.stamp(
+        sessionId: "s-1",
+        message: _userMessage(id: "msg-1"),
+      ) as MessageUser;
+      final next = correlator.stamp(
+        sessionId: "s-1",
+        message: _userMessage(id: "msg-2"),
+      ) as MessageUser;
+
+      expect(first.promptId, "prm_1");
+      expect(repeat.promptId, "prm_1");
+      expect(next.promptId, "prm_2", reason: "the second send keeps its own id");
+    });
+
+    test("a refused dispatch is never claimed by a later echo", () {
+      final correlator = PromptEchoCorrelator();
+      correlator.recordDispatched(sessionId: "s-1", promptId: "prm_refused");
+      correlator.forgetPrompt(sessionId: "s-1", promptId: "prm_refused");
+      correlator.recordDispatched(sessionId: "s-1", promptId: "prm_accepted");
+
+      final stamped = correlator.stamp(sessionId: "s-1", message: _userMessage()) as MessageUser;
+
+      expect(stamped.promptId, "prm_accepted");
+    });
+
     test("forgetting a session drops its unclaimed dispatches", () {
       final correlator = PromptEchoCorrelator();
       correlator.recordDispatched(sessionId: "s-1", promptId: "prm_1");
