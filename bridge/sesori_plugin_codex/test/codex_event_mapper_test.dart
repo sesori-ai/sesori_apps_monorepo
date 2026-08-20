@@ -526,6 +526,38 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
     });
 
+    test("item userMessage hides bridge context from an argumentless command", () {
+      const text = r"""
+$review [SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---""";
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-argumentless-command-context",
+            "turnId": "u-argumentless-command-context",
+            "item": {
+              "type": "userMessage",
+              "id": "i-argumentless-command-context",
+              "content": [
+                {"type": "text", "text": text, "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      final part = (events.last as BridgeSseMessagePartUpdated).part;
+      expect(part.text, r"$review ");
+    });
+
     test("item userMessage preserves authored marker-shaped content", () {
       const text = """
 [SYSTEM CONTEXT — IMPORTANT]

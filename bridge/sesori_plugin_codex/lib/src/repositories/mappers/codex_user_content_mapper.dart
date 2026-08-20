@@ -50,7 +50,7 @@ final _bridgeWorktreeContext = RegExp(
   r"- Worktree path: [^\r\n]+\r?\n"
   r"- Based on: [^\r\n]+\r?\n\r?\n"
   r"IMPORTANT: Perform all work for this task in this dedicated worktree\. You may use the initial branch above, or switch branches or create additional branches here as needed\. Do NOT create another worktree or working directory — even if other instructions suggest it\.\r?\n\r?\n"
-  r"---\r?\n(?:\r?\n)?",
+  r"---(?:\r?\n(?:\r?\n)?|$)",
 );
 
 final _generatedRepositoryInstructions = RegExp(

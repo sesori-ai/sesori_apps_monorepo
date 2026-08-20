@@ -1114,6 +1114,51 @@ authored arguments
       expect(messages.single.parts.single.text, r"$review authored arguments" "\n");
     });
 
+    test("readMessages hides bridge context from an argumentless command", () {
+      const invocation = r"""
+$review [SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---""";
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/20/rollout-argumentless-command-context.jsonl",
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaae",
+        cwd: "/repo/.worktrees/feature",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "argumentless-command-context",
+              "role": "user",
+              "content": [
+                {"type": "input_text", "text": invocation},
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {"type": "user_message", "message": invocation},
+          }),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaae",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages.single.parts.single.text, r"$review ");
+    });
+
     test("readMessages skips a pending bridge-context-only user message", () {
       const worktreeContext = """
 [SYSTEM CONTEXT — IMPORTANT]
