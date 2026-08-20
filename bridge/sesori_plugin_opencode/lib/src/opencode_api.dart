@@ -7,6 +7,7 @@ import "models/openapi/agent.g.dart";
 import "models/openapi/command.g.dart";
 import "models/openapi/config_providers_response.g.dart";
 import "models/openapi/global_session.g.dart";
+import "models/openapi/part.g.dart";
 import "models/openapi/permission_request.g.dart";
 import "models/openapi/project.g.dart";
 import "models/openapi/provider_list_response.g.dart";
@@ -234,14 +235,14 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     return decoded.map(SessionMessagesResponseItem.fromJson).toList();
   }
 
-  Future<void> sendPrompt({
+  Future<SessionMessagesResponseItem?> sendPrompt({
     required String sessionId,
     required SendPromptBody body,
     // 100% required for this endpoint
     // because otherwise it picks the CWD of where bridge is running
     required String? directory,
   }) async {
-    await _client.post(
+    final response = await _client.post(
       // A no-reply prompt may be immediately followed by a dependent request,
       // so wait for OpenCode to persist it instead of forking prompt_async.
       path: "/session/$sessionId/${body.noReply ? "message" : "prompt_async"}",
@@ -250,6 +251,38 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
         _directoryOpenCodeHeader: ?directory,
       },
       body: jsonEncode(body.toJson()),
+    );
+    if (!body.noReply) return null;
+    return SessionMessagesResponseItem.fromJson(jsonDecodeMap(response.body));
+  }
+
+  Future<void> updateMessagePart({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+    required Part part,
+    required String? directory,
+  }) async {
+    await _client.patch(
+      path: "/session/$sessionId/message/$messageId/part/$partId",
+      headers: {
+        "content-type": "application/json",
+        _directoryOpenCodeHeader: ?directory,
+      },
+      body: jsonEncode(part.toJson()),
+    );
+  }
+
+  Future<void> deleteMessage({
+    required String sessionId,
+    required String messageId,
+    required String? directory,
+  }) async {
+    await _client.delete(
+      path: "/session/$sessionId/message/$messageId",
+      headers: {
+        _directoryOpenCodeHeader: ?directory,
+      },
     );
   }
 

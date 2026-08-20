@@ -1,10 +1,9 @@
 /// Remembers which prompt created which OpenCode user message.
 ///
-/// The bridge names the user message it asks OpenCode to create (see
-/// `generateOpenCodeMessageId`), so the message OpenCode later publishes can be
-/// traced back to the send that caused it. A message id this tracker does not
-/// know — one OpenCode named for the TUI, or one evicted by the bound below —
-/// simply resolves to null and that echo stays unattributed.
+/// OpenCode first reserves the user message on its own host, then Sesori reuses
+/// that server-generated id for the real dispatch. A message id this tracker
+/// does not know — one OpenCode named for the TUI, or one evicted by the bound
+/// below — simply resolves to null and that echo stays unattributed.
 class PromptMessageTracker() {
   final Map<String, String> _promptIdsByMessage = {};
 
@@ -21,4 +20,12 @@ class PromptMessageTracker() {
 
   /// Prompt that created [messageId], or null when this bridge did not send it.
   String? promptIdFor({required String messageId}) => _promptIdsByMessage[messageId];
+
+  void remove({required String messageId}) {
+    _promptIdsByMessage.remove(messageId);
+  }
+
+  void clear() {
+    _promptIdsByMessage.clear();
+  }
 }

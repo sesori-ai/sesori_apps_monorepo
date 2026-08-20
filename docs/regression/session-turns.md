@@ -134,12 +134,13 @@ defaults and queued client sends coherent.
   disappearing or entering a retry loop.
 - Each plugin stamps that prompt id onto the user-message echo of its own
   dispatch, using the link its backend exposes — Claude's queue entry, ACP's
-  accepted send, Pi's dispatcher, and, for Codex and OpenCode, an identifier
-  the bridge supplies with the send itself that the backend echoes back on the
-  message it creates. A message authored in the backend's own UI carries no
-  prompt id and renders as an ordinary transcript message. A harness that
-  publishes no user echo at all leaves the client's own copy to be settled by
-  the next snapshot instead.
+  accepted send, Pi's dispatcher, Codex's client-supplied identifier, and
+  OpenCode's server-reserved ordered message identifier that the bridge reuses
+  for the real dispatch. OpenCode applies the same correlation to prompts,
+  slash commands, and manual compaction. A message authored in the backend's
+  own UI carries no prompt id and renders as an ordinary transcript message. A
+  harness that publishes no user echo at all leaves the client's own copy to be
+  settled by the next snapshot instead.
 - Queued and sending text render as the newest rows inside the scrollable
   transcript, never as controls pinned above the composer. They use the same
   brand bubble and Markdown rendering as settled user text; a compact status
@@ -183,7 +184,9 @@ has started.
   orders a late envelope at the wrong transcript position; the session never
   returns to idle. A terminal provider failure returns to idle without showing
   its error, the error disappears after refresh or reopen, or a live update
-  removes a backend-provided message timestamp.
+  removes a backend-provided message timestamp. An OpenCode prompt, slash
+  command, or bare `/compact` leaves both its local bubble and backend echo in
+  the transcript.
 - Internal backend command records or synthetic model attribution appear in
   the conversation or replayed history.
 - Prompt defaults regress, an approved plan exit does not restore Agent

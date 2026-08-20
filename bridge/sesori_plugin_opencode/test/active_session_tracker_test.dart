@@ -2833,9 +2833,25 @@ class _FakeApi({
   }) async {}
 
   @override
-  Future<void> sendPrompt({
+  Future<SessionMessagesResponseItem?> sendPrompt({
     required String sessionId,
     required SendPromptBody body,
+    required String? directory,
+  }) async => null;
+
+  @override
+  Future<void> updateMessagePart({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+    required Part part,
+    required String? directory,
+  }) async {}
+
+  @override
+  Future<void> deleteMessage({
+    required String sessionId,
+    required String messageId,
     required String? directory,
   }) async {}
 

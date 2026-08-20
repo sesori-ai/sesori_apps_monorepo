@@ -734,6 +734,22 @@ void main() {
   });
 
   group("OpenCodeService.sendPrompt", () {
+    test("reserves the user-message id through the tracked directory", () async {
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
+      final repository = FakeOpenCodeRepository();
+      final service = OpenCodeService(repository, tracker);
+
+      final messageId = await service.reserveMessage(
+        sessionId: "ses-1",
+        agent: "build",
+        variant: null,
+        model: null,
+      );
+
+      expect(messageId, equals("msg-reserved"));
+      expect(repository.lastReservedDirectory, equals("/repo"));
+    });
+
     test("resolves session directory from tracker before delegating", () async {
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
       final repository = FakeOpenCodeRepository();
@@ -764,7 +780,7 @@ void main() {
       final service = OpenCodeService(repository, tracker);
 
       await service.sendCommand(
-        messageId: null,
+        messageId: "msg-reserved",
         sessionId: "ses-1",
         command: "/review-work",
         arguments: "recent changes",
@@ -783,64 +799,68 @@ void main() {
       expect(tracker.hasAcceptedTurnEvidence, isFalse);
     });
 
-    test("routes the artificial compact command to the summarize endpoint", () async {
+    test("runs the reserved compaction message instead of calling summarize", () async {
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
       final repository = FakeOpenCodeRepository();
       final service = OpenCodeService(repository, tracker);
 
-      await service.sendCommand(
-        messageId: null,
+      await service.sendCompaction(
         sessionId: "ses-1",
-        command: OpenCodeService.compactionCommandName,
-        arguments: "",
+        messageId: "msg-reserved",
+        partId: "prt-reserved",
         agent: null,
         variant: null,
         model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 
-      expect(repository.summarizeCalls, equals(1));
-      expect(repository.lastSummarizeSessionId, equals("ses-1"));
-      expect(repository.lastSummarizeDirectory, equals("/repo"));
-      expect(repository.lastSummarizeModel, equals((providerID: "openai", modelID: "gpt-4.1")));
+      expect(repository.summarizeCalls, equals(0));
       expect(repository.addCompactionInstructionsCalls, equals(0));
-      expect(repository.compactionOperations, equals(["summarize"]));
-      // The real command endpoint must never be hit for compaction.
+      expect(repository.lastConvertedMessageId, equals("msg-reserved"));
+      expect(repository.lastConvertedPartId, equals("prt-reserved"));
+      expect(repository.lastPromptMessageId, equals("msg-reserved"));
+      expect(repository.lastPromptParts, isEmpty);
+      expect(repository.compactionOperations, equals(["convert", "prompt"]));
       expect(repository.lastCommandName, isNull);
+      expect(tracker.hasAcceptedTurnEvidence, isTrue);
     });
 
-    test("persists compact arguments before summarizing", () async {
+    test("persists compact arguments before running the compaction message", () async {
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
       final repository = FakeOpenCodeRepository();
       final service = OpenCodeService(repository, tracker);
 
-      await service.sendCommand(
-        messageId: null,
+      final reservation = await service.reserveCompactionMessage(
         sessionId: "ses-1",
-        command: OpenCodeService.compactionCommandName,
         arguments: "  Keep auth decisions  ",
         agent: "build",
         variant: const PluginSessionVariant(id: "high"),
         model: (providerID: "openai", modelID: "gpt-4.1"),
+      );
+      await service.sendCompaction(
+        sessionId: "ses-1",
+        messageId: reservation.messageId,
+        partId: reservation.partId,
+        agent: "build",
+        variant: const PluginSessionVariant(id: "high"),
+        model: reservation.model,
       );
 
       expect(repository.addCompactionInstructionsCalls, equals(1));
       expect(repository.lastCompactionInstructions, equals("Keep auth decisions"));
       expect(repository.lastCompactionInstructionsDirectory, equals("/repo"));
       expect(repository.lastCompactionInstructionsModel, equals((providerID: "openai", modelID: "gpt-4.1")));
-      expect(repository.compactionOperations, equals(["instructions", "summarize"]));
+      expect(repository.compactionOperations, equals(["instructions", "reserve", "convert", "prompt"]));
       expect(repository.lastCommandName, isNull);
     });
 
-    test("throws and skips summarize when compact is invoked without a model", () async {
+    test("refuses compaction reservation without a model", () async {
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
       final repository = FakeOpenCodeRepository();
       final service = OpenCodeService(repository, tracker);
 
       await expectLater(
-        service.sendCommand(
-          messageId: null,
+        service.reserveCompactionMessage(
           sessionId: "ses-1",
-          command: OpenCodeService.compactionCommandName,
           arguments: "",
           agent: null,
           variant: null,
@@ -848,7 +868,7 @@ void main() {
         ),
         throwsA(isA<PluginApiException>()),
       );
-      expect(repository.summarizeCalls, equals(0));
+      expect(repository.reserveCompactionCalls, equals(0));
     });
 
     group("dispatch fast-fail window", () {
@@ -868,7 +888,7 @@ void main() {
 
       Future<void> sendCommand() {
         return service.sendCommand(
-          messageId: null,
+          messageId: "msg-reserved",
           sessionId: "ses-1",
           command: "/review-work",
           arguments: "",
@@ -1949,9 +1969,46 @@ class FakeOpenCodeApi({var List<SessionMessagesResponseItem> messages = const []
   }) async {}
 
   @override
-  Future<void> sendPrompt({
+  Future<SessionMessagesResponseItem?> sendPrompt({
     required String sessionId,
     required SendPromptBody body,
+    required String? directory,
+  }) async => body.noReply
+      ? SessionMessagesResponseItem.fromJson({
+          "info": {
+            "id": "msg-reserved",
+            "sessionID": sessionId,
+            "role": "user",
+            "time": const {"created": 1},
+            "agent": body.agent ?? "build",
+            "model": const {"providerID": "openai", "modelID": "gpt-4.1"},
+          },
+          "parts": [
+            if (body.parts.isNotEmpty)
+              {
+                "id": "prt-reserved",
+                "sessionID": sessionId,
+                "messageID": "msg-reserved",
+                "type": "text",
+                "text": "",
+              },
+          ],
+        })
+      : null;
+
+  @override
+  Future<void> updateMessagePart({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+    required Part part,
+    required String? directory,
+  }) async {}
+
+  @override
+  Future<void> deleteMessage({
+    required String sessionId,
+    required String messageId,
     required String? directory,
   }) async {}
 
@@ -2069,11 +2126,17 @@ class FakeOpenCodeRepository._({
   String? lastCreateParentSessionId;
   String? lastPromptSessionId;
   String? lastPromptDirectory;
+  String? lastPromptMessageId;
   List<PluginPromptPart>? lastPromptParts;
   String? lastPromptAgent;
   String? lastPromptVariant;
   ({String providerID, String modelID})? lastPromptModel;
   Object? sendPromptError;
+  String? lastReservedDirectory;
+  int reserveCompactionCalls = 0;
+  String? lastConvertedMessageId;
+  String? lastConvertedPartId;
+  String? lastDeletedMessageId;
   String? lastCommandSessionId;
   String? lastCommandDirectory;
   String? lastCommandName;
@@ -2253,10 +2316,61 @@ class FakeOpenCodeRepository._({
     }
     lastPromptSessionId = sessionId;
     lastPromptDirectory = directory;
+    lastPromptMessageId = messageId;
     lastPromptParts = parts;
     lastPromptAgent = agent;
     lastPromptVariant = variant?.id;
     lastPromptModel = model;
+    if (messageId != null && parts.isEmpty) {
+      compactionOperations.add("prompt");
+    }
+  }
+
+  @override
+  Future<String> reserveMessage({
+    required String sessionId,
+    required String? directory,
+    required String? agent,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    lastReservedDirectory = directory;
+    return "msg-reserved";
+  }
+
+  @override
+  Future<({String messageId, String partId})> reserveCompactionMessage({
+    required String sessionId,
+    required String? directory,
+    required String? agent,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID}) model,
+  }) async {
+    reserveCompactionCalls += 1;
+    lastReservedDirectory = directory;
+    compactionOperations.add("reserve");
+    return (messageId: "msg-reserved", partId: "prt-reserved");
+  }
+
+  @override
+  Future<void> convertReservedPartToCompaction({
+    required String sessionId,
+    required String? directory,
+    required String messageId,
+    required String partId,
+  }) async {
+    lastConvertedMessageId = messageId;
+    lastConvertedPartId = partId;
+    compactionOperations.add("convert");
+  }
+
+  @override
+  Future<void> deleteMessage({
+    required String sessionId,
+    required String? directory,
+    required String messageId,
+  }) async {
+    lastDeletedMessageId = messageId;
   }
 
   @override

@@ -1,6 +1,6 @@
 class const SendCommandBody({
-  /// Id OpenCode should give the user message it creates, or null to let
-  /// OpenCode name it. See [SendPromptBody.messageID].
+  /// Existing server-named user-message id the command should reuse, or null
+  /// to let OpenCode name a new message.
   required final String? messageID,
   required final String command,
   required final String arguments,

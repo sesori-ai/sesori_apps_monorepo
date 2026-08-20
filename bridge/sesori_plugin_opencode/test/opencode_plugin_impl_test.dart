@@ -247,8 +247,21 @@ void main() {
         model: null,
       );
 
-      expect(server.requestLog, equals(["POST /session/s-root/prompt_async"]));
+      expect(
+        server.requestLog,
+        equals([
+          "POST /session/s-root/message",
+          "POST /session/s-root/prompt_async",
+        ]),
+      );
       expect(server.lastPromptDirectoryHeader, equals("/repo"));
+      expect(
+        server.noReplyMessageBodies.single,
+        equals({
+          "parts": <dynamic>[],
+          "noReply": true,
+        }),
+      );
       expect(
         server.lastPromptBody?['parts'],
         equals([
@@ -256,9 +269,7 @@ void main() {
         ]),
       );
       expect(server.lastPromptBody?.containsKey('variant'), isFalse);
-      // Bridge-named so the user message OpenCode publishes can be traced back
-      // to this send.
-      expect(server.lastPromptBody?['messageID'], startsWith("msg_"));
+      expect(server.lastPromptBody?['messageID'], equals(server.reservedMessageIds.single));
     });
 
     test("stamps the prompt id on the echo of the message it named", () async {
@@ -296,13 +307,15 @@ void main() {
         }),
       );
       await emitMessage(messageId);
+      await emitMessage(messageId);
       await emitMessage("msg_typed_in_the_tui");
       await pumpEventQueue();
 
       final stamped = events.whereType<BridgeSseMessageUpdated>().toList();
-      expect(stamped, hasLength(2));
+      expect(stamped, hasLength(3));
       expect(stamped[0].info["promptId"], equals("prm_1"));
-      expect(stamped[1].info.containsKey("promptId"), isFalse);
+      expect(stamped[1].info["promptId"], equals("prm_1"));
+      expect(stamped[2].info.containsKey("promptId"), isFalse);
     });
 
     test("sendPrompt marks an accepted turn busy before SSE arrives", () async {
@@ -424,14 +437,18 @@ void main() {
         model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 
-      expect(server.requestLog, equals(["POST /session/s-root/command"]));
+      expect(
+        server.requestLog,
+        equals([
+          "POST /session/s-root/message",
+          "POST /session/s-root/command",
+        ]),
+      );
       expect(server.lastCommandDirectoryHeader, equals("/repo"));
       expect(
         server.lastCommandBody,
         equals({
-          // Bridge-named so the user message OpenCode publishes can be traced
-          // back to this command.
-          "messageID": startsWith("msg_"),
+          "messageID": server.reservedMessageIds.single,
           "command": "/review-work",
           "arguments": "recent changes",
           "agent": "reviewer",
@@ -441,6 +458,156 @@ void main() {
       );
       expect(plugin.currentWorkState, PluginWorkState.busy);
       server.holdCommand!.complete();
+    });
+
+    test("definite prompt refusal removes its correlation and reserved message", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await server.waitForSseConnection();
+      server.promptStatusCode = HttpStatus.badRequest;
+
+      await expectLater(
+        plugin.sendPrompt(
+          promptId: "prompt-rejected",
+          sessionId: "s-root",
+          parts: const [PluginPromptPart.text(text: "Continue")],
+          agent: null,
+          variant: null,
+          model: null,
+        ),
+        throwsA(isA<PluginApiException>().having((error) => error.statusCode, "statusCode", 400)),
+      );
+
+      final messageId = server.reservedMessageIds.single;
+      expect(server.deletedMessageIds, equals([messageId]));
+
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+      await server.emitRawSse(
+        jsonEncode({
+          "directory": "/repo",
+          "payload": {
+            "type": "message.updated",
+            "properties": {
+              "info": {
+                "id": messageId,
+                "sessionID": "s-root",
+                "role": "user",
+                "agent": "build",
+                "time": {"created": 1},
+                "model": {"providerID": "openai", "modelID": "gpt-5.4"},
+              },
+            },
+          },
+        }),
+      );
+      await pumpEventQueue();
+
+      final echoed = events.whereType<BridgeSseMessageUpdated>().single;
+      expect(echoed.info.containsKey("promptId"), isFalse);
+    });
+
+    test("bare compact reuses a correlated server message and native compaction part", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await server.waitForSseConnection();
+      server.requestLog.clear();
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      await plugin.sendCommand(
+        promptId: "prompt-compact",
+        sessionId: "s-root",
+        command: OpenCodeService.compactionCommandName,
+        arguments: "",
+        userVisibleArguments: null,
+        agent: "build",
+        variant: null,
+        model: (providerID: "openai", modelID: "gpt-5.4"),
+      );
+
+      final messageId = server.reservedMessageIds.single;
+      expect(
+        server.requestLog,
+        equals([
+          "POST /session/s-root/message",
+          "PATCH /session/s-root/message/$messageId/part/prt_server_1",
+          "POST /session/s-root/prompt_async",
+        ]),
+      );
+      expect(
+        server.noReplyMessageBodies.single["parts"],
+        equals([
+          {"type": "text", "text": ""},
+        ]),
+      );
+      expect(
+        server.lastUpdatedPart,
+        equals({
+          "id": "prt_server_1",
+          "sessionID": "s-root",
+          "messageID": messageId,
+          "type": "compaction",
+          "auto": false,
+        }),
+      );
+      expect(server.lastPromptBody?["messageID"], equals(messageId));
+      expect(server.lastPromptBody?["parts"], isEmpty);
+
+      await server.emitRawSse(
+        jsonEncode({
+          "directory": "/repo",
+          "payload": {
+            "type": "message.updated",
+            "properties": {
+              "info": {
+                "id": messageId,
+                "sessionID": "s-root",
+                "role": "user",
+                "agent": "build",
+                "time": {"created": 1},
+                "model": {"providerID": "openai", "modelID": "gpt-5.4"},
+              },
+            },
+          },
+        }),
+      );
+      await pumpEventQueue();
+
+      final compactEcho = events.whereType<BridgeSseMessageUpdated>().single;
+      expect(compactEcho.info["promptId"], equals("prompt-compact"));
+    });
+
+    test("compact guidance is persisted before reserving the marker", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await server.waitForSseConnection();
+      server.requestLog.clear();
+
+      await plugin.sendCommand(
+        promptId: "prompt-compact",
+        sessionId: "s-root",
+        command: OpenCodeService.compactionCommandName,
+        arguments: "  Keep auth decisions  ",
+        userVisibleArguments: "Keep auth decisions",
+        agent: "build",
+        variant: null,
+        model: (providerID: "openai", modelID: "gpt-5.4"),
+      );
+
+      expect(server.noReplyMessageBodies, hasLength(2));
+      expect(
+        server.noReplyMessageBodies.first["parts"],
+        equals([
+          {"type": "text", "text": "Keep auth decisions"},
+        ]),
+      );
+      expect(
+        server.noReplyMessageBodies.last["parts"],
+        equals([
+          {"type": "text", "text": ""},
+        ]),
+      );
+      expect(server.lastPromptBody?["messageID"], equals(server.reservedMessageIds.last));
     });
 
     test("detached sendCommand failure revokes provisional plugin busy", () async {
@@ -1055,12 +1222,17 @@ class _FakeOpenCodeServer() {
   int projectFailuresRemaining = 0;
   Map<String, dynamic>? lastPromptBody;
   String? lastPromptDirectoryHeader;
+  final List<Map<String, dynamic>> noReplyMessageBodies = [];
+  final List<String> reservedMessageIds = [];
+  Map<String, dynamic>? lastUpdatedPart;
+  final List<String> deletedMessageIds = [];
   Map<String, dynamic>? lastCommandBody;
   String? lastCommandDirectoryHeader;
   String? lastCreatedSessionParentId;
   Completer<void>? holdCommand;
   int promptStatusCode = HttpStatus.ok;
   int commandStatusCode = HttpStatus.ok;
+  int _nextMessageNumber = 1;
   bool acceptSseConnections = true;
   final List<String> abortedSessionIds = [];
   final Completer<String> _firstAbort = Completer<String>();
@@ -1269,6 +1441,56 @@ class _FakeOpenCodeServer() {
           await request.response.close();
           return;
         }
+        await _sendJson(request.response, true);
+        return;
+      }
+
+      final messageCollectionMatch = RegExp(r"^/session/([^/]+)/message$").firstMatch(path);
+      if (messageCollectionMatch != null && request.method == "POST") {
+        final sessionId = messageCollectionMatch.group(1)!;
+        final rawBody = await utf8.decoder.bind(request).join();
+        final body = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
+        noReplyMessageBodies.add(body);
+        final messageId = (body["messageID"] as String?) ?? "msg_server_${_nextMessageNumber++}";
+        reservedMessageIds.add(messageId);
+        final requestParts =
+            (body["parts"] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? const <Map<String, dynamic>>[];
+        final responseParts = <Map<String, dynamic>>[
+          for (var index = 0; index < requestParts.length; index++)
+            {
+              "id": "prt_server_${index + 1}",
+              "sessionID": sessionId,
+              "messageID": messageId,
+              ...requestParts[index],
+            },
+        ];
+        await _sendJson(request.response, {
+          "info": {
+            "id": messageId,
+            "sessionID": sessionId,
+            "role": "user",
+            "time": {"created": _nextMessageNumber},
+            "agent": body["agent"] ?? "build",
+            "model": body["model"] ?? {"providerID": "openai", "modelID": "gpt-5.4"},
+          },
+          "parts": responseParts,
+        });
+        return;
+      }
+
+      final messagePartMatch = RegExp(
+        r"^/session/([^/]+)/message/([^/]+)/part/([^/]+)$",
+      ).firstMatch(path);
+      if (messagePartMatch != null && request.method == "PATCH") {
+        final rawBody = await utf8.decoder.bind(request).join();
+        lastUpdatedPart = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
+        await _sendJson(request.response, lastUpdatedPart!);
+        return;
+      }
+
+      final messageMatch = RegExp(r"^/session/([^/]+)/message/([^/]+)$").firstMatch(path);
+      if (messageMatch != null && request.method == "DELETE") {
+        deletedMessageIds.add(messageMatch.group(2)!);
         await _sendJson(request.response, true);
         return;
       }

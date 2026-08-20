@@ -16,11 +16,15 @@ import "package:sesori_shared/sesori_shared.dart" show StringExtensions, maxTran
 
 import "message_part_mapper.dart";
 import "models/openapi/command.g.dart";
+import "models/openapi/compaction_part.g.dart";
 import "models/openapi/global_session.g.dart";
 import "models/openapi/permission_request.g.dart";
 import "models/openapi/project.g.dart";
 import "models/openapi/question_request.g.dart";
 import "models/openapi/session.g.dart";
+import "models/openapi/session_messages_response_item.g.dart";
+import "models/openapi/text_part.g.dart";
+import "models/openapi/user_message.g.dart";
 import "models/question_reply_body.dart";
 import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
@@ -144,8 +148,8 @@ class OpenCodeRepository(final OpenCodeApi _api) {
     required String? agent,
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
-  }) {
-    return _sendPrompt(
+  }) async {
+    await _sendPrompt(
       sessionId: sessionId,
       directory: directory,
       messageId: messageId,
@@ -157,8 +161,65 @@ class OpenCodeRepository(final OpenCodeApi _api) {
     );
   }
 
+  /// Asks OpenCode to allocate an ordered user-message id on its own host.
+  /// The empty message is not renderable; the real prompt or command reuses it
+  /// immediately after the caller records its correlation.
+  Future<String> reserveMessage({
+    required String sessionId,
+    required String? directory,
+    required String? agent,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    final response = await _sendPrompt(
+      sessionId: sessionId,
+      directory: directory,
+      messageId: null,
+      parts: const [],
+      agent: agent,
+      variant: variant,
+      model: model,
+      noReply: true,
+    );
+    final info = response?.info;
+    if (info is! UserMessage) {
+      throw StateError("OpenCode did not return the reserved user message for session $sessionId");
+    }
+    return info.id;
+  }
+
+  /// Reserves a server-named message plus one inert part that can be converted
+  /// into OpenCode's native manual-compaction task before the turn starts.
+  Future<({String messageId, String partId})> reserveCompactionMessage({
+    required String sessionId,
+    required String? directory,
+    required String? agent,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID}) model,
+  }) async {
+    final response = await _sendPrompt(
+      sessionId: sessionId,
+      directory: directory,
+      messageId: null,
+      parts: const [PluginPromptPart.text(text: "")],
+      agent: agent,
+      variant: variant,
+      model: model,
+      noReply: true,
+    );
+    final info = response?.info;
+    final part = switch (response?.parts) {
+      [final TextPart part] => part,
+      _ => null,
+    };
+    if (info is! UserMessage || part == null) {
+      throw StateError("OpenCode did not return the reserved compaction message for session $sessionId");
+    }
+    return (messageId: info.id, partId: part.id);
+  }
+
   /// Adds user-provided compaction guidance to the session without starting a
-  /// separate agent run. The following summarize call consumes it as context.
+  /// separate agent run. The following compaction turn consumes it as context.
   Future<void> addCompactionInstructions({
     required String sessionId,
     required String? directory,
@@ -167,8 +228,8 @@ class OpenCodeRepository(final OpenCodeApi _api) {
     required String? agent,
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID}) model,
-  }) {
-    return _sendPrompt(
+  }) async {
+    await _sendPrompt(
       sessionId: sessionId,
       directory: directory,
       messageId: messageId,
@@ -180,7 +241,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
     );
   }
 
-  Future<void> _sendPrompt({
+  Future<SessionMessagesResponseItem?> _sendPrompt({
     required String sessionId,
     required String? directory,
     required String? messageId,
@@ -201,6 +262,40 @@ class OpenCodeRepository(final OpenCodeApi _api) {
         model: model,
         noReply: noReply,
       ),
+    );
+  }
+
+  Future<void> convertReservedPartToCompaction({
+    required String sessionId,
+    required String? directory,
+    required String messageId,
+    required String partId,
+  }) {
+    return _api.updateMessagePart(
+      sessionId: sessionId,
+      messageId: messageId,
+      partId: partId,
+      directory: directory?.normalize(),
+      part: CompactionPart(
+        id: partId,
+        sessionID: sessionId,
+        messageID: messageId,
+        auto: false,
+        overflow: null,
+        tailStartId: null,
+      ),
+    );
+  }
+
+  Future<void> deleteMessage({
+    required String sessionId,
+    required String? directory,
+    required String messageId,
+  }) {
+    return _api.deleteMessage(
+      sessionId: sessionId,
+      messageId: messageId,
+      directory: directory?.normalize(),
     );
   }
 

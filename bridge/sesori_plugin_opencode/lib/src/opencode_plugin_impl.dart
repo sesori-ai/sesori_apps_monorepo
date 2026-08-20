@@ -8,7 +8,6 @@ import "package:sesori_shared/sesori_shared.dart" show Harness, maxTranscriptIma
 import "../opencode_plugin.dart";
 import "assistant_message_mapper.dart";
 import "models/openapi/user_message.g.dart";
-import "opencode_message_id.dart";
 import "prompt_message_tracker.dart";
 import "sse/sse_connection.dart";
 import "sse_event_mapper.dart";
@@ -177,6 +176,35 @@ class OpenCodePlugin._({
     return result;
   }
 
+  Future<void> _dispatchReservedMessage({
+    required String sessionId,
+    required String messageId,
+    required Future<void> Function() dispatch,
+  }) async {
+    try {
+      await _callAndSyncWorkState(dispatch);
+    } on PluginApiException catch (error, stackTrace) {
+      if (error.statusCode >= 400 && error.statusCode < 500) {
+        _promptMessages.remove(messageId: messageId);
+        try {
+          await _call(
+            () => _service.deleteReservedMessage(
+              sessionId: sessionId,
+              messageId: messageId,
+            ),
+          );
+        } on Object catch (cleanupError, cleanupStackTrace) {
+          Log.w(
+            "[opencode] failed to remove rejected reserved message $messageId",
+            cleanupError,
+            cleanupStackTrace,
+          );
+        }
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+  }
+
   @override
   String get id => Harness.opencode.name;
 
@@ -218,6 +246,7 @@ class OpenCodePlugin._({
     _disposed = true;
     Log.v("[shutdown] OpenCodePlugin.dispose: stopping SSE connection");
     _sseConnection.stop();
+    _promptMessages.clear();
     // Each teardown step is isolated so a failure in one does not prevent the
     // remaining cleanup (http client + event buffer below) from running.
     try {
@@ -390,14 +419,22 @@ class OpenCodePlugin._({
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) async {
-    // Naming the user message here is the exact link back to this send: the
-    // echo OpenCode publishes carries the same id, so it can be stamped with
-    // the prompt id and clients can retire their own copy of the prompt.
-    // Recorded before dispatch because the echo can arrive first.
-    final messageId = generateOpenCodeMessageId();
+    // OpenCode allocates the ordered id on its own host. Its reservation echo
+    // is empty and cannot render; reusing the message below publishes the
+    // stamped, renderable envelope after this correlation is recorded.
+    final messageId = await _call(
+      () => _service.reserveMessage(
+        sessionId: sessionId,
+        agent: agent,
+        variant: variant,
+        model: model,
+      ),
+    );
     _promptMessages.record(messageId: messageId, promptId: promptId);
-    await _callAndSyncWorkState(
-      () => _service.sendPrompt(
+    await _dispatchReservedMessage(
+      sessionId: sessionId,
+      messageId: messageId,
+      dispatch: () => _service.sendPrompt(
         sessionId: sessionId,
         messageId: messageId,
         parts: parts,
@@ -425,10 +462,45 @@ class OpenCodePlugin._({
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) async {
-    final messageId = generateOpenCodeMessageId();
+    if (command == OpenCodeService.compactionCommandName) {
+      final reservation = await _call(
+        () => _service.reserveCompactionMessage(
+          sessionId: sessionId,
+          arguments: arguments,
+          agent: agent,
+          variant: variant,
+          model: model,
+        ),
+      );
+      _promptMessages.record(messageId: reservation.messageId, promptId: promptId);
+      await _dispatchReservedMessage(
+        sessionId: sessionId,
+        messageId: reservation.messageId,
+        dispatch: () => _service.sendCompaction(
+          sessionId: sessionId,
+          messageId: reservation.messageId,
+          partId: reservation.partId,
+          agent: agent,
+          variant: variant,
+          model: reservation.model,
+        ),
+      );
+      return;
+    }
+
+    final messageId = await _call(
+      () => _service.reserveMessage(
+        sessionId: sessionId,
+        agent: agent,
+        variant: variant,
+        model: model,
+      ),
+    );
     _promptMessages.record(messageId: messageId, promptId: promptId);
-    await _callAndSyncWorkState(
-      () => _service.sendCommand(
+    await _dispatchReservedMessage(
+      sessionId: sessionId,
+      messageId: messageId,
+      dispatch: () => _service.sendCommand(
         sessionId: sessionId,
         messageId: messageId,
         command: command,
