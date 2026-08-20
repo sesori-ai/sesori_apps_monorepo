@@ -27,6 +27,15 @@ variant, and worktree mode, and creating the session with its first input.
 - Read intents stay distinct: a normal load may serve a valid cache or discover,
   a cache-only read never discovers and reports cache-unavailable, and an
   explicit refresh forces fresh discovery.
+- A normal load reports whether the cache it served has aged past the bridge's
+  freshness window, and the client then refreshes it in the background: the
+  options stay on screen and usable, with no loading state, and simply change if
+  the backend's answer did. An explicit refresh during that background work
+  joins it instead of asking the bridge to discover a second time. The failure
+  fallback never reports staleness, so a failed refresh is not retried at once.
+- The refresh action stays on screen, in its loading state, for as long as the
+  press it started is still running, and the line explaining where the options
+  came from keeps describing the options still on screen.
 - Concurrent requests coalesce; an incomplete observation never replaces a
   complete cached one, and a moved project invalidates its entries.
 - Backend notifications use scoped event domains: Codex skill changes emit a
@@ -89,8 +98,8 @@ variant, and worktree mode, and creating the session with its first input.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
-| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands; explicit refresh forces discovery; cache-only reports unavailable without discovering; dedicated mode produces a local lowercase `color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. |
-| L3 Release | Client end to end (phone), every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; pickers, plugin chooser, detail loading, and no-harness states render. |
+| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window is served at once and reported stale; dedicated mode produces a local lowercase `color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. |
+| L3 Release | Client end to end (phone), every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the refresh action spins in place rather than vanishing; pickers, plugin chooser, detail loading, and no-harness states render. |
 | L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
 
@@ -112,6 +121,9 @@ reconnect or option refresh while restoration is pending.
 - Options are empty or stale where a discovery failure should be an explicit
   error, or a partial observation overwrites a complete cache.
 - A cache-only read starts a backend, or automatic refresh wakes a stopped one.
+- The refresh action disappears while its own load runs, gives no sign it was
+  pressed, or a background refresh of a stale cache blocks the composer, shows a
+  loading state, or runs twice when the user presses refresh during it.
 - Recorded worktree, branch, base branch, or base commit disagrees with git.
 - A dedicated workspace name comes from generated metadata, is not lowercase
   `color-animal` form, or collides with an existing branch or path.

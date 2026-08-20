@@ -87,6 +87,7 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
   bool _dedicatedWorktree = true;
   bool _navigatingToCreatedSession = false;
   bool _isSending = false;
+  bool _isRefreshing = false;
   late final ValueNotifier<PregoComposerSurfaceStyle> _composerSurfaceStyle;
   late PregoPopupAlertPresenter _popupAlertPresenter;
   late String _launchingInBackgroundMessage;
@@ -126,6 +127,19 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
 
   void _dismissScreen() {
     context.pop();
+  }
+
+  /// Runs the refresh action, keeping it in view and spinning for as long as
+  /// the press is still working. Every load it can start also disables the
+  /// action, so without this the only feedback for the press would be the
+  /// action vanishing — at the one moment the user is watching it.
+  Future<void> _refreshOptions() async {
+    setState(() => _isRefreshing = true);
+    try {
+      await context.read<NewSessionCubit>().refreshOptions();
+    } finally {
+      if (mounted) setState(() => _isRefreshing = false);
+    }
   }
 
   Widget? _buildErrorBanner(NewSessionState state) {
@@ -183,13 +197,18 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
 
   /// Where the harness options came from, or why they are missing.
   ///
-  /// Null while a load is still in flight or before a routable harness is
-  /// known — there is nothing honest to say yet. The same answer gates the
-  /// floating refresh action, so the explanation and the way to act on it
-  /// appear and disappear together.
+  /// Null before a routable harness is known, or while a first load has
+  /// nothing to describe yet — there is nothing honest to say. A refresh over
+  /// options already on screen keeps describing those, so the line does not
+  /// blink out and shift the rows under it for the length of the load.
   ({String message, bool isFailure})? _resolveOptionsStatus({required AgentModelData? data}) {
     final plugin = data?.plugin;
-    if (data == null || plugin == null || !plugin.isRoutable || data.isLoading) return null;
+    if (data == null ||
+        plugin == null ||
+        !plugin.isRoutable ||
+        data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.loading) {
+      return null;
+    }
 
     final loc = context.loc;
     if (data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable) {
@@ -208,15 +227,17 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
       ),
       NewSessionOptionsUnavailableState() => (message: loc.newSessionOptionsUnavailable, isFailure: false),
       NewSessionOptionsUnsupportedState() ||
-      NewSessionOptionsAvailableState(source: NewSessionOptionsSource.legacy) => (
+      NewSessionOptionsAvailableState(source: NewSessionOptionsSource.legacy) ||
+      NewSessionOptionsRefreshingState(source: NewSessionOptionsSource.legacy) => (
         message: loc.newSessionOptionsLegacyBridge,
         isFailure: false,
       ),
-      NewSessionOptionsAvailableState(source: NewSessionOptionsSource.aggregate) => (
+      NewSessionOptionsAvailableState(source: NewSessionOptionsSource.aggregate) ||
+      NewSessionOptionsRefreshingState(source: NewSessionOptionsSource.aggregate) => (
         message: loc.newSessionOptionsCached,
         isFailure: false,
       ),
-      NewSessionOptionsLoadingState() || NewSessionOptionsRefreshingState() => null,
+      NewSessionOptionsLoadingState() => null,
     };
   }
 
@@ -266,7 +287,8 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
           hierarchy: PregoButtonsSolidHierarchy.tertiary,
           size: PregoButtonsSolidSize.sm,
           leadingIcon: TablerRegular.refresh,
-          onPressed: cubit.canRefreshOptions ? cubit.refreshOptions : null,
+          isLoading: _isRefreshing,
+          onPressed: cubit.canRefreshOptions ? _refreshOptions : null,
         ),
       ),
     );
@@ -359,8 +381,9 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
     };
     // A confirmed empty harness list is explained by the notice and has no
     // refresh action. Keep discovery retry available only when discovery failed
-    // before the bridge could confirm what it runs.
-    final showsRefresh = (needsHarnessDiscovery && !hasNoHarnesses) || optionsStatus != null;
+    // before the bridge could confirm what it runs. A press of its own keeps it
+    // on screen: the load it started is exactly what the user wants to watch.
+    final showsRefresh = (needsHarnessDiscovery && !hasNoHarnesses) || optionsStatus != null || _isRefreshing;
     final optionsBottomPadding = showsRefresh
         ? _optionsBottomPadding + _refreshBandHeight(context)
         : _optionsBottomPadding;

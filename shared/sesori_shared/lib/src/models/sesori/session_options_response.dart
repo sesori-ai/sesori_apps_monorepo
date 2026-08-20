@@ -13,6 +13,11 @@ sealed class SessionOptionsResponse with _$SessionOptionsResponse {
     required Agents agents,
     required ProviderListResponse providers,
     required CommandListResponse commands,
+    /// Whether the bridge served a cached snapshot older than its freshness
+    /// window, making it worth a background refresh. Freshly discovered options
+    /// are never stale, and a bridge that predates the signal never asks for
+    /// one.
+    @Default(false) bool stale,
   }) = _SessionOptionsResponse;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionOptionsResponseFromJson(json);

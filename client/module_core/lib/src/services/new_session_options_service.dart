@@ -31,7 +31,14 @@ sealed class const NewSessionOptionsLoadResult();
 
 enum NewSessionOptionsLoadMode() { dynamicLoad, forcedRefresh }
 
-final class const NewSessionOptionsLoaded({required final NewSessionOptionsData options, required final NewSessionOptionsSource source}) extends NewSessionOptionsLoadResult;
+/// Loaded options, and whether the bridge served them from a snapshot old
+/// enough to be worth refreshing behind the user's back. Only a cache the
+/// bridge chose not to rediscover is stale; anything just discovered is not.
+final class const NewSessionOptionsLoaded({
+    required final NewSessionOptionsData options,
+    required final NewSessionOptionsSource source,
+    required final bool isStale,
+  }) extends NewSessionOptionsLoadResult;
 
 final class const NewSessionOptionsUnsupported() extends NewSessionOptionsLoadResult;
 
@@ -62,7 +69,11 @@ class NewSessionOptionsService({
       if (mode == NewSessionOptionsLoadMode.dynamicLoad) {
         return previousOptions == null
             ? const NewSessionOptionsUnsupported()
-            : NewSessionOptionsLoaded(options: previousOptions, source: NewSessionOptionsSource.legacy);
+            : NewSessionOptionsLoaded(
+                options: previousOptions,
+                source: NewSessionOptionsSource.legacy,
+                isStale: false,
+              );
       }
       return await _loadLegacy(
         projectId: projectId,
@@ -80,13 +91,14 @@ class NewSessionOptionsService({
           : SessionOptionsRequestMode.dynamic,
     );
     return switch (result) {
-      SessionOptionsRepositoryAvailable(:final catalog) => NewSessionOptionsLoaded(
+      SessionOptionsRepositoryAvailable(:final catalog, :final isStale) => NewSessionOptionsLoaded(
         options: _resolve(
           catalog: catalog,
           restoredSelection: restoredSelection,
           previousOptions: previousOptions,
         ),
         source: NewSessionOptionsSource.aggregate,
+        isStale: isStale,
       ),
       SessionOptionsRepositoryUnsupported() => const NewSessionOptionsUnsupported(),
       SessionOptionsRepositoryCacheUnavailable() => const NewSessionOptionsUnavailable(),
@@ -129,6 +141,7 @@ class NewSessionOptionsService({
             previousOptions: previousOptions,
           ),
           source: NewSessionOptionsSource.legacy,
+          isStale: false,
         );
       case LegacySessionOptionsRepositoryPartial(:final catalog, :final errors):
         _logLegacyErrors(errors);
@@ -154,6 +167,7 @@ class NewSessionOptionsService({
             previousOptions: previousOptions,
           ),
           source: NewSessionOptionsSource.legacy,
+          isStale: false,
         );
       case LegacySessionOptionsRepositoryFailure(:final errors):
         _logLegacyErrors(errors);

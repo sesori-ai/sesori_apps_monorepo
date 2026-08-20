@@ -46,6 +46,8 @@ void main() {
 
     expect(SessionOptionsResponse.fromJson(json), response);
     expect(json.keys, containsAllInOrder(["agents", "providers", "commands"]));
+    // A bridge that predates the staleness signal simply never reports one.
+    expect(SessionOptionsResponse.fromJson({...json}..remove("stale")).stale, isFalse);
   });
 
   test("session options errors round-trip known codes", () {

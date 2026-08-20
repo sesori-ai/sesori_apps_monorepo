@@ -59,6 +59,7 @@ class NewSessionCubit({
   late bool _wasConnected;
   int _loadGeneration = 0;
   int _projectLoadGeneration = 0;
+  Future<void>? _silentRefresh;
 
   void _onConnectionStatusChanged(ConnectionStatus status) {
     if (isClosed) return;
@@ -364,8 +365,22 @@ class NewSessionCubit({
       return;
     }
 
-    final generation = ++_loadGeneration;
     final previousOptions = data.optionsState.data;
+    // A silent refresh is already asking the bridge for exactly this list.
+    // Surface it instead of starting a second discovery that would race it.
+    final pending = _silentRefresh;
+    if (pending != null) {
+      _emitStateUpdate(
+        options: _loadingState(previousOptions: previousOptions, source: source),
+        backendScope: null,
+        isPluginDiscoveryInFlight: false,
+        projectWorktreeCapability: null,
+      );
+      await pending;
+      return;
+    }
+
+    final generation = ++_loadGeneration;
     _emitStateUpdate(
       options: _loadingState(previousOptions: previousOptions, source: source),
       backendScope: null,
@@ -378,6 +393,30 @@ class NewSessionCubit({
       mode: NewSessionOptionsLoadMode.forcedRefresh,
       previousOptions: previousOptions,
       source: source,
+    );
+  }
+
+  /// Brings a cache the bridge served without rediscovering up to date, with no
+  /// loading state — the options on screen stay usable and simply change if the
+  /// backend's answer did. The pending work is held so an explicit refresh can
+  /// join it rather than pay for discovery twice.
+  void _refreshSilently({
+    required String pluginId,
+    required int generation,
+    required NewSessionOptionsSource source,
+  }) {
+    final refresh = _loadOptions(
+      pluginId: pluginId,
+      generation: generation,
+      mode: NewSessionOptionsLoadMode.forcedRefresh,
+      previousOptions: state.agentModelData?.optionsState.data,
+      source: source,
+    );
+    _silentRefresh = refresh;
+    unawaited(
+      refresh.whenComplete(() {
+        if (identical(_silentRefresh, refresh)) _silentRefresh = null;
+      }),
     );
   }
 
@@ -453,6 +492,9 @@ class NewSessionCubit({
       isPluginDiscoveryInFlight: false,
       projectWorktreeCapability: null,
     );
+    if (result case NewSessionOptionsLoaded(isStale: true) when mode == NewSessionOptionsLoadMode.dynamicLoad) {
+      _refreshSilently(pluginId: pluginId, generation: generation, source: source);
+    }
   }
 
   NewSessionOptionsLoadState _loadingState({

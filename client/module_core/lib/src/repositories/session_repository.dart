@@ -172,6 +172,7 @@ class SessionRepository({
           providersConnectedOnly: data.providers.connectedOnly,
           commands: data.commands.items,
         ),
+        isStale: data.stale,
       ),
       ErrorResponse(:final error) => _mapSessionOptionsError(error: error),
     };

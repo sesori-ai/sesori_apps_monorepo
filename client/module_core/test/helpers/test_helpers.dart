@@ -436,6 +436,7 @@ void delegateSessionOptionsRepositoryToService({
         SuccessResponse(data: final commandData),
       ) =>
         SessionOptionsRepositoryAvailable(
+          isStale: false,
           catalog: SessionOptionsCatalog(
             agents: agentData.agents,
             providers: providerData.items,

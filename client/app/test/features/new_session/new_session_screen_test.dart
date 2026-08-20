@@ -345,6 +345,7 @@ void main() {
           SuccessResponse(data: final commandData),
         ) =>
           SessionOptionsRepositoryAvailable(
+            isStale: false,
             catalog: SessionOptionsCatalog(
               agents: agentData.agents,
               providers: providerData.items,
@@ -666,6 +667,37 @@ void main() {
     expect(find.text(loc.newSessionOptionsRefreshFailedUnavailable), findsNothing);
   });
 
+  testWidgets("refresh action stays in view and spins while its load runs", (tester) async {
+    final refreshed = Completer<SessionOptionsRepositoryResult>();
+    when(
+      () => sessionRepository.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        mode: any(named: "mode"),
+      ),
+    ).thenAnswer((invocation) async {
+      final mode = invocation.namedArguments[#mode]! as SessionOptionsRequestMode;
+      return mode == SessionOptionsRequestMode.forceRefresh
+          ? await refreshed.future
+          : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false);
+    });
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final refreshAction = find.byKey(const Key("new_session_options_refresh"));
+
+    await tester.tap(refreshAction);
+    await tester.pump();
+
+    expect(refreshAction, findsOneWidget);
+    expect(tester.widget<PregoButtonsSolid>(refreshAction).isLoading, isTrue);
+
+    refreshed.complete(SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<PregoButtonsSolid>(refreshAction).isLoading, isFalse);
+  });
+
   testWidgets("retained refresh failure keeps cached options visible", (tester) async {
     when(
       () => sessionRepository.loadSessionOptions(
@@ -677,7 +709,7 @@ void main() {
       final mode = invocation.namedArguments[#mode]! as SessionOptionsRequestMode;
       return mode == SessionOptionsRequestMode.forceRefresh
           ? const SessionOptionsRepositoryRefreshFailedRetained()
-          : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog());
+          : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false);
     });
 
     await tester.pumpWidget(_buildApp());
@@ -704,7 +736,7 @@ void main() {
       final mode = invocation.namedArguments[#mode]! as SessionOptionsRequestMode;
       return mode == SessionOptionsRequestMode.forceRefresh
           ? const SessionOptionsRepositoryRefreshFailedUnavailable()
-          : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog());
+          : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false);
     });
 
     await tester.pumpWidget(_buildApp());

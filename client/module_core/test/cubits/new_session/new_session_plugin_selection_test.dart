@@ -501,6 +501,72 @@ void main() {
       expect(cubit.state.agentModelData?.stagedCommand, isNull);
     });
 
+    test("a cache the bridge reports stale refreshes without a visible loading state", () async {
+      when(
+        pluginRepository.listPlugins,
+      ).thenAnswer((_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])));
+      final refreshed = Completer<SessionOptionsRepositoryResult>();
+      final modes = <SessionOptionsRequestMode>[];
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+          mode: any(named: "mode"),
+        ),
+      ).thenAnswer((invocation) async {
+        modes.add(invocation.namedArguments[#mode]! as SessionOptionsRequestMode);
+        return modes.length == 1 ? _optionsCatalog(agentName: "stale-agent", isStale: true) : await refreshed.future;
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+
+      expect(modes, [SessionOptionsRequestMode.dynamic, SessionOptionsRequestMode.forceRefresh]);
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsAvailableState>());
+      expect(cubit.state.agentModelData?.agents.single.name, "stale-agent");
+
+      refreshed.complete(_optionsCatalog(agentName: "fresh-agent", isStale: false));
+      await _waitUntil(() => cubit.state.agentModelData?.agents.single.name == "fresh-agent");
+
+      expect(modes, hasLength(2));
+    });
+
+    test("an explicit refresh joins the silent one instead of asking the bridge twice", () async {
+      when(
+        pluginRepository.listPlugins,
+      ).thenAnswer((_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])));
+      final refreshed = Completer<SessionOptionsRepositoryResult>();
+      var loadCalls = 0;
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+          mode: any(named: "mode"),
+        ),
+      ).thenAnswer((_) async {
+        loadCalls++;
+        return loadCalls == 1 ? _optionsCatalog(agentName: "stale-agent", isStale: true) : await refreshed.future;
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      expect(loadCalls, 2);
+
+      final explicitRefresh = cubit.refreshOptions();
+
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsRefreshingState>());
+      expect(loadCalls, 2);
+
+      refreshed.complete(_optionsCatalog(agentName: "fresh-agent", isStale: false));
+      await explicitRefresh;
+
+      expect(loadCalls, 2);
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsAvailableState>());
+      expect(cubit.state.agentModelData?.agents.single.name, "fresh-agent");
+    });
+
     test("typed retained refresh failure preserves the staged command and prior catalog", () async {
       final command = testCommandInfo();
       when(
@@ -517,6 +583,7 @@ void main() {
         loadCalls++;
         return loadCalls == 1
             ? SessionOptionsRepositoryAvailable(
+                isStale: false,
                 catalog: SessionOptionsCatalog(
                   agents: const [],
                   providers: const [],
@@ -554,6 +621,7 @@ void main() {
         loadCalls++;
         if (loadCalls > 1) throw StateError("unexpected refresh failure");
         return SessionOptionsRepositoryAvailable(
+          isStale: false,
           catalog: SessionOptionsCatalog(
             agents: const [],
             providers: _providerResponse().items,
@@ -697,6 +765,7 @@ void main() {
         loadCalls++;
         return loadCalls == 1
             ? SessionOptionsRepositoryAvailable(
+                isStale: false,
                 catalog: SessionOptionsCatalog(
                   agents: const [],
                   providers: const [],
@@ -836,6 +905,7 @@ void main() {
         ),
       ).thenAnswer(
         (_) async => SessionOptionsRepositoryAvailable(
+          isStale: false,
           catalog: SessionOptionsCatalog(
             agents: const [],
             providers: const [],
@@ -881,6 +951,7 @@ void main() {
         loadCalls++;
         return loadCalls == 1
             ? SessionOptionsRepositoryAvailable(
+                isStale: false,
                 catalog: SessionOptionsCatalog(
                   agents: const [],
                   providers: const [],
@@ -918,6 +989,7 @@ void main() {
         loadCalls++;
         return loadCalls == 1
             ? SessionOptionsRepositoryAvailable(
+                isStale: false,
                 catalog: SessionOptionsCatalog(
                   agents: const [],
                   providers: _providerResponse().items,
@@ -1772,6 +1844,18 @@ void _verifyNoComposerCalls(MockSessionService sessionService) {
 
 AgentInfo _agent(String name) {
   return AgentInfo(name: name, description: name, model: null, mode: AgentMode.primary);
+}
+
+SessionOptionsRepositoryAvailable _optionsCatalog({required String agentName, required bool isStale}) {
+  return SessionOptionsRepositoryAvailable(
+    isStale: isStale,
+    catalog: SessionOptionsCatalog(
+      agents: [_agent(agentName)],
+      providers: const [],
+      providersConnectedOnly: false,
+      commands: const [],
+    ),
+  );
 }
 
 ProviderListResponse _providerResponse() {

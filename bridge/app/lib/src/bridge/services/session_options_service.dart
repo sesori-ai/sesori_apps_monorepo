@@ -6,6 +6,12 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/models/session_options_cache_key.dart";
 import "../repositories/session_options_repository.dart";
 
+/// How long a cached snapshot stays fresh. Past it the bridge still serves the
+/// cache immediately and reports it stale, so a client can refresh in the
+/// background instead of making the user wait on discovery. The entry itself
+/// lives until retention expires it.
+const Duration _staleAfter = Duration(days: 1);
+
 sealed class const SessionOptionsOutcome();
 
 final class const SessionOptionsAvailable({required final SessionOptionsResponse response}) extends SessionOptionsOutcome;
@@ -55,7 +61,7 @@ class SessionOptionsService({
     if (resolved == null) return const SessionOptionsProjectNotFound();
     final cached = await _readValid(key: resolved.key);
     if (cached != null && await _isCurrentResolution(resolved: resolved)) {
-      return SessionOptionsAvailable(response: cached.response);
+      return _servedFromCache(entry: cached);
     }
 
     final outcome = await _coalesce(
@@ -66,7 +72,7 @@ class SessionOptionsService({
         final newlyCached = await _readValid(key: resolved.key);
         final isCurrentResolution = await _isCurrentResolution(resolved: resolved);
         if (newlyCached != null && isCurrentResolution) {
-          return SessionOptionsAvailable(response: newlyCached.response);
+          return _servedFromCache(entry: newlyCached);
         }
         if (!isCurrentResolution) {
           return _movedProjectOutcome(automatic: false);
@@ -88,6 +94,16 @@ class SessionOptionsService({
       return SessionOptionsRefreshFailedUnavailable(failure: failure);
     }
     return outcome;
+  }
+
+  /// A valid cache [loadDynamic] served instead of discovering, told whether
+  /// the snapshot has aged past [_staleAfter] so the client can refresh it in
+  /// the background. The failure fallback below deliberately does not: the
+  /// bridge just failed to refresh this very cache, so asking again at once
+  /// would only repeat the failure.
+  SessionOptionsAvailable _servedFromCache({required SessionOptionsCacheEntry entry}) {
+    final age = _clock.now().toUtc().difference(entry.capturedAt.toUtc());
+    return SessionOptionsAvailable(response: entry.response.copyWith(stale: age > _staleAfter));
   }
 
   Future<SessionOptionsOutcome> loadCacheOnly({
