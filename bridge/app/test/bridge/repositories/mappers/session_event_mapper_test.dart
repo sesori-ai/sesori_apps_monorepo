@@ -56,11 +56,6 @@ void main() {
           expectedBackendIds: ids.keys.toSet(),
         ),
         (
-          name: "sessions updated",
-          event: const BridgeSseSessionsUpdated(sessionID: "backend-session", projectID: "project"),
-          expectedBackendIds: {"backend-session"},
-        ),
-        (
           name: "session diff",
           event: const BridgeSseSessionDiff(sessionID: "backend-session"),
           expectedBackendIds: {"backend-session"},

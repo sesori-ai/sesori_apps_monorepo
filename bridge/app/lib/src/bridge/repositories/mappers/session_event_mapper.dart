@@ -19,7 +19,6 @@ class const SessionEventMapper() {
     }
     return switch (event) {
       BridgeSseTerminalHandoff(:final event) => backendSessionIds(event: event),
-      BridgeSseSessionsUpdated(:final sessionID) ||
       BridgeSseSessionDiff(:final sessionID) ||
       BridgeSseSessionCompacted(:final sessionID) ||
       BridgeSseSessionPromptDefaultsChanged(:final sessionID) ||
@@ -112,10 +111,6 @@ class const SessionEventMapper() {
       },
       BridgeSseSessionDeleted(:final info) => switch (mappedSession(info)) {
         final session? => BridgeSseSessionDeleted(info: session.toJson()),
-        null => null,
-      },
-      BridgeSseSessionsUpdated(:final sessionID, :final projectID) => switch (mapped(sessionID)) {
-        final sessionId? => BridgeSseSessionsUpdated(sessionID: sessionId, projectID: projectID),
         null => null,
       },
       BridgeSseSessionDiff(:final sessionID) => switch (mapped(sessionID)) {

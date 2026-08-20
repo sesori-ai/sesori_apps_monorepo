@@ -23,6 +23,8 @@ class DiffCubit({
   late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
   late final StreamSubscription<bool> _analyticsStateSubscription;
   Future<void>? _activeRefresh;
+  bool _refreshQueued = false;
+  bool _queuedShowLoading = false;
   _DiffAnalyticsGuard _emptyDiffAnalytics = _DiffAnalyticsGuard.ready;
   _DiffAnalyticsGuard _nonEmptyDiffAnalytics = _DiffAnalyticsGuard.ready;
 
@@ -49,11 +51,24 @@ class DiffCubit({
   Future<void> refresh() => _refresh(showLoading: true);
 
   Future<void> _refresh({required bool showLoading}) {
-    final queued = (_activeRefresh ?? Future<void>.value())
-        .catchError((_) {})
-        .then((_) => _fetchAndEmit(showLoading: showLoading));
-    _activeRefresh = queued;
-    return queued;
+    final active = _activeRefresh;
+    if (active != null) {
+      _refreshQueued = true;
+      _queuedShowLoading = _queuedShowLoading || showLoading;
+      return active;
+    }
+    return _activeRefresh = _drainRefreshes(showLoading: showLoading);
+  }
+
+  Future<void> _drainRefreshes({required bool showLoading}) async {
+    var nextShowLoading = showLoading;
+    do {
+      _refreshQueued = false;
+      _queuedShowLoading = false;
+      await _fetchAndEmit(showLoading: nextShowLoading);
+      nextShowLoading = _queuedShowLoading;
+    } while (_refreshQueued && !isClosed);
+    _activeRefresh = null;
   }
 
   Future<void> _fetchAndEmit({required bool showLoading}) async {

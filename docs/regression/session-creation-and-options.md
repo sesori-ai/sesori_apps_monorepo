@@ -29,6 +29,9 @@ variant, and worktree mode, and creating the session with its first input.
   explicit refresh forces fresh discovery.
 - Concurrent requests coalesce; an incomplete observation never replaces a
   complete cached one, and a moved project invalidates its entries.
+- Backend notifications use scoped event domains: Codex skill changes emit a
+  command-catalog invalidation rather than project activity, while MCP startup
+  changes remain MCP-tool events.
 - Failure with a valid cache still serves it; failure without one is an explicit
   error, never an empty option set. Automatic refresh never starts a stopped
   backend and no-ops for a superseded generation.

@@ -317,7 +317,7 @@ void main() {
     );
 
     blocTest<DiffCubit, DiffState>(
-      "session.diff SSE burst: serializes refreshes and keeps latest result",
+      "session.diff SSE burst: coalesces into one trailing refresh",
       build: () {
         var requestCount = 0;
         when(() => mockSessionRepository.getSessionDiffs(sessionId: sessionId)).thenAnswer((_) async {
@@ -342,12 +342,15 @@ void main() {
       },
       skip: 1,
       verify: (cubit) {
+        verify(
+          () => mockSessionRepository.getSessionDiffs(sessionId: sessionId),
+        ).called(2);
         expect(
           cubit.state,
           isA<DiffStateLoaded>().having(
             (state) => state.files.single.file,
             "latest refresh wins",
-            "lib/src/request-4.dart",
+            "lib/src/request-2.dart",
           ),
         );
       },
