@@ -142,49 +142,18 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
         runtimeVersion = version;
     }
 
-    // Auth probe: `hermes status` reports the configured model/provider.
-    // Best-effort: the true gate is the ACP handshake at connect time, which
-    // degrades the plugin without failing the bridge.
-    final executor = HostProcessCommandExecutor(
+    final statusResult = await _probeHermesStatus(
+      executablePath: executablePath,
       processes: processes,
-      runInShell: io.Platform.isWindows,
-      maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+      environment: environment,
     );
-    final CommandResult statusResult;
-    try {
-      statusResult = await executor.run(
-        executablePath,
-        const ["status"],
-        environment: environment,
-        timeout: _versionProbeTimeout,
-      );
-    } on TimeoutException catch (error, stackTrace) {
-      Log.w(
-        "[hermes] status probe '$executablePath status' did not exit within ${_versionProbeTimeout.inSeconds}s",
-        error,
-        stackTrace,
-      );
-      return PluginSetupUnknown.versioned(
-        actionHint: "Hermes authentication could not be determined. Run `hermes status` locally and retry.",
-        runtimeVersion: runtimeVersion,
-      );
-    } on Object catch (error, stackTrace) {
-      Log.w("[hermes] status probe could not launch '$executablePath status'", error, stackTrace);
+    if (statusResult == null) {
       return PluginSetupUnknown.versioned(
         actionHint: "Hermes authentication could not be determined. Run `hermes status` locally and retry.",
         runtimeVersion: runtimeVersion,
       );
     }
-    if (statusResult.exitCode != 0) {
-      Log.w("[hermes] status probe '$executablePath status' exited with code ${statusResult.exitCode}");
-      return PluginSetupUnknown.versioned(
-        actionHint: "Hermes authentication could not be determined. Run `hermes status` locally and retry.",
-        runtimeVersion: runtimeVersion,
-      );
-    }
-    final statusOutput = _normalizedStatusOutput(result: statusResult);
-    final model = _statusValue(output: statusOutput, field: "model");
-    final provider = _statusValue(output: statusOutput, field: "provider");
+    final (:model, :provider) = _statusValues(result: statusResult);
     if (_isConfiguredStatusValue(value: model) && _isConfiguredStatusValue(value: provider)) {
       return PluginSetupReady.versioned(runtimeVersion: runtimeVersion);
     }
@@ -198,6 +167,42 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       actionHint: "Hermes setup could not be determined. Run `hermes status` locally and retry.",
       runtimeVersion: runtimeVersion,
     );
+  }
+
+  /// Best-effort configuration probe. The ACP handshake remains the runtime
+  /// authentication gate, while this command supplies the model picker label.
+  Future<CommandResult?> _probeHermesStatus({
+    required String executablePath,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+  }) async {
+    final executor = HostProcessCommandExecutor(
+      processes: processes,
+      runInShell: io.Platform.isWindows,
+      maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+    );
+    try {
+      final result = await executor.run(
+        executablePath,
+        const ["status"],
+        environment: environment,
+        timeout: _versionProbeTimeout,
+      );
+      if (result.exitCode != 0) {
+        Log.w("[hermes] status probe '$executablePath status' exited with code ${result.exitCode}");
+        return null;
+      }
+      return result;
+    } on TimeoutException catch (error, stackTrace) {
+      Log.w(
+        "[hermes] status probe '$executablePath status' did not exit within ${_versionProbeTimeout.inSeconds}s",
+        error,
+        stackTrace,
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("[hermes] status probe could not launch '$executablePath status'", error, stackTrace);
+    }
+    return null;
   }
 
   Future<_HermesRuntimeProbe> _probeHermesRuntime({
@@ -284,16 +289,20 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
     return null;
   }
 
-  String _normalizedStatusOutput({required CommandResult result}) {
+  ({String? model, String? provider}) _statusValues({required CommandResult result}) {
     final combined = "${result.stdout}\n${result.stderr}";
-    return combined.replaceAll(RegExp(r"\x1B\[[0-?]*[ -/]*[@-~]"), "").trim().toLowerCase();
+    final output = combined.replaceAll(RegExp(r"\x1B\[[0-?]*[ -/]*[@-~]"), "").trim();
+    return (
+      model: _statusValue(output: output, field: "model"),
+      provider: _statusValue(output: output, field: "provider"),
+    );
   }
 
   String? _statusValue({required String output, required String field}) {
     for (final rawLine in output.split("\n")) {
       final line = rawLine.trim();
       final prefix = "$field:";
-      if (line.startsWith(prefix)) return line.substring(prefix.length).trim();
+      if (line.toLowerCase().startsWith(prefix)) return line.substring(prefix.length).trim();
     }
     return null;
   }
@@ -313,6 +322,19 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
     }
 
     final binaryPath = _explicitBin(config: host.config) ?? host.provisionedRuntimePath ?? HermesBinary.defaultBinary;
+    final statusResult = await _probeHermesStatus(
+      executablePath: binaryPath,
+      processes: host.processes,
+      environment: host.environment,
+    );
+    if (host.startAborted.isAborted) {
+      throw const PluginStartAbortedException();
+    }
+    final status = statusResult == null ? null : _statusValues(result: statusResult);
+    final hasConfiguredModel =
+        status != null &&
+        _isConfiguredStatusValue(value: status.model) &&
+        _isConfiguredStatusValue(value: status.provider);
 
     // Route the agent subprocess through the host process seam rather than
     // io.Process.start, so the bridge owns identity capture and signalling.
@@ -328,6 +350,8 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       // derive-style plugin, so the plugin needs no store of its own.
       launchDirectory: io.Directory.current.path,
       processFactory: processFactory,
+      configuredModelId: hasConfiguredModel ? status.model : null,
+      configuredProviderId: hasConfiguredModel ? status.provider : null,
     );
 
     final plugin = AcpBridgePlugin(

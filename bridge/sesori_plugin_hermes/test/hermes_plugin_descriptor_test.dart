@@ -462,11 +462,18 @@ void main() {
       expect(processes.spawnedExecutables, ["/custom/hermes", "/custom/hermes"]);
     });
 
-    test("start spawns exactly one `hermes acp` process and connects", () async {
+    test("start exposes the configured model before creating a session", () async {
       const descriptor = HermesPluginDescriptor();
       final processes = _ProbeProcessService(
         spawnError: null,
-        processSequence: const [],
+        processSequence: [
+          _ProbeProcess(
+            pid: 1,
+            stdoutBytes: utf8.encode("Model: DeepSeek-V4-Flash\nProvider: OpenCode Go\n"),
+            stderrBytes: const [],
+            exitCode: Future<int>.value(0),
+          ),
+        ],
         servesAcp: true,
       );
 
@@ -478,8 +485,19 @@ void main() {
         ),
       );
 
-      expect(processes.spawnedExecutables, ["/resolved/hermes"]);
+      final discovery = await plugin.api.getSessionOptions(
+        projectId: "/repo",
+        discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+      );
+      final options = (discovery as PluginSessionOptionsDiscoveryObserved).options;
+      final provider = options.providers.providers.single;
+      expect(provider.id, "OpenCode Go");
+      expect(provider.defaultModelID, "DeepSeek-V4-Flash");
+      expect(provider.models.single.id, "DeepSeek-V4-Flash");
+
+      expect(processes.spawnedExecutables, ["/resolved/hermes", "/resolved/hermes"]);
       expect(processes.spawnedArguments, [
+        const ["status"],
         const ["acp"],
       ]);
 
@@ -534,12 +552,15 @@ class _ProbeProcessService({
     if (error != null) {
       throw error;
     }
+    if (_nextProcess < processSequence.length) {
+      return processSequence[_nextProcess++];
+    }
     if (servesAcp) {
       final process = _AcpProcess();
       _acpProcess = process;
       return process;
     }
-    return processSequence[_nextProcess++];
+    throw StateError("No canned process remains");
   }
 
   @override

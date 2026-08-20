@@ -11,9 +11,10 @@ import "hermes_identity.dart";
 /// fork/prompt capabilities and streams turns via `session/update`
 /// notifications, so the base [AcpPlugin] machinery owns sessions and turns.
 /// This class declares Hermes-specific protocol policies, including excluding
-/// interactive terminal setup from headless authentication. Version 1 uses
-/// Hermes's configured model/mode rather than exposing a picker, and has no
-/// managed runtime (Hermes installs itself; the bridge resolves it on PATH).
+/// interactive terminal setup from headless authentication. Version 1 exposes
+/// Hermes's configured model as its sole model option while Hermes remains
+/// authoritative for model/mode changes. It has no managed runtime (Hermes
+/// installs itself; the bridge resolves it on PATH).
 class HermesPlugin._({
   required super.launchSpec,
   required super.launchDirectory,
@@ -27,6 +28,8 @@ class HermesPlugin._({
     required String binaryPath,
     required String? launchDirectory,
     required AcpProcessFactory processFactory,
+    required String? configuredModelId,
+    required String? configuredProviderId,
   }) {
     final cwd = launchDirectory ?? Directory.current.path;
     final launchSpec = HermesBinary.launchSpec(
@@ -35,7 +38,11 @@ class HermesPlugin._({
       environment: const {},
     );
     final commandTracker = AcpCommandTracker();
-    final configurationTracker = AcpSessionConfigurationTracker();
+    final configurationTracker = AcpSessionConfigurationTracker()
+      ..setProcessDefaults(
+        modelId: configuredModelId,
+        providerId: configuredProviderId,
+      );
     const contentMapper = AcpContentMapper();
     final sessionOptionsService = AcpSessionOptionsService(
       configurationTracker: configurationTracker,
