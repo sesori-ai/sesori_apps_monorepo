@@ -515,7 +515,9 @@ void main() {
         ),
       ).thenAnswer((invocation) async {
         modes.add(invocation.namedArguments[#mode]! as SessionOptionsRequestMode);
-        return modes.length == 1 ? _optionsCatalog(agentName: "stale-agent", isStale: true) : await refreshed.future;
+        return modes.length == 1
+            ? _optionsCatalog(agentName: "stale-agent", providers: const [], isStale: true)
+            : await refreshed.future;
       });
 
       final cubit = buildCubit();
@@ -526,7 +528,7 @@ void main() {
       expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsAvailableState>());
       expect(cubit.state.agentModelData?.agents.single.name, "stale-agent");
 
-      refreshed.complete(_optionsCatalog(agentName: "fresh-agent", isStale: false));
+      refreshed.complete(_optionsCatalog(agentName: "fresh-agent", providers: const [], isStale: false));
       await _waitUntil(() => cubit.state.agentModelData?.agents.single.name == "fresh-agent");
 
       expect(modes, hasLength(2));
@@ -546,7 +548,9 @@ void main() {
         ),
       ).thenAnswer((_) async {
         loadCalls++;
-        return loadCalls == 1 ? _optionsCatalog(agentName: "stale-agent", isStale: true) : await refreshed.future;
+        return loadCalls == 1
+            ? _optionsCatalog(agentName: "stale-agent", providers: const [], isStale: true)
+            : await refreshed.future;
       });
 
       final cubit = buildCubit();
@@ -559,12 +563,92 @@ void main() {
       expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsRefreshingState>());
       expect(loadCalls, 2);
 
-      refreshed.complete(_optionsCatalog(agentName: "fresh-agent", isStale: false));
+      refreshed.complete(_optionsCatalog(agentName: "fresh-agent", providers: const [], isStale: false));
       await explicitRefresh;
 
       expect(loadCalls, 2);
       expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsAvailableState>());
       expect(cubit.state.agentModelData?.agents.single.name, "fresh-agent");
+    });
+
+    test("a background refresh from a superseded selection is not joined", () async {
+      when(pluginRepository.listPlugins).thenAnswer(
+        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA, pluginB])),
+      );
+      // Plugin A's background refresh never answers, so joining it would leave
+      // an explicit refresh for plugin B running forever.
+      final strandedRefresh = Completer<SessionOptionsRepositoryResult>();
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+          mode: any(named: "mode"),
+        ),
+      ).thenAnswer((invocation) async {
+        return invocation.namedArguments[#mode] == SessionOptionsRequestMode.dynamic
+            ? _optionsCatalog(agentName: "a-agent", providers: const [], isStale: true)
+            : await strandedRefresh.future;
+      });
+      var pluginBRefreshes = 0;
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-b",
+          mode: any(named: "mode"),
+        ),
+      ).thenAnswer((invocation) async {
+        if (invocation.namedArguments[#mode] == SessionOptionsRequestMode.forceRefresh) pluginBRefreshes++;
+        return _optionsCatalog(agentName: "b-agent", providers: const [], isStale: false);
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+
+      cubit.selectPlugin(pluginId: "plugin-b");
+      await _waitForComposer(cubit);
+
+      await cubit.refreshOptions();
+
+      expect(pluginBRefreshes, 1);
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsAvailableState>());
+      expect(cubit.canCreateSession, isTrue);
+    });
+
+    test("a choice made during a background refresh outranks its result", () async {
+      when(
+        pluginRepository.listPlugins,
+      ).thenAnswer((_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])));
+      final refreshed = Completer<SessionOptionsRepositoryResult>();
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+          mode: any(named: "mode"),
+        ),
+      ).thenAnswer((invocation) async {
+        return invocation.namedArguments[#mode] == SessionOptionsRequestMode.dynamic
+            ? _optionsCatalog(agentName: "agent", providers: _providerResponse().items, isStale: true)
+            : await refreshed.future;
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      expect(cubit.state.agentModelData?.agentModel?.variant, "high");
+
+      cubit.selectVariant(const SessionVariant(id: "max"));
+      expect(cubit.state.agentModelData?.agentModel?.variant, "max");
+
+      refreshed.complete(
+        _optionsCatalog(agentName: "refreshed-agent", providers: _providerResponse().items, isStale: false),
+      );
+      await _settle();
+
+      expect(cubit.state.agentModelData?.agentModel?.variant, "max");
+      expect(cubit.state.agentModelData?.agents.single.name, "agent");
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsAvailableState>());
+      expect(cubit.canCreateSession, isTrue);
     });
 
     test("typed retained refresh failure preserves the staged command and prior catalog", () async {
@@ -1846,16 +1930,28 @@ AgentInfo _agent(String name) {
   return AgentInfo(name: name, description: name, model: null, mode: AgentMode.primary);
 }
 
-SessionOptionsRepositoryAvailable _optionsCatalog({required String agentName, required bool isStale}) {
+SessionOptionsRepositoryAvailable _optionsCatalog({
+  required String agentName,
+  required List<ProviderInfo> providers,
+  required bool isStale,
+}) {
   return SessionOptionsRepositoryAvailable(
     isStale: isStale,
     catalog: SessionOptionsCatalog(
       agents: [_agent(agentName)],
-      providers: const [],
+      providers: providers,
       providersConnectedOnly: false,
       commands: const [],
     ),
   );
+}
+
+/// Lets pending microtasks — a completed request and the work it triggers —
+/// finish when the outcome under test is that nothing on screen changed.
+Future<void> _settle() async {
+  for (var turn = 0; turn < 10; turn++) {
+    await Future<void>.delayed(Duration.zero);
+  }
 }
 
 ProviderListResponse _providerResponse() {

@@ -29,7 +29,12 @@ sealed class NewSessionOptionsData with _$NewSessionOptionsData {
 
 sealed class const NewSessionOptionsLoadResult();
 
-enum NewSessionOptionsLoadMode() { dynamicLoad, forcedRefresh }
+/// What asked for a load: the screen opening or reconnecting, the user pressing
+/// refresh, or a stale-reported cache being brought up to date in the
+/// background. A silent refresh reaches the bridge as a forced one; the
+/// distinction is that nobody is waiting on it, so it must not overwrite what
+/// the user does while it runs.
+enum NewSessionOptionsLoadMode() { dynamicLoad, forcedRefresh, silentRefresh }
 
 /// Loaded options, and whether the bridge served them from a snapshot old
 /// enough to be worth refreshing behind the user's back. Only a cache the
@@ -86,9 +91,11 @@ class NewSessionOptionsService({
     final result = await _sessionRepository.loadSessionOptions(
       projectId: projectId,
       pluginId: pluginId,
-      mode: mode == NewSessionOptionsLoadMode.forcedRefresh
-          ? SessionOptionsRequestMode.forceRefresh
-          : SessionOptionsRequestMode.dynamic,
+      mode: switch (mode) {
+        NewSessionOptionsLoadMode.dynamicLoad => SessionOptionsRequestMode.dynamic,
+        NewSessionOptionsLoadMode.forcedRefresh ||
+        NewSessionOptionsLoadMode.silentRefresh => SessionOptionsRequestMode.forceRefresh,
+      },
     );
     return switch (result) {
       SessionOptionsRepositoryAvailable(:final catalog, :final isStale) => NewSessionOptionsLoaded(
@@ -115,7 +122,8 @@ class NewSessionOptionsService({
               ),
       SessionOptionsRepositoryRefreshFailedUnavailable() => switch (mode) {
         NewSessionOptionsLoadMode.dynamicLoad => const NewSessionOptionsLoadFailureUnavailable(),
-        NewSessionOptionsLoadMode.forcedRefresh => const NewSessionOptionsRefreshFailureUnavailable(),
+        NewSessionOptionsLoadMode.forcedRefresh ||
+        NewSessionOptionsLoadMode.silentRefresh => const NewSessionOptionsRefreshFailureUnavailable(),
       },
       SessionOptionsRepositoryFailure(:final error) => _transientFailure(
         error: error,

@@ -18,8 +18,7 @@ mixin _$SessionOptionsResponse {
 
  Agents get agents; ProviderListResponse get providers; CommandListResponse get commands;/// Whether the bridge served a cached snapshot older than its freshness
 /// window, making it worth a background refresh. Freshly discovered options
-/// are never stale, and a bridge that predates the signal never asks for
-/// one.
+/// are never stale.
  bool get stale;
 /// Create a copy of SessionOptionsResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -123,8 +122,7 @@ class _SessionOptionsResponse implements SessionOptionsResponse {
 @override final  CommandListResponse commands;
 /// Whether the bridge served a cached snapshot older than its freshness
 /// window, making it worth a background refresh. Freshly discovered options
-/// are never stale, and a bridge that predates the signal never asks for
-/// one.
+/// are never stale.
 @override@JsonKey() final  bool stale;
 
 /// Create a copy of SessionOptionsResponse
