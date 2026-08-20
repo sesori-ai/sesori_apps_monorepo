@@ -156,6 +156,47 @@ void main() {
       expect(replayed.whereType<BridgeSseMessagePartUpdated>().single.part.text, "next answer");
     });
 
+    test("finalizes streamed text when Claude sends the assistant after block stop", () {
+      _startMessage(mapper, messageId: "msg-late-assistant");
+      _map(
+        mapper,
+        _stream(
+          "content_block_start",
+          event: {
+            "index": 0,
+            "content_block": {"type": "text", "text": ""},
+          },
+        ),
+      );
+      _map(
+        mapper,
+        _stream(
+          "content_block_delta",
+          event: {
+            "index": 0,
+            "delta": {"type": "text_delta", "text": "persisted answer"},
+          },
+        ),
+      );
+
+      final stopped = _map(
+        mapper,
+        _stream("content_block_stop", event: const {"index": 0}),
+      );
+      final complete = _map(
+        mapper,
+        _assistant(
+          id: "msg-late-assistant",
+          content: const [
+            {"type": "text", "text": "persisted answer"},
+          ],
+        ),
+      );
+
+      expect(stopped.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
+      expect(complete.whereType<BridgeSseMessagePartUpdated>().single.part.text, "persisted answer");
+    });
+
     test("hides local command records and keeps the last real model", () {
       _startMessage(mapper, messageId: "msg-real", model: "claude-opus-5");
       _startMessage(mapper, messageId: "msg-command", model: "<synthetic>");

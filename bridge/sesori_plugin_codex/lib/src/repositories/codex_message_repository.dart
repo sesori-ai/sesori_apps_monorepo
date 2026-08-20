@@ -181,6 +181,27 @@ class CodexMessageRepository({
           pending.resolved = true;
         }
       }
+      if (line
+          case CodexRolloutEventMessageLineDto(
+            payload: CodexRolloutTaskCompleteEventDto(:final turnId, error: final error?),
+          )
+          when error.message.trim().isNotEmpty) {
+        messages.add(
+          PluginMessageWithParts(
+            info: PluginMessage.error(
+              id: turnId,
+              sessionID: sessionId,
+              agent: "codex",
+              modelID: currentModel ?? config.model,
+              providerID: sessionProvider ?? config.modelProvider ?? "openai",
+              errorName: "CodexError",
+              errorMessage: error.message,
+              time: _messageTimeFrom(lineTimestamp),
+            ),
+            parts: const [],
+          ),
+        );
+      }
 
       final CodexRolloutResponseItemDto payload;
       switch (line) {

@@ -110,7 +110,7 @@ void main() {
         parts: const [PluginPromptPart.text(text: "hello codex")],
         userVisibleText: "hello codex",
         variant: null,
-        agent: "Default",
+        agent: "Agent",
         model: null,
       );
 
@@ -162,7 +162,7 @@ void main() {
         ],
         userVisibleText: "describe this",
         variant: null,
-        agent: "Default",
+        agent: "Agent",
         model: null,
       );
 
@@ -923,7 +923,7 @@ void main() {
       expect(fake.serverResponseFor(99)["result"], {"decision": "decline"});
     });
 
-    test("error clears provisional busy", () async {
+    test("terminal error sequence clears busy and emits the failure message", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
         const _Response(
@@ -949,13 +949,33 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.busy);
 
       final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+      final visibleError = plugin.events
+          .where((event) => event is BridgeSseMessageUpdated)
+          .cast<BridgeSseMessageUpdated>()
+          .map((event) => shared.Message.fromJson(event.info))
+          .where((message) => message is shared.MessageError)
+          .cast<shared.MessageError>()
+          .first;
       fake.pushNotification("error", {
         "threadId": "t-terminal",
+        "turnId": "u-terminal",
         "error": {"message": "turn failed"},
+        "willRetry": false,
+      });
+      fake.pushNotification("turn/completed", {
+        "threadId": "t-terminal",
+        "turn": {
+          "id": "u-terminal",
+          "status": "failed",
+          "error": {"message": "turn failed"},
+        },
       });
 
       await idle.timeout(const Duration(seconds: 1));
+      final error = await visibleError.timeout(const Duration(seconds: 1));
       expect(plugin.currentWorkState, PluginWorkState.idle);
+      expect(error.id, "u-terminal");
+      expect(error.errorMessage, "turn failed");
     });
 
     test("sendPrompt does not re-resume a thread created in this run", () async {
@@ -1825,7 +1845,7 @@ void main() {
       await plugin.healthCheck();
       final agents = await plugin.getAgents(projectId: "/work/sample");
 
-      expect(agents.map((agent) => agent.name), ["Default", "Plan"]);
+      expect(agents.map((agent) => agent.name), ["Agent", "Plan"]);
       expect(agents.every((agent) => agent.model?.modelID == "gpt-5.5"), isTrue);
     });
 
@@ -1872,7 +1892,7 @@ void main() {
       final options = (result as PluginSessionOptionsDiscoveryObserved).options;
       expect(options.completeness, PluginSessionOptionsCompleteness.complete);
       expect(options.providers.providers.single.models.single.id, "gpt-5.5");
-      expect(options.agents.map((agent) => agent.name), ["Default", "Plan"]);
+      expect(options.agents.map((agent) => agent.name), ["Agent", "Plan"]);
       expect(options.commands.map((command) => command.name), ["review", "compact"]);
       expect(fake.sentMethods.where((method) => method == "model/list"), hasLength(1));
     });

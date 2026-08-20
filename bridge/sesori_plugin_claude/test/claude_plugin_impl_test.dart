@@ -295,8 +295,8 @@ void main() {
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "steer it")],
         variant: null,
-        agent: null,
-        model: null,
+        agent: "Agent",
+        model: (providerID: "anthropic", modelID: "default"),
       );
       final entry = (await harness.plugin.getQueuedPrompts(sessionId: testSessionId)).single;
       expect(entry.id, "prm_steer");
@@ -309,9 +309,9 @@ void main() {
         "prm_steer",
       );
 
-      first.emit(_result());
       await _waitForUserText(first, "steer it");
       final written = first.written.lastWhere((frame) => frame["type"] == "user");
+      expect(written["priority"], "next");
       first.emit(_replayOf(written, uuid: "replay-steer"));
       await pump();
       await pump();
@@ -352,6 +352,7 @@ void main() {
       final queued = await harness.plugin.getQueuedPrompts(sessionId: testSessionId);
       expect(queued.single.command, "review");
       expect(queued.single.text, "src");
+      expect(_userTexts(first), isNot(contains("/review src")), reason: "commands wait for the active turn");
 
       first.emit(_result());
       await _waitForUserText(first, "/review src");
@@ -374,6 +375,40 @@ void main() {
       await subscription.cancel();
     });
 
+    test("a replay that maps to nothing keeps the queued prompt visible", () async {
+      await harness.createSession();
+      final first = harness.processes.single;
+      await waitForFrame(first, "user");
+      first.emit(_result());
+      await pump();
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      await harness.plugin.sendPrompt(
+        promptId: "prm_unmappable",
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "no uuid")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await _waitForUserText(first, "no uuid");
+      final written = first.written.lastWhere((frame) => frame["type"] == "user");
+      // An uuid-less replay produces no visible message; releasing the queued
+      // entry here would erase the prompt from the transcript entirely.
+      first.emit(_replayOf(written, uuid: ""));
+      await pump();
+      await pump();
+
+      expect(
+        events.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == "prm_unmappable"),
+        isEmpty,
+      );
+      final queued = await harness.plugin.getQueuedPrompts(sessionId: testSessionId);
+      expect(queued.single.id, "prm_unmappable");
+      await subscription.cancel();
+    });
+
     test("a late echo after abort is not stamped with the aborted prompt id", () async {
       await harness.createSession();
       final first = harness.processes.single;
@@ -390,24 +425,22 @@ void main() {
         model: null,
       );
       await _waitForUserText(first, "interrupted early");
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      final written = first.written.lastWhere((frame) => frame["type"] == "user");
+      first.emit(_replayOf(written, uuid: "late-echo"));
       final abort = harness.plugin.abortSession(sessionId: testSessionId);
       final interrupt = await _waitForControl(first, "interrupt");
       first.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
       await abort;
-
-      final events = <BridgeSseEvent>[];
-      final subscription = harness.plugin.events.listen(events.add);
-      // A buffered frame arriving after the abort must not inherit the
-      // aborted turn's identity.
-      final written = first.written.lastWhere((frame) => frame["type"] == "user");
-      first.emit(_replayOf(written, uuid: "late-echo"));
       await pump();
       await pump();
 
+      // A buffered frame delivered while abort clears the queue must not
+      // inherit the aborted turn's identity.
       final lateEchoes = events.whereType<BridgeSseMessageUpdated>().where((event) => event.info["id"] == "late-echo");
-      for (final message in lateEchoes) {
-        expect(message.info["promptId"], isNull);
-      }
+      expect(lateEchoes, hasLength(1));
+      expect(lateEchoes.single.info["promptId"], isNull);
       await subscription.cancel();
     });
 
@@ -420,7 +453,7 @@ void main() {
         promptId: "prm_cancel",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "never runs")],
-        variant: null,
+        variant: const PluginSessionVariant(id: "high"),
         agent: null,
         model: null,
       );
@@ -438,8 +471,6 @@ void main() {
       await harness.createSession();
       final first = harness.processes.single;
       await waitForFrame(first, "user");
-      first.emit(_result());
-      await pump();
 
       await harness.plugin.sendPrompt(
         promptId: "prompt-1",
@@ -449,6 +480,11 @@ void main() {
         agent: "Agent",
         model: (providerID: "anthropic", modelID: "default"),
       );
+      await pump();
+      expect(harness.processes, hasLength(1));
+      expect(_userTexts(first), isNot(contains("deeper")), reason: "effort is launch-only");
+
+      first.emit(_result());
       for (var attempt = 0; attempt < 50 && harness.processes.length < 2; attempt++) {
         await pump();
       }
@@ -745,15 +781,22 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
 
   String _nextId() => _testIds[_idIndex++];
 
-  Future<PluginSession> createSession() => plugin.createSession(
-    directory: "/tmp/project",
-    parentSessionId: null,
-    parts: const [PluginPromptPart.text(text: "hello")],
-    userVisibleText: "hello",
-    variant: null,
-    agent: "Agent",
-    model: (providerID: "anthropic", modelID: "default"),
-  );
+  Future<PluginSession> createSession() async {
+    final session = await plugin.createSession(
+      directory: "/tmp/project",
+      parentSessionId: null,
+      parts: const [PluginPromptPart.text(text: "hello")],
+      userVisibleText: "hello",
+      variant: null,
+      agent: "Agent",
+      model: (providerID: "anthropic", modelID: "default"),
+    );
+    final process = processes.last;
+    final written = process.written.lastWhere((frame) => frame["type"] == "user");
+    process.emit(_replayOf(written, uuid: "initial-${session.id}"));
+    await pump();
+    return session;
+  }
 
   Future<void> close() async {
     await plugin.dispose();

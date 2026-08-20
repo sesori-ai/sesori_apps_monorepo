@@ -1192,6 +1192,42 @@ void main() {
     expect(aborted.status, PluginToolStatus.error);
   });
 
+  test("identifier-less abort errors tools in the active turn", () {
+    final target = tracker();
+    target
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "task_started", turnId: "turn-1"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _rawExecCall(callId: "call-exec", turnId: "turn-1"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-exec",
+          output: "Script running with cell ID 7\nOutput:\n",
+        ),
+      );
+
+    final aborted = target
+        .observeRolloutLine(
+          threadId: "thread-1",
+          line: CodexRolloutLineDto.fromJson({
+            "type": "event_msg",
+            "payload": {
+              "type": "turn_aborted",
+              "reason": "interrupted",
+            },
+          }),
+        )
+        .single;
+
+    expect(aborted.canonicalId, "call-exec");
+    expect(aborted.status, PluginToolStatus.error);
+  });
+
   test("late app-server completion retains the aborted canonical identity", () {
     final target = tracker();
     target

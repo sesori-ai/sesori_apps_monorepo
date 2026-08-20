@@ -100,6 +100,7 @@ final class PiSessionProcessRepository({
 }) {
   final Map<String, String> _environment = Map.unmodifiable(environment);
   final Map<String, _ResidentClient> _residents = {};
+  final Map<String, ({PiRpcClient client, Completer<void> completion})> _tearingDown = {};
   final Map<String, Future<PiSessionConnection>> _connecting = {};
   final Map<String, _ConnectingClient> _connectingClients = {};
   final Map<String, Future<void>> _sessionOperationTails = {};
@@ -566,12 +567,26 @@ final class PiSessionProcessRepository({
     return _TransientClient(client: client, resolved: resolved);
   }
 
-  Future<void> teardown({required String sessionId}) async {
+  Future<void> teardown({
+    required String sessionId,
+    Duration gracefulTimeout = const Duration(seconds: 5),
+  }) async {
     _generations.remove(sessionId);
+    final existingTeardown = _tearingDown[sessionId];
+    if (existingTeardown != null) {
+      unawaited(existingTeardown.client.dispose(gracefulTimeout: gracefulTimeout));
+      await existingTeardown.completion.future;
+      // A resident established while the old teardown ran must not survive a
+      // teardown request that arrived after it.
+      if (_residents.containsKey(sessionId)) {
+        await teardown(sessionId: sessionId, gracefulTimeout: gracefulTimeout);
+      }
+      return;
+    }
     final connecting = _connectingClients.remove(sessionId);
     if (connecting != null) {
       final wasRunning = connecting.client.isRunning;
-      final disposal = connecting.client.dispose();
+      final disposal = connecting.client.dispose(gracefulTimeout: gracefulTimeout);
       if (wasRunning) {
         await disposal;
       } else {
@@ -584,8 +599,25 @@ final class PiSessionProcessRepository({
     }
     final resident = _residents.remove(sessionId);
     if (resident == null) return;
-    await resident.cancelFrames();
-    await resident.client.dispose();
+    final completion = Completer<void>();
+    // Waiters observing this completer share the teardown outcome; a failed
+    // teardown must fail them too, or shutdown could report clean teardown
+    // over an unreleased process.
+    _tearingDown[sessionId] = (client: resident.client, completion: completion);
+    try {
+      await Future.wait([
+        resident.cancelFrames(),
+        resident.client.dispose(gracefulTimeout: gracefulTimeout),
+      ]);
+      _tearingDown.remove(sessionId);
+      completion.complete();
+    } on Object catch (error, stackTrace) {
+      _tearingDown.remove(sessionId);
+      completion.completeError(error, stackTrace);
+      // Waiters may be absent; the local rethrow below already surfaces it.
+      completion.future.ignore();
+      rethrow;
+    }
   }
 
   Future<void> teardownConnection({required PiSessionConnection connection}) async {
@@ -601,21 +633,73 @@ final class PiSessionProcessRepository({
     _identityTracker.forgetSession(sessionId: sessionId);
   }
 
-  Future<void> dispose() async {
+  /// [shutdownBudget] `null` means no deadline: teardown waits as long as
+  /// graceful disposal takes.
+  Future<void> dispose({Duration? shutdownBudget = const Duration(seconds: 15)}) async {
     if (_disposed) return;
     _disposed = true;
+    final stopwatch = Stopwatch()..start();
+    final gracefulTimeout = shutdownBudget == null
+        ? const Duration(seconds: 5)
+        : Duration(microseconds: shutdownBudget.inMicroseconds ~/ 3);
     for (final sessionId in {..._residents.keys, ..._connecting.keys}) {
       _generations[sessionId] = ++_nextConnectionGeneration;
     }
-    await Future.wait([
-      for (final sessionId in {..._residents.keys, ..._connectingClients.keys}) teardown(sessionId: sessionId),
-    ]);
-    await Future.wait(
-      _connecting.values.map((future) => future.then<void>((_) {}, onError: (Object _, StackTrace _) {})),
+    await _withinRemainingBudget(
+      Future.wait([
+        for (final sessionId in {..._residents.keys, ..._connectingClients.keys})
+          teardown(sessionId: sessionId, gracefulTimeout: gracefulTimeout),
+        for (final entry in _tearingDown.entries) teardown(sessionId: entry.key, gracefulTimeout: gracefulTimeout),
+      ]),
+      stopwatch: stopwatch,
+      shutdownBudget: shutdownBudget,
+      operation: "resident sessions",
     );
-    await Future.wait(_sessionOperationTails.values.toList());
+    await _withinRemainingBudget(
+      Future.wait(
+        _connecting.values.map((future) => future.then<void>((_) {}, onError: (Object _, StackTrace _) {})),
+      ),
+      stopwatch: stopwatch,
+      shutdownBudget: shutdownBudget,
+      operation: "connecting sessions",
+    );
+    await _withinRemainingBudget(
+      Future.wait(_sessionOperationTails.values.toList()),
+      stopwatch: stopwatch,
+      shutdownBudget: shutdownBudget,
+      operation: "session operations",
+    );
     await _frames.close();
     await _exits.close();
+  }
+
+  Future<void> _withinRemainingBudget(
+    Future<void> operationFuture, {
+    required Stopwatch stopwatch,
+    required Duration? shutdownBudget,
+    required String operation,
+  }) async {
+    if (shutdownBudget == null) {
+      // No deadline: wait for graceful teardown however long it takes.
+      return await operationFuture;
+    }
+    final remaining = shutdownBudget - stopwatch.elapsed;
+    if (remaining <= Duration.zero) {
+      unawaited(
+        operationFuture.catchError((Object error, StackTrace stackTrace) {
+          Log.w("[pi] $operation cleanup failed after the shutdown budget elapsed", error, stackTrace);
+        }),
+      );
+      if (shutdownBudget > Duration.zero) {
+        Log.w("[pi] shutdown budget elapsed before waiting for $operation");
+      }
+      return;
+    }
+    try {
+      await operationFuture.timeout(remaining);
+    } on TimeoutException catch (error, stackTrace) {
+      Log.w("[pi] shutdown budget elapsed while waiting for $operation", error, stackTrace);
+    }
   }
 
   Future<List<PluginMessageWithParts>> loadHistory({

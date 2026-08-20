@@ -191,11 +191,14 @@ class CodexEventMapper({
       case "turn/completed":
         final threadId = params["threadId"] as String?;
         if (threadId == null) return const [];
+        final turn = _asMap(params["turn"]);
         return [
           _sessionActivityUpdated(
             threadId: threadId,
-            timestampSeconds: _asMap(params["turn"])?["completedAt"],
+            timestampSeconds: turn?["completedAt"],
           ),
+          if (_turnErrorMessage(threadId: threadId, turn: turn) case final errorMessage?)
+            BridgeSseMessageUpdated(info: errorMessage.toJson()),
           BridgeSseSessionIdle(sessionID: threadId),
         ];
 
@@ -242,6 +245,28 @@ class CodexEventMapper({
     //     ApprovalRegistry as permission/question events.
     //   - account/*, fs/changed, configWarning, realtime/* … — no analog.
     return const [];
+  }
+
+  PluginMessage? _turnErrorMessage({
+    required String threadId,
+    required Map<String, dynamic>? turn,
+  }) {
+    final turnId = turn?["id"] as String?;
+    final error = _asMap(turn?["error"]);
+    final message = error?["message"] as String?;
+    if (turnId == null || turnId.trim().isEmpty || message == null || message.trim().isEmpty) {
+      return null;
+    }
+    return PluginMessage.error(
+      id: turnId,
+      sessionID: threadId,
+      agent: "codex",
+      modelID: _threadModel[threadId] ?? config.model,
+      providerID: _threadProvider[threadId] ?? config.modelProvider ?? "openai",
+      errorName: "CodexError",
+      errorMessage: message,
+      time: null,
+    );
   }
 
   /// Renders a complete repository-owned canonical tool upsert.

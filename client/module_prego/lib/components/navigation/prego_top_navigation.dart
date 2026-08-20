@@ -143,7 +143,7 @@ class const PregoTopNavigation({
   Widget build(BuildContext context) {
     final leading = _resolveLeading(context);
     return GlassAppBar(
-      preferredSize: preferredSize,
+      toolbarHeight: barHeight,
       // Override GlassAppBar's default 8px inset so the leading and trailing
       // buttons sit 16pt from the bar edges. The full-width [title] content
       // pins flush to this padded area, so this padding is their distance from

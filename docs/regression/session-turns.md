@@ -28,15 +28,23 @@ defaults and queued client sends coherent.
   sessions, other plugins, the relay read loop, or catalog reads.
 - Streaming produces incremental message and part events and a terminal status
   transition back to idle; retry carries attempt, message, and timing, and
-  finalized messages enter durable history matching a history read. Internal
-  backend command records are not rendered as conversation messages or used as
-  assistant model attribution.
+  finalized messages enter durable history matching a history read. A terminal
+  provider failure appears as an inline error message and remains visible after
+  refresh or reopen. Internal backend command records are not rendered as
+  conversation messages or used as assistant model attribution.
 - Claude user prompts appear in the live transcript from the CLI's replayed
   stdin echo under their transcript uuid, so a follow-up prompt stays visible
   and a later transcript backfill converges on the same message instead of
   duplicating it. The bridge worktree context envelope is stripped from the
   echo, and a slash command renders one synthetic user message because its
   echo is the CLI's internal command envelope.
+- A plain Claude prompt sent while its resident process is working is written
+  immediately with `priority: next`. Claude absorbs it at the next tool
+  boundary when possible, within the active agent turn; otherwise Claude keeps
+  it for its own following turn. Several absorbed prompts may share one result,
+  while a prompt that starts later settles on that later result. Slash commands
+  and model, effort, or permission-mode changes wait for a turn boundary
+  instead of changing the active turn.
 - Pi keeps at most one lazy resident RPC process per active session and allows
   different sessions to run concurrently. Startup replays and hydrates message
   identity before live frames attach or a turn dispatches; same-session prompts
@@ -75,14 +83,20 @@ defaults and queued client sends coherent.
   failure must not fail the send. Abort stops the turn with an observable
   outcome and no completion notification, and the next turn starts without
   recovery output from the interrupted backend process.
-- The bridge owns queued prompts. A send accepted while another turn runs
-  becomes a bridge-queued entry: it appears in the session snapshot and in
-  full-list `session.queued-prompts` events, survives leaving the screen,
-  locking the phone, and reconnecting, is visible to every client of that
-  bridge, and can be cancelled individually from any client until it
-  dispatches (a cancel of an entry that already dispatched is refused as
-  benign — the prompt became a turn, governed by Stop). Aborting the session
-  clears its queued entries.
+- Opening an existing session selects valid persisted prompt defaults first and
+  otherwise continues with the latest assistant/error transcript model before
+  falling back to agent or catalog defaults. The transcript model remains
+  authoritative when a retained provider cache does not list it, so a terminal-
+  imported session cannot silently resume on a different provider.
+- The bridge owns accepted-but-not-yet-visible prompts. An entry appears in the
+  session snapshot and full-list `session.queued-prompts` events, survives
+  leaving the screen, locking the phone, and reconnecting, and is visible to
+  every client of that bridge. A normal Claude prompt usually dispatches as
+  steering immediately and remains represented only until its replayed user
+  message lands. Entries still waiting for process startup, an earlier command,
+  or a selection boundary can be cancelled individually; cancellation after
+  dispatch is refused as benign because the prompt is then governed by Stop.
+  Aborting the session clears every remaining entry and Claude's internal queue.
 - One prompt renders as one bubble that transforms in place: sending (staged
   locally while the POST is in flight) → queued (bridge-owned) → sent (the
   transcript message). The dispatched message carries the prompt id and
@@ -120,15 +134,16 @@ defaults and queued client sends coherent.
 | L1 Smoke | Live plugin, representative: a prompt streams assistant output and returns the session to idle. |
 | L2 Routine | Live plugin, representative: slash command returns on acceptance; prompt defaults update; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. |
 | L3 Release | Client end to end (phone), every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming, composer, sending/queued feedback, and abort render; a stale selection refreshes, warns, and retries once without losing the queued prompt. |
-| L4 Extended | Relay integration, every supporting production plugin: a slow or unresponsive plugin leaves other sessions, plugins, and the relay responsive; archived sends and queued-prompt cancels are refused without racing archiving; disconnect and reconnect mid-turn resumes without lost or duplicated parts; bridge-queued prompts survive leaving and reopening the session in order and appear on a second client, which can cancel them; a permission reply lands while a send is queued behind the running turn; a second client observes the same turn. |
+| L4 Extended | Relay integration, every supporting production plugin: a slow or unresponsive plugin leaves other sessions, plugins, and the relay responsive; archived sends and queued-prompt cancels are refused without racing archiving; disconnect and reconnect mid-turn resumes without lost or duplicated parts; bridge-owned prompts survive leaving and reopening in order and appear on a second client; a prompt waiting at a dispatch boundary can be cancelled; a permission reply lands while a command or selection-changing prompt waits behind the running turn; a second client observes the same turn and steering prompt. |
 | L5 Full | Client end to end, every supporting production plugin: retry status surfaces with attempt and timing; concurrent sends across sessions and plugins interleave without ordering damage; background and resume mid-turn recovers live state; an aborted turn triggers no completion notification. |
 
 ## Exploration Guidance
 
 Vary prompt shape, prompt versus slash command, explicit versus default
-agent/model, aborting early versus late, sending while busy to engage the
-bridge-owned queue (steering, cancelling, leaving and reopening mid-queue),
-turn length, and client count. For Hermes, include text and image prompts,
+agent/model, aborting early versus late, sending while busy to steer at a tool
+boundary, sending a command or selection change that must wait, cancelling before
+dispatch, leaving and reopening while an entry is visible, turn length, and
+client count. For Hermes, include text and image prompts,
 tool updates, a permission decision, cold history replay, and abort after output
 has started.
 
@@ -138,15 +153,21 @@ has started.
   plugin blocks unrelated sessions, other plugins, or relay traffic.
 - Streaming stalls, duplicates or loses parts, shows an empty user bubble, or
   orders a late envelope at the wrong transcript position; the session never
-  returns to idle.
+  returns to idle. A terminal provider failure returns to idle without showing
+  its error, or the error disappears after refresh or reopen.
 - Internal backend command records or synthetic model attribution appear in
   the conversation or replayed history.
 - Prompt defaults regress, an approved plan exit does not restore Agent
   across clients and restart, or a defaults-write failure fails the send.
+- Reopening or importing a session silently switches its latest transcript
+  model to a stale catalog default on the next send.
 - A send or cancel succeeds against an archived session, an aborted turn
   triggers a completion notification, or queued sends reorder, vanish, or
-  resend. A send to a busy session blocks until the running turn finishes, a
-  bridge-queued prompt disappears after leaving and reopening the session, a
+  resend. A plain Claude prompt sent to a busy resident process waits for the
+  running turn to finish before reaching stdin, carries a priority other than
+  `next`, or incorrectly reports idle between an active turn and its queued
+  continuation. A bridge-queued prompt disappears after leaving and reopening
+  the session, a
   retried send within the dedupe window becomes a duplicate turn, or the
   queued bubble and its dispatched message render simultaneously. Submitted text disappears while
   bridge acceptance or backend startup is still pending, or queued feedback
@@ -185,6 +206,10 @@ has started.
   shape. Cold replay therefore shows only the slash-command token to avoid
   exposing bridge-owned arguments; live API-command presentation retains only
   the exact user-authored arguments.
+- Untested Hermes gap (remove this entry once verified): reasoning streaming
+  was never observed from Hermes. An explicit chain-of-thought prompt produced
+  no `agent_thought_chunk` against the tested model, so thought-part
+  normalization is unverified for this harness.
 
 ## Sources
 

@@ -19,7 +19,7 @@ void main() {
       // One handshake yields commands, agents and models together, which is
       // why the catalog service needs no separate startup probes.
       expect(connected.client.handshake, isNotNull);
-      expect(connected.client.handshake!["models"], hasLength(2));
+      expect(connected.client.handshake!["models"], hasLength(3));
       expect(connected.client.handshake!["commands"], hasLength(1));
       expect(connected.client.isConnected, isTrue);
     });
@@ -296,6 +296,7 @@ void main() {
       final frame = await waitForFrame(connected.fake, "user");
 
       expect(frame["session_id"], otherTestSessionId);
+      expect(frame["priority"], "next");
       final message = frame["message"]! as Map;
       expect(message["role"], "user");
       expect((message["content"]! as List).single, {"type": "text", "text": "hello"});

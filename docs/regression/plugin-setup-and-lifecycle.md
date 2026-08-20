@@ -21,11 +21,23 @@ idle suspension, the management snapshot, and lifecycle commands.
   while preserving an explicit path as authoritative.
   Model/provider setup remains an out-of-band Hermes CLI action, so authentication-required
   Hermes entries give local setup guidance rather than offering bridge-managed login.
+- Pi and Oh My Pi are registered harnesses with managed installs where a platform
+  archive exists and explicit `--pi-bin`/`--omp-bin` paths stay authoritative. Pi
+  sessions always launch with `--approve` (project-local Pi settings, extensions,
+  skills, and prompt templates are trusted without prompts); OMP inherits the user's
+  `tools.approvalMode`. Provider login for both happens locally, never from the phone.
+- Backend `tui.toast.show` SSE events render app-wide through the backend-neutral
+  toast surface, presented with the design-system popup alert on the root
+  navigator's overlay: every accepted toast is a new effect (equal repeated guidance
+  included), toasts with no renderable text are dropped, and unknown variants
+  degrade to info.
 - Listings order by display name case-insensitively with the identifier as tie-breaker,
   and the default is the preferred harness when selectable, else the first selectable.
 - Client-owned branding maps recognized built-in harness ids to their stable names and
   theme-specific artwork. Hermes renders as `Hermes Agent` with its light or dark
-  NousResearch logo, while an unknown plugin id retains the generic icon and raw-id fallback.
+  NousResearch logo, Pi as `Pi` with its official glyph, and Oh My Pi as `Oh My Pi`
+  with its official icon, while an unknown plugin id retains the generic icon and
+  raw-id fallback.
 - Harnesses start on demand unless eager; a transient one may suspend after a confirmed
   idle window and a resident one never does, and idle timeouts survive restart.
   Enable, disable, restart, and refresh are offered only where declared, with enable
@@ -119,6 +131,13 @@ timeouts, and sessions afterwards.
 - Hermes model/provider configuration is intentionally unavailable through Sesori and must
   be completed with the Hermes CLI before setup can become ready.
 - Idle windows are minutes-order, so observing a real elapse belongs at L4 or above.
+- Untested Hermes gap (remove this entry once verified): the targeted L4 idle
+  respawn was never exercised for Hermes, because it needs a controlled
+  idle-timeout window rather than an interactive session.
+- Untested Hermes gap (remove this entry once verified): older-client
+  unknown-id fallback and older-bridge presentation were never exercised end to
+  end against a second build pair; only the automated fallback and branding
+  checks passed.
 
 ## Sources
 

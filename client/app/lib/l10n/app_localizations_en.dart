@@ -1046,9 +1046,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailPickerVariant => 'Variant';
 
   @override
-  String get sessionDetailVariantDefault => 'Default';
-
-  @override
   String get sessionDetailSelectModel => 'Select Model';
 
   @override

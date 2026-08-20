@@ -19,7 +19,7 @@ resolution: workspace
 # of the product and file versions while build-number is used as the build suffix.
 version: 1.8.0+1
 environment:
-  sdk: ^3.13.0-0
+  sdk: ^3.13.0
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -39,7 +39,7 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.9
-  liquid_glass_widgets: ^0.22.1
+  liquid_glass_widgets: ^0.30.1
   http: ^1.6.0
   freezed_annotation: ^3.1.0
   json_annotation: ^4.12.0
@@ -65,7 +65,7 @@ dependencies:
   cryptography: ^2.9.0
   cryptography_flutter: ^2.3.4
   web_socket_channel: ^3.0.3
-  flutter_secure_storage: ^10.3.1
+  flutter_secure_storage: ^11.0.0
   app_links: ^7.2.1
   url_launcher: ^6.3.2
   share_plus: ^13.3.0

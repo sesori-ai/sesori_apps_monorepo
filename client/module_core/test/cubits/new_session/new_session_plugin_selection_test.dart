@@ -1552,15 +1552,15 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      cubit.selectVariant(const SessionVariant(id: "high"));
-      expect(cubit.state.agentModelData?.agentModel?.variant, "high");
+      cubit.selectVariant(const SessionVariant(id: "max"));
+      expect(cubit.state.agentModelData?.agentModel?.variant, "max");
 
       connectionStatus
         ..add(const ConnectionStatus.disconnected())
         ..add(connectedStatus);
       await _waitUntil(() => discoveryCalls == 2 && cubit.state.agentModelData?.isLoading == false);
 
-      expect(cubit.state.agentModelData?.agentModel?.variant, isNull);
+      expect(cubit.state.agentModelData?.agentModel?.variant, "high");
     });
 
     test("reconnect during a failed send invalidates affinity and rediscovers afterward", () async {
@@ -1786,7 +1786,7 @@ ProviderListResponse _providerResponse() {
             id: "model",
             providerID: "provider",
             name: "Model",
-            variants: ["high"],
+            variants: ["high", "max"],
             family: null,
             releaseDate: null,
           ),

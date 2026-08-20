@@ -320,10 +320,53 @@ void main() {
       expect(closed, isTrue);
       expect(await harness.plugin.healthCheck(), isFalse);
     });
+
+    test("shutdown bounds stalled process teardown by its caller budget", () async {
+      final bounded = _Harness(stdinCloseCompletes: false);
+      addTearDown(bounded.dispose);
+      await bounded.plugin.createSession(
+        directory: bounded.project.path,
+        parentSessionId: null,
+        parts: const [PluginPromptPart.text(text: "bounded")],
+        userVisibleText: "bounded",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final process = await bounded.nextSessionProcess();
+      final stopwatch = Stopwatch()..start();
+
+      await bounded.plugin.shutdown(shutdownBudget: const Duration(milliseconds: 30));
+
+      expect(stopwatch.elapsed, lessThan(const Duration(seconds: 1)));
+      expect(process.killed, isTrue);
+    });
+
+    test("API disposal cannot lock in a longer lifecycle shutdown budget", () async {
+      final bounded = _Harness(stdinCloseCompletes: false);
+      addTearDown(bounded.dispose);
+      await bounded.plugin.createSession(
+        directory: bounded.project.path,
+        parentSessionId: null,
+        parts: const [PluginPromptPart.text(text: "bounded")],
+        userVisibleText: "bounded",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final process = await bounded.nextSessionProcess();
+      final stopwatch = Stopwatch()..start();
+
+      await bounded.plugin.dispose();
+      await bounded.plugin.shutdown(shutdownBudget: const Duration(milliseconds: 30));
+
+      expect(stopwatch.elapsed, lessThan(const Duration(seconds: 1)));
+      expect(process.killed, isTrue);
+    });
   });
 }
 
-final class _Harness() {
+final class _Harness({bool stdinCloseCompletes = true}) {
   this {
     root = Directory.systemTemp.createTempSync("pi-plugin-");
     project = Directory("${root.path}/project")..createSync();
@@ -331,9 +374,10 @@ final class _Harness() {
     final environment = {"PI_CODING_AGENT_SESSION_DIR": sessions.path};
     plugin = PiPlugin(
       binaryPath: "pi",
-      environment: environment,
+      storageEnvironment: environment,
+      processEnvironment: const {},
       processFactory: ({required spec}) async {
-        final process = FakePiProcess();
+        final process = FakePiProcess(stdinCloseCompletes: stdinCloseCompletes);
         processes.add((spec: spec, process: process));
         unawaited(_answerProcess(process: process, spec: spec));
         return process;

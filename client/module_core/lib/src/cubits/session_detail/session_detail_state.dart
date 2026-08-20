@@ -52,6 +52,10 @@ sealed class SessionDetailState with _$SessionDetailState {
     // from [queuedMessages], which only stages sends the bridge has not
     // accepted yet.
     @Default([]) List<QueuedSessionPrompt> bridgeQueuedPrompts,
+    // Accepted sends whose bridge-side representation has not arrived yet.
+    // Rendered as read-only queued bubbles so a prompt never blanks between
+    // its acceptance response and the bridge's queue event listing it.
+    @Default([]) List<QueuedSessionSubmission> awaitingBridgeSubmissions,
     // Available agents and providers for selection.
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,

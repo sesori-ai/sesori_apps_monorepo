@@ -57,7 +57,6 @@ void main() {
     final analytics = getIt<FirebaseAnalytics>();
     expect(await analytics.isSupported(), isFalse);
     await analytics.logEvent(name: "ignored");
-    await analytics.setUserId(id: "ignored");
 
     final crashlytics = getIt<FirebaseCrashlytics>();
     expect(await crashlytics.checkForUnsentReports(), isFalse);

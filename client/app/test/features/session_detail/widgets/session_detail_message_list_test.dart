@@ -94,9 +94,13 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
 
   /// Mirrors the cubit's atomic queued→sent swap: the delivered user message
   /// lands and the bridge entry leaves in one state emission.
-  void deliverBridgePrompt({required String promptId, required MessageWithParts message}) {
+  void deliverBridgePrompt({
+    required String promptId,
+    required MessageWithParts message,
+    required int insertionIndex,
+  }) {
     setState(() {
-      _messages = [..._messages, message];
+      _messages = [..._messages]..insert(insertionIndex, message);
       _bridgeQueuedPrompts = [..._bridgeQueuedPrompts.where((prompt) => prompt.id != promptId)];
     });
   }
@@ -294,6 +298,7 @@ void main() {
     harnessKey.currentState?.deliverBridgePrompt(
       promptId: "prm_1",
       message: _message(messageId: "replay-user-1", role: "user", text: "steer it", promptId: "prm_1"),
+      insertionIndex: 1,
     );
 
     // The prompt's text must stay on screen through every frame of the
@@ -306,6 +311,51 @@ void main() {
     expect(find.text("steer it"), findsOneWidget);
     expect(find.byType(QueuedMessageBubble), findsNothing);
     expect(find.byType(UserMessageCard), findsOneWidget);
+  });
+
+  testWidgets("moving a delivered bridge prompt through assistant rows keeps every row unique", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [
+          _message(messageId: "assistant-before", role: "assistant", text: "Before steer", createdAtMs: 100),
+          _message(messageId: "assistant-after-1", role: "assistant", text: "First reply", createdAtMs: 300),
+          _message(messageId: "assistant-after-2", role: "assistant", text: "Second reply", createdAtMs: 400),
+        ],
+        initialStreamingText: const {},
+        initialBridgeQueuedPrompts: const [
+          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 0, createdAt: 200),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    harnessKey.currentState?.deliverBridgePrompt(
+      promptId: "prm_1",
+      message: _message(
+        messageId: "replay-user-1",
+        role: "user",
+        text: "steer it",
+        promptId: "prm_1",
+        createdAtMs: 200,
+      ),
+      insertionIndex: 1,
+    );
+
+    for (var frame = 0; frame < 3; frame++) {
+      await tester.pump();
+      expect(find.text("steer it"), findsOneWidget);
+      expect(find.text("Before steer"), findsOneWidget);
+      expect(find.text("First reply"), findsOneWidget);
+      expect(find.text("Second reply"), findsOneWidget);
+    }
+    await tester.pumpAndSettle();
+    expect(find.byType(UserMessageCard), findsOneWidget);
+    expect(find.text("First reply"), findsOneWidget);
+    expect(find.text("Second reply"), findsOneWidget);
+    expect(tester.getTopLeft(find.text("Before steer")).dy, lessThan(tester.getTopLeft(find.text("steer it")).dy));
+    expect(tester.getTopLeft(find.text("steer it")).dy, lessThan(tester.getTopLeft(find.text("First reply")).dy));
   });
 
   testWidgets("does not render a user envelope until it has visible parts", (tester) async {
@@ -715,6 +765,9 @@ void main() {
     await _pumpListUpdate(tester);
 
     expect(find.text("Sending"), findsOneWidget);
+    // The outgoing status rail cross-fades out; settle it before asserting
+    // the cancel affordance is gone.
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.widgetWithText(TextButton, "Cancel"), findsNothing);
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
   });

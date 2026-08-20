@@ -118,6 +118,7 @@ class PiRpcClient({
   PiProcessHandle? _process;
   Future<void>? _starting;
   Future<void>? _disposing;
+  _PiTeardownDeadline? _teardownDeadline;
   bool _disposed = false;
   int _nextRequestId = 1;
   int _generation = 0;
@@ -313,8 +314,10 @@ class PiRpcClient({
   }
 
   /// Terminates the process, fails in-flight requests, and closes the stream.
-  Future<void> dispose({Duration gracefulTimeout = const Duration(seconds: 5)}) =>
-      _disposing ??= _dispose(gracefulTimeout: gracefulTimeout);
+  Future<void> dispose({Duration gracefulTimeout = const Duration(seconds: 5)}) {
+    _teardownDeadline?.tighten(timeout: gracefulTimeout);
+    return _disposing ??= _dispose(gracefulTimeout: gracefulTimeout);
+  }
 
   Future<void> _dispose({required Duration gracefulTimeout}) async {
     if (_disposed) return;
@@ -492,14 +495,19 @@ class PiRpcClient({
 
     var stopped = process == null;
     if (process != null) {
+      final deadline = _teardownDeadline = _PiTeardownDeadline(timeout: gracefulTimeout);
       try {
         // Closing stdin is Pi's own shutdown signal, so it is tried before
         // signalling. A broken pipe here is expected and already absorbed.
-        await process.stdin.close().timeout(gracefulTimeout);
+        if (!await deadline.waitFor(process.stdin.close())) {
+          throw TimeoutException("Pi stdin did not close before the teardown deadline");
+        }
       } on Object catch (error, stack) {
         Log.w("[pi] closing stdin during teardown failed", error, stack);
       }
-      stopped = await _stopProcess(process: process, timeout: gracefulTimeout);
+      stopped = await _stopProcess(process: process, deadline: deadline);
+      deadline.dispose();
+      _teardownDeadline = null;
     }
 
     // A confirmed process exit closes both pipes. Let their listeners receive
@@ -521,16 +529,16 @@ class PiRpcClient({
     }
   }
 
-  Future<bool> _stopProcess({required PiProcessHandle process, required Duration timeout}) async {
+  Future<bool> _stopProcess({required PiProcessHandle process, required _PiTeardownDeadline deadline}) async {
     final initialSignal = io.Platform.isWindows ? io.ProcessSignal.sigkill : io.ProcessSignal.sigterm;
     if (!_sendSignal(process: process, signal: initialSignal)) return false;
-    if (await _exitsWithin(process: process, timeout: timeout)) return true;
+    if (await deadline.waitFor(process.exitCode)) return true;
     if (initialSignal == io.ProcessSignal.sigkill) {
       Log.w("[pi] Pi did not exit after forced termination");
       return false;
     }
     if (!_sendSignal(process: process, signal: io.ProcessSignal.sigkill)) return false;
-    if (await _exitsWithin(process: process, timeout: timeout)) return true;
+    if (await deadline.waitFor(process.exitCode)) return true;
     Log.w("[pi] Pi did not exit after SIGKILL");
     return false;
   }
@@ -545,15 +553,37 @@ class PiRpcClient({
       return false;
     }
   }
+}
 
-  Future<bool> _exitsWithin({required PiProcessHandle process, required Duration timeout}) async {
-    try {
-      await process.exitCode.timeout(timeout);
-      return true;
-    } on TimeoutException {
-      return false;
-    }
+final class _PiTeardownDeadline({required final Duration timeout}) {
+  this {
+    tighten(timeout: timeout);
   }
+
+  final Completer<void> _elapsed = Completer<void>();
+  DateTime? _deadline;
+  Timer? _timer;
+
+  void tighten({required Duration timeout}) {
+    if (_elapsed.isCompleted) return;
+    final candidate = DateTime.now().add(timeout);
+    final current = _deadline;
+    if (current != null && !candidate.isBefore(current)) return;
+    _deadline = candidate;
+    _timer?.cancel();
+    if (timeout <= Duration.zero) {
+      _elapsed.complete();
+      return;
+    }
+    _timer = Timer(timeout, _elapsed.complete);
+  }
+
+  Future<bool> waitFor<T>(Future<T> operation) => Future.any([
+    operation.then((_) => true),
+    _elapsed.future.then((_) => false),
+  ]);
+
+  void dispose() => _timer?.cancel();
 }
 
 /// Splits decoded text into Pi's JSONL records.

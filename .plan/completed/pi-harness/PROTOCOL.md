@@ -550,7 +550,8 @@ Release URL template:
 https://github.com/earendil-works/pi/releases/download/v<version>/<asset>
 ```
 
-`v0.84.1` assets and SHA-256 values are recorded in `PLAN.md`.
+`v0.84.2` assets and SHA-256 values are recorded in `PLAN.md`; the supported
+PATH floor remains `v0.84.1`.
 
 Archive layout:
 
@@ -573,9 +574,49 @@ Pi's own startup network features:
 Sesori owns managed version updates but preserves the latter two user/runtime
 choices.
 
+Step 17 refreshed this evidence against stable `v0.84.2` on macOS arm64. The
+official archive matched GitHub's published SHA-256, retained the complete
+package tree listed above, and reported `0.84.2`. An isolated launch with
+`PI_SKIP_VERSION_CHECK=1`, `--mode rpc --no-session --approve`, and a correlated
+`get_state` request returned a successful response. No credential, prompt, or
+transcript content was retained.
+
+### Step 20 live verification (2026-08-19)
+
+A source-run bridge and development iOS client used the normal inherited Pi
+profile on macOS arm64. Evidence was inspected live and retained only as the
+redacted outcomes below; no credential, raw frame, prompt, transcript, project
+path, or provider/account identifier is committed.
+
+- PATH Pi `0.84.2` satisfied the `0.84.1` floor, started active, and imported
+  its catalog. The inherited profile initially exposed seven models, one
+  connected provider, and three commands. A local OpenAI-compatible provider
+  added for verification was discovered after refresh, selected on iOS, and
+  completed authenticated text and tool turns through the production bridge.
+- Empty-session creation, local rename, safe plugin restart, bridge restart,
+  resume/list, idle abort, deletion, and post-restart tombstone suppression all
+  succeeded through production bridge routes. The development client lost and
+  re-established its encrypted relay session across the bridge restart.
+- A one-pixel PNG plus text reached the persisted Pi transcript as text and an
+  `image/png` inline-image part before the original provider rejected execution.
+  A separate authenticated direct Pi image turn against the local compatible
+  provider identified the fixture correctly. Together these verify attachment
+  mapping and provider image support without retaining the image payload; the
+  iOS system photo picker did not accept automation input, so no successful
+  phone-originated image turn is claimed.
+- A terminal Pi process created a persisted session and exited before explicit
+  bridge import. The initial fixture was renamed, deleted, and suppressed by its
+  tombstone. A provider-backed fixture was then imported into a visible project,
+  rendered its transcript/model on iOS, and resumed successfully from the phone
+  after a client correction preserved the transcript model over a stale catalog
+  default. Terminal and Sesori processes never owned the session concurrently.
+- The original Codex provider still supplies the typed usage-limit error path.
+  The local compatible provider supplies successful text, tool, image, import,
+  and resume evidence. Live extension dialogs and a reasoning-capable model were
+  unavailable; their automated fixture coverage remains authoritative.
+
 ## 12. Verification Still Required During Implementation
 
-- Refresh all source facts against the exact managed pin selected in Step 17.
 - Capture redacted authenticated event ordering and model readiness for API-key,
   OAuth, and extension-defined providers.
 - Verify cross-platform custom roots and all six assets, including one live host

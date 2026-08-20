@@ -182,7 +182,7 @@ void main() {
     expect(result, isA<PluginSessionOptionsDiscoveryObserved>());
     final options = (result as PluginSessionOptionsDiscoveryObserved).options;
     expect(options.completeness, PluginSessionOptionsCompleteness.complete);
-    expect(options.agents.map((agent) => agent.name), ["Default", "Plan"]);
+    expect(options.agents.map((agent) => agent.name), ["Agent", "Plan"]);
     expect(
       options.agents.map((agent) => agent.model?.modelID),
       everyElement("gpt-project"),

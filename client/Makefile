@@ -7,13 +7,16 @@ FLUTTER := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)/bin/flutter
 # right Flutter even when the shell exports a stale FLUTTER_ROOT (e.g. asdf global).
 export FLUTTER_ROOT := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)
 
-# Dependency order: module_auth -> module_core -> module_prego -> module_desktop_core -> app -> desktop
-MODULES := module_auth module_core module_prego module_desktop_core app desktop
+# Dependency order: module_auth -> module_core -> module_prego -> module_desktop_core -> design_catalog -> app -> desktop
+MODULES := module_auth module_core module_prego module_desktop_core design_catalog app desktop
+
+# Modules with active build_runner generators.
+CODEGEN_MODULES := module_auth module_core module_prego module_desktop_core app desktop
 
 .PHONY: codegen pub-get test analyze generate-assets generate-tokens catalog-manifest catalog-manifest-check catalog-analyze catalog-test catalog-build catalog-check
 
 codegen:
-	@for mod in $(MODULES); do \
+	@for mod in $(CODEGEN_MODULES); do \
 		echo "=== codegen: $$mod ==="; \
 		(cd $$mod && $(DART) run build_runner build) || exit 1; \
 	done
@@ -25,7 +28,7 @@ test:
 	@for mod in $(MODULES); do \
 		if [ -d "$$mod/test" ]; then \
 			echo "=== test: $$mod ==="; \
-			if [ "$$mod" = "app" ] || [ "$$mod" = "desktop" ] || [ "$$mod" = "module_prego" ]; then \
+			if [ "$$mod" = "app" ] || [ "$$mod" = "desktop" ] || [ "$$mod" = "module_prego" ] || [ "$$mod" = "design_catalog" ]; then \
 				(cd $$mod && $(FLUTTER) test) || exit 1; \
 			else \
 				(cd $$mod && $(DART) test) || exit 1; \
