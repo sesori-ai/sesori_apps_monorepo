@@ -6,6 +6,7 @@ import "../codex_config_reader.dart";
 import "../models/codex_replay_tool_disposition.dart";
 import "codex_tool_lifecycle_tracker.dart";
 import "mappers/codex_rollout_tool_mapper.dart";
+import "mappers/codex_user_content_mapper.dart";
 import "models/codex_projected_tool.dart";
 
 final class CodexPreparedMessageRead({required Iterable<CodexRolloutLineDto> lines}) {
@@ -16,6 +17,7 @@ final class CodexPreparedMessageRead({required Iterable<CodexRolloutLineDto> lin
 class CodexMessageRepository({
   required final CodexRolloutApi _rolloutApi,
   required final CodexRolloutToolMapper _rolloutToolMapper,
+  required final CodexUserContentMapper _userContentMapper,
 }) {
   List<PluginMessageWithParts> readMessages({
     required String rolloutPath,
@@ -128,7 +130,9 @@ class CodexMessageRepository({
       if (line case CodexRolloutEventMessageLineDto(
         payload: CodexRolloutUserMessageEventDto(message: final submittedMessage),
       )) {
-        final submittedText = submittedMessage.isEmpty ? null : submittedMessage;
+        final submittedText = _userContentMapper.mapSubmittedText(
+          text: submittedMessage,
+        );
         _PendingUserMessage? pending;
         for (var index = pendingUserMessages.length - 1; index >= 0; index--) {
           final candidate = pendingUserMessages[index];
@@ -435,12 +439,12 @@ class CodexMessageRepository({
   String? _userVisibleText({
     required List<CodexRolloutContentDto> content,
   }) {
-    final texts = [
-      for (final item in content)
-        if (item case CodexRolloutInputTextDto(:final text) when text.isNotEmpty && !_isGeneratedContext(text: text))
-          text,
-    ];
-    return texts.isEmpty ? null : texts.join();
+    return _userContentMapper.mapContentText(
+      textParts: [
+        for (final item in content)
+          if (item case CodexRolloutInputTextDto(:final text)) text,
+      ],
+    );
   }
 
   PluginMessageWithParts _textMessage({
@@ -552,25 +556,6 @@ class CodexMessageRepository({
       completed: null,
     );
   }
-}
-
-enum _GeneratedContextTag(final String wireName) {
-  recommendedPlugins("recommended_plugins"),
-  environmentContext("environment_context"),
-  turnAborted("turn_aborted");
-
-  bool wraps(String text) => text.startsWith("<$wireName>") && text.endsWith("</$wireName>");
-}
-
-final _generatedRepositoryInstructions = RegExp(
-  r"^# AGENTS\.md instructions(?: for [^\r\n]+)?\r?\n\r?\n"
-  r"<INSTRUCTIONS>(?:\r?\n)?[\s\S]*?(?:\r?\n)?</INSTRUCTIONS>$",
-);
-
-bool _isGeneratedContext({required String text}) {
-  final normalized = text.trim();
-  return _GeneratedContextTag.values.any((tag) => tag.wraps(normalized)) ||
-      _generatedRepositoryInstructions.hasMatch(normalized);
 }
 
 class _PendingUserMessage({

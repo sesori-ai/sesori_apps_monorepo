@@ -10,6 +10,7 @@ import "package:codex_plugin/src/api/parsers/codex_image_bearing_item_parser.dar
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:codex_plugin/src/repositories/codex_tool_lifecycle_tracker.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_user_content_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
@@ -24,6 +25,7 @@ void main() {
     const projectCwd = "/repo/app";
     const imageAttachmentMapper = CodexImageAttachmentMapper();
     const imageBearingItemParser = CodexImageBearingItemParser();
+    const userContentMapper = CodexUserContentMapper();
     const rolloutToolMapper = CodexRolloutToolMapper(
       imageAttachmentMapper: imageAttachmentMapper,
     );
@@ -33,6 +35,7 @@ void main() {
       imageAttachmentMapper: imageAttachmentMapper,
       imageBearingItemParser: imageBearingItemParser,
       rolloutToolMapper: rolloutToolMapper,
+      userContentMapper: userContentMapper,
     );
     final rolloutLifecycle = _ToolLifecycleHarness(
       eventMapper: mapper,
@@ -189,6 +192,7 @@ void main() {
         imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
+        userContentMapper: userContentMapper,
       )..setThreadDirectory("t-9", "/repo/app/packages/ui");
 
       final events = scopedMapper.map(
@@ -209,6 +213,7 @@ void main() {
         imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
+        userContentMapper: userContentMapper,
       );
       mapThreadStarted(
         activityMapper,
@@ -256,6 +261,7 @@ void main() {
         imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
+        userContentMapper: userContentMapper,
       );
       mapThreadStarted(
         activityMapper,
@@ -398,6 +404,77 @@ void main() {
 
       final parsed = shared.Message.fromJson((events[0] as BridgeSseMessageUpdated).info);
       expect((parsed as shared.MessageUser).promptId, isNull);
+    });
+
+    test("item userMessage hides bridge context while preserving authored content", () {
+      const worktreeContext = """
+[SYSTEM CONTEXT \u2014 IMPORTANT]
+A dedicated git worktree has been created.
+
+---
+""";
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-user-content",
+            "turnId": "u-user-content",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user-content",
+              "clientId": "prm_user_content",
+              "content": [
+                {"type": "text", "text": worktreeContext, "text_elements": <Object?>[]},
+                {"type": "text", "text": "visible prompt", "text_elements": <Object?>[]},
+                {"type": "image", "url": "data:image/png;base64,AA=="},
+              ],
+            },
+          },
+        ),
+      );
+
+      expect(events, hasLength(3));
+      final user = shared.Message.fromJson((events.first as BridgeSseMessageUpdated).info) as shared.MessageUser;
+      expect(user.promptId, "prm_user_content");
+      final parts = events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
+      expect(parts.first.type, PluginMessagePartType.text);
+      expect(parts.first.text, "visible prompt");
+      expect(parts.first.text, isNot(contains("SYSTEM CONTEXT")));
+      expect(parts.last.type, PluginMessagePartType.file);
+      final image = parts.last.attachment! as PluginMessageAttachmentInlineImage;
+      expect(image.mime, "image/png");
+      expect(image.base64, "AA==");
+    });
+
+    test("item userMessage keeps an attachment-only prompt after hiding bridge context", () {
+      const worktreeContext = """
+[SYSTEM CONTEXT \u2014 IMPORTANT]
+A dedicated git worktree has been created.
+
+---
+""";
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-user-attachment",
+            "turnId": "u-user-attachment",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user-attachment",
+              "content": [
+                {"type": "text", "text": worktreeContext, "text_elements": <Object?>[]},
+                {"type": "image", "url": "data:image/png;base64,AA=="},
+              ],
+            },
+          },
+        ),
+      );
+
+      expect(events, hasLength(2));
+      final part = (events.last as BridgeSseMessagePartUpdated).part;
+      expect(part.type, PluginMessagePartType.file);
+      expect(part.attachment, isA<PluginMessageAttachmentInlineImage>());
     });
 
     test("item lifecycle timestamps survive live message updates", () {
@@ -578,6 +655,7 @@ void main() {
         imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
+        userContentMapper: userContentMapper,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
       // thread/started carries the provider; the mapper remembers it per thread.
@@ -618,6 +696,7 @@ void main() {
         imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
+        userContentMapper: userContentMapper,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
       mapThreadStarted(

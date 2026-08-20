@@ -10,6 +10,7 @@ import "package:codex_plugin/src/repositories/codex_message_repository.dart";
 import "package:codex_plugin/src/repositories/codex_tool_lifecycle_tracker.dart";
 import "package:codex_plugin/src/repositories/codex_tool_outcome_repository.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_user_content_mapper.dart";
 import "package:codex_plugin/src/services/codex_session_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
@@ -28,6 +29,7 @@ CodexPlugin createInjectedCodexPlugin({
     imageAttachmentMapper: imageAttachmentMapper,
   );
   const imageBearingItemParser = CodexImageBearingItemParser();
+  const userContentMapper = CodexUserContentMapper();
   final catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
   final configReader = CodexConfigReader(environment: environment);
   final metadataRepository = CodexMetadataRepository(
@@ -43,6 +45,7 @@ CodexPlugin createInjectedCodexPlugin({
       messageRepository: CodexMessageRepository(
         rolloutApi: rolloutApi,
         rolloutToolMapper: rolloutToolMapper,
+        userContentMapper: userContentMapper,
       ),
       metadataRepository: metadataRepository,
       toolOutcomeRepository: resolvedToolOutcomeRepository,
@@ -54,6 +57,7 @@ CodexPlugin createInjectedCodexPlugin({
       imageAttachmentMapper: imageAttachmentMapper,
       imageBearingItemParser: imageBearingItemParser,
       rolloutToolMapper: rolloutToolMapper,
+      userContentMapper: userContentMapper,
       config: configReader.readDefaults(),
     ),
     rolloutTailer: CodexRolloutTailer(

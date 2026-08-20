@@ -3,12 +3,14 @@
 ## Current State
 
 - **Plan slug:** `fast-new-session-launch`
-- **Implementation base:** `origin/main` at `9f765e6d5` after follow-up 4A merge
-- **Current branch:** `fast-new-session-launch-step-5`
-- **Series state:** Steps 1-4/6 and standalone follow-up 4A merged; Step 5 is in
-  review in PR #928
-- **Current step:** monitor the Step 5 documentation PR
-- **Next action:** merge PR #928, then execute the Step 6 regression matrix
+- **Implementation base:** `origin/main` at `8ee8a47b4` after Step 5 merge and
+  subsequent mainline changes
+- **Current branch:** `fix/codex-new-session-prompt-history`
+- **Series state:** Steps 1-5/6 and standalone follow-up 4A merged; Step 6 began
+  and its Codex and ACP blockers were split into approved standalone prerequisites
+- **Current step:** implement and deliver the Codex release prerequisite
+- **Next action:** merge the Codex prerequisite, deliver the ACP prerequisite,
+  then rerun the complete current-build Step 6 matrix
 
 ## Locked Decisions
 
@@ -29,8 +31,9 @@
 - [x] Because current server errors can occur after durable commit, every
   creation-originated error receives the duplicate-risk warning.
 - [x] Back continues creation in the background.
-- [x] Implementation stays backend-neutral; final matrix enumerates registered
-  production plugins at execution time.
+- [x] Launch implementation stays backend-neutral; final matrix enumerates
+  registered production plugins at execution time, and evidence-backed release
+  defects remain standalone changes in their owning plugins.
 - [x] Detail snapshot staging is out of scope; its loading presentation becomes
   visually continuous with launch.
 - [x] Performance proof uses tests plus recorded manual timings, not telemetry.
@@ -41,7 +44,8 @@
 - [x] No new client-to-bridge wire route/event/model; the existing auth metadata
   POST gains only a typed request source.
 - [x] No idempotency key, retry registry, polling, or newest-session heuristic.
-- [x] No plugin-name branch or per-plugin production implementation.
+- [x] No plugin-name branch or per-plugin production implementation in the six
+  numbered launch PRs; the user approved separate Codex and ACP release blockers.
 - [x] No optimistic transcript/prompt row or partial detail snapshot.
 - [x] One client submission snapshot only; no hidden attachment cache.
 - [x] One transient sealed restore state consumes that snapshot once; ordinary
@@ -87,8 +91,10 @@
 | [x] | 3/6 | `🚧 [fast-new-session-launch] feat(bridge): return sessions before generated titles [step 3/6]` | Merged in #909 |
 | [x] | 4/6 | `⚙️ [fast-new-session-launch] feat(client): open launching sessions immediately [step 4/6]` | Merged in #913 |
 | [x] | 4A | `⚙️ Rename generated session branches after launch` | Merged in #923 |
-| [ ] | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | PR #928 open and monitored |
-| [ ] | 6/6 | `🌿 [fast-new-session-launch] test: verify faster new-session launch [step 6/6]` | Blocked on Step 5 merge |
+| [x] | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | Merged in #928 |
+| [ ] | Codex prerequisite | `⚙️ Preserve Codex prompt content in transcripts` | Implementation and verification in progress |
+| [ ] | ACP prerequisite | `⚙️ Preserve ACP user attachments in transcripts` | Pending Codex prerequisite delivery |
+| [ ] | 6/6 | `🌿 [fast-new-session-launch] test: verify faster new-session launch [step 6/6]` | Matrix started; blocked on standalone prerequisites and live-backend setup |
 
 ## Step 1 Checklist
 
@@ -182,7 +188,7 @@
 - [x] Validate the documentation-only diff with `git diff --check`.
 - [x] Measure the merge-base Step 5 diff and reconcile it with the 80-180
   changed-line target.
-- [x] Commit, push, open Step 5, and monitor it in PR #928.
+- [x] Commit, push, open Step 5, monitor it, and merge it in PR #928.
 
 ## Step 5 Cleanup Audit
 
@@ -197,6 +203,33 @@
 - [x] No database migration, pending-session persistence, branch watcher/lock,
   retry registry, optimistic transcript, or detail snapshot was introduced.
 - [x] No additional causal cleanup or newly dead implementation was found.
+
+## Codex Release Prerequisite
+
+- [x] Confirm the captured dedicated-worktree rollout contains the generated
+  bridge context and bounded image input; no authored text was present to recover.
+- [x] Add live app-server regressions for text-plus-image and attachment-only
+  user messages.
+- [x] Add rollout replay regressions proving authored text and bounded images
+  survive while the bridge context remains hidden.
+- [x] Keep local image paths unsupported and reuse the existing bounded Codex
+  image mapper for client-safe attachment output.
+- [x] Pass the complete Codex test suite, strict analysis, regression-doc update,
+  and cleanup audit.
+- [x] Pass architecture implementation review with no findings.
+- [ ] Commit, push, open the standalone PR, and monitor it.
+
+## ACP Release Prerequisite
+
+- [ ] Preserve bounded initial and follow-up user attachments in shared ACP
+  transcript events, including attachment-only input.
+- [ ] Preserve user image/file blocks during cold history replay without exposing
+  host paths.
+- [ ] Keep the current partial-result `session/load` fallback unless a fresh
+  Cursor protocol capture proves the request itself is invalid.
+- [ ] Pass the complete ACP test suite, strict analysis, regression-doc update,
+  cleanup audit, and any required architecture review.
+- [ ] Commit, push, open the standalone PR, and monitor it.
 
 ## Cleanup Ledger
 
@@ -309,16 +342,56 @@
   `git diff --numstat "$(git merge-base HEAD origin/main)" -- .plan/active/fast-new-session-launch/{PLAN,TRACKER}.md docs/regression/{attachments-and-images,projects-and-sessions,pull-request-monitoring,session-creation-and-options}.md`.
 - Self-inclusive Step 5 result: `+125 / -33` (158 changed lines), within the
   80-180 target.
+- Codex prerequisite red/green regressions passed for live `userMessage`
+  projection and rollout replay. After rebasing onto PR #989, all 385 Codex
+  package tests passed and `dart analyze --fatal-infos` passed with no issues.
+  Architecture implementation review approved the staged diff with no findings.
+- The prerequisite was rebased onto PR #989 (`8ee8a47b4`) and preserves its
+  `clientId` to prompt-id correlation alongside user text/image normalization.
+- Self-inclusive Codex prerequisite diff before delivery: `+443 / -78` (521
+  changed lines), above the 250-450 target because 160 changed lines restore the
+  stale plan/tracker and record Step 6 discovery. Production, regression tests,
+  and feature documentation total 361 changed lines and remain within target.
 
 ### Manual matrix
 
-Pending Step 6. Enumerate `knownPlugins` from the build under test rather than
-copying a historical list here.
+Step 6 discovery began on the pre-prerequisite build. That build enumerated
+OpenCode, Codex, Cursor, Claude Code, and Hermes Agent; the final run must
+enumerate `knownPlugins` again from the exact build under test.
+
+- Cursor, OpenCode, and Codex durable text creation passed. Cursor kept its
+  dedicated worktree path stable while its branch refined, and OpenCode retained
+  a text-plus-image prompt after reopen.
+- Codex attachment-only dedicated creation exposed the bridge worktree envelope
+  and omitted the image from the live user message. The backend rollout retained
+  the bounded image; this evidence defines the standalone Codex prerequisite.
+- Shared ACP mapping omitted user attachments from synthetic sent-prompt events
+  and cold replay, defining the standalone ACP prerequisite. Cursor
+  `session/load` also returned `-32602 Invalid params`, but the current request
+  defect is not proven and receives no speculative protocol change.
+- A cold OpenCode detail initially showed no messages until reopen. Recheck this
+  against the merged prerequisite build before classifying it as another blocker.
+- The old build showed a duplicate Claude initial prompt. Current main replaced
+  that path in PR #937; live confirmation is still required.
+- Claude live setup is blocked by an expired OAuth session. Hermes setup is
+  blocked by its missing runtime/model-provider configuration.
+- Wide/split layout, reduced motion, commands, failure/reconnect, compatibility,
+  and matched baseline/final timing coverage remain unexecuted.
 
 ### Timing evidence
 
-Pending Step 6. Record only privacy-safe durations for launch view, real route,
-and complete detail snapshot under matched baseline/final conditions.
+Provisional discovery-build values only; they are not matched final evidence:
+
+- Cold Cursor in-place: durable create/route at `4.193s`; complete detail at
+  approximately `6.2s`.
+- Warm Cursor dedicated: durable create/route at `1.526s`; complete detail at
+  approximately `5.5s`.
+- Cold OpenCode attachment creation: durable create/route at `15.879s`; the
+  initial detail snapshot was incomplete.
+
+The final Step 6 run must record launch-view, durable-route, and complete-detail
+durations for matched baseline/final conditions without prompts, names, paths,
+identifiers, or attachment bytes.
 
 ## Plan Review
 

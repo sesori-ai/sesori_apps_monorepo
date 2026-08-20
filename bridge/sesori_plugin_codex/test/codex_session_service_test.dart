@@ -18,6 +18,7 @@ import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:codex_plugin/src/repositories/codex_tool_outcome_repository.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_rollout_tool_mapper.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_user_content_mapper.dart";
 import "package:codex_plugin/src/repositories/models/codex_thread_record.dart";
 import "package:codex_plugin/src/services/codex_session_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -393,6 +394,7 @@ CodexSessionService _newService({
           rolloutToolMapper: const CodexRolloutToolMapper(
             imageAttachmentMapper: CodexImageAttachmentMapper(),
           ),
+          userContentMapper: const CodexUserContentMapper(),
         ),
     metadataRepository:
         metadataRepository ??
@@ -442,6 +444,7 @@ class _RecordingMessageRepository() extends CodexMessageRepository {
         rolloutToolMapper: const CodexRolloutToolMapper(
           imageAttachmentMapper: CodexImageAttachmentMapper(),
         ),
+        userContentMapper: const CodexUserContentMapper(),
       );
 
   Map<String, PluginToolStatus>? statuses;
