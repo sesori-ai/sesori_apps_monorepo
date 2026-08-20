@@ -7,6 +7,7 @@ import "package:sesori_shared/sesori_shared.dart" show Harness;
 import "api/codex_app_server_api.dart";
 import "api/models/codex_correlatable_item_event_dto.dart";
 import "api/models/codex_image_bearing_item_dto.dart";
+import "api/models/codex_rollout_dto.dart";
 import "api/parsers/codex_command_execution_parser.dart";
 import "api/parsers/codex_file_change_parser.dart";
 import "api/parsers/codex_image_bearing_item_parser.dart";
@@ -410,6 +411,25 @@ class CodexPlugin._({
             tool: tool,
           )
           .forEach(_eventBuffer.add);
+    }
+    if (append.line case CodexRolloutEventMessageLineDto(
+      :final timestamp,
+      payload: CodexRolloutTaskCompleteEventDto(
+        :final turnId,
+        error: final error?,
+      ),
+    )) {
+      final message = error.message;
+      if (turnId.isNotEmpty && message.trim().isNotEmpty) {
+        _eventBuffer.add(
+          _eventMapper.mapRolloutTerminalError(
+            threadId: append.sessionId,
+            turnId: turnId,
+            message: message,
+            timestamp: timestamp,
+          ),
+        );
+      }
     }
   }
 

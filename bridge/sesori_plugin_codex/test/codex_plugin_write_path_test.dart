@@ -1486,6 +1486,97 @@ void main() {
       await eventSubscription.cancel();
     });
 
+    test("already-idle reconciliation emits a drained rollout failure", () async {
+      const sessionId = "019a0000-1111-2222-3333-dddddddddddd";
+      final rollout = File(
+        p.join(
+          codexHome.path,
+          "sessions/2026/08/20/"
+          "rollout-2026-08-20T08-00-00-$sessionId.jsonl",
+        ),
+      )..createSync(recursive: true);
+      rollout.writeAsStringSync(
+        "${jsonEncode({
+          "timestamp": "2026-08-20T08:00:00Z",
+          "type": "session_meta",
+          "payload": {
+            "id": sessionId,
+            "timestamp": "2026-08-20T08:00:00Z",
+            "cwd": "/work/sample",
+            "model_provider": "openai",
+            "cli_version": "0.146.0",
+          },
+        })}\n",
+      );
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": sessionId, "cwd": "/work/sample"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-failed"},
+          },
+        ),
+        const _Response(error: {"code": -32600, "message": "no active turn to interrupt"}),
+      ]);
+      await plugin.sendPrompt(
+        promptId: "prompt-1",
+        sessionId: sessionId,
+        parts: const [PluginPromptPart.text(text: "task")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      fake.pushNotification("turn/started", {
+        "threadId": sessionId,
+        "turn": {"id": "u-failed"},
+      });
+      await Future<void>.delayed(Duration.zero);
+      final emittedEvents = <BridgeSseEvent>[];
+      final eventSubscription = plugin.events.listen(emittedEvents.add);
+      final idle = plugin.events.firstWhere((event) => event is BridgeSseSessionIdle);
+      rollout.writeAsStringSync(
+        "${jsonEncode({
+          "timestamp": "2026-08-20T08:00:05Z",
+          "type": "event_msg",
+          "payload": {
+            "type": "task_complete",
+            "turn_id": "u-failed",
+            "error": {"message": "You've hit your usage limit."},
+          },
+        })}\n",
+        mode: FileMode.append,
+      );
+
+      await plugin.abortSession(sessionId: sessionId);
+      await idle;
+
+      final errorIndex = emittedEvents.indexWhere(
+        (event) =>
+            event is BridgeSseMessageUpdated &&
+            switch (shared.Message.fromJson(event.info)) {
+              shared.MessageError(errorMessage: "You've hit your usage limit.") => true,
+              _ => false,
+            },
+      );
+      final idleIndex = emittedEvents.indexWhere((event) => event is BridgeSseSessionIdle);
+      expect(errorIndex, greaterThanOrEqualTo(0));
+      expect(idleIndex, greaterThan(errorIndex));
+      final error = shared.Message.fromJson((emittedEvents[errorIndex] as BridgeSseMessageUpdated).info);
+      expect(error.id, "u-failed");
+      expect(
+        error.time,
+        shared.MessageTime(
+          created: DateTime.utc(2026, 8, 20, 8, 0, 5).millisecondsSinceEpoch,
+          completed: null,
+        ),
+      );
+      await eventSubscription.cancel();
+    });
+
     test("stale abort reconciliation preserves a newer external turn", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),

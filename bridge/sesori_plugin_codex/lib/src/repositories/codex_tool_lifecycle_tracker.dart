@@ -173,17 +173,19 @@ class CodexToolLifecycleTracker({
       );
       final generationId = generation.id;
       if (generationId == null) return null;
+      final turnId = _usefulText(value: params["turnId"]);
       final tool = thread.tools.putIfAbsent(
         generationId,
         () => _TrackedTool(
           id: generationId,
           tool: "image_generation",
           title: null,
-          turnId: null,
+          turnId: turnId,
           chronologySegment: thread.chronologySegment,
           isRolloutCall: false,
         ),
       );
+      tool.turnId ??= turnId;
       _recordAppServerTime(tool: tool, notification: notification);
       tool.status = _mergeStatus(
         previous: tool.status,
@@ -554,20 +556,25 @@ class CodexToolLifecycleTracker({
     required _ThreadToolLifecycle thread,
     required String turnId,
   }) {
-    final updates = _advanceChronologySegment(thread: thread);
-    thread.activeTurnId = _usefulText(value: turnId);
+    final usefulTurnId = _usefulText(value: turnId);
+    final updates = _advanceChronologySegment(
+      thread: thread,
+      nextTurnId: usefulTurnId,
+    );
+    thread.activeTurnId = usefulTurnId;
     return updates;
   }
 
   List<CodexProjectedTool> _advanceChronologySegment({
     required _ThreadToolLifecycle thread,
     bool includeNonRolloutCalls = false,
+    String? nextTurnId,
   }) {
     final updates = <CodexProjectedTool>[];
     for (final tool in thread.tools.values) {
       final appliesToCurrentReplay = tool.isRolloutCall
           ? tool.chronologySegment == thread.chronologySegment
-          : includeNonRolloutCalls;
+          : includeNonRolloutCalls || (nextTurnId != null && tool.turnId != null && tool.turnId != nextTurnId);
       if (!appliesToCurrentReplay || tool.status != PluginToolStatus.running) {
         continue;
       }
@@ -821,7 +828,7 @@ class _TrackedTool({
   required final String id,
   required final String tool,
   required var String? title,
-  required final String? turnId,
+  required var String? turnId,
   required final int chronologySegment,
   required final bool isRolloutCall,
 }) {

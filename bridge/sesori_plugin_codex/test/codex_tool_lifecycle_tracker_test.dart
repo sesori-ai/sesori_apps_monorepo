@@ -725,6 +725,7 @@ void main() {
         method: "item/started",
         params: {
           "threadId": "thread-1",
+          "turnId": "turn-1",
           "startedAtMs": 1779293200000,
           "item": {
             "type": "imageGeneration",
@@ -749,6 +750,75 @@ void main() {
 
     expect(terminal.canonicalId, "image-running");
     expect(terminal.status, PluginToolStatus.error);
+  });
+
+  test("a fresh task start errors only running images from the prior turn", () {
+    final target = tracker();
+    target.observeRolloutLine(
+      threadId: "thread-1",
+      line: _taskEvent(type: "task_started", turnId: "turn-old"),
+    );
+    target.observeAppServerTool(
+      notification: const CodexServerNotification(
+        method: "item/started",
+        params: {
+          "threadId": "thread-1",
+          "turnId": "turn-old",
+          "item": {
+            "type": "imageGeneration",
+            "id": "image-old",
+          },
+        },
+      ),
+      imageGeneration: const CodexImageGenerationItemDto(
+        id: "image-old",
+        status: CodexImageGenerationStatus.inProgress,
+        revisedPrompt: null,
+        result: "",
+        savedPath: null,
+      ),
+    );
+    target.observeAppServerTool(
+      notification: const CodexServerNotification(
+        method: "item/started",
+        params: {
+          "threadId": "thread-1",
+          "turnId": "turn-new",
+          "item": {
+            "type": "imageGeneration",
+            "id": "image-new",
+          },
+        },
+      ),
+      imageGeneration: const CodexImageGenerationItemDto(
+        id: "image-new",
+        status: CodexImageGenerationStatus.inProgress,
+        revisedPrompt: null,
+        result: "",
+        savedPath: null,
+      ),
+    );
+
+    final retired = target
+        .observeRolloutLine(
+          threadId: "thread-1",
+          line: _taskEvent(type: "task_started", turnId: "turn-new"),
+        )
+        .single;
+    final freshTerminal = target.observeTerminalNotification(
+      notification: const CodexServerNotification(
+        method: "turn/completed",
+        params: {
+          "threadId": "thread-1",
+          "turn": {"id": "turn-new", "status": "completed"},
+        },
+      ),
+    );
+
+    expect(retired.canonicalId, "image-old");
+    expect(retired.status, PluginToolStatus.error);
+    expect(freshTerminal.single.canonicalId, "image-new");
+    expect(freshTerminal.single.status, PluginToolStatus.completed);
   });
 
   test("suppresses wait calls and projects their result onto the shell call", () {

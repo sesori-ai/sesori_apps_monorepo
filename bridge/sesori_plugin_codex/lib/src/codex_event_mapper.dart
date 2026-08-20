@@ -295,6 +295,24 @@ class CodexEventMapper({
     );
   }
 
+  BridgeSseMessageUpdated mapRolloutTerminalError({
+    required String threadId,
+    required String turnId,
+    required String message,
+    required String? timestamp,
+  }) => BridgeSseMessageUpdated(
+    info: PluginMessage.error(
+      id: turnId,
+      sessionID: threadId,
+      agent: "codex",
+      modelID: _threadModel[threadId] ?? config.model,
+      providerID: _threadProvider[threadId] ?? config.modelProvider ?? "openai",
+      errorName: "CodexError",
+      errorMessage: message,
+      time: _rolloutMessageTime(timestamp),
+    ).toJson(),
+  );
+
   /// Renders a complete repository-owned canonical tool upsert.
   List<BridgeSseEvent> mapProjectedTool({
     required String threadId,
@@ -723,6 +741,17 @@ class CodexEventMapper({
       created: created,
       completed: completed,
     );
+  }
+
+  PluginMessageTime? _rolloutMessageTime(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    final parsed = DateTime.tryParse(raw);
+    return parsed == null
+        ? null
+        : PluginMessageTime(
+            created: parsed.millisecondsSinceEpoch,
+            completed: null,
+          );
   }
 
   int? _milliseconds(Object? value) => value is num ? value.round() : null;
