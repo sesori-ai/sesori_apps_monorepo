@@ -630,16 +630,65 @@ void main() {
       expect(
         server.noReplyMessageBodies.first["parts"],
         equals([
-          {"type": "text", "text": "Keep auth decisions"},
+          {"type": "text", "text": "Keep auth decisions", "synthetic": true},
         ]),
       );
       expect(
         server.noReplyMessageBodies.last["parts"],
         equals([
           {"type": "text", "text": ""},
+          {"type": "text", "text": "Keep auth decisions"},
         ]),
       );
       expect(server.lastPromptBody?["messageID"], equals(server.reservedMessageIds.last));
+    });
+
+    test("compact removes guidance when marker reservation is rejected", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      addTearDown(plugin.dispose);
+      await server.waitForSseConnection();
+      server.failNoReplyMessageNumber = 2;
+
+      await expectLater(
+        plugin.sendCommand(
+          promptId: "prompt-compact",
+          sessionId: "s-root",
+          command: OpenCodeService.compactionCommandName,
+          arguments: "Keep auth decisions",
+          userVisibleArguments: "Keep auth decisions",
+          agent: "build",
+          variant: null,
+          model: (providerID: "openai", modelID: "gpt-5.4"),
+        ),
+        throwsA(isA<PluginApiException>().having((error) => error.statusCode, "statusCode", 400)),
+      );
+
+      expect(server.reservedMessageIds, equals(["msg_server_1"]));
+      expect(server.deletedMessageIds, equals(["msg_server_1"]));
+    });
+
+    test("compact removes guidance and marker when conversion is rejected", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      addTearDown(plugin.dispose);
+      await server.waitForSseConnection();
+      server.messagePartStatusCode = HttpStatus.badRequest;
+
+      await expectLater(
+        plugin.sendCommand(
+          promptId: "prompt-compact",
+          sessionId: "s-root",
+          command: OpenCodeService.compactionCommandName,
+          arguments: "Keep auth decisions",
+          userVisibleArguments: "Keep auth decisions",
+          agent: "build",
+          variant: null,
+          model: (providerID: "openai", modelID: "gpt-5.4"),
+        ),
+        throwsA(isA<PluginApiException>().having((error) => error.statusCode, "statusCode", 400)),
+      );
+
+      expect(server.reservedMessageIds, equals(["msg_server_1", "msg_server_2"]));
+      expect(server.deletedMessageIds, equals(["msg_server_1", "msg_server_2"]));
     });
 
     test("detached sendCommand failure revokes provisional plugin busy", () async {
@@ -1264,6 +1313,8 @@ class _FakeOpenCodeServer() {
   Completer<void>? holdCommand;
   int promptStatusCode = HttpStatus.ok;
   int commandStatusCode = HttpStatus.ok;
+  int messagePartStatusCode = HttpStatus.ok;
+  int? failNoReplyMessageNumber;
   int _nextMessageNumber = 1;
   bool acceptSseConnections = true;
   final List<String> abortedSessionIds = [];
@@ -1483,6 +1534,12 @@ class _FakeOpenCodeServer() {
         final rawBody = await utf8.decoder.bind(request).join();
         final body = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
         noReplyMessageBodies.add(body);
+        if (noReplyMessageBodies.length == failNoReplyMessageNumber) {
+          request.response.statusCode = HttpStatus.badRequest;
+          request.response.write("message failed");
+          await request.response.close();
+          return;
+        }
         final messageId = (body["messageID"] as String?) ?? "msg_server_${_nextMessageNumber++}";
         reservedMessageIds.add(messageId);
         final requestParts =
@@ -1516,6 +1573,12 @@ class _FakeOpenCodeServer() {
       if (messagePartMatch != null && request.method == "PATCH") {
         final rawBody = await utf8.decoder.bind(request).join();
         lastUpdatedPart = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
+        if (messagePartStatusCode != HttpStatus.ok) {
+          request.response.statusCode = messagePartStatusCode;
+          request.response.write("part update failed");
+          await request.response.close();
+          return;
+        }
         await _sendJson(request.response, lastUpdatedPart!);
         return;
       }

@@ -178,27 +178,29 @@ class OpenCodePlugin._({
 
   Future<void> _dispatchReservedMessage({
     required String sessionId,
-    required String messageId,
+    required List<String> messageIds,
     required Future<void> Function() dispatch,
   }) async {
     try {
       await _callAndSyncWorkState(dispatch);
     } on PluginApiException catch (error, stackTrace) {
       if (error.statusCode >= 400 && error.statusCode < 500) {
-        _promptMessages.remove(messageId: messageId);
-        try {
-          await _call(
-            () => _service.deleteReservedMessage(
-              sessionId: sessionId,
-              messageId: messageId,
-            ),
-          );
-        } on Object catch (cleanupError, cleanupStackTrace) {
-          Log.w(
-            "[opencode] failed to remove rejected reserved message $messageId",
-            cleanupError,
-            cleanupStackTrace,
-          );
+        for (final messageId in messageIds) {
+          _promptMessages.remove(messageId: messageId);
+          try {
+            await _call(
+              () => _service.deleteReservedMessage(
+                sessionId: sessionId,
+                messageId: messageId,
+              ),
+            );
+          } on Object catch (cleanupError, cleanupStackTrace) {
+            Log.w(
+              "[opencode] failed to remove rejected reserved message $messageId",
+              cleanupError,
+              cleanupStackTrace,
+            );
+          }
         }
       }
       Error.throwWithStackTrace(error, stackTrace);
@@ -433,7 +435,7 @@ class OpenCodePlugin._({
     _promptMessages.record(messageId: messageId, promptId: promptId);
     await _dispatchReservedMessage(
       sessionId: sessionId,
-      messageId: messageId,
+      messageIds: [messageId],
       dispatch: () => _service.sendPrompt(
         sessionId: sessionId,
         messageId: messageId,
@@ -467,6 +469,7 @@ class OpenCodePlugin._({
         () => _service.reserveCompactionMessage(
           sessionId: sessionId,
           arguments: arguments,
+          userVisibleArguments: userVisibleArguments,
           agent: agent,
           variant: variant,
           model: model,
@@ -475,7 +478,10 @@ class OpenCodePlugin._({
       _promptMessages.record(messageId: reservation.messageId, promptId: promptId);
       await _dispatchReservedMessage(
         sessionId: sessionId,
-        messageId: reservation.messageId,
+        messageIds: [
+          ?reservation.guidanceMessageId,
+          reservation.messageId,
+        ],
         dispatch: () => _service.sendCompaction(
           sessionId: sessionId,
           messageId: reservation.messageId,
@@ -499,7 +505,7 @@ class OpenCodePlugin._({
     _promptMessages.record(messageId: messageId, promptId: promptId);
     await _dispatchReservedMessage(
       sessionId: sessionId,
-      messageId: messageId,
+      messageIds: [messageId],
       dispatch: () => _service.sendCommand(
         sessionId: sessionId,
         messageId: messageId,

@@ -43,10 +43,9 @@ enum _HttpMethod() { get, post, patch, delete }
 /// *longer* write timeout only widens the window before that same race; it
 /// does not remove it. Writes therefore impose no timeout by default. They
 /// never block shutdown anyway: the orchestrator abandons in-flight routes on
-/// teardown, and the genuinely long-running synchronous endpoints
-/// ([OpenCodeApi.sendCommand]/[OpenCodeApi.summarize]) are detached by
-/// `OpenCodeService`. A caller may still pass an explicit [timeout] to a write
-/// if it has a concrete reason to bound it.
+/// teardown, and the genuinely long-running synchronous command endpoint is
+/// detached by `OpenCodeService`. A caller may still pass an explicit [timeout]
+/// to a write if it has a concrete reason to bound it.
 ///
 /// It also owns Basic-auth header computation and URI construction. It performs
 /// no JSON decoding or model mapping — that stays in [OpenCodeApi].
@@ -131,8 +130,7 @@ class OpenCodeRawHttpClient({
 
   /// Sends [method] to [path], applying auth headers, the optional [timeout],
   /// and a 2xx success check. A `null` [timeout] means unbounded — the default
-  /// for writes and for the long-running synchronous command/summarize
-  /// endpoints.
+  /// for writes and for the long-running synchronous command endpoint.
   Future<http.Response> _send({
     required _HttpMethod method,
     required String path,

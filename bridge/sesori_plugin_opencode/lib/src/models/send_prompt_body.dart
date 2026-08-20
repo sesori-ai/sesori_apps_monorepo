@@ -10,6 +10,7 @@ class const SendPromptBody({
   required final String? variant,
   required final ({String providerID, String modelID})? model,
   required final bool noReply,
+  required final bool syntheticText,
 }) {
   /// Converts our domain types to OpenCode's wire format.
   ///
@@ -26,6 +27,7 @@ class const SendPromptBody({
           PluginPromptPartText(:final text) => <String, dynamic>{
             "type": "text",
             "text": text,
+            if (syntheticText) "synthetic": true,
           },
           PluginPromptPartFilePath(:final mime, :final path, :final filename) => <String, dynamic>{
             "type": "file",

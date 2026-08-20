@@ -1104,6 +1104,7 @@ void main() {
       final reservation = await repository.reserveCompactionMessage(
         sessionId: "ses-1",
         directory: "/repo",
+        userVisibleArguments: "  Keep auth decisions  ",
         agent: "build",
         variant: null,
         model: (providerID: "openai", modelID: "gpt-4.1"),
@@ -1116,6 +1117,13 @@ void main() {
       );
 
       expect(reservation, equals((messageId: "msg-reserved", partId: "prt-reserved")));
+      expect(
+        api.lastPromptBody?.toJson()["parts"],
+        equals([
+          {"type": "text", "text": ""},
+          {"type": "text", "text": "Keep auth decisions"},
+        ]),
+      );
       expect(api.lastUpdatedMessageId, equals("msg-reserved"));
       expect(api.lastUpdatedPartId, equals("prt-reserved"));
       expect(api.lastUpdatedPart, isA<CompactionPart>());
@@ -1204,26 +1212,6 @@ void main() {
     });
   });
 
-  group("OpenCodeRepository.summarize", () {
-    test("builds the summarize payload and normalizes the directory", () async {
-      final api = _FakeApi();
-      final repository = OpenCodeRepository(api);
-
-      await repository.summarize(
-        sessionId: "ses-1",
-        directory: " /repo ",
-        model: (providerID: "openai", modelID: "gpt-4.1"),
-      );
-
-      expect(api.lastSummarizeSessionId, equals("ses-1"));
-      expect(api.lastSummarizeDirectory, equals("/repo"));
-      expect(
-        api.lastSummarizeBody?.toJson(),
-        equals({"providerID": "openai", "modelID": "gpt-4.1", "auto": false}),
-      );
-    });
-  });
-
   group("OpenCodeRepository.addCompactionInstructions", () {
     test("persists instructions as a no-reply prompt", () async {
       final api = _FakeApi();
@@ -1245,7 +1233,7 @@ void main() {
         api.lastPromptBody?.toJson(),
         equals({
           "parts": [
-            {"type": "text", "text": "Keep auth decisions"},
+            {"type": "text", "text": "Keep auth decisions", "synthetic": true},
           ],
           "agent": "build",
           "variant": "high",
@@ -1265,6 +1253,7 @@ void main() {
         variant: "low",
         model: null,
         noReply: false,
+        syntheticText: false,
       ).toJson();
       final withoutVariant = const SendPromptBody(
         messageID: null,
@@ -1273,6 +1262,7 @@ void main() {
         variant: null,
         model: null,
         noReply: false,
+        syntheticText: false,
       ).toJson();
 
       expect(withVariant["variant"], equals("low"));
@@ -1328,9 +1318,6 @@ class _FakeApi({
   String? lastCommandSessionId;
   String? lastCommandDirectory;
   SendCommandBody? lastCommandBody;
-  String? lastSummarizeSessionId;
-  String? lastSummarizeDirectory;
-  SummarizeBody? lastSummarizeBody;
   String? lastGetProjectDirectory;
   int updateProjectCalls = 0;
 
@@ -1461,17 +1448,6 @@ class _FakeApi({
     lastCommandSessionId = sessionId;
     lastCommandDirectory = directory;
     lastCommandBody = body;
-  }
-
-  @override
-  Future<void> summarize({
-    required String sessionId,
-    required SummarizeBody body,
-    required String? directory,
-  }) async {
-    lastSummarizeSessionId = sessionId;
-    lastSummarizeDirectory = directory;
-    lastSummarizeBody = body;
   }
 
   @override

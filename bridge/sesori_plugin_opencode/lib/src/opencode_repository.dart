@@ -28,7 +28,6 @@ import "models/openapi/user_message.g.dart";
 import "models/question_reply_body.dart";
 import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
-import "models/summarize_body.dart";
 import "models/update_project_body.dart";
 import "opencode_api.dart";
 import "plugin_model_mapper.dart";
@@ -158,6 +157,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
       variant: variant,
       model: model,
       noReply: false,
+      syntheticText: false,
     );
   }
 
@@ -180,6 +180,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
       variant: variant,
       model: model,
       noReply: true,
+      syntheticText: false,
     );
     final info = response?.info;
     if (info is! UserMessage) {
@@ -188,11 +189,12 @@ class OpenCodeRepository(final OpenCodeApi _api) {
     return info.id;
   }
 
-  /// Reserves a server-named message plus one inert part that can be converted
+  /// Reserves a server-named message with an inert part that can be converted
   /// into OpenCode's native manual-compaction task before the turn starts.
   Future<({String messageId, String partId})> reserveCompactionMessage({
     required String sessionId,
     required String? directory,
+    required String? userVisibleArguments,
     required String? agent,
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID}) model,
@@ -201,15 +203,20 @@ class OpenCodeRepository(final OpenCodeApi _api) {
       sessionId: sessionId,
       directory: directory,
       messageId: null,
-      parts: const [PluginPromptPart.text(text: "")],
+      parts: [
+        const PluginPromptPart.text(text: ""),
+        if (userVisibleArguments?.trim() case final visibleArguments? when visibleArguments.isNotEmpty)
+          PluginPromptPart.text(text: visibleArguments),
+      ],
       agent: agent,
       variant: variant,
       model: model,
       noReply: true,
+      syntheticText: false,
     );
     final info = response?.info;
     final part = switch (response?.parts) {
-      [final TextPart part] => part,
+      [final TextPart part, ...] => part,
       _ => null,
     };
     if (info is! UserMessage || part == null) {
@@ -220,7 +227,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
 
   /// Adds user-provided compaction guidance to the session without starting a
   /// separate agent run. The following compaction turn consumes it as context.
-  Future<void> addCompactionInstructions({
+  Future<String> addCompactionInstructions({
     required String sessionId,
     required String? directory,
     required String? messageId,
@@ -229,7 +236,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID}) model,
   }) async {
-    await _sendPrompt(
+    final response = await _sendPrompt(
       sessionId: sessionId,
       directory: directory,
       messageId: messageId,
@@ -238,7 +245,13 @@ class OpenCodeRepository(final OpenCodeApi _api) {
       variant: variant,
       model: model,
       noReply: true,
+      syntheticText: true,
     );
+    final info = response?.info;
+    if (info is! UserMessage) {
+      throw StateError("OpenCode did not return the compaction guidance message for session $sessionId");
+    }
+    return info.id;
   }
 
   Future<SessionMessagesResponseItem?> _sendPrompt({
@@ -250,6 +263,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
     required bool noReply,
+    required bool syntheticText,
   }) {
     return _api.sendPrompt(
       sessionId: sessionId,
@@ -261,6 +275,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
         variant: variant?.id,
         model: model,
         noReply: noReply,
+        syntheticText: syntheticText,
       ),
     );
   }
@@ -319,25 +334,6 @@ class OpenCodeRepository(final OpenCodeApi _api) {
         agent: agent,
         variant: variant?.id,
         model: model,
-      ),
-    );
-  }
-
-  /// Triggers manual compaction of [sessionId] via the summarize endpoint.
-  ///
-  /// Unlike [sendCommand], OpenCode's summarize payload needs the provider and
-  /// model as separate, non-optional fields, so [model] is required here.
-  Future<void> summarize({
-    required String sessionId,
-    required String? directory,
-    required ({String providerID, String modelID}) model,
-  }) {
-    return _api.summarize(
-      sessionId: sessionId,
-      directory: directory?.normalize(),
-      body: SummarizeBody(
-        providerID: model.providerID,
-        modelID: model.modelID,
       ),
     );
   }

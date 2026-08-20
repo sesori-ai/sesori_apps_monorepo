@@ -355,9 +355,11 @@ class OpenCodeService(
     );
   }
 
-  Future<({String messageId, String partId, ({String providerID, String modelID}) model})> reserveCompactionMessage({
+  Future<({String messageId, String partId, String? guidanceMessageId, ({String providerID, String modelID}) model})>
+  reserveCompactionMessage({
     required String sessionId,
     required String arguments,
+    required String? userVisibleArguments,
     required String? agent,
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
@@ -365,10 +367,11 @@ class OpenCodeService(
     final directory = _getTrackedDirectory(sessionId: sessionId);
     final selectedModel = _requireCompactionModel(model: model, sessionId: sessionId);
     final instructions = arguments.normalize();
+    String? guidanceMessageId;
     if (instructions != null) {
       // OpenCode parents a compaction summary to the latest user message, so
       // guidance must be persisted before reserving the compaction marker.
-      await repository.addCompactionInstructions(
+      guidanceMessageId = await repository.addCompactionInstructions(
         sessionId: sessionId,
         directory: directory,
         messageId: null,
@@ -378,16 +381,38 @@ class OpenCodeService(
         model: selectedModel,
       );
     }
-    final reservation = await repository.reserveCompactionMessage(
-      sessionId: sessionId,
-      directory: directory,
-      agent: agent,
-      variant: variant,
-      model: selectedModel,
-    );
+    final ({String messageId, String partId}) reservation;
+    try {
+      reservation = await repository.reserveCompactionMessage(
+        sessionId: sessionId,
+        directory: directory,
+        userVisibleArguments: userVisibleArguments,
+        agent: agent,
+        variant: variant,
+        model: selectedModel,
+      );
+    } on Object catch (error, stackTrace) {
+      if (guidanceMessageId != null) {
+        try {
+          await repository.deleteMessage(
+            sessionId: sessionId,
+            directory: directory,
+            messageId: guidanceMessageId,
+          );
+        } on Object catch (cleanupError, cleanupStackTrace) {
+          Log.w(
+            "failed to remove unused compaction guidance $guidanceMessageId",
+            cleanupError,
+            cleanupStackTrace,
+          );
+        }
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    }
     return (
       messageId: reservation.messageId,
       partId: reservation.partId,
+      guidanceMessageId: guidanceMessageId,
       model: selectedModel,
     );
   }

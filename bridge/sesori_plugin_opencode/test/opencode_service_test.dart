@@ -813,7 +813,6 @@ void main() {
         model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 
-      expect(repository.summarizeCalls, equals(0));
       expect(repository.addCompactionInstructionsCalls, equals(0));
       expect(repository.lastConvertedMessageId, equals("msg-reserved"));
       expect(repository.lastConvertedPartId, equals("prt-reserved"));
@@ -832,6 +831,7 @@ void main() {
       final reservation = await service.reserveCompactionMessage(
         sessionId: "ses-1",
         arguments: "  Keep auth decisions  ",
+        userVisibleArguments: "Keep auth decisions",
         agent: "build",
         variant: const PluginSessionVariant(id: "high"),
         model: (providerID: "openai", modelID: "gpt-4.1"),
@@ -847,8 +847,10 @@ void main() {
 
       expect(repository.addCompactionInstructionsCalls, equals(1));
       expect(repository.lastCompactionInstructions, equals("Keep auth decisions"));
+      expect(repository.lastCompactionUserVisibleArguments, equals("Keep auth decisions"));
       expect(repository.lastCompactionInstructionsDirectory, equals("/repo"));
       expect(repository.lastCompactionInstructionsModel, equals((providerID: "openai", modelID: "gpt-4.1")));
+      expect(reservation.guidanceMessageId, equals("msg-guidance"));
       expect(repository.compactionOperations, equals(["instructions", "reserve", "convert", "prompt"]));
       expect(repository.lastCommandName, isNull);
     });
@@ -862,6 +864,7 @@ void main() {
         service.reserveCompactionMessage(
           sessionId: "ses-1",
           arguments: "",
+          userVisibleArguments: null,
           agent: null,
           variant: null,
           model: null,
@@ -2020,13 +2023,6 @@ class FakeOpenCodeApi({var List<SessionMessagesResponseItem> messages = const []
   }) async {}
 
   @override
-  Future<void> summarize({
-    required String sessionId,
-    required SummarizeBody body,
-    required String? directory,
-  }) async {}
-
-  @override
   Future<void> abortSession({required String sessionId, required String? directory}) async {}
 
   @override
@@ -2149,10 +2145,7 @@ class FakeOpenCodeRepository._({
   String? lastCompactionInstructions;
   String? lastCompactionInstructionsDirectory;
   ({String providerID, String modelID})? lastCompactionInstructionsModel;
-  int summarizeCalls = 0;
-  String? lastSummarizeSessionId;
-  String? lastSummarizeDirectory;
-  ({String providerID, String modelID})? lastSummarizeModel;
+  String? lastCompactionUserVisibleArguments;
   final List<String> compactionOperations = [];
   String? lastDeletedSessionId;
   String? lastDeletedDirectory;
@@ -2342,12 +2335,14 @@ class FakeOpenCodeRepository._({
   Future<({String messageId, String partId})> reserveCompactionMessage({
     required String sessionId,
     required String? directory,
+    required String? userVisibleArguments,
     required String? agent,
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID}) model,
   }) async {
     reserveCompactionCalls += 1;
     lastReservedDirectory = directory;
+    lastCompactionUserVisibleArguments = userVisibleArguments;
     compactionOperations.add("reserve");
     return (messageId: "msg-reserved", partId: "prt-reserved");
   }
@@ -2397,7 +2392,7 @@ class FakeOpenCodeRepository._({
   }
 
   @override
-  Future<void> addCompactionInstructions({
+  Future<String> addCompactionInstructions({
     required String sessionId,
     required String? directory,
     required String? messageId,
@@ -2411,19 +2406,7 @@ class FakeOpenCodeRepository._({
     lastCompactionInstructionsDirectory = directory;
     lastCompactionInstructionsModel = model;
     compactionOperations.add("instructions");
-  }
-
-  @override
-  Future<void> summarize({
-    required String sessionId,
-    required String? directory,
-    required ({String providerID, String modelID}) model,
-  }) async {
-    summarizeCalls += 1;
-    lastSummarizeSessionId = sessionId;
-    lastSummarizeDirectory = directory;
-    lastSummarizeModel = model;
-    compactionOperations.add("summarize");
+    return "msg-guidance";
   }
 
   @override

@@ -7,6 +7,7 @@ import "package:opencode_plugin/src/models/openapi/file_part.g.dart";
 import "package:opencode_plugin/src/models/openapi/file_part_source.g.dart";
 import "package:opencode_plugin/src/models/openapi/file_part_source_text.g.dart";
 import "package:opencode_plugin/src/models/openapi/file_source.g.dart";
+import "package:opencode_plugin/src/models/openapi/text_part.g.dart";
 import "package:opencode_plugin/src/models/openapi/tool_part.g.dart";
 import "package:opencode_plugin/src/models/openapi/tool_state_completed.g.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -63,6 +64,24 @@ void main() {
     expect(part.type, equals(PluginMessagePartType.text));
     expect(part.text, equals("/compact"));
     expect(part.type.isVisible, isTrue);
+  });
+
+  test("hides synthetic text intended only for the assistant", () {
+    final part = mapper.mapPart(
+      const TextPart(
+        id: "part-1",
+        sessionID: "session-1",
+        messageID: "message-1",
+        text: "Bridge-owned context",
+        synthetic: true,
+        ignored: null,
+        time: null,
+        metadata: null,
+      ),
+    );
+
+    expect(part.type, equals(PluginMessagePartType.unknown));
+    expect(part.type.isVisible, isFalse);
   });
 
   test("normalizes a data image to one bounded inline representation", () {

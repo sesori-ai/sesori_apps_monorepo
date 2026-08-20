@@ -22,7 +22,6 @@ export "src/models/question_reply_body.dart";
 export "src/models/send_command_body.dart";
 export "src/models/send_prompt_body.dart";
 export "src/models/sse_event_data.g.dart";
-export "src/models/summarize_body.dart";
 export "src/models/update_project_body.dart";
 export "src/open_code_raw_http_client.dart";
 export "src/opencode_api.dart";
