@@ -768,6 +768,11 @@ class CodexPlugin._({
           turnId: turnId,
           evidenceRevision: evidenceRevision,
         );
+      } else {
+        _clearPendingTurnRequest(
+          threadId: sessionId,
+          evidenceRevision: evidenceRevision,
+        );
       }
       _syncWorkState();
     } on Object {

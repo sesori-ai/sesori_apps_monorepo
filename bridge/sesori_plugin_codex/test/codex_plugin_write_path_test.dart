@@ -309,6 +309,45 @@ void main() {
       });
     });
 
+    test("native compaction clears pending turn evidence", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-compact", "cwd": "/work/sample"},
+          },
+        ),
+        const _Response(result: {}),
+      ]);
+
+      await plugin.sendCommand(
+        promptId: "prompt-1",
+        sessionId: "t-compact",
+        command: "compact",
+        arguments: "",
+        userVisibleArguments: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final idle = plugin.events.firstWhere(
+        (event) =>
+            event is BridgeSseSessionStatus &&
+            shared.SessionStatus.fromJson(event.status) is shared.SessionStatusIdle,
+      );
+      fake.pushNotification("thread/status/changed", {
+        "threadId": "t-compact",
+        "status": {"type": "active"},
+      });
+      fake.pushNotification("thread/status/changed", {
+        "threadId": "t-compact",
+        "status": {"type": "idle"},
+      });
+      await idle.timeout(const Duration(seconds: 1));
+
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
     test("a live event emitted during the first turn is scoped to the new session's directory", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
