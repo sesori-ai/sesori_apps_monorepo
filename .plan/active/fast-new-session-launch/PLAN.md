@@ -3,14 +3,13 @@
 ## Status
 
 - **Plan slug:** `fast-new-session-launch`
-- **Status:** Active - Step 6 release verification in progress
+- **Status:** Active - plan ready for review
 - **Plan date:** 2026-08-13
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Implementation base:** `origin/main` at `8ee8a47b4` after Step 5 merge and
-  subsequent mainline changes
-- **Current branch:** `fix/codex-new-session-prompt-history`
-- **Delivery:** six numbered PRs, approved standalone follow-up 4A, and two
-  approved standalone release prerequisites between Steps 5 and 6
+- **Implementation base:** `origin/main` at `f7bcdc63e` after Step 4 merge
+- **Current branch:** `async-generated-session-branch-rename`
+- **Delivery:** six numbered PRs plus one approved standalone follow-up between
+  Steps 4 and 5; Step 1 raised this plan before production work
 
 This plan and `TRACKER.md` are the authority for implementation. The code and
 released product behavior remain authoritative where this document becomes
@@ -51,9 +50,7 @@ The delivered experience is:
 - No cancellation or rollback when the user leaves the launch view.
 - No staged/partial `SessionDetailLoaded` snapshot. The existing coherent
   aggregate detail load remains intact.
-- No plugin-name branches or plugin-specific implementation changes in the six
-  numbered launch PRs. Release defects discovered by the final matrix remain in
-  their owning plugins and ship only through the approved standalone prerequisites.
+- No plugin-name branches or plugin-specific implementation changes.
 - No auth-server endpoint versioning in this series.
 - No general background-job framework, progress-phase protocol, launch
   analytics event, duration bucket, or permanent timing log.
@@ -147,11 +144,10 @@ second session and worktree.
   uncertain; server rejection is also covered because command rejection can
   occur after durable commit.
 - Back continues launch in the background, as today.
-- The launch implementation is plugin-agnostic. Automated bridge tests prove the
-  normalized contract; release verification enumerates every plugin registered
-  in the build under test. A matrix defect is fixed separately inside its owning
-  plugin rather than adding backend knowledge to launch code. Unregistered
-  packages receive no product claim.
+- Implementation is plugin-agnostic. Automated bridge tests prove the normalized
+  contract; release verification enumerates every plugin registered in the build
+  under test. Unregistered packages receive no product claim or plugin-specific
+  production code.
 - Generated title and eligible generated-branch rename run fully off the response
   path. A user title must not be overwritten, and a user/agent branch switch or
   published initial branch must not be renamed. These are focused conditional
@@ -612,10 +608,8 @@ pipeline:
 
 - Zero new database columns or persisted states.
 - Zero pending-session maps, queues, timers, retry registries, correlation IDs,
-  or long-lived dedupe sets. The six numbered launch PRs add no plugin-specific
-  branches; approved release prerequisites normalize only evidence-backed
-  backend transcript behavior in the owning plugins. Worktree naming may hold at
-  most the three sampled slugs in one call so retries are actually distinct;
+  long-lived dedupe sets, or plugin-specific branches. Worktree naming may hold
+  at most the three sampled slugs in one call so retries are actually distinct;
   that ephemeral local set is bounded by the existing attempt count.
 - Zero net long-lived stream controllers/subscriptions: the deletion-only
   mutation stream/listener is generalized in place.
@@ -641,14 +635,12 @@ reconciliation machinery, stop and ask before expanding scope.
 | 4/6 | `⚙️ [fast-new-session-launch] feat(client): open launching sessions immediately [step 4/6]` | 800-1,400 lines | Add sealed submission restoration, reusable Prego launch status, detail-shaped launch/loading, honest error warning, delete overlay/dependency/tests, regenerate state/localization. |
 | 4A | `⚙️ Rename generated session branches after launch` | 350-700 lines | Standalone approved follow-up: consume generated branch metadata, conditionally rename only the unpublished initial dedicated branch off the response path, persist both branch facts, and publish the existing session update. |
 | 5/6 | `🌱 [fast-new-session-launch] docs: define launch regression coverage [step 5/6]` | 80-180 lines | Reconcile affected regression docs and complete cleanup audit against actual implementation. |
-| Codex prerequisite | `⚙️ Preserve Codex prompt content in transcripts` | 250-450 lines | Standalone approved release blocker: hide the bridge worktree envelope and preserve bounded user images in live and replayed Codex messages. |
-| ACP prerequisite | `⚙️ Preserve ACP user attachments in transcripts` | 180-400 lines | Standalone approved release blocker: preserve text-plus-image and attachment-only user input after delivery and cold replay across ACP plugins. |
 | 6/6 | `🌿 [fast-new-session-launch] test: verify faster new-session launch [step 6/6]` | 80-250 lines | Run the recorded level/matrix, record automated/manual results and timings, then move this plan from `active` to `completed` only on full required coverage. |
 
 Each implementation PR must stay below the 1,500 changed-line soft cap. If a
 step exceeds its target, prefer removing unnecessary machinery or splitting
-tests by owner. The approved standalone follow-ups do not renumber the six-step
-titles. Do not combine bridge and client production work.
+tests by owner. The approved 4A follow-up does not renumber already merged/open
+six-step titles. Do not combine bridge and client production work.
 
 ## Per-Step Verification
 
@@ -731,19 +723,6 @@ titles. Do not combine bridge and client production work.
   rollback, deletion/family serialization wins predictably, and shutdown drains
   the complete metadata workflow.
 
-### Release prerequisites
-
-- `bridge/sesori_plugin_codex`: prove live app-server and rollout replay hide
-  only the bridge-owned worktree envelope while preserving authored text and
-  bounded images, including an attachment-only initial prompt; run the complete
-  package tests and strict analysis.
-- `bridge/sesori_plugin_acp`: prove initial, queued follow-up, and replayed user
-  messages preserve bounded images and attachment-only input without exposing
-  host paths; run the complete package tests and strict analysis.
-- Keep both changes within the existing plugin interface and transport shape.
-  Do not change Cursor `session/load` fallback without a current protocol capture
-  proving that a request-shape defect remains.
-
 ## Regression Documentation And Final Matrix
 
 Affected feature documents:
@@ -757,11 +736,9 @@ Affected feature documents:
   initial branch without moving the worktree;
 - `docs/regression/pull-request-monitoring.md` - generated branch update through
   the existing current-branch/session update contract.
-- `docs/regression/session-turns.md` - plugin user-message normalization defects
-  found during the final live matrix.
 
-`session-turns.md` changes only for the evidence-backed Codex and ACP transcript
-normalization behavior delivered by the standalone release prerequisites.
+`session-turns.md` is inspected for consistency but should not change unless the
+implementation alters existing-session sends, which is not planned.
 
 The durable-plan lifecycle intentionally reconciles these documents in the
 penultimate Step 5. Steps 2-4 and follow-up 4A record doc deltas in `TRACKER.md`
