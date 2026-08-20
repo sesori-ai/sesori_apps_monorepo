@@ -330,6 +330,48 @@ void main() {
       await subscription.cancel();
     });
 
+    test("a send whose entry was consumed before its response never parks a ghost", () async {
+      final send = Completer<ApiResponse<void>>();
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) => send.future);
+      final cubit = await createLoadedCubit();
+      unawaited(
+        cubit.sendMessage(text: "steer it", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect((cubit.state as SessionDetailLoaded).sendingSubmission?.promptId, isNotNull);
+
+      // An immediately dispatched steering send: the bridge consumed the entry
+      // and published the resulting queue before the acceptance response
+      // travelled back, so the only statement this client sees omits the
+      // prompt entirely.
+      sessionEvents.add(
+        const SesoriSseEvent.sessionQueuedPrompts(sessionID: _sessionId, prompts: []) as SesoriSessionEvent,
+      );
+      await Future<void>.delayed(Duration.zero);
+      send.complete(ApiResponse.success(null));
+      await Future<void>.delayed(Duration.zero);
+
+      final state = cubit.state as SessionDetailLoaded;
+      expect(
+        state.awaitingBridgeSubmissions,
+        isEmpty,
+        reason: "the bridge already spoke without this prompt; a parked copy would never be retired",
+      );
+      expect(state.sendingSubmission, isNull);
+      expect(state.queuedMessages, isEmpty);
+    });
+
     test("an authoritative refresh settles a parked prompt the bridge no longer owns", () async {
       when(
         () => mockSessionRepository.sendMessage(
