@@ -1,7 +1,7 @@
 import "dart:async";
 import "dart:math";
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginOperationException;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/session_operation.dart";
@@ -80,9 +80,11 @@ class SessionPromptService({
           agent: agent,
           model: model,
         );
-      } on Object {
-        // A refused dispatch produces no echo; leaving the id pending would
-        // let the next prompt's echo claim it.
+      } on PluginOperationException {
+        // Only a refusal the plugin reports is definite: it produces no echo,
+        // so the id must not stay pending for another prompt's echo to claim.
+        // Any other failure (transport, timeout) may still have been accepted,
+        // and its echo needs this correlation to survive.
         _promptEchoCorrelator.forgetPrompt(sessionId: sessionId, promptId: promptId);
         rethrow;
       }
@@ -113,7 +115,8 @@ class SessionPromptService({
         agent: agent,
         model: model,
       );
-    } on Object {
+    } on PluginOperationException {
+      // See sendPrompt: only a reported refusal retires the correlation.
       _promptEchoCorrelator.forgetPrompt(sessionId: sessionId, promptId: promptId);
       rethrow;
     }

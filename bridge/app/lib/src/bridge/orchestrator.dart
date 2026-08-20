@@ -21,6 +21,7 @@ import "../auth/access_token_provider.dart";
 import "../auth/bridge_registration_service.dart";
 import "../auth/token_refresher.dart";
 import "../control/control_status_notifier.dart";
+import "../listeners/aborted_session_correlation_listener.dart";
 import "../listeners/chat_history_activity_listener.dart";
 import "../listeners/chat_history_listener.dart";
 import "../listeners/plugin_catalog_hydration_listener.dart";
@@ -516,6 +517,10 @@ class Orchestrator({
       runtime: _pluginRuntime,
       service: sessionOptionsService,
     );
+    final abortedSessionCorrelationListener = AbortedSessionCorrelationListener(
+      abortService: sessionAbortService,
+      correlator: promptEchoCorrelator,
+    );
     final chatHistoryListener = ChatHistoryListener(
       source: sessionEventDispatcher.events,
       chatHistoryService: chatHistoryService,
@@ -616,6 +621,7 @@ class Orchestrator({
       chatHistoryService: chatHistoryService,
       sessionOptionsCreationRefreshListener: sessionOptionsCreationRefreshListener,
       sessionOptionsChangedRefreshListener: sessionOptionsChangedRefreshListener,
+      abortedSessionCorrelationListener: abortedSessionCorrelationListener,
       sessionEventDispatcher: sessionEventDispatcher,
       pluginRuntime: _pluginRuntime,
       pushDispatcher: pushDispatcher,
@@ -647,7 +653,6 @@ class Orchestrator({
       yoloSettingsService: yoloSettingsService,
       pendingInteractionService: pendingInteractionService,
       sessionAbortService: sessionAbortService,
-      promptEchoCorrelator: promptEchoCorrelator,
       sessionOperationDispatcher: sessionOperationDispatcher,
       sessionMutationDispatcher: sessionMutationDispatcher,
       sessionCreationService: sessionCreationService,
@@ -715,6 +720,7 @@ class OrchestratorSession._({
     required final ChatHistoryService _chatHistoryService,
     required final SessionOptionsCreationRefreshListener _sessionOptionsCreationRefreshListener,
     required final SessionOptionsChangedRefreshListener _sessionOptionsChangedRefreshListener,
+    required final AbortedSessionCorrelationListener _abortedSessionCorrelationListener,
     required final SessionEventDispatcher _sessionEventDispatcher,
     required final PluginRuntime _pluginRuntime,
     required final PushDispatcher _pushDispatcher,
@@ -746,7 +752,6 @@ class OrchestratorSession._({
     required final YoloSettingsService _yoloSettingsService,
     required final PendingInteractionService _pendingInteractionService,
     required final SessionAbortService _sessionAbortService,
-    required final PromptEchoCorrelator _promptEchoCorrelator,
     required final SessionOperationDispatcher _sessionOperationDispatcher,
     required final SessionMutationDispatcher _sessionMutationDispatcher,
     required final SessionCreationService _sessionCreationService,
@@ -865,11 +870,6 @@ class OrchestratorSession._({
 
     _sessionAbortService.abortStartedSessions.listen(_completionListener.markSessionAbortPending).addTo(_subscriptions);
     _sessionAbortService.abortedSessions.listen(_completionListener.markSessionAborted).addTo(_subscriptions);
-    // An aborted turn's prompts never echo, so their pending correlations must
-    // not be inherited by the next prompt sent to that session.
-    _sessionAbortService.abortedSessions
-        .listen((sessionId) => _promptEchoCorrelator.forgetSession(sessionId: sessionId))
-        .addTo(_subscriptions);
     _sessionAbortService.abortFailedSessions.listen(_completionListener.clearPendingAbort).addTo(_subscriptions);
     _completionListener.start();
     _normalizedEventSubscription = _pluginEvents.listen(
@@ -901,6 +901,7 @@ class OrchestratorSession._({
     }
     _sessionOptionsCreationRefreshListener.start();
     _sessionOptionsChangedRefreshListener.start();
+    _abortedSessionCorrelationListener.start();
     _viewedProjectPrRefreshListener.start();
     _chatHistoryActivityListener.start();
     final readiness = Completer<OrchestratorSessionStartResult>();
@@ -1120,6 +1121,7 @@ class OrchestratorSession._({
     await Future.wait([
       attempt(_sessionOptionsCreationRefreshListener.dispose),
       attempt(_sessionOptionsChangedRefreshListener.dispose),
+      attempt(_abortedSessionCorrelationListener.dispose),
     ]);
     await attempt(_projectActivityService.dispose);
     Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");

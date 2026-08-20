@@ -27,10 +27,11 @@ class PromptEchoCorrelator() {
   /// consuming the next one.
   final Map<String, Map<String, String>> _claimed = {};
 
-  /// At most one turn's worth of unclaimed ids per session. A backend that
-  /// never echoes must not accumulate ids that would later be stamped onto an
-  /// unrelated message.
-  static const int _maxPendingPerSession = 8;
+  /// Backstop against a backend that never echoes, which would otherwise
+  /// accumulate ids that a much later message could claim. Set far above any
+  /// realistic number of sends awaiting their echoes — the client drains one
+  /// send at a time — so a correlation still in flight is never evicted.
+  static const int _maxPendingPerSession = 64;
 
   /// Bounds remembered assignments per session, keeping recent messages
   /// stable without growing with the transcript.
@@ -63,7 +64,15 @@ class PromptEchoCorrelator() {
   /// A message that already carries an id keeps it: a backend that knows its
   /// own correlation is always more authoritative than this ordering.
   Message stamp({required String sessionId, required Message message}) {
-    if (message is! MessageUser || message.promptId != null) return message;
+    if (message is! MessageUser) return message;
+    final supplied = message.promptId;
+    if (supplied != null) {
+      // A backend that echoes the dispatched id has claimed that dispatch
+      // itself; leaving it pending would let a later unattributed echo take
+      // it and settle the wrong submission.
+      forgetPrompt(sessionId: sessionId, promptId: supplied);
+      return message;
+    }
     final claimed = _claimed[sessionId]?[message.id];
     if (claimed != null) return message.copyWith(promptId: claimed);
     final pending = _pending[sessionId];

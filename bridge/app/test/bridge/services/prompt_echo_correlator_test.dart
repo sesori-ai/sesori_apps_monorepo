@@ -116,6 +116,25 @@ void main() {
       expect(stamped.promptId, "prm_accepted");
     });
 
+    test("an echo carrying the dispatched id retires that dispatch", () {
+      final correlator = PromptEchoCorrelator();
+      correlator.recordDispatched(sessionId: "s-1", promptId: "prm_1");
+      correlator.recordDispatched(sessionId: "s-1", promptId: "prm_2");
+
+      // A backend that stamps the bridge's own id has claimed that dispatch;
+      // leaving it pending would let the next echo take it.
+      correlator.stamp(
+        sessionId: "s-1",
+        message: _userMessage(id: "msg-1", promptId: "prm_1"),
+      );
+      final next = correlator.stamp(
+        sessionId: "s-1",
+        message: _userMessage(id: "msg-2"),
+      ) as MessageUser;
+
+      expect(next.promptId, "prm_2");
+    });
+
     test("forgetting a session drops its unclaimed dispatches", () {
       final correlator = PromptEchoCorrelator();
       correlator.recordDispatched(sessionId: "s-1", promptId: "prm_1");
@@ -126,7 +145,7 @@ void main() {
 
     test("bounds unclaimed dispatches so a silent harness cannot mis-stamp later", () {
       final correlator = PromptEchoCorrelator();
-      for (var i = 0; i < 12; i++) {
+      for (var i = 0; i < 68; i++) {
         correlator.recordDispatched(sessionId: "s-1", promptId: "prm_$i");
       }
 

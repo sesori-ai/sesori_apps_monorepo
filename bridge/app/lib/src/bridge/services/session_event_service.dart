@@ -489,7 +489,7 @@ class SessionEventService({
         final projectId? => BridgeSseSessionsUpdated(sessionID: sessionID, projectID: projectId),
         null => null,
       },
-      _ => translated,
+      _ => stamped,
     };
   }
 
