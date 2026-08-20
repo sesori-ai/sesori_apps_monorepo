@@ -158,6 +158,7 @@ void main() {
         final attachment = initial.parts.where((part) => part.type == PluginMessagePartType.file).single.attachment;
         expect(attachment, isA<PluginMessageAttachmentInlineImage>());
         expect((attachment! as PluginMessageAttachmentInlineImage).base64, "AA==");
+        expect(attachment.filename, isNull);
         expect(initial.parts.toString(), isNot(contains("/private/image.png")));
         expect(messages.last.info.id, "s1-h1-assistant");
       });
