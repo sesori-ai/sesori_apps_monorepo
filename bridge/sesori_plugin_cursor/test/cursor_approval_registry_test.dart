@@ -84,7 +84,9 @@ void main() {
 
       expect(registry.pendingForSession("s1"), hasLength(1));
 
-      registry.replyQuestion(asked.id, [["Yes"]]);
+      registry.replyQuestion(asked.id, [
+        ["Yes"],
+      ]);
       final reply = fake.written.last;
       expect(reply["id"], 1);
       final questions = (reply["result"] as Map)["questions"] as List;
@@ -103,7 +105,9 @@ void main() {
       final asked = emitted.single as BridgeSseQuestionAsked;
       expect(asked.questions.single.header, "Plan A");
 
-      registry.replyQuestion(asked.id, [["Accept"]]);
+      registry.replyQuestion(asked.id, [
+        ["Accept"],
+      ]);
       final reply = fake.written.last;
       expect((reply["result"] as Map)["accepted"], true);
     });
@@ -243,8 +247,7 @@ void main() {
       await pump();
       final pending = registry.pendingForSession("s1").single;
       final labels = pending.questions.single.options.map((o) => o.label).toList();
-      expect(labels, ["Option", "Option (2)"],
-          reason: "duplicate labels are made unique so label->id stays 1:1");
+      expect(labels, ["Option", "Option (2)"], reason: "duplicate labels are made unique so label->id stays 1:1");
     });
 
     test("questions with no usable text are dropped", () async {

@@ -89,8 +89,8 @@ void main() {
       final connecting = plugin.ensureConnected();
       await respond(method: "initialize", result: hermesInitializeResult);
       // Hermes advertises the configured provider method first, then a
-      // terminal-setup method; the handshake authenticates against the first
-      // advertised method because authMethodId is null.
+      // terminal-setup method; with authMethodId null the handshake picks the
+      // first non-terminal method.
       final authFrame = await waitForFrame(method: "authenticate");
       expect(
         (authFrame["params"] as Map).cast<String, dynamic>()["methodId"],
@@ -116,13 +116,12 @@ void main() {
       expect(spec.args, ["acp"]);
     });
 
-    test("declares the neutral ACP policies for a stock v1 server", () {
-      expect(plugin.clientName, "sesori-bridge");
-      expect(plugin.clientVersion, "0.0.0");
+    test("keeps the stock ACP policies of a v1 server", () {
       expect(plugin.authMethodId, isNull, reason: "Hermes provider ids are dynamic");
       expect(plugin.initializeCapabilityMeta, isNull);
       expect(plugin.supportsFormElicitation, isFalse, reason: "no elicitation/create on Hermes");
       expect(plugin.serializesPromptsProcessWide, isFalse);
+      expect(plugin.cancelsActiveTurnForQueuedInput, isFalse);
       expect(plugin.failsTurnOnSelectionError, isTrue);
       expect(plugin.sessionCloseSettlementTimeout, const Duration(seconds: 5));
     });
@@ -378,7 +377,6 @@ HermesPlugin _plugin({
     agentDisplayName: "Hermes Agent",
     discoveryTimeout: const Duration(seconds: 2),
   );
-  const contentMapper = AcpContentMapper();
   return HermesPlugin(
     launchSpec: HermesBinary.launchSpec(
       binary: HermesBinary.defaultBinary,
@@ -386,13 +384,10 @@ HermesPlugin _plugin({
       environment: const {},
     ),
     launchDirectory: "/repo",
-    contentMapper: contentMapper,
     eventMapper: AcpEventMapper(
       launchDirectory: "/repo",
-      agentId: "hermes",
       pluginId: "hermes",
       configurationTracker: configurationTracker,
-      contentMapper: contentMapper,
     ),
     commandTracker: commandTracker,
     sessionOptionsService: AcpSessionOptionsService(

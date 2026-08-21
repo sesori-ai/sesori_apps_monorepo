@@ -22,13 +22,10 @@ Map<String, dynamic> _$AcpSessionInfoToJson(
   'updatedAt': ?const AcpTimestampMsConverter().toJson(instance.updatedAtMs),
 };
 
-_AcpSessionListResult _$AcpSessionListResultFromJson(Map json) =>
-    _AcpSessionListResult(
-      sessions: json['sessions'] == null
-          ? const <AcpSessionInfo>[]
-          : _sessionInfosFromJson(json['sessions']),
-      nextCursor: json['nextCursor'] as String?,
-    );
+_AcpSessionListResult _$AcpSessionListResultFromJson(Map json) => _AcpSessionListResult(
+  sessions: json['sessions'] == null ? const <AcpSessionInfo>[] : _sessionInfosFromJson(json['sessions']),
+  nextCursor: json['nextCursor'] as String?,
+);
 
 Map<String, dynamic> _$AcpSessionListResultToJson(
   _AcpSessionListResult instance,

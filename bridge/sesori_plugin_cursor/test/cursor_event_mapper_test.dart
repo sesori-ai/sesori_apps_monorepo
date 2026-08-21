@@ -15,7 +15,6 @@ void main() {
         launchDirectory: "/repo",
         pluginId: CursorPlugin.pluginId,
         configurationTracker: AcpSessionConfigurationTracker(),
-        contentMapper: const AcpContentMapper(),
         generatedImageReader: const CursorGeneratedImageReader(),
         activeSessionResolver: activeSessionResolver ?? () => null,
       );

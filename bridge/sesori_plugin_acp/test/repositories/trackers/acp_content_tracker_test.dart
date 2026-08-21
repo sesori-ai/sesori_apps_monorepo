@@ -125,25 +125,21 @@ class _BufferingStdout() implements Stdout {
 
 AcpMappedInlineImageContentBlock _inline({required int decodedBytes}) {
   return AcpMappedInlineImageContentBlock(
-    attachment:
-        const PluginMessageAttachment.inlineImage(
-              mime: "image/png",
-              base64: "AA==",
-              filename: "image.png",
-            )
-            as PluginMessageAttachmentInlineImage,
+    attachment: const PluginMessageAttachment.inlineImage(
+      mime: "image/png",
+      base64: "AA==",
+      filename: "image.png",
+    ) as PluginMessageAttachmentInlineImage,
     decodedBytes: decodedBytes,
   );
 }
 
 AcpMappedMetadataImageContentBlock _metadata() {
   return const AcpMappedMetadataImageContentBlock(
-    attachment:
-        PluginMessageAttachment.metadata(
-              mime: "image/png",
-              filename: "image.png",
-            )
-            as PluginMessageAttachmentMetadata,
+    attachment: PluginMessageAttachment.metadata(
+      mime: "image/png",
+      filename: "image.png",
+    ) as PluginMessageAttachmentMetadata,
     reason: AcpImageDegradationReason.invalid,
   );
 }

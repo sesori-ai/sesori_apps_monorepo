@@ -63,13 +63,14 @@ CursorPlugin _defaultBuildPlugin({
 /// The optional constructor parameters are test seams; the registered instance
 /// is `const CursorPluginDescriptor()`.
 class const CursorPluginDescriptor({
-    final CursorPluginFactory? _buildPlugin,
-    final Duration _connectBudget = const Duration(seconds: 15),
-    final Duration _versionProbeTimeout = const Duration(seconds: 10),
-    /// Test seam for existing-runtime resolution. Production builds a default in
-    /// [ensureRuntime] from the host's process service.
-    final ManagedRuntimeProvisionService? _provisionService,
-  }) extends BridgePluginDescriptor {
+  final CursorPluginFactory? _buildPlugin,
+  final Duration _connectBudget = const Duration(seconds: 15),
+  final Duration _versionProbeTimeout = const Duration(seconds: 10),
+
+  /// Test seam for existing-runtime resolution. Production builds a default in
+  /// [ensureRuntime] from the host's process service.
+  final ManagedRuntimeProvisionService? _provisionService,
+}) extends BridgePluginDescriptor {
   /// Minimum Cursor CLI build the bridge supports, owned by
   /// [CursorRuntimeManifest.minPathVersion]. Earlier builds (e.g.
   /// `2026.05.28`) advertise the `acp` model picker and `session/load` but
@@ -248,6 +249,7 @@ class const CursorPluginDescriptor({
       processes: processes,
       environment: environment,
     );
+
     /// The pinned managed runtime's version when it is already installed and
     /// runnable, or null. Only consulted without an explicit `--cursor-bin`,
     /// which is authoritative when set.
@@ -450,34 +452,11 @@ class const CursorPluginDescriptor({
       processFactory: processFactory,
       sessionCleanupService: sessionCleanupService,
     );
-
-    final plugin = AcpBridgePlugin(
-      plugin: cursor,
-      clock: host.clock,
-      endpoint: "$binaryPath acp",
-    );
-
-    // Rolls back the spawned agent and surfaces an abort that arrived while
-    // connecting rather than returning a live plugin.
-    Future<Never> rollbackAborted() async {
-      try {
-        await plugin.shutdown(budget: null);
-      } on Object catch (error) {
-        Log.e("[cursor] rollback after aborted start failed: $error");
-      }
-      throw const PluginStartAbortedException();
-    }
-
-    // Eagerly spawn the agent and run the ACP handshake (bounded), so the first
-    // mobile request is fast and the status reflects reality. A timeout/failure
-    // leaves the plugin degraded rather than failing the bridge.
-    await plugin.connect(budget: _connectBudget, startAborted: host.startAborted);
-
-    if (host.startAborted.isAborted) {
-      await rollbackAborted();
-    }
-
-    return plugin;
+    // Eagerly spawns the agent and runs the ACP handshake (bounded), so the
+    // first mobile request is fast and the status reflects reality; a
+    // timeout/failure leaves the plugin degraded rather than failing the bridge,
+    // and an abort that lands while connecting is rolled back.
+    return await AcpBridgePlugin.start(plugin: cursor, host: host, connectBudget: _connectBudget);
   }
 }
 

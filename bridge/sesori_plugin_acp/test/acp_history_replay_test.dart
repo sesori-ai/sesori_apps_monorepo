@@ -25,13 +25,10 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        contentMapper: const AcpContentMapper(),
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
-          agentId: "acp",
           pluginId: "acp",
           configurationTracker: configurationTracker,
-          contentMapper: const AcpContentMapper(),
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(
@@ -219,6 +216,13 @@ void main() {
 
       final messages = await loading;
       expect(messages, hasLength(3));
+      // Replayed messages carry the same `agent` the live mapper stamps (the
+      // plugin id, "acp"), not the display name ("ACP") — otherwise a reloaded
+      // session would report a different agent than it did live.
+      expect(
+        messages.first.info,
+        isA<PluginMessageAssistant>().having((message) => message.agent, "agent", "acp"),
+      );
       expect(messages.first.parts.map((part) => part.type), [
         PluginMessagePartType.text,
         PluginMessagePartType.file,
@@ -333,13 +337,10 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        contentMapper: const AcpContentMapper(),
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
-          agentId: "acp",
           pluginId: "acp",
           configurationTracker: configurationTracker,
-          contentMapper: const AcpContentMapper(),
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(

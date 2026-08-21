@@ -150,25 +150,21 @@ AcpMappedInlineImageContentBlock _inline({
   required int decodedBytes,
 }) {
   return AcpMappedInlineImageContentBlock(
-    attachment:
-        PluginMessageAttachment.inlineImage(
-              mime: "image/png",
-              base64: "AA==",
-              filename: filename,
-            )
-            as PluginMessageAttachmentInlineImage,
+    attachment: PluginMessageAttachment.inlineImage(
+      mime: "image/png",
+      base64: "AA==",
+      filename: filename,
+    ) as PluginMessageAttachmentInlineImage,
     decodedBytes: decodedBytes,
   );
 }
 
 AcpMappedMetadataImageContentBlock _metadata() {
   return const AcpMappedMetadataImageContentBlock(
-    attachment:
-        PluginMessageAttachment.metadata(
-              mime: "image/png",
-              filename: "private.png",
-            )
-            as PluginMessageAttachmentMetadata,
+    attachment: PluginMessageAttachment.metadata(
+      mime: "image/png",
+      filename: "private.png",
+    ) as PluginMessageAttachmentMetadata,
     reason: AcpImageDegradationReason.invalid,
   );
 }

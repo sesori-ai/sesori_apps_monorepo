@@ -27,8 +27,9 @@ class AcpReplayCollector({
   /// notice as an error message exactly as it appeared live. Null on backends
   /// with no halt notices.
   required final AcpHaltNotice? Function({required String text})? haltClassifier,
-  required final AcpContentMapper _contentMapper,
 }) {
+  static const AcpContentMapper _contentMapper = AcpContentMapper();
+
   final List<_Draft> _drafts = [];
   int _seq = 0;
   bool _hasUserDraft = false;

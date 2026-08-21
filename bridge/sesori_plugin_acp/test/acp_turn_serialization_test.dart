@@ -13,7 +13,6 @@ class _GatedSelectionPlugin({
   required super.launchSpec,
   required super.launchDirectory,
   required super.eventMapper,
-  required super.contentMapper,
   required super.commandTracker,
   required super.sessionOptionsService,
   required AcpProcessFactory super.processFactory,
@@ -22,7 +21,7 @@ class _GatedSelectionPlugin({
 
   @override
   Future<void> applyTurnSelection({
-    required AcpSessionConfigRepository configRepository,
+    required AcpAgentApi api,
     required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
@@ -92,13 +91,10 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        contentMapper: const AcpContentMapper(),
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
-          agentId: "acp",
           pluginId: "acp",
           configurationTracker: configurationTracker,
-          contentMapper: const AcpContentMapper(),
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(
@@ -318,46 +314,49 @@ void main() {
     });
 
     for (final attachmentOnly in [false, true]) {
-      test("an initial ${attachmentOnly ? "attachment-only" : "mixed"} prompt dispatches and projects images", () async {
-        await connect();
-        emitted.clear();
+      test(
+        "an initial ${attachmentOnly ? "attachment-only" : "mixed"} prompt dispatches and projects images",
+        () async {
+          await connect();
+          emitted.clear();
 
-        final creating = plugin.createSession(
-          directory: cwd,
-          parentSessionId: null,
-          parts: [
-            const PluginPromptPart.text(text: "[SYSTEM CONTEXT — IMPORTANT] internal"),
-            if (!attachmentOnly) const PluginPromptPart.text(text: "visible prompt"),
-            const PluginPromptPart.fileData(
-              mime: "image/png",
-              base64: "AA==",
-              filename: "/private/image.png",
-            ),
-          ],
-          userVisibleText: attachmentOnly ? null : "visible prompt",
-          variant: null,
-          agent: null,
-          model: null,
-        );
-        respondTo(await waitForFrame("session/new"), {"sessionId": "s1"});
-        await creating;
+          final creating = plugin.createSession(
+            directory: cwd,
+            parentSessionId: null,
+            parts: [
+              const PluginPromptPart.text(text: "[SYSTEM CONTEXT — IMPORTANT] internal"),
+              if (!attachmentOnly) const PluginPromptPart.text(text: "visible prompt"),
+              const PluginPromptPart.fileData(
+                mime: "image/png",
+                base64: "AA==",
+                filename: "/private/image.png",
+              ),
+            ],
+            userVisibleText: attachmentOnly ? null : "visible prompt",
+            variant: null,
+            agent: null,
+            model: null,
+          );
+          respondTo(await waitForFrame("session/new"), {"sessionId": "s1"});
+          await creating;
 
-        final prompt = await waitForFrame("session/prompt");
-        final content = (prompt["params"] as Map)["prompt"] as List;
-        expect(content.where((block) => (block as Map)["type"] == "image"), hasLength(1));
-        final projected = emitted.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
-        expect(projected.map((part) => part.type), [
-          if (!attachmentOnly) PluginMessagePartType.text,
-          PluginMessagePartType.file,
-        ]);
-        expect(
-          projected.where((part) => part.type == PluginMessagePartType.file).single.attachment,
-          isA<PluginMessageAttachmentInlineImage>(),
-        );
-        expect(emitted.toString(), isNot(contains("SYSTEM CONTEXT")));
-        expect(emitted.toString(), isNot(contains("/private/image.png")));
-        respondTo(prompt, {"stopReason": "end_turn"});
-      });
+          final prompt = await waitForFrame("session/prompt");
+          final content = (prompt["params"] as Map)["prompt"] as List;
+          expect(content.where((block) => (block as Map)["type"] == "image"), hasLength(1));
+          final projected = emitted.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
+          expect(projected.map((part) => part.type), [
+            if (!attachmentOnly) PluginMessagePartType.text,
+            PluginMessagePartType.file,
+          ]);
+          expect(
+            projected.where((part) => part.type == PluginMessagePartType.file).single.attachment,
+            isA<PluginMessageAttachmentInlineImage>(),
+          );
+          expect(emitted.toString(), isNot(contains("SYSTEM CONTEXT")));
+          expect(emitted.toString(), isNot(contains("/private/image.png")));
+          respondTo(prompt, {"stopReason": "end_turn"});
+        },
+      );
     }
 
     test("a command emits only its user-visible arguments", () async {
@@ -607,13 +606,10 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        contentMapper: const AcpContentMapper(),
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
-          agentId: "acp",
           pluginId: "acp",
           configurationTracker: configurationTracker,
-          contentMapper: const AcpContentMapper(),
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(
@@ -738,13 +734,10 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        contentMapper: const AcpContentMapper(),
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
-          agentId: "acp",
           pluginId: "acp",
           configurationTracker: configurationTracker,
-          contentMapper: const AcpContentMapper(),
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(
@@ -976,13 +969,10 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        contentMapper: const AcpContentMapper(),
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
-          agentId: "acp",
           pluginId: "acp",
           configurationTracker: configurationTracker,
-          contentMapper: const AcpContentMapper(),
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(

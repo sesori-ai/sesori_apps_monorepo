@@ -127,10 +127,8 @@ void main() {
       test("matches live tool attachment state for ${testCase.name}", () {
         final mapper = AcpEventMapper(
           launchDirectory: "/repo",
-          agentId: "ACP",
           pluginId: "acp",
           configurationTracker: AcpSessionConfigurationTracker(),
-          contentMapper: const AcpContentMapper(),
         );
         final collector = _collector();
         PluginMessagePart? livePart;
@@ -160,10 +158,8 @@ void main() {
     setUp(() {
       mapper = AcpEventMapper(
         launchDirectory: "/repo",
-        agentId: "acp",
         pluginId: "acp",
         configurationTracker: AcpSessionConfigurationTracker(),
-        contentMapper: const AcpContentMapper(),
       );
     });
 
@@ -617,7 +613,6 @@ AcpReplayCollector _collector() => AcpReplayCollector(
   agentId: "ACP",
   initialUserMessageId: null,
   haltClassifier: null,
-  contentMapper: const AcpContentMapper(),
 );
 
 PluginToolState _replayState({required AcpReplayCollector collector}) => collector.build().single.parts.single.state!;

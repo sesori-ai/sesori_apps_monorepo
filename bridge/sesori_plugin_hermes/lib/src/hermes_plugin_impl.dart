@@ -8,16 +8,16 @@ import "services/hermes_session_options_service.dart";
 ///
 /// Hermes is a stock ACP v1 server: `hermes acp` advertises load/list/resume/
 /// fork/prompt capabilities and streams turns via `session/update`
-/// notifications, so the base [AcpPlugin] machinery owns sessions and turns.
-/// This class declares Hermes-specific protocol policies, including excluding
-/// interactive terminal setup from headless authentication. Hermes model
-/// discovery and its unstable `session/set_model` extension stay isolated in
-/// this package. It has no managed runtime (Hermes installs itself; the bridge
-/// resolves it on PATH).
+/// notifications, so the base [AcpPlugin] machinery — including every stock
+/// protocol policy (per-session turn serialization, no form elicitation, no
+/// capability meta, first non-terminal auth method, fail-closed selection) —
+/// applies unchanged. Only Hermes model discovery and its unstable
+/// `session/set_model` extension are layered on here, isolated in this package.
+/// It has no managed runtime (Hermes installs itself; the bridge resolves it on
+/// PATH).
 class HermesPlugin({
   required super.launchSpec,
   required super.launchDirectory,
-  required super.contentMapper,
   required super.eventMapper,
   required super.commandTracker,
   required super.sessionOptionsService,
@@ -31,51 +31,10 @@ class HermesPlugin({
       );
 
   @override
-  String get clientName => "sesori-bridge";
-
-  @override
-  String get clientVersion => "0.0.0";
-
-  /// Hermes provider method ids are dynamic, so there is no fixed preferred
-  /// id. [selectAuthMethod] chooses Hermes's first non-terminal provider.
-  @override
-  String? get authMethodId => null;
-
-  @override
-  String? selectAuthMethod({required AcpInitializeResult init}) {
-    for (final method in init.authMethods) {
-      if (method.type != AcpAuthMethodType.terminal) return method.id;
-    }
-    return null;
-  }
-
-  @override
-  Map<String, dynamic>? get initializeCapabilityMeta => null;
-
-  /// Hermes has no `elicitation/create`; permissions arrive as
-  /// `session/request_permission`, which the base approval registry handles.
-  @override
-  bool get supportsFormElicitation => false;
-
-  /// Hermes serializes turns per session (one agent loop per session), so
-  /// concurrent sessions may prompt in parallel.
-  @override
-  bool get serializesPromptsProcessWide => false;
-
-  @override
-  bool get cancelsActiveTurnForQueuedInput => false;
-
-  @override
-  bool get failsTurnOnSelectionError => true;
-
-  @override
-  Duration get sessionCloseSettlementTimeout => const Duration(seconds: 5);
-
-  @override
   void captureSessionConfig(
     AcpNewSessionResult result, {
-    String? sessionId,
-    bool fromNewSession = false,
+    required String? sessionId,
+    required bool fromNewSession,
   }) => _hermesSessionOptionsService.captureSessionConfig(
     result,
     sessionId: sessionId,
@@ -84,20 +43,16 @@ class HermesPlugin({
 
   @override
   Future<void> applyTurnSelection({
-    required AcpSessionConfigRepository configRepository,
+    required AcpAgentApi api,
     required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
     required String? agent,
-  }) async {
-    final liveClient = client;
-    if (liveClient == null) throw StateError("Hermes ACP client is not connected");
-    await _hermesSessionOptionsService.applyTurnSelection(
-      liveClient: liveClient,
-      sessionId: sessionId,
-      model: model,
-    );
-  }
+  }) => _hermesSessionOptionsService.applyTurnSelection(
+    liveClient: api.client,
+    sessionId: sessionId,
+    model: model,
+  );
 
   @override
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({

@@ -15,10 +15,8 @@ void main() {
         ..setProcessDefaults(modelId: "gpt-5.4", providerId: "cursor");
       mapper = AcpEventMapper(
         launchDirectory: "/repo",
-        agentId: "cursor",
         pluginId: "cursor",
         configurationTracker: configurationTracker,
-        contentMapper: const AcpContentMapper(),
       );
     });
 
@@ -1417,9 +1415,7 @@ class _HaltMapper({required super.configurationTracker}) extends AcpEventMapper 
   this
     : super(
         launchDirectory: "/repo",
-        agentId: "cursor",
         pluginId: "cursor",
-        contentMapper: const AcpContentMapper(),
       );
 
   @override

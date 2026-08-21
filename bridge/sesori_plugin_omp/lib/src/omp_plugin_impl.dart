@@ -14,10 +14,15 @@ import "services/omp_session_cleanup_service.dart";
 import "services/omp_session_options_service.dart";
 import "trackers/omp_catalog_tracker.dart";
 
+/// Oh My Pi backend over ACP.
+///
+/// OMP diverges from stock ACP in three policies: it serializes every prompt
+/// process-wide, replaces an in-flight turn when another input arrives, and
+/// supports standard form elicitation. Its project-scoped model/mode/thinking
+/// catalog and persisted-session cleanup run over isolated scratch processes.
 class OmpPlugin._({
   required super.launchSpec,
   required super.launchDirectory,
-  required super.contentMapper,
   required super.eventMapper,
   required super.commandTracker,
   required super.sessionOptionsService,
@@ -76,17 +81,13 @@ class OmpPlugin._({
       totalTimeout: const Duration(seconds: 20),
       maxPages: 50,
     );
-    const contentMapper = AcpContentMapper();
     return OmpPlugin._(
       launchSpec: launchSpec,
       launchDirectory: cwd,
-      contentMapper: contentMapper,
       eventMapper: AcpEventMapper(
         launchDirectory: cwd,
-        agentId: OmpPluginIdentity.id,
         pluginId: OmpPluginIdentity.id,
         configurationTracker: configurationTracker,
-        contentMapper: contentMapper,
       ),
       commandTracker: commandTracker,
       sessionOptionsService: AcpSessionOptionsService(
@@ -109,16 +110,7 @@ class OmpPlugin._({
       );
 
   @override
-  String get clientName => "sesori-bridge";
-
-  @override
-  String get clientVersion => "0.0.0";
-
-  @override
-  String? get authMethodId => "agent";
-
-  @override
-  Map<String, dynamic>? get initializeCapabilityMeta => null;
+  String? get authMethodId => OmpBinary.acpAuthMethodId;
 
   @override
   bool get supportsFormElicitation => true;
@@ -130,16 +122,10 @@ class OmpPlugin._({
   bool get cancelsActiveTurnForQueuedInput => true;
 
   @override
-  bool get failsTurnOnSelectionError => true;
-
-  @override
-  Duration get sessionCloseSettlementTimeout => const Duration(seconds: 5);
-
-  @override
   void captureSessionConfig(
     AcpNewSessionResult result, {
-    String? sessionId,
-    bool fromNewSession = false,
+    required String? sessionId,
+    required bool fromNewSession,
   }) => _ompSessionOptionsService.captureSessionConfig(
     result,
     sessionId: sessionId,
@@ -148,14 +134,14 @@ class OmpPlugin._({
 
   @override
   Future<void> applyTurnSelection({
-    required AcpSessionConfigRepository configRepository,
+    required AcpAgentApi api,
     required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
     required String? agent,
   }) async {
     await _ompSessionOptionsService.applyTurnSelection(
-      configRepository: configRepository,
+      configRepository: AcpSessionConfigRepository(api: api),
       sessionId: sessionId,
       projectId: directoryForSession(sessionId: sessionId),
       model: model,

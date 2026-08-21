@@ -291,15 +291,7 @@ final class const OmpPluginDescriptor({
       scratchDirectory: null,
       processFactory: hostProcessAcpFactory(processes: host.processes, environment: host.environment),
     );
-    final plugin = AcpBridgePlugin(plugin: omp, clock: host.clock, endpoint: "$binaryPath acp");
-    await plugin.connect(budget: _connectBudget, startAborted: host.startAborted);
-    if (!host.startAborted.isAborted) return plugin;
-    try {
-      await plugin.shutdown(budget: null);
-    } on Object catch (error, stackTrace) {
-      Log.e("[omp] rollback after aborted start failed", error, stackTrace);
-    }
-    throw const PluginStartAbortedException();
+    return await AcpBridgePlugin.start(plugin: omp, host: host, connectBudget: _connectBudget);
   }
 }
 

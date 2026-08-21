@@ -47,13 +47,16 @@ class const AcpHaltNotice({
 /// Harness-specific notifications (e.g. Cursor's `cursor/*`) are routed to
 /// [mapExtension], which subclasses override.
 class AcpEventMapper({
-    required String launchDirectory,
-    /// Agent name stamped on assistant messages (e.g. "cursor").
-  required final String agentId,
-    required final String pluginId,
-    required final AcpSessionConfigurationTracker _configurationTracker,
-    required final AcpContentMapper _contentMapper,
-  }) {
+  required String launchDirectory,
+
+  /// The owning plugin's id — also the `agent` stamped on every message this
+  /// mapper emits (the cross-plugin convention: codex stamps "codex", pi its
+  /// plugin id), and what history replay must stamp to match the live stream.
+  required final String pluginId,
+  required final AcpSessionConfigurationTracker _configurationTracker,
+}) {
+  static const AcpContentMapper _contentMapper = AcpContentMapper();
+
   /// The bridge launch directory (canonicalized) — the fallback project
   /// attribution for sessions whose own directory is not (yet) known. Matches
   /// the canonical project id the bridge derives for the same directory.
@@ -807,7 +810,7 @@ class AcpEventMapper({
         info: shared.Message.error(
           id: messageId,
           sessionID: sessionId,
-          agent: agentId,
+          agent: pluginId,
           modelID: modelForSession(sessionId: sessionId),
           providerID: providerForSession(sessionId: sessionId),
           errorName: notice.errorName,
@@ -960,7 +963,7 @@ class AcpEventMapper({
       info: shared.Message.assistant(
         id: messageId,
         sessionID: sessionId,
-        agent: agentId,
+        agent: pluginId,
         modelID: modelForSession(sessionId: sessionId),
         providerID: providerForSession(sessionId: sessionId),
         // ACP carries no per-message timestamps; the mobile model treats a null
@@ -1005,7 +1008,7 @@ class AcpEventMapper({
       _ChunkRole.assistant => shared.Message.assistant(
         id: messageId,
         sessionID: sessionId,
-        agent: agentId,
+        agent: pluginId,
         modelID: modelForSession(sessionId: sessionId),
         providerID: providerForSession(sessionId: sessionId),
         time: null,

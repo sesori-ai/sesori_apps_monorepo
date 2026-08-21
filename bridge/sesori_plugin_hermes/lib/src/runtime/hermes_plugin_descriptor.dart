@@ -364,7 +364,6 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
         providerId: hasConfiguredModel ? status.provider : null,
       );
     final commandTracker = AcpCommandTracker();
-    const contentMapper = AcpContentMapper();
     final acpSessionOptionsService = AcpSessionOptionsService(
       configurationTracker: configurationTracker,
       commandTracker: commandTracker,
@@ -373,10 +372,8 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
     );
     final eventMapper = AcpEventMapper(
       launchDirectory: cwd,
-      agentId: HermesPluginIdentity.id,
       pluginId: HermesPluginIdentity.id,
       configurationTracker: configurationTracker,
-      contentMapper: contentMapper,
     );
     final catalogRepository = HermesCatalogRepository(
       api: HermesAcpApi(
@@ -406,42 +403,17 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       // the bridge itself owns all project/session persistence for this
       // derive-style plugin, so the plugin needs no store of its own.
       launchDirectory: cwd,
-      contentMapper: contentMapper,
       eventMapper: eventMapper,
       commandTracker: commandTracker,
       sessionOptionsService: acpSessionOptionsService,
       processFactory: processFactory,
       hermesSessionOptionsService: sessionOptionsService,
     );
-
-    final plugin = AcpBridgePlugin(
-      plugin: hermes,
-      clock: host.clock,
-      endpoint: "$binaryPath acp",
-    );
-
-    // Rolls back the spawned agent and surfaces an abort that arrived while
-    // connecting rather than returning a live plugin.
-    Future<Never> rollbackAborted() async {
-      try {
-        await plugin.shutdown(budget: null);
-      } on Object catch (error, stackTrace) {
-        Log.e("[hermes] rollback after aborted start failed", error, stackTrace);
-      }
-      throw const PluginStartAbortedException();
-    }
-
-    // Eagerly spawn the agent and run the ACP handshake (bounded), so the
-    // first mobile request is fast and the status reflects reality. A
-    // timeout/failure leaves the plugin degraded rather than failing the
-    // bridge.
-    await plugin.connect(budget: _connectBudget, startAborted: host.startAborted);
-
-    if (host.startAborted.isAborted) {
-      await rollbackAborted();
-    }
-
-    return plugin;
+    // Eagerly spawns the agent and runs the ACP handshake (bounded), so the
+    // first mobile request is fast and the status reflects reality; a
+    // timeout/failure leaves the plugin degraded rather than failing the bridge,
+    // and an abort that lands while connecting is rolled back.
+    return await AcpBridgePlugin.start(plugin: hermes, host: host, connectBudget: _connectBudget);
   }
 }
 

@@ -35,31 +35,13 @@ class HermesAcpApi({
     );
     _scratchClient = client;
     await client.connect().timeout(_remaining(timeout: timeout, stopwatch: stopwatch));
-    final raw = await client.request(
-      method: AcpMethods.initialize,
-      params: buildInitializeParams(
-        clientName: "sesori-bridge",
-        clientVersion: "0.0.0",
-        formElicitation: false,
-      ),
-      timeout: _remaining(timeout: timeout, stopwatch: stopwatch),
-    );
-    final result = AcpInitializeResult.fromJson(
-      raw is Map ? raw.cast<String, dynamic>() : const {},
-    );
-    if (result.protocolVersion != acpProtocolVersion) {
-      throw StateError(
-        "Hermes negotiated ACP v${result.protocolVersion}; expected v$acpProtocolVersion",
-      );
-    }
-    if (!result.requiresAuth) return;
-    final methodId = _authMethodId(result);
-    if (methodId == null) {
-      throw StateError("Hermes model discovery requires non-terminal authentication");
-    }
-    await client.request(
-      method: AcpMethods.authenticate,
-      params: {"methodId": methodId},
+    // Same stock handshake as the live plugin: no capability meta, and the
+    // first non-terminal auth method (Hermes advertises its configured provider
+    // first, then an interactive terminal setup the bridge cannot complete).
+    await AcpAgentApi(client: client).initialize(
+      formElicitation: false,
+      capabilityMeta: null,
+      authMethodId: null,
       timeout: _remaining(timeout: timeout, stopwatch: stopwatch),
     );
   }
@@ -67,16 +49,7 @@ class HermesAcpApi({
   Future<AcpNewSessionResult> newScratchSession({
     required String cwd,
     required Duration timeout,
-  }) async {
-    final raw = await _scratchRequest(
-      method: AcpMethods.sessionNew,
-      params: {"cwd": cwd, "mcpServers": const <Object?>[]},
-      timeout: timeout,
-    );
-    return AcpNewSessionResult.fromJson(
-      raw is Map ? raw.cast<String, dynamic>() : const {},
-    );
-  }
+  }) => AcpAgentApi(client: _openScratchClient()).newSession(cwd: cwd, timeout: timeout);
 
   Future<void> setModel({
     required AcpStdioClient liveClient,
@@ -123,23 +96,12 @@ class HermesAcpApi({
     await settleScratch(timeout: const Duration(seconds: 5));
   }
 
-  Future<dynamic> _scratchRequest({
-    required String method,
-    required Object? params,
-    required Duration timeout,
-  }) {
+  AcpStdioClient _openScratchClient() {
     final client = _scratchClient;
     if (client == null || !client.isConnected) {
       throw StateError("Hermes scratch ACP lease is not open");
     }
-    return client.request(method: method, params: params, timeout: timeout);
-  }
-
-  String? _authMethodId(AcpInitializeResult result) {
-    for (final method in result.authMethods) {
-      if (method.type != AcpAuthMethodType.terminal) return method.id;
-    }
-    return null;
+    return client;
   }
 
   Duration _remaining({required Duration timeout, required Stopwatch stopwatch}) {

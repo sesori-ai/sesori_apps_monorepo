@@ -11,7 +11,6 @@ class _PolicyPlugin({
   required final bool forms,
   required final Duration closeTimeout,
   required super.eventMapper,
-  required super.contentMapper,
   required super.commandTracker,
   required super.sessionOptionsService,
   required AcpProcessFactory super.processFactory,
@@ -40,7 +39,7 @@ class _PolicyPlugin({
 
   @override
   Future<void> applyTurnSelection({
-    required AcpSessionConfigRepository configRepository,
+    required AcpAgentApi api,
     required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
@@ -72,13 +71,10 @@ void main() {
         failClosed: failClosed,
         forms: forms,
         closeTimeout: closeTimeout,
-        contentMapper: const AcpContentMapper(),
         eventMapper: AcpEventMapper(
           launchDirectory: "/repo",
-          agentId: "acp",
           pluginId: "acp",
           configurationTracker: configurationTracker,
-          contentMapper: const AcpContentMapper(),
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(

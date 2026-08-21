@@ -14,24 +14,18 @@ void main() {
       );
     final mapper = AcpEventMapper(
       launchDirectory: "/repo",
-      agentId: "agent",
       pluginId: "plugin",
       configurationTracker: tracker,
-      contentMapper: const AcpContentMapper(),
     );
 
     final defaultEvents = mapper.map(_messageUpdate(sessionId: "other"));
     final overrideEvents = mapper.map(_messageUpdate(sessionId: "session"));
-    final defaultMessage =
-        shared.Message.fromJson(
-              defaultEvents.whereType<BridgeSseMessageUpdated>().single.info,
-            )
-            as shared.MessageAssistant;
-    final overrideMessage =
-        shared.Message.fromJson(
-              overrideEvents.whereType<BridgeSseMessageUpdated>().single.info,
-            )
-            as shared.MessageAssistant;
+    final defaultMessage = shared.Message.fromJson(
+      defaultEvents.whereType<BridgeSseMessageUpdated>().single.info,
+    ) as shared.MessageAssistant;
+    final overrideMessage = shared.Message.fromJson(
+      overrideEvents.whereType<BridgeSseMessageUpdated>().single.info,
+    ) as shared.MessageAssistant;
 
     expect((defaultMessage.modelID, defaultMessage.providerID), ("default-model", "provider"));
     expect((overrideMessage.modelID, overrideMessage.providerID), ("session-model", "session-provider"));

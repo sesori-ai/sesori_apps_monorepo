@@ -17,7 +17,6 @@ class CursorEventMapper({
   required super.launchDirectory,
   required super.pluginId,
   required super.configurationTracker,
-  required super.contentMapper,
   required final CursorGeneratedImageReader _generatedImageReader,
 
   /// The plugin's active-turn resolver ([AcpPlugin.activeTurnSessionId]) — the
@@ -29,8 +28,6 @@ class CursorEventMapper({
   /// session is deleted.
   required final String? Function() _activeSessionResolver,
 }) extends AcpEventMapper {
-  this : super(agentId: pluginId);
-
   @override
   List<BridgeSseEvent> mapExtension(AcpNotification notification) {
     switch (notification.method) {

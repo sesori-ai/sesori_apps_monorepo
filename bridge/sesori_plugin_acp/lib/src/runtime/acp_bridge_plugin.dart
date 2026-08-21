@@ -17,12 +17,34 @@ import "../acp_plugin.dart";
 /// lifetime; it owns the agent subprocess (spawned lazily, or eagerly via
 /// [connect]) and reaps it on [dispose]. This wrapper adds the lifecycle
 /// surface: it drives the status state machine off the ACP connection and the
-/// child's exit, and owns the ordered, idempotent [shutdown].
+/// child's exit, and owns the ordered, idempotent [shutdown]. Descriptors
+/// obtain a connected instance through [start].
 class AcpBridgePlugin({
   required final AcpPlugin _plugin,
   required final ServerClock _clock,
-  final String? _endpoint,
 }) with SteadyPluginLifecycle implements BridgePlugin {
+  /// Wraps [plugin], eagerly connects it within [connectBudget] (a timeout or
+  /// failure leaves it degraded, not failed — see [connect]), and honours an
+  /// abort that arrived while connecting by rolling the agent back and throwing
+  /// [PluginStartAbortedException] instead of returning a live plugin. This is
+  /// the one place the "start an ACP agent under the bridge lifecycle" sequence
+  /// lives, so every ACP descriptor's `start` reduces to building its plugin.
+  static Future<AcpBridgePlugin> start({
+    required AcpPlugin plugin,
+    required PluginHost host,
+    required Duration connectBudget,
+  }) async {
+    final wrapper = AcpBridgePlugin(plugin: plugin, clock: host.clock);
+    await wrapper.connect(budget: connectBudget, startAborted: host.startAborted);
+    if (!host.startAborted.isAborted) return wrapper;
+    try {
+      await wrapper.shutdown(budget: null);
+    } on Object catch (error, stackTrace) {
+      Log.e("[${plugin.id}] rollback after aborted start failed", error, stackTrace);
+    }
+    throw const PluginStartAbortedException();
+  }
+
   StreamSubscription<int>? _exitSubscription;
   StreamSubscription<void>? _connectedSubscription;
   var _stopping = false;
@@ -41,9 +63,11 @@ class AcpBridgePlugin({
 
   @override
   PluginDiagnostics describe() {
+    final spec = _plugin.launchSpec;
     return PluginDiagnostics(
       pluginId: _plugin.id,
-      endpoint: _endpoint,
+      // The agent command line is the "endpoint" of a stdio transport.
+      endpoint: [spec.command, ...spec.args].join(" "),
       details: {
         "transport": "acp-stdio",
         "agent": _plugin.agentDisplayName,
@@ -96,7 +120,7 @@ class AcpBridgePlugin({
       Log.w("[${_plugin.id}] eager connect failed; starting degraded", error, stackTrace);
       connected = false;
     }
-    // An abort observed here is handled by the caller (descriptor), which rolls
+    // An abort observed here is handled by the caller ([start]), which rolls
     // back via shutdown() and throws PluginStartAbortedException.
     if (startAborted.isAborted) {
       return;
