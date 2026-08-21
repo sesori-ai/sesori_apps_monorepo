@@ -134,14 +134,14 @@ class OmpPlugin._({
 
   @override
   Future<void> applyTurnSelection({
-    required AcpAgentApi api,
+    required AcpSessionConfigRepository configRepository,
     required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
     required String? agent,
   }) async {
     await _ompSessionOptionsService.applyTurnSelection(
-      configRepository: AcpSessionConfigRepository(api: api),
+      configRepository: configRepository,
       sessionId: sessionId,
       projectId: directoryForSession(sessionId: sessionId),
       model: model,

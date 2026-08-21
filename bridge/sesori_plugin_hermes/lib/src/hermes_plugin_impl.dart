@@ -41,18 +41,25 @@ class HermesPlugin({
     fromNewSession: fromNewSession,
   );
 
+  /// Hermes selects models through its `session/set_model` extension, so the
+  /// standard config repository is unused; the write goes through the Hermes
+  /// repository over the live client.
   @override
   Future<void> applyTurnSelection({
-    required AcpAgentApi api,
+    required AcpSessionConfigRepository configRepository,
     required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
     required String? agent,
-  }) => _hermesSessionOptionsService.applyTurnSelection(
-    liveClient: api.client,
-    sessionId: sessionId,
-    model: model,
-  );
+  }) async {
+    final liveClient = client;
+    if (liveClient == null) throw StateError("Hermes ACP client is not connected");
+    await _hermesSessionOptionsService.applyTurnSelection(
+      liveClient: liveClient,
+      sessionId: sessionId,
+      model: model,
+    );
+  }
 
   @override
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({

@@ -336,7 +336,7 @@ void main() {
       await client.connect();
 
       final applying = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
         variant: const PluginSessionVariant(id: "high"),
@@ -363,7 +363,7 @@ void main() {
       expect(sets[2]["value"], "high");
 
       final again = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
         variant: const PluginSessionVariant(id: "high"),
@@ -385,7 +385,7 @@ void main() {
       await client.connect();
 
       final applying = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "gpt-5.4"),
         variant: null,
@@ -419,7 +419,7 @@ void main() {
       await client.connect();
 
       final first = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "gpt-5.4"),
         variant: const PluginSessionVariant(id: "high"),
@@ -434,7 +434,7 @@ void main() {
       await first;
 
       final second = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
         variant: const PluginSessionVariant(id: "high"),
@@ -467,7 +467,7 @@ void main() {
       await client.connect();
 
       final first = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "gpt-5.4"),
         variant: const PluginSessionVariant(id: "high"),
@@ -501,7 +501,7 @@ void main() {
       await first;
 
       final second = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
         variant: const PluginSessionVariant(id: "high"),
@@ -553,7 +553,7 @@ void main() {
       await client.connect();
 
       final applying = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
         variant: const PluginSessionVariant(id: "high"),
@@ -585,7 +585,7 @@ void main() {
       await client.connect();
 
       final selectingHigh = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
         variant: const PluginSessionVariant(id: "high"),
@@ -618,7 +618,7 @@ void main() {
       await selectingHigh;
 
       final restoringDefault = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
         variant: null,
@@ -647,7 +647,7 @@ void main() {
       await client.connect();
 
       final applying = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "not-a-real-model"),
         variant: null,
@@ -692,7 +692,7 @@ void main() {
       );
 
       await plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "s1",
         model: null,
         variant: null,
@@ -713,7 +713,7 @@ void main() {
       await client.connect();
 
       final applying = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "gpt-5.4"),
         variant: const PluginSessionVariant(id: "not-a-real-effort"),
@@ -744,7 +744,7 @@ void main() {
       await client.connect();
 
       final selecting = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "sA",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
         variant: null,
@@ -759,7 +759,7 @@ void main() {
       await selecting;
 
       final defaulting = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "sB",
         model: null,
         variant: null,
@@ -792,7 +792,7 @@ void main() {
       await client.connect();
 
       final a = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "sA",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
         variant: null,
@@ -807,7 +807,7 @@ void main() {
       await a;
 
       final b = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "sB",
         model: (providerID: "cursor", modelID: "gpt-5.4"),
         variant: null,
@@ -821,7 +821,7 @@ void main() {
       await b;
 
       final aAgain = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "sA",
         model: null,
         variant: null,
@@ -854,7 +854,7 @@ void main() {
       await client.connect();
 
       final applying = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "s1",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
         variant: null,
@@ -885,7 +885,7 @@ void main() {
       await client.connect();
 
       final a = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "sA",
         model: (providerID: "cursor", modelID: "sonnet-4.6"),
         variant: null,
@@ -900,7 +900,7 @@ void main() {
       await a;
 
       final b = plugin.applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: "sB",
         model: (providerID: "cursor", modelID: "gpt-5.4"),
         variant: null,
@@ -930,7 +930,7 @@ void main() {
 
       Future<void> applyOnce() async {
         final applying = plugin.applyTurnSelection(
-          api: AcpAgentApi(client: client),
+          configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
           sessionId: "s1",
           model: (providerID: "cursor", modelID: "sonnet-4.6"),
           variant: const PluginSessionVariant(id: "high"),

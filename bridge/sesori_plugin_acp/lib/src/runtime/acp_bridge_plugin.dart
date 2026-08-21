@@ -35,7 +35,16 @@ class AcpBridgePlugin({
     required Duration connectBudget,
   }) async {
     final wrapper = AcpBridgePlugin(plugin: plugin, clock: host.clock);
-    await wrapper.connect(budget: connectBudget, startAborted: host.startAborted);
+    // Race the eager connect against the abort signal: an abort that lands
+    // while the handshake hangs must start the rollback now, not after the
+    // whole connect budget — the bridge's startup mutex is held meanwhile.
+    // connect() never throws, and once aborted it returns without marking
+    // status, so the rollback below disposes a plugin whose connect is either
+    // settled or failing fast against the disposed client.
+    await Future.any<void>([
+      wrapper.connect(budget: connectBudget, startAborted: host.startAborted),
+      host.startAborted.whenAborted,
+    ]);
     if (!host.startAborted.isAborted) return wrapper;
     try {
       await wrapper.shutdown(budget: null);
@@ -63,11 +72,12 @@ class AcpBridgePlugin({
 
   @override
   PluginDiagnostics describe() {
-    final spec = _plugin.launchSpec;
     return PluginDiagnostics(
       pluginId: _plugin.id,
-      // The agent command line is the "endpoint" of a stdio transport.
-      endpoint: [spec.command, ...spec.args].join(" "),
+      // The agent executable is the "endpoint" of a stdio transport. Only the
+      // command: launch arguments can carry operator-supplied values (Cursor's
+      // `-e <endpoint>` URL) that must not land in the startup console line.
+      endpoint: _plugin.launchSpec.command,
       details: {
         "transport": "acp-stdio",
         "agent": _plugin.agentDisplayName,

@@ -16,6 +16,7 @@ import "acp_session_loader.dart";
 import "acp_session_options_service.dart";
 import "acp_stdio_client.dart";
 import "api/acp_agent_api.dart";
+import "repositories/acp_session_config_repository.dart";
 
 /// Base [BridgeDerivedProjectsPluginApi] implementation for any ACP (Agent
 /// Client Protocol) agent driven over stdio.
@@ -250,14 +251,16 @@ abstract class AcpPlugin({
   }) {}
 
   /// Applies the requested [model], [variant], and [agent] for a turn on
-  /// [sessionId] before the prompt is dispatched, through [api] — the typed
-  /// surface of the connection the turn runs on (harness extensions go through
-  /// `api.client`). Called from [createSession] and from
-  /// [sendPrompt]/[sendCommand], so a mid-conversation switch takes effect.
-  /// Base does nothing (the agent's defaults are used). Cursor overrides to
-  /// drive its model / mode / effort `session/set_config_option` calls.
+  /// [sessionId] before the prompt is dispatched. [configRepository] writes
+  /// standard `session/set_config_option` on the connection the turn runs on;
+  /// a harness extension (Hermes's `session/set_model`) goes through the
+  /// harness's own repository over the live [client]. Called from
+  /// [createSession] and from [sendPrompt]/[sendCommand], so a
+  /// mid-conversation switch takes effect. Base does nothing (the agent's
+  /// defaults are used). Cursor overrides to drive its model / mode / effort
+  /// config writes.
   Future<void> applyTurnSelection({
-    required AcpAgentApi api,
+    required AcpSessionConfigRepository configRepository,
     required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
@@ -377,6 +380,7 @@ abstract class AcpPlugin({
     formElicitation: supportsFormElicitation,
     capabilityMeta: initializeCapabilityMeta,
     authMethodId: authMethodId,
+    timeout: AcpAgentApi.defaultRequestTimeout,
   );
 
   Future<AcpStdioClient> _connectedClient() async {
@@ -622,7 +626,11 @@ abstract class AcpPlugin({
     for (var page = 0; page < maxPages; page++) {
       final AcpSessionListResult result;
       try {
-        result = await api.listSessionsPage(cwd: cwd, cursor: cursor);
+        result = await api.listSessionsPage(
+          cwd: cwd,
+          cursor: cursor,
+          timeout: AcpAgentApi.defaultRequestTimeout,
+        );
       } on PluginAuthenticationRequiredException {
         rethrow;
       } on Object catch (error, stack) {
@@ -712,7 +720,10 @@ abstract class AcpPlugin({
     // derives from it; the bridge's stored row folds a worktree session back
     // under the project the user opened.
     final canonicalDirectory = normalizeProjectDirectory(directory: directory);
-    final session = await AcpAgentApi(client: client).newSession(cwd: directory);
+    final session = await AcpAgentApi(client: client).newSession(
+      cwd: directory,
+      timeout: AcpAgentApi.defaultRequestTimeout,
+    );
     final createdAt = DateTime.now().millisecondsSinceEpoch;
     _sessionDirectories[session.sessionId] = canonicalDirectory;
     eventMapper.setSessionProject(session.sessionId, canonicalDirectory);
@@ -758,7 +769,9 @@ abstract class AcpPlugin({
       try {
         await _runOnProcessLane(
           () async => await applyTurnSelection(
-            api: AcpAgentApi(client: await _connectedClient()),
+            configRepository: AcpSessionConfigRepository(
+              api: AcpAgentApi(client: await _connectedClient()),
+            ),
             sessionId: session.sessionId,
             model: model,
             variant: variant,
@@ -1170,7 +1183,7 @@ abstract class AcpPlugin({
     final selectedAgent = turn.agent ?? pendingSelection?.agent;
     try {
       await applyTurnSelection(
-        api: AcpAgentApi(client: client),
+        configRepository: AcpSessionConfigRepository(api: AcpAgentApi(client: client)),
         sessionId: sessionId,
         model: selectedModel,
         variant: selectedVariant,
@@ -1425,7 +1438,10 @@ abstract class AcpPlugin({
         await state?.activeSettlement?.future.timeout(
           sessionCloseSettlementTimeout,
         );
-        await AcpAgentApi(client: await _connectedClient()).closeSession(sessionId: sessionId);
+        await AcpAgentApi(client: await _connectedClient()).closeSession(
+          sessionId: sessionId,
+          timeout: AcpAgentApi.defaultRequestTimeout,
+        );
       } on Object catch (error, stackTrace) {
         Error.throwWithStackTrace(
           PluginOperationException(

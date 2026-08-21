@@ -39,7 +39,7 @@ class _PolicyPlugin({
 
   @override
   Future<void> applyTurnSelection({
-    required AcpAgentApi api,
+    required AcpSessionConfigRepository configRepository,
     required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,

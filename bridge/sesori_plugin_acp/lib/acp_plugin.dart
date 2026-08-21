@@ -16,10 +16,12 @@
 //     `xxx/*` notification extensions), the neutral AcpSessionOptionsService,
 //     and any harness catalog service.
 //  3. Catalog discovery / persisted cleanup that needs its own agent process:
-//     an AcpStdioClient + AcpAgentApi (initialize, session/new, load, list,
-//     set_config_option, close) wrapped in a harness-specific lease API.
-//     Services write session config through AcpSessionConfigRepository, never
-//     the api directly.
+//     an AcpStdioClient + AcpAgentApi (initialize, session/new, load/resume,
+//     list, set_config_option, close) wrapped in a harness-specific lease API.
+//     Standard session/set_config_option writes go through
+//     AcpSessionConfigRepository; a harness extension (Hermes's
+//     session/set_model) goes through the harness's own repository over
+//     `api.client`. Services never call the api directly.
 //  4. A descriptor whose `start` builds the plugin and returns
 //     `AcpBridgePlugin.start(...)`; custom server requests go in an
 //     AcpApprovalRegistry subclass via `buildApprovalRegistry`.

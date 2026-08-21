@@ -60,6 +60,10 @@ class AcpStdioClient({
   final StreamController<AcpServerRequest> _serverRequests = StreamController.broadcast();
   Completer<int> _exited = Completer<int>();
 
+  /// Identifies this connection in logs and error messages (the plugin id for
+  /// the live connection, `<id>-replay` / `<id>-catalog` for scratch ones).
+  String get logTag => _logTag;
+
   /// Server-originated notifications (broadcast).
   Stream<AcpNotification> get notifications => _notifications.stream;
 

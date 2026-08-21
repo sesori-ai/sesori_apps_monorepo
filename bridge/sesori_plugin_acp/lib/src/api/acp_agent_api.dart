@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginAuthenticationRequiredException;
 
 import "../acp_protocol.dart";
@@ -16,25 +18,32 @@ import "../acp_stdio_client.dart";
 /// [AcpStdioClient.dispatchRequest] to separate frame delivery from the turn
 /// result, which no other caller needs.
 class AcpAgentApi({required final AcpStdioClient client}) {
-  static const Duration _defaultTimeout = Duration(seconds: 60);
+  /// Per-request budget for a live (non-scratch) connection — the same value
+  /// [AcpStdioClient.request] defaults to. Callers with their own deadline
+  /// (scratch catalog/cleanup leases) pass their remaining budget instead.
+  static const Duration defaultRequestTimeout = Duration(seconds: 60);
 
   /// Runs the ACP `initialize` handshake and, when the agent advertises auth
-  /// methods, `authenticate`.
+  /// methods, `authenticate` — both within one [timeout] deadline, so a caller
+  /// with a remaining budget (the scratch catalog/cleanup leases) cannot
+  /// overrun it by a second full timeout on the auth round trip.
   ///
   /// [authMethodId] names the method to authenticate with; `null` picks the
   /// first advertised non-terminal method, because the headless bridge can
   /// never complete an interactive terminal flow.
   ///
   /// Throws [StateError] when the agent negotiates a protocol version other
-  /// than v1 (it could not understand our v1-shaped `session/*` calls), and
+  /// than v1 (it could not understand our v1-shaped `session/*` calls),
   /// [PluginAuthenticationRequiredException] when no usable auth method exists
-  /// or the agent rejects authentication.
+  /// or the agent rejects authentication, and [TimeoutException] when the
+  /// deadline passes.
   Future<AcpInitializeResult> initialize({
     required bool formElicitation,
     required Map<String, dynamic>? capabilityMeta,
     required String? authMethodId,
-    Duration timeout = _defaultTimeout,
+    required Duration timeout,
   }) async {
+    final deadline = Stopwatch()..start();
     final raw = await client.request(
       method: AcpMethods.initialize,
       params: buildInitializeParams(
@@ -55,24 +64,28 @@ class AcpAgentApi({required final AcpStdioClient client}) {
     if (!init.requiresAuth) return init;
     final methodId = authMethodId ?? _firstNonTerminalAuthMethod(init);
     if (methodId == null) {
-      throw const PluginAuthenticationRequiredException(
+      throw PluginAuthenticationRequiredException(
         AcpMethods.authenticate,
         actionHint: "Authenticate the configured agent locally, then retry.",
-        message: "The ACP agent requires an authentication method the bridge cannot complete",
+        message: "${client.logTag} requires an authentication method the bridge cannot complete",
       );
+    }
+    final remaining = timeout - deadline.elapsed;
+    if (remaining <= Duration.zero) {
+      throw TimeoutException("${client.logTag} initialize handshake exceeded its deadline before authenticate");
     }
     try {
       await client.request(
         method: AcpMethods.authenticate,
         params: {"methodId": methodId},
-        timeout: timeout,
+        timeout: remaining,
       );
     } on AcpRpcException catch (error) {
       if (error.method != "<response>") rethrow;
       throw PluginAuthenticationRequiredException(
         AcpMethods.authenticate,
         actionHint: "Authenticate the configured agent locally, then retry.",
-        message: "ACP agent authentication failed",
+        message: "${client.logTag} authentication failed",
         cause: error,
       );
     }
@@ -83,7 +96,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
   /// without a session id, since nothing can be done with such a session.
   Future<AcpNewSessionResult> newSession({
     required String cwd,
-    Duration timeout = _defaultTimeout,
+    required Duration timeout,
   }) async {
     final raw = await client.request(
       method: AcpMethods.sessionNew,
@@ -104,7 +117,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
   Future<AcpNewSessionResult> loadSession({
     required String sessionId,
     required String cwd,
-    Duration timeout = _defaultTimeout,
+    required Duration timeout,
   }) => _activateSession(method: AcpMethods.sessionLoad, sessionId: sessionId, cwd: cwd, timeout: timeout);
 
   /// `session/resume` — re-activates [sessionId] without history replay. Same
@@ -112,14 +125,14 @@ class AcpAgentApi({required final AcpStdioClient client}) {
   Future<AcpNewSessionResult> resumeSession({
     required String sessionId,
     required String cwd,
-    Duration timeout = _defaultTimeout,
+    required Duration timeout,
   }) => _activateSession(method: AcpMethods.sessionResume, sessionId: sessionId, cwd: cwd, timeout: timeout);
 
   /// One `session/list` page; [cwd] null means the unfiltered form.
   Future<AcpSessionListResult> listSessionsPage({
     required String? cwd,
     required String? cursor,
-    Duration timeout = _defaultTimeout,
+    required Duration timeout,
   }) async {
     final raw = await client.request(
       method: AcpMethods.sessionList,
@@ -135,7 +148,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
     required String sessionId,
     required String configId,
     required String value,
-    Duration timeout = _defaultTimeout,
+    required Duration timeout,
   }) async {
     final raw = await client.request(
       method: AcpMethods.sessionSetConfigOption,
@@ -147,7 +160,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
 
   Future<void> closeSession({
     required String sessionId,
-    Duration timeout = _defaultTimeout,
+    required Duration timeout,
   }) => client.request(
     method: AcpMethods.sessionClose,
     params: {"sessionId": sessionId},

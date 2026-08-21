@@ -180,13 +180,12 @@ class CursorPlugin._({
 
   @override
   Future<void> applyTurnSelection({
-    required AcpAgentApi api,
+    required AcpSessionConfigRepository configRepository,
     required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
     required String? agent,
   }) async {
-    final configRepository = AcpSessionConfigRepository(api: api);
     final requestedModel = model?.modelID;
     final useDefault = requestedModel == null || requestedModel.isEmpty;
     final targetModel = useDefault

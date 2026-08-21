@@ -11,5 +11,10 @@ class AcpSessionConfigRepository({required final AcpAgentApi _api}) {
     required String sessionId,
     required String configId,
     required String value,
-  }) => _api.setConfigOption(sessionId: sessionId, configId: configId, value: value);
+  }) => _api.setConfigOption(
+    sessionId: sessionId,
+    configId: configId,
+    value: value,
+    timeout: AcpAgentApi.defaultRequestTimeout,
+  );
 }
