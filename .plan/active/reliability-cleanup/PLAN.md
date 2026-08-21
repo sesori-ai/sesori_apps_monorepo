@@ -438,7 +438,13 @@ New file `bridge/app/lib/src/bridge/plugin_event_delivery_pipeline.dart`.
   It owns mechanics only — ordering, fencing, history capture, attachment
   shaping. It owns no delivery policy.
 - **Constructor dependencies (required):** runtime/plugin lookup, history
-  service, failure reporter. Unseen-event routing is deliberately NOT a
+  service, failure reporter, and one narrow neutral part-shaping seam (the
+  pure `mapMessagePart` / `isMessagePartVisible` / `buildMessagePartEvent`
+  functions the current capture path at `orchestrator.dart:1572-1599` uses).
+  These are backend-neutral transcript-modeling functions, not wire-event
+  construction; injecting just them keeps stored-part construction inside the
+  pipeline's capture invariant while `BridgeEventMapper` wire mapping stays
+  upstairs. Unseen-event routing is deliberately NOT a
   dependency: `_routeUnseenActivity(SesoriSseEvent)` consumes mapped wire
   events, so it runs in `OrchestratorSession` after wire mapping alongside
   delivery policy — exactly like project activity and wire mapping itself.
@@ -464,7 +470,10 @@ New file `bridge/app/lib/src/bridge/plugin_event_delivery_pipeline.dart`.
   subscription (Dart streams do not await listeners, so a plain stream would
   order only fact production). This preserves today's invariant exactly: full
   same-plugin serialization of produce-through-deliver, with cross-plugin
-  concurrency untouched; unrelated plugins never wait on one another. Facts
+  concurrency untouched for ordinary event delivery. Summary rebuilds keep a
+  dedicated GLOBAL tail key — repository-wide snapshots stay serialized
+  across plugins exactly as `_projectsSummaryTail` does today — so the
+  cross-plugin guarantee applies only to ordinary events, never summaries. Facts
   are typed and policy-free captured facts (transcript updates, summary
   snapshots); the pipeline never sees wire shapes or recipients.
 - **Generation fences:** each await boundary inside the pipeline is labeled
@@ -528,13 +537,18 @@ plugins → runtime → interface/foundation; Codex already depends on runtime);
   returning write acceptance separately from the correlated-response future —
   this preserves ACP's dispatch-completion boundary where the accepted prompt
   publishes after stdin flush while the backend turn may run for minutes;
-  `void sendFrame({required Map<String, dynamic> envelope})` for one-way and
+  `bool sendFrame({required Map<String, dynamic> envelope})` returning write
+  acceptance (Claude retires a pending approval only when its control
+  response was actually accepted) for one-way and
   reply frames the protocol requires plugins to emit (ACP notifications and
   server-request responses, Codex `initialized` and server-request replies,
   Claude control responses) so all writes flow through the transport's single
   framing/lifecycle owner;
   `Stream<Map<String, dynamic>> notifications` for protocol-specific inbound
   lines the owning plugin interprets;
+  `bool get isAttached` mirroring today's synchronous connected checks
+  (`AcpStdioClient.isConnected` drives Cursor probe reconnect decisions and
+  replay/catalog dead-client replacement across ACP-family plugins);
   `Future<NdjsonProcessExit> get exit` exposing the attached generation's
   process completion so plugins keep today's exit-driven behaviors (plugin
   failure, resident-process removal, pending-turn settlement) without touching
@@ -543,7 +557,10 @@ plugins → runtime → interface/foundation; Codex already depends on runtime);
   reaping the current process generation, and returning the client to the
   attachable state without closing it — preserving Cursor's catalog-probe
   flow (`AcpStdioClient.reset` + reconnect on the same client);
-  `dispose({required String reason})` failing all pending, closing stdin,
+  `dispose({required String reason, required Duration gracefulTimeout})`
+  preserving each caller's remaining operation deadline
+  (`HermesAcpApi.settleScratch` forwards its own), failing all pending,
+  closing stdin,
   waiting briefly, terminating, then force-killing. Stale-generation callbacks
   are fenced internally via a generation counter bumped by
   `AttachToken beginAttach()` issued BEFORE the caller spawns, and
@@ -607,9 +624,11 @@ Single chosen design per primitive (no alternatives):
 
 1. `PregoCenteredStatus` — new file
    `client/module_prego/lib/components/status/prego_centered_status.dart`;
-   required title, optional message, icon, semantics config, and one optional
-   action modeled as a single value — a `PregoStatusAction` with required
-   label and callback plus optional leading-icon and style parameters.
+   required title and named parameters that are themselves `required` even
+   when nullable per the repo convention — message, icon, semantics config,
+   one optional-modeled action as a single `PregoStatusAction` value
+   (required label and callback plus required-nullable leading-icon and
+   style).
    Adoption is scoped to the two near-copy list error views where the
    investigation established genuine duplication — `error_view.dart` and
    `session_list_content.dart` — migrated in the same PR. The semantically
@@ -826,7 +845,10 @@ capability. Any reduction concern should be raised at plan review.
 - **Automated:** full analyze + test suites green for every touched package
   (CI-enforced; recorded here).
 - **Headless bridge:** start the bridge; exercise plugin stop/disable/restart
-  transitions and graceful shutdown drain (Steps 4-6 surfaces).
+  transitions and graceful shutdown drain (Steps 4-6 surfaces); plus setup
+  refresh, disable-list persistence across a bridge restart, and
+  eligibility/ordering across every registered harness — the L2 rows of
+  `plugin-setup-and-lifecycle.md` that Steps 2/4/8 touch.
 - **Relay integration:** exercise key exchange plus a normal relay drop and
   reconnect against a real relay, proving the coordinator extraction preserved
   resume/incarnation behavior and Orchestrator drop cleanup — the
@@ -840,6 +862,8 @@ capability. Any reduction concern should be raised at plan review.
   history backfill with a transcript longer than one page, immediately
   queryable after send and paged on reopen (Step 6 capture move;
   `session-history-and-recovery.md` L2).
+- **Web catalog:** build and render the release design catalog against the
+  edited `module_prego` components per `design-catalog.md` L2 (Step 10).
 - **Client end to end:** release-target phone: open a session detail, send a
   prompt, present permission + question modals, filter and select via model and
   command pickers, render one error/retry state, record and submit one voice
