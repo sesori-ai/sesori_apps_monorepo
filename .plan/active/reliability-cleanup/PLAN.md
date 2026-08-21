@@ -341,8 +341,8 @@ All changes inside `bridge/app` except the Step 3 helper, which lives in
    second dependency and calls the settings repository. Layering preserved:
    API → Repository → Service. Delete the repository file, its DI registration
    in `bin/bridge.dart`, and its test fake.
-5. **Abortable-request helper:** new final class `AbortableRequestSender` in
-   `sesori_bridge_foundation/lib/src/http/abortable_request_sender.dart`
+5. **Abortable-request helper:** new final class `AbortableRequestClient` in
+   `sesori_bridge_foundation/lib/src/http/abortable_request_client.dart`
    (foundation is the documented home for bridge-wide transport primitives;
    `bridge/app` already depends on it, so no new edges). Because
    `http.AbortableRequest` receives its abort trigger at construction, the
@@ -396,8 +396,12 @@ New file `bridge/app/lib/src/bridge/relay_connection_coordinator.dart`.
 - **Owned state (moved, not new):** current connection, shutdown-close future,
   backoff jitter, incarnation fencing state, room key cache.
 - **Inbound seam:** exposes `Stream<RelayInbound>` — sealed variants for
-  routed request contexts, control messages, and resume outcomes. Consumed by
-  `OrchestratorSession`, which keeps request routing and all SSE decisions.
+  routed request contexts, control messages, resume outcomes, and connection
+  lifecycle outcomes (`disconnected` carrying the close code/context including
+  `bridgeRevoked`, `reconnected`). Consumed by `OrchestratorSession`, which
+  keeps request routing and all SSE decisions and uses the lifecycle outcomes
+  to run today's drop cleanup (SSE subscriber orphaning, view-tracker resets)
+  and revocation re-registration unchanged.
 - **Outbound seams:** `sendResponse(...)`, `sendEventFrame(...)`,
   `requestRekey()` — accept typed payloads, own encryption/framing/send-fencing
   internally. Never emits SSE; never touches plugin or database layers.
@@ -430,7 +434,11 @@ New file `bridge/app/lib/src/bridge/plugin_event_delivery_pipeline.dart`.
   It owns mechanics only — ordering, fencing, history capture, attachment
   shaping. It owns no delivery policy.
 - **Constructor dependencies (required):** runtime/plugin lookup, history
-  service, unseen-event/project-activity collaborators, failure reporter.
+  service, unseen-event collaborators, failure reporter. The
+  project-activity collaborator is deliberately NOT a dependency:
+  `ProjectActivityService.handleEvent(SesoriSseEvent)` consumes mapped wire
+  events, so it is invoked by `OrchestratorSession` after wire mapping,
+  alongside delivery policy — the pipeline never handles it.
   Wire-event mapping is deliberately NOT a dependency: `BridgeEventMapper`
   produces SSE wire shapes, so it runs in `OrchestratorSession` alongside
   delivery policy when constructing outbound deliveries from captured facts.
@@ -441,11 +449,16 @@ New file `bridge/app/lib/src/bridge/plugin_event_delivery_pipeline.dart`.
   pending part captures — the two duplicated completer-chain implementations
   collapse onto one private `_SerialTails` keyed executor defined in the same
   file (single consumer, stays private).
-- **Outbound seam:** exposes `Stream<NormalizedPluginFact>` — typed,
-  policy-free facts (captured transcript updates, summary snapshots, unseen
-  routing results). `OrchestratorSession` subscribes, applies generation/
-  permission/delivery policy exactly as today, and constructs the outbound SSE
-  deliveries itself; the pipeline never sees wire shapes or recipients.
+- **Outbound seam:** exposes acknowledged fact hand-off per plugin — each
+  keyed operation completes only after `OrchestratorSession` acknowledges
+  processing (mapping, unseen routing, delivery) of the previous fact, via an
+  explicit acknowledgement on the delivered item rather than a bare stream
+  subscription (Dart streams do not await listeners, so a plain stream would
+  order only fact production). This preserves today's invariant exactly: full
+  same-plugin serialization of produce-through-deliver, with cross-plugin
+  concurrency untouched; unrelated plugins never wait on one another. Facts
+  are typed and policy-free (captured transcript updates, summary snapshots,
+  unseen routing results); the pipeline never sees wire shapes or recipients.
 - **Generation fences:** each await boundary inside the pipeline is labeled
   with the validity check it requires. No existing check is deleted in this
   step; pruning provably redundant checks may happen later only with a tracker
@@ -483,7 +496,9 @@ plugins → runtime → interface/foundation; Codex already depends on runtime);
   demonstrably logs stderr today.
 - **Policy via values plus one seam:** constructor takes
   `MalformedFramePolicy {discard, failPending}` (ACP/Claude discard, Codex fail
-  all pending), `redactMalformedFrames` flag (Claude true, others false),
+  all pending), `NonObjectFramePolicy {silentDiscard, logWarning,
+  logRedactedDebug}` (ACP silent drop, Codex warn, Claude redacted debug),
+  `redactMalformedFrames` flag (Claude true, others false),
   `logTag`, and one required correlation extractor
   `responseCorrelationId: Object? Function(Map<String, dynamic> message)`.
   This one injected function is both classifier and extractor: it returns the
@@ -516,6 +531,10 @@ plugins → runtime → interface/foundation; Codex already depends on runtime);
   process completion so plugins keep today's exit-driven behaviors (plugin
   failure, resident-process removal, pending-turn settlement) without touching
   raw handles;
+  `reset({required Duration gracefulTimeout})` failing pending requests,
+  reaping the current process generation, and returning the client to the
+  attachable state without closing it — preserving Cursor's catalog-probe
+  flow (`AcpStdioClient.reset` + reconnect on the same client);
   `dispose({required String reason})` failing all pending, closing stdin,
   waiting briefly, terminating, then force-killing. Stale-generation callbacks
   are fenced internally via a generation counter bumped by
@@ -560,7 +579,10 @@ Exact homes, signatures, and affected implementors:
    private DTO parse of the 409 body and throws its API-layer
    `SessionCleanupRejectedException` carrying that DTO; `SessionRepository`
    catches it and maps DTO → domain model `SessionCleanupRejection` defined in
-   new file `client/module_core/lib/src/capabilities/session/session_cleanup_rejection.dart`
+   new file `client/module_core/lib/src/repositories/models/session_cleanup_rejection.dart`
+   (repository-layer model home: the repository constructs and throws it, so
+   it must live at or below the repository, not beside the service it flows
+   through)
    beside the domain exception it rethrows; `SessionService` passes through;
    `session_list_cubit.dart` deletes its API import and consumes only the
    capabilities-layer type.
@@ -673,7 +695,7 @@ required row that cannot run keeps the plan active per
   lifecycle exactly one owner;
 - `PluginEventDeliveryPipeline` + private `_SerialTails`: same — owns existing
   tails/captures; one outbound stream replaces scattered inline emission;
-- `AbortableRequestSender`: stateless per call;
+- `AbortableRequestClient`: stateless per call;
 - `NdjsonProcessClient` + `NdjsonProcessHandle`: one stateful class plus a
   thin interface replacing three drifted ones;
 - Three Prego primitives: presentation-only, stateless or timer-scoped,
@@ -697,7 +719,7 @@ cross-owner lock, or second stream, stop and ask before expanding scope.
 |---|---|---|---|
 | 1/14 | `🌱 [reliability-cleanup] docs: plan the reliability cleanup series [step 1/14]` | plan + tracker | Raise reviewed plan only. |
 | 2/14 | `⚙️ [reliability-cleanup] refactor: drop pre-v1.4 compatibility paths [step 2/14]` | 150-350 lines | Six F6 removals with per-marker peer verification; keep v1.5.x+. |
-| 3/14 | `🌿 [reliability-cleanup] fix(bridge): make swallowed failures observable [step 3/14]` | 150-300 lines | F3/F4/F5: logging fixes, relay-connect error preservation, settings-repository fold, `AbortableRequestSender`. |
+| 3/14 | `🌿 [reliability-cleanup] fix(bridge): make swallowed failures observable [step 3/14]` | 150-300 lines | F3/F4/F5: logging fixes, relay-connect error preservation, settings-repository fold, `AbortableRequestClient`. |
 | 4/14 | `⚙️ [reliability-cleanup] refactor(bridge): unify plugin command transitions [step 4/14]` | 150-300 lines | Transition skeleton + slot composite subscriptions (F2). |
 | 5/14 | `🚧 [reliability-cleanup] refactor(bridge): extract the relay connection coordinator [step 5/14]` | 1,200-2,000 changed (mostly relocation) | Step 5 design; assembly stays in `Orchestrator.create`. |
 | 6/14 | `🚧 [reliability-cleanup] refactor(bridge): extract the plugin-event delivery pipeline [step 6/14]` | 700-1,300 changed (mostly relocation) | Step 6 design; policy stays in OrchestratorSession; label fences; delete none without proof. |
@@ -790,6 +812,11 @@ capability. Any reduction concern should be raised at plan review.
   (CI-enforced; recorded here).
 - **Headless bridge:** start the bridge; exercise plugin stop/disable/restart
   transitions and graceful shutdown drain (Steps 4-6 surfaces).
+- **Relay integration:** exercise key exchange plus a normal relay drop and
+  reconnect against a real relay, proving the coordinator extraction preserved
+  resume/incarnation behavior and Orchestrator drop cleanup — the
+  authoritative boundary recorded by `docs/regression/bridge-connectivity.md`
+  L2 for exactly the semantics Step 5 moves (Step 5 surface).
 - **Live plugin:** one ACP-family plugin (Cursor, OMP, or Hermes), plus Codex
   and Claude: create a session, exchange turns, answer one question/permission
   prompt, archive or delete where supported (Steps 7-8 surfaces).
