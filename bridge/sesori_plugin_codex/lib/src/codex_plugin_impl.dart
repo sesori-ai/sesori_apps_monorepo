@@ -477,11 +477,10 @@ class CodexPlugin._({
   void _sendKeepalive() {
     final client = _client;
     if (client == null) return;
-    // `model/list` is a cheap local capability query (no model inference, so no
-    // usage cost). The response is irrelevant — the point is the traffic; a
-    // failure (e.g. transport already gone) is swallowed.
+    // Keep this local-only: `model/list` can refresh Codex's remote model cache,
+    // turning weak connectivity into a repeated child-process timeout.
     unawaited(
-      client.request(method: "model/list", timeout: _keepaliveInterval).catchError((Object _) => null),
+      client.request(method: "thread/loaded/list", timeout: _keepaliveInterval).catchError((Object _) => null),
     );
   }
 
