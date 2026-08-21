@@ -44,8 +44,10 @@ class FirebaseAnalyticsClient({
     _logAccepted(wireName: event.wireName, parameters: event.parameters);
   }
 
-  /// Local-only observability of exactly what was handed to the Firebase SDK;
-  /// the closed event contracts keep every value privacy-safe.
+  /// Local-only observability for SDK-accepted events, logging the event's own
+  /// closed parameters. Envelope-level fields — schema version, user key, and
+  /// occurrence time — are deliberately omitted; the closed event contracts
+  /// keep every logged value privacy-safe.
   void _logAccepted({required String wireName, required Map<String, String> parameters}) {
     final describedParameters = parameters.entries.map((entry) => "${entry.key}: ${entry.value}").join(", ");
     logi("Firebase analytics accepted $wireName ($describedParameters)");
