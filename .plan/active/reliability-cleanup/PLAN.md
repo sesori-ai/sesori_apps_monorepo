@@ -427,19 +427,22 @@ receives the coordinator instead of the ~15 scattered relay/session fields.
 Shutdown ordering remains sequenced in `OrchestratorSession._teardown` exactly
 as today; the coordinator adds no new ordering rules.
 
-### Step 6 — plugin-event delivery pipeline extraction
+### Step 6 — plugin-event delivery dispatcher extraction
 
-New file `bridge/app/lib/src/bridge/plugin_event_delivery_pipeline.dart`.
+New file `bridge/app/lib/src/bridge/plugin_event_processing_dispatcher.dart`.
 
 **Class contract:**
 
-- `final class PluginEventDeliveryPipeline` — Orchestrator-owned collaborator
+- `final class PluginEventProcessingDispatcher` — Orchestrator-owned collaborator
   (child of `OrchestratorSession`, never a global service). Owns one invariant:
   ordered, generation-valid capture and sequencing of normalized plugin events.
   It owns mechanics only — ordering, fencing, history capture, attachment
   shaping. It owns no delivery policy.
 - **Constructor dependencies (required):** runtime/plugin lookup, history
-  service, failure reporter, and two narrow transcript-modeling seams (`mapMessagePart`,
+  service, failure reporter, a narrow neutral project-summary source (the
+  `getProjectActivitySummaries` read behind `_buildProjectsSummary`, injected
+  as a function seam so snapshot building needs no repository dependency), and
+  two narrow transcript-modeling seams (`mapMessagePart`,
   `isMessagePartVisible` from the current capture path at
   `orchestrator.dart:1572-1599`). `buildMessagePartEvent` is explicitly NOT
   part of the seam — it constructs `SesoriSseEvent.messagePartUpdated`, a wire
@@ -505,13 +508,17 @@ plugins → runtime → interface/foundation; Codex already depends on runtime);
 - **Process abstraction:** minimal `NdjsonProcessHandle` interface declared in
   the same file (stdin sink, broadcast stdout line stream, broadcast stderr
   line stream, done future, kill) with thin adapters mapping each plugin's
-  existing handle types onto it. The transport drains stderr for the attached
-  generation (a full stderr pipe can block the child). Content handling is a
-  dedicated constructor value, `StderrPolicy {discard, logRedacted}`: Codex
-  discards because its stderr carries upstream account diagnostics it must not
-  retain or log (preserving its deliberate drain-without-logging behavior),
-  and adopters opt into redacted logging only where their current client
-  demonstrably logs stderr today.
+  existing handle types onto it. The client drains stderr for the attached
+  generation (a full stderr pipe can block the child). Sanitization is
+  adapter-owned: the lines an adapter delivers on the stderr stream are
+  already sanitized, because secret patterns are backend knowledge — ACP
+  forwards verbatim as today, Claude applies its selective masking from
+  `claude_stream_client.dart:310-318`, Codex contributes no lines because its
+  current client deliberately drains without logging (upstream account
+  diagnostics must not be retained). The constructor value is
+  `StderrPolicy {discard, forwardSanitized}`: Codex discards; adopters forward
+  only where their current client demonstrably logs stderr today. The shared
+  client learns no backend's secret patterns.
 - **Policy via values plus one seam:** constructor takes
   `MalformedFramePolicy {discard, failPending}` (ACP/Claude discard, Codex fail
   all pending), `NonObjectFramePolicy {silentDiscard, logWarning,
@@ -727,7 +734,7 @@ required row that cannot run keeps the plan active per
 
 - `RelayConnectionCoordinator`: owns state that already existed, giving relay
   lifecycle exactly one owner;
-- `PluginEventDeliveryPipeline` + private `_SerialTails`: same — owns existing
+- `PluginEventProcessingDispatcher` + private `_SerialTails`: same — owns existing
   tails/captures; one acknowledged per-plugin fact hand-off replaces scattered
   inline emission;
 - `AbortableRequestClient`: stateless per call;
@@ -757,7 +764,7 @@ cross-owner lock, or second stream, stop and ask before expanding scope.
 | 3/14 | `🌿 [reliability-cleanup] fix(bridge): make swallowed failures observable [step 3/14]` | 150-300 lines | F3/F4/F5: logging fixes, relay-connect error preservation, settings-repository fold, `AbortableRequestClient`. |
 | 4/14 | `⚙️ [reliability-cleanup] refactor(bridge): unify plugin command transitions [step 4/14]` | 150-300 lines | Transition skeleton + slot composite subscriptions (F2). |
 | 5/14 | `🚧 [reliability-cleanup] refactor(bridge): extract the relay connection coordinator [step 5/14]` | 1,200-2,000 changed (mostly relocation) | Step 5 design; assembly stays in `Orchestrator.create`. |
-| 6/14 | `🚧 [reliability-cleanup] refactor(bridge): extract the plugin-event delivery pipeline [step 6/14]` | 700-1,300 changed (mostly relocation) | Step 6 design; policy stays in OrchestratorSession; label fences; delete none without proof. |
+| 6/14 | `🚧 [reliability-cleanup] refactor(bridge): extract the plugin-event processing dispatcher [step 6/14]` | 700-1,300 changed (mostly relocation) | Step 6 design; policy stays in OrchestratorSession; label fences; delete none without proof. |
 | 7/14 | `🚧 [reliability-cleanup] refactor(plugins): share the ndjson subprocess transport [step 7/14]` | 600-1,100 lines | Step 7 design; acp/claude gain runtime dep; AGENTS.md order update. |
 | 8/14 | `🌿 [reliability-cleanup] refactor(plugins): consolidate shared plugin primitives [step 8/14]` | 250-450 lines | Step 8 table: helpers, descriptor policy, URLs, contract docs, Codex log fix. |
 | 9/14 | `🌿 [reliability-cleanup] refactor(client): remove dead code and fix observability [step 9/14]` | 250-500 lines | F10-F13 incl. cleanup-rejection layering flow. |
@@ -825,8 +832,8 @@ Affected feature documents (Step 13 reconciles):
   documentation, Codex disposal logging;
 - `docs/regression/attachments-and-images.md` — shared base64/MIME helper home;
 - `docs/regression/session-history-and-recovery.md` — Step 6 moves history
-  capture and attachment shaping into the delivery pipeline;
-- `docs/regression/session-turns.md` — event-delivery pipeline ownership;
+  capture and attachment shaping into the processing dispatcher;
+- `docs/regression/session-turns.md` — event-processing dispatcher ownership;
 - `docs/regression/bridge-connectivity.md` — relay coordinator ownership,
   unchanged reconnect/resume semantics;
 - `docs/regression/bridge-installation-and-updates.md` — installer env override
