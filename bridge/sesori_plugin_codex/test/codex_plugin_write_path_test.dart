@@ -2232,15 +2232,17 @@ void main() {
         ),
         keepaliveInterval: const Duration(milliseconds: 20),
       );
-      // Only `initialize` is canned; keepalive thread/loaded/list calls get an error
-      // response, which the plugin swallows — exactly the production behaviour.
-      kaFake.respondInOrder([const _Response(result: _initOk)]);
+      kaFake.respondInOrder([
+        const _Response(result: _initOk),
+        ...List<_Response>.filled(6, const _Response(result: {"data": <Object>[]})),
+      ]);
 
       await kaPlugin.healthCheck(); // connect → starts keepalive
       await Future<void>.delayed(const Duration(milliseconds: 90));
 
       final firedWhileConnected = kaFake.sentMethods.where((m) => m == "thread/loaded/list").length;
       expect(firedWhileConnected, greaterThanOrEqualTo(2));
+      expect(kaFake.sentRequestHasParams("thread/loaded/list"), isTrue);
       expect(kaFake.sentMethods, isNot(contains("model/list")));
 
       await kaPlugin.dispose();
@@ -2675,6 +2677,9 @@ class _FakeAppServer() {
     final frame = _sent.firstWhere((f) => f.method == method);
     return frame.params ?? const {};
   }
+
+  bool sentRequestHasParams(String method) =>
+      _sent.firstWhere((frame) => frame.method == method).params != null;
 
   Map<String, dynamic> serverResponseFor(Object id) =>
       _serverResponses[id] ?? (throw StateError("no response for $id"));

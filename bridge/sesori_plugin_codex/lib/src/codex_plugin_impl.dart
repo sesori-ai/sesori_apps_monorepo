@@ -480,7 +480,13 @@ class CodexPlugin._({
     // Keep this local-only: `model/list` can refresh Codex's remote model cache,
     // turning weak connectivity into a repeated child-process timeout.
     unawaited(
-      client.request(method: "thread/loaded/list", timeout: _keepaliveInterval).catchError((Object _) => null),
+      client
+          .request(
+            method: "thread/loaded/list",
+            params: const <String, dynamic>{},
+            timeout: _keepaliveInterval,
+          )
+          .catchError((Object _) => null),
     );
   }
 
