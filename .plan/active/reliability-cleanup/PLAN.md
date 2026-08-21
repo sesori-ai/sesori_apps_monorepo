@@ -35,7 +35,7 @@ by any step** (B-Shared not applicable).
 | Step | Bridge workspace packages | Client workspace modules |
 |---|---|---|
 | 2 | `app`, `sesori_plugin_codex`, `sesori_plugin_opencode`, `sesori_plugin_runtime` | none |
-| 3 | `app` | none |
+| 3 | `app`, `sesori_bridge_foundation` | none |
 | 4 | `app` | none |
 | 5 | `app` | none |
 | 6 | `app` | none |
@@ -74,8 +74,16 @@ no new behavior, guards, retries, registries, or validation layers are added.
 
 ## Non-Goals
 
-- No new user-facing features and no product behavior changes. Every step must
-  preserve observable behavior except where a swallowed failure becomes logged.
+- No new user-facing features. Behavior is preserved everywhere except three
+  small, deliberate deltas, each recorded in its step and accepted as part of
+  this series: (1) swallowed failures become logged (Steps 3, 8); (2) ACP
+  teardown gains the stdin-close drain step shared by the transport adopters
+  (Step 7 — teardown-only, visible solely in process exit timing/logs); and
+  (3) drifted UI micro-details unify on one implementation — picker spacing
+  and empty-failure presentation take the Prego defaults (Step 10), and the
+  PowerShell installer stops accepting non-three-component release versions,
+  matching `install.sh` (Step 12). Everything else preserves observable
+  behavior exactly; no other change may ship without an owner decision.
 - No wire contract changes between client and bridge, no database migrations,
   and no changes to relay framing or crypto layouts.
 - No new defensive machinery: no retry frameworks, event buses, universal
@@ -302,7 +310,7 @@ invocations:
 | Rejection sessionId omission fallback | `pending_interaction_service.dart` legacy owner-resolution branch | clients ≤ v1.0.x omitting sessionId |
 | Codex config fallback reads | `codex_config_reader.dart` fallback branches + call sites | VERIFY: only if peer is released-Sesori-era data, not live rollout format — otherwise keep with reason |
 | OpenCode CLI flag aliases ×3 | `open_code_plugin_descriptor.dart` alias branches | user scripts predating namespaced flags (introduced v1.1.1) |
-| RuntimeStartIntent side-file model/store | `runtime_start_intent.dart` side-file classes + store | bridges ≤ v1.0.8 sharing a data directory |
+| RuntimeStartIntent side-file model/store | `runtime_start_intent.dart`: per the marker's own instruction, first move intent state into the now-changeable ownership schema (preserving crash recovery for a bridge killed between process spawn and ownership commit), then remove the side-file model/store | bridges ≤ v1.0.8 sharing a data directory |
 
 Each marker gets a one-line verification note in the `TRACKER.md` ledger. If a
 marker fails the peer check during implementation, it stays and the reason is
@@ -332,10 +340,13 @@ All changes inside `bridge/app`:
 5. **Abortable-request helper:** new final class `AbortableRequestSender` in
    `sesori_bridge_foundation/lib/src/http/abortable_request_sender.dart`
    (foundation is the documented home for bridge-wide transport primitives;
-   `bridge/app` already depends on it, so no new edges). Single method
-   `Future<http.StreamedResponse> send({required http.Client client, required http.AbortableRequest request, required Duration deadline, Stream<Object>? abortSignal})`
-   owning the deadline timer, external-abort subscription, and one finally-path
-   cleanup. Callers keep status handling and retry policy: `SesoriServerApi`
+   `bridge/app` already depends on it, so no new edges). Because
+   `http.AbortableRequest` receives its abort trigger at construction, the
+   helper constructs the request itself from request inputs:
+   `Future<http.StreamedResponse> send({required http.Client client, required String method, required Uri url, Map<String, String>? headers, Object? body, required Duration deadline, Stream<Object>? abortSignal})`
+   builds the combined abort trigger (deadline timer plus optional external
+   signal), passes it as `abortTrigger`, and owns one finally-path cleanup.
+   Callers keep status handling and retry policy: `SesoriServerApi`
    (including `_postSessionMetadata`'s merged cancellation), `TokenManager`,
    `BridgeRegistrationApi`.
 
@@ -372,20 +383,19 @@ New file `bridge/app/lib/src/bridge/relay_connection_coordinator.dart`.
 - **Outbound seams:** `sendResponse(...)`, `sendEventFrame(...)`,
   `requestRekey()` — accept typed payloads, own encryption/framing/send-fencing
   internally. Never emits SSE; never touches plugin or database layers.
-- **Lifecycle:** constructed by the composition root, started by
+- **Lifecycle:** constructed by `Orchestrator.create`, started by
   `OrchestratorSession.start`, disposed inside the existing teardown sequence
   before the shared HTTP client closes; internal subscriptions held on one
   `CompositeSubscription`.
 - **Dependency direction:** orchestrator → coordinator (downward); coordinator
   depends only on transport/crypto/token primitives.
 
-**Composition root:** graph assembly moves out of orchestration code into
-`bridge/app/lib/src/bridge/orchestrator_composition.dart` — a factory building
-the object graph (repositories, APIs, push subsystem, services, listeners,
-route handlers, session collaborators) and returning it as a typed structure
-consumed by `Orchestrator.create`. `Orchestrator.create` becomes thin startup
-sequencing; `OrchestratorSession` receives the coordinator instead of the ~15
-scattered relay/session fields.
+**Composition root:** `Orchestrator.create` remains the single cross-layer
+composition owner — graph assembly does not move to a second file or type.
+Repetitive wiring within it may be organized into private builder helpers in
+the same library so the startup sequence reads as domains rather than a flat
+wall of constructions. The concrete change is that `OrchestratorSession`
+receives the coordinator instead of the ~15 scattered relay/session fields.
 
 Shutdown ordering remains sequenced in `OrchestratorSession._teardown` exactly
 as today; the coordinator adds no new ordering rules.
@@ -398,22 +408,28 @@ New file `bridge/app/lib/src/bridge/plugin_event_delivery_pipeline.dart`.
 
 - `final class PluginEventDeliveryPipeline` — Orchestrator-owned collaborator
   (child of `OrchestratorSession`, never a global service). Owns one invariant:
-  ordered, generation-valid capture-to-delivery of normalized plugin events.
+  ordered, generation-valid capture and sequencing of normalized plugin events.
+  It owns mechanics only — ordering, fencing, history capture, attachment
+  shaping. It owns no delivery policy.
 - **Constructor dependencies (required):** runtime/plugin lookup, event mapper,
-  history service, unseen-event/project-activity collaborators, permission
-  policy, failure reporter.
+  history service, unseen-event/project-activity collaborators, failure
+  reporter. Permission/push policy is deliberately NOT a dependency: decisions
+  about what phones receive stay in `OrchestratorSession`, satisfying
+  "Orchestrator Owns SSE Decisions".
 - **Owned state (moved):** per-plugin serial tails, projects-summary tail,
   pending part captures — the two duplicated completer-chain implementations
   collapse onto one private `_SerialTails` keyed executor defined in the same
   file (single consumer, stays private).
-- **Outbound seam:** exposes `Stream<OutboundSseDelivery>`; `OrchestratorSession`
-  subscribes and forwards to the SSE manager. Push-based per repo rules; the
-  Orchestrator remains the sole SSE decision owner and emitter boundary.
+- **Outbound seam:** exposes `Stream<NormalizedPluginFact>` — typed,
+  policy-free facts (captured transcript updates, summary snapshots, unseen
+  routing results). `OrchestratorSession` subscribes, applies generation/
+  permission/delivery policy exactly as today, and constructs the outbound SSE
+  deliveries itself; the pipeline never sees wire shapes or recipients.
 - **Generation fences:** each await boundary inside the pipeline is labeled
   with the validity check it requires. No existing check is deleted in this
   step; pruning provably redundant checks may happen later only with a tracker
   note naming the await boundary that makes each removed check dead.
-- **Lifecycle:** constructed by the composition root; drained by
+- **Lifecycle:** constructed by `Orchestrator.create`; drained by
   `OrchestratorSession._teardown` at exactly today's position (before
   normalized-output cancellation), then disposed.
 
@@ -436,17 +452,22 @@ plugins → runtime → interface/foundation; Codex already depends on runtime);
 - **Process abstraction:** minimal `NdjsonProcessHandle` interface declared in
   the same file (stdin sink, broadcast stdout line stream, done future, kill)
   with thin adapters mapping each plugin's existing handle types onto it.
-- **Policy via values, not callbacks:** constructor takes
+- **Policy via values plus one seam:** constructor takes
   `MalformedFramePolicy {discard, failPending}` (ACP/Claude discard, Codex fail
-  all pending), `redactMalformedFrames` flag (Claude true, others false), and
-  `logTag`. Request timeout duration is a method argument.
-- **API:** `Future<Map<String, dynamic>> request(Map<String, dynamic> envelope, {required Duration timeout})`
-  correlating IDs through an internal pending map with timeout removal;
-  `Stream<Map<String, dynamic>> notifications` for protocol-specific inbound
-  lines the owning plugin interprets; `dispose({required String reason})`
-  failing all pending, closing stdin, waiting briefly, terminating, then
-  force-killing. Stale-generation callbacks are fenced internally via a
-  generation counter bumped by `attach(NdjsonProcessHandle)`.
+  all pending), `redactMalformedFrames` flag (Claude true, others false),
+  `logTag`, and one required correlation extractor
+  `responseCorrelationId: Object? Function(Map<String, dynamic> message)` —
+  ACP/Codex return the top-level JSON-RPC `id`, Claude returns
+  `message["response"]["request_id"]` from `control_response` frames. The
+  extractor is injected once at construction; no policy callbacks cross layers.
+- **API:** `Future<Map<String, dynamic>> request({required Map<String, dynamic> envelope, required Duration timeout})`
+  correlating replies through an internal pending map keyed by the extracted
+  ID with timeout removal; `Stream<Map<String, dynamic>> notifications` for
+  protocol-specific inbound lines the owning plugin interprets;
+  `dispose({required String reason})` failing all pending, closing stdin,
+  waiting briefly, terminating, then force-killing. Stale-generation callbacks
+  are fenced internally via a generation counter bumped by
+  `attach({required NdjsonProcessHandle process})`.
 - **Preserved divergences:** frame classification, notification semantics,
   redaction, and malformed-policy remain explicit caller choices — nothing is
   unified by accident.
@@ -464,10 +485,9 @@ Exact homes, signatures, and affected implementors:
 
 | Primitive | Exact home | Consumers migrated |
 |---|---|---|
-| Base64/MIME normalization | `sesori_plugin_interface/lib/src/messages/attachment_normalization.dart`: pure top-level functions `String? tryNormalizeBase64(String)`, `String? normalizeMimeValue(String?)`, `String mimeEssence(String)` beside existing attachment validators (interface stays pure/contract-grade — no state, no I/O) | `acp_content_mapper.dart`, `codex_image_attachment_mapper.dart`, `message_part_mapper.dart` (OpenCode); Pi variant adopted only if byte-equivalent semantics, else left with a tracker note |
+| Base64/MIME normalization | `sesori_plugin_interface/lib/src/messages/attachment_normalization.dart`: pure top-level functions with named parameters — `tryNormalizeBase64({required String value})`, `normalizeMimeValue({required String? value})`, `mimeEssence({required String value})` — beside existing attachment validators (interface stays pure/contract-grade — no state, no I/O) | `acp_content_mapper.dart`, `codex_image_attachment_mapper.dart`, `message_part_mapper.dart` (OpenCode); Pi variant adopted only if byte-equivalent semantics, else left with a tracker note |
 | Descriptor install capability | `sesori_plugin_runtime/lib/src/provisioning/descriptor_install_policy.dart`: pure function taking manifest, resolved explicit-binary path, platform target → capability set | descriptors of OpenCode, Codex, Cursor, OMP, Pi; setup-hint strings stay plugin-local |
 | Release asset URL | default member on the existing manifest base in `sesori_plugin_runtime/lib/src/provisioning/runtime_manifest.dart`: `Uri releaseAssetUrl({required String assetName})` using each manifest's publisher/repo/tag fields | all five manifests delete private URL builders; any manifest with differing tag convention overrides and notes why |
-| Unsupported-op defaults | default members on `BridgePluginApi` in `sesori_plugin_interface`: `archiveSession` no-op, `deleteWorkspace` no-op, `getChildSessions` → `const []` (matches existing default-method precedent) | trivial overrides deleted wherever the analyzer proves them redundant (known: Claude, Pi, ACP) |
 | Contract documentation | doc comments on `BridgePluginApi` question/permission methods stating pending-input lifecycle expectations (reply/dispose/cancel must resolve or log) | interface-only documentation |
 | Codex observability fix | `sesori_plugin_codex/lib/src/approval_registry.dart:122-130`: silent catch logs like ACP/Claude | Codex-local |
 
@@ -498,8 +518,11 @@ Single chosen design per primitive (no alternatives):
 
 1. `PregoCenteredStatus` — new file
    `client/module_prego/lib/components/status/prego_centered_status.dart`;
-   required title, optional message, icon, action label/callback, semantics
-   config. Consumers migrated in the same PR: `error_view.dart`,
+   required title, optional message, icon, semantics config, and one optional
+   action modeled as a single value — a `PregoStatusAction` with required
+   label and required callback — so a visible label without an action or an
+   unreachable callback without a label is unrepresentable. Consumers migrated
+   in the same PR: `error_view.dart`,
    `session_list_content.dart`, `add_project_dialog.dart`,
    `diff_error_view.dart`, `session_detail_scaffold_sections.dart`.
 2. `showPregoBottomSheetRoute(...)` — lower-level presenter added to
@@ -541,9 +564,13 @@ cubits are untouched except imports if files move.
 
 1. `.github/workflows/bridge-ci.yml`: one checked-in package list drives
    analysis and test loops preserving per-package output and fail-fast.
-2. Codegen freshness job: regenerate OpenCode generated client/event outputs
-   from committed schema/manifest inputs and fail on diff (network-based
-   acquisition excluded from CI).
+2. Codegen freshness job: regenerate the OpenCode generated outputs that are
+   fully reproducible from committed inputs (SSE events from the committed
+   manifest) and fail on diff. The client-code generator additionally requires
+   an OpenAPI document that is not committed (the Makefile fetches it or takes
+   `OPENCODE_SPEC`), so that artifact is out of scope for offline CI; the
+   tracker records this limitation rather than adding network access or a
+   pinned upstream spec to CI.
 3. `install.ps1` gains `$env:GITHUB`/`$env:GITHUB_API` handling and exact
    three-component stable-version validation matching `install.sh`.
 4. Fixture-driven parity tests (extending `bridge/app/test/tool/installers_test.dart`)
@@ -611,10 +638,10 @@ cross-owner lock, or second stream, stop and ask before expanding scope.
 | 2/14 | `⚙️ [reliability-cleanup] refactor: drop pre-v1.4 compatibility paths [step 2/14]` | 150-350 lines | Six F6 removals with per-marker peer verification; keep v1.5.x+. |
 | 3/14 | `🌿 [reliability-cleanup] fix(bridge): make swallowed failures observable [step 3/14]` | 150-300 lines | F3/F4/F5: logging fixes, relay-connect error preservation, settings-repository fold, `AbortableRequestSender`. |
 | 4/14 | `⚙️ [reliability-cleanup] refactor(bridge): unify plugin command transitions [step 4/14]` | 150-300 lines | Transition skeleton + slot composite subscriptions (F2). |
-| 5/14 | `🚧 [reliability-cleanup] refactor(bridge): extract the relay connection coordinator [step 5/14]` | 1,200-2,000 changed (mostly relocation) | Step 5 design incl. composition root. |
-| 6/14 | `🚧 [reliability-cleanup] refactor(bridge): extract the plugin-event delivery pipeline [step 6/14]` | 700-1,300 changed (mostly relocation) | Step 6 design; label fences; delete none without proof. |
+| 5/14 | `🚧 [reliability-cleanup] refactor(bridge): extract the relay connection coordinator [step 5/14]` | 1,200-2,000 changed (mostly relocation) | Step 5 design; assembly stays in `Orchestrator.create`. |
+| 6/14 | `🚧 [reliability-cleanup] refactor(bridge): extract the plugin-event delivery pipeline [step 6/14]` | 700-1,300 changed (mostly relocation) | Step 6 design; policy stays in OrchestratorSession; label fences; delete none without proof. |
 | 7/14 | `🚧 [reliability-cleanup] refactor(plugins): share the ndjson subprocess transport [step 7/14]` | 600-1,100 lines | Step 7 design; acp/claude gain runtime dep; AGENTS.md order update. |
-| 8/14 | `🌿 [reliability-cleanup] refactor(plugins): consolidate shared plugin primitives [step 8/14]` | 300-550 lines | Step 8 table: helpers, descriptor policy, URLs, interface defaults, contract docs, Codex log fix. |
+| 8/14 | `🌿 [reliability-cleanup] refactor(plugins): consolidate shared plugin primitives [step 8/14]` | 250-450 lines | Step 8 table: helpers, descriptor policy, URLs, contract docs, Codex log fix. |
 | 9/14 | `🌿 [reliability-cleanup] refactor(client): remove dead code and fix observability [step 9/14]` | 250-500 lines | F10-F13 incl. cleanup-rejection layering flow. |
 | 10/14 | `⚙️ [reliability-cleanup] refactor(ui): consolidate sheet, status, and picker primitives [step 10/14]` | 500-900 lines | Step 10 designs + full consumer migration. |
 | 11/14 | `⚙️ [reliability-cleanup] refactor(app): split state-heavy composer and settings widgets [step 11/14]` | 900-1,400 changed (mostly relocation) | Step 11 collaborator table. |
@@ -661,8 +688,10 @@ packages' focused tests. Additional, per step:
   controller-level tests only where they add confidence (voice race, draft
   restore, paging handoff).
 - **12:** CI dry-run produces identical per-package commands; freshness job
-  fails when an output is dirtied locally; parity tests prove identical
-  URL/checksum/manifest decisions from shared fixtures including PS1 overrides.
+  fails when an offline-reproducible output is dirtied locally (OpenAPI-derived
+  output explicitly out of scope, recorded in the tracker); parity tests prove
+  identical URL/checksum/manifest decisions from shared fixtures including PS1
+  overrides.
 - **13/14:** docs reconcile cleanly against merged diffs; matrix evidence
   recorded in the tracker.
 

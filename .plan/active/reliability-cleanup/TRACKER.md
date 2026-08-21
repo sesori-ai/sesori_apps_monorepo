@@ -10,7 +10,7 @@ Plan: [PLAN.md](PLAN.md) · Slug: `reliability-cleanup` · Series total: 14 step
 | 2/14 | ⚙️ refactor: drop pre-v1.4 compatibility paths | ☐ Not started | — | Per-marker peer-verification notes go in the ledger below. |
 | 3/14 | 🌿 fix(bridge): make swallowed failures observable | ☐ Not started | — | Includes settings-repository fold + AbortableRequestSender. |
 | 4/14 | ⚙️ refactor(bridge): unify plugin command transitions | ☐ Not started | — | |
-| 5/14 | 🚧 refactor(bridge): extract relay connection coordinator | ☐ Not started | — | Contract in PLAN.md Step 5; composition root moves to orchestrator_composition.dart. |
+| 5/14 | 🚧 refactor(bridge): extract relay connection coordinator | ☐ Not started | — | Contract in PLAN.md Step 5; assembly stays in Orchestrator.create. |
 | 6/14 | 🚧 refactor(bridge): extract plugin-event delivery pipeline | ☐ Not started | — | Label generation fences; no check deletion without proof. |
 | 7/14 | 🚧 refactor(plugins): share ndjson subprocess transport | ☐ Not started | — | acp/claude gain runtime dep; record teardown-order delta here when merged. |
 | 8/14 | 🌿 refactor(plugins): consolidate shared plugin primitives | ☐ Not started | — | Pi MIME variant: adopt only if byte-equivalent, else note. |
