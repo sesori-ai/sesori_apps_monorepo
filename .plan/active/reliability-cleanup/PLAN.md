@@ -456,7 +456,7 @@ New file `bridge/app/lib/src/bridge/plugin_event_delivery_pipeline.dart`.
 
 ### Step 7 — shared NDJSON subprocess transport
 
-**Home decision:** `sesori_plugin_runtime/lib/src/transport/ndjson_process_transport.dart`.
+**Home decision:** `sesori_plugin_runtime/lib/src/transport/ndjson_process_client.dart`.
 Rationale: `sesori_plugin_runtime` is the plugin-only process-infrastructure
 package (supervision today; framed subprocess transport is the same audience);
 `sesori_plugin_interface` must stay contract/foundation-only (review constraint),
