@@ -44,7 +44,7 @@ by any step** (B-Shared not applicable).
 | 9 | none | `module_core`, `app` |
 | 10 | none | `module_prego`, `app` |
 | 11 | none | `app` |
-| 12 | none (repo-root CI/installer files only) | none |
+| 12 | `app` (installer parity tests only) | none |
 | 13–14 | docs only | docs only |
 
 ## Goal
@@ -347,9 +347,12 @@ All changes inside `bridge/app` except the Step 3 helper, which lives in
    `bridge/app` already depends on it, so no new edges). Because
    `http.AbortableRequest` receives its abort trigger at construction, the
    helper constructs the request itself from request inputs:
-   `Future<http.StreamedResponse> send({required http.Client client, required String method, required Uri url, required Map<String, String>? headers, required Object? body, required Duration deadline, required Future<Object>? abortSignal})`
+   `Future<http.Response> send({required http.Client client, required String method, required Uri url, required Map<String, String>? headers, required Object? body, required Duration deadline, required Future<Object>? abortSignal})`
    builds the combined abort trigger (deadline timer plus optional external
-   signal), passes it as `abortTrigger`, and owns one finally-path cleanup.
+   signal), passes it as `abortTrigger`, buffers the response via
+   `http.Response.fromStream` before its finally-path cleanup so deadline and
+   abort coverage extend through full body consumption exactly as today
+   (auth-server JSON payloads are small), and owns one finally-path cleanup.
    The external signal is a `Future` rather than a stream so an abort that
    fires before the helper runs still cancels the request. Because today's
    `SesoriServerRequestAbortSignal` exposes only an `isAborted` flag and a
@@ -468,8 +471,13 @@ plugins → runtime → interface/foundation; Codex already depends on runtime);
 - `final class NdjsonProcessTransport` — one framed request/response channel
   over a subprocess's stdio.
 - **Process abstraction:** minimal `NdjsonProcessHandle` interface declared in
-  the same file (stdin sink, broadcast stdout line stream, done future, kill)
-  with thin adapters mapping each plugin's existing handle types onto it.
+  the same file (stdin sink, broadcast stdout line stream, broadcast stderr
+  line stream, done future, kill) with thin adapters mapping each plugin's
+  existing handle types onto it. The transport drains stderr for the attached
+  generation (a full stderr pipe can block the child) and forwards lines to
+  the injected logger at debug level honoring `redactMalformedFrames`, so
+  draining is lifecycle bookkeeping owned here rather than re-duplicated per
+  adapter.
 - **Policy via values plus one seam:** constructor takes
   `MalformedFramePolicy {discard, failPending}` (ACP/Claude discard, Codex fail
   all pending), `redactMalformedFrames` flag (Claude true, others false),
@@ -501,6 +509,10 @@ plugins → runtime → interface/foundation; Codex already depends on runtime);
   framing/lifecycle owner;
   `Stream<Map<String, dynamic>> notifications` for protocol-specific inbound
   lines the owning plugin interprets;
+  `Future<NdjsonProcessExit> get exit` exposing the attached generation's
+  process completion so plugins keep today's exit-driven behaviors (plugin
+  failure, resident-process removal, pending-turn settlement) without touching
+  raw handles;
   `dispose({required String reason})` failing all pending, closing stdin,
   waiting briefly, terminating, then force-killing. Stale-generation callbacks
   are fenced internally via a generation counter bumped by
