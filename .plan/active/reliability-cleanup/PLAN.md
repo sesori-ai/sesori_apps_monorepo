@@ -347,19 +347,20 @@ All changes inside `bridge/app` except the Step 3 helper, which lives in
    `bridge/app` already depends on it, so no new edges). Because
    `http.AbortableRequest` receives its abort trigger at construction, the
    helper constructs the request itself from request inputs:
-   `Future<http.Response> send({required http.Client client, required String method, required Uri url, required Map<String, String>? headers, required Object? body, required Duration deadline, required Future<Object>? abortSignal})`
+   `Future<http.Response> send({required http.Client client, required String method, required Uri url, required Map<String, String>? headers, required Object? body, required Duration deadline, required AbortSignal? abortSignal})`
    builds the combined abort trigger (deadline timer plus optional external
    signal), passes it as `abortTrigger`, buffers the response via
    `http.Response.fromStream` before its finally-path cleanup so deadline and
    abort coverage extend through full body consumption exactly as today
    (auth-server JSON payloads are small), and owns one finally-path cleanup.
-   The external signal is a `Future` rather than a stream so an abort that
-   fires before the helper runs still cancels the request. Because today's
-   `SesoriServerRequestAbortSignal` exposes only an `isAborted` flag and a
-   broadcast stream, Step 3 also adds one completer-backed
-   `Future<Object> get abortFuture` to that signal (same app-local type,
-   replay-safe, no per-call subscription cleanup); call sites pass
-   `signal.abortFuture`. Callers keep status
+   The external abort arrives as a foundation-neutral `AbortSignal` value
+   exposing `bool get isAborted` plus its broadcast stream: the helper checks
+   the flag first (replay-safe against an abort that fired before the call),
+   then subscribes and cancels that subscription in its finally path — so
+   completed requests retain no listeners on a long-lived shared signal,
+   unlike an attached future listener which cannot be detached. Callers pass
+   their existing signal object directly; no per-request future bridging.
+   Callers keep status
    handling and retry policy: `SesoriServerApi`, `TokenManager`,
    `BridgeRegistrationApi`.
 
@@ -438,13 +439,13 @@ New file `bridge/app/lib/src/bridge/plugin_event_delivery_pipeline.dart`.
   It owns mechanics only — ordering, fencing, history capture, attachment
   shaping. It owns no delivery policy.
 - **Constructor dependencies (required):** runtime/plugin lookup, history
-  service, failure reporter, and one narrow neutral part-shaping seam (the
-  pure `mapMessagePart` / `isMessagePartVisible` / `buildMessagePartEvent`
-  functions the current capture path at `orchestrator.dart:1572-1599` uses).
-  These are backend-neutral transcript-modeling functions, not wire-event
-  construction; injecting just them keeps stored-part construction inside the
-  pipeline's capture invariant while `BridgeEventMapper` wire mapping stays
-  upstairs. Unseen-event routing is deliberately NOT a
+  service, failure reporter, and two narrow transcript-modeling seams (`mapMessagePart`,
+  `isMessagePartVisible` from the current capture path at
+  `orchestrator.dart:1572-1599`). `buildMessagePartEvent` is explicitly NOT
+  part of the seam — it constructs `SesoriSseEvent.messagePartUpdated`, a wire
+  shape, so it runs in `OrchestratorSession` alongside the rest of
+  `BridgeEventMapper`; the pipeline emits shaped stored parts and never sees
+  wire events. Unseen-event routing is deliberately NOT a
   dependency: `_routeUnseenActivity(SesoriSseEvent)` consumes mapped wire
   events, so it runs in `OrchestratorSession` after wire mapping alongside
   delivery policy — exactly like project activity and wire mapping itself.
@@ -565,7 +566,9 @@ plugins → runtime → interface/foundation; Codex already depends on runtime);
   are fenced internally via a generation counter bumped by
   `AttachToken beginAttach()` issued BEFORE the caller spawns, and
   `attach({required AttachToken token, required NdjsonProcessHandle process})`.
-  `attach` rejects and reaps the handle (terminate + await exit) when the
+  `attach` rejects and reaps the handle (terminate, bounded wait, then timed
+  force-kill — an unbounded exit wait could hang the original connect forever
+  while leaving the obsolete child alive) when the
   transport is already disposed, reset, or superseded by a newer attempt —
   the pre-spawn token is what makes the in-flight-spawn race recognizable
   (connect A awaiting spawn while reset() runs, then connect B starts), which
@@ -610,8 +613,9 @@ Exact homes, signatures, and affected implementors:
    new file `client/module_core/lib/src/repositories/models/session_cleanup_rejection.dart`
    (repository-layer model home: the repository constructs and throws it, so
    it must live at or below the repository, not beside the service it flows
-   through)
-   beside the domain exception it rethrows; `SessionService` passes through;
+   through). The domain exception carries the original API exception as a
+   typed `innerError` field so translation preserves the diagnostic chain;
+   `SessionService` passes through;
    `session_list_cubit.dart` deletes its API import and consumes only the
    capabilities-layer type.
 6. Catch/logging fixes mirroring Step 3 patterns (F11 citations).
