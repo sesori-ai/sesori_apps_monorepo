@@ -7,7 +7,7 @@
 <h1 align="center">Run your AI coding agents from your phone.</h1>
 
 <p align="center">
-  Sesori is the mobile cockpit for your AI coding sessions — <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">OpenAI Codex CLI</a>, <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>, <a href="https://claude.com" target="_blank" rel="noopener">Claude Code</a>, <a href="https://github.com/badlogic/pi-mono" target="_blank" rel="noopener">Pi</a>, and <a href="https://github.com/can1357/oh-my-pi" target="_blank" rel="noopener">Oh My Pi</a>.<br/>
+  Sesori is the mobile cockpit for your AI coding sessions — <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">OpenAI Codex CLI</a>, <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>, <a href="https://claude.com" target="_blank" rel="noopener">Claude Code</a>, <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes Agent</a>, <a href="https://github.com/badlogic/pi-mono" target="_blank" rel="noopener">Pi</a>, and <a href="https://github.com/can1357/oh-my-pi" target="_blank" rel="noopener">Oh My Pi</a>.<br/>
   Leave your laptop. Take the session.
 </p>
 
@@ -67,7 +67,7 @@ Requires iOS 15 or later, or Android 8.0 or later.
 
 ### 2. Install the Bridge CLI on your machine
 
-The Bridge is a small source-available command-line tool that connects the app to your AI coding assistants ([OpenCode](https://opencode.ai), [OpenAI Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.com), [Claude Code](https://claude.com), [Pi](https://github.com/badlogic/pi-mono), and [Oh My Pi](https://github.com/can1357/oh-my-pi)).
+The Bridge is a small source-available command-line tool that connects the app to your AI coding assistants — the full list is [below](#supported-ai-assistants).
 
 **macOS / Linux:**
 
@@ -99,7 +99,7 @@ Sign in with the **same account** on your phone and your machine. The two pair a
 
 | Feature | What it means |
 |---|---|
-| **Browse projects & sessions** | See projects and active sessions from [OpenCode](https://opencode.ai), [OpenAI Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.com), [Claude Code](https://claude.com), [Pi](https://github.com/badlogic/pi-mono), and [Oh My Pi](https://github.com/can1357/oh-my-pi) on your phone. |
+| **Browse projects & sessions** | See your projects and active sessions across every supported assistant, right on your phone. |
 | **Keep agents moving** | Answer questions, approve steps, and stop or restart tasks without returning to your desk. |
 | **Review code and PR status** | Read diffs and keep tabs on pull requests without opening your laptop. |
 | **Voice or type** | Talk to your assistant naturally or use the keyboard — whatever works in the moment. |
@@ -110,7 +110,7 @@ Sign in with the **same account** on your phone and your machine. The two pair a
 
 ## How it works
 
-A lightweight Bridge runs on your laptop alongside OpenCode. It connects to a relay server over WebSocket, and your phone connects to the same relay. The relay routes encrypted traffic between them — it never sees your application data.
+A lightweight Bridge runs on your laptop alongside your AI coding assistant. It connects to a relay server over WebSocket, and your phone connects to the same relay. The relay routes encrypted traffic between them — it never sees your application data.
 
 ```mermaid
 graph LR
@@ -139,14 +139,17 @@ Your laptop and phone perform an ephemeral X25519 key exchange, then encrypt eve
 
 ## Supported AI assistants
 
-| Assistant | Status | Notes |
-|---|---|---|
-| [OpenCode](https://opencode.ai) | Available | Deep native integration. |
-| [OpenAI Codex CLI](https://github.com/openai/codex) | Beta | Enabled by default in an upcoming release. |
-| [Cursor](https://cursor.com) | Beta | ACP-based Cursor plugin; enabled by default in an upcoming release. |
-| [Claude Code](https://claude.com) | Beta | Native stream-json integration; enabled by default in an upcoming release. |
-| [Pi](https://github.com/badlogic/pi-mono) | Beta | Native JSONL RPC integration; see the notes below. |
-| [Oh My Pi](https://github.com/can1357/oh-my-pi) | Beta | ACP-based integration; see the notes below. |
+| Assistant | Integration |
+|---|---|
+| [OpenCode](https://opencode.ai) | Deep native integration with a bridge-managed runtime. |
+| [OpenAI Codex CLI](https://github.com/openai/codex) | Native integration over Codex's local protocol. |
+| [Cursor](https://cursor.com) | ACP-based integration. |
+| [Claude Code](https://claude.com) | Native stream-json integration. |
+| [Hermes Agent](https://github.com/NousResearch/hermes-agent) | ACP-based integration with Nous Research's coding agent. |
+| [Pi](https://github.com/badlogic/pi-mono) | Native JSONL RPC integration. |
+| [Oh My Pi](https://github.com/can1357/oh-my-pi) | ACP-based integration. |
+
+Every integration ships enabled by default — pick your assistant when you start a session, and run several at once on the same Bridge.
 
 <details>
 <summary><strong>Pi notes</strong></summary>
@@ -187,6 +190,24 @@ Your laptop and phone perform an ephemeral X25519 key exchange, then encrypt eve
   is not shown because ACP session listings do not expose it.
 - **Terminal handoff:** as with Pi, exit a terminal OMP session before
   continuing it from Sesori.
+
+</details>
+
+<details>
+<summary><strong>Hermes Agent notes</strong></summary>
+
+- **Version:** requires Hermes Agent 0.20.0 or later.
+- **Install:** Sesori never installs or updates Hermes. It uses the `hermes`
+  CLI from your PATH; point `--hermes-bin <path>` at a specific binary to make
+  it authoritative.
+- **Model & login:** pick your model and provider, and log in, with the Hermes
+  CLI itself — Sesori inherits that configuration and never handles provider
+  credentials.
+- **Sessions:** sessions you start from Sesori are always visible, and other
+  persisted ACP sessions can be imported explicitly. Ordinary Hermes CLI/TUI
+  sessions are not discovered automatically.
+- **Deletion:** deleting a Hermes session removes Sesori's copy of it; Hermes
+  keeps its own record until upstream offers a delete API.
 
 </details>
 
