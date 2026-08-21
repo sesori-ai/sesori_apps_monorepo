@@ -21,9 +21,13 @@ class FirebaseAnalyticsClient({
         "occurred_at_micros": envelope.occurredAtUtc.microsecondsSinceEpoch,
       },
     );
+    _logAccepted(wireName: event.wireName, parameters: event.parameters);
     if (event case ProductScreenViewedEvent(:final screen)) {
       try {
-        await _analytics.logScreenView(screenName: screen.wireValue, screenClass: "GoRouter");
+        // Vendor reports key screens by class by default, and a Flutter app
+        // has no native screen class to report — carry the pinned screen
+        // identity in both dimensions so neither reads as a constant.
+        await _analytics.logScreenView(screenName: screen.wireValue, screenClass: screen.wireValue);
       } on Object catch (error, stackTrace) {
         logw("Failed to mirror product analytics screen view", error, stackTrace);
       }
@@ -31,11 +35,19 @@ class FirebaseAnalyticsClient({
   }
 
   @override
-  Future<void> logInstallationEvent({required InstallationAnalyticsEvent event}) {
+  Future<void> logInstallationEvent({required InstallationAnalyticsEvent event}) async {
     if (!_capability.isEnabled) throw StateError("Installation analytics runtime is disabled");
-    return _analytics.logEvent(
+    await _analytics.logEvent(
       name: event.wireName,
       parameters: {...event.parameters, "schema_version": 1},
     );
+    _logAccepted(wireName: event.wireName, parameters: event.parameters);
+  }
+
+  /// Local-only observability of exactly what was handed to the Firebase SDK;
+  /// the closed event contracts keep every value privacy-safe.
+  void _logAccepted({required String wireName, required Map<String, String> parameters}) {
+    final describedParameters = parameters.entries.map((entry) => "${entry.key}: ${entry.value}").join(", ");
+    logi("Firebase analytics accepted $wireName ($describedParameters)");
   }
 }

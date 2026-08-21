@@ -22,9 +22,11 @@ excluded, and the warehouse is external.
   persistence.
 - Login-funnel events carry only a pinned provider and bounded failure kind and no user key. Settings copy must not
   claim the switch stops vendor automatic events, the login funnel, or older installed binaries.
-- Screens use the pinned route mapping with vendor automatic reporting disabled. Events fire at authoritative
-  outcomes, not taps, capture occurrence time at their seam, and deferred candidates emit at most once, dropping on
-  disable, logout, or account switch. Results state SDK acceptance, not delivery.
+- Screens use the pinned route mapping with vendor automatic reporting disabled. The best-effort native
+  `screen_view` mirror carries the pinned screen as both its name and its class, so vendor surfaces keyed by either
+  dimension show the real screen instead of a constant placeholder. Every SDK-accepted event is recorded in local
+  logs. Events fire at authoritative outcomes, not taps, capture occurrence time at their seam, and deferred candidates
+  emit at most once, dropping on disable, logout, or account switch. Results state SDK acceptance, not delivery.
 - Firebase Analytics collection defaults off at native startup and is enabled only after consent in a release process
   outside Firebase Test Lab. Debug/profile runs and Play pre-launch crawlers emit neither automatic nor Sesori-defined
   analytics events.
@@ -34,7 +36,7 @@ excluded, and the warehouse is external.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because analytics must never gate the product heartbeat. |
-| L2 Routine | Automated, mobile client, no plugin: wire names and pinned parameters, exhaustive route-to-screen and provider mappings, a check that no variant can carry a free-form string, preference storage state transitions, native default-off configuration, and Test Lab detection wiring. |
+| L2 Routine | Automated, mobile client, no plugin: wire names and pinned parameters, exhaustive route-to-screen and provider mappings, a check that the native screen-view mirror carries the pinned identity as both name and class, a check that no variant can carry a free-form string, preference storage state transitions, native default-off configuration, and Test Lab detection wiring. |
 | L3 Release | Automated with a fake sink: suppression while unknown, disabled, unauthenticated, or non-release; activation only after readiness and enabled preference; bounded deferral emitted once with preserved occurrence time; generation change dropping stale work; outcome seams firing on success only. |
 | L4 Extended | Client end to end on the release-target client platform against the real auth-server preference endpoint: disable and re-enable, pending state after a sync failure, persistence across restart, logout with a pending disable, account switch isolation, and no product event while disabled. |
 | L5 Full | Release build against the real analytics property: expected pinned events and parameters observed upstream, automatic screen reporting confirmed off at runtime, a Play pre-launch report producing no Analytics rows, and warehouse checks that exported rows carry no prohibited field and internal accounts are excluded. |
@@ -56,6 +58,8 @@ account against a real property.
   server success plus local persistence.
 - An event fires on a tap or failed operation, is duplicated after deferral, has a rewritten occurrence time, or
   carries a route path instead of a pinned screen.
+- A mirrored native screen view names a non-pinned screen in either dimension, or a navigation flow skips the mirror
+  for a reported screen.
 - Automatic screen reporting is observed, a failure blocks a product outcome, or copy overclaims.
 
 ## Known Limitations
