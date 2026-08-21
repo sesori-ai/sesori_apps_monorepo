@@ -21,7 +21,6 @@ class FirebaseAnalyticsClient({
         "occurred_at_micros": envelope.occurredAtUtc.microsecondsSinceEpoch,
       },
     );
-    _logAccepted(wireName: event.wireName, parameters: event.parameters);
     if (event case ProductScreenViewedEvent(:final screen)) {
       try {
         // Vendor reports key screens by class by default, and a Flutter app
@@ -35,21 +34,11 @@ class FirebaseAnalyticsClient({
   }
 
   @override
-  Future<void> logInstallationEvent({required InstallationAnalyticsEvent event}) async {
+  Future<void> logInstallationEvent({required InstallationAnalyticsEvent event}) {
     if (!_capability.isEnabled) throw StateError("Installation analytics runtime is disabled");
-    await _analytics.logEvent(
+    return _analytics.logEvent(
       name: event.wireName,
       parameters: {...event.parameters, "schema_version": 1},
     );
-    _logAccepted(wireName: event.wireName, parameters: event.parameters);
-  }
-
-  /// Local-only observability for SDK-accepted events, logging the event's own
-  /// closed parameters. Envelope-level fields — schema version, user key, and
-  /// occurrence time — are deliberately omitted; the closed event contracts
-  /// keep every logged value privacy-safe.
-  void _logAccepted({required String wireName, required Map<String, String> parameters}) {
-    final describedParameters = parameters.entries.map((entry) => "${entry.key}: ${entry.value}").join(", ");
-    logi("Firebase analytics accepted $wireName ($describedParameters)");
   }
 }
