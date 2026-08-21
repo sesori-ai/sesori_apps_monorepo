@@ -8,7 +8,7 @@ Plan: [PLAN.md](PLAN.md) · Slug: `reliability-cleanup` · Series total: 14 step
 |---|---|---|---|---|
 | 1/14 | 🌱 docs: plan the series | Approved, not raised | — | Plan reviewed (2 rounds) + owner waiver recorded; raise on owner go. |
 | 2/14 | ⚙️ refactor: drop pre-v1.4 compatibility paths | ☐ Not started | — | Per-marker peer-verification notes go in the ledger below. |
-| 3/14 | 🌿 fix(bridge): make swallowed failures observable | ☐ Not started | — | Includes settings-repository fold + AbortableRequestSender. |
+| 3/14 | 🌿 fix(bridge): make swallowed failures observable | ☐ Not started | — | Includes settings-repository fold + AbortableRequestClient. |
 | 4/14 | ⚙️ refactor(bridge): unify plugin command transitions | ☐ Not started | — | |
 | 5/14 | 🚧 refactor(bridge): extract relay connection coordinator | ☐ Not started | — | Contract in PLAN.md Step 5; assembly stays in Orchestrator.create. |
 | 6/14 | 🚧 refactor(bridge): extract plugin-event delivery pipeline | ☐ Not started | — | Label generation fences; no check deletion without proof. |
@@ -25,7 +25,7 @@ Plan: [PLAN.md](PLAN.md) · Slug: `reliability-cleanup` · Series total: 14 step
 
 - **2026-08-21, review 1:** REJECTED as too vague (11 gaps). All addressed in
   Revision 2: per-step class/file/layer contracts, DefaultEditorRepository
-  folded into BridgeSettingsRepository (layering preserved), AbortableRequestSender
+  folded into BridgeSettingsRepository (layering preserved), AbortableRequestClient
   defined with exact home/signature, coordinator + pipeline contracts written,
   transport home decided (`sesori_plugin_runtime`) with dependency-direction and
   AGENTS.md updates, registry promotion dropped (interface stays contract-only;

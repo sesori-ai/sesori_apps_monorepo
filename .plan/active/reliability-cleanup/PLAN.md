@@ -694,7 +694,8 @@ required row that cannot run keeps the plan active per
 - `RelayConnectionCoordinator`: owns state that already existed, giving relay
   lifecycle exactly one owner;
 - `PluginEventDeliveryPipeline` + private `_SerialTails`: same — owns existing
-  tails/captures; one outbound stream replaces scattered inline emission;
+  tails/captures; one acknowledged per-plugin fact hand-off replaces scattered
+  inline emission;
 - `AbortableRequestClient`: stateless per call;
 - `NdjsonProcessClient` + `NdjsonProcessHandle`: one stateful class plus a
   thin interface replacing three drifted ones;
@@ -755,7 +756,8 @@ packages' focused tests. Additional, per step:
   and settle semantics unchanged, including the disable early-return.
 - **5-6:** orchestrator/runtime/SSE suites green without assertion changes;
   changed tests may alter wiring only; shutdown-ordering tests prove drain
-  order intact; pipeline stream consumed exactly as the old inline emission.
+  order intact; acknowledged fact hand-off consumed exactly as the old inline
+  emission.
 - **7:** each adopting plugin's protocol suites prove identical frame/error
   semantics (Codex fail-all-on-malformed, Claude redaction, ACP discard);
   fake-process round-trips cover timeout, broken pipe, stale generation, kill
