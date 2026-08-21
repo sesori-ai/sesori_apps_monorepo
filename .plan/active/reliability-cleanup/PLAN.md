@@ -321,10 +321,13 @@ recorded — the step shrinks honestly instead of forcing removals.
 All changes inside `bridge/app` except the Step 3 helper, which lives in
 `sesori_bridge_foundation` (see item 5):
 
-1. **Failure-reporter swallow:** `orchestrator.dart:1528` adopts the existing
-   logged pattern from `1735-1741` (typed catch, `Log.w("msg", error, stack)`).
-   Same treatment for resume/rekey/framing silent paths (`2035-2103`) with
-   connection IDs retained.
+1. **Failure-reporter swallows:** every
+   `_failureReporter.recordFailure(...).catchError((_) {})` adopts the logged
+   pattern from `orchestrator.dart:1735-1741` (typed catch,
+   `Log.w("msg", error, stack)`) — currently `orchestrator.dart:1528`,
+   `bridge_event_mapper.dart:195`, and `sse_manager.dart:212`. Same treatment
+   for resume/rekey/framing silent paths (`2035-2103`) with connection IDs
+   retained.
 2. **Logger args:** replace every interpolated `${error}`/`${e}` citation in F3
    with `Log.w/<logger>("context", error, stackTrace)`; message keeps IDs and
    operation context, never the payload.
@@ -344,11 +347,14 @@ All changes inside `bridge/app` except the Step 3 helper, which lives in
    `bridge/app` already depends on it, so no new edges). Because
    `http.AbortableRequest` receives its abort trigger at construction, the
    helper constructs the request itself from request inputs:
-   `Future<http.StreamedResponse> send({required http.Client client, required String method, required Uri url, Map<String, String>? headers, Object? body, required Duration deadline, Stream<Object>? abortSignal})`
+   `Future<http.StreamedResponse> send({required http.Client client, required String method, required Uri url, Map<String, String>? headers, Object? body, required Duration deadline, Future<Object>? abortSignal})`
    builds the combined abort trigger (deadline timer plus optional external
    signal), passes it as `abortTrigger`, and owns one finally-path cleanup.
-   Callers keep status handling and retry policy: `SesoriServerApi`
-   (including `_postSessionMetadata`'s merged cancellation), `TokenManager`,
+   The external signal is a `Future` rather than a stream so an abort that
+   fires before the helper runs still cancels the request — matching today's
+   completer-based call sites and preserving `_postSessionMetadata`'s
+   immediate-abort semantics without a pre-send race. Callers keep status
+   handling and retry policy: `SesoriServerApi`, `TokenManager`,
    `BridgeRegistrationApi`.
 
 ### Step 4 — PluginRuntime command transitions
@@ -457,14 +463,29 @@ plugins → runtime → interface/foundation; Codex already depends on runtime);
   `MalformedFramePolicy {discard, failPending}` (ACP/Claude discard, Codex fail
   all pending), `redactMalformedFrames` flag (Claude true, others false),
   `logTag`, and one required correlation extractor
-  `responseCorrelationId: Object? Function(Map<String, dynamic> message)` —
-  ACP/Codex return the top-level JSON-RPC `id`, Claude returns
-  `message["response"]["request_id"]` from `control_response` frames. The
-  extractor is injected once at construction; no policy callbacks cross layers.
+  `responseCorrelationId: Object? Function(Map<String, dynamic> message)`. The
+  extractor is invoked only for response-shaped messages; it returns the
+  correlation ID for a response and null otherwise. Classification happens
+  before extraction exactly as today: ACP/Codex treat a frame as a response
+  only when it has an `id` and no `method` (server-originated requests carry
+  both and route to the plugin), Claude extracts
+  `message["response"]["request_id"]` from `control_response` frames and
+  routes everything else to the plugin. The extractor is injected once at
+  construction; no policy callbacks cross layers.
 - **API:** `Future<Map<String, dynamic>> request({required Map<String, dynamic> envelope, required Duration timeout})`
   correlating replies through an internal pending map keyed by the extracted
-  ID with timeout removal; `Stream<Map<String, dynamic>> notifications` for
-  protocol-specific inbound lines the owning plugin interprets;
+  ID with timeout removal;
+  `DispatchHandle dispatch({required Map<String, dynamic> envelope, required Duration timeout})`
+  returning write acceptance separately from the correlated-response future —
+  this preserves ACP's dispatch-completion boundary where the accepted prompt
+  publishes after stdin flush while the backend turn may run for minutes;
+  `void sendFrame({required Map<String, dynamic> envelope})` for one-way and
+  reply frames the protocol requires plugins to emit (ACP notifications and
+  server-request responses, Codex `initialized` and server-request replies,
+  Claude control responses) so all writes flow through the transport's single
+  framing/lifecycle owner;
+  `Stream<Map<String, dynamic>> notifications` for protocol-specific inbound
+  lines the owning plugin interprets;
   `dispose({required String reason})` failing all pending, closing stdin,
   waiting briefly, terminating, then force-killing. Stale-generation callbacks
   are fenced internally via a generation counter bumped by
@@ -487,7 +508,7 @@ Exact homes, signatures, and affected implementors:
 | Primitive | Exact home | Consumers migrated |
 |---|---|---|
 | Base64/MIME normalization | `sesori_plugin_interface/lib/src/messages/attachment_normalization.dart`: pure top-level functions with named parameters — `tryNormalizeBase64({required String value})`, `normalizeMimeValue({required String? value})`, `mimeEssence({required String value})` — beside existing attachment validators (interface stays pure/contract-grade — no state, no I/O) | `acp_content_mapper.dart`, `codex_image_attachment_mapper.dart`, `message_part_mapper.dart` (OpenCode); Pi variant adopted only if byte-equivalent semantics, else left with a tracker note |
-| Descriptor install capability | `sesori_plugin_runtime/lib/src/provisioning/descriptor_install_policy.dart`: pure function taking manifest, resolved explicit-binary path, platform target → capability set | descriptors of OpenCode, Codex, Cursor, OMP, Pi; setup-hint strings stay plugin-local |
+| Descriptor install capability | `sesori_plugin_runtime/lib/src/provisioning/descriptor_install_policy.dart`: pure function taking manifest, resolved explicit-binary path, platform target, and a plugin-supplied support verdict (a neutral `RuntimeAssetSupport` value each descriptor computes locally) → capability set. The local computation matters: OMP resolves its concrete Linux glibc/musl asset asynchronously and reports support via a separate check, so the neutral helper must not re-derive asset presence from `assetFor(target)` alone | descriptors of OpenCode, Codex, Cursor, OMP, Pi; setup-hint strings stay plugin-local |
 | Release asset URL | default member on the existing manifest base in `sesori_plugin_runtime/lib/src/provisioning/runtime_manifest.dart`: `Uri releaseAssetUrl({required String assetName})` using each manifest's publisher/repo/tag fields | all five manifests delete private URL builders; any manifest with differing tag convention overrides and notes why |
 | Contract documentation | doc comments on `BridgePluginApi` question/permission methods stating pending-input lifecycle expectations (reply/dispose/cancel must resolve or log) | interface-only documentation |
 | Codex observability fix | `sesori_plugin_codex/lib/src/approval_registry.dart:122-130`: silent catch logs like ACP/Claude | Codex-local |
@@ -564,7 +585,9 @@ cubits are untouched except imports if files move.
 ### Step 12 — tooling
 
 1. `.github/workflows/bridge-ci.yml`: one checked-in package list drives
-   analysis and test loops preserving per-package output and fail-fast.
+   analysis and test loops preserving per-package output and fail-fast; the
+   workflow path filters gain `install.sh` and `install.ps1` so later
+   installer-only changes keep triggering the parity suite.
 2. Codegen freshness job: regenerate the OpenCode generated outputs that are
    fully reproducible from committed inputs (SSE events from the committed
    manifest) and fail on diff. The client-code generator additionally requires
@@ -683,7 +706,9 @@ packages' focused tests. Additional, per step:
 - **9:** module_core + app suites green; grep proves deleted symbols unreferenced;
   analyzer/config check proves the cubit no longer imports the API package.
 - **10:** widget tests for migrated sheets/pickers/statuses prove layout,
-  keyboard, safe-area, and empty/failure presentations unchanged.
+  keyboard, safe-area behavior, and the explicitly accepted deltas — unified
+  Prego spacing and empty/failure presentation replace the per-consumer drift
+  recorded in Non-Goals — while all other presentations stay unchanged.
 - **11:** existing prompt-input/harness/question/message-list suites green;
   controller-level tests only where they add confidence (voice race, draft
   restore, paging handoff).
