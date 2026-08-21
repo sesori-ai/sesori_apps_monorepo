@@ -114,7 +114,7 @@ A lightweight Bridge runs on your laptop alongside your AI coding assistant. It 
 
 ```mermaid
 graph LR
-  OC["AI Assistant<br/>on your machine"] -- "HTTP + SSE" --> B["Bridge CLI<br/>your laptop"]
+  OC["AI Assistant<br/>on your machine"] -- "Local transport" --> B["Bridge CLI<br/>your laptop"]
   B -- "WSS · E2E encrypted" --> R["Relay Server<br/>cloud router"]
   R -- "WSS · E2E encrypted" --> M["Sesori App<br/>your phone"]
 ```
