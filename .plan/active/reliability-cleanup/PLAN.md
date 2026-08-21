@@ -76,7 +76,7 @@ no new behavior, guards, retries, registries, or validation layers are added.
 
 - No new user-facing features. Behavior is preserved everywhere except three
   small, deliberate deltas, each recorded in its step and accepted as part of
-  this series: (1) swallowed failures become logged (Steps 3, 8); (2) ACP
+  this   series: (1) swallowed failures become logged (Steps 3, 8, 9); (2) ACP
   teardown gains the stdin-close drain step shared by the transport adopters
   (Step 7 — teardown-only, visible solely in process exit timing/logs); and
   (3) drifted UI micro-details unify on one implementation — picker spacing
@@ -318,7 +318,8 @@ recorded — the step shrinks honestly instead of forcing removals.
 
 ### Step 3 — bridge observability and layer sweep
 
-All changes inside `bridge/app`:
+All changes inside `bridge/app` except the Step 3 helper, which lives in
+`sesori_bridge_foundation` (see item 5):
 
 1. **Failure-reporter swallow:** `orchestrator.dart:1528` adopts the existing
    logged pattern from `1735-1741` (typed catch, `Log.w("msg", error, stack)`).
@@ -678,8 +679,7 @@ packages' focused tests. Additional, per step:
   fake-process round-trips cover timeout, broken pipe, stale generation, kill
   ordering; teardown-order delta asserted intentionally.
 - **8:** mapper/descriptor unit tests prove identical normalization outputs and
-  capability decisions across all five descriptors; analyzer proves removed
-  overrides were trivially redundant.
+  capability decisions across all five descriptors.
 - **9:** module_core + app suites green; grep proves deleted symbols unreferenced;
   analyzer/config check proves the cubit no longer imports the API package.
 - **10:** widget tests for migrated sheets/pickers/statuses prove layout,
