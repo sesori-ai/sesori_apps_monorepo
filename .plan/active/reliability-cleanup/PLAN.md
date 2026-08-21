@@ -468,16 +468,19 @@ plugins → runtime → interface/foundation; Codex already depends on runtime);
 
 **Class contract:**
 
-- `final class NdjsonProcessTransport` — one framed request/response channel
-  over a subprocess's stdio.
+- `final class NdjsonProcessClient` — one framed request/response channel over
+  a subprocess's stdio. Named per the bridge convention that reserves
+  `Client` for transport wrappers (`RelayClient`, `PushNotificationClient`).
 - **Process abstraction:** minimal `NdjsonProcessHandle` interface declared in
   the same file (stdin sink, broadcast stdout line stream, broadcast stderr
   line stream, done future, kill) with thin adapters mapping each plugin's
   existing handle types onto it. The transport drains stderr for the attached
-  generation (a full stderr pipe can block the child) and forwards lines to
-  the injected logger at debug level honoring `redactMalformedFrames`, so
-  draining is lifecycle bookkeeping owned here rather than re-duplicated per
-  adapter.
+  generation (a full stderr pipe can block the child). Content handling is a
+  dedicated constructor value, `StderrPolicy {discard, logRedacted}`: Codex
+  discards because its stderr carries upstream account diagnostics it must not
+  retain or log (preserving its deliberate drain-without-logging behavior),
+  and adopters opt into redacted logging only where their current client
+  demonstrably logs stderr today.
 - **Policy via values plus one seam:** constructor takes
   `MalformedFramePolicy {discard, failPending}` (ACP/Claude discard, Codex fail
   all pending), `redactMalformedFrames` flag (Claude true, others false),
@@ -671,7 +674,7 @@ required row that cannot run keeps the plan active per
 - `PluginEventDeliveryPipeline` + private `_SerialTails`: same — owns existing
   tails/captures; one outbound stream replaces scattered inline emission;
 - `AbortableRequestSender`: stateless per call;
-- `NdjsonProcessTransport` + `NdjsonProcessHandle`: one stateful class plus a
+- `NdjsonProcessClient` + `NdjsonProcessHandle`: one stateful class plus a
   thin interface replacing three drifted ones;
 - Three Prego primitives: presentation-only, stateless or timer-scoped,
   replacing five+ drifted copies;
