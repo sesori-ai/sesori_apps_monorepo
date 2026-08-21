@@ -15,7 +15,7 @@ Plan: [PLAN.md](PLAN.md) · Slug: `reliability-cleanup` · Series total: 14 step
 | 7/14 | 🚧 refactor(plugins): share ndjson subprocess transport | ☐ Not started | — | acp/claude gain runtime dep; record teardown-order delta here when merged. |
 | 8/14 | 🌿 refactor(plugins): consolidate shared plugin primitives | ☐ Not started | — | Pi MIME variant: adopt only if byte-equivalent, else note. |
 | 9/14 | 🌿 refactor(client): remove dead code and fix observability | ☐ Not started | — | Verify barrel-export orphans against DI/tests before deleting implementations. |
-| 10/14 | ⚙️ feat(ui): consolidate sheet/status/picker primitives | ☐ Not started | — | Migrate all consumers in the same PR. |
+| 10/14 | ⚙️ refactor(ui): consolidate sheet/status/picker primitives | ☐ Not started | — | Migrate all consumers in the same PR. |
 | 11/14 | ⚙️ refactor(app): split state-heavy widgets | ☐ Not started | — | Facades unchanged; app-local collaborators only. |
 | 12/14 | 🌿 chore(tooling): CI, codegen freshness, installer parity | ☐ Not started | — | |
 | 13/14 | 🌱 docs: reconcile regression coverage | ☐ Not started | — | Penultimate: docs listed in PLAN.md; no coverage reductions. |
@@ -51,9 +51,9 @@ reason recorded here.
 | BridgeIdMigrationService + readLegacyBridgeId (v1.3.0) | `bridge/app/lib/src/auth/` | Released Sesori installs ≤ v1.3.x | TBD | |
 | LegacyPostUpdateRelaunch constant (v1.1.2) | `bridge/app/lib/src/bridge/foundation/legacy_post_update_relaunch.dart` | Pre-v1.1.2 updater binaries | TBD | |
 | Rejection sessionId omission fallback (v1.1.0) | `bridge/app/lib/src/bridge/services/pending_interaction_service.dart` | Released clients ≤ v1.0.x | TBD | |
-| Codex config fallback reads (v1.1.2) | `sesori_plugin_codex/lib/src/codex_config_reader.dart` | VERIFY: released client vs on-disk rollouts of still-supported runtimes | TBD | Keep if data-format peer is live. |
-| CLI flag aliases ×3 (v1.1.1) | `sesori_plugin_opencode/lib/src/runtime/open_code_plugin_descriptor.dart` | User scripts predating namespaced flags | TBD | |
-| RuntimeStartIntent side-file model (v1.0.9) | `sesori_plugin_runtime/lib/src/runtime_start_intent.dart` | Bridges ≤ v1.0.8 sharing a data directory | TBD | |
+| Codex config fallback reads (v1.1.2) | `bridge/sesori_plugin_codex/lib/src/codex_config_reader.dart` | VERIFY: released client vs on-disk rollouts of still-supported runtimes | TBD | Keep if data-format peer is live. |
+| CLI flag aliases ×3 (v1.1.1) | `bridge/sesori_plugin_opencode/lib/src/runtime/open_code_plugin_descriptor.dart` | User scripts predating namespaced flags | TBD | |
+| RuntimeStartIntent side-file model (v1.0.9) | `bridge/sesori_plugin_runtime/lib/src/runtime_start_intent.dart` | Bridges ≤ v1.0.8 sharing a data directory | TBD | |
 
 ## Verification Evidence
 

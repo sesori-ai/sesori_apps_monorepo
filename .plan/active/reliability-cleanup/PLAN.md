@@ -123,7 +123,7 @@ no new behavior, guards, retries, registries, or validation layers are added.
 ### Bridge app (`bridge/app/lib/src/bridge`)
 
 **F1 — Orchestrator owns three jobs in one file (observed).**
-`orchestrator.dart` is 2,485 lines. Two regions are cohesive state machines
+`orchestrator.dart` is 2,484 lines. Two regions are cohesive state machines
 buried inside orchestration composition and SSE decisions:
 
 - Relay connection/session transport (`orchestrator.dart:1147-1313`,
@@ -616,7 +616,7 @@ cross-owner lock, or second stream, stop and ask before expanding scope.
 | 7/14 | `🚧 [reliability-cleanup] refactor(plugins): share the ndjson subprocess transport [step 7/14]` | 600-1,100 lines | Step 7 design; acp/claude gain runtime dep; AGENTS.md order update. |
 | 8/14 | `🌿 [reliability-cleanup] refactor(plugins): consolidate shared plugin primitives [step 8/14]` | 300-550 lines | Step 8 table: helpers, descriptor policy, URLs, interface defaults, contract docs, Codex log fix. |
 | 9/14 | `🌿 [reliability-cleanup] refactor(client): remove dead code and fix observability [step 9/14]` | 250-500 lines | F10-F13 incl. cleanup-rejection layering flow. |
-| 10/14 | `⚙️ [reliability-cleanup] feat(ui): consolidate sheet, status, and picker primitives [step 10/14]` | 500-900 lines | Step 10 designs + full consumer migration. |
+| 10/14 | `⚙️ [reliability-cleanup] refactor(ui): consolidate sheet, status, and picker primitives [step 10/14]` | 500-900 lines | Step 10 designs + full consumer migration. |
 | 11/14 | `⚙️ [reliability-cleanup] refactor(app): split state-heavy composer and settings widgets [step 11/14]` | 900-1,400 changed (mostly relocation) | Step 11 collaborator table. |
 | 12/14 | `🌿 [reliability-cleanup] chore(tooling): tighten CI, codegen freshness, installer parity [step 12/14]` | 200-450 lines | F16 items. |
 | 13/14 | `🌱 [reliability-cleanup] docs: reconcile regression coverage [step 13/14]` | 80-200 lines | Penultimate reconciliation; cleanup audit vs actual merges. |
