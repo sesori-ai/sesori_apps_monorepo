@@ -418,11 +418,14 @@ New file `bridge/app/lib/src/bridge/plugin_event_delivery_pipeline.dart`.
   ordered, generation-valid capture and sequencing of normalized plugin events.
   It owns mechanics only — ordering, fencing, history capture, attachment
   shaping. It owns no delivery policy.
-- **Constructor dependencies (required):** runtime/plugin lookup, event mapper,
-  history service, unseen-event/project-activity collaborators, failure
-  reporter. Permission/push policy is deliberately NOT a dependency: decisions
-  about what phones receive stay in `OrchestratorSession`, satisfying
-  "Orchestrator Owns SSE Decisions".
+- **Constructor dependencies (required):** runtime/plugin lookup, history
+  service, unseen-event/project-activity collaborators, failure reporter.
+  Wire-event mapping is deliberately NOT a dependency: `BridgeEventMapper`
+  produces SSE wire shapes, so it runs in `OrchestratorSession` alongside
+  delivery policy when constructing outbound deliveries from captured facts.
+  Permission/push policy is likewise excluded: decisions about what phones
+  receive stay in `OrchestratorSession`, satisfying "Orchestrator Owns SSE
+  Decisions".
 - **Owned state (moved):** per-plugin serial tails, projects-summary tail,
   pending part captures — the two duplicated completer-chain implementations
   collapse onto one private `_SerialTails` keyed executor defined in the same
@@ -463,19 +466,23 @@ plugins → runtime → interface/foundation; Codex already depends on runtime);
   `MalformedFramePolicy {discard, failPending}` (ACP/Claude discard, Codex fail
   all pending), `redactMalformedFrames` flag (Claude true, others false),
   `logTag`, and one required correlation extractor
-  `responseCorrelationId: Object? Function(Map<String, dynamic> message)`. The
-  extractor is invoked only for response-shaped messages; it returns the
-  correlation ID for a response and null otherwise. Classification happens
-  before extraction exactly as today: ACP/Codex treat a frame as a response
-  only when it has an `id` and no `method` (server-originated requests carry
-  both and route to the plugin), Claude extracts
-  `message["response"]["request_id"]` from `control_response` frames and
-  routes everything else to the plugin. The extractor is injected once at
-  construction; no policy callbacks cross layers.
-- **API:** `Future<Map<String, dynamic>> request({required Map<String, dynamic> envelope, required Duration timeout})`
-  correlating replies through an internal pending map keyed by the extracted
-  ID with timeout removal;
-  `DispatchHandle dispatch({required Map<String, dynamic> envelope, required Duration timeout})`
+  `responseCorrelationId: Object? Function(Map<String, dynamic> message)`.
+  This one injected function is both classifier and extractor: it returns the
+  correlation ID when the frame is a response to an outbound request and null
+  otherwise; the transport routes every null-extraction frame verbatim to the
+  notifications stream without inspecting its shape. The transport therefore
+  holds no backend frame-shape knowledge of its own — ACP/Codex implementations
+  return the top-level `id` only for frames with an `id` and no `method`
+  (server-originated requests carry both and fall through to the plugin),
+  Claude returns `message["response"]["request_id"]` from `control_response`
+  frames. Injected once at construction; no policy callbacks cross layers.
+- **API:** `Future<Map<String, dynamic>> request({required Map<String, dynamic> envelope, required Object correlationId, required Duration timeout})`
+  where the caller embeds its own protocol's outbound key (`id` for
+  ACP/Codex, top-level `request_id` for Claude) into the envelope and passes
+  the same value as `correlationId`; the transport registers the pending
+  completer under that exact value before writing, so replies resolve
+  regardless of payload layout, with timeout removal;
+  `DispatchHandle dispatch({required Map<String, dynamic> envelope, required Object correlationId, required Duration timeout})`
   returning write acceptance separately from the correlated-response future —
   this preserves ACP's dispatch-completion boundary where the accepted prompt
   publishes after stdin flush while the backend turn may run for minutes;
@@ -542,8 +549,12 @@ Single chosen design per primitive (no alternatives):
    `client/module_prego/lib/components/status/prego_centered_status.dart`;
    required title, optional message, icon, semantics config, and one optional
    action modeled as a single value — a `PregoStatusAction` with required
-   label and required callback — so a visible label without an action or an
-   unreachable callback without a label is unrepresentable. Consumers migrated
+   label and callback plus optional leading-icon and style parameters — so a
+   visible label without an action or an unreachable callback without a label
+   is unrepresentable while each migrated consumer keeps its current action
+   presentation (plain text button on diff errors, filled icon buttons on
+   list errors, secondary solid button with refresh icon in add-project).
+   Consumers migrated
    in the same PR: `error_view.dart`,
    `session_list_content.dart`, `add_project_dialog.dart`,
    `diff_error_view.dart`, `session_detail_scaffold_sections.dart`.
