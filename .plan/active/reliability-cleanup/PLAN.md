@@ -310,7 +310,7 @@ invocations:
 | Rejection sessionId omission fallback | `pending_interaction_service.dart` legacy owner-resolution branch | clients ≤ v1.0.x omitting sessionId |
 | Codex config fallback reads | `codex_config_reader.dart` fallback branches + call sites | VERIFY: only if peer is released-Sesori-era data, not live rollout format — otherwise keep with reason |
 | OpenCode CLI flag aliases ×3 | `open_code_plugin_descriptor.dart` alias branches | user scripts predating namespaced flags (introduced v1.1.1) |
-| RuntimeStartIntent side-file model/store | `runtime_start_intent.dart`: per the marker's own instruction, first move intent state into the now-changeable ownership schema (preserving crash recovery for a bridge killed between process spawn and ownership commit), then remove the side-file model/store | bridges ≤ v1.0.8 sharing a data directory |
+| RuntimeStartIntent side-file model/store | `runtime_start_intent.dart`: per the marker's own instruction, move intent state into the now-changeable ownership schema ONLY IF the encoding is provably ignored by every existing frozen-schema reader — `OpenCodeOwnershipRecord` requires non-null PIDs today, so intent-shaped entries may invalidate strict parsers. If no safe encoding exists, retain the side file past this series and record why | bridges ≤ v1.0.8 sharing a data directory |
 
 Each marker gets a one-line verification note in the `TRACKER.md` ledger. If a
 marker fails the peer check during implementation, it stays and the reason is
@@ -347,13 +347,16 @@ All changes inside `bridge/app` except the Step 3 helper, which lives in
    `bridge/app` already depends on it, so no new edges). Because
    `http.AbortableRequest` receives its abort trigger at construction, the
    helper constructs the request itself from request inputs:
-   `Future<http.StreamedResponse> send({required http.Client client, required String method, required Uri url, Map<String, String>? headers, Object? body, required Duration deadline, Future<Object>? abortSignal})`
+   `Future<http.StreamedResponse> send({required http.Client client, required String method, required Uri url, required Map<String, String>? headers, required Object? body, required Duration deadline, required Future<Object>? abortSignal})`
    builds the combined abort trigger (deadline timer plus optional external
    signal), passes it as `abortTrigger`, and owns one finally-path cleanup.
    The external signal is a `Future` rather than a stream so an abort that
-   fires before the helper runs still cancels the request — matching today's
-   completer-based call sites and preserving `_postSessionMetadata`'s
-   immediate-abort semantics without a pre-send race. Callers keep status
+   fires before the helper runs still cancels the request. Because today's
+   `SesoriServerRequestAbortSignal` exposes only an `isAborted` flag and a
+   broadcast stream, Step 3 also adds one completer-backed
+   `Future<Object> get abortFuture` to that signal (same app-local type,
+   replay-safe, no per-call subscription cleanup); call sites pass
+   `signal.abortFuture`. Callers keep status
    handling and retry policy: `SesoriServerApi`, `TokenManager`,
    `BridgeRegistrationApi`.
 
@@ -377,11 +380,16 @@ New file `bridge/app/lib/src/bridge/relay_connection_coordinator.dart`.
 **Class contract:**
 
 - `final class RelayConnectionCoordinator` — owns exactly one invariant: the
-  bridge's relay session lifecycle.
+  bridge's relay connection mechanics (connect, read loop, backoff, framing,
+  fencing, sends).
 - **Constructor dependencies (all required):** relay connect factory/client,
-  account/room identity source, token refresher + identity-change stream,
-  session key material provider (room key), phone-incarnation registry,
-  reconnect policy (base/jitter), shutdown signal, failure reporter.
+  account/room identity source, session key material provider (room key),
+  phone-incarnation registry, reconnect policy (base/jitter), shutdown signal,
+  failure reporter. Token-refresh and identity-change reauthentication policy
+  is deliberately NOT a dependency: it stays in `OrchestratorSession`, which
+  observes the auth seams exactly as today and drives the coordinator through
+  explicit `reconnect({required reason})` / credential-update calls. The
+  coordinator performs mechanics on command; it decides no auth policy.
 - **Owned state (moved, not new):** current connection, shutdown-close future,
   backoff jitter, incarnation fencing state, room key cache.
 - **Inbound seam:** exposes `Stream<RelayInbound>` — sealed variants for
@@ -496,7 +504,11 @@ plugins → runtime → interface/foundation; Codex already depends on runtime);
   `dispose({required String reason})` failing all pending, closing stdin,
   waiting briefly, terminating, then force-killing. Stale-generation callbacks
   are fenced internally via a generation counter bumped by
-  `attach({required NdjsonProcessHandle process})`.
+  `attach({required NdjsonProcessHandle process})`. `attach` rejects and reaps
+  the handle (terminate + await exit) when the transport is already disposed
+  or superseded, fencing the dispose-racing-asynchronous-spawn window that all
+  three existing clients guard by hand today; adapters therefore carry no
+  lifecycle bookkeeping of their own.
 - **Preserved divergences:** frame classification, notification semantics,
   redaction, and malformed-policy remain explicit caller choices — nothing is
   unified by accident.
@@ -549,15 +561,14 @@ Single chosen design per primitive (no alternatives):
    `client/module_prego/lib/components/status/prego_centered_status.dart`;
    required title, optional message, icon, semantics config, and one optional
    action modeled as a single value — a `PregoStatusAction` with required
-   label and callback plus optional leading-icon and style parameters — so a
-   visible label without an action or an unreachable callback without a label
-   is unrepresentable while each migrated consumer keeps its current action
-   presentation (plain text button on diff errors, filled icon buttons on
-   list errors, secondary solid button with refresh icon in add-project).
-   Consumers migrated
-   in the same PR: `error_view.dart`,
-   `session_list_content.dart`, `add_project_dialog.dart`,
-   `diff_error_view.dart`, `session_detail_scaffold_sections.dart`.
+   label and callback plus optional leading-icon and style parameters.
+   Adoption is scoped to the two near-copy list error views where the
+   investigation established genuine duplication — `error_view.dart` and
+   `session_list_content.dart` — migrated in the same PR. The semantically
+   different states (`diff_error_view.dart`, `_BrowseError` in
+   `add_project_dialog.dart`, `session_detail_scaffold_sections.dart`) stay
+   local rather than forcing body/layout variant knobs onto the shared widget;
+   their earlier listing as consumers was over-reach and is withdrawn.
 2. `showPregoBottomSheetRoute(...)` — lower-level presenter added to
    `client/module_prego/lib/components/surfaces/prego_bottom_sheet.dart`,
    owning top-inset capture, scroll-control, transparency, safe-area-off, and
