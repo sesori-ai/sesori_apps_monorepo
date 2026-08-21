@@ -395,13 +395,17 @@ New file `bridge/app/lib/src/bridge/relay_connection_coordinator.dart`.
   coordinator performs mechanics on command; it decides no auth policy.
 - **Owned state (moved, not new):** current connection, shutdown-close future,
   backoff jitter, incarnation fencing state, room key cache.
-- **Inbound seam:** exposes `Stream<RelayInbound>` — sealed variants for
-  routed request contexts, control messages, resume outcomes, and connection
-  lifecycle outcomes (`disconnected` carrying the close code/context including
-  `bridgeRevoked`, `reconnected`). Consumed by `OrchestratorSession`, which
-  keeps request routing and all SSE decisions and uses the lifecycle outcomes
-  to run today's drop cleanup (SSE subscriber orphaning, view-tracker resets)
-  and revocation re-registration unchanged.
+- **Inbound seam:** exposes acknowledged lifecycle hand-off — sealed
+  variants for routed request contexts, control messages, resume outcomes,
+  and connection outcomes (`disconnected` carrying the close code/context
+  including `bridgeRevoked`, `reconnected`). Like the pipeline seam below,
+  the coordinator's reconnect waits for OrchestratorSession to acknowledge a
+  `disconnected` outcome, preserving today's ordering where revocation
+  handling completes (and re-registration state settles) before
+  `ensureRegistered()` and the new connection run; without the ack a stream
+  producer could not await that asynchronous cleanup and reconnects would
+  race stale bridge identity. Consumed by `OrchestratorSession`, which keeps
+  request routing and all SSE decisions.
 - **Outbound seams:** `sendResponse(...)`, `sendEventFrame(...)`,
   `requestRekey()` — accept typed payloads, own encryption/framing/send-fencing
   internally. Never emits SSE; never touches plugin or database layers.
@@ -434,7 +438,11 @@ New file `bridge/app/lib/src/bridge/plugin_event_delivery_pipeline.dart`.
   It owns mechanics only — ordering, fencing, history capture, attachment
   shaping. It owns no delivery policy.
 - **Constructor dependencies (required):** runtime/plugin lookup, history
-  service, unseen-event collaborators, failure reporter. The
+  service, failure reporter. Unseen-event routing is deliberately NOT a
+  dependency: `_routeUnseenActivity(SesoriSseEvent)` consumes mapped wire
+  events, so it runs in `OrchestratorSession` after wire mapping alongside
+  delivery policy — exactly like project activity and wire mapping itself.
+  The
   project-activity collaborator is deliberately NOT a dependency:
   `ProjectActivityService.handleEvent(SesoriSseEvent)` consumes mapped wire
   events, so it is invoked by `OrchestratorSession` after wire mapping,
@@ -457,8 +465,8 @@ New file `bridge/app/lib/src/bridge/plugin_event_delivery_pipeline.dart`.
   order only fact production). This preserves today's invariant exactly: full
   same-plugin serialization of produce-through-deliver, with cross-plugin
   concurrency untouched; unrelated plugins never wait on one another. Facts
-  are typed and policy-free (captured transcript updates, summary snapshots,
-  unseen routing results); the pipeline never sees wire shapes or recipients.
+  are typed and policy-free captured facts (transcript updates, summary
+  snapshots); the pipeline never sees wire shapes or recipients.
 - **Generation fences:** each await boundary inside the pipeline is labeled
   with the validity check it requires. No existing check is deleted in this
   step; pruning provably redundant checks may happen later only with a tracker
@@ -538,11 +546,14 @@ plugins → runtime → interface/foundation; Codex already depends on runtime);
   `dispose({required String reason})` failing all pending, closing stdin,
   waiting briefly, terminating, then force-killing. Stale-generation callbacks
   are fenced internally via a generation counter bumped by
-  `attach({required NdjsonProcessHandle process})`. `attach` rejects and reaps
-  the handle (terminate + await exit) when the transport is already disposed
-  or superseded, fencing the dispose-racing-asynchronous-spawn window that all
-  three existing clients guard by hand today; adapters therefore carry no
-  lifecycle bookkeeping of their own.
+  `AttachToken beginAttach()` issued BEFORE the caller spawns, and
+  `attach({required AttachToken token, required NdjsonProcessHandle process})`.
+  `attach` rejects and reaps the handle (terminate + await exit) when the
+  transport is already disposed, reset, or superseded by a newer attempt —
+  the pre-spawn token is what makes the in-flight-spawn race recognizable
+  (connect A awaiting spawn while reset() runs, then connect B starts), which
+  is exactly why all three existing clients capture their generation before
+  spawning. Adapters therefore carry no lifecycle bookkeeping of their own.
 - **Preserved divergences:** frame classification, notification semantics,
   redaction, and malformed-policy remain explicit caller choices — nothing is
   unified by accident.
@@ -790,6 +801,8 @@ Affected feature documents (Step 13 reconciles):
 - `docs/regression/questions-and-permissions.md` — pending-input contract
   documentation, Codex disposal logging;
 - `docs/regression/attachments-and-images.md` — shared base64/MIME helper home;
+- `docs/regression/session-history-and-recovery.md` — Step 6 moves history
+  capture and attachment shaping into the delivery pipeline;
 - `docs/regression/session-turns.md` — event-delivery pipeline ownership;
 - `docs/regression/bridge-connectivity.md` — relay coordinator ownership,
   unchanged reconnect/resume semantics;
@@ -821,7 +834,12 @@ capability. Any reduction concern should be raised at plan review.
   L2 for exactly the semantics Step 5 moves (Step 5 surface).
 - **Live plugin:** one ACP-family plugin (Cursor, OMP, or Hermes), plus Codex
   and Claude: create a session, exchange turns, answer one question/permission
-  prompt, archive or delete where supported (Steps 7-8 surfaces).
+  prompt, archive or delete where supported (Steps 7-8 surfaces). The same
+  pass exercises one backend-produced image through live delivery and a cold
+  history read (Step 8 normalizers; `attachments-and-images.md` L2) and one
+  history backfill with a transcript longer than one page, immediately
+  queryable after send and paged on reopen (Step 6 capture move;
+  `session-history-and-recovery.md` L2).
 - **Client end to end:** release-target phone: open a session detail, send a
   prompt, present permission + question modals, filter and select via model and
   command pickers, render one error/retry state, record and submit one voice
