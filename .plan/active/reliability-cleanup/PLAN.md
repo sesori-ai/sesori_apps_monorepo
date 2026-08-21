@@ -76,7 +76,7 @@ no new behavior, guards, retries, registries, or validation layers are added.
 
 - No new user-facing features. Behavior is preserved everywhere except three
   small, deliberate deltas, each recorded in its step and accepted as part of
-  this   series: (1) swallowed failures become logged (Steps 3, 8, 9); (2) ACP
+  this series: (1) swallowed failures become logged (Steps 3, 8, 9); (2) ACP
   teardown gains the stdin-close drain step shared by the transport adopters
   (Step 7 — teardown-only, visible solely in process exit timing/logs); and
   (3) drifted UI micro-details unify on one implementation — picker spacing
