@@ -62,60 +62,67 @@ final class const PluginManagementMutationResultUncertain() extends PluginManage
 final class const PluginManagementMutationResultFailure({required final ApiError error})
     extends PluginManagementMutationResult;
 
+/// Why a plugin authentication start or cancel did not succeed.
+///
+/// Start and cancel fail in exactly the same ways, so they share one failure
+/// type rather than each declaring its own five-variant copy.
+sealed class const PluginAuthenticationFailure() {
+  /// The bridge does not know this plugin.
+  const factory notFound() = PluginAuthenticationFailureNotFound;
+
+  /// The plugin's lifecycle forbids the request right now.
+  const factory conflict({
+    required PluginAuthenticationConflict conflict,
+  }) = PluginAuthenticationFailureConflict;
+
+  /// This plugin does not support interactive authentication.
+  const factory unsupported() = PluginAuthenticationFailureUnsupported;
+
+  /// The request may or may not have reached the bridge, so the caller must
+  /// not assume either outcome.
+  const factory uncertain() = PluginAuthenticationFailureUncertain;
+
+  /// Any other transport or protocol failure, carrying its cause.
+  const factory request({required ApiError error}) = PluginAuthenticationFailureRequest;
+}
+
+final class const PluginAuthenticationFailureNotFound() extends PluginAuthenticationFailure;
+
+final class const PluginAuthenticationFailureConflict({required final PluginAuthenticationConflict conflict})
+    extends PluginAuthenticationFailure;
+
+final class const PluginAuthenticationFailureUnsupported() extends PluginAuthenticationFailure;
+
+final class const PluginAuthenticationFailureUncertain() extends PluginAuthenticationFailure;
+
+final class const PluginAuthenticationFailureRequest({required final ApiError error})
+    extends PluginAuthenticationFailure;
+
 sealed class const PluginAuthenticationStartResult() {
   const factory challenge({
     required PluginAuthenticationChallengeResponse challenge,
   }) = PluginAuthenticationStartChallenge;
 
-  const factory notFound() = PluginAuthenticationStartNotFound;
-
-  const factory conflict({
-    required PluginAuthenticationConflict conflict,
-  }) = PluginAuthenticationStartConflict;
-
-  const factory unsupported() = PluginAuthenticationStartUnsupported;
-
-  const factory uncertain() = PluginAuthenticationStartUncertain;
-
-  const factory failure({required ApiError error}) = PluginAuthenticationStartFailure;
+  const factory failed({
+    required PluginAuthenticationFailure failure,
+  }) = PluginAuthenticationStartFailed;
 }
 
 final class const PluginAuthenticationStartChallenge({required final PluginAuthenticationChallengeResponse challenge})
     extends PluginAuthenticationStartResult;
 
-final class const PluginAuthenticationStartNotFound() extends PluginAuthenticationStartResult;
-
-final class const PluginAuthenticationStartConflict({required final PluginAuthenticationConflict conflict})
-    extends PluginAuthenticationStartResult;
-
-final class const PluginAuthenticationStartUnsupported() extends PluginAuthenticationStartResult;
-
-final class const PluginAuthenticationStartUncertain() extends PluginAuthenticationStartResult;
-
-final class const PluginAuthenticationStartFailure({required final ApiError error})
+final class const PluginAuthenticationStartFailed({required final PluginAuthenticationFailure failure})
     extends PluginAuthenticationStartResult;
 
 sealed class const PluginAuthenticationCancelResult() {
   const factory success() = PluginAuthenticationCancelSuccess;
-  const factory notFound() = PluginAuthenticationCancelNotFound;
-  const factory conflict({
-    required PluginAuthenticationConflict conflict,
-  }) = PluginAuthenticationCancelConflict;
-  const factory unsupported() = PluginAuthenticationCancelUnsupported;
-  const factory uncertain() = PluginAuthenticationCancelUncertain;
-  const factory failure({required ApiError error}) = PluginAuthenticationCancelFailure;
+
+  const factory failed({
+    required PluginAuthenticationFailure failure,
+  }) = PluginAuthenticationCancelFailed;
 }
 
 final class const PluginAuthenticationCancelSuccess() extends PluginAuthenticationCancelResult;
 
-final class const PluginAuthenticationCancelNotFound() extends PluginAuthenticationCancelResult;
-
-final class const PluginAuthenticationCancelConflict({required final PluginAuthenticationConflict conflict})
-    extends PluginAuthenticationCancelResult;
-
-final class const PluginAuthenticationCancelUnsupported() extends PluginAuthenticationCancelResult;
-
-final class const PluginAuthenticationCancelUncertain() extends PluginAuthenticationCancelResult;
-
-final class const PluginAuthenticationCancelFailure({required final ApiError error})
+final class const PluginAuthenticationCancelFailed({required final PluginAuthenticationFailure failure})
     extends PluginAuthenticationCancelResult;

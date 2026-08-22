@@ -104,7 +104,11 @@ void main() {
       addTearDown(service.onDispose);
       await _waitFor(() => service.snapshots.hasValue);
 
-      expect(await service.startAuthentication(pluginId: "codex"), isA<PluginAuthenticationStartFailure>());
+      expect(await service.startAuthentication(pluginId: "codex"), isA<PluginAuthenticationStartFailed>().having(
+        (result) => result.failure,
+        "failure",
+        isA<PluginAuthenticationFailureRequest>(),
+      ));
       expect(service.authenticationChallenges.value, isEmpty);
       connection.emitStatus(const ConnectionDisconnected());
       expect(service.authenticationChallenges.value, isEmpty);
@@ -166,9 +170,13 @@ void main() {
         pluginId: "codex",
         progress: const PluginAuthenticationProgress.completed(),
       );
-      start.complete(const PluginAuthenticationStartResult.uncertain());
+      start.complete(const PluginAuthenticationStartResult.failed(failure: PluginAuthenticationFailure.uncertain()));
 
-      expect(await result, isA<PluginAuthenticationStartUncertain>());
+      expect(await result, isA<PluginAuthenticationStartFailed>().having(
+        (result) => result.failure,
+        "failure",
+        isA<PluginAuthenticationFailureUncertain>(),
+      ));
       expect(terminals.single.progress, const PluginAuthenticationProgress.completed());
     });
 

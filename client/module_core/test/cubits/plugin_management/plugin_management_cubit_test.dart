@@ -241,7 +241,9 @@ void main() {
       return call == 1
           ? first.future
           : Future.value(
-              PluginAuthenticationStartResult.failure(error: ApiError.generic()),
+              PluginAuthenticationStartResult.failed(
+                failure: PluginAuthenticationFailure.request(error: ApiError.generic()),
+              ),
             );
     });
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
@@ -313,7 +315,7 @@ void main() {
     verify(() => service.cancelAuthentication(pluginId: "codex")).called(1);
     authenticationTerminal.add((pluginId: "codex", progress: const PluginAuthenticationProgress.cancelled()));
     await _settle();
-    cancel.complete(const PluginAuthenticationCancelResult.uncertain());
+    cancel.complete(const PluginAuthenticationCancelResult.failed(failure: PluginAuthenticationFailure.uncertain()));
     await firstCancel;
 
     expect(
@@ -339,7 +341,7 @@ void main() {
     final cancelling = cubit.cancelAuthentication();
     snapshots.add(const PluginManagementLoadResult.loading());
     await _settle();
-    cancel.complete(const PluginAuthenticationCancelResult.uncertain());
+    cancel.complete(const PluginAuthenticationCancelResult.failed(failure: PluginAuthenticationFailure.uncertain()));
     await cancelling;
 
     expect(cubit.state, const PluginManagementState.loading());

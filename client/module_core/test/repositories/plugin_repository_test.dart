@@ -373,7 +373,11 @@ void main() {
           ApiError.nonSuccessCode(errorCode: 409, rawErrorString: jsonEncode(conflict.toJson())),
         ),
       );
-      expect(await repository.startAuthentication(pluginId: "codex"), isA<PluginAuthenticationStartUnsupported>());
+      expect(await repository.startAuthentication(pluginId: "codex"), isA<PluginAuthenticationStartFailed>().having(
+        (result) => result.failure,
+        "failure",
+        isA<PluginAuthenticationFailureUnsupported>(),
+      ));
 
       when(
         () => api.startAuthentication(pluginId: any(named: "pluginId")),
@@ -382,7 +386,11 @@ void main() {
           ApiError.dartHttpClient(const RelayResponseLostException(message: "socket closed")),
         ),
       );
-      expect(await repository.startAuthentication(pluginId: "codex"), isA<PluginAuthenticationStartUncertain>());
+      expect(await repository.startAuthentication(pluginId: "codex"), isA<PluginAuthenticationStartFailed>().having(
+        (result) => result.failure,
+        "failure",
+        isA<PluginAuthenticationFailureUncertain>(),
+      ));
     });
 
     test("maps cancellation success and uncertain response loss", () async {
@@ -394,7 +402,11 @@ void main() {
       when(
         () => api.cancelAuthentication(pluginId: any(named: "pluginId")),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.emptyResponse()));
-      expect(await repository.cancelAuthentication(pluginId: "codex"), isA<PluginAuthenticationCancelUncertain>());
+      expect(await repository.cancelAuthentication(pluginId: "codex"), isA<PluginAuthenticationCancelFailed>().having(
+        (result) => result.failure,
+        "failure",
+        isA<PluginAuthenticationFailureUncertain>(),
+      ));
     });
 
     test("maps typed cancellation conflicts and malformed conflict bodies", () async {
@@ -412,7 +424,11 @@ void main() {
       );
       expect(
         await repository.cancelAuthentication(pluginId: "codex"),
-        isA<PluginAuthenticationCancelConflict>().having((result) => result.conflict, "conflict", conflict),
+        isA<PluginAuthenticationCancelFailed>().having(
+          (result) => result.failure,
+          "failure",
+          isA<PluginAuthenticationFailureConflict>().having((failure) => failure.conflict, "conflict", conflict),
+        ),
       );
 
       when(
@@ -422,7 +438,11 @@ void main() {
       );
       expect(
         await repository.startAuthentication(pluginId: "codex"),
-        isA<PluginAuthenticationStartFailure>().having((result) => result.error, "error", isA<JsonParsingError>()),
+        isA<PluginAuthenticationStartFailed>().having(
+          (result) => result.failure,
+          "failure",
+          isA<PluginAuthenticationFailureRequest>().having((failure) => failure.error, "error", isA<JsonParsingError>()),
+        ),
       );
     });
   });

@@ -67,7 +67,6 @@ class PluginManagementService({
 
   bool _connected = _connectionService.currentStatus is ConnectionConnected;
   int _connectionEpoch = _connectionService.currentStatus is ConnectionConnected ? 1 : 0;
-  bool _receivedInitialStatus = false;
   bool _disposed = false;
 
   int _publicationGeneration = 0;
@@ -175,7 +174,7 @@ class PluginManagementService({
 
   Future<PluginAuthenticationStartResult> startAuthentication({required String pluginId}) async {
     if (_disposed || !_connected || !_activeBridgeIdentityKnown) {
-      return PluginAuthenticationStartResult.failure(error: ApiError.generic());
+      return PluginAuthenticationStartResult.failed(failure: PluginAuthenticationFailure.request(error: ApiError.generic()));
     }
     final captured = _captureRequest(staleGeneration: _staleGeneration);
     _selfStartedAuthentications.add(pluginId);
@@ -185,7 +184,7 @@ class PluginManagementService({
     _authenticationRequestsInFlight.remove(pluginId);
     if (!_isAuthenticationFenceCurrent(pluginId: pluginId)) {
       _forgetAuthentication(pluginId: pluginId);
-      return const PluginAuthenticationStartResult.uncertain();
+      return const PluginAuthenticationStartResult.failed(failure: PluginAuthenticationFailure.uncertain());
     }
 
     switch (result) {
@@ -193,20 +192,19 @@ class PluginManagementService({
         final mapped = _mapAuthenticationChallenge(challenge);
         if (mapped == null) {
           _forgetAuthentication(pluginId: pluginId);
-          return PluginAuthenticationStartResult.failure(error: ApiError.generic());
+          return PluginAuthenticationStartResult.failed(failure: PluginAuthenticationFailure.request(error: ApiError.generic()));
         }
         _publishAuthenticationChallenge(pluginId: pluginId, challenge: mapped);
         final pending = _pendingAuthenticationOutcomes.remove(pluginId);
         if (pending != null) _settleAuthentication(pluginId: pluginId, progress: pending);
         return result;
-      case PluginAuthenticationStartUncertain():
+      // An uncertain start may still have reached the bridge, so keep tracking
+      // the plugin and let a pending outcome settle it.
+      case PluginAuthenticationStartFailed(failure: PluginAuthenticationFailureUncertain()):
         final pending = _pendingAuthenticationOutcomes.remove(pluginId);
         if (pending != null) _settleAuthentication(pluginId: pluginId, progress: pending);
         return result;
-      case PluginAuthenticationStartNotFound() ||
-          PluginAuthenticationStartConflict() ||
-          PluginAuthenticationStartUnsupported() ||
-          PluginAuthenticationStartFailure():
+      case PluginAuthenticationStartFailed():
         _forgetAuthentication(pluginId: pluginId);
         return result;
     }
@@ -214,13 +212,13 @@ class PluginManagementService({
 
   Future<PluginAuthenticationCancelResult> cancelAuthentication({required String pluginId}) async {
     if (_disposed || !_connected || !_isAuthenticationFenceCurrent(pluginId: pluginId)) {
-      return PluginAuthenticationCancelResult.failure(error: ApiError.generic());
+      return PluginAuthenticationCancelResult.failed(failure: PluginAuthenticationFailure.request(error: ApiError.generic()));
     }
     _authenticationRequestsInFlight.add(pluginId);
     final result = await _pluginRepository.cancelAuthentication(pluginId: pluginId);
     _authenticationRequestsInFlight.remove(pluginId);
     if (!_isAuthenticationFenceCurrent(pluginId: pluginId)) {
-      return const PluginAuthenticationCancelResult.uncertain();
+      return const PluginAuthenticationCancelResult.failed(failure: PluginAuthenticationFailure.uncertain());
     }
     final pending = _pendingAuthenticationOutcomes.remove(pluginId);
     if (pending != null) _settleAuthentication(pluginId: pluginId, progress: pending);
@@ -273,18 +271,6 @@ class PluginManagementService({
   void _onConnectionStatus(ConnectionStatus status) {
     if (_disposed) return;
     final nextConnected = status is ConnectionConnected;
-    if (!_receivedInitialStatus) {
-      _receivedInitialStatus = true;
-      if (nextConnected != _connected) {
-        _connectionEpoch++;
-        _connected = nextConnected;
-        _forgetActiveBridgeIdentity();
-        _invalidatePublishedSnapshot();
-      }
-      if (nextConnected) _markStale();
-      return;
-    }
-
     if (nextConnected != _connected) {
       _connectionEpoch++;
       _connected = nextConnected;

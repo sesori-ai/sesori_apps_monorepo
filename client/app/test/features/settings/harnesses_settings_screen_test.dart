@@ -564,7 +564,7 @@ void main() {
       isNull,
     );
 
-    cancelResult.complete(const PluginAuthenticationCancelResult.uncertain());
+    cancelResult.complete(const PluginAuthenticationCancelResult.failed(failure: PluginAuthenticationFailure.uncertain()));
     await tester.pumpAndSettle();
     expect(
       tester.widget<PregoButtonsSolid>(find.byKey(const Key("harness_authentication_open_browser"))).onPressed,
