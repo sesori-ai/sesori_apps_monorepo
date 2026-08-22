@@ -74,7 +74,7 @@
 |---|---|---|---|
 | [x] | 1/45 | `🌱 [codebase-cleanup] docs: raise the reliability cleanup plan [step 1/45]` | Merged in #1018 |
 | [ ] | 2/45 | `🌿 [codebase-cleanup] client(module_core): delete the dead concurrency copy [step 2/45]` | In PR |
-| [ ] | 3/45 | `🌿 [codebase-cleanup] shared: delete dead helpers, models, and the rxdart dependency [step 3/45]` | Not started |
+| [ ] | 3/45 | `🌿 [codebase-cleanup] shared: delete dead helpers, models, and the rxdart dependency [step 3/45]` | In PR |
 | [ ] | 4/45 | `🌿 [codebase-cleanup] shared: tighten management fields and correct compatibility markers [step 4/45]` | Not started |
 | [ ] | 5/45 | `🌿 [codebase-cleanup] bridge(app): delete dead production code [step 5/45]` | Not started |
 | [ ] | 6/45 | `🌿 [codebase-cleanup] tooling: close CI gaps, prune dependencies, and refresh docs [step 6/45]` | Not started |
@@ -138,6 +138,16 @@
 
 Each step records here what it found stale relative to the plan before editing.
 
+- **Step 3 (2026-08-22):** member-by-member usage re-check changed the kept
+  set. The plan listed `partition` as possibly dead after Step 2; it is alive —
+  shared's own `multi_task_isolate_pool.dart` uses it, and also uses
+  `reduceSafe`, which the plan had not listed as kept. Both stay, with
+  `toUnmodifiableList` (used by `partition`). Everything else in the three
+  files was confirmed to have zero consumers: the `.verify(`, `.seeded(`,
+  `.not()`, `unawaited`, and `asyncMap` hits are `ChecksumValidator.verify`,
+  `BehaviorSubject.seeded`, Drift's `Expression.not`, `dart:async`'s
+  `unawaited`, and native `Stream.asyncMap` — not these extensions. The four
+  dead models were confirmed dead (own file, own test, README only).
 - **Step 2 (2026-08-22):** plan evidence held exactly. `dto_parser.dart` still
   had zero references in `client/`; the concurrency tree's only importer was
   `dto_parser.dart`; `MessageQueue`/`ConcurrentCache` had no production
@@ -215,6 +225,14 @@ Each step records here what it found stale relative to the plan before editing.
 - Step 2 architecture implementation review: not run — deletion-only step with
   no new or moved production class, DI change, or contract change, per the
   review scope recorded in `PLAN.md`.
+- Step 3 verification: `dart analyze --fatal-infos` clean in all 12 bridge
+  packages and all 7 client modules (the real safety net for removing public
+  shared API); `dart test` — `shared/sesori_shared` 359 passed, `bridge/app`
+  2,693 passed, `sesori_plugin_opencode` 434 passed (the `wait2` consumer),
+  `client/module_core` 1,172 passed (the `chunked`/`normalize` consumer).
+- Step 3 architecture implementation review: not run — removal of unused
+  members and dead models with no new or moved class, no DI change, and no
+  change to any live contract.
 
 ## Plan Review
 

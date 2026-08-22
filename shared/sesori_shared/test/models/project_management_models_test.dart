@@ -135,24 +135,6 @@ void main() {
     });
   });
 
-  group("DiscoverProjectRequest", () {
-    test("JSON roundtrip with valid path", () {
-      const original = DiscoverProjectRequest(path: "/Users/dev/existing");
-      final json = original.toJson();
-      final restored = DiscoverProjectRequest.fromJson(json);
-
-      expect(restored, equals(original));
-      expect(json, equals({"path": "/Users/dev/existing"}));
-    });
-
-    test("fromJson throws on missing required field", () {
-      expect(
-        () => DiscoverProjectRequest.fromJson({}),
-        throwsA(isA<TypeError>()),
-      );
-    });
-  });
-
   group("FilesystemSuggestion", () {
     test("JSON roundtrip with all fields", () {
       const original = FilesystemSuggestion(

@@ -44,7 +44,7 @@ Protocol constants (message type strings, role identifiers) and close codes are 
 
 **Auth**
 
-`AuthUser`, `AuthResponse`, `AuthUrlResponse`, `AuthMeResponse`, `LogoutResponse`
+`AuthUser`, `AuthResponse`, `AuthMeResponse`
 
 **Sesori**
 
