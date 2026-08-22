@@ -84,7 +84,7 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
   documents, current implementation base, balanced fences, and no stale
   catalog/history Service references
 - [x] Architecture plan review; seven valid findings applied without re-review
-- [x] Final changed-line count: 1,466 of the 1,500-line target
+- [x] Final PR changed-line count, including this tracker: 1,466 of the 1,500-line target
 - [x] Commit `c40fbc4ad` pushed; PR #1036 opened against `main`
 
 Later implementation and live evidence is appended here by step. Never mark a
