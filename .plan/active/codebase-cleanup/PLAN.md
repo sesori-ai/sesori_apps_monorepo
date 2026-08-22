@@ -170,7 +170,7 @@ deletions, generated and tests included).
 
 | Step | Exact PR title | Target | Scope |
 |---|---|---:|---|
-| 1/45 | `🌱 [codebase-cleanup] docs: raise the reliability cleanup plan [step 1/45]` | 1,400–1,600 | This plan and tracker only; over the soft cap because the 45-step evidence base is what lets each later step execute without re-investigation. |
+| 1/45 | `🌱 [codebase-cleanup] docs: raise the reliability cleanup plan [step 1/45]` | 1,400–1,700 | This plan and tracker only; over the soft cap because the 45-step evidence base is what lets each later step execute without re-investigation. |
 | 2/45 | `🌿 [codebase-cleanup] client(module_core): delete the dead concurrency copy [step 2/45]` | 1,200–1,400 | Delete `module_core/lib/src/concurrency/` + `dto_parser.dart` and their two app tests. |
 | 3/45 | `🌿 [codebase-cleanup] shared: delete dead helpers, models, and the rxdart dependency [step 3/45]` | 1,300–1,600 | Trim `sugar_dart`/`iterable_x`/`future_x`, delete four dead models and `RefCountReusableStream`, drop `rxdart`. |
 | 4/45 | `🌿 [codebase-cleanup] shared: tighten management fields and correct compatibility markers [step 4/45]` | 250–500 | Required `snapshotToken`/`bridgeId`, `ActiveSession` defaults, converter reuse, relabel/date COMPATIBILITY markers, remove OpenCode DTOs from shared. |

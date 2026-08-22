@@ -183,8 +183,14 @@ Each step records here what it found stale relative to the plan before editing.
 
 ## Verification Record
 
-- _Step 1:_ documentation-only; `git diff --check` and plan consistency checks
-  recorded on completion.
+- Step 1 is documentation-only: title consistency (45 identical titles in
+  both files), numbering 1–45, trailing-whitespace, and `git diff --check`
+  passed; no Dart/Flutter suites run.
+- Step 1 merge-base size:
+  `git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- .plan/active/codebase-cleanup/PLAN.md .plan/active/codebase-cleanup/TRACKER.md`
+- Self-inclusive result after the review-fix commit: `PLAN.md +1,405`,
+  `TRACKER.md +221`, total `+1,626 / -0`, within the widened 1,400–1,700
+  target (the original 1,400–1,600 ceiling was exceeded by the plan itself).
 
 ## Plan Review
 
