@@ -907,40 +907,7 @@ class _FakeWorktreeService({required AppDatabase database}) extends WorktreeServ
   }
 }
 
-class _FakeBridgePlugin() implements NativeProjectsPluginApi {
-  @override
-  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
-
-  @override
-  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
-
-  @override
-  String get id => "fake";
-
-  @override
-  Stream<BridgeSseEvent> get events => const Stream<BridgeSseEvent>.empty();
-
-  @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) async {}
-
-  @override
-  Future<List<PluginProject>> getProjects() async => [];
-
-  @override
-  Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit}) async => [];
-
-  @override
-  Future<List<PluginCommand>> getCommands({required String? projectId}) async => [];
-
-  @override
-  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
-    required String projectId,
-    required PluginSessionOptionsDiscoveryMode discoveryMode,
-  }) => throw UnimplementedError();
-
+class _FakeBridgePlugin() extends FakeBridgePlugin {
   @override
   Future<PluginSession> createSession({
     required String directory,
@@ -950,100 +917,16 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
-  }) async => throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
-  Future<PluginSession> renameSession({required String sessionId, required String title}) async =>
-      throw UnimplementedError();
+  Future<PluginSession> renameSession({required String sessionId, required String title}) => throw UnimplementedError();
 
   @override
-  Future<PluginProject> renameProject({required String projectId, required String name}) async =>
-      throw UnimplementedError();
+  Future<PluginProject> renameProject({required String projectId, required String name}) => throw UnimplementedError();
 
   @override
-  Future<void> deleteSession(String sessionId) async {}
-
-  @override
-  Future<void> archiveSession({required String sessionId}) async {}
-
-  @override
-  Future<List<PluginSession>> getChildSessions(String sessionId) async => [];
-
-  @override
-  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => {};
-
-  @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async => [];
-
-  @override
-  Future<void> sendPrompt({
-    required String promptId,
-    required String sessionId,
-    required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {}
-
-  @override
-  Future<void> sendCommand({
-    required String promptId,
-    required String sessionId,
-    required String command,
-    required String arguments,
-    required String? userVisibleArguments,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {}
-
-  @override
-  Future<void> abortSession({required String sessionId}) async {}
-
-  @override
-  Future<List<PluginAgent>> getAgents({required String projectId}) async => [];
-
-  @override
-  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async => [];
-
-  @override
-  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async => [];
-
-  @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async => [];
-
-  @override
-  Future<void> replyToQuestion({
-    required String questionId,
-    required String sessionId,
-    required List<List<String>> answers,
-  }) async {}
-
-  @override
-  Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {}
-
-  @override
-  Future<void> replyToPermission({
-    required String requestId,
-    required String sessionId,
-    required PluginPermissionReply reply,
-  }) async {}
-
-  @override
-  Future<PluginProject> getProject(String projectId) async => throw UnimplementedError();
-
-  @override
-  Future<bool> healthCheck() async => true;
-
-  @override
-  Future<PluginProvidersResult> getProviders({required String projectId}) async =>
-      const PluginProvidersResult(providers: []);
-
-  @override
-  List<PluginProjectActivitySummary> getActiveSessionsSummary() => [];
-
-  @override
-  Future<void> dispose() async {}
+  Future<PluginProject> getProject(String projectId) => throw UnimplementedError();
 }
 
 class _NoopProcessRunner() implements ProcessRunner {

@@ -14,8 +14,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../helpers/fakes/fake_derived_bridge_plugin.dart";
 import "../helpers/plugin_runtime_test_support.dart";
-
 import "../helpers/test_database.dart";
 
 void main() {
@@ -1044,26 +1044,10 @@ class _NativeImportPlugin({
 }
 
 class _DerivedImportPlugin({
-  @override required final String launchDirectory,
+  required super.launchDirectory,
   required final List<PluginSession> sessions,
-}) implements BridgeDerivedProjectsPluginApi {
-  Set<String>? knownDirectories;
+}) extends FakeDerivedBridgePlugin {
+  this : super(id: "derived", allSessions: sessions);
 
-  @override
-  String get id => "derived";
-
-  @override
-  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
-    this.knownDirectories = knownDirectories;
-    return sessions;
-  }
-
-  @override
-  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
-    required String projectId,
-    required PluginSessionOptionsDiscoveryMode discoveryMode,
-  }) => throw UnimplementedError();
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  Set<String>? get knownDirectories => receivedKnownDirectories;
 }

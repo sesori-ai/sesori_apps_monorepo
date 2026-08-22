@@ -11,6 +11,7 @@ import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fakes/fake_derived_bridge_plugin.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
@@ -442,26 +443,15 @@ class _GatedSubtreeSessionRepository() implements SessionRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeDerivedPlugin() implements BridgeDerivedProjectsPluginApi {
+class _FakeDerivedPlugin() extends FakeDerivedBridgePlugin {
+  this : super(id: "codex", launchDirectory: "/repo", allSessions: const []);
+
   Completer<void>? renameStarted;
   Future<void>? releaseRename;
   Object? renameError;
   Completer<void>? deleteStarted;
   Future<void>? releaseDelete;
   int renameCalls = 0;
-  List<PluginSession> sessions = const [];
-
-  @override
-  String get id => "codex";
-
-  @override
-  String get launchDirectory => "/repo";
-
-  @override
-  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async => sessions;
-
-  @override
-  void primeSessionDirectory({required String sessionId, required String directory}) {}
 
   @override
   Future<PluginSession> renameSession({required String sessionId, required String title}) async {
@@ -484,13 +474,4 @@ class _FakeDerivedPlugin() implements BridgeDerivedProjectsPluginApi {
     deleteStarted?.complete();
     if (releaseDelete case final release?) await release;
   }
-
-  @override
-  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
-    required String projectId,
-    required PluginSessionOptionsDiscoveryMode discoveryMode,
-  }) => throw UnimplementedError();
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

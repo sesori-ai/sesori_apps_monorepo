@@ -295,12 +295,6 @@ PluginSession _session({
 class _FakeBridgePlugin({required final List<PluginProject> _projects, required final List<PluginSession> _sessions})
     implements NativeProjectsPluginApi {
   @override
-  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
-
-  @override
-  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
-
-  @override
   Future<List<PluginProject>> getProjects() async => _projects;
 
   @override
@@ -313,61 +307,10 @@ class _FakeBridgePlugin({required final List<PluginProject> _projects, required 
   Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) async => _sessions;
 
   @override
-  Future<PluginSession> createSession({
-    required String directory,
-    required String? parentSessionId,
-    required List<PluginPromptPart> parts,
-    required String? userVisibleText,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) => throw UnimplementedError();
+  Future<List<PluginCommand>> getCommands({required String? projectId}) async => const [];
 
   @override
-  Future<PluginSession> renameSession({required String sessionId, required String title}) => throw UnimplementedError();
-
-  @override
-  Future<PluginProject> renameProject({required String projectId, required String name}) => throw UnimplementedError();
-
-  @override
-  Future<void> deleteSession(String sessionId) => throw UnimplementedError();
-
-  @override
-  Future<void> archiveSession({required String sessionId}) => throw UnimplementedError();
-
-  @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<List<PluginSession>> getChildSessions(String sessionId) => throw UnimplementedError();
-
-  @override
-  Future<Map<String, PluginSessionStatus>> getSessionStatuses() => throw UnimplementedError();
-
-  @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) => throw UnimplementedError();
-
-  @override
-  Future<List<PluginCommand>> getCommands({required String? projectId}) async => <PluginCommand>[];
-
-  @override
-  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
-    required String projectId,
-    required PluginSessionOptionsDiscoveryMode discoveryMode,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<void> sendPrompt({
-    required String promptId,
-    required String sessionId,
-    required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) => throw UnimplementedError();
+  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async => const [];
 
   @override
   Future<void> sendCommand({
@@ -382,49 +325,11 @@ class _FakeBridgePlugin({required final List<PluginProject> _projects, required 
   }) async {}
 
   @override
-  Future<void> abortSession({required String sessionId}) => throw UnimplementedError();
-
-  @override
-  Future<List<PluginAgent>> getAgents({required String projectId}) => throw UnimplementedError();
-
-  @override
-  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async => [];
-
-  @override
-  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) => throw UnimplementedError();
-
-  @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) => throw UnimplementedError();
-
-  @override
-  Future<void> replyToQuestion({
-    required String questionId,
-    required String sessionId,
-    required List<List<String>> answers,
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
   }) => throw UnimplementedError();
 
   @override
-  Future<void> rejectQuestion({required String questionId, required String? sessionId}) => throw UnimplementedError();
-
-  @override
-  Future<void> replyToPermission({
-    required String requestId,
-    required String sessionId,
-    required PluginPermissionReply reply,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<PluginProject> getProject(String projectId) => throw UnimplementedError();
-
-  @override
-  Future<bool> healthCheck() => throw UnimplementedError();
-
-  @override
-  Future<PluginProvidersResult> getProviders({required String projectId}) => throw UnimplementedError();
-
-  @override
-  List<PluginProjectActivitySummary> getActiveSessionsSummary() => throw UnimplementedError();
-
-  @override
-  Future<void> dispose() => throw UnimplementedError();
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

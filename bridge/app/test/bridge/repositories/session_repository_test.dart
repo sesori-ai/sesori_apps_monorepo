@@ -16,6 +16,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fakes/fake_derived_bridge_plugin.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
 
@@ -2984,48 +2985,28 @@ class _BlockingSnapshotProjectsDao({required AppDatabase database}) extends Proj
 /// repository's stored-attribution lookup
 /// (`getSessionProjectPaths(pluginId: ...)`) matches the seeded session rows.
 class _FakeDerivedPlugin({
-  @override required final String launchDirectory,
-  required var List<PluginSession> allSessions,
-}) implements BridgeDerivedProjectsPluginApi {
+  required super.launchDirectory,
+  required super.allSessions,
+}) extends FakeDerivedBridgePlugin {
+  this : super(id: "codex");
+
   String? lastRenameSessionId;
   List<PluginSession> childSessions = const [];
   Object? getChildSessionsError;
-  Object? listAllSessionsError;
   int deleteCalls = 0;
-  int listAllSessionsCalls = 0;
   int sendPromptCalls = 0;
   String? lastGetChildSessionsParentId;
   String? lastCreateParentSessionId;
-
-  /// The hint set received on the most recent [listAllSessions] call.
-  Set<String>? receivedKnownDirectories;
-
-  /// Every stored-directory prime the bridge fed this plugin, in order.
-  final List<({String sessionId, String directory})> primedDirectories = [];
 
   /// Configurable activity summaries (the plugin's own grouping — for a
   /// worktree session that is the worktree cwd).
   List<PluginProjectActivitySummary> activitySummaries = const [];
 
-  @override
-  String get id => "codex";
-
-  @override
-  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
-    listAllSessionsCalls++;
-    if (listAllSessionsError case final error?) throw error;
-    receivedKnownDirectories = knownDirectories;
-    return allSessions;
-  }
+  int get listAllSessionsCalls => listAllSessionsCallCount;
 
   @override
   Future<void> deleteSession(String sessionId) async {
     deleteCalls++;
-  }
-
-  @override
-  void primeSessionDirectory({required String sessionId, required String directory}) {
-    primedDirectories.add((sessionId: sessionId, directory: directory));
   }
 
   @override
@@ -3099,13 +3080,4 @@ class _FakeDerivedPlugin({
 
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async => const [];
-
-  @override
-  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
-    required String projectId,
-    required PluginSessionOptionsDiscoveryMode discoveryMode,
-  }) => throw UnimplementedError();
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

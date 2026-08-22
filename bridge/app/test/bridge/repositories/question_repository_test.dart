@@ -6,8 +6,8 @@ import "package:sesori_bridge/src/repositories/question_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fakes/fake_derived_bridge_plugin.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
-
 import "../../helpers/test_database.dart";
 
 void main() {
@@ -694,22 +694,18 @@ PluginSession _session(String directory, {required String id}) => PluginSession(
 /// A derive-style plugin whose pending questions are keyed per session, so the
 /// repository must resolve the project's sessions (worktree-aware) and ask each.
 class _FakeDerivedQuestionPlugin({
-  @override required final String launchDirectory,
-  required final List<PluginSession> allSessions,
+  required super.launchDirectory,
+  required super.allSessions,
   required final Map<String, List<PluginPendingQuestion>> questionsBySession,
 
   /// What the plugin's own project-scoped query returns — its live in-memory
   /// view, which can know sessions that `listAllSessions` (disk) does not yet.
   final List<PluginPendingQuestion> ownProjectQuestions = const [],
-}) implements BridgeDerivedProjectsPluginApi {
+}) extends FakeDerivedBridgePlugin {
+  this : super(id: "codex");
+
   final List<String> queriedSessionIds = [];
   int questionMutationCalls = 0;
-
-  @override
-  String get id => "codex";
-
-  @override
-  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async => allSessions;
 
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async {
@@ -733,15 +729,6 @@ class _FakeDerivedQuestionPlugin({
   Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {
     questionMutationCalls++;
   }
-
-  @override
-  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
-    required String projectId,
-    required PluginSessionOptionsDiscoveryMode discoveryMode,
-  }) => throw UnimplementedError();
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeNativeQuestionPlugin({
