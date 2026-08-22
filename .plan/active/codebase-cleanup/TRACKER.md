@@ -5,14 +5,16 @@
 - **Plan slug:** `codebase-cleanup`
 - **Implementation base:** `origin/main` at `084b30276`
 - **Current branch:** `codebase-cleanup-plan`
-- **Series state:** Steps 1–2/45 merged (#1018, #1019); Step 3/45 in PR.
+- **Series state:** Steps 1–3/45 merged (#1018, #1019, #1020); Steps 4, 5 and 6
+  in PR (#1022, #1021, #1023).
   The owner asked for independent steps to run in parallel, up to about five
   open PRs, so steps that touch disjoint trees are raised concurrently instead
   of strictly one-step-ahead. Steps that share a package stay serialized:
   4 after 3 (both `sesori_shared`), and 7's flatten after 5 (both `bridge/app`).
-- **Current step:** 3/45 — shared dead helpers, models, and `rxdart`
-- **Next action:** monitor Step 3; raise Steps 5 (bridge/app dead code) and 6
-  (tooling, dependencies, docs) in parallel — neither shares a tree with 3
+- **Current step:** 4/45 — shared field tightening and compatibility markers
+  (serialized after Step 3 because both touch `sesori_shared`)
+- **Next action:** monitor Steps 4, 5 and 6; start Step 7 (bridge tree flatten)
+  once Step 5 merges, since both touch `bridge/app`
 - **Overlapping work:** open PRs #918 (voice streaming), #956 (composer
   drag-and-drop), #939 (macOS list scrolling) overlap Steps 39–41 — rebase and
   re-scope after they merge; active plan `session-refresh-reconnects` owns
