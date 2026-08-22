@@ -84,10 +84,15 @@
 ## Verification Log
 
 - **Step 1:** `git diff --check` passed; plan/tracker slug, seven exact
-  titles, and step total agree; documentation-only diff of ~690 lines (above
-  the 450-650 target because the six applied review findings added named
-  owners and layer splits); PR
-  [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open
+  titles, and step total agree; PR
+  [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open.
+  Changed lines (informational, not a pass/fail check): `git diff --numstat
+  <merge-base>..HEAD -- .plan/active/claude-inline-subtasks/` measured 678
+  additions / 0 deletions (PLAN.md 560, TRACKER.md 118) at review time. That
+  exceeds the 450-650 target by 28 lines because the six applied review
+  findings added named owners and layer splits; recorded as an accepted
+  deviation, the target is not changed. The figure includes this tracker's
+  own bookkeeping lines, so later tracker edits move it slightly.
 - **Final disposition:** pending
 
 ## Plan Review
