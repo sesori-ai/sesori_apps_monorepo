@@ -466,7 +466,7 @@ the client, analytics.
 | Concern | Classification | Decision |
 |---|---|---|
 | Agent calls invisible; sub-agent work unreadable | observed (user report, code) | core scope |
-| Stuck "running" subtask after abrupt bridge death | ordinary reachable flow (bridge restart/update while agents run) | sweep extension keyed on child status, Step 4 |
+| Stuck "running" subtask after abrupt bridge death | ordinary reachable flow (bridge restart/update while agents run) | sweep finalizes an idle root's open subtask parts to `cancelled` (no child-status lookup; a busy root is never swept), Step 4 |
 | Duplicate descriptions pick the wrong transcript under title matching | ordinary flow (fan-outs reuse labels) | `childSessionID`, Step 2 |
 | Part update arrives before the child binding commits | theoretical ordering | accept: pending-event queue orders it; worst case the tile is untappable until the next update or reload |
 | Idle reaper / safe stop would kill running sub-agents once the launching turn ends | ordinary reachable flow (every background agent outlives its turn; reap timeout is on by default) | running tasks keep the session busy and defer the reap, Step 3 |
@@ -519,8 +519,9 @@ the client, analytics.
 
 Affected feature documents: `docs/regression/tools-and-file-changes.md`
 (primary: subtask part lifecycle incl. cancelled, child attribution, open to
-read), `session-history-and-recovery.md` (sweep covers open subtask parts keyed
-on child status; child transcripts reload with stable identity),
+read), `session-history-and-recovery.md` (the sweep finalizes an idle root's open
+subtask parts to cancelled, never a busy root's; child transcripts reload
+with stable identity),
 `projects-and-sessions.md` (Claude sub-agent transcripts as child sessions in
 import and listing), `session-turns.md` (Claude `<task-notification>` records
 are internal, never rendered as user messages; a Claude session returns to

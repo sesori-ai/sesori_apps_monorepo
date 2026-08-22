@@ -36,8 +36,10 @@
   (the busy-while-tasks-run rule already protects live sub-agents); no
   child-status lookup in the sweep.
 - [x] `ClaudeEventDispatcher` (over the tracker task map) is the sole owner of
-  task state, child-session statuses, resident task ids, and `childSessionIds`;
-  `ClaudeSessionService` gains no field. `ClaudePlugin` forwards the disjoint
+  task state, child-session statuses, resident task ids, and `childSessionIds`
+  (presentation state); `ClaudeSessionService` gains no presentation field —
+  its separate lifecycle `runningTaskIds` set is the next decision.
+  `ClaudePlugin` forwards the disjoint
   union of root and child statuses and emits the child `session.created`
   event on `ClaudeTaskStartedMessage`.
 - [x] `ClaudeHistoryMapper.map(..., residentTaskToolUseIds)` owns the replayed
@@ -97,8 +99,8 @@
   titles, and step total agree; PR
   [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open.
   Changed lines (informational, not a pass/fail check): `git diff --numstat
-  <merge-base>..HEAD -- .plan/active/claude-inline-subtasks/PLAN.md` = 685
-  additions / 0 deletions at the last plan edit — 35 lines over the 450-650
+  <merge-base>..HEAD -- .plan/active/claude-inline-subtasks/PLAN.md` = 686
+  additions / 0 deletions at the last plan edit — 36 lines over the 450-650
   target after the user-review lifecycle amendment and the third bot round;
   accepted deviation, target unchanged.
   Per the plan's series note, `TRACKER.md` bookkeeping is excluded from the
