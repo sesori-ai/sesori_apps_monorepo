@@ -2,6 +2,9 @@ import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../di/firebase_register_module.dart";
+
+@firebaseEnabledEnvironment
 @LazySingleton(as: FailureReporter)
 class CrashlyticsFailureReporter(final FirebaseCrashlytics _crashlytics) implements FailureReporter {
   static const int maxNonFatalDedupEntries = 128;

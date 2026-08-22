@@ -2,6 +2,9 @@ import "package:firebase_analytics/firebase_analytics.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
+import "../di/firebase_register_module.dart";
+
+@firebaseEnabledEnvironment
 @LazySingleton(as: AnalyticsClient)
 class FirebaseAnalyticsClient({
   required final FirebaseAnalytics _analytics,
