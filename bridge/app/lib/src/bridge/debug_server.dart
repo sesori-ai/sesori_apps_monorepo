@@ -70,11 +70,6 @@ class DebugServer({
     return _drainFuture ??= _drain();
   }
 
-  Future<void> stop() {
-    beginShutdown();
-    return drain();
-  }
-
   Future<void> _drain() async {
     Object? firstError;
     StackTrace? firstStackTrace;

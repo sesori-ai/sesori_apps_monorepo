@@ -170,16 +170,6 @@ enum SupervisedExitCode(
 
 enum _PhoneConnectionWaitOutcome() { connected, sessionStopped }
 
-Future<int> runBridgeApp({
-  required BridgeCliOptions options,
-  required Map<String, PluginConfig> pluginConfigs,
-}) {
-  return BridgeRuntimeRunner.run(
-    options: options,
-    pluginConfigs: pluginConfigs,
-  );
-}
-
 class const BridgeRuntimeRunner._() {
   /// Soft deadline granted to the plugin's ordered `shutdown()` step. The
   /// shutdown coordinator's backstop is sized from it (budget + slack).

@@ -12,8 +12,6 @@ import 'package:path/path.dart' as p;
 /// another file descriptor to the lock file being closed, so a second
 /// instance over the same directory would silently break the guarantee.
 class RuntimeFileApi({required final String runtimeDirectory}) {
-  static const String _ownershipFileName = 'opencode-processes.json';
-
   /// Suffix of the sidecar files [updateFile] takes its advisory lock on.
   ///
   /// Sidecars are created next to the data file and deliberately never
@@ -24,19 +22,7 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
 
   final Map<String, Future<void>> _updateChains = <String, Future<void>>{};
 
-  String get ownershipFilePath => p.join(runtimeDirectory, _ownershipFileName);
-
   String get startupLockFilePath => p.join(runtimeDirectory, 'bridge-startup.lock');
-
-  Future<String?> readOwnershipFile() => readFile(name: _ownershipFileName);
-
-  Future<void> writeOwnershipFile({required String contents}) =>
-      writeFile(name: _ownershipFileName, contents: contents);
-
-  Future<void> deleteOwnershipFile() => deleteFile(name: _ownershipFileName);
-
-  Future<void> renameOwnershipFile({required String fileName}) =>
-      renameFile(fromName: _ownershipFileName, toName: fileName);
 
   Future<String?> readFile({required String name}) async {
     final file = File(p.join(runtimeDirectory, name));

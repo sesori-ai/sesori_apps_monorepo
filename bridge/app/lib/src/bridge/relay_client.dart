@@ -186,15 +186,6 @@ class RelayClient({
     );
   }
 
-  Future<RelayConnection> reconnect({required RelayConnection connection}) async {
-    try {
-      await closeIfCurrent(connection: connection);
-    } on Object catch (error, stackTrace) {
-      Log.w("reconnect: close failed; continuing with a fresh connection", error, stackTrace);
-    }
-    return await connect();
-  }
-
   Stream<RelayClientMessage> read({required RelayConnection connection}) {
     final channel = connection._channel;
 

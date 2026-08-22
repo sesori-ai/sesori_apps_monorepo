@@ -40,10 +40,6 @@ bool isCiEnvironment({required Map<String, String> environment}) {
   return ciVars.any((varName) => environment.containsKey(varName));
 }
 
-bool isInteractiveTerminal() {
-  return stdout.hasTerminal;
-}
-
 bool isUpdateDisabled({required Map<String, String> environment}) {
   return environment.containsKey('SESORI_NO_UPDATE');
 }

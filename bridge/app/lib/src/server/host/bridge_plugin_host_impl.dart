@@ -1,6 +1,3 @@
-import "dart:io";
-
-import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         BridgeHostInfo,
@@ -9,18 +6,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         HostProcessService,
         PluginConfig,
         PluginHost,
-        ProcessIdentity,
-        ProcessUser,
         ServerClock,
         StartAbortSignal;
 
-import "../api/loopback_port_api.dart";
 import "../api/runtime_file_api.dart";
-import "../repositories/process_repository.dart";
-import "bridge_host_info_impl.dart";
-import "bridge_host_json_store.dart";
-import "bridge_host_port_service.dart";
-import "bridge_host_process_service.dart";
 
 /// The bridge's production [PluginHost].
 ///
@@ -46,56 +35,6 @@ class BridgePluginHostImpl({
   @override required final HostJsonStore store,
   required final Duration? Function() _resolveIdleTimeout,
 }) implements PluginHost {
-  static Future<BridgePluginHostImpl> create({
-    required PluginConfig config,
-    required String stateDirectory,
-    required Map<String, String> environment,
-    required ServerClock clock,
-    required StartAbortSignal startAborted,
-    required ProcessIdentity bridgeIdentity,
-    required String ownerSessionId,
-    required List<ProcessIdentity> terminatedBridgeIdentities,
-    required ProcessRepository processRepository,
-    required LoopbackPortApi loopbackPortApi,
-    required HostProcessStarter processStarter,
-    required ProcessUser? currentUser,
-    required bool isWindows,
-    required String platform,
-    required Duration? Function() resolveIdleTimeout,
-  }) async {
-    if (!p.isAbsolute(stateDirectory)) {
-      throw ArgumentError.value(stateDirectory, "stateDirectory", "must be an absolute path");
-    }
-    await Directory(stateDirectory).create(recursive: true);
-
-    return BridgePluginHostImpl(
-      config: config,
-      stateDirectory: stateDirectory,
-      environment: Map<String, String>.unmodifiable(environment),
-      clock: clock,
-      startAborted: startAborted,
-      bridge: BridgeHostInfoImpl(
-        identity: bridgeIdentity,
-        ownerSessionId: ownerSessionId,
-        terminatedBridgeIdentities: terminatedBridgeIdentities,
-        processRepository: processRepository,
-      ),
-      processes: BridgeHostProcessService(
-        processStarter: processStarter,
-        processRepository: processRepository,
-        clock: clock,
-        currentUser: currentUser,
-        isWindows: isWindows,
-        platform: platform,
-      ),
-      ports: BridgeHostPortService(loopbackPortApi: loopbackPortApi),
-      store: BridgeHostJsonStore(
-        fileApi: RuntimeFileApi(runtimeDirectory: stateDirectory),
-      ),
-      resolveIdleTimeout: resolveIdleTimeout,
-    );
-  }
-
   /// Live view over the bridge's runtime-mutable per-plugin idle timeout, so
   /// a settings change reaches the plugin without a restart.
   @override

@@ -8,13 +8,7 @@ class ProcessRepository({
   required final SystemProcessApi _api,
   required final ProcessUser? _currentUser,
 }) {
-  Future<ProcessIdentity?> inspectProcess({required int pid}) async {
-    final identity = await _api.inspectProcess(pid: pid);
-    if (identity == null) {
-      return null;
-    }
-    return identity;
-  }
+  Future<ProcessIdentity?> inspectProcess({required int pid}) => _api.inspectProcess(pid: pid);
 
   Future<ProcessMatch?> inspectProcessMatch({required int pid}) async {
     final identity = await inspectProcess(pid: pid);

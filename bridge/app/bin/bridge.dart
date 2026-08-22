@@ -203,7 +203,7 @@ class RunCommand() extends cli.Command<void> {
       Log.w('Sleep prevention failed: $error');
     }
 
-    final exitCode = await runBridgeApp(
+    final exitCode = await BridgeRuntimeRunner.run(
       options: options,
       pluginConfigs: pluginConfigs,
     );
