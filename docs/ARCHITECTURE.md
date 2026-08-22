@@ -67,6 +67,7 @@ graph TD
   sesori_plugin_cursor --> sesori_bridge_foundation
   sesori_plugin_cursor --> sesori_plugin_acp
   sesori_plugin_cursor --> sesori_plugin_runtime
+  sesori_plugin_cursor --> sesori_shared
   sesori_plugin_omp --> sesori_plugin_interface
   sesori_plugin_omp --> sesori_bridge_foundation
   sesori_plugin_omp --> sesori_plugin_runtime
@@ -76,6 +77,7 @@ graph TD
   sesori_plugin_claude --> sesori_shared
   sesori_plugin_hermes --> sesori_plugin_interface
   sesori_plugin_hermes --> sesori_bridge_foundation
+  sesori_plugin_hermes --> sesori_plugin_acp
   sesori_plugin_pi --> sesori_plugin_interface
   sesori_plugin_pi --> sesori_bridge_foundation
   sesori_plugin_pi --> sesori_plugin_runtime
