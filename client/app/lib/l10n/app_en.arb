@@ -467,6 +467,10 @@
   "@sessionDetailAttachImage": {
     "description": "Accessibility label of the advanced-options action that opens the gallery picker to attach an image to the next message."
   },
+  "sessionDetailDropImagesToAttach": "Drop images to attach",
+  "@sessionDetailDropImagesToAttach": {
+    "description": "Label shown over the composer while supported image files are dragged over its native desktop or iPad drop target."
+  },
   "sessionDetailRemoveAttachment": "Remove attachment",
   "@sessionDetailRemoveAttachment": {
     "description": "Accessibility label of the badge on a staged attachment thumbnail that removes it from the composer."

@@ -1,6 +1,7 @@
 import "dart:async";
+import "dart:typed_data";
 
-import "package:flutter/foundation.dart" show kIsWeb;
+import "package:flutter/foundation.dart" show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import "package:flutter/gestures.dart" show kPrimaryButton;
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
@@ -9,6 +10,7 @@ import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:super_drag_and_drop/super_drag_and_drop.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
@@ -26,6 +28,12 @@ import "voice_cancel_button.dart";
 enum _VoiceState() { idle, recording, transcribing }
 
 enum _PasteImageResult() { noImage, handled, stale }
+
+typedef _DroppedImageFile = ({
+  VoidCallback close,
+  Stream<Uint8List> stream,
+  Future<String?> suggestedName,
+});
 
 final class _ComposerPasteAction({
     required final Future<_PasteImageResult> Function() _pasteImage,
@@ -121,11 +129,18 @@ class _PromptInputState() extends State<PromptInput> {
   static const _draftCalculator = ComposerDraftCalculator();
   static const _minimumRecordingDuration = Duration(milliseconds: 200);
   static const _successFeedbackPulseDelay = Duration(milliseconds: 100);
+  static const List<FileFormat> _imageDropFormats = [
+    Formats.jpeg,
+    Formats.png,
+    Formats.gif,
+    Formats.webp,
+    Formats.bmp,
+  ];
   final _controller = TextEditingController();
   final _textScrollController = ScrollController();
   final _focusNode = FocusNode();
   late final Action<PasteTextIntent> _pasteAction;
-  int _pasteGeneration = 0;
+  int _attachmentInputGeneration = 0;
   late ComposerDraft _draft;
   late TextEditingValue _previousEditingValue;
   bool _isApplyingDraft = false;
@@ -197,6 +212,7 @@ class _PromptInputState() extends State<PromptInput> {
   /// Images staged for the next submission. Not part of the persisted
   /// draft — they live and die with this composer.
   final List<ComposerAttachment> _attachments = [];
+  bool _isImageDragOver = false;
 
   VoiceTranscriptionService get _voiceService => getIt<VoiceTranscriptionService>();
 
@@ -410,7 +426,7 @@ class _PromptInputState() extends State<PromptInput> {
       );
     }
 
-    _pasteGeneration++;
+    _attachmentInputGeneration++;
     if (_attachments.isNotEmpty) {
       setState(_attachments.clear);
     }
@@ -433,13 +449,15 @@ class _PromptInputState() extends State<PromptInput> {
         widget.restorationKey != null && oldWidget.restorationKey != widget.restorationKey;
     final stagedCommandChanged = oldWidget.stagedCommand?.name != widget.stagedCommand?.name;
     if (oldWidget.attachmentsSupported != widget.attachmentsSupported) {
-      _pasteGeneration++;
+      _attachmentInputGeneration++;
+      _isImageDragOver = false;
     }
     if (draftChanged || restorationRequested) {
       // A draft identity change means this state moved to another composer. A
       // restoration key change means a fast failed send reused this composer.
       // Both replace authored content exactly once.
-      _pasteGeneration++;
+      _attachmentInputGeneration++;
+      _isImageDragOver = false;
       _attachments.clear();
       _restoreDraft(draft: widget.initialDraft);
       _restoreInitialAttachments();
@@ -841,7 +859,7 @@ class _PromptInputState() extends State<PromptInput> {
   Widget build(BuildContext context) {
     final prego = context.prego;
 
-    return DecoratedBox(
+    final composer = DecoratedBox(
       // Floating composer: no bar surface, no separator line. The scaffold
       // background fades up behind the floating controls so chat content
       // dissolves as it scrolls past — the same scrim the glass top navigation
@@ -923,6 +941,228 @@ class _PromptInputState() extends State<PromptInput> {
         ],
       ),
     );
+
+    if (!_imageDropEnabled) return composer;
+
+    return DropRegion(
+      formats: _imageDropFormats,
+      hitTestBehavior: HitTestBehavior.opaque,
+      onDropOver: (event) => _handleImageDropOver(event: event),
+      onDropLeave: (_) => _clearImageDragOver(),
+      onDropEnded: (_) => _clearImageDragOver(),
+      onPerformDrop: (event) => _handleImageDrop(event: event),
+      child: Stack(
+        children: [
+          composer,
+          if (_isImageDragOver)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Semantics(
+                  liveRegion: true,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: prego.colors.bgSurface1.withValues(alpha: 0.94),
+                      border: Border.all(color: prego.colors.borderBrand, width: 2),
+                      borderRadius: BorderRadius.circular(PregoRadius.x3l),
+                    ),
+                    child: Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        spacing: PregoSpacing.sm,
+                        children: [
+                          Icon(TablerRegular.photo_plus, size: 20, color: prego.colors.fgBrandPrimary),
+                          Text(
+                            context.loc.sessionDetailDropImagesToAttach,
+                            style: prego.textTheme.textSm.bold.copyWith(color: prego.colors.textBrandPrimary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  bool get _imageDropEnabled {
+    if (kIsWeb || widget.attachmentsSupported != true) return false;
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.iOS || TargetPlatform.macOS || TargetPlatform.windows || TargetPlatform.linux => true,
+      TargetPlatform.android || TargetPlatform.fuchsia => false,
+    };
+  }
+
+  DropOperation _handleImageDropOver({required DropOverEvent event}) {
+    final acceptsDrop =
+        _imageDropEnabled &&
+        event.session.allowedOperations.contains(DropOperation.copy) &&
+        event.session.items.any((item) => _dropItemContainsImage(item: item));
+    if (_isImageDragOver != acceptsDrop && mounted) {
+      setState(() => _isImageDragOver = acceptsDrop);
+    }
+    return acceptsDrop ? DropOperation.copy : DropOperation.none;
+  }
+
+  bool _dropItemContainsImage({required DropItem item}) {
+    for (final format in _imageDropFormats) {
+      if (item.canProvide(format)) return true;
+    }
+    return false;
+  }
+
+  void _clearImageDragOver() {
+    if (_isImageDragOver && mounted) setState(() => _isImageDragOver = false);
+  }
+
+  Future<void> _handleImageDrop({required PerformDropEvent event}) {
+    _clearImageDragOver();
+    if (!_imageDropEnabled) return Future.value();
+
+    final draftIdentity = widget.draftIdentity;
+    final attachmentInputGeneration = _attachmentInputGeneration;
+    final files = <Future<_DroppedImageFile?>>[];
+    for (final item in event.session.items) {
+      if (_dropItemContainsImage(item: item)) files.add(_requestDroppedImageFile(item: item));
+    }
+    unawaited(
+      _consumeDroppedImageFiles(
+        files: files,
+        draftIdentity: draftIdentity,
+        attachmentInputGeneration: attachmentInputGeneration,
+      ),
+    );
+    return Future.value();
+  }
+
+  Future<_DroppedImageFile?> _requestDroppedImageFile({required DropItem item}) {
+    final completer = Completer<_DroppedImageFile?>();
+    final reader = item.dataReader;
+    if (reader == null) return Future.value();
+
+    final formats = reader.getFormats(_imageDropFormats);
+    if (formats.isEmpty) return Future.value();
+    final format = formats.first;
+    if (format is! FileFormat) return Future.value();
+
+    try {
+      final progress = reader.getFile(
+        format,
+        (file) {
+          var ownershipTransferred = false;
+          try {
+            if (file.fileSize case final size? when size > maxComposerPromptAttachmentBytes) {
+              completer.completeError(const AttachmentTooLargeError(), StackTrace.current);
+              return;
+            }
+            if (completer.isCompleted) return;
+            completer.complete((
+              close: file.close,
+              stream: file.getStream(),
+              suggestedName: file.fileName == null ? reader.getSuggestedName() : Future.value(file.fileName),
+            ));
+            ownershipTransferred = true;
+          } catch (error, stackTrace) {
+            if (!completer.isCompleted) completer.completeError(error, stackTrace);
+          } finally {
+            if (!ownershipTransferred) file.close();
+          }
+        },
+        onError: (error) {
+          if (!completer.isCompleted) completer.completeError(error, StackTrace.current);
+        },
+      );
+      if (progress == null && !completer.isCompleted) completer.complete(null);
+    } catch (error, stackTrace) {
+      if (!completer.isCompleted) completer.completeError(error, stackTrace);
+    }
+    return completer.future;
+  }
+
+  Future<void> _consumeDroppedImageFiles({
+    required List<Future<_DroppedImageFile?>> files,
+    required String draftIdentity,
+    required int attachmentInputGeneration,
+  }) async {
+    var stale = false;
+    for (final requestedFile in files) {
+      _DroppedImageFile? droppedFile;
+      try {
+        droppedFile = await requestedFile;
+        stale = stale ||
+            _isAttachmentInputStale(
+              draftIdentity: draftIdentity,
+              attachmentInputGeneration: attachmentInputGeneration,
+            );
+        if (droppedFile == null) continue;
+        if (stale) continue;
+
+        final bytes = await _readDroppedImageBytes(
+          file: droppedFile,
+          isStale: () => _isAttachmentInputStale(
+            draftIdentity: draftIdentity,
+            attachmentInputGeneration: attachmentInputGeneration,
+          ),
+        );
+        if (bytes == null) {
+          stale = true;
+          continue;
+        }
+        final attachment = _imagePicker.attachmentFromBytes(
+          bytes: bytes,
+          filename: await droppedFile.suggestedName,
+        );
+        if (_isAttachmentInputStale(
+          draftIdentity: draftIdentity,
+          attachmentInputGeneration: attachmentInputGeneration,
+        )) {
+          stale = true;
+          continue;
+        }
+        _stageAttachment(attachment: attachment);
+      } on AttachmentTooLargeError {
+        stale = stale ||
+            _isAttachmentInputStale(
+              draftIdentity: draftIdentity,
+              attachmentInputGeneration: attachmentInputGeneration,
+            );
+        if (!stale && mounted) _showComposerNotice(context.loc.sessionDetailAttachmentTooLarge);
+      } on UnsupportedAttachmentImageError {
+        stale = stale ||
+            _isAttachmentInputStale(
+              draftIdentity: draftIdentity,
+              attachmentInputGeneration: attachmentInputGeneration,
+            );
+        if (!stale && mounted) _showComposerNotice(context.loc.sessionDetailAttachmentUnsupported);
+      } catch (error, stackTrace) {
+        loge("Failed to attach a dropped image", error, stackTrace);
+        stale = stale ||
+            _isAttachmentInputStale(
+              draftIdentity: draftIdentity,
+              attachmentInputGeneration: attachmentInputGeneration,
+            );
+        if (!stale && mounted) _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
+      } finally {
+        droppedFile?.close();
+      }
+    }
+  }
+
+  Future<Uint8List?> _readDroppedImageBytes({
+    required _DroppedImageFile file,
+    required bool Function() isStale,
+  }) async {
+    final bytes = BytesBuilder(copy: false);
+    await for (final chunk in file.stream) {
+      if (isStale()) return null;
+      if (bytes.length + chunk.length > maxComposerPromptAttachmentBytes) {
+        throw const AttachmentTooLargeError();
+      }
+      bytes.add(chunk);
+    }
+    return bytes.takeBytes();
   }
 
   // ---------------------------------------------------------------------------
@@ -1510,20 +1750,26 @@ class _PromptInputState() extends State<PromptInput> {
   Future<_PasteImageResult> _handlePasteImage() async {
     if (widget.attachmentsSupported != true) return _PasteImageResult.noImage;
     final draftIdentity = widget.draftIdentity;
-    final pasteGeneration = _pasteGeneration;
+    final attachmentInputGeneration = _attachmentInputGeneration;
     final Uint8List? bytes;
     try {
       bytes = await _imageClipboard.readImage();
     } catch (error, stackTrace) {
       loge("Failed to read a pasted image", error, stackTrace);
-      return _isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)
+      return _isAttachmentInputStale(
+        draftIdentity: draftIdentity,
+        attachmentInputGeneration: attachmentInputGeneration,
+      )
           ? _PasteImageResult.stale
           : _PasteImageResult.noImage;
     }
 
     // Never let an asynchronous paste land in a composer that replaced the
     // one where the action started.
-    if (_isPasteStale(draftIdentity: draftIdentity, pasteGeneration: pasteGeneration)) {
+    if (_isAttachmentInputStale(
+      draftIdentity: draftIdentity,
+      attachmentInputGeneration: attachmentInputGeneration,
+    )) {
       return _PasteImageResult.stale;
     }
     if (!mounted) return _PasteImageResult.stale;
@@ -1574,10 +1820,13 @@ class _PromptInputState() extends State<PromptInput> {
     }
   }
 
-  bool _isPasteStale({required String draftIdentity, required int pasteGeneration}) {
+  bool _isAttachmentInputStale({
+    required String draftIdentity,
+    required int attachmentInputGeneration,
+  }) {
     return !mounted ||
         draftIdentity != widget.draftIdentity ||
-        pasteGeneration != _pasteGeneration ||
+        attachmentInputGeneration != _attachmentInputGeneration ||
         widget.attachmentsSupported != true;
   }
 

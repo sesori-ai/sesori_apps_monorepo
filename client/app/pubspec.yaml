@@ -92,6 +92,7 @@ dependencies:
   flutter_chat_ui: ^2.11.1
   flutter_chat_core: ^2.9.0
   image_picker: ^1.2.3
+  super_drag_and_drop: 0.10.0-dev.2
   flutter_keyboard_visibility:
     git:
       url: https://github.com/vespr-wallet/flutter_keyboard_visibility.git
@@ -109,6 +110,7 @@ dev_dependencies:
   bloc_test: ^10.0.0
   build_runner: ^2.16.0
   mocktail: ^1.0.5
+  super_clipboard: 0.10.0-dev.2
   flutter_native_splash: ^2.4.8
 
   # The "flutter_lints" package below contains a set of recommended lints to

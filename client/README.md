@@ -101,6 +101,9 @@ dart pub get
 ```
 
 The exact Flutter version is pinned in the repository root `.tool-versions`.
+Native `client/app` builds also require [rustup](https://rustup.rs). Keep
+`~/.cargo/bin` ahead of other Rust installations on `PATH`; the native drag-and-drop
+dependency pins and installs its own Rust toolchain and target components.
 
 ## Analyze And Test
 

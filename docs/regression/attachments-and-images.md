@@ -9,9 +9,13 @@ content the transcript renders live and after reload.
 ## Required Behavior
 
 - The composer offers image staging only for a backend declaring prompt
-  attachment support. Staged images are memory-only. They are cleared when the
-  target stops supporting attachments, the session changes, or submission
-  succeeds or settles after route exit; current-route failure instead transfers
+  attachment support. Gallery picks and clipboard images work on their existing
+  platforms; native desktop and iOS clients also accept supported image files
+  dropped on the composer, including multiple files in drag order. Dropped files
+  are read through the same per-image and aggregate bounds and content-signature
+  validation as every other composer source. Staged images are memory-only. They
+  are cleared when the target stops supporting attachments, the session changes,
+  or submission succeeds or settles after route exit; current-route failure instead transfers
   the one-shot snapshot into restoration. They never persist in a draft and travel
   inline within the staged-attachment size bound so the request fits the relay's
   message limit. The owning plugin normalizes backend-produced images into a
@@ -97,11 +101,11 @@ content the transcript renders live and after reload.
 | L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: staged composer images sent and echoed per attachment-capable plugin; a failed current-route creation restores exact attachment identities with the rest of the draft while background failure does not; generated and tool-output images display, text/image/text order is preserved live and after reload, and viewer copy/share/save works. |
 | L4 Extended | Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. |
-| L5 Full | Client end to end on alternate client platforms for picker, clipboard, animated formats, archive, and deletion; automated for an older bridge omitting attachment support; packaged or external for the released inline compatibility shape. Every supporting production plugin where supported. |
+| L5 Full | Client end to end on alternate client platforms for picker, clipboard, desktop/iPad drag-and-drop (single, multiple, mixed-validity, oversized, and stale-session drops), animated formats, archive, and deletion; automated for an older bridge omitting attachment support; packaged or external for the released inline compatibility shape. Every supporting production plugin where supported. |
 
 ## Exploration Guidance
 
-Vary the image source (picker, clipboard, backend-generated, tool output, remote
+Vary the image source (picker, clipboard, desktop/iPad file drop, backend-generated, tool output, remote
 reference), raster format, collection size from one image to over the candidate
 limit, and bytes from small to over budget. Vary whether the transcript is seen
 live, after paging back, or after a reopen, and vary the plugin.
