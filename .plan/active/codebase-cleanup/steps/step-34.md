@@ -32,8 +32,21 @@ character-identical, so the flag decided nothing.
   mutation→action mapping shared by `_runCommand` and `_runTimeoutPlan`.
 - **`_receivedInitialStatus` deleted** along with its duplicated branch.
 
-Net **-38 lines** in `lib/`. The number is small because the win is structural:
-432 lines changed to remove five duplicated mappings, not bulk deletion.
+Measured with `git diff --numstat origin/main...HEAD`:
+
+| Scope | Files | Added | Deleted | Changed | Net |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `client/module_core/lib` | 4 | 170 | 208 | 378 | **-38** |
+| tests (`module_core` + `app`) | 4 | 42 | 12 | 54 | +30 |
+| all code | 8 | 212 | 220 | 432 | -8 |
+
+Per lib file: cubit `+94 -115`, result models `+43 -36`, repository `+24 -34`,
+service `+9 -23`.
+
+The net is small because the win is structural — 378 changed lines in `lib` to
+remove five duplicated mappings, not bulk deletion. Tests grow by 30 lines
+because variant-class assertions became nested matchers that still pin the exact
+failure (see Verification).
 
 ## Behavior preserved deliberately
 
