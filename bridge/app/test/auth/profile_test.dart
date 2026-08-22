@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:sesori_bridge/src/auth/auth_api.dart';
+import 'package:sesori_bridge/src/auth/auth_repository.dart';
 import 'package:sesori_bridge/src/foundation/abortable_request_client.dart';
 import 'package:test/test.dart';
 
@@ -10,15 +11,18 @@ void main() {
   group('fetchUsername', () {
     late HttpServer server;
     late http.Client client;
-    late AuthApi api;
+    late AuthRepository repository;
 
     setUp(() async {
       server = await HttpServer.bind('127.0.0.1', 0);
       client = http.Client();
-      api = AuthApi(
-        authBackendUrl: 'http://${server.address.host}:${server.port}',
-        client: client,
-        requestClient: const AbortableRequestClient(),
+      repository = AuthRepository(
+        api: AuthApi(
+          authBackendUrl: 'http://${server.address.host}:${server.port}',
+          client: client,
+          requestClient: const AbortableRequestClient(),
+          requestDeadline: AuthApi.defaultRequestDeadline,
+        ),
       );
     });
 
@@ -48,7 +52,7 @@ void main() {
         await request.response.close();
       });
 
-      final username = await api.fetchUsername(accessToken: 'valid-token');
+      final username = await repository.fetchUsername(accessToken: 'valid-token');
       expect(username, equals('testuser'));
     });
 
@@ -73,7 +77,7 @@ void main() {
         await request.response.close();
       });
 
-      final username = await api.fetchUsername(accessToken: 'valid-token');
+      final username = await repository.fetchUsername(accessToken: 'valid-token');
       expect(username, equals('unknown-user'));
     });
 
@@ -84,7 +88,7 @@ void main() {
       });
 
       expect(
-        () => api.fetchUsername(accessToken: 'invalid-token'),
+        () => repository.fetchUsername(accessToken: 'invalid-token'),
         throwsA(isA<Exception>()),
       );
     });
@@ -93,7 +97,7 @@ void main() {
       await server.close(force: true);
 
       expect(
-        () => api.fetchUsername(accessToken: 'token'),
+        () => repository.fetchUsername(accessToken: 'token'),
         throwsA(isA<Exception>()),
       );
     });

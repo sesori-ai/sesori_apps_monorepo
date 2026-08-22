@@ -109,6 +109,7 @@ AuthApi _createApi(_BridgesTestServer server) {
     authBackendUrl: server.baseUrl,
     client: client,
     requestClient: const AbortableRequestClient(),
+    requestDeadline: AuthApi.defaultRequestDeadline,
   );
 }
 

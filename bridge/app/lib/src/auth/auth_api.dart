@@ -9,6 +9,16 @@ import "../foundation/auth_backend_url.dart";
 const String oauthSessionTokenHeader = "X-Sesori-Session-Token";
 const Duration _bridgeRegistrationDeadline = Duration(seconds: 15);
 
+class AuthApiException({
+  required final String method,
+  required final Uri uri,
+  required final int statusCode,
+  required final String body,
+}) implements Exception {
+  @override
+  String toString() => "AuthApiException: $method $uri returned status $statusCode";
+}
+
 class BridgeRegistrationException({required final int statusCode, required String body}) implements Exception {
   final String message = "BridgeRegistrationException: status $statusCode | body $body";
 
@@ -16,20 +26,14 @@ class BridgeRegistrationException({required final int statusCode, required Strin
   String toString() => message;
 }
 
-sealed class const TokenValidationResult();
-
-final class const TokenValidationValid({
-  required final String accessToken,
-  required final String refreshToken,
-}) extends TokenValidationResult;
-
-final class const TokenValidationInvalid() extends TokenValidationResult;
-
 class AuthApi({
   required String authBackendUrl,
   required final http.Client _client,
   required final AbortableRequestClient _requestClient,
+  required final Duration _requestDeadline,
 }) {
+  static const Duration defaultRequestDeadline = Duration(seconds: 35);
+
   final String _authBackendUrl = normalizeAuthBackendUrl(url: authBackendUrl);
 
   Uri _uri(String path) => Uri.parse("$_authBackendUrl/$path");
@@ -133,48 +137,43 @@ class AuthApi({
     }
   }
 
-  Future<String> fetchUsername({required String accessToken}) async {
-    final response = await _client.get(
-      _uri("auth/me"),
+  Future<AuthMeResponse> getCurrentUser({required String accessToken}) async {
+    final uri = _uri("auth/me");
+    final response = await _requestClient.send(
+      client: _client,
+      method: "GET",
+      url: uri,
       headers: {"Authorization": "Bearer $accessToken"},
+      body: null,
+      deadline: _requestDeadline,
+      abortSignal: null,
     );
     if (response.statusCode != 200) {
-      throw Exception("auth me returned status ${response.statusCode}");
+      throw AuthApiException(method: "GET", uri: uri, statusCode: response.statusCode, body: response.body);
     }
-    final authMeResponse = AuthMeResponse.fromJson(jsonDecodeMap(response.body));
-    return authMeResponse.user.providerUsername ?? "unknown-user";
+    return AuthMeResponse.fromJson(jsonDecodeMap(response.body));
   }
 
-  Future<TokenValidationResult> validateToken({
-    required String accessToken,
+  Future<AuthResponse> refreshToken({
     required String refreshToken,
   }) async {
-    final meResponse = await _client.get(
-      _uri("auth/me"),
-      headers: {"Authorization": "Bearer $accessToken"},
-    );
-    if (meResponse.statusCode == 200) {
-      return TokenValidationValid(accessToken: accessToken, refreshToken: refreshToken);
-    }
-    if (meResponse.statusCode != 401) {
-      return const TokenValidationInvalid();
-    }
-
-    final refreshResponse = await _client.post(
-      _uri("auth/refresh"),
-      headers: {"Content-Type": "application/json"},
+    final uri = _uri("auth/refresh");
+    final response = await _requestClient.send(
+      client: _client,
+      method: "POST",
+      url: uri,
+      headers: const {"Content-Type": "application/json"},
       body: jsonEncode({"refreshToken": refreshToken}),
+      deadline: _requestDeadline,
+      abortSignal: null,
     );
-    if (refreshResponse.statusCode != 200) {
-      return const TokenValidationInvalid();
+    if (response.statusCode != 200) {
+      throw AuthApiException(method: "POST", uri: uri, statusCode: response.statusCode, body: response.body);
     }
-    final authResponse = AuthResponse.fromJson(jsonDecodeMap(refreshResponse.body));
+    final authResponse = AuthResponse.fromJson(jsonDecodeMap(response.body));
     if (authResponse.accessToken.isEmpty || authResponse.refreshToken.isEmpty) {
       throw Exception("refresh response missing tokens");
     }
-    return TokenValidationValid(
-      accessToken: authResponse.accessToken,
-      refreshToken: authResponse.refreshToken,
-    );
+    return authResponse;
   }
 }

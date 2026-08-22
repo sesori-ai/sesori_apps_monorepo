@@ -3,6 +3,8 @@ import "dart:convert";
 import "dart:io";
 
 import "package:http/http.dart" as http;
+import "package:sesori_bridge/src/auth/auth_api.dart";
+import "package:sesori_bridge/src/auth/auth_repository.dart";
 import "package:sesori_bridge/src/auth/token.dart";
 import "package:sesori_bridge/src/auth/token_refresh_exception.dart";
 import "package:sesori_bridge/src/auth/token_service.dart";
@@ -481,16 +483,22 @@ TokenService _tokenManager({
   http.Client? client,
   Duration requestDeadline = const Duration(seconds: 1),
 }) {
+  final resolvedClient = client ?? http.Client();
   final manager = TokenService(
     initialToken: initialToken,
-    authBackendUrl: authBackendUrl,
     loadTokens: loadTokens,
     saveTokens: saveTokens,
-    ownedClient: client ?? http.Client(),
-    requestDeadline: requestDeadline,
-    requestClient: const AbortableRequestClient(),
+    authRepository: AuthRepository(
+      api: AuthApi(
+        authBackendUrl: authBackendUrl,
+        client: resolvedClient,
+        requestClient: const AbortableRequestClient(),
+        requestDeadline: requestDeadline,
+      ),
+    ),
   );
   addTearDown(manager.dispose);
+  addTearDown(resolvedClient.close);
   return manager;
 }
 

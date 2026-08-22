@@ -38,6 +38,7 @@ import "../api/database/history/chat_history_database.dart";
 import "../api/sesori_server_api.dart";
 import "../auth/access_token_provider.dart";
 import "../auth/auth_api.dart";
+import "../auth/auth_repository.dart";
 import "../auth/bridge_id_migration_service.dart";
 import "../auth/bridge_id_storage.dart";
 import "../auth/bridge_registration_repository.dart";
@@ -323,9 +324,11 @@ class const BridgeRuntimeRunner._() {
       authBackendUrl: options.authBackendUrl,
       client: httpClient,
       requestClient: const AbortableRequestClient(),
+      requestDeadline: AuthApi.defaultRequestDeadline,
     );
+    final authRepository = AuthRepository(api: authApi);
     final runtimeAuthService = BridgeRuntimeAuthService(
-      authApi: authApi,
+      authRepository: authRepository,
       loginEmailRepository: LoginEmailRepository(
         emailAuthApi: LoginEmailApi(authBackendUrl: options.authBackendUrl),
         promptForCredentials: terminalPromptRepository.promptForEmailCredentials,
@@ -561,15 +564,12 @@ class const BridgeRuntimeRunner._() {
         authAccessToken = authTokens.accessToken;
         final tokenManager = TokenService(
           initialToken: authAccessToken,
-          authBackendUrl: options.authBackendUrl,
           loadTokens: () => loadTokens(dataDirectory: options.dataDirectory),
           saveTokens: (data) => saveTokens(
             data: data,
             dataDirectory: options.dataDirectory,
           ),
-          ownedClient: http.Client(),
-          requestDeadline: TokenService.defaultRequestDeadline,
-          requestClient: const AbortableRequestClient(),
+          authRepository: authRepository,
         );
         shutdownCoordinator.add(disposable: tokenManager.dispose);
         accessTokenProvider = tokenManager;

@@ -11,10 +11,12 @@ orchestrator and SSE delivery.
 
 The implementation now:
 
-- exposes OAuth, bridge registration, profile lookup, and startup token
-  validation through one injected `AuthApi`;
-- renames `TokenManager` to `TokenService` and routes its refresh request,
-  registration requests, and `SesoriServerApi` requests through one
+- exposes OAuth, bridge registration, profile lookup, and token-refresh
+  endpoints through one injected `AuthApi`, with `AuthRepository` mapping the
+  profile and refresh results for services;
+- keeps startup token validation and refresh policy in
+  `BridgeRuntimeAuthService` and renames `TokenManager` to `TokenService`;
+- routes auth, registration, and `SesoriServerApi` requests through one
   `AbortableRequestClient` contract;
 - keeps request deadlines active through response-body consumption, rejects
   already-aborted requests before dispatch, and detaches timers/listeners after
@@ -37,9 +39,9 @@ and persisted private-file permissions remain owner-only on Unix.
 
 - `dart analyze --fatal-infos`: no issues.
 - Focused auth, storage, request, crypto, SSE, repository, runtime-auth,
-  registration, and token re-auth matrix: 182 tests passed.
+  registration, and token re-auth matrix: 184 tests passed.
 - `git diff --check`: clean.
-- `dart format` checked 42 supported touched Dart files without changes. The
+- `dart format` formatted or confirmed the supported touched Dart files. The
   pinned formatter still crashes on existing enhanced enum bodies in
   `orchestrator.dart`, `bridge_runtime_runner.dart`, `login_oauth_service.dart`,
   and `login_test.dart`; analyzer parsing is clean and edited sections retain
@@ -60,3 +62,7 @@ validation now uses sealed valid/invalid variants.
 The independent correctness and security review found one startup regression:
 a successful refresh response with empty tokens could be persisted. Empty
 tokens are rejected again, with direct regression coverage. No findings remain.
+Follow-up pull-request review moved endpoint-result mapping into
+`AuthRepository`, kept startup validation policy in the runtime service, bounded
+the underlying validation requests, and flushed private temporary files before
+rename.

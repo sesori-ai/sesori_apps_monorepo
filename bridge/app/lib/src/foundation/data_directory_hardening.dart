@@ -53,7 +53,7 @@ Future<void> writeRestrictedFile({required String filePath, required String cont
 
   final temporary = File("$filePath.$pid.${DateTime.now().microsecondsSinceEpoch}.tmp");
   try {
-    await temporary.writeAsString(contents);
+    await temporary.writeAsString(contents, flush: true);
     await hardenPath(targetPath: temporary.path, mode: ownerOnlyFileMode);
     await temporary.rename(filePath);
   } finally {

@@ -280,6 +280,7 @@ void main() {
           authBackendUrl: authServer.baseUrl,
           client: authServer.client,
           requestClient: const AbortableRequestClient(),
+          requestDeadline: AuthApi.defaultRequestDeadline,
         );
 
         await api.ackOAuthSessionCompletion(sessionToken: 'session-token-123');
@@ -530,6 +531,7 @@ LoginOAuthService _createOAuthService({
       authBackendUrl: authServer.baseUrl,
       client: authServer.client,
       requestClient: const AbortableRequestClient(),
+      requestDeadline: AuthApi.defaultRequestDeadline,
     ),
     clientType: AuthClientType.bridgeMacos,
     device: DeviceInfo(name: 'Test Mac', osVersion: 'macOS 14.5', appVersion: '1.2.0'),
