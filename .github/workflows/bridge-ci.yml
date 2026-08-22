@@ -76,9 +76,18 @@ jobs:
         shell: bash
         working-directory: shared
         run: |
-          for module in $(sed -n 's/^MODULES := //p' Makefile); do
+          modules="$(sed -n 's/^MODULES := //p' Makefile)"
+          # Resolve every package first: sesori_shared loads no_slop_linter as an
+          # analyzer plugin by path, so the plugin must have its own dependencies
+          # before the first analysis runs.
+          for module in $modules; do
+            echo "::group::pub get $module"
+            (cd "$module" && dart pub get)
+            echo "::endgroup::"
+          done
+          for module in $modules; do
             echo "::group::$module"
-            (cd "$module" && dart pub get && dart analyze --fatal-infos)
+            (cd "$module" && dart analyze --fatal-infos)
             if [ -d "$module/test" ]; then
               (cd "$module" && dart test)
             fi

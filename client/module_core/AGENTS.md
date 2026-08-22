@@ -20,7 +20,9 @@ lib/src/
 ├── di/               @InjectableInit for core DI registration
 ├── foundation/       Platform interfaces and shared models (analytics, composer)
 ├── logging/          logd/logw/loge with configurable LogLevel
-├── platform/         Abstract interfaces: UrlLauncher, DeepLinkSource, LifecycleSource (adapters in app/lib/core/platform/)
+├── platform/         Abstract interfaces (UrlLauncher, DeepLinkSource, LifecycleSource,
+│                  RouteSource, NotificationCanceller, …); Flutter adapters live in
+│                  the product shell, mostly under app/lib/core/platform/
 └── routing/          AppRoute enum, AuthRedirectService
 ```
 
