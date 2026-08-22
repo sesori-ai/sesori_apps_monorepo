@@ -100,8 +100,10 @@ stale records that and does less.
 ## Principles For Every Step
 
 - Behavior-preserving by default. A step that intentionally changes observable
-  behavior (Steps 19, 38, 40, 41, 42) says so in its PR body and names the
-  regression document it affects.
+  behavior (Steps 19, 21, 38, 40, 41, 42) says so in its PR body and updates
+  the affected `docs/regression/` document in the same PR; Step 44 remains the
+  final consistency pass for implementation references, not the first place a
+  behavior change is documented.
 - Delete before you add. Prefer removing the copy over generalizing it; when a
   shared primitive is introduced it must replace at least two existing copies
   and own state, a lifecycle, or an invariant — never exist for file length.
@@ -115,8 +117,8 @@ stale records that and does less.
   changes also validate the downstream product shells. CI runs the full matrix.
 - Architecture-implementation review is invoked only for steps that add or move
   production classes, change DI ownership, or touch shared boundaries: Steps 7,
-  15, 18, 21, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37. Pure deletions,
-  docs, tooling, and test-only steps skip it.
+  15, 17, 18, 21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37. Pure
+  deletions, docs, tooling, and test-only steps skip it.
 - Keep recovered failures observable: the consolidation of helpers never drops a
   log that was the only trace of an error, and the catch-hygiene items add the
   error and stack as logger arguments rather than interpolating them.
@@ -128,24 +130,30 @@ Each decision has a default so execution never blocks; the owner can override
 any of them in the Step 1 PR review or later in `TRACKER.md`.
 
 - **D1 — Minimum supported public peer version (gates Step 42).** No policy
-  exists. *Default:* support every public release from the last 60 days; today
-  that is `≥ v1.2.0` (2026-06-27). Under that default Step 42 may retire paths
-  that only serve peers `≤ v1.1.x`: `GET /agent` and `AgentRepository.
-  legacyPluginId` (v1.0.7 clients), the nullable `RejectQuestionRequest.
-  sessionId` legacy question path and its dispatcher lanes (v1.0.9 clients), the
-  `displaySessionId` fallback and the empty-health-body tolerance (v1.1.x
-  bridges), and the `v1.1.2` post-update relaunch variable. A more aggressive
-  N-2-minor baseline (`≥ v1.6.0`) would additionally retire the v1.3–v1.5 family
+  exists in the repository. *Default: retain support for every public release.*
+  Removing a compatibility path for a published peer is a wire-contract change,
+  so silence is not approval: Step 42 removes nothing until the owner records a
+  baseline here. Candidates for that decision, with what each retires:
+  `≥ v1.4.0` — the value PR #1017 (`reliability-cleanup`) records as an owner
+  decision on 2026-08-21 ("remove pre-v1.4.0 paths only; keep every v1.5.x+
+  marker; on-disk/runtime-format compat stays regardless of marker age") —
+  retires `GET /agent` and `AgentRepository.legacyPluginId` (v1.0.7 clients),
+  the nullable `RejectQuestionRequest.sessionId` legacy question path and its
+  dispatcher lanes (v1.0.9 clients), the `displaySessionId` fallback and the
+  empty-health-body tolerance (v1.1.x bridges), the `v1.1.2` post-update
+  relaunch variable, and the `v1.3.0` bridge-id migration;
+  `≥ v1.6.0` (N-2 minors) would additionally retire the v1.4–v1.5 family
   (`legacyMissingPluginId` defaults, `Project` path/time fallbacks,
   `unavailablePluginIds`, discovery-404 fallback, `OpenProjectRequest.gitAction`
-  tolerance); it is listed for the owner, not assumed. Bridge-local install
-  migrations (`bridge_id_migration_service`, v1.3.0) are an install-base
-  question answered the same way.
-- **D2 — Flatten the bridge/app layer tree (Step 7).** *Default:* yes, one
-  mechanical `git mv` PR of ~210 files (net 0 lines) scheduled after the dead
-  code is deleted and before the bridge production refactors, so every later
-  step is written against the final layout. If declined, Step 7 becomes a
-  docs-only rewrite that describes the dual tree honestly.
+  tolerance). If the owner confirms the #1017 decision in the Step 1 PR review
+  or in `TRACKER.md`, D1 becomes `≥ v1.4.0` and Step 42 executes against it.
+- **D2 — Flatten the bridge/app layer tree (Step 7).** A ~210-file
+  mechanical `git mv` (net 0 lines) is a considerable refactor, which the
+  repository rules say needs explicit approval. *Default: not performed.* Until
+  the owner affirmatively approves the move, Step 7 is the docs-only rewrite
+  that describes the dual tree honestly. The recommendation is to approve it:
+  scheduled after the dead code is deleted and before the bridge production
+  refactors, every later step is then written against the final layout.
 - **D3 — Replace `flutter_chat_ui` with a plain reversed list (Step 41).**
   *Default:* run the spike; land only if the listed scroll behaviors (follow,
   detach snapshot, older-page prepend freeze, prompt-row transitions, keyboard
@@ -170,35 +178,35 @@ deletions, generated and tests included).
 
 | Step | Exact PR title | Target | Scope |
 |---|---|---:|---|
-| 1/45 | `🌱 [codebase-cleanup] docs: raise the reliability cleanup plan [step 1/45]` | 1,400–1,700 | This plan and tracker only; over the soft cap because the 45-step evidence base is what lets each later step execute without re-investigation. |
+| 1/45 | `🌱 [codebase-cleanup] docs: raise the reliability cleanup plan [step 1/45]` | 1,700–1,900 | This plan and tracker only; over the soft cap because the 45-step evidence base (plus the PR #1017 reconciliation and two review rounds) is what lets each later step execute without re-investigation. |
 | 2/45 | `🌿 [codebase-cleanup] client(module_core): delete the dead concurrency copy [step 2/45]` | 1,200–1,400 | Delete `module_core/lib/src/concurrency/` + `dto_parser.dart` and their two app tests. |
 | 3/45 | `🌿 [codebase-cleanup] shared: delete dead helpers, models, and the rxdart dependency [step 3/45]` | 1,300–1,600 | Trim `sugar_dart`/`iterable_x`/`future_x`, delete four dead models and `RefCountReusableStream`, drop `rxdart`. |
 | 4/45 | `🌿 [codebase-cleanup] shared: tighten management fields and correct compatibility markers [step 4/45]` | 250–500 | Required `snapshotToken`/`bridgeId`, `ActiveSession` defaults, converter reuse, relabel/date COMPATIBILITY markers, remove OpenCode DTOs from shared. |
 | 5/45 | `🌿 [codebase-cleanup] bridge(app): delete dead production code [step 5/45]` | 700–1,000 | Dead repository/DAO/mapper/tracker methods, test-only core members, stub library, unused `acp_plugin` dependency. |
-| 6/45 | `🌿 [codebase-cleanup] tooling: close CI gaps, prune dependencies, and refresh docs [step 6/45]` | 250–450 | `sesori_shared` CI, `--fatal-infos` parity, unused pubspec deps, `docs/ARCHITECTURE.md`, AGENTS stale names, README plugin lists. |
+| 6/45 | `🌿 [codebase-cleanup] tooling: close CI gaps, prune dependencies, and refresh docs [step 6/45]` | 300–500 | `sesori_shared` CI, one bridge-ci package list, `--fatal-infos` parity, unused pubspec deps, `docs/ARCHITECTURE.md`, AGENTS stale names, README plugin lists. |
 | 7/45 | `⚙️ [codebase-cleanup] bridge(app): flatten the duplicated layer tree [step 7/45]` | 500–900 | D2: `git mv` `src/bridge/*` into `src/*`; rewrite `bridge/ARCHITECTURE.md` and the app `AGENTS.md` structure. |
 | 8/45 | `🌿 [codebase-cleanup] bridge(plugins): add a plugin-interface testing library for console and process fakes [step 8/45]` | 1,100–1,500 | `plugin_interface_testing.dart`; migrate Stdout, HostProcessService, SpawnedProcess, BridgeHostInfo, IOSink, clock fakes across seven packages. |
 | 9/45 | `⚙️ [codebase-cleanup] bridge(app): consolidate plugin and repository test fakes [step 9/45]` | 1,200–1,500 | `test/helpers/fakes/`; `FakeBridgePlugin`/`FakeDerivedBridgePlugin`; private copies become subclasses. |
 | 10/45 | `🌿 [codebase-cleanup] bridge(app): consolidate process-runner and service test fakes [step 10/45]` | 900–1,300 | `RecordingProcessRunner`, control-client, worktree, process-repository, settings-api, relay-client fakes. |
 | 11/45 | `🌿 [codebase-cleanup] bridge(plugins): add plugin-local test support for OpenCode, ACP, and Pi [step 11/45]` | 1,200–1,500 | OpenCode fake API + fixtures, ACP plugin builder, Pi storage fakes. |
 | 12/45 | `🌿 [codebase-cleanup] client(module_core): consolidate test helpers and cubit harnesses [step 12/45]` | 800–1,100 | Shared mocks, `buildSessionDetailCubit`, connection-service support. |
-| 13/45 | `🌿 [codebase-cleanup] client: publish a module_core testing library and relocate its tests [step 13/45]` | 500–900 | `sesori_dart_core/testing.dart`, app helper de-dup, move 16 module_core tests out of `client/app/test`, prune dead exports. |
+| 13/45 | `🌿 [codebase-cleanup] client: publish a module_core testing library and relocate its tests [step 13/45]` | 500–900 | `sesori_dart_core/testing.dart`, app helper de-dup, move the 13 pure-Dart module_core tests out of `client/app/test` (widget tests stay), prune dead exports. |
 | 14/45 | `⚙️ [codebase-cleanup] tests: replace real-duration sleeps with fake time and state awaiting [step 14/45]` | 200–500 | Nine worst files; one `awaitState` helper per package. |
-| 15/45 | `🌿 [codebase-cleanup] bridge(app): share tracked-work, URL, and updater helpers [step 15/45]` | 600–1,000 | `PendingOperations`, auth URL normalization, updater/server helper dups, sealed result models, one encryptor per session, consistency bucket. |
+| 15/45 | `🌿 [codebase-cleanup] bridge(app): share tracked-work helpers and fix logging consistency [step 15/45]` | 400–700 | `PendingOperations`, session-options listener outcome, logger-argument and catch consistency, clocks, SSE event construction, push maps (verify first). |
 | 16/45 | `🚧 [codebase-cleanup] bridge(app): remove the triplicated PluginRuntime command preamble [step 16/45]` | 300–500 | One precondition helper and one transition record for stop/disable/restart. |
 | 17/45 | `⚙️ [codebase-cleanup] bridge(app): simplify Orchestrator fencing and PluginLifecycleService initialization [step 17/45]` | 400–700 | `_isCurrentSource` everywhere, non-null plugin ids, one composite, plugins in the constructor. |
-| 18/45 | `🚧 [codebase-cleanup] bridge(app): consolidate token validation and profile fetch [step 18/45]` | 250–450 | Fold `validate.dart` into `TokenManager`; one `/auth/me` helper; one restricted-file writer. |
+| 18/45 | `🚧 [codebase-cleanup] bridge(app): consolidate auth validation, abortable requests, and encryptor ownership [step 18/45]` | 500–800 | `TokenService` (renamed) absorbs `validate.dart`; one `/auth/me` helper; auth-backend URL normalized once; `AbortableRequestClient`; one `SessionEncryptor` per session; one restricted-file writer. |
 | 19/45 | `⚙️ [codebase-cleanup] bridge(app): deduplicate request-handler error mapping and guards [step 19/45]` | 500–800 | One guard, one non-empty check, one JSON error builder, unused handler parameters removed. |
 | 20/45 | `⚙️ [codebase-cleanup] bridge(app): deduplicate SessionRepository, enrichment, and pending-interaction repositories [step 20/45]` | 500–800 | Plugin-use preamble, chunked reads, `enrichSessions` without re-derivation, shared question/permission helpers. |
 | 21/45 | `🚧 [codebase-cleanup] bridge(app): replace hand-rolled FIFO lanes with the foundation ParallelLock [step 21/45]` | 200–400 | Six single tails and two keyed tails on one tested primitive. |
-| 22/45 | `⚙️ [codebase-cleanup] bridge(app): verify-first simplifications for fences, epochs, and platform trios [step 22/45]` | 150–400 | Inner generation fences, options-epoch re-checks, sealed wake-lock/editor implementations. |
+| 22/45 | `⚙️ [codebase-cleanup] bridge(app): deduplicate updater and server helpers and seal platform trios [step 22/45]` | 400–700 | CSV/IO/cleanup/network helper copies, sealed update result models, `DefaultEditorRepository` fold, sealed wake-lock/editor implementations. |
 | 23/45 | `⚙️ [codebase-cleanup] bridge(plugins): remove dead contract members and collapse PluginProvider [step 23/45]` | 1,200–1,600 | `healthCheck`/`dispose` off the contract, one `PluginProvider`, `PluginSetupStatus` field, dead seams and stale comments. |
 | 24/45 | `🌿 [codebase-cleanup] bridge(runtime): remove the migration-era dual-mode runtime knobs [step 24/45]` | 300–500 | One production behavior for health policy, port policy, early exit, intent store. |
 | 25/45 | `🚧 [codebase-cleanup] bridge(plugins): fold Codex and OpenCode managed-runtime plumbing into sesori_plugin_runtime [step 25/45]` | 800–1,300 | Shared draining process, port candidates, status reporter, bridge-plugin wrapper, start helper. |
 | 26/45 | `🚧 [codebase-cleanup] bridge(plugins): share descriptor setup probing and managed installation [step 26/45]` | 900–1,400 | Sealed probe outcome, selection service, install factory, one ANSI strip. |
 | 27/45 | `🚧 [codebase-cleanup] bridge(plugins): extract the shared pending-permission registry base [step 27/45]` | 500–800 | ACP/Codex skeleton into the interface; Cursor branches move to Cursor. |
 | 28/45 | `⚙️ [codebase-cleanup] bridge(plugins): share small mapper helpers and lifecycle wrappers [step 28/45]` | 300–500 | `asStringKeyedMap`/`nonEmptyString`, part constructors, terminal-status extension, compaction command, ACP config parser, Claude/Pi wrapper. |
-| 29/45 | `🚧 [codebase-cleanup] bridge(plugins): share stdio pending-request and transport plumbing [step 29/45]` | 400–700 | `PendingRequestTable` and `LineFramedStdioTransport` in foundation; four clients. |
+| 29/45 | `🚧 [codebase-cleanup] bridge(plugins): share stdio pending-request and transport plumbing [step 29/45]` | 600–1,100 | `NdjsonProcessClient` in `sesori_plugin_runtime` per the PR #1017 contract; ACP, Codex, Claude adopt it; Pi keeps its frame shape. |
 | 30/45 | `⚙️ [codebase-cleanup] client(module_core): delete SessionService and inline thin services [step 30/45]` | 400–700 | `SessionService`, `BridgeSettingsService`, view API/repository twins, dead state/converter/fields. |
 | 31/45 | `⚙️ [codebase-cleanup] client(module_core): deduplicate SessionDetailCubit derivation and analytics reporting [step 31/45]` | 400–700 | Snapshot derivation record, queue view, reply helper, typed agents, shared once-per-state analytics reporter, catch hygiene. |
 | 32/45 | `🚧 [codebase-cleanup] client(module_core): share list-cubit scaffolding and relay request plumbing [step 32/45]` | 400–700 | `reconnectAndAwaitOutcome`, ordered emit, optimistic removal, one relay request method, one id generator. |
@@ -211,8 +219,8 @@ deletions, generated and tests included).
 | 39/45 | `🌿 [codebase-cleanup] client(app): remove in-file duplication from the prompt composer [step 39/45]` | 200–350 | Paste, draft, pill, and notice duplicates inside `prompt_input.dart`. |
 | 40/45 | `🚧 [codebase-cleanup] client(app): model the voice interaction as one sealed state [step 40/45]` | 600–900 | Nine coordination flags become one sealed `_VoiceInteraction`. |
 | 41/45 | `🚧 [codebase-cleanup] client(app): render the transcript with a plain reversed list [step 41/45]` | 500–800 | D3 spike; drop `flutter_chat_ui`/`flutter_chat_core` on parity. |
-| 42/45 | `🚧 [codebase-cleanup] compat: retire compatibility paths outside the supported baseline [step 42/45]` | 300–700 | D1: delete every path whose old shape only serves peers below the baseline. |
-| 43/45 | `⚙️ [codebase-cleanup] tooling: enable no_slop_linter for the small bridge packages [step 43/45]` | 100–300 | D6: foundation/interface/runtime; record counts for the rest. |
+| 42/45 | `🚧 [codebase-cleanup] compat: retire compatibility paths outside the supported baseline [step 42/45]` | 0–700 | D1: executes only against an owner-recorded baseline; with none recorded it removes nothing and records that. |
+| 43/45 | `⚙️ [codebase-cleanup] tooling: align installers, assert codegen freshness, and enable no_slop_linter for small bridge packages [step 43/45]` | 300–600 | `install.ps1`/`install.sh` parity with fixture tests, offline codegen freshness job, D6 linter rollout for foundation/interface/runtime with counts recorded for the rest. |
 | 44/45 | `🌱 [codebase-cleanup] docs: reconcile regression coverage after the cleanup [step 44/45]` | 100–250 | Reconcile affected `docs/regression/` documents. |
 | 45/45 | `🌿 [codebase-cleanup] test: verify the cleanup series and retire the plan [step 45/45]` | 80–250 | Run the recorded level and matrix; retire the plan. |
 
@@ -347,9 +355,13 @@ All verified with whole-word grep over lib, bin, and test across the repo.
 ### Step 6 — tooling, dependencies, docs
 
 - CI: add `shared/sesori_shared` analyze + test to the bridge (or a new shared)
-  workflow; `tool/` scripts are analyzed. Makefiles: `bridge/Makefile:92-95`
-  and `shared/Makefile:34-37` gain `--fatal-infos`; delete the caveats at
-  `bridge/AGENTS.md:17` and `docs/CONTRIBUTING.md:91`.
+  workflow; `tool/` scripts are analyzed; `.github/workflows/bridge-ci.yml`
+  drives its 12 analyze + 12 test steps from one checked-in package list
+  (preserving per-package output and fail-fast) so adding a package edits one
+  line, and its path filters gain `install.sh`/`install.ps1` for Step 43's
+  parity suite. Makefiles: `bridge/Makefile:92-95` and `shared/Makefile:34-37`
+  gain `--fatal-infos`; delete the caveats at `bridge/AGENTS.md:17` and
+  `docs/CONTRIBUTING.md:91`.
 - Dependencies verified unused by `package:<name>/` grep: `client/app`
   `collection`, `web_socket_channel`, `cupertino_icons`, `cryptography_flutter`
   (D4), `cryptography` → dev-only (used by one test); `client/module_core`
@@ -472,9 +484,17 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   containment with the module_core helper and already diverged) keeps only
   app-only mocks. `mocktail` becomes a regular dependency of module_core for
   that library; call it out in the PR.
-- Move the 16 files (5,061 lines) that import `package:sesori_dart_core/src/...`
-  from `client/app/test` to `client/module_core/test` on `package:test`; then
-  prune the exports in `lib/sesori_dart_core.dart` with no production consumer
+- Of the 16 files under `client/app/test` that import
+  `package:sesori_dart_core/src/...`, move the 13 pure-Dart ones (relay client,
+  room-key storage, connection service/config/SSE event, voice API, relay HTTP
+  client, connection-overlay cubit, login cubit, session-detail cubit, plus the
+  converter and concurrency tests that Steps 2/30 delete) to
+  `client/module_core/test` on `package:test`; the two app widget tests
+  (`diff_hunk_widget_test.dart`, `diff_line_widget_test.dart`, which use
+  `testWidgets` and `package:sesori_mobile`) and the app helper stay in
+  `client/app` and stop deep-importing `src/` where the testing library makes
+  that possible; then prune the exports in `lib/sesori_dart_core.dart` with no
+  production consumer
   (`notification_api.dart`, `plugin_preference_api.dart`,
   `plugin_preference_repository.dart`, `bridge_repository.dart`,
   `product_analytics_preference_models.dart`,
@@ -500,48 +520,26 @@ All verified with whole-word grep over lib, bin, and test across the repo.
 - Verify: run each touched suite three times locally (`dart test -j1`) before
   relying on CI; no production change.
 
-### Step 15 — bridge/app shared helpers and consistency
+### Step 15 — bridge/app tracked-work helpers and logging consistency
 
 - `PendingOperations` in `bridge/sesori_bridge_foundation` beside `ParallelLock`
   (it is used by the app and, in Step 28, by the Claude and Pi plugins, so the
   audience rule puts it in the foundation package, not under the app): surface
   `track(Future<void>)`, `drain()`, `isEmpty`, `length`; `drain()` awaits
-  `Future.wait` over the futures tracked at call time, fails fast on error, and
-  does not await futures tracked afterwards — exactly what the copies do today,
-  including the orchestrator's shutdown summary that reads the count. It
+  `Future.wait` (default `eagerError: false`) over the futures tracked at call
+  time — it completes only after every captured operation has settled, then
+  surfaces the first error, so disposal never closes a database or stream
+  while a tracked write is still running — and does not await futures tracked
+  afterwards; exactly what the copies do today, including the orchestrator's
+  shutdown summary that reads the count. It
   replaces the identical `Set<Future<void>>` + `whenComplete(remove)` +
   `Future.wait` + memoized dispose skeleton at `listeners/chat_history_listener.dart`,
   `chat_history_activity_listener.dart`, `session_options_changed_refresh_listener.dart`,
   `session_options_creation_refresh_listener.dart`, `viewed_project_pr_refresh_listener.dart`,
   `debug_server.dart`, twice in `orchestrator.dart`, `session_creation_service.dart:20`,
   and `session_operation_dispatcher.dart:15-16` (drain semantics unchanged).
-- Auth-backend URL trailing-slash normalization copied in `auth/validate.dart:28`,
-  `token_manager.dart:92-94`, `login_email_api.dart:8`, `login_oauth_api.dart:9`,
-  `bridge_registration_api.dart:20-22`, `profile.dart:11`,
-  `push/push_notification_client.dart:34`, `api/sesori_server_api.dart:53` →
-  normalize once in `BridgeCliOptions.resolveAuthBackendUrl`.
-- Updater/server: `_parseCsvLine` ×2 (`process_id_lookup_api.dart:88-116`,
-  `system_process_api.dart:226-254`), `_isFileMissing`/`_isPermissionDenied`
-  copies (`runtime_file_api.dart:217-225`, `update_lock.dart:279-297`,
-  `update_install_service.dart:112-120`) → `FilesystemPermissionValidator`;
-  `UpdateLock._cleanupPath` and both `_deleteIfExists` → `FilesystemCleaner`,
-  which moves from `updater/foundation/` to the app's Layer-0
-  `lib/src/foundation/` beside `FilesystemPermissionValidator` because
-  `server/api/` now consumes it too;
-  one `isTransientNetworkError` beside `isRetryableHttpStatus`; one
-  `UpdateResult.userFacingReason` for the duplicated `_stageFailureReason`.
-- Impossible states: `UpdateInstallResult` → sealed `Staged(path)` |
-  `StageFailed(result)`; `UpdateResolution.latestEligible/latestVersion` → one
-  nullable record; `TokenValidationResult.isValid` → sealed;
-  `push_session_state_tracker.dart` role strings → enum;
-  `PluginLifecycleSnapshot` → reuse `PluginRuntimeSnapshot`.
-- One `SessionEncryptor` per session (built in `Orchestrator.create`, required
-  by `OrchestratorSession` and `SSEManager`; delete `setRoomKey`, the nullable
-  room key, the lazy init, and `KeyExchangeManager`'s never-injected optional
-  `cryptoService`). Same key, cipher, and per-call random nonce; confirm the
-  `package:cryptography` nonce policy in the PR. Optionally build
-  `KeyExchangeManager` in `create` as well so `OrchestratorSession` no longer
-  carries raw key bytes only for `_startAndServe`.
+- `push_session_state_tracker.dart:33-37,506-509` role strings
+  (`"assistant"/"user"/"error"`) → enum ("No Magic Strings").
 - Session-options refresh listeners (`session_options_changed_refresh_listener.dart:53-82`,
   `session_options_creation_refresh_listener.dart:43-68`) share one outcome
   handler or move outcome logging into `SessionOptionsService`.
@@ -561,8 +559,9 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   carries; delete them only after confirming every plugin emits the same
   `sessionID` on Asked and Replied.
 - Verify: `test/listeners/*`, `test/bridge/debug_server_test.dart`, orchestrator
-  shutdown tests, `test/auth/*`, `test/push/*`, `test/updater/*`,
-  `test/server/*`, `test/bridge/sse_manager_test.dart`, `key_exchange_test.dart`.
+  shutdown/event-ordering tests, `test/push/*`, `test/bridge/sse/*`,
+  `orchestrator_emit_bridge_event_test.dart`; `sesori_bridge_foundation`
+  tests for `PendingOperations`.
 
 ### Step 16 — PluginRuntime command preamble
 
@@ -600,13 +599,42 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   `_publishReadyPluginIds` hand-rolls list equality (`ListEquality` imported);
   `_mapStopIntent` and the runtime→lifecycle state switch duplicated;
   `updateIdleTimeout` calls `_requireBridgeId()` three times. ~20 test call
-  sites switch to a constructor argument.
+  sites switch to a constructor argument. `PluginLifecycleSnapshot`
+  (`repositories/plugin_lifecycle_repository.dart:5-17,82-97`) duplicates
+  `PluginRuntimeSnapshot` except `transition` → `transitionSettled: bool`; the
+  repository stays and returns the runtime snapshot ("No Redundant Model Layers").
 - Verify: `test/bridge/orchestrator_*_test.dart`, `test/push/*`,
   `test/services/plugin_lifecycle_service_test.dart`,
   `test/bridge/routing/get_plugin_setup_handler_test.dart`.
 
-### Step 18 — bridge auth consolidation
+### Step 18 — bridge auth consolidation, abortable requests, encryptor ownership
 
+- Auth-backend URL trailing-slash normalization copied in `auth/validate.dart:28`,
+  `token_manager.dart:92-94`, `login_email_api.dart:8`, `login_oauth_api.dart:9`,
+  `bridge_registration_api.dart:20-22`, `profile.dart:11`,
+  `push/push_notification_client.dart:34`, `api/sesori_server_api.dart:53` →
+  normalize once in `BridgeCliOptions.resolveAuthBackendUrl`.
+- `sesori_server_api.dart`, `token_manager.dart`, and
+  `bridge_registration_api.dart` each hand-roll completer + deadline timer +
+  `http.AbortableRequest` + finally-cancel (PR #1017 finding F5) → one final
+  class `AbortableRequestClient` in
+  `sesori_bridge_foundation/lib/src/http/abortable_request_client.dart` with
+  `Future<http.Response> send({required http.Client client, required String
+  method, required Uri url, required Map<String, String>? headers, required
+  Object? body, required Duration deadline, required AbortSignal? abortSignal})`
+  that builds the combined abort trigger (deadline plus optional external
+  signal), buffers the response via `http.Response.fromStream` inside the
+  deadline, checks `AbortSignal.isAborted` first and subscribes/unsubscribes in
+  its finally path; callers keep status handling and retry policy.
+- `TokenValidationResult.isValid` (`auth/validate.dart:10-17`) → sealed
+  `Valid(tokens)` | `Invalid`.
+- One `SessionEncryptor` per session (built in `Orchestrator.create`, required
+  by `OrchestratorSession` and `SSEManager`; delete `setRoomKey`, the nullable
+  room key, the lazy init, and `KeyExchangeManager`'s never-injected optional
+  `cryptoService`). Same key, cipher, and per-call random nonce; confirm the
+  `package:cryptography` nonce policy in the PR. Optionally build
+  `KeyExchangeManager` in `create` as well so `OrchestratorSession` no longer
+  carries raw key bytes only for `_startAndServe`.
 - POST `/auth/refresh` + `AuthResponse.fromJson` exists at
   `auth/token_manager.dart:92-113` and `auth/validate.dart:60-90`; GET
   `/auth/me` at `validate.dart:28-49` and `profile.dart:10-24`; `validate.dart`
@@ -624,7 +652,11 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   `writeRestrictedFile`. Retry-once semantics and file modes are preserved
   exactly. A shared client/bridge auth policy is explicitly not built.
 - Verify: `test/auth/*`, `test/bridge/runtime/bridge_runtime_auth_test.dart`,
-  plus a manual bridge start with an expired access token.
+  `test/push/push_notification_client*`, CLI options tests,
+  `test/bridge/sse_manager_test.dart`, `key_exchange_test.dart`, orchestrator
+  relay tests, `sesori_bridge_foundation` tests for `AbortableRequestClient`
+  (deadline, external abort, cleanup without leaked listeners), plus a manual
+  bridge start with an expired access token.
 
 ### Step 19 — routing layer
 
@@ -682,7 +714,17 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   `ProjectTime` (use it); `PullRequestTargetSelected` copies eight
   `GhPullRequest` fields (carry the DTO + target); `session_dao.dart:168-176`
   decides `preservePullRequestScope` inside a DAO → move to the repository.
-- Verify: `session_repository_test` (incl. `enrichSessions` cases `:395-639`),
+- **Verify first — inner generation fences:** `commitCurrentGeneration`
+  (`plugin_runtime.dart:317-349`) already refuses stale generations, holds a
+  lease and `durableCommitCount` during the callback (`:1295-1310`), and
+  re-checks after; the repository callbacks re-check anyway
+  (`session_repository.dart` ×10, `catalog_import_repository.dart` ×6,
+  `project_activity_repository.dart` ×2). Delete the 18 inner checks only if
+  `_waitForDurableCommits` provably gates every generation bump, naming the
+  await boundary that makes each removed check dead in the tracker; otherwise
+  keep them and record why.
+- Verify: `session_repository_test` (incl. `enrichSessions` cases `:395-639`
+  and the observed-projection cases), `plugin_runtime_test` generation cases,
   `get_session_handler_test`, `get_sessions_handler_test`,
   `catalog_import_repository_test`, both pending-interaction repository tests,
   `get_session_permissions_handler_test`, `reply_to_question_handler_test`.
@@ -711,33 +753,52 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   change and is declared in the PR body. `SessionOperationDispatcher` lanes,
   the orchestrator per-plugin lane, and the three dispatchers are not merged
   (different domains; only the idiom overlaps).
+- **Verify first — options-epoch re-checks:** `SessionOptionsService`
+  `_isCurrentInvalidationEpoch` ×18 between pure reads (`:274,329,336,341,
+  437,454,466,531,537,541`, …); the only side effect the epoch protects is
+  `_repository.commit`, and `_tryCommit:454-461` already compensates a commit
+  that raced an invalidation. Check at entry and immediately before commit and
+  keep the post-commit compensation — only if the owner accepts that a
+  just-invalidated retained snapshot may be served once (self-correcting via
+  forced discovery); otherwise keep and record.
 - Verify: `project_mutation_service_test`, `session_unseen_service_test`,
   `bridge_settings_repository_test`, `chat_history_service_test`,
-  `session_event_dispatcher_test`, plugin-event-listener integration tests;
-  FIFO and drain semantics are the review focus.
+  `session_event_dispatcher_test`, `session_options_service_test` invalidation
+  cases, plugin-event-listener integration tests; FIFO and drain semantics are
+  the review focus. The unified error policy is recorded against
+  `bridge-connectivity.md`/`session-creation-and-options.md` in the same PR
+  where it changes an observable outcome.
 
-### Step 22 — verify-first simplifications
+### Step 22 — updater/server helper dedupe and platform trios
 
-- Inner generation fences: `commitCurrentGeneration`
-  (`plugin_runtime.dart:317-349`) already refuses stale generations, holds a
-  lease and `durableCommitCount` during the callback (`:1295-1310`), and
-  re-checks after; the callbacks re-check anyway (`session_repository.dart` ×10,
-  `catalog_import_repository.dart` ×6, `project_activity_repository.dart` ×2).
-  Delete the 18 inner checks only if `_waitForDurableCommits` gates every
-  generation bump; otherwise keep and record.
-- `SessionOptionsService` `_isCurrentInvalidationEpoch` ×18 between pure reads:
-  check at entry and immediately before commit, keep post-commit compensation —
-  only if the owner accepts that a just-invalidated retained snapshot may be
-  served once (self-correcting).
+- Updater/server copies: `_parseCsvLine` ×2 (`process_id_lookup_api.dart:88-116`,
+  `system_process_api.dart:226-254`); `_isFileMissing`/`_isPermissionDenied`
+  (`runtime_file_api.dart:217-225`, `update_lock.dart:279-297`,
+  `update_install_service.dart:112-120`) → `FilesystemPermissionValidator`;
+  `UpdateLock._cleanupPath` and both `_deleteIfExists` → `FilesystemCleaner`,
+  which moves from `updater/foundation/` to the app's Layer-0
+  `lib/src/foundation/` beside `FilesystemPermissionValidator` because
+  `server/api/` now consumes it too; one `isTransientNetworkError` beside
+  `isRetryableHttpStatus` replacing the four `SocketException/TimeoutException/
+  HttpException/ClientException` ladders; one `UpdateResult.userFacingReason`
+  for the duplicated `_stageFailureReason`.
+- Impossible states: `UpdateInstallResult` → sealed `Staged(path)` |
+  `StageFailed(result)` (removes the `result != success || stagingPath == null`
+  checks and the `case success: 'an unexpected error'` arms);
+  `UpdateResolution.latestEligible/latestVersion` (always both null or both set)
+  → one nullable record.
+- `DefaultEditorRepository` (single pass-through over `DefaultEditorApi`; PR
+  #1017 finding F4) → fold `openFile` into `BridgeSettingsRepository` as
+  `openInDefaultEditor(...)` (that repository already owns the config-file
+  lifecycle), `BridgeConfigService` drops the second dependency; layering stays
+  API → Repository → Service; delete the file, its DI registration, and its fake.
 - Platform trios → sealed private implementations per `bridge/AGENTS.md:132-138`:
   wake lock (`api/wake_lock_client.dart` + three impls) and default editor
-  (`api/default_editor_api.dart` + three impls, 7-line pass-through repository
-  kept by the layer rule); one `ProcessStarter`/`WarningLogger` typedef;
-  `SleepPreventionService` loses its default `Log.w` dependency.
-- Verify: `session_repository_test` projection cases, `plugin_runtime_test`
-  generation cases, catalog import tests, `session_options_service_test`
-  invalidation cases, the three wake-lock tests, editor and sleep-prevention
-  tests.
+  (`api/default_editor_api.dart` + three impls); one `ProcessStarter`/
+  `WarningLogger` typedef; `SleepPreventionService` loses its default `Log.w`
+  dependency.
+- Verify: `test/updater/*`, `test/server/*`, the three wake-lock tests, editor,
+  bridge-config/settings-repository, and sleep-prevention tests.
 
 ### Step 23 — contract dead members and `PluginProvider`
 
@@ -757,7 +818,11 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   class; both producers become one constructor call; ~1,000 generated lines go.
 - `PluginSetupStatus.versioned` triplicated `_Versioned*` subclasses with
   hand-written `==/hashCode/toString` (`plugin_setup_status.dart:39-59,84-109,133-153`)
-  → nullable `runtimeVersion` on each variant (one-line app mapping change).
+  → keep the type-level distinction but stop hand-writing it: compose one
+  sealed version-presence value (`RuntimeVersionPresence {known(version),
+  unknown}`) on the variants that can carry a version, or generate equality
+  for explicit versioned variants — never a nullable `runtimeVersion` on every
+  variant, which would let a runtime-missing status carry a version.
 - Dead seams: `sessionIdFor` (`acp_approval_registry.dart:200`,
   `codex approval_registry.dart:169`) and never-injected `idGenerator`
   (`acp:51-95`, `codex:84-92`, `cursor:23`); `defaultClaudeProcessFactory`
@@ -879,6 +944,16 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   `hasAnyPendingInput`, emit hook; ACP/Codex subclasses keep protocol mapping;
   Cursor branches move to the Cursor subclass; the base carries no ACP, Codex,
   or Cursor branch. `PluginPendingPermission`/`PluginPermissionReply` unchanged.
+- Home decision: two reviews disagree on whether a stateful base belongs in
+  the contract package (the plan review accepted the `PluginStatusController`/
+  `SteadyPluginLifecycle` precedent; PR #1017's review and the Step 1 PR review
+  objected). The precedent is the default; if the Step 27 implementation
+  review rejects it, the base moves to `sesori_plugin_runtime`, which Step 29
+  makes a dependency of ACP, Codex, and Claude, as the plugin-only shared
+  implementation package. Either way it is one base, not three registries.
+- Doc comments on the `BridgePluginApi` question/permission methods state the
+  pending-input lifecycle expectation (reply/dispose/cancel must resolve or
+  log), per PR #1017 Step 8.
 - Verify: `acp_approval_registry_test*`, codex approval tests,
   `cursor_approval_registry_test`, claude approval tests; approval correctness is
   high-stakes — per-plugin tests are the contract.
@@ -904,7 +979,21 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   `AcpConfigOptionParser` in the ACP base; a `SteadyPluginLifecycle` teardown
   helper for the Claude/Pi wrappers; the Claude and Pi tracked-work copies
   (`claude_session_service.dart:37,99`, `pi_session_service.dart:130`) migrate
-  to the Step 15 `PendingOperations`.
+  to the Step 15 `PendingOperations`. From PR #1017 finding F9:
+  `_tryNormalizeBase64` byte-identical in the ACP/Codex/OpenCode mappers (+ a
+  Pi variant adopted only if byte-equivalent) and the ACP/Codex MIME
+  normalization/essence helpers → pure functions
+  `tryNormalizeBase64({required value})`, `normalizeMimeValue`, `mimeEssence`
+  in `sesori_plugin_interface/lib/src/messages/attachment_normalization.dart`
+  beside the existing attachment validators (stateless, I/O-free); the GitHub
+  release-asset URL assembly repeated in five runtime manifests → a default
+  `Uri releaseAssetUrl({required String assetName})` on the manifest base (a
+  manifest with a different tag convention overrides and says why). Plugin
+  catch hygiene: the six comment-only best-effort catches in
+  `codex approval_registry.dart:118,127`, `codex_app_server_client.dart:207,213`,
+  `codex_plugin_impl.dart:1166,1193`, and `codex_config_reader.dart:54` gain a
+  debug log; `opencode_api.dart:41`/`acp_plugin.dart:467` health probes stay
+  silent by design and say so in a comment.
 - Verify: mapper/registry tests of each touched plugin; `dart test` and
   `dart analyze --fatal-infos` in `shared/sesori_shared`.
 
@@ -916,13 +1005,40 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   pending-completer map + per-request timeout + "process exit fails all
   pending" (`_failPending` in all five) + stderr capture + SIGTERM/wait/SIGKILL
   dispose; `_redactForLog` byte-identical in claude and codex.
-- Change: `PendingRequestTable` and `LineFramedStdioTransport` in
-  `sesori_bridge_foundation` (already home of process primitives); ACP
-  bidirectional server requests, codex WebSocket transport, pi frame shape, and
-  claude's one-way stream stay plugin-local. Transport hot path — land per
-  plugin with green tests, after Step 8's fakes.
+- Change: adopt the `NdjsonProcessClient` contract written for PR #1017 Step 7
+  (it is the more complete design of the same consolidation): one final class
+  in `sesori_plugin_runtime/lib/src/transport/ndjson_process_client.dart` —
+  the plugin-only process-infrastructure package, chosen over
+  `sesori_bridge_foundation` because the bridge app never uses a line-framed
+  subprocess transport and over the contract package because it is stateful —
+  with a minimal `NdjsonProcessHandle` interface (stdin sink, broadcast stdout
+  and stderr line streams, done future, kill) and thin adapters for each
+  plugin's handle type; `StderrPolicy {discard, forwardSanitized}` with
+  adapter-owned sanitization; policy values `MalformedFramePolicy {discard,
+  failPending}` (ACP/Claude discard, Codex fail all pending),
+  `NonObjectFramePolicy`, `redactMalformedFrames`, `logTag`, and one injected
+  `responseCorrelationId: Object? Function(Map<String, dynamic>)` so the
+  transport holds no backend frame-shape knowledge; API `request`, `dispatch`
+  (write acceptance separate from the correlated response, preserving ACP's
+  prompt-accepted boundary), `sendFrame`, `notifications`, `isAttached`,
+  `exit`, `reset({gracefulTimeout})`, `dispose({reason, gracefulTimeout})`, and
+  pre-spawn `AttachToken beginAttach()` + `attach({token, process})` that
+  rejects and reaps a superseded handle. ACP and Claude add the
+  `sesori_plugin_runtime` dependency (direction stays plugins → runtime →
+  interface/foundation; Codex already depends on it) and `bridge/AGENTS.md`'s
+  module order is updated in the same PR. Preserved divergences are explicit
+  constructor values; the one intended unification — teardown becomes
+  close-stdin → short drain → terminate → timed force-kill for all adopters
+  (ACP currently skips the stdin close) — is a recorded behavior delta. Pi's
+  frame shape and `claude_stream_client`'s one-way stream adopt only the
+  pending-request/lifecycle parts that fit; Codex's WebSocket client stays
+  local. Transport hot path — land per plugin with green tests, after Step 8's
+  fakes.
 - Verify: `acp_stdio_client_test`, codex client tests, `pi_rpc_client_test`,
-  `claude_stream_client_test`.
+  `claude_stream_client_test`; fake-process round-trips for timeout, broken
+  pipe, stale generation, kill ordering; each adopting plugin's protocol suite
+  proves identical frame/error semantics (Codex fail-all-on-malformed, Claude
+  redaction, ACP discard); the teardown-order delta is asserted intentionally.
 
 ### Step 30 — `SessionService` and thin services
 
@@ -945,7 +1061,21 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   emitted; two UI branches), `api/converters/http_method_converter.dart` + its
   app test, `ConnectionService.activeDirectory`/`setActiveDirectory` +
   `ProjectListCubit.setActiveProject` (write-only),
-  `SessionDetailLoadResultLoaded.isBridgeConnected` (produced, never read).
+  `SessionDetailLoadResultLoaded.isBridgeConnected` (produced, never read),
+  the `GoRouterNavigation` extension
+  (`client/app/lib/core/routing/app_router.dart:245-253`, no callers), and the
+  dead helper at `client/app/test/helpers/test_helpers.dart:535-537`.
+- Layering fix (PR #1017 F12): `session_list_cubit.dart` imports
+  `../../api/session_api.dart` only because `SessionCleanupRejection`/
+  `SessionCleanupRejectedException` live there; `session_api.dart` keeps a
+  private DTO parse of the 409 body and throws the API-layer exception carrying
+  the DTO, `SessionRepository` maps it to a domain `SessionCleanupRejection` in
+  `client/module_core/lib/src/repositories/models/session_cleanup_rejection.dart`
+  (the domain exception keeps the original as a typed `innerError`), and the
+  cubit drops the API import.
+- `CompositeSubscription` adoption (PR #1017 F13) in `session_detail_cubit.dart`
+  (five hand-tracked subscriptions), `plugin_management_cubit.dart`, and
+  `diff_cubit.dart`, matching the sibling cubits.
 - Verify: `build_runner` in module_core; `dart test test/cubits/session_list
   test/cubits/new_session test/capabilities`; `flutter test test/features/
   new_session test/features/session_list test/core/widgets` in `client/app`.
@@ -1086,8 +1216,11 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   11-line version of the pattern.
 - Change: register `@firebaseDisabledEnvironment` `NoOpPushMessagingSource`,
   `NoOpFailureReporter`, `NoOpAnalyticsClient`; keep only the enabled-environment
-  SDK registrations; delete the four adapters and the `FirebaseApp` environment
-  pair (`firebase_register_module.dart:20-61`, `main.dart:33-49`). Affects
+  SDK registrations; delete the four no-op SDK adapters and the disabled-
+  environment `FirebaseApp` registration in `firebase_register_module.dart:20-61`.
+  `main.dart:33-49` (`_configureFirebaseSdk`: background-message handler
+  registration and the Crashlytics `FlutterError`/`PlatformDispatcher` hooks) is
+  enabled-path startup wiring and is kept exactly as is. Affects
   firebase-disabled builds only (web/linux/windows, Android profile).
 - Verify: `flutter test test/core/di/firebase_dependency_registration_test.dart
   test/core/platform/ test/main_startup_notification_wiring_test.dart`.
@@ -1128,11 +1261,15 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   option tiles (`:727-918`) → `_ChoiceTile`; `harnesses_settings_screen.dart:115-177`
   flattens the sealed authentication presentation into booleans → pattern-match
   the sealed state (aligned with Step 34). Material→Prego migration limited per D5.
+- Scope note: `PregoSheetActions` and the `showPregoBottomSheet` sizing option
+  live in `client/module_prego`, so that package is in scope, not only the app.
 - Behavior: visual parity is the acceptance criterion; dialog chrome is
-  user-visible, so this step names `questions-and-permissions.md`,
-  `session-archiving-and-deletion.md`, and `projects-and-sessions.md`.
-- Verify: `flutter test test/features/session_list test/features/project_list
-  test/features/settings test/features/session_detail`.
+  user-visible, so this step updates `questions-and-permissions.md`,
+  `session-archiving-and-deletion.md`, and `projects-and-sessions.md` in the
+  same PR.
+- Verify: `flutter analyze` + `flutter test` in `client/module_prego`; `flutter
+  test test/features/session_list test/features/project_list
+  test/features/settings test/features/session_detail` in `client/app`.
 
 ### Step 39 — prompt composer in-file duplication
 
@@ -1156,10 +1293,11 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   every transition re-checking combinations → `sealed class _VoiceInteraction
   {idle; starting(id, releaseRequested, pinnedLayout); recording(id,
   pinnedLayout, minDurationReached, pointer?, cancelEngaged); transcribing(id,
-  pinnedLayout); cancelling}` (keep the two `ValueNotifier`s), optionally hosted
-  in a `ComposerVoiceController` beside `VoiceTranscriptionService` so the
-  widget becomes layout-only. User-visible voice UX; lands only after Step 39
-  and after #918 merges; names `voice-input.md`.
+  pinnedLayout); cancelling}` (keep the two `ValueNotifier`s). The sealed state
+  stays widget-local: it is ephemeral gesture/layout state, so no app-level
+  controller class is introduced (business orchestration remains in cubits and
+  the shell stays thin). User-visible voice UX; lands only after Step 39 and
+  after #918 merges; updates `voice-input.md` in the same PR.
 - Verify: `flutter test test/features/session_detail`; manual hold-to-talk,
   cancel-drag, max-duration, and minimum-duration flows on the release-target phone.
 
@@ -1185,9 +1323,11 @@ All verified with whole-word grep over lib, bin, and test across the repo.
 
 ### Step 42 — compatibility expiry (D1)
 
-- Execute only against the baseline recorded in `TRACKER.md` under D1. With the
-  default (`≥ v1.2.0`): `GetAgentsHandler` + `AgentRepository.legacyPluginId` +
-  orchestrator registration (`orchestrator.dart:575`); nullable
+- Execute only against a baseline the owner has recorded in `TRACKER.md` under
+  D1; with none recorded, the step removes nothing, records that, and closes.
+  With the `≥ v1.4.0` candidate (PR #1017's recorded decision): `GetAgentsHandler`
+  + `AgentRepository.legacyPluginId` + orchestrator registration
+  (`orchestrator.dart:575`); nullable
   `RejectQuestionRequest.sessionId` (`reply_to_question_request.dart:25`) +
   `pending_interaction_service.dart:78-105` legacy owner resolution +
   `session_operation_dispatcher.dart:62 dispatchLegacyQuestion` and the
@@ -1195,9 +1335,16 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   (`:154-176, 211-219`); `session_detail_cubit.dart:1124` `displaySessionId`
   fallback; `health_response.dart:16` nullable + `add_project_dialog.dart:692`
   + `connection_service.dart:423` empty-body tolerance;
-  `legacy_post_update_relaunch.dart` + three consumers (v1.1.2, bridge-local
-  install question — owner confirms). Under the N-2 baseline, additionally the
-  v1.3–v1.5 family listed in D1. `GET /pull-request-refresh-settings` stays
+  `legacy_post_update_relaunch.dart` + three consumers (v1.1.2);
+  `BridgeIdMigrationService` + `readLegacyBridgeId` + its two startup
+  invocations (v1.3.0); the three `open_code_plugin_descriptor.dart` CLI flag
+  aliases (v1.1.1, user scripts); `codex_config_reader.dart` fallback reads
+  (v1.1.2) only if the peer is released-Sesori-era data rather than a live
+  rollout format; the `runtime_start_intent.dart` side file (v1.0.9) only if an
+  encoding provably ignored by every frozen-schema reader exists — each gets a
+  per-marker peer-verification line in the tracker and stays, with reason, if
+  the check fails. Under the `≥ v1.6.0` candidate, additionally the v1.4–v1.5
+  family listed in D1. `GET /pull-request-refresh-settings` stays
   until the current client migrates to `/settings` (migrate the client in this
   step; keep the route until the baseline passes v1.8.0). Every removal names
   the regression document whose compatibility row it changes.
@@ -1205,8 +1352,23 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   the baseline bridge and the current bridge against the baseline client (or
   equivalent wire fixtures).
 
-### Step 43 — `no_slop_linter` in small bridge packages (D6)
+### Step 43 — installer parity, codegen freshness, `no_slop_linter` (D6)
 
+- Installer parity (PR #1017 finding F16): `install.sh` supports
+  `GITHUB`/`GITHUB_API` overrides that `install.ps1` hardcodes past, and
+  stable-version validation differs (regex vs `[version]::TryParse`, which
+  accepts four-component versions), so the two installers can select different
+  releases from identical metadata. `install.ps1` gains the env-override
+  handling and exact three-component validation; fixture-driven parity tests
+  extending `bridge/app/test/tool/installers_test.dart` cover release selection
+  and order, partial releases, checksum parsing, archive/checksum URL
+  construction including overrides, and manifest writing for both scripts. The
+  PowerShell rejection of non-three-component versions is a recorded behavior
+  delta (matches `install.sh`).
+- Codegen freshness: a CI job regenerates the OpenCode outputs that are fully
+  reproducible from committed inputs (SSE events from the committed manifest)
+  and fails on diff; the OpenAPI-derived client requires an uncommitted spec and
+  is recorded as out of scope rather than adding network access to CI.
 - `bridge/analysis_options.yaml:1-3` has the `plugins:` block commented out;
   no bridge package runs the repository's own linter. Enable it for
   `sesori_bridge_foundation`, `sesori_plugin_interface`, `sesori_plugin_runtime`
@@ -1214,7 +1376,9 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   workspace accepts `plugins:` or the workspace root must carry it), fix what
   it reports there, and record per-package warning counts for `bridge/app` and
   the plugins in `TRACKER.md` for the owner's later decision.
-- Verify: `dart analyze --fatal-infos` in the three packages; CI green.
+- Verify: installer parity suite; the freshness job fails when an offline-
+  reproducible output is dirtied locally; `dart analyze --fatal-infos` in the
+  three packages; CI green.
 
 ### Steps 44–45 — regression documentation and retirement
 
@@ -1223,6 +1387,57 @@ implementation and completes the cleanup ledger. Step 45 runs the recorded
 level and matrix, records the result, and moves the plan to
 `.plan/completed/codebase-cleanup/` only when that coverage passes or the owner
 records an explicit acceptance of any unexecuted rows.
+
+## Relationship To PR #1017 (`reliability-cleanup`)
+
+PR #1017 raises a parallel 14-step plan for the same effort from a separate
+session (five investigations, two plan-review rounds, an owner vagueness waiver
+and a recorded compat baseline, all dated 2026-08-21). Two active plans for one
+effort would collide step by step, so this plan absorbs what #1017 has that
+this one lacked and records what it does not adopt; the owner decides which PR
+is the single durable plan (recommendation: this one, with #1017 closed and its
+two orchestrator extractions kept as a separate evidence-backed follow-up).
+
+Absorbed from #1017 (with the step that now owns each):
+
+- the recorded owner decisions — compat baseline `≥ v1.4.0` (offered to D1 for
+  confirmation), desktop control stack kept (this plan never proposed removing
+  it);
+- `AbortableRequestClient` for the three hand-rolled deadline/abort sequences
+  (F5 → Step 18);
+- `install.sh`/`install.ps1` parity with fixture tests, the one-list
+  `bridge-ci.yml`, and the offline codegen freshness job (F16 → Steps 6, 43);
+- the cleanup-rejection layering fix, `GoRouterNavigation`, the dead test
+  helper, and `CompositeSubscription` adoption in three cubits (F12/F13 →
+  Step 30);
+- `DefaultEditorRepository` folded into `BridgeSettingsRepository` (F4 →
+  Step 22);
+- base64/MIME normalization helpers, the manifest `releaseAssetUrl` default,
+  the pending-input contract doc comments, and the Codex silent-catch fix (F8/F9
+  → Steps 27, 28);
+- the complete `NdjsonProcessClient` contract and its `sesori_plugin_runtime`
+  home (Step 7 → Step 29).
+
+Not adopted, and why:
+
+- `RelayConnectionCoordinator` and `PluginEventProcessingDispatcher`
+  extractions (#1017 Steps 5–6, 1,900–3,300 relocated lines, the plan's own
+  highest-stakes risk): pure relocation with no line reduction on the
+  reconnect/resume and SSE-ordering paths; this series optimizes for fewer
+  lines and failure points, so they stay a separate follow-up the owner can
+  schedule once this series lands.
+- Keeping `flutter_chat_ui` behind a `_MessageListSynchronizer` (#1017 Step
+  11): superseded by D3, which removes the mirroring glue and two dependencies
+  if the spike reaches parity.
+- App-level `PromptVoiceController`/`PromptAttachmentStaging` collaborators
+  (#1017 Step 11): the Step 1 review found an app-level controller conflicts
+  with the thin-shell rule; Step 40 keeps the sealed voice state widget-local.
+- `#1017` deferring `NewSessionCubit` configuration plumbing behind
+  `session-refresh-reconnects`: that plan owns `SessionDetailCubit` refresh
+  triggers, not `NewSessionCubit`; Step 33 proceeds, and Step 31 stays out of
+  refresh coordination.
+- `#1017`'s Step 9 keeps the isolate pool because `dto_parser.dart` uses it;
+  `dto_parser.dart` itself has zero references, so Step 2 deletes both.
 
 ## Cleanup Assessment
 
@@ -1268,7 +1483,10 @@ and owning a real invariant:
    Codex/OpenCode pairs that have already drifted twice.
 6. `RuntimeProbeOutcome`, `ManagedRuntimeSelectionService.select`,
    `ManagedRuntimeInstallService.forHost`, `stripAnsi` — 5–7 descriptor copies.
-7. `PendingRequestTable`, `LineFramedStdioTransport` (foundation) — 5 clients.
+7. `NdjsonProcessClient` + `NdjsonProcessHandle` (`sesori_plugin_runtime`) —
+   three drifted stdio transports, parts of two more.
+7a. `AbortableRequestClient` (`sesori_bridge_foundation`, stateless per call) —
+   three hand-rolled deadline/abort sequences.
 8. Interface/plugin helper additions (`PluginMessagePart` constructors,
    `PluginToolStatus.isTerminal`, `PluginCommand.compaction`,
    `AcpConfigOptionParser`, `asStringKeyedMap`, `nonEmptyString`).
@@ -1294,8 +1512,9 @@ needs machinery beyond this list, it stops and asks.
 ## Compatibility
 
 - Client↔bridge wire contracts are unchanged by every step except Step 42,
-  which removes paths only for peers below the D1 baseline and records each in
-  the affected regression document.
+  which removes paths only for peers below an owner-recorded D1 baseline
+  (nothing is removed without that record) and updates the affected regression
+  document in the same PR.
 - Step 4 makes `snapshotToken`/`bridgeId` required because every public producer
   already sends them (verified against tags); decoding of existing payloads is
   unchanged. `ActiveSession` keeps its nullable wire fields.
@@ -1326,8 +1545,10 @@ needs machinery beyond this list, it stops and asks.
 
 ## Regression Documentation And Final Matrix
 
-Feature documents inspected in Step 44 (most will record "no behavior change,
-implementation references updated"):
+Behavior-changing steps (19, 21, 38, 40, 41, 42, and the installer delta in 43)
+update their affected feature document in the same PR. Step 44 is the final
+consistency pass over the documents below (most will record "no behavior
+change, implementation references updated"):
 
 - `docs/regression/bridge-connectivity.md` — Step 19 status unification, Step
   42 health/legacy-route removals, Step 15 encryptor ownership.
@@ -1387,8 +1608,9 @@ acceptance recorded in this file.
 - Steps 38, 40, 41 are user-visible; parity, not polish, is the acceptance bar,
   and Step 41 may legitimately end as a recorded "not landed".
 - Step 42 is gated on a policy decision the repository has never made; until
-  D1 is confirmed, the default stays conservative and the step removes only
-  paths for peers `≤ v1.1.x`.
+  the owner records a D1 baseline, the step removes nothing. PR #1017 records
+  `≥ v1.4.0` as that decision; it becomes this plan's baseline only when the
+  owner confirms it here.
 - Consolidating fakes changes test code at scale; a subclass that overrides less
   than the private copy did can hide a behavior difference. Step 9 keeps every
   private default by overriding, never by rewriting assertions.

@@ -18,9 +18,13 @@
 
 ## Open Decisions (defaults apply until the owner overrides)
 
-- [ ] **D1** minimum supported public peer — default `≥ v1.2.0` (last 60 days);
-  Step 42 executes only against the value recorded here
-- [ ] **D2** flatten `bridge/app/lib/src/bridge/*` into `src/*` — default yes
+- [ ] **D1** minimum supported public peer — default: retain every public
+  release; Step 42 removes nothing until the owner records a baseline here.
+  Candidate on the table: `≥ v1.4.0`, recorded as an owner decision in PR #1017
+  on 2026-08-21 — confirm or replace: `_____`
+- [ ] **D2** flatten `bridge/app/lib/src/bridge/*` into `src/*` — default: not
+  performed (docs-only Step 7) until the owner approves the ~210-file move;
+  recommendation is to approve
 - [ ] **D3** `flutter_chat_ui` replacement — default spike, land only on parity
 - [ ] **D4** `cryptography_flutter` — default remove as unused (never enabled)
 - [ ] **D5** Material→Prego dialog breadth — default only what the footer and
@@ -30,8 +34,9 @@
 
 ## Locked Principles
 
-- [x] Behavior-preserving by default; Steps 19, 38, 40, 41, 42 name their
-  intentional changes and the regression documents they touch.
+- [x] Behavior-preserving by default; Steps 19, 21, 38, 40, 41, 42 (and the
+  installer delta in 43) name their intentional changes and update the affected
+  regression document in the same PR; Step 44 is the final consistency pass.
 - [x] Nothing is extracted unless it replaces at least two copies and owns
   state, a lifecycle, or an invariant.
 - [x] Every step re-verifies its evidence against current `main` before editing
@@ -40,18 +45,19 @@
 - [x] No database schema change anywhere in the series.
 - [x] Session-detail refresh coordination, dispatcher merging, orchestrator
   splitting, and `ConnectionService`/`RelayClient` lifecycle redesign are out.
-- [x] Architecture-implementation review only for Steps 7, 15, 18, 21, 23, 25,
-  26, 27, 28, 29, 30, 31, 32, 33, 36, 37.
+- [x] Architecture-implementation review only for Steps 7, 15, 17, 18, 21, 22,
+  23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37.
 - [x] 1,500 changed-line soft cap; deletion- or generated-heavy overages are
   recorded with the reason.
 
 ## Complexity Guardrails
 
 - [x] One `PendingOperations` and one `KeyedParallelLock` (both in
-  `sesori_bridge_foundation`), one `PendingPermissionRegistry` base, one
-  managed-runtime start helper, one `RuntimeProbeOutcome`, one
-  `PendingRequestTable`/transport, one per-cubit `LoadedStateAnalyticsReporter`
-  — no second variant of any of them, and no caller state on singleton services.
+  `sesori_bridge_foundation`), one `AbortableRequestClient`, one
+  `PendingPermissionRegistry` base, one managed-runtime start helper, one
+  `RuntimeProbeOutcome`, one `NdjsonProcessClient` (`sesori_plugin_runtime`),
+  one per-cubit `LoadedStateAnalyticsReporter` — no second variant of any of
+  them, and no caller state on singleton services.
 - [x] No listener base class, generic tool tracker, merged dispatcher, shared
   client/bridge auth manager, `module_app_ui` package, refresh scheduler,
   idempotency layer, or compatibility shim for unpublished peers.
@@ -81,14 +87,14 @@
 | [ ] | 12/45 | `🌿 [codebase-cleanup] client(module_core): consolidate test helpers and cubit harnesses [step 12/45]` | Not started |
 | [ ] | 13/45 | `🌿 [codebase-cleanup] client: publish a module_core testing library and relocate its tests [step 13/45]` | Not started |
 | [ ] | 14/45 | `⚙️ [codebase-cleanup] tests: replace real-duration sleeps with fake time and state awaiting [step 14/45]` | Not started |
-| [ ] | 15/45 | `🌿 [codebase-cleanup] bridge(app): share tracked-work, URL, and updater helpers [step 15/45]` | Not started |
+| [ ] | 15/45 | `🌿 [codebase-cleanup] bridge(app): share tracked-work helpers and fix logging consistency [step 15/45]` | Not started |
 | [ ] | 16/45 | `🚧 [codebase-cleanup] bridge(app): remove the triplicated PluginRuntime command preamble [step 16/45]` | Not started |
 | [ ] | 17/45 | `⚙️ [codebase-cleanup] bridge(app): simplify Orchestrator fencing and PluginLifecycleService initialization [step 17/45]` | Not started |
-| [ ] | 18/45 | `🚧 [codebase-cleanup] bridge(app): consolidate token validation and profile fetch [step 18/45]` | Not started |
+| [ ] | 18/45 | `🚧 [codebase-cleanup] bridge(app): consolidate auth validation, abortable requests, and encryptor ownership [step 18/45]` | Not started |
 | [ ] | 19/45 | `⚙️ [codebase-cleanup] bridge(app): deduplicate request-handler error mapping and guards [step 19/45]` | Not started |
 | [ ] | 20/45 | `⚙️ [codebase-cleanup] bridge(app): deduplicate SessionRepository, enrichment, and pending-interaction repositories [step 20/45]` | Not started |
 | [ ] | 21/45 | `🚧 [codebase-cleanup] bridge(app): replace hand-rolled FIFO lanes with the foundation ParallelLock [step 21/45]` | Not started |
-| [ ] | 22/45 | `⚙️ [codebase-cleanup] bridge(app): verify-first simplifications for fences, epochs, and platform trios [step 22/45]` | Not started |
+| [ ] | 22/45 | `⚙️ [codebase-cleanup] bridge(app): deduplicate updater and server helpers and seal platform trios [step 22/45]` | Not started |
 | [ ] | 23/45 | `⚙️ [codebase-cleanup] bridge(plugins): remove dead contract members and collapse PluginProvider [step 23/45]` | Not started |
 | [ ] | 24/45 | `🌿 [codebase-cleanup] bridge(runtime): remove the migration-era dual-mode runtime knobs [step 24/45]` | Not started |
 | [ ] | 25/45 | `🚧 [codebase-cleanup] bridge(plugins): fold Codex and OpenCode managed-runtime plumbing into sesori_plugin_runtime [step 25/45]` | Not started |
@@ -109,7 +115,7 @@
 | [ ] | 40/45 | `🚧 [codebase-cleanup] client(app): model the voice interaction as one sealed state [step 40/45]` | Not started; after #918 |
 | [ ] | 41/45 | `🚧 [codebase-cleanup] client(app): render the transcript with a plain reversed list [step 41/45]` | Not started (D3); after #939 |
 | [ ] | 42/45 | `🚧 [codebase-cleanup] compat: retire compatibility paths outside the supported baseline [step 42/45]` | Not started (D1) |
-| [ ] | 43/45 | `⚙️ [codebase-cleanup] tooling: enable no_slop_linter for the small bridge packages [step 43/45]` | Not started (D6) |
+| [ ] | 43/45 | `⚙️ [codebase-cleanup] tooling: align installers, assert codegen freshness, and enable no_slop_linter for small bridge packages [step 43/45]` | Not started (D6) |
 | [ ] | 44/45 | `🌱 [codebase-cleanup] docs: reconcile regression coverage after the cleanup [step 44/45]` | Not started |
 | [ ] | 45/45 | `🌿 [codebase-cleanup] test: verify the cleanup series and retire the plan [step 45/45]` | Not started |
 
@@ -147,15 +153,17 @@ Each step records here what it found stale relative to the plan before editing.
 | `bridge/app/lib/src/bridge/*` subtree | Flatten into `src/*` (D2) | 7 |
 | Duplicated test fakes (bridge, plugins, client) | Consolidate into testing libraries/helpers | 8–13 |
 | Real-duration test sleeps | Replace with fake time/state awaiting | 14 |
-| Tracked-work/URL/updater/server helper copies | One helper each | 15 |
-| Per-message `SessionEncryptor`, `setRoomKey` | One encryptor per session | 15 |
+| Tracked-work copies (app ×10, Claude/Pi) | One `PendingOperations` in foundation | 15, 28 |
+| Auth URL normalization ×8, per-message `SessionEncryptor`/`setRoomKey`, hand-rolled abort/deadline ×3 | Normalize once; one encryptor per session; `AbortableRequestClient` | 18 |
+| Updater/server helper copies, sealed update result models, `DefaultEditorRepository` | One helper each; sealed; fold into `BridgeSettingsRepository` | 22 |
 | `PluginRuntime` stop/disable/restart preamble | One helper + transition record | 16 |
 | `registerPlugins` two-phase init | Constructor plugins | 17 |
 | `auth/validate.dart`, duplicated `/auth/me` and refresh | Fold into `TokenService` (renamed from `TokenManager`) | 18 |
 | Handler error chains, guards, inline JSON errors, unused params | One of each | 19 |
 | `enrichSessions` re-derivation, `plugin_session_mapper.dart`, `adoptStoredProjectId` wiring | Delete/simplify | 20 |
 | Hand-rolled FIFO tails | `ParallelLock` | 21 |
-| Inner generation fences, options-epoch re-checks | Delete only if provable (verify first) | 22 |
+| Inner generation fences | Delete only if provable (verify first) | 20 |
+| Options-epoch re-checks | Reduce only with owner acceptance (verify first) | 21 |
 | Wake-lock/editor platform trios | Sealed private implementations | 22 |
 | `healthCheck`/`dispose` contract members, `PluginProvider` union, `PluginSetupStatus.versioned` subclasses, dead seams, stale comments | Delete/collapse | 23 |
 | Runtime dual-mode knobs | Delete | 24 |
@@ -164,7 +172,7 @@ Each step records here what it found stale relative to the plan before editing.
 | Descriptor setup/install copies, codex selection service | Share in runtime | 26 |
 | ACP/Codex approval registry skeleton | Base in interface | 27 |
 | Small mapper helpers, Claude/Pi wrappers | Share | 28 |
-| Stdio pending-request/transport copies | Share in foundation | 29 |
+| Stdio pending-request/transport copies | One `NdjsonProcessClient` in `sesori_plugin_runtime` (PR #1017 contract) | 29 |
 | `SessionService`, `BridgeSettingsService`, view twins, dead state/converter/fields | Delete/inline | 30 |
 | `SessionDetailCubit` derivation duplicates, analytics guard duplicates | Consolidate | 31 |
 | List-cubit scaffolding, relay request copies | Consolidate | 32 |
@@ -178,8 +186,9 @@ Each step records here what it found stale relative to the plan before editing.
 | Voice interaction flags | Sealed state | 40 |
 | `flutter_chat_ui` mirroring glue | Replace on parity (D3) | 41 |
 | Compatibility paths below the D1 baseline | Delete (gated) | 42 |
-| `no_slop_linter` absent from bridge | Enable for small packages (D6) | 43 |
+| Installer drift (`install.ps1` vs `install.sh`), no codegen freshness check, `no_slop_linter` absent from bridge | Parity + fixture tests; offline freshness job; enable linter for small packages (D6) | 43 |
 | Mandatory repositories, `StoredSession`, dispatchers, plugin-boundary mapping, SSE ignore arms, archives | Keep | — |
+| PR #1017 `RelayConnectionCoordinator`/`PluginEventProcessingDispatcher` extractions, `_MessageListSynchronizer`, app-level voice/attachment controllers | Not adopted (see PLAN "Relationship To PR #1017"); separate evidence-backed follow-up if wanted | — |
 
 ## Verification Record
 
@@ -188,9 +197,9 @@ Each step records here what it found stale relative to the plan before editing.
   passed; no Dart/Flutter suites run.
 - Step 1 merge-base size:
   `git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- .plan/active/codebase-cleanup/PLAN.md .plan/active/codebase-cleanup/TRACKER.md`
-- Self-inclusive result after the review-fix commit: `PLAN.md +1,405`,
-  `TRACKER.md +221`, total `+1,626 / -0`, within the widened 1,400–1,700
-  target (the original 1,400–1,600 ceiling was exceeded by the plan itself).
+- Self-inclusive result after the second review round and the PR #1017
+  reconciliation: `PLAN.md +1,627`, `TRACKER.md +254`, total `+1,881 / -0`,
+  within the re-widened 1,700–1,900 target (earlier ceilings were exceeded).
 
 ## Plan Review
 
@@ -219,3 +228,27 @@ Each step records here what it found stale relative to the plan before editing.
   Step 7 architecture rewrite assigns `runtime/` a layer; Step 15 may also
   build `KeyExchangeManager` in `Orchestrator.create`; Steps 18, 28, 31 added
   to the implementation-review list.
+- **Step 1 PR review (bots, 2026-08-22):** twelve inline findings on PR #1018,
+  eleven applied, one partially: D1 default became "retain every public
+  release; Step 42 removes nothing without an owner-recorded baseline"; D2
+  default became "docs-only until the owner approves the move"; Step 17 and 22
+  added to the implementation-review list; Step 13 moves only the 13 pure-Dart
+  tests (the two `testWidgets` files and the app helper stay); `PendingOperations.
+  drain()` keeps all-settled `Future.wait` semantics; Step 15 split — auth URL,
+  encryptor ownership, and abortable requests moved to Step 18, updater/server
+  helpers and sealed update models to Step 22, generation fences to Step 20,
+  options epochs to Step 21; `PluginSetupStatus` keeps type-level version
+  presence (no nullable field on every variant); Step 36 keeps the enabled-path
+  `_configureFirebaseSdk` wiring; Step 38 adds `module_prego` to scope and
+  verification; Step 40 drops the app-level controller; behavior-changing steps
+  update regression docs in their own PR. Partially applied: the
+  `PendingPermissionRegistry` home stays `sesori_plugin_interface` by the
+  plan-review precedent, with `sesori_plugin_runtime` recorded as the fallback
+  if the Step 27 implementation review rejects it.
+- **PR #1017 reconciliation (2026-08-22):** absorbed its unique items
+  (`AbortableRequestClient`, installer parity, bridge-ci list, codegen
+  freshness, cleanup-rejection layering, `GoRouterNavigation`,
+  `CompositeSubscription` adoption, `DefaultEditorRepository` fold, base64/MIME
+  helpers, `releaseAssetUrl`, pending-input doc comments, Codex catch fix, the
+  `NdjsonProcessClient` contract and runtime home, and its recorded owner
+  decisions offered to D1); recorded what is not adopted and why in PLAN.md.
