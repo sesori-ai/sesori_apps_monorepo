@@ -35,7 +35,7 @@ Dependencies flow in one direction:
 3. `sesori_plugin_runtime` — depends on interface; **plugin-only** managed-runtime supervision (`ManagedProcessService`, `ManagedRuntimeMonitor`, ownership/restart/intent). Used by plugins to supervise their backend process; the main app does not depend on it.
 4. `sesori_plugin_opencode` and `sesori_plugin_codex` — depend on interface + foundation + runtime + `sesori_shared`
 5. `sesori_plugin_acp` — ACP protocol plugin base; depends on interface + foundation + `sesori_shared`
-6. `sesori_plugin_cursor` — Cursor descriptor/adapter; depends on interface + foundation + runtime + ACP
+6. `sesori_plugin_cursor` — Cursor descriptor/adapter; depends on interface + foundation + runtime + ACP + `sesori_shared`
 7. `sesori_plugin_omp` — Oh My Pi adapter; depends on interface + foundation + runtime + ACP
 8. `sesori_plugin_claude` — Claude Code adapter; depends on interface + foundation + `sesori_shared`
 9. `sesori_plugin_hermes` — Hermes ACP adapter; depends on interface + foundation + ACP

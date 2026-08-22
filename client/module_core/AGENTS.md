@@ -20,7 +20,7 @@ lib/src/
 ├── di/               @InjectableInit for core DI registration
 ├── foundation/       Platform interfaces and shared models (analytics, composer)
 ├── logging/          logd/logw/loge with configurable LogLevel
-├── platform/         Platform adapters consumed through foundation interfaces
+├── platform/         Abstract interfaces: UrlLauncher, DeepLinkSource, LifecycleSource (adapters in app/lib/core/platform/)
 └── routing/          AppRoute enum, AuthRedirectService
 ```
 

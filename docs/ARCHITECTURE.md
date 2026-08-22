@@ -95,7 +95,7 @@ graph TD
   module_auth --> sesori_shared
 ```
 
-`shared/no_slop_linter` is omitted — it is a dev-only analyzer plugin, not a runtime dependency. It is a dev dependency of the client packages and of `shared/sesori_shared`.
+`shared/no_slop_linter` is omitted — it is a dev-only analyzer plugin, not a runtime dependency. It is a dev dependency of the client packages, and `shared/sesori_shared` enables it as an analyzer plugin by path.
 
 ## Runtime data flow
 

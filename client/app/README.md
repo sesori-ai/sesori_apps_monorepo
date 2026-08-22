@@ -76,5 +76,4 @@ flutter test
 | URL launching | `url_launcher` |
 | Audio recording | `record` |
 | Wake lock | `wakelock_plus` |
-| Relay encryption (accelerated) | `cryptography_flutter` |
 | Markdown rendering | `flutter_markdown_plus` |
