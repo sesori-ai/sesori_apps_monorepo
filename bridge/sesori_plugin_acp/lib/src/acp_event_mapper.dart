@@ -1076,6 +1076,7 @@ class AcpEventMapper({
       prompt: null,
       description: null,
       agent: null,
+      childSessionID: null,
       agentName: null,
       attempt: null,
       retryError: null,
@@ -1101,6 +1102,7 @@ class AcpEventMapper({
       prompt: null,
       description: null,
       agent: null,
+      childSessionID: null,
       agentName: null,
       attempt: null,
       retryError: null,
@@ -1146,7 +1148,7 @@ class AcpEventMapper({
 
   bool _isTerminalToolStatus(PluginToolStatus status) {
     return switch (status) {
-      PluginToolStatus.completed || PluginToolStatus.error => true,
+      PluginToolStatus.completed || PluginToolStatus.error || PluginToolStatus.cancelled => true,
       PluginToolStatus.pending || PluginToolStatus.running || PluginToolStatus.unknown => false,
     };
   }

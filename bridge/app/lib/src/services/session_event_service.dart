@@ -376,9 +376,13 @@ class SessionEventService({
     required bool allowDuringStop,
   }) async {
     final backendSessionIds = _eventMapper.backendSessionIds(event: source.event);
+    // Optional references are looked up in the same read but never gate
+    // delivery: an unbound one is translated to null instead of parking or
+    // dropping the event that merely mentions it.
+    final optionalBackendSessionIds = _eventMapper.optionalBackendSessionIds(event: source.event);
     final bindings = await _sessionRepository.getStoredSessionsByBackendIds(
       pluginId: source.pluginId,
-      backendSessionIds: backendSessionIds.toList(growable: false),
+      backendSessionIds: {...backendSessionIds, ...optionalBackendSessionIds}.toList(growable: false),
     );
     if (!isCurrentEvent(
       pluginId: source.pluginId,
@@ -387,16 +391,15 @@ class SessionEventService({
     )) {
       return null;
     }
-    if (bindings.length != backendSessionIds.length) {
-      final missingBackendSessionIds = backendSessionIds.where((id) => !bindings.containsKey(id)).toList();
-      if (missingBackendSessionIds.isNotEmpty &&
-          missingBackendSessionIds.every(
-            (id) => _eventTracker.isBindingPending(
-              pluginId: source.pluginId,
-              generation: source.generation,
-              backendSessionId: id,
-            ),
-          )) {
+    final missingBackendSessionIds = backendSessionIds.where((id) => !bindings.containsKey(id)).toList();
+    if (missingBackendSessionIds.isNotEmpty) {
+      if (missingBackendSessionIds.every(
+        (id) => _eventTracker.isBindingPending(
+          pluginId: source.pluginId,
+          generation: source.generation,
+          backendSessionId: id,
+        ),
+      )) {
         _warnIfEvicted(
           evicted: _eventTracker.addTranslation(
             event: PendingTranslationEvent(

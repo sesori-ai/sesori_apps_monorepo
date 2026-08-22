@@ -650,6 +650,7 @@ final class ClaudePlugin({
           prompt: null,
           description: null,
           agent: null,
+          childSessionID: null,
           agentName: null,
           attempt: null,
           retryError: null,

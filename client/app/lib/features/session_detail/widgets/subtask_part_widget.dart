@@ -6,6 +6,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
 import "../../../core/routing/current_project_name.dart";
+import "../../../l10n/app_localizations.dart";
 
 class const SubtaskPartWidget({
   super.key,
@@ -21,11 +22,15 @@ class const SubtaskPartWidget({
     final description = part.description ?? part.prompt ?? loc.sessionDetailSubtaskUnnamed;
     final agent = part.agent;
 
-    // Find the matching child session for this subtask.
-    // Subtask parts don't have a direct child session ID, so we match by
-    // description/prompt against the child session title, or show all if no match.
-    final childSession = _findChildSession();
-    final status = childSession != null ? childStatuses[childSession.id] ?? const SessionStatus.idle() : null;
+    final childSession = _resolveChildSession();
+    final targetSessionId = part.childSessionID ?? childSession?.id;
+    final targetProjectId = projectId ?? childSession?.projectID;
+    // A backend that reports the subtask's own lifecycle is authoritative for
+    // it. Otherwise the child session's status is the only signal available.
+    final status = part.state?.status;
+    final childStatus = childSession == null
+        ? null
+        : childStatuses[childSession.id] ?? const SessionStatus.idle();
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -34,14 +39,14 @@ class const SubtaskPartWidget({
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
-          onTap: childSession != null
+          onTap: targetSessionId != null && targetProjectId != null
               ? () => context.pushRoute(
                   AppRoute.sessionDetail(
-                    projectId: projectId ?? childSession.projectID,
+                    projectId: targetProjectId,
                     projectName: currentProjectName(context),
-                    sessionId: childSession.id,
+                    sessionId: targetSessionId,
                     readOnly: true,
-                    sessionTitle: childSession.title,
+                    sessionTitle: childSession?.title ?? part.description,
                   ),
                 )
               : null,
@@ -53,7 +58,9 @@ class const SubtaskPartWidget({
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               children: [
-                _statusIcon(status: status, prego: prego),
+                status == null
+                    ? _sessionStatusIcon(status: childStatus, prego: prego)
+                    : _subtaskStatusIcon(status: status, prego: prego),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -77,7 +84,17 @@ class const SubtaskPartWidget({
                     ],
                   ),
                 ),
-                if (childSession != null)
+                if (status != null)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(start: 8),
+                    child: Text(
+                      _statusLabel(loc: loc, status: status),
+                      style: prego.textTheme.textXs.medium.copyWith(
+                        color: prego.colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                if (targetSessionId != null && targetProjectId != null)
                   Icon(
                     Icons.chevron_right,
                     size: 20,
@@ -91,7 +108,38 @@ class const SubtaskPartWidget({
     );
   }
 
-  Widget _statusIcon({required SessionStatus? status, required PregoDesignSystem prego}) => switch (status) {
+  Widget _subtaskStatusIcon({required ToolStatus status, required PregoDesignSystem prego}) => switch (status) {
+    ToolStatus.pending || ToolStatus.running => SizedBox(
+      width: 16,
+      height: 16,
+      child: PregoActivityIndicator(
+        color: prego.colors.bgBrandSolid,
+      ),
+    ),
+    ToolStatus.completed => Icon(
+      Icons.check_circle,
+      size: 16,
+      color: prego.colors.bgBrandSolid,
+    ),
+    ToolStatus.error => Icon(Icons.error, size: 16, color: prego.colors.fgErrorPrimary),
+    ToolStatus.cancelled => Icon(Icons.cancel, size: 16, color: prego.colors.textSecondary),
+    ToolStatus.unknown => Icon(
+      Icons.play_circle_outline,
+      size: 16,
+      color: prego.colors.borderPrimary,
+    ),
+  };
+
+  String _statusLabel({required AppLocalizations loc, required ToolStatus status}) => switch (status) {
+    ToolStatus.pending => loc.sessionDetailToolPending,
+    ToolStatus.running => loc.sessionDetailToolRunning,
+    ToolStatus.completed => loc.sessionDetailToolCompleted,
+    ToolStatus.error => loc.sessionDetailToolError,
+    ToolStatus.cancelled => loc.sessionDetailToolCancelled,
+    ToolStatus.unknown => loc.sessionDetailToolUnknown,
+  };
+
+  Widget _sessionStatusIcon({required SessionStatus? status, required PregoDesignSystem prego}) => switch (status) {
     SessionStatusBusy() || SessionStatusRetry() => SizedBox(
       width: 16,
       height: 16,
@@ -111,11 +159,19 @@ class const SubtaskPartWidget({
     ),
   };
 
-  /// Try to find the child session that matches this subtask part.
+  /// The child session this subtask runs in.
   ///
-  /// Uses multi-strategy matching: exact → case-insensitive → contains.
-  /// If no match found, returns null.
-  Session? _findChildSession() {
+  /// A backend that names it on the part is authoritative, so only the id is
+  /// matched then — the lookup merely enriches the tile and its absence is
+  /// normal while the child is still being published. Backends that name no
+  /// child fall back to matching the description against child titles.
+  Session? _resolveChildSession() {
+    if (part.childSessionID case final childSessionID?) {
+      for (final child in children) {
+        if (child.id == childSessionID) return child;
+      }
+      return null;
+    }
     if (children.isEmpty) return null;
     // If there's only one child, it's likely the one.
     if (children.length == 1) return children.first;

@@ -16,6 +16,7 @@ MessagePart _textPart({required String id, required String text}) => MessagePart
   prompt: null,
   description: null,
   agent: null,
+  childSessionID: null,
   agentName: null,
   attempt: null,
   retryError: null,

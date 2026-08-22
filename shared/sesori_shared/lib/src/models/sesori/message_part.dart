@@ -126,10 +126,19 @@ sealed class MessagePart with _$MessagePart {
     required MessagePartType type,
     required String? text,
     required String? tool,
+
+    /// For a `tool` part, the tool call's lifecycle. For a `subtask` part, the
+    /// subtask's own lifecycle, which is authoritative for its inline status;
+    /// a backend that does not report one sends null.
     required ToolState? state,
     required String? prompt,
     required String? description,
     required String? agent,
+
+    /// The session hosting a `subtask` part's work, when the backend exposes
+    /// one and the bridge could resolve it. Null leaves consumers to their own
+    /// association, so a part is never withheld for an unresolved reference.
+    required String? childSessionID,
     required String? agentName,
     required int? attempt,
     required String? retryError,
@@ -205,9 +214,12 @@ extension MessageAttachmentSafety on MessageAttachment {
   }
 }
 
-/// Lifecycle of a tool invocation. Wire values mirror OpenCode's tool-state
-/// `status` discriminator 1:1; [unknown] is the forward-compatible fallback for
-/// any status a newer bridge emits that this client does not yet model.
+/// Lifecycle of a tool invocation, and of a subtask when its part carries a
+/// [ToolState]. Wire values mirror OpenCode's tool-state `status`
+/// discriminator, plus [cancelled] for work a backend stopped before it
+/// produced a result; [unknown] is the forward-compatible fallback for any
+/// status a newer bridge emits that this client does not yet model. A client
+/// older than [cancelled] decodes it as [unknown].
 @JsonEnum()
 enum ToolStatus() {
   @JsonValue("pending")
@@ -218,6 +230,8 @@ enum ToolStatus() {
   completed,
   @JsonValue("error")
   error,
+  @JsonValue("cancelled")
+  cancelled,
   @JsonValue("unknown")
   unknown,
 }

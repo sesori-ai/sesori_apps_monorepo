@@ -694,6 +694,7 @@ MessageWithParts testMessageWithParts({String? id = _noString}) {
         prompt: null,
         description: null,
         agent: null,
+        childSessionID: null,
         agentName: null,
         attempt: null,
         retryError: null,

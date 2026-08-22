@@ -34,6 +34,7 @@ extension PluginToolStatusMapping on PluginToolStatus {
     PluginToolStatus.running => ToolStatus.running,
     PluginToolStatus.completed => ToolStatus.completed,
     PluginToolStatus.error => ToolStatus.error,
+    PluginToolStatus.cancelled => ToolStatus.cancelled,
     PluginToolStatus.unknown => ToolStatus.unknown,
   };
 }
@@ -108,6 +109,9 @@ extension PluginMessagePartMapping on PluginMessagePart {
     prompt: prompt,
     description: description,
     agent: agent,
+    // Carried through as the plugin reported it. The live path translates it
+    // in `SessionEventMapper`; the history path in `SessionRepository`.
+    childSessionID: childSessionID,
     agentName: agentName,
     attempt: attempt,
     retryError: retryError,

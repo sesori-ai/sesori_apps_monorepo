@@ -217,6 +217,7 @@ class const MessagePartMapper() {
     prompt: prompt,
     description: description,
     agent: agent,
+    childSessionID: null,
     agentName: agentName,
     attempt: attempt,
     retryError: retryError,
