@@ -35,5 +35,13 @@ to a follow-up so this step stays a pure de-duplication.
 passed. 34 duplicate declarations removed across 13 files; `dart fix` cleared
 the 19 imports they had required.
 
+Size, excluding this evidence file so the figure is an independent budget
+measurement, via
+`git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- client/module_core`
+against merge-base `d47feda74`: **`+84 / -186` = 270 changed lines**, well
+inside the 800–1,100 target. The step came in far under budget because the
+plan's counts were usage sites rather than declarations (see the table above),
+and because the `buildSessionDetailCubit` harness moved to a follow-up.
+
 Architecture implementation review not run — test-only change, no production
 code touched.
