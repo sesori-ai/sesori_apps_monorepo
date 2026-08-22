@@ -16,7 +16,6 @@ lib/src/
 │   ├── server_connection/  ConnectionService, SSE models, connection status
 │   ├── session/      SessionService
 │   └── voice/        VoiceApi (HTTP calls only — recording stays in Flutter)
-├── concurrency/      Isolate pool, message queue, concurrent cache
 ├── cubits/           All state management (login, project_list, session_list, etc.)
 ├── di/               @InjectableInit for core DI registration
 ├── extensions/       Dart utility extensions (sugar_dart, iterable_x)

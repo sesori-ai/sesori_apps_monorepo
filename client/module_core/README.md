@@ -25,10 +25,6 @@ See the [root README](../README.md) for the full monorepo overview.
 | `RelayClient` | Low-level relay WebSocket client with E2E encryption |
 | `SseEventTracker` | Tracks SSE events from the relay: project activity, session activity, and project timestamp updates |
 
-**Concurrency** (re-exported from `sesori_shared`)
-
-`SingleTaskIsolate`, `MultiTaskIsolate` — typed isolate wrappers with persistent and transient pool variants. `ConcurrentCache` — async-safe cache with per-key locking.
-
 **Platform Interfaces**
 
 These abstract interfaces are defined here and implemented by Flutter adapters in `app/lib/core/platform/`:
