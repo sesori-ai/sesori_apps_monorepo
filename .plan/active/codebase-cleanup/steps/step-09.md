@@ -44,7 +44,9 @@ correctness or test-confidence findings.
 `bridge/app`: `dart format --output=none --set-exit-if-changed test` clean,
 `dart analyze --fatal-infos` clean, `dart test` 2,477 passed.
 
-Size, excluding this evidence file: **`+567 / -1,226` = 1,793 changed lines**.
+Size, excluding this evidence file, via
+`git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- bridge/app`
+against merge-base `8f857ed22`: **`+567 / -1,226` = 1,793 changed lines**.
 This is 293 lines over the 1,500-line soft cap, but is move/deletion-heavy: 465
 added lines relocate existing shared fakes, 35 add the derived fake, and the PR
 finishes at **659 fewer test lines** overall.
