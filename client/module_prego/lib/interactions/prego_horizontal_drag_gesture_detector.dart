@@ -4,6 +4,13 @@ import 'package:material_ui/material_ui.dart';
 /// The fraction of a drag target reserved for a platform system-back gesture.
 const double _systemBackGestureExclusionFraction = 0.1;
 
+/// The physical directions a [PregoHorizontalDragGestureDetector] may accept.
+enum PregoHorizontalDragDirection() {
+  both,
+  left,
+  right;
+}
+
 /// A horizontal drag detector that stays out of platform system-back edges.
 ///
 /// Touch drags beginning in the directional start 10% are ignored on iOS. On
@@ -12,11 +19,11 @@ const double _systemBackGestureExclusionFraction = 0.1;
 /// platforms retain the full hit area.
 ///
 /// The detector participates in Flutter's gesture arena, so a horizontal
-/// recognizer in [child] can win instead. When [crossAxisRejectionSlop] is set,
-/// a still-pending claim is also rejected once vertical-dominant movement
-/// reaches that distance. This lets a competing vertical recognizer become the
-/// sole arena member before Flutter's normal touch slop when a host requires
-/// eager small-drag handling.
+/// recognizer in [child] can win instead. When [pendingRejectionSlop] is set, a
+/// still-pending claim is rejected once vertical-dominant movement or movement
+/// opposite [direction] reaches that distance. This lets another recognizer
+/// become the sole arena member before Flutter's normal touch slop when a host
+/// requires eager intent handling.
 class const PregoHorizontalDragGestureDetector({
   super.key,
   required final Widget child,
@@ -27,10 +34,11 @@ class const PregoHorizontalDragGestureDetector({
   required final GestureDragUpdateCallback onHorizontalDragUpdate,
   required final GestureDragEndCallback onHorizontalDragEnd,
   required final GestureDragCancelCallback onHorizontalDragCancel,
-  required final double? crossAxisRejectionSlop,
+  required final double? pendingRejectionSlop,
+  final PregoHorizontalDragDirection direction = PregoHorizontalDragDirection.both,
   final DragStartBehavior dragStartBehavior = DragStartBehavior.start,
 }) extends StatelessWidget {
-  this : assert(crossAxisRejectionSlop == null || crossAxisRejectionSlop > 0);
+  this : assert(pendingRejectionSlop == null || pendingRejectionSlop > 0);
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +62,8 @@ class const PregoHorizontalDragGestureDetector({
                   ..multitouchDragStrategy = scrollBehavior.getMultitouchDragStrategy(context)
                   ..gestureSettings = gestureSettings
                   ..supportedDevices = supportedDevices
-                  ..crossAxisRejectionSlop = crossAxisRejectionSlop
+                  ..pendingRejectionSlop = pendingRejectionSlop
+                  ..direction = direction
                   ..isStartAllowed = (event) => _allowsDragStart(context: context, event: event);
               },
             ),
@@ -94,7 +103,9 @@ class const PregoHorizontalDragGestureDetector({
 class _PregoHorizontalDragGestureRecognizer({required super.debugOwner}) extends HorizontalDragGestureRecognizer {
   late bool Function(PointerEvent event) isStartAllowed;
 
-  double? crossAxisRejectionSlop;
+  double? pendingRejectionSlop;
+
+  PregoHorizontalDragDirection direction = PregoHorizontalDragDirection.both;
 
   final Map<int, Offset> _pointerStarts = <int, Offset>{};
   final Set<int> _acceptedPointers = <int>{};
@@ -116,17 +127,25 @@ class _PregoHorizontalDragGestureRecognizer({required super.debugOwner}) extends
 
   @override
   void handleEvent(PointerEvent event) {
-    final rejectionSlop = crossAxisRejectionSlop;
+    final rejectionSlop = pendingRejectionSlop;
     final pendingDelta = switch (event) {
       PointerMoveEvent() => event.position - (_pointerStarts[event.pointer] ?? event.position),
       PointerPanZoomUpdateEvent() => event.pan,
       _ => null,
     };
-    if (rejectionSlop != null &&
-        !_acceptedPointers.contains(event.pointer) &&
+    final shouldRejectCrossAxis =
         pendingDelta != null &&
-        pendingDelta.dy.abs() >= rejectionSlop &&
-        pendingDelta.dy.abs() >= pendingDelta.dx.abs()) {
+        pendingDelta.dy.abs() >= (rejectionSlop ?? double.infinity) &&
+        pendingDelta.dy.abs() >= pendingDelta.dx.abs();
+    final shouldRejectDirection =
+        pendingDelta != null &&
+        pendingDelta.dx.abs() >= (rejectionSlop ?? double.infinity) &&
+        switch (direction) {
+          PregoHorizontalDragDirection.both => false,
+          PregoHorizontalDragDirection.left => pendingDelta.dx > 0,
+          PregoHorizontalDragDirection.right => pendingDelta.dx < 0,
+        };
+    if (!_acceptedPointers.contains(event.pointer) && (shouldRejectCrossAxis || shouldRejectDirection)) {
       resolvePointer(event.pointer, GestureDisposition.rejected);
       return;
     }

@@ -1245,6 +1245,22 @@ void main() {
 
     await gesture.up();
     await tester.pumpAndSettle();
+
+    final touchScrollPixels = horizontalPosition.pixels;
+    final trackpad = await tester.createGesture(kind: PointerDeviceKind.trackpad);
+    final trackpadOrigin = tester.getCenter(find.byType(SingleChildScrollView));
+    await trackpad.panZoomStart(trackpadOrigin);
+    for (var i = 1; i <= 6; i++) {
+      await trackpad.panZoomUpdate(trackpadOrigin, pan: Offset(40.0 * i, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    expect(horizontalPosition.pixels, lessThan(touchScrollPixels));
+    expect(tester.getTopLeft(codeBlockFinder).dx, closeTo(codeBlockRestX, 0.5));
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+
+    await trackpad.panZoomEnd();
+    await tester.pumpAndSettle();
   });
 
   testWidgets("peeking timestamps while detached does not snap back to the latest edge", (tester) async {
@@ -1388,7 +1404,7 @@ void main() {
     expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
   });
 
-  testWidgets("a rightward drag does not engage the peek (gutter is on the right)", (tester) async {
+  testWidgets("a rightward-first drag yields when it turns into a vertical scroll", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -1419,6 +1435,12 @@ void main() {
     await tester.pump();
 
     expect(tester.getTopLeft(textFinder).dx, restX, reason: "rightward drag must not open the timestamp gutter");
+
+    await gesture.moveBy(const Offset(0, 300));
+    await tester.pump();
+
+    expect(_position(tester).pixels, greaterThan(20));
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
 
     await gesture.up();
     await tester.pumpAndSettle();

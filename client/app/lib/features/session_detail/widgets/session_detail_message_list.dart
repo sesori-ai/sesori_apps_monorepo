@@ -124,10 +124,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// rarer/longer labels ellipsize in [MessageTimestampReveal].
   static const double _kMaxReveal = 108;
 
-  /// Vertical-dominant travel that releases the pending timestamp gesture to
-  /// the list. Kept below `kTouchSlop` so small vertical drags retain the
-  /// list's eager detach behavior.
-  static const double _kRevealCrossAxisRejectionSlop = 8;
+  /// Disallowed-direction or vertical-dominant travel that releases the
+  /// pending timestamp gesture. Kept below `kTouchSlop` so small vertical and
+  /// rightward-first drags remain available to the transcript.
+  static const double _kRevealPendingRejectionSlop = 8;
 
   static const Set<PointerDeviceKind> _kRevealPointerDevices = {
     PointerDeviceKind.touch,
@@ -601,79 +601,83 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       //   path ignores the mouse kind) so it keeps selecting message
       //   text; hijacking it for the peek would make selection impossible.
       //
-      child: PregoHorizontalDragGestureDetector(
-        behavior: HitTestBehavior.translucent,
-        supportedDevices: _kRevealPointerDevices,
-        onHorizontalDragDown: _onRevealDragDown,
-        onHorizontalDragStart: _onRevealDragStart,
-        onHorizontalDragUpdate: _onRevealDragUpdate,
-        onHorizontalDragEnd: _onRevealDragEnd,
-        onHorizontalDragCancel: _onRevealDragCancel,
-        crossAxisRejectionSlop: _kRevealCrossAxisRejectionSlop,
-        dragStartBehavior: DragStartBehavior.down,
-        child: chat_ui.Chat(
-          key: _kListViewKey,
-          currentUserId: _kUserAuthorId,
-          resolveUser: _resolveUser,
-          chatController: _chatController,
-          theme: _chatThemeFor(theme: Theme.of(context)),
-          backgroundColor: Colors.transparent,
-          builders: chat_core.Builders(
-            // Full-row control: drop the package's bubble/alignment/
-            // gesture wrapper and render our cards bare, exactly as the
-            // previous ListView did.
-            chatMessageBuilder: (
-              context,
-              message,
-              index,
-              animation,
-              child, {
-              bool? isRemoved,
-              required bool isSentByMe,
-              chat_core.MessageGroupStatus? groupStatus,
-            }) => child,
-            customMessageBuilder:
-                (
-                  context,
-                  message,
-                  index, {
-                  required bool isSentByMe,
-                  chat_core.MessageGroupStatus? groupStatus,
-                }) => _buildRow(
-                  entry: message,
-                  messages: messages,
-                  indexById: indexById,
-                  transientSubmissions: transientSubmissions,
-                  streamingText: streamingText,
-                  children: children,
-                  childStatuses: childStatuses,
-                  retryErrorMessage: retryErrorMessage,
-                ),
-            // The prompt input and tasks bar live outside this widget; reserve
-            // no composer space inside the list.
-            composerBuilder: (context) => const SizedBox.shrink(),
-            // Follow/detach owns the jump affordance via the overlay pill.
-            scrollToBottomBuilder: (context, animation, onPressed) => const SizedBox.shrink(),
-            // The loaded view renders its own empty state before this
-            // widget is ever mounted.
-            emptyChatListBuilder: (context) => const SizedBox.shrink(),
-            chatAnimatedListBuilder: (context, itemBuilder) => chat_ui.ChatAnimatedListReversed(
-              itemBuilder: itemBuilder,
-              scrollController: _follow.scrollController,
-              insertAnimationDuration: Duration.zero,
-              removeAnimationDuration: Duration.zero,
-              shouldScrollToEndWhenSendingMessage: false,
-              topPadding: 8 + widget.topInset,
-              bottomPadding: 8 + widget.bottomInset,
-              handleSafeArea: false,
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-              // Always allow overscroll/bounce, even when the transcript is
-              // shorter than the viewport, so the list never feels locked.
-              physics: const AlwaysScrollableScrollPhysics(),
-              // The list is reversed, so "end" is the top: scrolling back
-              // through history is what asks for the older page. Null once
-              // the start is loaded, which stops the package asking again.
-              onEndReached: widget.onLoadOlderMessages,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: _onNestedScrollNotification,
+        child: PregoHorizontalDragGestureDetector(
+          behavior: HitTestBehavior.translucent,
+          supportedDevices: _kRevealPointerDevices,
+          onHorizontalDragDown: _onRevealDragDown,
+          onHorizontalDragStart: _onRevealDragStart,
+          onHorizontalDragUpdate: _onRevealDragUpdate,
+          onHorizontalDragEnd: _onRevealDragEnd,
+          onHorizontalDragCancel: _onRevealDragCancel,
+          pendingRejectionSlop: _kRevealPendingRejectionSlop,
+          direction: PregoHorizontalDragDirection.left,
+          dragStartBehavior: DragStartBehavior.down,
+          child: chat_ui.Chat(
+            key: _kListViewKey,
+            currentUserId: _kUserAuthorId,
+            resolveUser: _resolveUser,
+            chatController: _chatController,
+            theme: _chatThemeFor(theme: Theme.of(context)),
+            backgroundColor: Colors.transparent,
+            builders: chat_core.Builders(
+              // Full-row control: drop the package's bubble/alignment/
+              // gesture wrapper and render our cards bare, exactly as the
+              // previous ListView did.
+              chatMessageBuilder: (
+                context,
+                message,
+                index,
+                animation,
+                child, {
+                bool? isRemoved,
+                required bool isSentByMe,
+                chat_core.MessageGroupStatus? groupStatus,
+              }) => child,
+              customMessageBuilder:
+                  (
+                    context,
+                    message,
+                    index, {
+                    required bool isSentByMe,
+                    chat_core.MessageGroupStatus? groupStatus,
+                  }) => _buildRow(
+                    entry: message,
+                    messages: messages,
+                    indexById: indexById,
+                    transientSubmissions: transientSubmissions,
+                    streamingText: streamingText,
+                    children: children,
+                    childStatuses: childStatuses,
+                    retryErrorMessage: retryErrorMessage,
+                  ),
+              // The prompt input and tasks bar live outside this widget; reserve
+              // no composer space inside the list.
+              composerBuilder: (context) => const SizedBox.shrink(),
+              // Follow/detach owns the jump affordance via the overlay pill.
+              scrollToBottomBuilder: (context, animation, onPressed) => const SizedBox.shrink(),
+              // The loaded view renders its own empty state before this
+              // widget is ever mounted.
+              emptyChatListBuilder: (context) => const SizedBox.shrink(),
+              chatAnimatedListBuilder: (context, itemBuilder) => chat_ui.ChatAnimatedListReversed(
+                itemBuilder: itemBuilder,
+                scrollController: _follow.scrollController,
+                insertAnimationDuration: Duration.zero,
+                removeAnimationDuration: Duration.zero,
+                shouldScrollToEndWhenSendingMessage: false,
+                topPadding: 8 + widget.topInset,
+                bottomPadding: 8 + widget.bottomInset,
+                handleSafeArea: false,
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+                // Always allow overscroll/bounce, even when the transcript is
+                // shorter than the viewport, so the list never feels locked.
+                physics: const AlwaysScrollableScrollPhysics(),
+                // The list is reversed, so "end" is the top: scrolling back
+                // through history is what asks for the older page. Null once
+                // the start is loaded, which stops the package asking again.
+                onEndReached: widget.onLoadOlderMessages,
+              ),
             ),
           ),
         ),
@@ -828,10 +832,29 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   void _onRevealDragCancel() {
     if (!_revealDragActive) {
-      _revealStartedFollowing = false;
+      scheduleMicrotask(() {
+        if (mounted && !_revealDragActive) _revealStartedFollowing = false;
+      });
       return;
     }
     _endReveal();
+  }
+
+  bool _onNestedScrollNotification(ScrollNotification notification) {
+    if (notification is! ScrollStartNotification ||
+        notification.metrics.axis != Axis.horizontal ||
+        !_revealStartedFollowing ||
+        _revealDragActive) {
+      return false;
+    }
+
+    // A nested horizontal scrollable won after trackpad pan-start detached the
+    // transcript. Restore the follow state captured by drag-down; vertical
+    // scroll notifications deliberately leave that detach intact.
+    _follow.suppressDetach();
+    _follow.releaseDetachSuppression();
+    _revealStartedFollowing = false;
+    return false;
   }
 
   void _endReveal() {

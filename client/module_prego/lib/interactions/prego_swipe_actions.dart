@@ -214,7 +214,7 @@ class _PregoSwipeActionsState() extends State<PregoSwipeActions> with SingleTick
         onHorizontalDragUpdate: _handleDragUpdate,
         onHorizontalDragEnd: _handleDragEnd,
         onHorizontalDragCancel: _handleDragCancel,
-        crossAxisRejectionSlop: null,
+        pendingRejectionSlop: null,
         child: LayoutBuilder(
           builder: (context, constraints) {
             _rowWidth = constraints.maxWidth;
