@@ -24,11 +24,17 @@
   root; nested agents flattened; legacy flat layout excluded.
 - [x] Complete sub-agent frames are routed to child sessions; no
   `--forward-subagent-text`.
-- [x] Background agents are not stopped by abort; `stop_task` is a follow-up.
-- [x] Open subtask parts are swept to `cancelled` unless their child is busy;
-  `ChatHistoryService` resolves child statuses and passes the keep-open set to
-  `ChatHistoryRepository.finalizeOpenToolParts` as data (no repository→
-  repository lookup); open subtask parts without a child id are cancelled.
+- [x] Running tasks keep the Claude session alive: `ClaudeSessionService`
+  tracks `runningTaskIds` per session from typed task frames (every
+  `task_type`) and folds them into busy status, plugin work state, the
+  active-work set, and the idle gate/reap, so the idle reaper and safe stops
+  never kill a running sub-agent; dispatch mode is unchanged. (User review
+  2026-08-22: the idle process reaper had not been considered.)
+- [x] Abort keeps interrupt + teardown, so running sub-agents become
+  `cancelled`; `stop_task` is not needed.
+- [x] Open subtask parts are swept to `cancelled` only when the root is idle
+  (the busy-while-tasks-run rule already protects live sub-agents); no
+  child-status lookup in the sweep.
 - [x] `ClaudeEventDispatcher` (over the tracker task map) is the sole owner of
   task state, child-session statuses, resident task ids, and `childSessionIds`;
   `ClaudeSessionService` gains no field. `ClaudePlugin` forwards the disjoint
@@ -80,6 +86,10 @@
   if a floor build is available, otherwise record as untested.
 - [ ] Exact live shape of the background `<task-notification>` user frame
   (whether it carries `isReplay`/`origin`); Step 3 capture.
+- [ ] Whether `system/background_tasks_changed {tasks}` lists live task ids in
+  a shape usable to reconcile `runningTaskIds` (a task whose notification
+  never arrives would otherwise pin the process until abort/exit); Step 3
+  capture decides adopt-or-skip.
 
 ## Verification Log
 
@@ -87,8 +97,10 @@
   titles, and step total agree; PR
   [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open.
   Changed lines (informational, not a pass/fail check): `git diff --numstat
-  <merge-base>..HEAD -- .plan/active/claude-inline-subtasks/PLAN.md` = 602
-  additions / 0 deletions at the last plan edit, within the 450-650 target.
+  <merge-base>..HEAD -- .plan/active/claude-inline-subtasks/PLAN.md` = 656
+  additions / 0 deletions at the last plan edit — 6 lines over the 450-650
+  target after the user-review lifecycle amendment; accepted deviation, target
+  unchanged.
   Per the plan's series note, `TRACKER.md` bookkeeping is excluded from the
   comparison because its count would include the lines that record it; the
   final tracker size is visible in the merged PR.
@@ -134,3 +146,13 @@
   updating `docs/regression/` in every behavior PR — the regression README
   explicitly allows reconciliation in the penultimate step of durable planned
   work, which Step 6 is.
+- **User review (2026-08-22), applied:** the plan had not considered the
+  Claude idle process reaper (`ClaudeSessionService._scheduleIdleReap`), the
+  plugin work state that gates safe stops, or that Sesori's abort tears the
+  process down. Amendment: running tasks keep the session busy and defer the
+  reap (lifecycle owner `ClaudeSessionService`, all task types); abort
+  cancels sub-agents via process exit; the sweep no longer needs child-status
+  resolution (supersedes the keep-open-set design and the batched
+  `getSessionStatuses({sessionIds})` refinement, and the idle-root special
+  case in `getActiveSessionsSummary`); regression scope gains
+  `notifications.md` and `plugin-setup-and-lifecycle.md`.

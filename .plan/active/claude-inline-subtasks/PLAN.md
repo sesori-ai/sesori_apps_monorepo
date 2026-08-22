@@ -95,6 +95,20 @@ sub-agent did is dropped. After this plan:
   `toolUseResult`.
 - `api/claude_launch_spec.dart:102-133` does not pass
   `--forward-subagent-text`.
+- `services/claude_session_service.dart` owns work/idle lifecycle and knows
+  nothing about sub-agents: `_finish` (`:554-565`) and `_endSelfStartedTurn`
+  (`:701-707`) emit `BridgeSseSessionIdle` and arm `_scheduleIdleReap`
+  (`:567-605`) as soon as `pending == 0 && selfStartedTurn == null`; the reap
+  tears the resident CLI process down after the configured idle timeout,
+  deferring only for a pending `ScheduleWakeup` (`wakeupAt`, tracked by
+  inspecting assistant frames in `_trackWakeupSchedule`, `:651-673`).
+  `_syncWorkState` (`:607-611`) derives the plugin-level `PluginWorkState`
+  from the same predicate, which gates safe plugin stops and suspension
+  (`bridge/app/lib/src/bridge/runtime/plugin_runtime.dart:758,1103`), and
+  `interruptActiveWork` (`:500-515`) aborts only sessions matching it.
+  `abort` (`:465-498`) interrupts **and tears the process down**. A
+  background sub-agent lives only inside that process, so without a lifecycle
+  change the reap (and any safe stop) would kill running sub-agents silently.
 
 ### Claude Code CLI 2.1.237 facts (live probe + local transcript survey)
 
@@ -245,9 +259,39 @@ Live, in `ClaudeToolTracker` + `ClaudeEventDispatcher`:
   events to `_eventBuffer`; `deleteSession` and dispose call the same method
   before `forgetSession`. `ClaudeSessionService` never touches the dispatcher
   or tracker.
-- Abort (`interrupt`) is unchanged: it stops the foreground turn; background
-  agents keep running, as in the CLI. Stopping them (`stop_task`) is a
-  follow-up, not part of this plan.
+- **Running tasks keep the session alive (lifecycle owner:
+  `ClaudeSessionService`).** `_SessionTurnState` gains `runningTaskIds`,
+  maintained exactly like `wakeupAt`/`selfStartedTurn` from typed frames in
+  `_handleProcessEvent`: `ClaudeTaskStartedMessage` adds `task_id`,
+  `ClaudeTaskNotificationMessage` removes it, `ClaudeSessionProcessExited`
+  and `abort` clear it. It covers **every** `task_type` (sub-agents,
+  background shells, workflows, nested `owned_by_subagent` tasks), because
+  any of them lives only inside the resident process. The set extends the
+  existing "work in flight" predicate wherever it is evaluated:
+  `sessionStatuses` (the root reports **busy** while a task runs, even after
+  its turn's `result`), `_syncWorkState` (plugin `PluginWorkState.busy`, so
+  safe stop/suspension refuse and a forced stop interrupts observably),
+  `interruptActiveWork`'s active set, and the idle gate in
+  `_finish`/`_endSelfStartedTurn`/`_scheduleIdleReap`. A notification that
+  empties the set while nothing else runs emits `BridgeSseSessionIdle`, syncs
+  work state, and arms the reap, symmetrically with a self-started turn
+  ending; the CLI's wake-up turn that usually follows is a self-started turn
+  and is handled by the existing code. The set never changes dispatch mode or
+  turn-boundary waits — prompts still steer or wait on turns exactly as
+  today. Consequences: no idle reap and no safe stop can kill a running
+  sub-agent; the completion push fires once, after the last sub-agent and its
+  wake-up turn settle; the client's `hasActiveWork` is true from the root
+  itself. Two structures exist by design with disjoint responsibilities —
+  the service's running-task set (lifecycle policy) and the dispatcher's task
+  map (part presentation, child statuses, frame routing) — fed by the same
+  typed frames and never consulting each other.
+- Abort keeps today's semantics — interrupt **then teardown** — so running
+  sub-agents die with the process and surface as `cancelled` through the
+  process-exit rule; `stop_task` is not needed. Residual: if the CLI ever
+  emits no `task_notification` for a task, the session stays busy and the
+  process pinned until abort/delete/exit; Step 3's live capture checks whether
+  `system/background_tasks_changed {tasks}` is a usable reconciliation
+  snapshot for the set, and adopts it only if its shape lists live task ids.
 
 History replay, in `ClaudeHistoryMapper`:
 
@@ -313,10 +357,10 @@ History replay, in `ClaudeHistoryMapper`:
   (children) with no decision of its own, and
   `ClaudePlugin.getActiveSessionsSummary()` fills
   `PluginActiveSession.childSessionIds` from it (today `const []` at
-  `claude_plugin_impl.dart:396`) **and keeps a root in the summary when it
-  has running children even though its own status is idle** (today `:387`
-  skips roots that are neither running nor awaiting input, which would drop
-  exactly the background-agent case). This reaches the bar, `hasActiveWork`,
+  `claude_plugin_impl.dart:396`); the root itself is already in the summary
+  because the session service reports it busy while a task runs (lifecycle
+  rule in Step 3), so the `:387` running/awaiting filter needs no change.
+  This reaches the bar, `hasActiveWork`,
   activity roll-ups, and push grouping through the plugin's existing contract
   surfaces (`session.created`/`session.status` events, `getSessionStatuses`,
   `childSessionIds`); no bridge/app change is needed for that.
@@ -326,28 +370,19 @@ History replay, in `ClaudeHistoryMapper`:
   children.
 - Legacy flat `agent-<slug>-<hex>.jsonl` transcripts stay excluded (no title,
   no tool link) — honest limitation.
-- Bridge sweep extension (bridge/app, same PR), layered: `ChatHistoryService`
-  (Layer 3, which already holds `_sessionRepository` and
-  `_chatHistoryRepository`) resolves the statuses of the distinct
-  `childSessionID`s referenced by open subtask parts against **one** status
-  snapshot — a new `SessionRepository.getSessionStatuses({sessionIds})` that
-  reads the bindings once and calls the owning plugin's `getSessionStatuses()`
-  once, instead of the per-id `getSessionStatus` (`session_repository.dart:
-  1054`), which fetches the whole plugin map per call — and passes the
-  keep-open set down as data:
-  `ChatHistoryRepository.finalizeOpenToolParts({sessionId, updatedAt,
-  keepOpenChildSessionIds})`. The repository performs no status lookup and
-  never imports `SessionRepository`. The ids come from the in-memory page on
-  the read trigger (`chat_history_service.dart:117-118`) and from a dumb
-  repository read `openSubtaskChildSessionIds(sessionId:)` on the
-  idle-transition trigger (`chat_history_service.dart:452`); both triggers run
-  the same service-level resolution. `_containsOpenToolPart` also counts
-  subtask parts with an open `state`. The repository finalizes an open subtask
-  part to `cancelled` (no error text) unless its `childSessionID` is in the
-  keep-open set; an open subtask part without `childSessionID` is finalized to
-  `cancelled` as well. Tool parts keep today's `error` finalization. This is
-  what repairs a stuck spinner after an abrupt bridge death, uniformly with
-  tool parts, without sweeping live background agents.
+- Bridge sweep extension (bridge/app, same PR): because the root session is
+  busy for as long as any of its tasks runs (Step 3 lifecycle rule), the
+  existing `_sweepUnlessTurnRunning` guard (`chat_history_service.dart:521-
+  523`, root status busy/retry → no sweep) already protects live sub-agents
+  on both triggers — the idle transition and a history read. The extension
+  is therefore small and needs no child-status lookup: `_containsOpenToolPart`
+  (`:500-509`) also counts subtask parts whose `state` is `pending`/`running`,
+  and `ChatHistoryRepository.finalizeOpenToolParts` (`chat_history_repository.
+  dart:295-332`) finalizes an open subtask part to `cancelled` with no error
+  text, while tool parts keep today's `error` finalization. No new repository
+  dependency, no new `SessionRepository` method. This repairs a stuck spinner
+  after an abrupt bridge death (root idle after restart), uniformly with tool
+  parts, without ever sweeping a live background agent.
 
 ### Live sub-agent streaming (Step 5)
 
@@ -388,15 +423,20 @@ New mutable parts:
   derived `parent_tool_use_id → childSessionId` routing view over it, and one
   per-session root directory recorded at `beginTurn` for child construction.
   Cleared on `forgetSession`/`cancelTasks` only. Child statuses, resident task
-  ids, and `childSessionIds` are accessors over that one map;
-  `ClaudeSessionService` gains no field.
-- Bridge/app: none persistent. The sweep reads existing session statuses.
+  ids, and `childSessionIds` are accessors over that one map.
+- Claude plugin, lifecycle: one per-session `runningTaskIds` set in
+  `ClaudeSessionService._SessionTurnState`, beside `wakeupAt` and
+  `selfStartedTurn`, cleared on notification/exit/abort. Justified by the
+  idle reaper and safe-stop policy that would otherwise kill running
+  sub-agents; it is lifecycle state, not a second copy of presentation state.
+- Bridge/app: none persistent. The sweep reads the root's existing status.
 - Client: none.
 
-Deliberately not added: parent-session busy derivation from sub-agents,
-`stop_task` on abort, `task_progress` rendering, per-subtask usage stats,
-streamed sub-agent text deltas, a nested parent hierarchy, a new SSE event, a
-new route or sheet, transcript-item models in the client, analytics.
+Deliberately not added: `stop_task` (abort already tears the process down),
+a service→dispatcher query for task state, `task_progress` rendering,
+per-subtask usage stats, streamed sub-agent text deltas, a nested parent
+hierarchy, a new SSE event, a new route or sheet, transcript-item models in
+the client, analytics.
 
 ## Evidence And Accepted Risk
 
@@ -406,7 +446,9 @@ new route or sheet, transcript-item models in the client, analytics.
 | Stuck "running" subtask after abrupt bridge death | ordinary reachable flow (bridge restart/update while agents run) | sweep extension keyed on child status, Step 4 |
 | Duplicate descriptions pick the wrong transcript under title matching | ordinary flow (fan-outs reuse labels) | `childSessionID`, Step 2 |
 | Part update arrives before the child binding commits | theoretical ordering | accept: pending-event queue orders it; worst case the tile is untappable until the next update or reload |
-| Background agents keep running after abort | CLI semantics | accept; `stop_task` follow-up |
+| Idle reaper / safe stop would kill running sub-agents once the launching turn ends | ordinary reachable flow (every background agent outlives its turn; reap timeout is on by default) | running tasks keep the session busy and defer the reap, Step 3 |
+| Abort kills running sub-agents with the process | existing abort semantics (interrupt + teardown) | accept; they surface as `cancelled`, which is the observable outcome the user asked for |
+| A task that never reports `task_notification` pins the session busy and the process resident | theoretical (CLI always emits a terminal notification in every observed flow) | accept; abort/delete/exit clear it; Step 3 evaluates `background_tasks_changed` as a reconciliation snapshot |
 | An interrupted foreground agent renders `cancelled` live (notification `stopped`) but `error` on replay, because the transcript persists only its error tool result and no notification record, and tool-result text is never matched | cosmetic divergence | accept; recorded as a known limitation in Step 6 |
 | External terminal session's running agent shows cancelled until its notification lands | rare, self-corrects | accept |
 | `task_started`/`task_notification` absent on the 2.1.221 floor | unverified | lifecycle also honors tool-result finalization and the `<task-notification>` user-frame parse, so it degrades without stuck state |
@@ -443,7 +485,8 @@ new route or sheet, transcript-item models in the client, analytics.
   or inline-only rendering for other plugins (separate cross-plugin effort;
   Claude children will appear in the bar automatically meanwhile).
 - Rendering `task_progress`, usage, cost, or TodoWrite content.
-- Stopping sub-agents from Sesori, or deriving parent busy state from them.
+- Stopping one sub-agent individually from Sesori (`stop_task`); abort
+  cancels all work by tearing the process down, as today.
 - Streaming sub-agent text deltas (`--forward-subagent-text`).
 - Sub-agent permission prompts (`agent_id` on `can_use_tool`) — unchanged.
 - Surfacing the legacy flat sub-agent transcript layout.
@@ -457,7 +500,11 @@ read), `session-history-and-recovery.md` (sweep covers open subtask parts keyed
 on child status; child transcripts reload with stable identity),
 `projects-and-sessions.md` (Claude sub-agent transcripts as child sessions in
 import and listing), `session-turns.md` (Claude `<task-notification>` records
-are internal, never rendered as user messages).
+are internal, never rendered as user messages; a Claude session returns to
+idle only after its last running task and the wake-up turn settle, and abort
+cancels running sub-agents), `notifications.md` (completion fires once, after
+the last sub-agent settles), `plugin-setup-and-lifecycle.md` (idle reap and
+safe stop defer while a Claude task runs).
 
 Highest level needed: **L4**. Matrix: Claude plugin for all new behavior;
 OpenCode representative proof that a `state: null` subtask part still renders
@@ -539,7 +586,16 @@ Scope:
 - `claude_plugin_impl.dart`: `getSessionMessages` passes
   `residentTaskToolUseIds`; `_handleProcessEvent` handles
   `ClaudeSessionProcessExited` via `cancelTasks`; `deleteSession`/dispose call
-  it before `forgetSession`. `ClaudeSessionService` is untouched.
+  it before `forgetSession`.
+- `services/claude_session_service.dart`: `_SessionTurnState.runningTaskIds`
+  tracked from `ClaudeTaskStartedMessage`/`ClaudeTaskNotificationMessage` in
+  `_handleProcessEvent` (beside `_trackWakeupSchedule`), cleared on process
+  exit and abort; folded into `sessionStatuses`, `_syncWorkState`,
+  `interruptActiveWork`, and the idle gate of `_finish`,
+  `_endSelfStartedTurn`, and `_scheduleIdleReap`; an emptied set emits idle
+  and arms the reap. Tests: reap deferred while a task runs and armed after
+  its notification; work state busy across the turn boundary; abort/exit
+  clear; dispatch mode unchanged.
 - Tests: parse, tracker lifecycle (foreground, background, failed, stopped,
   async-launched tool result, process exit), dispatcher event sequences,
   history replay fixtures (inline Dart maps), hidden notification records.
@@ -564,13 +620,11 @@ Scope:
   idle on terminal/cancel; `childSessionStatuses` accessor.
 - `claude_plugin_impl.dart`: `getChildSessions`; passes the root directory to
   `beginTurn`; `getSessionStatuses` disjoint union;
-  `getActiveSessionsSummary` fills `childSessionIds` and keeps idle roots
-  with running children.
-- `bridge/app`: `SessionRepository.getSessionStatuses({sessionIds})` (one
-  binding read, one plugin call); `ChatHistoryService` resolves keep-open
-  child ids from that snapshot for both sweep triggers;
-  `ChatHistoryRepository.finalizeOpenToolParts(..., keepOpenChildSessionIds)`
-  + `openSubtaskChildSessionIds`; tests.
+  `getActiveSessionsSummary` fills `childSessionIds`.
+- `bridge/app`: `ChatHistoryService._containsOpenToolPart` counts open
+  subtask parts; `ChatHistoryRepository.finalizeOpenToolParts` finalizes them
+  to `cancelled`; tests (a busy root is never swept; an idle root's open
+  subtask parts become cancelled on both triggers).
 - Tests: catalog (children, missing parent, legacy layout excluded), child
   history read, live event sequences, delete paths, sweep keeps busy children
   and cancels dead ones.
