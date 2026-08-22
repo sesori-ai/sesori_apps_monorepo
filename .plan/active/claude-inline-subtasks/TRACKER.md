@@ -97,10 +97,10 @@
   titles, and step total agree; PR
   [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open.
   Changed lines (informational, not a pass/fail check): `git diff --numstat
-  <merge-base>..HEAD -- .plan/active/claude-inline-subtasks/PLAN.md` = 656
-  additions / 0 deletions at the last plan edit — 6 lines over the 450-650
-  target after the user-review lifecycle amendment; accepted deviation, target
-  unchanged.
+  <merge-base>..HEAD -- .plan/active/claude-inline-subtasks/PLAN.md` = 685
+  additions / 0 deletions at the last plan edit — 35 lines over the 450-650
+  target after the user-review lifecycle amendment and the third bot round;
+  accepted deviation, target unchanged.
   Per the plan's series note, `TRACKER.md` bookkeeping is excluded from the
   comparison because its count would include the lines that record it; the
   final tracker size is visible in the merged PR.
@@ -156,3 +156,13 @@
   `getSessionStatuses({sessionIds})` refinement, and the idle-root special
   case in `getActiveSessionsSummary`); regression scope gains
   `notifications.md` and `plugin-setup-and-lifecycle.md`.
+- **Third bot round (chatgpt-codex-connector), applied:** `childSessionID`
+  is an optional reference in bridge translation (never part of the required
+  `backendSessionIds`, unbound → null) so Step 3 parts stay deliverable
+  before Step 4; `childSessionIds` lists busy/retry children only;
+  `_trackSelfStartedTurn` ignores forwarded child assistant/stream frames;
+  the child lifecycle and the running-task set start on the first
+  agent-id-bearing signal (`task_started` or an agent-id tool result), so the
+  2.1.221 floor degrades without losing children or reap deferral. Two
+  further threads (abort teardown, reap deferral) were already answered by
+  the user-review amendment.
