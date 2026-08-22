@@ -4,7 +4,7 @@ import "package:bloc_test/bloc_test.dart";
 import "package:http/http.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
-import "package:sesori_auth/sesori_auth.dart" show AuthSession, OAuthFlowProvider;
+import "package:sesori_auth/sesori_auth.dart" show OAuthFlowProvider;
 import "package:sesori_dart_core/src/cubits/login/login_cubit.dart";
 import "package:sesori_dart_core/src/cubits/login/login_failed_reason.dart";
 import "package:sesori_dart_core/src/cubits/login/login_state.dart";
@@ -15,12 +15,11 @@ import "package:sesori_dart_core/src/routing/app_routes.dart";
 import "package:sesori_dart_core/src/services/installation_analytics_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+import "../../helpers/test_helpers.dart";
 
 class MockOAuthFlowProvider() extends Mock implements OAuthFlowProvider;
 
 class MockUrlLauncher() extends Mock implements UrlLauncher;
-
-class MockAuthSession() extends Mock implements AuthSession;
 
 class MockLifecycleSource() extends Mock implements LifecycleSource;
 

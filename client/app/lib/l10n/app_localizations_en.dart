@@ -732,9 +732,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationCategorySystemUpdate => 'System Updates';
 
   @override
-  String get notificationCategorySystemUpdateDescription => 'App and bridge updates or maintenance notices';
-
-  @override
   String get sessionListTitle => 'Sessions';
 
   @override
@@ -1040,9 +1037,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailPickerAgent => 'Agent';
 
   @override
-  String get sessionDetailPickerModel => 'Model';
-
-  @override
   String get sessionDetailPickerVariant => 'Variant';
 
   @override
@@ -1064,9 +1058,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get backgroundTasksCompleted => 'All tasks completed';
-
-  @override
-  String get backgroundTasksTitle => 'Background Tasks';
 
   @override
   String get backgroundTaskStatusIdle => 'Completed';
@@ -1181,9 +1172,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signIn => 'Sign in';
 
   @override
-  String get backToLogin => 'Back to login';
-
-  @override
   String get loginAuthenticationFailedTitle => 'Authentication failed';
 
   @override
@@ -1193,9 +1181,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginAuthenticating => 'Signing in...';
 
   @override
-  String get loginAwaitingCallback => 'Waiting for authorization...';
-
-  @override
   String get loginPolling => 'Confirm the sign-in in your browser to continue.';
 
   @override
@@ -1203,18 +1188,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get loginBrowserOpenFailed => 'Could not open browser';
-
-  @override
-  String get loginCallbackTimeout => 'Authorization timed out. Please try again.';
-
-  @override
-  String get loginCallbackMissingParams => 'Invalid authorization callback. Please try again.';
-
-  @override
-  String get loginStateMismatch => 'Authorization state mismatch. Please try again.';
-
-  @override
-  String get loginPkceStateMissing => 'Login session expired. Please start again.';
 
   @override
   String get sessionListRunning => 'Running';
@@ -1258,9 +1231,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voiceRecord => 'Record voice';
 
   @override
-  String get voiceStopRecording => 'Stop recording';
-
-  @override
   String get voiceCancelTranscription => 'Cancel transcription';
 
   @override
@@ -1274,9 +1244,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceTranscribing => 'Transcribing...';
-
-  @override
-  String get voiceRecording => 'Recording...';
 
   @override
   String get voiceErrorPermission => 'Microphone permission is required for voice input';
@@ -1333,9 +1300,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fetchDirectoryRetry => 'Retry';
 
   @override
-  String get fetchDirectoryGoBack => 'Go Back';
-
-  @override
   String get gitRepoBadge => 'Git';
 
   @override
@@ -1349,13 +1313,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hide => 'Hide';
-
-  @override
-  String get projectFolderMissing => 'Unavailable';
-
-  @override
-  String get projectFolderMissingMessage =>
-      'This project\'s folder no longer exists — it may have been moved or deleted. Hide the project, or restore the folder to its original location.';
 
   @override
   String get noProjects => 'No projects';

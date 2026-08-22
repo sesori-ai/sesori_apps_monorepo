@@ -27,7 +27,6 @@ flutter:
         pluginClass: ThemePregoPlugin
         sharedDarwinSource: true
   assets:
-    - assets/svgs/hero_icons/
     - assets/svgs/brands/
   fonts:
     - family: Satoshi Prego

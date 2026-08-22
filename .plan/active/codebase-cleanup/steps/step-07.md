@@ -30,14 +30,20 @@ Phase-2 deliverables of the paused desktop workstream.
 Codegen regenerated; `dart fix --code=directives_ordering` applied. Renames plus
 their imports only — no logic change.
 
-Size, measured with
-`git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD` against
-merge-base `2ae02d2e6`: `+1,413 / -1,066` = 2,479 changed lines, above the
-1,500 soft cap and the step's 500–900 target. The overage is inherent to the
-change: 161 files are renamed and 309 files referenced them, and git counts a
-moved line as both an addition and a deletion, so the same content is counted
-twice. 865 of the changed lines are rewritten import directives across 248
-files; the rest are the regenerated Freezed/JSON parts that follow their
-sources and the two rewritten architecture documents. No logic line changed, and
-splitting the move would leave the tree half-flattened and non-compiling between
-PRs.
+Size, as merged (`git diff --numstat d47feda74^ d47feda74`), total
+**`+1,453 / -1,059` = 2,512 changed lines**, above the 1,500 soft cap and the
+step's 500–900 target. Scoped by pathspec:
+
+| Pathspec | Lines | What it is |
+|---|---|---|
+| `-- bridge/app` | `+1,192 / -876` = 2,068 | the move itself, **including** `bridge/app/AGENTS.md` (`+22 / -21` = 43 of those lines) |
+| `-- bridge/app ':!bridge/app/AGENTS.md'` | `+1,170 / -855` = 2,025 | code and generated parts only |
+| `-- ':!bridge/app' ':!.plan'` | `+52 / -30` = 82 | `bridge/ARCHITECTURE.md`, `bridge/README.md`, the skill reference |
+| `-- .plan` | `+209 / -153` = 362 | plan/tracker restructure and these evidence files |
+
+The overage is inherent to a move: 161 files are renamed and 309 referenced
+them, and git counts a moved line as both an addition and a deletion, so
+identical content is counted twice. 865 of the changed lines are rewritten
+import directives across 248 files; the rest are regenerated Freezed/JSON parts
+following their sources. No logic line changed, and splitting the move would
+leave the tree half-flattened and non-compiling between PRs.

@@ -1,7 +1,6 @@
 import "dart:async";
 
 import "package:meta/meta.dart";
-import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/platform/notification_open_request.dart";
 import "package:sesori_dart_core/src/platform/push_messaging_source.dart";
@@ -10,6 +9,7 @@ import "package:sesori_dart_core/src/repositories/notification_repository.dart";
 import "package:sesori_dart_core/src/services/notification_registration_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+import "../helpers/test_helpers.dart";
 
 void main() {
   group("NotificationRegistrationService", () {
@@ -331,50 +331,6 @@ class const RegisteredToken({required final String token, required final DeviceP
 
   @override
   int get hashCode => Object.hash(token, platform);
-}
-
-class FakeAuthSession({required AuthState initialState}) implements AuthSession {
-  final BehaviorSubject<AuthState> _authStates = BehaviorSubject<AuthState>.seeded(initialState);
-
-  @override
-  ValueStream<AuthState> get authStateStream => _authStates.stream;
-
-  @override
-  AuthState get currentState => _authStates.value;
-
-  void emit(AuthState state) => _authStates.add(state);
-
-  Future<void> dispose() async {
-    await _authStates.close();
-  }
-
-  @override
-  Future<AuthUser?> getCurrentUser() async => null;
-
-  @override
-  Future<bool> hasLocallyValidSession() async => false;
-
-  @override
-  Future<void> invalidateAllSessions() async {}
-
-  @override
-  Future<void> logoutCurrentDevice() async {}
-
-  @override
-  Future<bool> restoreSession() async => false;
-
-  @override
-  Future<bool> restoreLocalSession() async => false;
-
-  @override
-  Future<AuthUser> loginWithEmail({required String email, required String password}) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<AuthUser> loginWithApple({required String idToken, required String nonce}) async {
-    throw UnimplementedError();
-  }
 }
 
 class FakePushMessagingSource({

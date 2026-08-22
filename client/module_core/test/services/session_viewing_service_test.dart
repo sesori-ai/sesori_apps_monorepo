@@ -1,20 +1,12 @@
 import "dart:async";
 
 import "package:mocktail/mocktail.dart";
-import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/repositories/session_view_repository.dart";
 import "package:test/test.dart";
+import "../helpers/test_helpers.dart";
 
 class MockSessionViewRepository() extends Mock implements SessionViewRepository;
-
-class FakeLifecycleSource() implements LifecycleSource {
-  final BehaviorSubject<LifecycleState> _subject = BehaviorSubject.seeded(LifecycleState.resumed);
-  @override
-  ValueStream<LifecycleState> get lifecycleStateStream => _subject.stream;
-  void emit(LifecycleState state) => _subject.add(state);
-  void close() => _subject.close();
-}
 
 void main() {
   group("SessionViewingService", () {
@@ -59,7 +51,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       clearInteractions(viewRepository);
 
-      lifecycle.emit(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.paused);
       await service.sendTail;
       await Future<void>.delayed(Duration.zero);
       verify(() => viewRepository.sendSessionView(sessionId: null)).called(1);
@@ -67,7 +59,7 @@ void main() {
       // Resume must NOT auto-re-assert: the bridge would mark the session seen
       // before the detail screen shows the refreshed transcript. The cubit
       // re-calls setViewingSession after its post-resume refresh instead.
-      lifecycle.emit(LifecycleState.resumed);
+      lifecycle.emitState(LifecycleState.resumed);
       await service.sendTail;
       await Future<void>.delayed(Duration.zero);
       verifyNever(() => viewRepository.sendSessionView(sessionId: any(named: "sessionId")));
@@ -82,7 +74,7 @@ void main() {
 
     test("setViewingSession while backgrounded declares nothing until re-asserted after resume", () async {
       final service = build();
-      lifecycle.emit(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.paused);
       await service.sendTail;
       await Future<void>.delayed(Duration.zero);
       clearInteractions(viewRepository);
@@ -95,7 +87,7 @@ void main() {
       verifyNever(() => viewRepository.sendSessionView(sessionId: "s1"));
 
       // Resume flips the paused flag but does not itself send.
-      lifecycle.emit(LifecycleState.resumed);
+      lifecycle.emitState(LifecycleState.resumed);
       await service.sendTail;
       await Future<void>.delayed(Duration.zero);
       verifyNever(() => viewRepository.sendSessionView(sessionId: "s1"));
@@ -126,7 +118,7 @@ void main() {
       // A second declaration for the still-current session queues behind it.
       service.setViewingSession("s1");
       // Background before the queued send executes.
-      lifecycle.emit(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.paused);
       await Future<void>.delayed(Duration.zero);
       gate.complete();
       await service.sendTail;
@@ -169,8 +161,8 @@ void main() {
       clearInteractions(viewRepository);
 
       // Mobile emits `hidden` then `paused` when backgrounding.
-      lifecycle.emit(LifecycleState.hidden);
-      lifecycle.emit(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.hidden);
+      lifecycle.emitState(LifecycleState.paused);
       await service.sendTail;
       await Future<void>.delayed(Duration.zero);
 

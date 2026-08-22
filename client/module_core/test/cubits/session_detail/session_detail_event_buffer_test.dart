@@ -11,19 +11,11 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
-import "package:sesori_dart_core/src/platform/notification_canceller.dart";
-import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
-
-class MockNotificationCanceller() extends Mock implements NotificationCanceller;
-
-class MockPermissionRepository() extends Mock implements PermissionRepository;
-
-class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadService;
 
 const _sessionId = "session-1";
 

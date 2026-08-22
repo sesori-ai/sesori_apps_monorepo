@@ -5,10 +5,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
-
-class MockConnectionService() extends Mock implements ConnectionService;
-
-class MockFailureReporter() extends Mock implements FailureReporter;
+import "../helpers/test_helpers.dart";
 
 void main() {
   setUpAll(() {

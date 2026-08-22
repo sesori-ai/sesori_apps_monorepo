@@ -1435,12 +1435,6 @@ abstract class AppLocalizations {
   /// **'System Updates'**
   String get notificationCategorySystemUpdate;
 
-  /// No description provided for @notificationCategorySystemUpdateDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'App and bridge updates or maintenance notices'**
-  String get notificationCategorySystemUpdateDescription;
-
   /// No description provided for @sessionListTitle.
   ///
   /// In en, this message translates to:
@@ -2011,12 +2005,6 @@ abstract class AppLocalizations {
   /// **'Agent'**
   String get sessionDetailPickerAgent;
 
-  /// No description provided for @sessionDetailPickerModel.
-  ///
-  /// In en, this message translates to:
-  /// **'Model'**
-  String get sessionDetailPickerModel;
-
   /// No description provided for @sessionDetailPickerVariant.
   ///
   /// In en, this message translates to:
@@ -2046,12 +2034,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'All tasks completed'**
   String get backgroundTasksCompleted;
-
-  /// No description provided for @backgroundTasksTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Background Tasks'**
-  String get backgroundTasksTitle;
 
   /// No description provided for @backgroundTaskStatusIdle.
   ///
@@ -2257,12 +2239,6 @@ abstract class AppLocalizations {
   /// **'Sign in'**
   String get signIn;
 
-  /// No description provided for @backToLogin.
-  ///
-  /// In en, this message translates to:
-  /// **'Back to login'**
-  String get backToLogin;
-
   /// No description provided for @loginAuthenticationFailedTitle.
   ///
   /// In en, this message translates to:
@@ -2281,12 +2257,6 @@ abstract class AppLocalizations {
   /// **'Signing in...'**
   String get loginAuthenticating;
 
-  /// No description provided for @loginAwaitingCallback.
-  ///
-  /// In en, this message translates to:
-  /// **'Waiting for authorization...'**
-  String get loginAwaitingCallback;
-
   /// No description provided for @loginPolling.
   ///
   /// In en, this message translates to:
@@ -2304,30 +2274,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not open browser'**
   String get loginBrowserOpenFailed;
-
-  /// No description provided for @loginCallbackTimeout.
-  ///
-  /// In en, this message translates to:
-  /// **'Authorization timed out. Please try again.'**
-  String get loginCallbackTimeout;
-
-  /// No description provided for @loginCallbackMissingParams.
-  ///
-  /// In en, this message translates to:
-  /// **'Invalid authorization callback. Please try again.'**
-  String get loginCallbackMissingParams;
-
-  /// No description provided for @loginStateMismatch.
-  ///
-  /// In en, this message translates to:
-  /// **'Authorization state mismatch. Please try again.'**
-  String get loginStateMismatch;
-
-  /// No description provided for @loginPkceStateMissing.
-  ///
-  /// In en, this message translates to:
-  /// **'Login session expired. Please start again.'**
-  String get loginPkceStateMissing;
 
   /// Screen-reader label for a session an agent is actively working in; the visual signal is the twinkling sparkle
   ///
@@ -2389,12 +2335,6 @@ abstract class AppLocalizations {
   /// **'Record voice'**
   String get voiceRecord;
 
-  /// No description provided for @voiceStopRecording.
-  ///
-  /// In en, this message translates to:
-  /// **'Stop recording'**
-  String get voiceStopRecording;
-
   /// No description provided for @voiceCancelTranscription.
   ///
   /// In en, this message translates to:
@@ -2424,12 +2364,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Transcribing...'**
   String get voiceTranscribing;
-
-  /// No description provided for @voiceRecording.
-  ///
-  /// In en, this message translates to:
-  /// **'Recording...'**
-  String get voiceRecording;
 
   /// No description provided for @voiceErrorPermission.
   ///
@@ -2539,12 +2473,6 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get fetchDirectoryRetry;
 
-  /// No description provided for @fetchDirectoryGoBack.
-  ///
-  /// In en, this message translates to:
-  /// **'Go Back'**
-  String get fetchDirectoryGoBack;
-
   /// Tag on a folder row in the add-project browser marking it as a git repository. Not necessarily hosted on GitHub — the bridge only reports that a repository is present.
   ///
   /// In en, this message translates to:
@@ -2574,18 +2502,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hide'**
   String get hide;
-
-  /// Status shown on a project row whose folder no longer exists on disk. The row is greyed out and cannot be opened.
-  ///
-  /// In en, this message translates to:
-  /// **'Unavailable'**
-  String get projectFolderMissing;
-
-  /// No description provided for @projectFolderMissingMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'This project\'s folder no longer exists — it may have been moved or deleted. Hide the project, or restore the folder to its original location.'**
-  String get projectFolderMissingMessage;
 
   /// No description provided for @noProjects.
   ///
