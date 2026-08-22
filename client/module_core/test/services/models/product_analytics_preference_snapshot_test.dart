@@ -1,4 +1,5 @@
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/repositories/models/product_analytics_preference_models.dart";
 import "package:sesori_dart_core/src/services/models/product_analytics_preference_snapshot.dart";
 import "package:test/test.dart";
 

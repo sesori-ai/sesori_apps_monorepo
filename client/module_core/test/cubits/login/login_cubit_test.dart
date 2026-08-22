@@ -15,6 +15,7 @@ import "package:sesori_dart_core/src/routing/app_routes.dart";
 import "package:sesori_dart_core/src/services/installation_analytics_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
 import "../../helpers/test_helpers.dart";
 
 class MockOAuthFlowProvider() extends Mock implements OAuthFlowProvider;

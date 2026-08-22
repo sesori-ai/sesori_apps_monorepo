@@ -2,7 +2,6 @@ import "dart:async";
 import "dart:typed_data";
 
 import "package:bloc_test/bloc_test.dart";
-import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
@@ -23,6 +22,7 @@ import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/project_viewing_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
 

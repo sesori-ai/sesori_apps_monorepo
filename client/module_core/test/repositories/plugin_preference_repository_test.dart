@@ -1,5 +1,6 @@
 import "package:mocktail/mocktail.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/api/plugin_preference_api.dart";
+import "package:sesori_dart_core/src/repositories/plugin_preference_repository.dart";
 import "package:test/test.dart";
 
 class MockPluginPreferenceApi() extends Mock implements PluginPreferenceApi;

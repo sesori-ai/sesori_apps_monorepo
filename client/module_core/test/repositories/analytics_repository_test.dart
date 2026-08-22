@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:test/test.dart";
 
 const _userKey = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
