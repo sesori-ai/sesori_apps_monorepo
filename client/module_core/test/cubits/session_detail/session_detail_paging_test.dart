@@ -217,13 +217,11 @@ void main() {
 }
 
 Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
-  if (cubit.state is SessionDetailLoaded) return;
-  await cubit.stream
-      .firstWhere((state) => state is SessionDetailLoaded)
-      .timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => throw StateError("cubit never reached loaded; last state: ${cubit.state}"),
-      );
+  await awaitState(
+    cubit: cubit,
+    predicate: (state) => state is SessionDetailLoaded,
+    description: "SessionDetailLoaded",
+  );
 }
 
 MessageWithParts _message({required String id}) => MessageWithParts(

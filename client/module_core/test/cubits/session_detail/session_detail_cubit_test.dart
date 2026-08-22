@@ -602,7 +602,11 @@ void main() {
         sessionEvents.add(
           const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.busy()),
         );
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailLoaded && state.sessionStatus == const SessionStatus.busy(),
+          description: "busy session",
+        );
 
         // Send message while busy — should send immediately (not queue).
         await cubit.sendMessage(
@@ -1216,7 +1220,11 @@ void main() {
         // A newer child session arrives via global SSE event.
         final newerChild = testSession(id: "child-2", parentID: sessionId, updatedAt: 5000);
         globalEvents.add(SseEvent(data: SesoriSessionCreated(info: newerChild)));
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailLoaded && state.children.first.id == "child-2",
+          description: "new child inserted first",
+        );
       },
       expect: () => [
         // Initial load with one child.
@@ -1289,7 +1297,7 @@ void main() {
             messageID: "refresh-message",
           ),
         );
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+        await _awaitNotRefreshing(cubit);
       },
       expect: () => [
         // Initial load: newest first.
@@ -1421,7 +1429,11 @@ void main() {
         // Old child gets a newer updated timestamp.
         final updatedOldChild = testSession(id: "child-old", parentID: sessionId, updatedAt: 5000);
         globalEvents.add(SseEvent(data: SesoriSessionUpdated(info: updatedOldChild)));
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailLoaded && state.children.first.id == "child-old",
+          description: "updated child re-sorted first",
+        );
       },
       expect: () => [
         // Initial load: newest first.
@@ -1707,7 +1719,11 @@ void main() {
         sessionEvents.add(
           const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.idle()),
         );
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailLoaded && state.sessionStatus == const SessionStatus.idle(),
+          description: "idle session",
+        );
       },
       expect: () => [
         // Initial load.
@@ -1792,7 +1808,7 @@ void main() {
             health: testHealthResponse(),
           ),
         );
-        await Future<void>.delayed(const Duration(milliseconds: 50));
+        await _awaitQueuedMessages(cubit, isEmpty);
       },
       expect: () => [
         // Initial load.
@@ -1880,7 +1896,7 @@ void main() {
           health: testHealthResponse(),
         ),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await _awaitQueuedMessages(cubit, isEmpty);
 
       verify(
         () => mockSessionService.sendMessage(
@@ -1945,7 +1961,7 @@ void main() {
         health: testHealthResponse(),
       );
       connectionStatus.add(connected);
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(Duration.zero);
 
       when(() => mockConnectionService.currentStatus).thenReturn(
         const ConnectionStatus.connectionLost(
@@ -2081,7 +2097,7 @@ void main() {
       );
 
       allowFirstSendToComplete.complete();
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await _awaitQueuedMessages(cubit, isEmpty);
 
       expect(sentTexts, equals(["first", "second"]));
       expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
@@ -2238,7 +2254,7 @@ void main() {
         );
 
         // Wait for both messages to drain via self-chaining.
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await _awaitQueuedMessages(cubit, isEmpty);
       },
       verify: (_) {
         verify(
@@ -2336,7 +2352,14 @@ void main() {
             health: testHealthResponse(),
           ),
         );
-        await Future<void>.delayed(const Duration(milliseconds: 50));
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) =>
+              state is SessionDetailLoaded &&
+              state.queuedMessages.map((message) => message.displayText).contains("will fail") &&
+              state.sendingSubmission == null,
+          description: "failed queued message re-queued",
+        );
       },
       expect: () => [
         // Initial load.
@@ -2443,7 +2466,11 @@ void main() {
           failureReporter: mockFailureReporter,
         );
         addTearDown(cubit.close);
-        await Future<void>.delayed(const Duration(milliseconds: 20));
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailFailed,
+          description: "failed session load",
+        );
 
         verifyNever(() => viewingService.setViewingSession(any()));
         verify(
@@ -2475,12 +2502,17 @@ void main() {
           failureReporter: mockFailureReporter,
         );
         addTearDown(cubit.close);
-        await _awaitLoaded(cubit);
+        await Future<void>.delayed(Duration.zero);
         clearInteractions(viewingService);
+        final viewReasserted = Completer<void>();
+        when(() => viewingService.setViewingSession(sessionId)).thenAnswer((_) {
+          viewReasserted.complete();
+        });
 
         // Stale signal arrives while disconnected — the refresh is deferred.
         mockConnectionService.emitDataMayBeStale();
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+        final staleSignalDelivered = Future<void>.delayed(Duration.zero);
+        await staleSignalDelivered;
         verifyNever(() => viewingService.setViewingSession(any()));
 
         // Reconnect: the bridge released this connection's view on the drop,
@@ -2492,12 +2524,12 @@ void main() {
           ),
         );
         connectionStatus.add(
-          const ConnectionStatus.connected(
-            config: ServerConnectionConfig(relayHost: "fake.example.com"),
-            health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: null),
+          ConnectionStatus.connected(
+            config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+            health: testHealthResponse(),
           ),
         );
-        await Future<void>.delayed(const Duration(milliseconds: 50));
+        await viewReasserted.future;
 
         verify(() => viewingService.setViewingSession(sessionId)).called(1);
       });
@@ -2532,7 +2564,12 @@ void main() {
 
         lifecycle.emitState(LifecycleState.paused);
         lifecycle.emitState(LifecycleState.resumed);
-        await Future<void>.delayed(const Duration(milliseconds: 50));
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailLoaded && state.isRefreshing,
+          description: "resume refresh started",
+        );
+        await _awaitNotRefreshing(cubit);
 
         // The post-resume silent refresh completed and re-declared the view.
         verify(() => viewingService.setViewingSession(sessionId)).called(1);
@@ -2590,26 +2627,27 @@ void _stubPromptAttachmentCapability({
 }
 
 Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
-  for (var i = 0; i < 50; i++) {
-    if (cubit.state is SessionDetailLoaded) return;
-    await Future<void>.delayed(const Duration(milliseconds: 1));
-  }
+  await awaitState(
+    cubit: cubit,
+    predicate: (state) => state is SessionDetailLoaded,
+    description: "SessionDetailLoaded",
+  );
 }
 
 Future<void> _awaitQueuedMessages(SessionDetailCubit cubit, Matcher matcher) async {
-  for (var i = 0; i < 50; i++) {
-    final state = cubit.state;
-    if (state is SessionDetailLoaded && matcher.matches(state.queuedMessages, <Object, Object>{})) return;
-    await Future<void>.delayed(const Duration(milliseconds: 1));
-  }
+  await awaitState(
+    cubit: cubit,
+    predicate: (state) => state is SessionDetailLoaded && matcher.matches(state.queuedMessages, <Object, Object>{}),
+    description: "queued messages matching $matcher",
+  );
 }
 
 Future<void> _awaitNotRefreshing(SessionDetailCubit cubit) async {
-  for (var i = 0; i < 50; i++) {
-    final state = cubit.state;
-    if (state is SessionDetailLoaded && !state.isRefreshing) return;
-    await Future<void>.delayed(const Duration(milliseconds: 1));
-  }
+  await awaitState(
+    cubit: cubit,
+    predicate: (state) => state is SessionDetailLoaded && !state.isRefreshing,
+    description: "non-refreshing SessionDetailLoaded",
+  );
 }
 
 void _stubAllDefaults(

@@ -140,12 +140,16 @@ void main() {
         description: "Allow writing file",
       );
 
+      final permissionSeen = Completer<void>();
       final seenPermissions = <SesoriPermissionAsked>[];
-      final sub = cubit.permissionStream.listen(seenPermissions.add);
+      final sub = cubit.permissionStream.listen((permission) {
+        seenPermissions.add(permission);
+        permissionSeen.complete();
+      });
       addTearDown(sub.cancel);
 
       sessionEvents.add(permission);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await permissionSeen.future;
 
       final loaded = cubit.state as SessionDetailLoaded;
       expect(loaded.pendingPermissions, [permission]);
@@ -176,7 +180,11 @@ void main() {
 
       sessionEvents.add(permission);
       sessionEvents.add(permission);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.pendingPermissions.isNotEmpty,
+        description: "permission added",
+      );
 
       final loaded = cubit.state as SessionDetailLoaded;
       expect(loaded.pendingPermissions, hasLength(1));
@@ -215,7 +223,11 @@ void main() {
           description: "Allow writing file",
         ),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.pendingPermissions.isNotEmpty,
+        description: "permission added",
+      );
 
       final resultFuture = cubit.replyToPermission(
         requestId: "perm-123",
@@ -272,7 +284,11 @@ void main() {
           description: "Allow writing file",
         ),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.pendingPermissions.isNotEmpty,
+        description: "permission added",
+      );
 
       final result = await cubit.replyToPermission(
         requestId: "perm-123",
@@ -475,7 +491,7 @@ void main() {
         description: "Allow writing file",
       );
       sessionEvents.add(permission);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await pumpEventQueue();
 
       expect(cubit.state, const SessionDetailState.loading());
 
@@ -547,12 +563,16 @@ void main() {
         description: "Run ls",
       );
 
+      final permissionSeen = Completer<void>();
       final seen = <SesoriPermissionAsked>[];
-      final sub = cubit.permissionStream.listen(seen.add);
+      final sub = cubit.permissionStream.listen((permission) {
+        seen.add(permission);
+        permissionSeen.complete();
+      });
       addTearDown(sub.cancel);
 
       globalEvents.add(SseEvent(data: childPermission));
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await permissionSeen.future;
 
       final loaded = cubit.state as SessionDetailLoaded;
       expect(loaded.pendingPermissions, [childPermission]);
@@ -569,7 +589,11 @@ void main() {
           ),
         ),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.pendingPermissions.isEmpty,
+        description: "permission removed",
+      );
       expect((cubit.state as SessionDetailLoaded).pendingPermissions, isEmpty);
     });
 
@@ -598,9 +622,23 @@ void main() {
           ),
         ),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      const relevantPermission = SesoriPermissionAsked(
+        requestID: "perm-control",
+        sessionID: "child-1",
+        displaySessionId: sessionId,
+        tool: "bash",
+        description: "Run pwd",
+      );
+      globalEvents.add(SseEvent(data: relevantPermission));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) =>
+            state is SessionDetailLoaded &&
+            state.pendingPermissions.any((permission) => permission.requestID == relevantPermission.requestID),
+        description: "relevant permission processed after unrelated permission",
+      );
 
-      expect((cubit.state as SessionDetailLoaded).pendingPermissions, isEmpty);
+      expect((cubit.state as SessionDetailLoaded).pendingPermissions, [relevantPermission]);
     });
 
     test("rejecting a surfaced child question targets the child (owner) session", () async {
@@ -854,9 +892,9 @@ ProviderListResponse _providers() {
 }
 
 Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
-  for (var i = 0; i < 100; i++) {
-    if (cubit.state is SessionDetailLoaded) return;
-    await Future<void>.delayed(const Duration(milliseconds: 1));
-  }
-  fail("Timed out waiting for SessionDetailLoaded; current state: ${cubit.state}");
+  await awaitState(
+    cubit: cubit,
+    predicate: (state) => state is SessionDetailLoaded,
+    description: "SessionDetailLoaded",
+  );
 }

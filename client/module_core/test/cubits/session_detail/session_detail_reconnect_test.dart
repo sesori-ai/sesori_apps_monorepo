@@ -384,9 +384,9 @@ MessageWithParts _messageWithParts() {
 }
 
 Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
-  for (var i = 0; i < 100; i++) {
-    if (cubit.state is SessionDetailLoaded) return;
-    await Future<void>.delayed(const Duration(milliseconds: 5));
-  }
-  fail("Timed out waiting for SessionDetailLoaded; current state: ${cubit.state}");
+  await awaitState(
+    cubit: cubit,
+    predicate: (state) => state is SessionDetailLoaded,
+    description: "SessionDetailLoaded",
+  );
 }

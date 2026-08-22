@@ -1592,8 +1592,14 @@ void main() {
             "s1": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
           },
         });
-        // Wait for the activity update to be processed
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) =>
+              state is SessionListLoaded &&
+              state.activeSessionIds.length == 1 &&
+              state.activeSessionIds.containsKey("s1"),
+          description: "SessionListLoaded with s1 active",
+        );
         // Emit updated activity
         mockSseEventTracker.emitSessionActivity({
           projectId: {
@@ -1869,6 +1875,7 @@ void main() {
       ],
     );
 
+    final loadingResponse = Completer<ApiResponse<SessionListResponse>>();
     blocTest<SessionListCubit, SessionListState>(
       "stale signal is ignored when state is not SessionListLoaded",
       build: () {
@@ -1877,18 +1884,14 @@ void main() {
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
-        ).thenAnswer(
-          (_) async => await Future.delayed(
-            const Duration(milliseconds: 100),
-            () => ApiResponse.success(SessionListResponse(items: [testSession()])),
-          ),
-        );
+        ).thenAnswer((_) => loadingResponse.future);
         return buildCubit();
       },
       act: (cubit) async {
         // Emit stale while still loading
         mockConnectionService.emitDataMayBeStale();
         await Future<void>.delayed(Duration.zero);
+        loadingResponse.complete(ApiResponse.success(SessionListResponse(items: [testSession()])));
       },
       skip: 1, // Skip the initial loading state
       expect: () => <SessionListState>[
@@ -1896,6 +1899,7 @@ void main() {
       ],
     );
 
+    final reconnectResponses = <Completer<ApiResponse<SessionListResponse>>>[];
     blocTest<SessionListCubit, SessionListState>(
       "stale + ConnectionConnected refresh coalesced into single API call",
       build: () {
@@ -1904,16 +1908,20 @@ void main() {
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
-        ).thenAnswer(
-          (_) async => await Future.delayed(
-            const Duration(milliseconds: 50),
-            () => ApiResponse.success(SessionListResponse(items: [testSession()])),
-          ),
-        );
+        ).thenAnswer((_) {
+          final response = Completer<ApiResponse<SessionListResponse>>();
+          reconnectResponses.add(response);
+          return response.future;
+        });
         return buildCubit();
       },
       act: (cubit) async {
-        await Future<void>.delayed(Duration.zero); // let initial load complete
+        reconnectResponses.single.complete(ApiResponse.success(SessionListResponse(items: [testSession()])));
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionListLoaded,
+          description: "initial SessionListLoaded",
+        );
         // Emit both stale and ConnectionConnected simultaneously
         mockConnectionService.emitDataMayBeStale();
         statusController.add(
@@ -1922,16 +1930,25 @@ void main() {
             health: HealthResponse(healthy: true, version: "0.1.0", filesystemAccessDegraded: null),
           ),
         );
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionListLoaded && state.isRefreshing,
+          description: "refreshing SessionListLoaded",
+        );
+        reconnectResponses.last.complete(ApiResponse.success(SessionListResponse(items: [testSession()])));
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionListLoaded && !state.isRefreshing,
+          description: "completed SessionListLoaded refresh",
+        );
       },
       verify: (cubit) {
-        // Verify listSessions was called at least once (initial load + refresh)
         verify(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
-        ).called(greaterThanOrEqualTo(1));
+        ).called(2);
       },
     );
 

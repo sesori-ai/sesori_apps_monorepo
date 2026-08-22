@@ -1,3 +1,6 @@
+import "dart:async";
+
+import "package:bloc/bloc.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -36,3 +39,16 @@ void stubProductAnalyticsService({required MockProductAnalyticsService service})
 }
 
 void registerAllFallbackValues() => registerCoreFallbackValues();
+
+Future<State> awaitState<State>({
+  required BlocBase<State> cubit,
+  required bool Function(State state) predicate,
+  required String description,
+}) async {
+  if (predicate(cubit.state)) return cubit.state;
+  try {
+    return await cubit.stream.firstWhere(predicate).timeout(const Duration(seconds: 5));
+  } on TimeoutException {
+    throw StateError("Timed out waiting for $description; current state: ${cubit.state}");
+  }
+}
