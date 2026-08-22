@@ -53,7 +53,7 @@ lib/
   import platform packages into this module or duplicate those shared rules in
   each product.
 - **Line width**: 120 characters
-- **Request/response models for bridge handlers** — every bridge handler that accepts or returns a JSON body must have a Freezed model here (e.g. `CreateProjectRequest`, `HideProjectRequest`). Models use `@Freezed(fromJson: true, toJson: true)`. Bridge handlers parse with `fromJson()`, mobile services serialize with `toJson()`.
+- **Request/response models for bridge handlers** — every bridge handler that accepts or returns a JSON body must have a Freezed model here (e.g. `CreateSessionRequest`, `OpenProjectRequest`). Models use `@Freezed(fromJson: true, toJson: true)`. Bridge handlers parse with `fromJson()`, mobile services serialize with `toJson()`.
 
 ## ANTI-PATTERNS
 

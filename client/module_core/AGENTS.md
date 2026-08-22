@@ -18,10 +18,9 @@ lib/src/
 │   └── voice/        VoiceApi (HTTP calls only — recording stays in Flutter)
 ├── cubits/           All state management (login, project_list, session_list, etc.)
 ├── di/               @InjectableInit for core DI registration
-├── extensions/       Dart utility extensions (sugar_dart, iterable_x)
+├── foundation/       Platform interfaces and shared models (analytics, composer)
 ├── logging/          logd/logw/loge with configurable LogLevel
-├── platform/         Abstract interfaces: UrlLauncher, DeepLinkSource, LifecycleSource
-├── reporting/        Error reporting helpers
+├── platform/         Platform adapters consumed through foundation interfaces
 └── routing/          AppRoute enum, AuthRedirectService
 ```
 

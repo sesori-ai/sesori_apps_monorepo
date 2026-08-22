@@ -79,7 +79,7 @@ bridge/ workspace modules (siblings of app/):
 - **Constructor injection for testability** — business logic classes (e.g. `ActiveSessionTracker`) receive their API dependency via constructor, enabling fake/mock injection in tests.
 - **Prefer typed version value objects** — when bridge code needs version parsing/comparison, parse once into a small typed value object that implements `Comparable`. Keep raw version strings in API/transport DTOs and map them into typed versions in repository code rather than exposing loose `String` comparison helpers.
 - **Prefer `CompositeSubscription` for multiple owned stream subscriptions** — when a class owns more than one long-lived `StreamSubscription`, store them in a single `CompositeSubscription` and cancel that composite in one place during teardown instead of manually tracking multiple nullable subscription fields.
-- **Request bodies use shared Freezed models** — every handler that accepts a JSON body must have a corresponding Freezed request class in `sesori_shared` (e.g. `HideProjectRequest`, `CreateProjectRequest`). Parse with `FooRequest.fromJson(map)` inside a try/catch:
+- **Request bodies use shared Freezed models** — every handler that accepts a JSON body must have a corresponding Freezed request class in `sesori_shared` (e.g. `OpenProjectRequest`, `CreateSessionRequest`). Parse with `FooRequest.fromJson(map)` inside a try/catch:
   ```dart
   final FooRequest fooRequest;
   try {

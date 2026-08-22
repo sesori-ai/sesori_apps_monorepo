@@ -20,6 +20,9 @@ Clients <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [
 | `sesori_plugin_acp` | Shared ACP protocol plugin base |
 | `sesori_plugin_cursor` | Cursor implementation over ACP |
 | `sesori_plugin_omp` | Oh My Pi implementation over ACP |
+| `sesori_plugin_claude` | Claude Code backend implementation |
+| `sesori_plugin_hermes` | Hermes implementation over ACP |
+| `sesori_plugin_pi` | Pi backend implementation |
 | `app` | CLI entry point: auth, relay, encryption, catalog, request routing, and plugin composition |
 
 ## Quick Start

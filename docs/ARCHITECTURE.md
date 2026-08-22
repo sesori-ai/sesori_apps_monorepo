@@ -16,6 +16,9 @@ sesori_apps_monorepo/
 │   sesori_plugin_acp/          # Agent Client Protocol backend plugin
 │   sesori_plugin_cursor/       # Cursor ACP backend plugin
 │   sesori_plugin_omp/          # Oh My Pi ACP backend plugin
+│   sesori_plugin_claude/       # Claude Code backend plugin
+│   sesori_plugin_hermes/       # Hermes ACP backend plugin
+│   sesori_plugin_pi/           # Pi backend plugin
 ├── client/                     # Flutter workspace — mobile + desktop shells
 │   app/                        # Mobile Flutter UI shell
 │   desktop/                    # Desktop Flutter product shell
@@ -41,6 +44,10 @@ graph TD
   bridge_app --> sesori_plugin_codex[bridge/sesori_plugin_codex]
   bridge_app --> sesori_plugin_acp[bridge/sesori_plugin_acp]
   bridge_app --> sesori_plugin_cursor[bridge/sesori_plugin_cursor]
+  bridge_app --> sesori_plugin_omp[bridge/sesori_plugin_omp]
+  bridge_app --> sesori_plugin_claude[bridge/sesori_plugin_claude]
+  bridge_app --> sesori_plugin_hermes[bridge/sesori_plugin_hermes]
+  bridge_app --> sesori_plugin_pi[bridge/sesori_plugin_pi]
   bridge_app --> sesori_shared[shared/sesori_shared]
   sesori_bridge_foundation --> sesori_plugin_interface
   sesori_plugin_runtime[bridge/sesori_plugin_runtime] --> sesori_plugin_interface
@@ -59,8 +66,20 @@ graph TD
   sesori_plugin_cursor --> sesori_plugin_interface
   sesori_plugin_cursor --> sesori_bridge_foundation
   sesori_plugin_cursor --> sesori_plugin_acp
-  sesori_plugin_omp[bridge/sesori_plugin_omp] --> sesori_plugin_interface
+  sesori_plugin_cursor --> sesori_plugin_runtime
+  sesori_plugin_omp --> sesori_plugin_interface
+  sesori_plugin_omp --> sesori_bridge_foundation
+  sesori_plugin_omp --> sesori_plugin_runtime
   sesori_plugin_omp --> sesori_plugin_acp
+  sesori_plugin_claude --> sesori_plugin_interface
+  sesori_plugin_claude --> sesori_bridge_foundation
+  sesori_plugin_claude --> sesori_shared
+  sesori_plugin_hermes --> sesori_plugin_interface
+  sesori_plugin_hermes --> sesori_bridge_foundation
+  sesori_plugin_pi --> sesori_plugin_interface
+  sesori_plugin_pi --> sesori_bridge_foundation
+  sesori_plugin_pi --> sesori_plugin_runtime
+  sesori_plugin_pi --> sesori_shared
 
   mobile_app[client/app] --> module_core[client/module_core]
   mobile_app --> module_prego[client/module_prego]
@@ -76,7 +95,7 @@ graph TD
   module_auth --> sesori_shared
 ```
 
-`shared/no_slop_linter` is omitted — it is a dev-only analyzer plugin, not a runtime dependency.
+`shared/no_slop_linter` is omitted — it is a dev-only analyzer plugin, not a runtime dependency. It is a dev dependency of the client packages and of `shared/sesori_shared`.
 
 ## Runtime data flow
 
