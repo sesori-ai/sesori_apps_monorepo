@@ -11,6 +11,7 @@ import "package:sesori_bridge/src/services/session_creation_service.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/services/worktree_service.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -624,7 +625,7 @@ class _FakeSessionMetadataRepository() implements SessionMetadataRepository {
 }
 
 Future<String> _captureWarningLog(Future<void> Function() action) async {
-  final output = _BufferingStdout();
+  final output = BufferingStdout();
   final previousLevel = Log.level;
   try {
     Log.level = LogLevel.warning;
@@ -633,21 +634,6 @@ Future<String> _captureWarningLog(Future<void> Function() action) async {
     Log.level = previousLevel;
   }
   return output.text;
-}
-
-class _BufferingStdout() implements Stdout {
-  final StringBuffer _buffer = StringBuffer();
-
-  String get text => _buffer.toString();
-
-  @override
-  void write(Object? object) => _buffer.write(object);
-
-  @override
-  void writeln([Object? object = ""]) => _buffer.writeln(object);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
 }
 
 class _FakeWorktreeService({required super.worktreeRepository}) extends WorktreeService {

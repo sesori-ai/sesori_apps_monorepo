@@ -4,6 +4,7 @@ import "dart:io";
 import "dart:typed_data";
 
 import "package:claude_plugin/claude_plugin.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageBytes;
 import "package:test/test.dart";
@@ -295,7 +296,7 @@ Map<String, Object?> _image({required String data, String mime = "image/png"}) =
 
 String _captureWarnings(void Function() action) {
   final previousLevel = Log.level;
-  final stderr = _BufferingStdout();
+  final stderr = BufferingStdout();
   try {
     Log.level = LogLevel.warning;
     IOOverrides.runZoned(action, stderr: () => stderr);
@@ -303,18 +304,6 @@ String _captureWarnings(void Function() action) {
     Log.level = previousLevel;
   }
   return stderr.text;
-}
-
-class _BufferingStdout() implements Stdout {
-  final StringBuffer _buffer = StringBuffer();
-
-  String get text => _buffer.toString();
-
-  @override
-  void writeln([Object? object = ""]) => _buffer.writeln(object);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
 }
 
 class _ThrowingCastMap(final Map<Object?, Object?> _values) extends MapBase<Object?, Object?> {

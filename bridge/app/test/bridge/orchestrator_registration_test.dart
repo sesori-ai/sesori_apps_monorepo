@@ -15,6 +15,7 @@ import "package:sesori_bridge/src/orchestrator.dart";
 import "package:sesori_bridge/src/routing/bridge_restart_dispatcher.dart";
 import "package:sesori_bridge/src/server/services/bridge_restart_service.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, LogLevel, ServerClock;
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
@@ -761,23 +762,8 @@ Future<RelayResponse> _nextResponse({
   throw StateError("relay closed before response $requestId");
 }
 
-class _BufferingStdout() implements Stdout {
-  final StringBuffer _buffer = StringBuffer();
-
-  String get text => _buffer.toString();
-
-  @override
-  void write(Object? object) => _buffer.write(object);
-
-  @override
-  void writeln([Object? object = ""]) => _buffer.writeln(object);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
-}
-
 Future<String> _captureLogOutput(Future<void> Function() action) async {
-  final stderrBuffer = _BufferingStdout();
+  final stderrBuffer = BufferingStdout();
   final previousLevel = Log.level;
   try {
     Log.level = LogLevel.verbose;

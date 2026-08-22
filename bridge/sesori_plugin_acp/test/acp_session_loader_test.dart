@@ -1,6 +1,7 @@
 import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -952,7 +953,7 @@ List<PluginMessagePart> _materializedLiveParts({
 
 String _captureWarnings(void Function() action) {
   final previousLevel = Log.level;
-  final stderr = _BufferingStdout();
+  final stderr = BufferingStdout();
   try {
     Log.level = LogLevel.warning;
     IOOverrides.runZoned(action, stderr: () => stderr);
@@ -960,16 +961,4 @@ String _captureWarnings(void Function() action) {
     Log.level = previousLevel;
   }
   return stderr.text;
-}
-
-class _BufferingStdout() implements Stdout {
-  final StringBuffer _buffer = StringBuffer();
-
-  String get text => _buffer.toString();
-
-  @override
-  void writeln([Object? object = ""]) => _buffer.writeln(object);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
 }

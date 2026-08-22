@@ -11,6 +11,7 @@ import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:codex_plugin/src/repositories/codex_tool_lifecycle_tracker.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_user_content_mapper.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
@@ -2007,7 +2008,7 @@ class _ToolLifecycleHarness({
 
 String _captureWarnings(void Function() action) {
   final previousLevel = Log.level;
-  final stderr = _BufferingStdout();
+  final stderr = BufferingStdout();
   try {
     Log.level = LogLevel.warning;
     IOOverrides.runZoned(action, stderr: () => stderr);
@@ -2015,16 +2016,4 @@ String _captureWarnings(void Function() action) {
     Log.level = previousLevel;
   }
   return stderr.text;
-}
-
-class _BufferingStdout() implements Stdout {
-  final StringBuffer _buffer = StringBuffer();
-
-  String get text => _buffer.toString();
-
-  @override
-  void writeln([Object? object = ""]) => _buffer.writeln(object);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
 }

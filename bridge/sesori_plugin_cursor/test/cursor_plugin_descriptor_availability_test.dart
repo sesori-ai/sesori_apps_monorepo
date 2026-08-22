@@ -5,6 +5,7 @@ import "dart:io";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -112,7 +113,7 @@ void main() {
               const PluginSetupReady.versioned(runtimeVersion: "2026.07.23-e383d2b"),
             );
           },
-          stderr: () => _CapturingStdout(stderrLines),
+          stderr: () => CapturingStdout(stderrLines),
         );
       } finally {
         Log.level = previousLogLevel;
@@ -536,14 +537,4 @@ class _ProbeProcess({
 
   @override
   ProcessIdentity get identity => throw UnimplementedError();
-}
-
-class _CapturingStdout(final List<String> lines) implements Stdout {
-  @override
-  void writeln([Object? object = ""]) {
-    lines.add(object.toString());
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

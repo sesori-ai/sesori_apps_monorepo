@@ -4,6 +4,7 @@ import "dart:io";
 import "package:sesori_bridge/src/repositories/models/session_options_cache_key.dart";
 import "package:sesori_bridge/src/repositories/session_options_repository.dart";
 import "package:sesori_bridge/src/services/session_options_service.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -1600,8 +1601,8 @@ Future<String> _captureLogOutput({
   required LogLevel level,
   required Future<void> Function() action,
 }) async {
-  final stdoutBuffer = _BufferingStdout();
-  final stderrBuffer = _BufferingStdout();
+  final stdoutBuffer = BufferingStdout();
+  final stderrBuffer = BufferingStdout();
   final previousLevel = Log.level;
   try {
     Log.level = level;
@@ -1614,21 +1615,6 @@ Future<String> _captureLogOutput({
     Log.level = previousLevel;
   }
   return stderrBuffer.text;
-}
-
-class _BufferingStdout() implements Stdout {
-  final StringBuffer _buffer = StringBuffer();
-
-  String get text => _buffer.toString();
-
-  @override
-  void write(Object? object) => _buffer.write(object);
-
-  @override
-  void writeln([Object? object = ""]) => _buffer.writeln(object);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
 }
 
 class const _FixedClock({required final DateTime nowValue}) extends ServerClock {

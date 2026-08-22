@@ -1,6 +1,7 @@
 import "dart:io";
 
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
@@ -141,7 +142,7 @@ void main() {
               result: const CommandResult(exitCode: 0, stdout: secretOutput, stderr: ""),
             ),
           ),
-          stderr: () => _CapturingStdout(stderrLines),
+          stderr: () => CapturingStdout(stderrLines),
         );
       } finally {
         Log.level = originalLevel;
@@ -159,14 +160,4 @@ void main() {
       expect(validator.parseVersionOutput(output: "codex-cli v0.144.5")?.raw, "0.144.5");
     });
   });
-}
-
-class _CapturingStdout(final List<String> lines) implements Stdout {
-  @override
-  void writeln([Object? object = ""]) {
-    lines.add(object.toString());
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

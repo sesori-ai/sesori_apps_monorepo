@@ -6,6 +6,7 @@ import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/models/codex_session_record.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, LogLevel, PluginSession;
 import "package:test/test.dart";
 
@@ -466,7 +467,7 @@ class _IndexWriteFailingRolloutApi() extends CodexRolloutApi {
 
 Future<String> _captureDebugLogs(Future<void> Function() action) async {
   final previousLevel = Log.level;
-  final stderr = _BufferingStdout();
+  final stderr = BufferingStdout();
   try {
     Log.level = LogLevel.debug;
     await IOOverrides.runZoned(action, stderr: () => stderr);
@@ -474,16 +475,4 @@ Future<String> _captureDebugLogs(Future<void> Function() action) async {
     Log.level = previousLevel;
   }
   return stderr.text;
-}
-
-class _BufferingStdout() implements Stdout {
-  final StringBuffer _buffer = StringBuffer();
-
-  String get text => _buffer.toString();
-
-  @override
-  void writeln([Object? object = ""]) => _buffer.writeln(object);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
 }

@@ -2,6 +2,7 @@ import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/src/repositories/trackers/acp_content_tracker.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageCollectionBytes;
 import "package:test/test.dart";
@@ -101,7 +102,7 @@ void main() {
 
 String _captureWarnings(void Function() action) {
   final previousLevel = Log.level;
-  final stderr = _BufferingStdout();
+  final stderr = BufferingStdout();
   try {
     Log.level = LogLevel.warning;
     IOOverrides.runZoned(action, stderr: () => stderr);
@@ -109,18 +110,6 @@ String _captureWarnings(void Function() action) {
     Log.level = previousLevel;
   }
   return stderr.text;
-}
-
-class _BufferingStdout() implements Stdout {
-  final StringBuffer _buffer = StringBuffer();
-
-  String get text => _buffer.toString();
-
-  @override
-  void writeln([Object? object = ""]) => _buffer.writeln(object);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
 }
 
 AcpMappedInlineImageContentBlock _inline({required int decodedBytes}) {
