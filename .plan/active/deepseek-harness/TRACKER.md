@@ -3,11 +3,11 @@
 ## Current State
 
 - **Plan slug:** `deepseek-harness`
-- **Plan status:** Step 1/15 in progress
+- **Plan status:** Step 1/15 PR open
 - **Current repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current branch:** `investigate-deepseek-harness`
-- **Current open PR:** none
-- **Next action:** final validation, commit, push, and open Step 1
+- **Current open PR:** [#1036](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1036)
+- **Next action:** pass CI/review and merge Step 1; then start adapter Step 2
 - **Implementation started:** no
 - **Retirement:** blocked until every required row in `PLAN.md` passes
 
@@ -15,7 +15,7 @@
 
 | Done | Step | Repository | Exact PR title | Complexity | Soft line target | State |
 |---|---|---|---|---|---:|---|
-| [ ] | 1/15 | apps monorepo | `🌱 [deepseek-harness] docs: plan DeepSeek Harness support [step 1/15]` | Trivial documentation, but architecture-bearing review | 1,500 | In progress |
+| [ ] | 1/15 | apps monorepo | `🌱 [deepseek-harness] docs: plan DeepSeek Harness support [step 1/15]` | Trivial documentation, but architecture-bearing review | 1,500 | [PR #1036](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1036) open |
 | [ ] | 2/15 | deepseek adapter | `⚙️ [deepseek-harness] feat(runtime): scaffold the DeepSeek ACP adapter [step 2/15]` | Moderate new transport/repository foundation | 1,000 | Pending Step 1 merge |
 | [ ] | 3/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): compose the DeepSeek coding runtime [step 3/15]` | Complex configuration, security, and lifecycle composition | 1,300 | Pending Step 2 |
 | [ ] | 4/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): add durable ACP sessions and replay [step 4/15]` | Complex persistence and live ownership | 1,450 | Pending Step 3 |
@@ -66,8 +66,8 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] Write `PLAN.md`, `TRACKER.md`, and `PROTOCOL.md`.
 - [x] Run architecture plan review and apply valid findings.
 - [x] Run Markdown/reference and `git diff --check` validation.
-- [ ] Inspect final Git status/diff/log; commit only the three plan files.
-- [ ] Push and open the exact Step 1 PR.
+- [x] Inspect final Git status/diff/log; commit only the three plan files.
+- [x] Push and open the exact Step 1 PR.
 
 ## Review Log
 
@@ -84,7 +84,8 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
   documents, current implementation base, balanced fences, and no stale
   catalog/history Service references
 - [x] Architecture plan review; seven valid findings applied without re-review
-- [x] Final changed-line count: 1,465 of the 1,500-line target
+- [x] Final changed-line count: 1,466 of the 1,500-line target
+- [x] Commit `c40fbc4ad` pushed; PR #1036 opened against `main`
 
 Later implementation and live evidence is appended here by step. Never mark a
 regression row passed without the boundary and matrix required by `PLAN.md`.
