@@ -149,7 +149,10 @@ void main() {
       addTearDown(sub.cancel);
 
       sessionEvents.add(permission);
-      await permissionSeen.future;
+      await permissionSeen.future.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => fail("Timed out waiting for permission stream delivery"),
+      );
 
       final loaded = cubit.state as SessionDetailLoaded;
       expect(loaded.pendingPermissions, [permission]);
@@ -572,7 +575,10 @@ void main() {
       addTearDown(sub.cancel);
 
       globalEvents.add(SseEvent(data: childPermission));
-      await permissionSeen.future;
+      await permissionSeen.future.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => fail("Timed out waiting for child permission stream delivery"),
+      );
 
       final loaded = cubit.state as SessionDetailLoaded;
       expect(loaded.pendingPermissions, [childPermission]);

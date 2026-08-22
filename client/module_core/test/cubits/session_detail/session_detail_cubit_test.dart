@@ -1297,6 +1297,11 @@ void main() {
             messageID: "refresh-message",
           ),
         );
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailLoaded && state.isRefreshing,
+          description: "silent refresh started",
+        );
         await _awaitNotRefreshing(cubit);
       },
       expect: () => [
