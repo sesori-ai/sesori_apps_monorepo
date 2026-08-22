@@ -5,12 +5,12 @@
 - **Plan slug:** `codebase-cleanup`
 - **Implementation base:** `origin/main` at `084b30276`
 - **Current branch:** `codebase-cleanup-plan`
-- **Series state:** Step 1/45 in PR
-  [#1018](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1018); no
-  implementation started
-- **Current step:** 1/45 — raise the plan
-- **Next action:** merge Step 1; start Step 2 locally (module_core dead
-  concurrency copy) per the one-step-ahead workflow
+- **Series state:** Step 1/45 merged in
+  [#1018](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1018);
+  Step 2/45 in PR
+- **Current step:** 2/45 — delete the dead concurrency copy
+- **Next action:** monitor Step 2; start Step 3 locally (shared dead helpers,
+  models, and the `rxdart` dependency) per the one-step-ahead workflow
 - **Overlapping work:** open PRs #918 (voice streaming), #956 (composer
   drag-and-drop), #939 (macOS list scrolling) overlap Steps 39–41 — rebase and
   re-scope after they merge; active plan `session-refresh-reconnects` owns
@@ -72,8 +72,8 @@
 
 | Done | Step | Exact PR title | State |
 |---|---|---|---|
-| [ ] | 1/45 | `🌱 [codebase-cleanup] docs: raise the reliability cleanup plan [step 1/45]` | In PR #1018 |
-| [ ] | 2/45 | `🌿 [codebase-cleanup] client(module_core): delete the dead concurrency copy [step 2/45]` | Not started |
+| [x] | 1/45 | `🌱 [codebase-cleanup] docs: raise the reliability cleanup plan [step 1/45]` | Merged in #1018 |
+| [ ] | 2/45 | `🌿 [codebase-cleanup] client(module_core): delete the dead concurrency copy [step 2/45]` | In PR |
 | [ ] | 3/45 | `🌿 [codebase-cleanup] shared: delete dead helpers, models, and the rxdart dependency [step 3/45]` | Not started |
 | [ ] | 4/45 | `🌿 [codebase-cleanup] shared: tighten management fields and correct compatibility markers [step 4/45]` | Not started |
 | [ ] | 5/45 | `🌿 [codebase-cleanup] bridge(app): delete dead production code [step 5/45]` | Not started |
@@ -138,7 +138,13 @@
 
 Each step records here what it found stale relative to the plan before editing.
 
-- _none yet_
+- **Step 2 (2026-08-22):** plan evidence held exactly. `dto_parser.dart` still
+  had zero references in `client/`; the concurrency tree's only importer was
+  `dto_parser.dart`; `MessageQueue`/`ConcurrentCache` had no production
+  consumer; the two deep-importing tests were still the only other consumers.
+  Two references the plan had not listed were found and handled:
+  `client/module_core/README.md:30` and the `concurrency/` line in
+  `client/module_core/AGENTS.md`. No barrel export referenced either path.
 
 ## Cleanup Ledger
 
@@ -199,7 +205,16 @@ Each step records here what it found stale relative to the plan before editing.
 - Self-inclusive result after three review rounds, the PR #1017 reconciliation,
   and the D1/D2 decisions: `PLAN.md +1,641`, `TRACKER.md +266`, total
   `+1,907 / -0`, within the final 1,700–2,000 target (earlier ceilings were
-  exceeded as reviews added detail).
+  exceeded as reviews added detail). Merged in #1018.
+- Step 2 verification: `dart analyze --fatal-infos` clean and `dart test`
+  1,172 passed in `client/module_core`; `flutter analyze` clean and
+  `flutter test test/core` 217 passed in `client/app`.
+- Step 2 size against merge-base, self-inclusive of this record:
+  `+0 / -1,356` (13 files deleted, 2 doc files edited), under the 1,200–1,400
+  target because the deletion is pure and no replacement code was needed.
+- Step 2 architecture implementation review: not run — deletion-only step with
+  no new or moved production class, DI change, or contract change, per the
+  review scope recorded in `PLAN.md`.
 
 ## Plan Review
 
