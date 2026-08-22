@@ -48,7 +48,12 @@ behavior changed.
   (`dart_style` null-check failure); analyzer parsing is clean and their edited
   sections retain the existing formatting.
 
-The production diff excluding this evidence file is `+184 / -284`.
+The merge base used for the final scope measurement is
+`5ffd05c5e7c29c8e901c81f2e0b8e0dea00a100e`. Running
+`BASE=$(git merge-base origin/main HEAD)` followed by
+`git diff --numstat "$BASE" -- bridge/app/lib` gives a production-only total
+of `+188 / -286`; `git diff --numstat "$BASE" -- bridge/app/test` gives a test
+total of `+429 / -473`. The evidence file itself is excluded from both totals.
 
 ## Architecture implementation review
 
