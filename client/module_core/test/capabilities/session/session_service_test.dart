@@ -2,12 +2,10 @@ import "dart:convert";
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart" show ApiError, ApiResponse;
-import "package:sesori_dart_core/sesori_dart_core.dart" show RelayHttpApiClient;
 import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
-
-class MockRelayHttpApiClient() extends Mock implements RelayHttpApiClient;
+import "../../helpers/test_helpers.dart";
 
 void main() {
   group("SessionApi", () {

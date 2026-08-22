@@ -1,24 +1,27 @@
 import "dart:async";
-
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/api/filesystem_api.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/api/storage/composer_draft_storage.dart";
+import "package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
+import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
 import "package:sesori_dart_core/src/repositories/composer_draft_repository.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
+import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_preference_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
@@ -31,11 +34,13 @@ import "package:sesori_dart_core/src/services/models/session_list_item_state.dar
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:sesori_dart_core/src/services/project_viewing_service.dart";
 import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
+import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_unseen_tracker.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
 import "package:sesori_dart_core/src/services/sse_event_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
 
 /// A [LifecycleSource] seeded as resumed, for cubits that subscribe to
 /// lifecycle. Call [emitState] to drive transitions in tests.
@@ -561,4 +566,61 @@ CommandInfo testCommandInfo({
     source: CommandSource.command,
     subtask: false,
   );
+}
+
+class MockPermissionRepository() extends Mock implements PermissionRepository;
+
+class MockNotificationCanceller() extends Mock implements NotificationCanceller;
+
+class MockRelayHttpApiClient() extends Mock implements RelayHttpApiClient;
+
+class MockAuthSession() extends Mock implements AuthSession;
+
+class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadService;
+
+class MockRoomKeyStorage() extends Mock implements RoomKeyStorage;
+
+/// In-memory [AuthSession] whose state can be driven from a test.
+class FakeAuthSession({required AuthState initialState}) implements AuthSession {
+  final BehaviorSubject<AuthState> _authStates = BehaviorSubject<AuthState>.seeded(initialState);
+
+  @override
+  ValueStream<AuthState> get authStateStream => _authStates.stream;
+
+  @override
+  AuthState get currentState => _authStates.value;
+
+  void emit(AuthState state) => _authStates.add(state);
+
+  Future<void> dispose() async {
+    await _authStates.close();
+  }
+
+  @override
+  Future<AuthUser?> getCurrentUser() async => null;
+
+  @override
+  Future<bool> hasLocallyValidSession() async => false;
+
+  @override
+  Future<void> invalidateAllSessions() async {}
+
+  @override
+  Future<void> logoutCurrentDevice() async {}
+
+  @override
+  Future<bool> restoreSession() async => false;
+
+  @override
+  Future<bool> restoreLocalSession() async => false;
+
+  @override
+  Future<AuthUser> loginWithEmail({required String email, required String password}) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<AuthUser> loginWithApple({required String idToken, required String nonce}) async {
+    throw UnimplementedError();
+  }
 }

@@ -12,6 +12,7 @@ import "package:sesori_dart_core/src/routing/app_routes.dart";
 import "package:sesori_dart_core/src/routing/notification_open_dispatcher.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+import "../helpers/test_helpers.dart";
 
 void main() {
   group("NotificationOpenDispatcher", () {
@@ -220,50 +221,6 @@ void main() {
       expect(routeDispatcher.replacedStacks, isEmpty);
     });
   });
-}
-
-class FakeAuthSession({required AuthState initialState}) implements AuthSession {
-  final BehaviorSubject<AuthState> _authStates = BehaviorSubject<AuthState>.seeded(initialState);
-
-  @override
-  ValueStream<AuthState> get authStateStream => _authStates.stream;
-
-  @override
-  AuthState get currentState => _authStates.value;
-
-  void emit(AuthState state) => _authStates.add(state);
-
-  Future<void> dispose() async {
-    await _authStates.close();
-  }
-
-  @override
-  Future<AuthUser?> getCurrentUser() async => null;
-
-  @override
-  Future<bool> hasLocallyValidSession() async => false;
-
-  @override
-  Future<void> invalidateAllSessions() async {}
-
-  @override
-  Future<void> logoutCurrentDevice() async {}
-
-  @override
-  Future<bool> restoreSession() async => false;
-
-  @override
-  Future<bool> restoreLocalSession() async => false;
-
-  @override
-  Future<AuthUser> loginWithEmail({required String email, required String password}) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<AuthUser> loginWithApple({required String idToken, required String nonce}) async {
-    throw UnimplementedError();
-  }
 }
 
 class FakePushMessagingSource() implements PushMessagingSource {

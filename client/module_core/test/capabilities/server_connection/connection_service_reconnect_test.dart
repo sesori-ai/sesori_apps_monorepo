@@ -12,18 +12,13 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+import "../../helpers/test_helpers.dart";
 
 class MockRelayCryptoService() extends Mock implements RelayCryptoService;
 
-class MockRoomKeyStorage() extends Mock implements RoomKeyStorage;
-
 class MockAuthTokenProvider() extends Mock implements AuthTokenProvider;
 
-class MockAuthSession() extends Mock implements AuthSession;
-
 class MockLifecycleSource() extends Mock implements LifecycleSource;
-
-class MockFailureReporter() extends Mock implements FailureReporter;
 
 class MockRelayClient() extends Mock implements RelayClient;
 
