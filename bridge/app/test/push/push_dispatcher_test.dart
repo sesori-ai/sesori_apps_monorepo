@@ -286,6 +286,8 @@ void main() {
                     id: "root",
                     mainAgentRunning: false,
                     childSessionIds: ["child"],
+                    lastUserActivityAt: null,
+                    updatedAt: null,
                   ),
                 ],
               ),

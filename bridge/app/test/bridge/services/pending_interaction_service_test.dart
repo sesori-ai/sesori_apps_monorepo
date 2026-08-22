@@ -114,7 +114,7 @@ void main() {
       sessionRepository.activitySummaries = const [
         ProjectActivitySummary(
           id: "project",
-          activeSessions: [ActiveSession(id: "session-one", awaitingInput: true)],
+          activeSessions: [ActiveSession(id: "session-one", awaitingInput: true, lastUserActivityAt: null, updatedAt: null)],
         ),
       ];
       permissionRepository.pendingPermissions = const [

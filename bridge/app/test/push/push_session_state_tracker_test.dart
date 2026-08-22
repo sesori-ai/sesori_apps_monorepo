@@ -891,7 +891,7 @@ void main() {
             ProjectActivitySummary(
               id: "project-a",
               activeSessions: [
-                ActiveSession(id: "root", mainAgentRunning: true, childSessionIds: ["child"]),
+                ActiveSession(id: "root", mainAgentRunning: true, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
               ],
             ),
           ],
@@ -920,7 +920,7 @@ void main() {
             ProjectActivitySummary(
               id: "project-a",
               activeSessions: [
-                ActiveSession(id: "other-root", mainAgentRunning: true, childSessionIds: ["child"]),
+                ActiveSession(id: "other-root", mainAgentRunning: true, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
               ],
             ),
           ],
@@ -940,7 +940,7 @@ void main() {
             ProjectActivitySummary(
               id: "proj-a",
               activeSessions: [
-                ActiveSession(id: "sess-root", mainAgentRunning: true),
+                ActiveSession(id: "sess-root", mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
               ],
             ),
           ],
@@ -963,6 +963,8 @@ void main() {
                   id: "sess-root",
                   mainAgentRunning: true,
                   childSessionIds: ["sess-child"],
+                  lastUserActivityAt: null,
+                  updatedAt: null,
                 ),
               ],
             ),
@@ -987,7 +989,7 @@ void main() {
             ProjectActivitySummary(
               id: "proj-new",
               activeSessions: [
-                ActiveSession(id: "sess-1", mainAgentRunning: true),
+                ActiveSession(id: "sess-1", mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
               ],
             ),
           ],
@@ -1018,8 +1020,8 @@ void main() {
             ProjectActivitySummary(
               id: "project-a",
               activeSessions: [
-                ActiveSession(id: "root", mainAgentRunning: true, childSessionIds: ["child"]),
-                ActiveSession(id: "child", mainAgentRunning: true, childSessionIds: ["grandchild"]),
+                ActiveSession(id: "root", mainAgentRunning: true, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(id: "child", mainAgentRunning: true, childSessionIds: ["grandchild"], lastUserActivityAt: null, updatedAt: null),
               ],
             ),
           ],
@@ -1570,7 +1572,7 @@ void main() {
             ProjectActivitySummary(
               id: "project-a",
               activeSessions: [
-                ActiveSession(id: "root-a", mainAgentRunning: false, childSessionIds: ["child"]),
+                ActiveSession(id: "root-a", mainAgentRunning: false, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
               ],
             ),
           ],
@@ -1606,7 +1608,7 @@ void main() {
             ProjectActivitySummary(
               id: "project-a",
               activeSessions: [
-                ActiveSession(id: "repaired-root", mainAgentRunning: false, childSessionIds: ["child"]),
+                ActiveSession(id: "repaired-root", mainAgentRunning: false, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
               ],
             ),
           ],
@@ -1626,7 +1628,7 @@ void main() {
             ProjectActivitySummary(
               id: "project-a",
               activeSessions: [
-                ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
+                ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
               ],
             ),
           ],
@@ -1647,7 +1649,7 @@ void main() {
           ProjectActivitySummary(
             id: "project-a",
             activeSessions: [
-              ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
+              ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
             ],
           ),
         ],

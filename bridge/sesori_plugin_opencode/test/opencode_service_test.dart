@@ -1568,9 +1568,9 @@ void main() {
           ProjectActivitySummary(
             id: "/repo",
             activeSessions: [
-              ActiveSession(id: "s1"),
-              ActiveSession(id: "s2"),
-              ActiveSession(id: "s3"),
+              ActiveSession(id: "s1", lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(id: "s2", lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(id: "s3", lastUserActivityAt: null, updatedAt: null),
             ],
           ),
         ],

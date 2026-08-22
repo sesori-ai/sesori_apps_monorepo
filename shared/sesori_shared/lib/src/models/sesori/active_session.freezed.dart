@@ -87,7 +87,7 @@ as int?,
 @JsonSerializable()
 
 class _ActiveSession implements ActiveSession {
-  const _ActiveSession({required this.id, this.mainAgentRunning = false, this.awaitingInput = false,  List<String> childSessionIds = const [], this.isRetrying = false, this.lastUserActivityAt = null, this.updatedAt = null}): _childSessionIds = childSessionIds;
+  const _ActiveSession({required this.id, this.mainAgentRunning = false, this.awaitingInput = false,  List<String> childSessionIds = const [], this.isRetrying = false, required this.lastUserActivityAt, required this.updatedAt}): _childSessionIds = childSessionIds;
   factory _ActiveSession.fromJson(Map<String, dynamic> json) => _$ActiveSessionFromJson(json);
 
 @override final  String id;
@@ -101,8 +101,8 @@ class _ActiveSession implements ActiveSession {
 }
 
 @override@JsonKey() final  bool isRetrying;
-@override@JsonKey() final  int? lastUserActivityAt;
-@override@JsonKey() final  int? updatedAt;
+@override final  int? lastUserActivityAt;
+@override final  int? updatedAt;
 
 /// Create a copy of ActiveSession
 /// with the given fields replaced by the non-null parameter values.

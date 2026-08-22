@@ -32,8 +32,7 @@ extension StringExtensions on String {
     return trimmed.isEmpty ? null : trimmed;
   }
 
-  // ignore: no_slop_linter/prefer_required_named_parameters, the single argument is the chunk size
-  List<String> chunked(int chunkSize) {
+  List<String> chunked({required int chunkSize}) {
     final chunks = <String>[];
 
     var chunkIndex = 0;

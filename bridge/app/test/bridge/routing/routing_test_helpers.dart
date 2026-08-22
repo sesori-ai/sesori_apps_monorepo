@@ -1246,6 +1246,8 @@ class FakeSessionRepository({
               awaitingInput: active.awaitingInput,
               isRetrying: active.isRetrying,
               childSessionIds: active.childSessionIds,
+              lastUserActivityAt: null,
+              updatedAt: null,
             ),
         ],
       ),

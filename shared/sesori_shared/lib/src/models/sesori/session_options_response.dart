@@ -16,7 +16,7 @@ sealed class SessionOptionsResponse with _$SessionOptionsResponse {
     /// Whether the bridge served a cached snapshot older than its freshness
     /// window, making it worth a background refresh. Freshly discovered options
     /// are never stale.
-    // COMPATIBILITY 2026-08-20 (v1.9.0): Bridges before v1.9.0 omit stale, which
+    // COMPATIBILITY 2026-08-20 (v1.8.0): Bridges before v1.8.0 omit stale, which
     // means they never recommend a background refresh. Remove @Default and
     // require stale after the minimum supported bridge sends it.
     @Default(false) bool stale,

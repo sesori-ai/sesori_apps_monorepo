@@ -91,7 +91,7 @@ void main() {
                   lastUserActivityAt: 20,
                   updatedAt: 10,
                 ),
-                ActiveSession(id: "s2", mainAgentRunning: false, childSessionIds: []),
+                ActiveSession(id: "s2", mainAgentRunning: false, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
               ],
             ),
           ],
@@ -168,14 +168,14 @@ void main() {
             ProjectActivitySummary(
               id: "/foo",
               activeSessions: [
-                ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: []),
+                ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
               ],
             ),
             ProjectActivitySummary(
               id: "/bar",
               activeSessions: [
-                ActiveSession(id: "s2", mainAgentRunning: true, childSessionIds: []),
-                ActiveSession(id: "s3", mainAgentRunning: false, childSessionIds: []),
+                ActiveSession(id: "s2", mainAgentRunning: true, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(id: "s3", mainAgentRunning: false, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
               ],
             ),
           ],
@@ -214,7 +214,7 @@ void main() {
               ProjectActivitySummary(
                 id: "/foo",
                 activeSessions: [
-                  ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: []),
+                  ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
                 ],
               ),
             ],
@@ -233,8 +233,8 @@ void main() {
               ProjectActivitySummary(
                 id: "/foo",
                 activeSessions: [
-                  ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: []),
-                  ActiveSession(id: "s2", mainAgentRunning: true, childSessionIds: []),
+                  ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
+                  ActiveSession(id: "s2", mainAgentRunning: true, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
                 ],
               ),
             ],
@@ -286,9 +286,9 @@ void main() {
             ProjectActivitySummary(
               id: "/foo",
               activeSessions: [
-                ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: []),
-                ActiveSession(id: "s2", mainAgentRunning: true, childSessionIds: []),
-                ActiveSession(id: "s3", mainAgentRunning: false, childSessionIds: []),
+                ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(id: "s2", mainAgentRunning: true, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(id: "s3", mainAgentRunning: false, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
               ],
             ),
           ],
@@ -361,7 +361,7 @@ void main() {
             ProjectActivitySummary(
               id: "/foo",
               activeSessions: [
-                ActiveSession(id: "s1", mainAgentRunning: true, awaitingInput: true),
+                ActiveSession(id: "s1", mainAgentRunning: true, awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
               ],
             ),
           ],
@@ -397,7 +397,7 @@ void main() {
             ProjectActivitySummary(
               id: "/foo",
               activeSessions: [
-                ActiveSession(id: "s1", mainAgentRunning: true, awaitingInput: false),
+                ActiveSession(id: "s1", mainAgentRunning: true, awaitingInput: false, lastUserActivityAt: null, updatedAt: null),
               ],
             ),
           ],

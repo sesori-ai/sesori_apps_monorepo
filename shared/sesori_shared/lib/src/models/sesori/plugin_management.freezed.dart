@@ -481,7 +481,7 @@ String toString() {
 /// @nodoc
 mixin _$PluginManagementResponse {
 
- String? get snapshotToken; String? get bridgeId; String? get defaultPluginId; int get defaultIdleTimeoutMins; List<PluginManagementMetadata> get plugins;
+ String get snapshotToken; String get bridgeId; String? get defaultPluginId; int get defaultIdleTimeoutMins; List<PluginManagementMetadata> get plugins;
 /// Create a copy of PluginManagementResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -514,7 +514,7 @@ abstract mixin class $PluginManagementResponseCopyWith<$Res>  {
   factory $PluginManagementResponseCopyWith(PluginManagementResponse value, $Res Function(PluginManagementResponse) _then) = _$PluginManagementResponseCopyWithImpl;
 @useResult
 $Res call({
- String? snapshotToken, String? bridgeId, String? defaultPluginId, int defaultIdleTimeoutMins, List<PluginManagementMetadata> plugins
+ String snapshotToken, String bridgeId, String? defaultPluginId, int defaultIdleTimeoutMins, List<PluginManagementMetadata> plugins
 });
 
 
@@ -531,11 +531,11 @@ class _$PluginManagementResponseCopyWithImpl<$Res>
 
 /// Create a copy of PluginManagementResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? snapshotToken = freezed,Object? bridgeId = freezed,Object? defaultPluginId = freezed,Object? defaultIdleTimeoutMins = null,Object? plugins = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? snapshotToken = null,Object? bridgeId = null,Object? defaultPluginId = freezed,Object? defaultIdleTimeoutMins = null,Object? plugins = null,}) {
   return _then(PluginManagementResponse(
-snapshotToken: freezed == snapshotToken ? _self.snapshotToken : snapshotToken // ignore: cast_nullable_to_non_nullable
-as String?,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
-as String?,defaultPluginId: freezed == defaultPluginId ? _self.defaultPluginId : defaultPluginId // ignore: cast_nullable_to_non_nullable
+snapshotToken: null == snapshotToken ? _self.snapshotToken : snapshotToken // ignore: cast_nullable_to_non_nullable
+as String,bridgeId: null == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String,defaultPluginId: freezed == defaultPluginId ? _self.defaultPluginId : defaultPluginId // ignore: cast_nullable_to_non_nullable
 as String?,defaultIdleTimeoutMins: null == defaultIdleTimeoutMins ? _self.defaultIdleTimeoutMins : defaultIdleTimeoutMins // ignore: cast_nullable_to_non_nullable
 as int,plugins: null == plugins ? _self.plugins : plugins // ignore: cast_nullable_to_non_nullable
 as List<PluginManagementMetadata>,
@@ -553,8 +553,8 @@ class _PluginManagementResponse implements PluginManagementResponse {
   const _PluginManagementResponse({required this.snapshotToken, required this.bridgeId, required this.defaultPluginId, required this.defaultIdleTimeoutMins, required  List<PluginManagementMetadata> plugins}): _plugins = plugins;
   factory _PluginManagementResponse.fromJson(Map<String, dynamic> json) => _$PluginManagementResponseFromJson(json);
 
-@override final  String? snapshotToken;
-@override final  String? bridgeId;
+@override final  String snapshotToken;
+@override final  String bridgeId;
 @override final  String? defaultPluginId;
 @override final  int defaultIdleTimeoutMins;
  final  List<PluginManagementMetadata> _plugins;
@@ -598,7 +598,7 @@ abstract mixin class _$PluginManagementResponseCopyWith<$Res> implements $Plugin
   factory _$PluginManagementResponseCopyWith(_PluginManagementResponse value, $Res Function(_PluginManagementResponse) _then) = __$PluginManagementResponseCopyWithImpl;
 @override @useResult
 $Res call({
- String? snapshotToken, String? bridgeId, String? defaultPluginId, int defaultIdleTimeoutMins, List<PluginManagementMetadata> plugins
+ String snapshotToken, String bridgeId, String? defaultPluginId, int defaultIdleTimeoutMins, List<PluginManagementMetadata> plugins
 });
 
 
@@ -615,11 +615,11 @@ class __$PluginManagementResponseCopyWithImpl<$Res>
 
 /// Create a copy of PluginManagementResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? snapshotToken = freezed,Object? bridgeId = freezed,Object? defaultPluginId = freezed,Object? defaultIdleTimeoutMins = null,Object? plugins = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? snapshotToken = null,Object? bridgeId = null,Object? defaultPluginId = freezed,Object? defaultIdleTimeoutMins = null,Object? plugins = null,}) {
   return _then(_PluginManagementResponse(
-snapshotToken: freezed == snapshotToken ? _self.snapshotToken : snapshotToken // ignore: cast_nullable_to_non_nullable
-as String?,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
-as String?,defaultPluginId: freezed == defaultPluginId ? _self.defaultPluginId : defaultPluginId // ignore: cast_nullable_to_non_nullable
+snapshotToken: null == snapshotToken ? _self.snapshotToken : snapshotToken // ignore: cast_nullable_to_non_nullable
+as String,bridgeId: null == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String,defaultPluginId: freezed == defaultPluginId ? _self.defaultPluginId : defaultPluginId // ignore: cast_nullable_to_non_nullable
 as String?,defaultIdleTimeoutMins: null == defaultIdleTimeoutMins ? _self.defaultIdleTimeoutMins : defaultIdleTimeoutMins // ignore: cast_nullable_to_non_nullable
 as int,plugins: null == plugins ? _self._plugins : plugins // ignore: cast_nullable_to_non_nullable
 as List<PluginManagementMetadata>,
@@ -952,10 +952,10 @@ String toString() {
 @JsonSerializable()
 
 class PluginIdleTimeoutApplyAllRequest implements PluginIdleTimeoutUpdateRequest {
-  const PluginIdleTimeoutApplyAllRequest({@JsonKey(fromJson: _strictIntFromJson) required this.idleTimeoutMins,  String? $type}): $type = $type ?? 'applyAll';
+  const PluginIdleTimeoutApplyAllRequest({@strictIntJsonConverter required this.idleTimeoutMins,  String? $type}): $type = $type ?? 'applyAll';
   factory PluginIdleTimeoutApplyAllRequest.fromJson(Map<String, dynamic> json) => _$PluginIdleTimeoutApplyAllRequestFromJson(json);
 
-@JsonKey(fromJson: _strictIntFromJson) final  int idleTimeoutMins;
+@strictIntJsonConverter final  int idleTimeoutMins;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -991,11 +991,11 @@ String toString() {
 @JsonSerializable()
 
 class PluginIdleTimeoutSetOverrideRequest implements PluginIdleTimeoutUpdateRequest {
-  const PluginIdleTimeoutSetOverrideRequest({required this.pluginId, @JsonKey(fromJson: _strictIntFromJson) required this.idleTimeoutMins,  String? $type}): $type = $type ?? 'setOverride';
+  const PluginIdleTimeoutSetOverrideRequest({required this.pluginId, @strictIntJsonConverter required this.idleTimeoutMins,  String? $type}): $type = $type ?? 'setOverride';
   factory PluginIdleTimeoutSetOverrideRequest.fromJson(Map<String, dynamic> json) => _$PluginIdleTimeoutSetOverrideRequestFromJson(json);
 
  final  String pluginId;
-@JsonKey(fromJson: _strictIntFromJson) final  int idleTimeoutMins;
+@strictIntJsonConverter final  int idleTimeoutMins;
 
 @JsonKey(name: 'type')
 final String $type;

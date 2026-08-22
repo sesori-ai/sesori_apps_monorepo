@@ -18,7 +18,7 @@ sealed class PluginSetupMetadata with _$PluginSetupMetadata {
     required String id,
     required String displayName,
     @JsonKey(unknownEnumValue: PluginSetupState.unknown) required PluginSetupState state,
-    // COMPATIBILITY 2026-08-17 (v1.9.0): Older bridge payloads omit
+    // COMPATIBILITY 2026-08-17 (v1.8.0): Older bridge payloads omit
     // runtimeVersion; null means that peer did not report the selected harness
     // runtime. Remove the nullable fallback when those bridges are unsupported.
     required String? runtimeVersion,

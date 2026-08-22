@@ -14,10 +14,9 @@ extension IterableExtensions<T> on Iterable<T> {
     return aggregator;
   }
 
-  // ignore: no_slop_linter/prefer_required_named_parameters, the single argument is the predicate
-  (UnmodifiableListView<T>, UnmodifiableListView<T>) partition(
-    bool Function(T item) condition,
-  ) {
+  (UnmodifiableListView<T>, UnmodifiableListView<T>) partition({
+    required bool Function(T item) condition,
+  }) {
     final matching = <T>[];
     final nonMatching = <T>[];
 

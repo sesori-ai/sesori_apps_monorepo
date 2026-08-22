@@ -456,6 +456,8 @@ void main() {
                 awaitingInput: false,
                 isRetrying: false,
                 childSessionIds: [],
+                lastUserActivityAt: null,
+                updatedAt: null,
               ),
             ],
           ),

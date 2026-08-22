@@ -281,7 +281,7 @@ void main() {
   });
 }
 
-ActiveSession _session(String id) => ActiveSession(id: id);
+ActiveSession _session(String id) => ActiveSession(id: id, lastUserActivityAt: null, updatedAt: null);
 
 SesoriProjectsSummary _summaryWithSessionCount(int count) {
   return SesoriSseEvent.projectsSummary(

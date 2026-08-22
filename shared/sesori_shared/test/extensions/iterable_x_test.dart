@@ -33,31 +33,31 @@ void main() {
 
     group("partition", () {
       test("splits into matching and non-matching", () {
-        final (evens, odds) = [1, 2, 3, 4, 5].partition((e) => e.isEven);
+        final (evens, odds) = [1, 2, 3, 4, 5].partition(condition: (e) => e.isEven);
         expect(evens, [2, 4]);
         expect(odds, [1, 3, 5]);
       });
 
       test("returns unmodifiable lists", () {
-        final (matching, nonMatching) = [1, 2].partition((e) => e > 0);
+        final (matching, nonMatching) = [1, 2].partition(condition: (e) => e > 0);
         expect(matching, isA<UnmodifiableListView<int>>());
         expect(nonMatching, isA<UnmodifiableListView<int>>());
       });
 
       test("handles all matching", () {
-        final (matching, nonMatching) = [2, 4, 6].partition((e) => e.isEven);
+        final (matching, nonMatching) = [2, 4, 6].partition(condition: (e) => e.isEven);
         expect(matching, [2, 4, 6]);
         expect(nonMatching, isEmpty);
       });
 
       test("handles none matching", () {
-        final (matching, nonMatching) = [1, 3, 5].partition((e) => e.isEven);
+        final (matching, nonMatching) = [1, 3, 5].partition(condition: (e) => e.isEven);
         expect(matching, isEmpty);
         expect(nonMatching, [1, 3, 5]);
       });
 
       test("handles empty iterable", () {
-        final (matching, nonMatching) = <int>[].partition((e) => e.isEven);
+        final (matching, nonMatching) = <int>[].partition(condition: (e) => e.isEven);
         expect(matching, isEmpty);
         expect(nonMatching, isEmpty);
       });

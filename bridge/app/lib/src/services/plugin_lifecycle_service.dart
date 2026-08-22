@@ -1155,7 +1155,7 @@ class PluginLifecycleService({
     return _managementRow(plugin: plugin);
   }
 
-  _PluginManagementSnapshot _buildManagementSnapshot({required String? snapshotToken}) {
+  _PluginManagementSnapshot _buildManagementSnapshot({required String snapshotToken}) {
     final registeredPlugins = _registeredPlugins;
     if (registeredPlugins == null || _setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
@@ -1426,7 +1426,7 @@ class PluginLifecycleService({
 
 @immutable
 final class const _PluginManagementSnapshot({
-  required final String? snapshotToken,
+  required final String snapshotToken,
   required final String? defaultPluginId,
   required final int defaultIdleTimeoutMins,
   required final List<PluginManagementMetadata> plugins,

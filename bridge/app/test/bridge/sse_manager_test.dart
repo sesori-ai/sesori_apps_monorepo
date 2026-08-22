@@ -466,7 +466,7 @@ SesoriSseEvent _event(String worktree) {
     projects: [
       ProjectActivitySummary(
         id: worktree,
-        activeSessions: [const ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: [])],
+        activeSessions: [const ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: [], lastUserActivityAt: null, updatedAt: null)],
       ),
     ],
   );

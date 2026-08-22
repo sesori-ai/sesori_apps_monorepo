@@ -153,8 +153,8 @@ Map<String, dynamic> _$PluginAuthenticationUnknownProgressToJson(
 
 _PluginManagementResponse _$PluginManagementResponseFromJson(Map json) =>
     _PluginManagementResponse(
-      snapshotToken: json['snapshotToken'] as String?,
-      bridgeId: json['bridgeId'] as String?,
+      snapshotToken: json['snapshotToken'] as String,
+      bridgeId: json['bridgeId'] as String,
       defaultPluginId: json['defaultPluginId'] as String?,
       defaultIdleTimeoutMins: (json['defaultIdleTimeoutMins'] as num).toInt(),
       plugins: (json['plugins'] as List<dynamic>)
@@ -169,8 +169,8 @@ _PluginManagementResponse _$PluginManagementResponseFromJson(Map json) =>
 Map<String, dynamic> _$PluginManagementResponseToJson(
   _PluginManagementResponse instance,
 ) => <String, dynamic>{
-  'snapshotToken': ?instance.snapshotToken,
-  'bridgeId': ?instance.bridgeId,
+  'snapshotToken': instance.snapshotToken,
+  'bridgeId': instance.bridgeId,
   'defaultPluginId': ?instance.defaultPluginId,
   'defaultIdleTimeoutMins': instance.defaultIdleTimeoutMins,
   'plugins': instance.plugins.map((e) => e.toJson()).toList(),
@@ -235,14 +235,14 @@ Map<String, dynamic> _$PluginLifecycleInstallRequestToJson(
 PluginIdleTimeoutApplyAllRequest _$PluginIdleTimeoutApplyAllRequestFromJson(
   Map json,
 ) => PluginIdleTimeoutApplyAllRequest(
-  idleTimeoutMins: _strictIntFromJson(json['idleTimeoutMins'] as num),
+  idleTimeoutMins: strictIntJsonConverter.fromJson(json['idleTimeoutMins']),
   $type: json['type'] as String?,
 );
 
 Map<String, dynamic> _$PluginIdleTimeoutApplyAllRequestToJson(
   PluginIdleTimeoutApplyAllRequest instance,
 ) => <String, dynamic>{
-  'idleTimeoutMins': instance.idleTimeoutMins,
+  'idleTimeoutMins': ?strictIntJsonConverter.toJson(instance.idleTimeoutMins),
   'type': instance.$type,
 };
 
@@ -250,7 +250,7 @@ PluginIdleTimeoutSetOverrideRequest
 _$PluginIdleTimeoutSetOverrideRequestFromJson(Map json) =>
     PluginIdleTimeoutSetOverrideRequest(
       pluginId: json['pluginId'] as String,
-      idleTimeoutMins: _strictIntFromJson(json['idleTimeoutMins'] as num),
+      idleTimeoutMins: strictIntJsonConverter.fromJson(json['idleTimeoutMins']),
       $type: json['type'] as String?,
     );
 
@@ -258,7 +258,7 @@ Map<String, dynamic> _$PluginIdleTimeoutSetOverrideRequestToJson(
   PluginIdleTimeoutSetOverrideRequest instance,
 ) => <String, dynamic>{
   'pluginId': instance.pluginId,
-  'idleTimeoutMins': instance.idleTimeoutMins,
+  'idleTimeoutMins': ?strictIntJsonConverter.toJson(instance.idleTimeoutMins),
   'type': instance.$type,
 };
 
