@@ -36,7 +36,7 @@ step's 500–900 target. Scoped by pathspec:
 
 | Pathspec | Lines | What it is |
 |---|---|---|
-| `-- bridge/app` | `+1,192 / -876` = 2,068 | the move itself, **including** `bridge/app/AGENTS.md` (45 of those lines) |
+| `-- bridge/app` | `+1,192 / -876` = 2,068 | the move itself, **including** `bridge/app/AGENTS.md` (`+22 / -21` = 43 of those lines) |
 | `-- bridge/app ':!bridge/app/AGENTS.md'` | `+1,170 / -855` = 2,025 | code and generated parts only |
 | `-- ':!bridge/app' ':!.plan'` | `+52 / -30` = 82 | `bridge/ARCHITECTURE.md`, `bridge/README.md`, the skill reference |
 | `-- .plan` | `+209 / -153` = 362 | plan/tracker restructure and these evidence files |
