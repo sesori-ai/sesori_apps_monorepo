@@ -12,11 +12,8 @@ class GetPluginsHandler({
 
   @override
   Future<PluginListResponse> handle(
-    RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
-  }) async {
+    RelayRequest request,
+  ) async {
     return PluginListResponse(
       bridgeId: _bridgeIdProvider.bridgeId,
       plugins: _lifecycleService.selectableMetadataSnapshot,

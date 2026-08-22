@@ -21,15 +21,12 @@ void main() {
 
   test("PatchPluginIdleTimeoutHandler returns the updated management snapshot", () async {
     final service = _FakePluginLifecycleService();
-    final response = await buildHandler(service: service).handleInternal(
+    final response = await buildHandler(service: service).routeForTest(
       makeRequest(
         "PATCH",
         "/plugin/idle-timeout",
         body: jsonEncode(const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 30).toJson()),
       ),
-      pathParams: const {},
-      queryParams: const {},
-      fragment: null,
     );
 
     expect(response.status, 200);
@@ -44,7 +41,7 @@ void main() {
     final service = _FakePluginLifecycleService()
       ..error = const PluginManagementConflictException(_unsupportedConflict);
 
-    final response = await buildHandler(service: service).handleInternal(
+    final response = await buildHandler(service: service).routeForTest(
       makeRequest(
         "PATCH",
         "/plugin/idle-timeout",
@@ -52,9 +49,6 @@ void main() {
           const PluginIdleTimeoutUpdateRequest.setOverride(pluginId: "one", idleTimeoutMins: 30).toJson(),
         ),
       ),
-      pathParams: const {},
-      queryParams: const {},
-      fragment: null,
     );
 
     expect(response.status, 409);
@@ -69,48 +63,36 @@ void main() {
     final service = _FakePluginLifecycleService();
     final handler = buildHandler(service: service);
 
-    final invalid = await handler.handleInternal(
+    final invalid = await handler.routeForTest(
       makeRequest(
         "PATCH",
         "/plugin/idle-timeout",
         body: jsonEncode(const {"type": "setOverride", "pluginId": "one", "idleTimeoutMins": 1.5}),
       ),
-      pathParams: const {},
-      queryParams: const {},
-      fragment: null,
     );
     service.error = const PluginManagementPluginNotFoundException("missing");
-    final unknown = await handler.handleInternal(
+    final unknown = await handler.routeForTest(
       makeRequest(
         "PATCH",
         "/plugin/idle-timeout",
         body: jsonEncode(const PluginIdleTimeoutUpdateRequest.clearOverride(pluginId: "missing").toJson()),
       ),
-      pathParams: const {},
-      queryParams: const {},
-      fragment: null,
     );
     service.error = const PluginManagementMutationOutcomeUncertainException();
-    final uncertain = await handler.handleInternal(
+    final uncertain = await handler.routeForTest(
       makeRequest(
         "PATCH",
         "/plugin/idle-timeout",
         body: jsonEncode(const PluginIdleTimeoutUpdateRequest.clearOverride(pluginId: "one").toJson()),
       ),
-      pathParams: const {},
-      queryParams: const {},
-      fragment: null,
     );
     service.error = StateError("disk full");
-    final failed = await handler.handleInternal(
+    final failed = await handler.routeForTest(
       makeRequest(
         "PATCH",
         "/plugin/idle-timeout",
         body: jsonEncode(const PluginIdleTimeoutUpdateRequest.clearOverride(pluginId: "one").toJson()),
       ),
-      pathParams: const {},
-      queryParams: const {},
-      fragment: null,
     );
 
     expect(invalid.status, 400);

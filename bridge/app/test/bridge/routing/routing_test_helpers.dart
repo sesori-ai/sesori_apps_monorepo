@@ -113,12 +113,13 @@ extension RequestHandlerTestMatching on RequestHandlerBase {
     return matches(requestMethod: method, target: Uri.parse(request.path));
   }
 
-  ({
-    Map<String, String> pathParams,
-    Map<String, String> queryParams,
-    String? fragment,
-  })
-  extractParams(RelayRequest request) => extractTargetParams(target: Uri.parse(request.path));
+  RequestTargetParams extractParams(RelayRequest request) => extractTargetParams(target: Uri.parse(request.path));
+
+  Future<RelayResponse> routeForTest(RelayRequest request) async {
+    final targetParams = extractTargetParams(target: Uri.parse(request.path));
+    final outcome = await routeInternal(request: request, targetParams: targetParams);
+    return outcome.response;
+  }
 }
 
 /// Hand-written fake [SessionDao] for testing.

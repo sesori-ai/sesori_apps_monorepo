@@ -51,9 +51,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("PUT", "/project/base-branch"),
         body: const SetBaseBranchRequest(projectId: "proj-1", baseBranch: "develop"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, equals(const SuccessEmptyResponse()));
@@ -63,9 +60,6 @@ void main() {
       await handler.handle(
         makeRequest("PUT", "/project/base-branch"),
         body: const SetBaseBranchRequest(projectId: "proj-2", baseBranch: "main"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final stored = await db.projectsDao.getBaseBranch(projectId: "proj-2");
@@ -77,9 +71,6 @@ void main() {
         () => handler.handle(
           makeRequest("PUT", "/project/base-branch"),
           body: const SetBaseBranchRequest(projectId: "", baseBranch: "main"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -90,9 +81,6 @@ void main() {
         () => handler.handle(
           makeRequest("PUT", "/project/base-branch"),
           body: const SetBaseBranchRequest(projectId: "proj-4", baseBranch: ""),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );

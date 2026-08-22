@@ -88,27 +88,18 @@ void main() {
           .handle(
             makeRequest("POST", "/sessions"),
             body: const SessionListRequest(projectId: "project", start: null, limit: null),
-            pathParams: {},
-            queryParams: {},
-            fragment: null,
           )
           .timeout(const Duration(seconds: 1));
       final detail = await detailHandler
           .handle(
             makeRequest("POST", "/session/detail"),
             body: const SessionIdRequest(sessionId: "root"),
-            pathParams: {},
-            queryParams: {},
-            fragment: null,
           )
           .timeout(const Duration(seconds: 1));
       final children = await childrenHandler
           .handle(
             makeRequest("POST", "/session/children"),
             body: const SessionIdRequest(sessionId: "root"),
-            pathParams: {},
-            queryParams: {},
-            fragment: null,
           )
           .timeout(const Duration(seconds: 1));
 
@@ -159,9 +150,6 @@ void main() {
         return detailHandler.handle(
           makeRequest("POST", "/session/detail"),
           body: const SessionIdRequest(sessionId: "root"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         );
       }
 
@@ -219,9 +207,6 @@ void main() {
       final detail = await detailHandler.handle(
         makeRequest("POST", "/session/detail"),
         body: const SessionIdRequest(sessionId: "root"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(detail.id, "root");
@@ -237,25 +222,19 @@ void main() {
       );
       final childrenHandler = GetChildSessionsHandler(sessionRepository: repository);
 
-      final detail = await detailHandler.handleInternal(
+      final detail = await detailHandler.routeForTest(
         makeRequest(
           "POST",
           "/session/detail",
           body: jsonEncode(const SessionIdRequest(sessionId: "missing").toJson()),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
-      final children = await childrenHandler.handleInternal(
+      final children = await childrenHandler.routeForTest(
         makeRequest(
           "POST",
           "/session/children",
           body: jsonEncode(const SessionIdRequest(sessionId: "missing").toJson()),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(detail.status, 404);

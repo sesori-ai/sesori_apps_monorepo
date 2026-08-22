@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../services/session_cleanup_result.dart";
@@ -20,14 +18,9 @@ class DeleteSessionHandler({required final SessionDeletionService _sessionDeleti
   Future<SuccessEmptyResponse> handle(
     RelayRequest request, {
     required DeleteSessionRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final sessionId = body.sessionId;
-    if (sessionId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty session id");
-    }
+    requireNonEmpty(request, sessionId, "session id");
 
     // COMPATIBILITY 2026-08-13 (v1.7.1): Published clients can request branch
     // deletion. Reject it explicitly so they do not report unperformed cleanup
@@ -43,12 +36,7 @@ class DeleteSessionHandler({required final SessionDeletionService _sessionDeleti
     if (cleanupResult case CleanupRejected(:final rejection)) {
       // IMPORTANT: Do not change this response structure — the mobile app
       // parses the 409 body as SessionCleanupRejection JSON.
-      throw RelayResponse(
-        id: request.id,
-        status: 409,
-        headers: {"content-type": "application/json"},
-        body: jsonEncode(rejection.toJson()),
-      );
+      throw buildJsonErrorResponse(request, 409, rejection.toJson());
     }
 
     return const SuccessEmptyResponse();

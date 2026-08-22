@@ -19,14 +19,9 @@ class GetSessionQuestionsHandler({required final QuestionRepository _questionRep
   Future<PendingQuestionResponse> handle(
     RelayRequest request, {
     required SessionIdRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final sessionId = body.sessionId;
-    if (sessionId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty session id");
-    }
+    requireNonEmpty(request, sessionId, "session id");
 
     final questions = await _questionRepository.getPendingQuestions(sessionId: sessionId);
     return PendingQuestionResponse(data: questions);

@@ -1,5 +1,4 @@
 import "dart:async";
-import "dart:convert";
 
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -23,14 +22,9 @@ class UpdateSessionArchiveStatusHandler({
   Future<Session> handle(
     RelayRequest request, {
     required UpdateSessionArchiveRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final sessionId = body.sessionId;
-    if (sessionId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty session id");
-    }
+    requireNonEmpty(request, sessionId, "session id");
     // COMPATIBILITY 2026-08-13 (v1.7.1): Published clients can request branch
     // deletion. Reject it explicitly so they do not report unperformed cleanup
     // as success; remove the field when v1.7.1 clients are unsupported.
@@ -61,12 +55,7 @@ class UpdateSessionArchiveStatusHandler({
       }
       return session;
     } on SessionArchiveConflictException catch (e) {
-      throw RelayResponse(
-        id: request.id,
-        status: 409,
-        headers: {"content-type": "application/json"},
-        body: jsonEncode(e.rejection.toJson()),
-      );
+      throw buildJsonErrorResponse(request, 409, e.rejection.toJson());
     } on SessionNotFoundException {
       throw buildErrorResponse(request, 404, "session not found");
     }

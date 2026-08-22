@@ -21,14 +21,9 @@ class RejectQuestionHandler({required final PendingInteractionService _pendingIn
   Future<SuccessEmptyResponse> handle(
     RelayRequest request, {
     required RejectQuestionRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final requestId = body.requestId;
-    if (requestId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty request id");
-    }
+    requireNonEmpty(request, requestId, "request id");
 
     await _pendingInteractionService.rejectQuestion(
       questionId: requestId,

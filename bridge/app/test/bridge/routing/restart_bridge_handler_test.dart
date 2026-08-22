@@ -87,9 +87,7 @@ void main() {
 
     final outcome = await handler.routeInternal(
       request: makeRequest('POST', '/global/restart'),
-      pathParams: const {},
-      queryParams: const {},
-      fragment: null,
+      targetParams: (pathParams: const {}, queryParams: const {}),
     );
 
     expect(outcome, isA<RestartAccepted>());
@@ -104,9 +102,7 @@ void main() {
 
     final outcome = await handler.routeInternal(
       request: makeRequest('POST', '/global/restart'),
-      pathParams: const {},
-      queryParams: const {},
-      fragment: null,
+      targetParams: (pathParams: const {}, queryParams: const {}),
     );
 
     expect(outcome, isA<ResponseOnly>());
@@ -122,13 +118,32 @@ void main() {
 
     final outcome = await handler.routeInternal(
       request: makeRequest('POST', '/global/restart'),
-      pathParams: const {},
-      queryParams: const {},
-      fragment: null,
+      targetParams: (pathParams: const {}, queryParams: const {}),
     );
 
     expect(outcome, isA<RestartAccepted>());
     expect(outcome.response.status, 200);
     expect(outcome.response.body, contains('"restarting":true'));
   });
+
+  test('maps readiness failures through the shared handler guard', () async {
+    final handler = RestartBridgeHandler(restartService: _ThrowingBridgeRestartService());
+
+    final outcome = await handler.routeInternal(
+      request: makeRequest('POST', '/global/restart'),
+      targetParams: (pathParams: const {}, queryParams: const {}),
+    );
+
+    expect(outcome, isA<ResponseOnly>());
+    expect(outcome.response.status, 500);
+    expect(outcome.response.body, contains('Internal Server Error'));
+  });
+}
+
+class _ThrowingBridgeRestartService() implements BridgeRestartService {
+  @override
+  Future<bool> canRestart() async => throw StateError('readiness failed');
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

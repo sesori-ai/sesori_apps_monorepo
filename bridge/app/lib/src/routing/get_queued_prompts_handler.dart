@@ -18,14 +18,9 @@ class GetQueuedPromptsHandler({required final SessionRepository _sessionReposito
   Future<QueuedPromptResponse> handle(
     RelayRequest request, {
     required SessionIdRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final sessionId = body.sessionId;
-    if (sessionId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty session id");
-    }
+    requireNonEmpty(request, sessionId, "session id");
 
     final prompts = await _sessionRepository.getQueuedPrompts(sessionId: sessionId);
     return QueuedPromptResponse(data: prompts);

@@ -18,14 +18,10 @@ void main() {
       return handler.handle(
         makeRequest("POST", "/filesystem/directory"),
         body: FilesystemCreateDirectoryRequest(parentPath: parentPath, name: name),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
     }
 
-    Matcher throwsStatus(int status) =>
-        throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(status)));
+    Matcher throwsStatus(int status) => throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(status)));
 
     setUp(() async {
       handler = CreateDirectoryHandler(

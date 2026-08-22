@@ -114,7 +114,7 @@ void main() {
     });
 
     test("accepts a request body without pluginId", () async {
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/create",
@@ -128,9 +128,6 @@ void main() {
             "dedicatedWorktree": false,
           }),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -165,9 +162,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
@@ -228,9 +222,6 @@ void main() {
           model: PromptModel(providerID: "anthropic", modelID: "claude-sonnet"),
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "defaults-1");
@@ -269,9 +260,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "simple-1");
@@ -327,9 +315,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "moved-1");
@@ -379,9 +364,6 @@ void main() {
             model: null,
             command: null,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         );
 
         _expectRandomSesoriId(sessionId: result.id, backendSessionId: "fallback-1");
@@ -434,9 +416,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "empty-1");
@@ -513,9 +492,6 @@ void main() {
             model: null,
             command: null,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<StateError>()),
       );
@@ -550,9 +526,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
@@ -597,9 +570,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.hasWorktree, isTrue);
@@ -628,9 +598,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.hasWorktree, isFalse);
@@ -662,9 +629,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.hasWorktree, isFalse);
@@ -683,9 +647,6 @@ void main() {
           model: PromptModel(providerID: "openai", modelID: "gpt-5"),
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastCreateSessionDirectory, equals("/tmp"));
@@ -731,9 +692,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
@@ -774,9 +732,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
@@ -806,9 +761,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
@@ -838,9 +790,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
@@ -869,9 +818,6 @@ void main() {
           model: null,
           command: "review",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "cmd-session-1");
@@ -914,9 +860,6 @@ void main() {
           model: null,
           command: "review",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       unawaited(response.then<void>((_) => responseCompleted = true));
 
@@ -958,9 +901,6 @@ void main() {
           model: null,
           command: "review",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       await plugin.sendCommandStarted!.future;
       commandGate.completeError(StateError("command rejected"));
@@ -997,9 +937,6 @@ void main() {
           model: null,
           command: "review",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastCreateSessionParts, isEmpty);
@@ -1057,9 +994,6 @@ void main() {
           model: PromptModel(providerID: "openai", modelID: "gpt-5"),
           command: "review",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(orderedPlugin.hadStoredRowWhenCommandSent, isTrue);
@@ -1101,9 +1035,6 @@ void main() {
           model: PromptModel(providerID: "openai", modelID: "gpt-5"),
           command: "review",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastCreateSessionAgent, isNull);
@@ -1136,9 +1067,6 @@ void main() {
             model: null,
             command: null,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<ProjectNotFoundException>()),
       );
@@ -1170,9 +1098,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendCommandSessionId, isNull);
@@ -1201,9 +1126,6 @@ void main() {
           model: PromptModel(providerID: "openai", modelID: "gpt-5.4"),
           command: "   ",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastCreateSessionAgent, equals("coder"));
@@ -1255,9 +1177,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");

@@ -20,18 +20,11 @@ class SetBaseBranchHandler({required final ProjectRepository _projectRepository}
   Future<SuccessEmptyResponse> handle(
     RelayRequest request, {
     required SetBaseBranchRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final projectId = body.projectId;
-    if (projectId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty project id");
-    }
+    requireNonEmpty(request, projectId, "project id");
     final baseBranch = body.baseBranch;
-    if (baseBranch.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty base branch");
-    }
+    requireNonEmpty(request, baseBranch, "base branch");
 
     await _projectRepository.setBaseBranch(
       projectId: projectId,

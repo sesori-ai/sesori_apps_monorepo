@@ -10,11 +10,8 @@ class HealthCheckHandler({required final HealthRepository _healthRepository})
 
   @override
   Future<HealthResponse> handle(
-    RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
-  }) async {
+    RelayRequest request,
+  ) async {
     return _healthRepository.getHealth();
   }
 }

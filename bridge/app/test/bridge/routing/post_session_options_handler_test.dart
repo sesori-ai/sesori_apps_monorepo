@@ -185,13 +185,7 @@ Future<RelayResponse> _send({
   required String? body,
 }) {
   final request = makeRequest("POST", path, body: body);
-  final params = handler.extractParams(request);
-  return handler.handleInternal(
-    request,
-    pathParams: params.pathParams,
-    queryParams: params.queryParams,
-    fragment: params.fragment,
-  );
+  return handler.routeForTest(request);
 }
 
 void _expectError(

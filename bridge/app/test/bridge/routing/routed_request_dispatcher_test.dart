@@ -88,7 +88,7 @@ void main() {
       final drain = dispatcher.drain();
       final response = (await (dispatch as RoutedRequestAccepted).pendingRequest.completion).response;
 
-      expect(response.status, 502);
+      expect(response.status, 500);
       expect(response.body, contains("route failed"));
       await drain;
     });
@@ -105,9 +105,7 @@ class _GatedHandler({
   @override
   Future<RelayResponse> handleInternal(
     RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
+    required RequestTargetParams targetParams,
   }) async {
     _started.complete();
     await _gate.future;
@@ -126,9 +124,7 @@ class _FailingHandler() extends RequestHandlerBase {
   @override
   Future<RelayResponse> handleInternal(
     RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
+    required RequestTargetParams targetParams,
   }) async {
     throw StateError("route failed");
   }

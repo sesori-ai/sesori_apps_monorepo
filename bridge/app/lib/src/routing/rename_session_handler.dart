@@ -12,13 +12,8 @@ class RenameSessionHandler({required final SessionMutationDispatcher _sessionMut
   Future<Session> handle(
     RelayRequest request, {
     required RenameSessionRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
-    if (body.sessionId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty session id");
-    }
+    requireNonEmpty(request, body.sessionId, "session id");
     return await _sessionMutationDispatcher.renameSession(sessionId: body.sessionId, title: body.title);
   }
 }

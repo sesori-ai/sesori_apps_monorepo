@@ -20,9 +20,6 @@ class GetBaseBranchHandler({required final ProjectRepository _projectRepository}
   Future<BaseBranchResponse> handle(
     RelayRequest request, {
     required ProjectIdRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final projectId = body.projectId;
 

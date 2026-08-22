@@ -14,11 +14,8 @@ class GetAgentsHandler(final AgentRepository _repository) extends GetRequestHand
 
   @override
   Future<Agents> handle(
-    RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
-  }) async {
+    RelayRequest request,
+  ) async {
     return await _repository.getAgents(projectId: null, pluginId: _repository.legacyPluginId);
   }
 }

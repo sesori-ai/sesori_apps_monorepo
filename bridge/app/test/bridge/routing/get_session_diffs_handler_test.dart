@@ -74,15 +74,12 @@ void main() {
     });
 
     test("returns 404 when session is missing", () async {
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "missing")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(404));
@@ -108,15 +105,12 @@ void main() {
         lastAgentModel: null,
       );
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -142,15 +136,12 @@ void main() {
         lastAgentModel: null,
       );
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -176,15 +167,12 @@ void main() {
         lastAgentModel: null,
       );
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -217,15 +205,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(422));
@@ -260,15 +245,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(422));
@@ -303,15 +285,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(500));
@@ -349,15 +328,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(500));
@@ -365,11 +341,8 @@ void main() {
     });
 
     test("returns 400 when request body is missing", () async {
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest("POST", "/session/diffs"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(400));
@@ -377,11 +350,8 @@ void main() {
     });
 
     test("returns 400 when sessionId is missing in body", () async {
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest("POST", "/session/diffs", body: "{}"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(400));

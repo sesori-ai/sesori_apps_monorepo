@@ -18,9 +18,6 @@ class GetSessionDiffsHandler({
   Future<SessionDiffsResponse> handle(
     RelayRequest request, {
     required SessionIdRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     try {
       return SessionDiffsResponse(

@@ -19,16 +19,9 @@ class GetSessionAttachmentHandler({required final ChatHistoryService _chatHistor
   Future<SessionAttachmentResponse> handle(
     RelayRequest request, {
     required SessionAttachmentRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
-    if (body.sessionId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty session id");
-    }
-    if (body.attachmentId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty attachment id");
-    }
+    requireNonEmpty(request, body.sessionId, "session id");
+    requireNonEmpty(request, body.attachmentId, "attachment id");
 
     final SessionAttachmentResult result;
     try {

@@ -17,14 +17,9 @@ class SendPromptHandler({required final SessionPromptService _sessionPromptServi
   Future<SuccessEmptyResponse> handle(
     RelayRequest request, {
     required SendPromptRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final sessionId = body.sessionId;
-    if (sessionId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty session id");
-    }
+    requireNonEmpty(request, sessionId, "session id");
 
     await _sessionPromptService.sendPrompt(
       sessionId: sessionId,

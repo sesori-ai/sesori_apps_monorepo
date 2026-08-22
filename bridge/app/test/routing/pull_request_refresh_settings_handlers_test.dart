@@ -34,11 +34,8 @@ void main() {
     tearDown(() => repository.dispose());
 
     test("GET returns the committed interval", () async {
-      final response = await GetPullRequestRefreshSettingsHandler(settingsService: service).handleInternal(
+      final response = await GetPullRequestRefreshSettingsHandler(settingsService: service).routeForTest(
         makeRequest("GET", "/settings/pull-request-refresh"),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
 
       expect(response.status, 200);
@@ -70,7 +67,7 @@ void main() {
           await PatchBridgeSettingsHandler(
             pullRequestRefreshSettingsService: service,
             yoloSettingsService: yoloService,
-          ).handleInternal(
+          ).routeForTest(
             makeRequest(
               "PATCH",
               "/settings",
@@ -78,9 +75,6 @@ void main() {
                 const BridgeSettingUpdate.pullRequestRefreshInterval(intervalSeconds: 45).toJson(),
               ),
             ),
-            pathParams: const {},
-            queryParams: const {},
-            fragment: null,
           );
 
       expect(response.status, 200);
@@ -96,7 +90,7 @@ void main() {
           await PatchBridgeSettingsHandler(
             pullRequestRefreshSettingsService: service,
             yoloSettingsService: yoloService,
-          ).handleInternal(
+          ).routeForTest(
             makeRequest(
               "PATCH",
               "/settings",
@@ -104,9 +98,6 @@ void main() {
                 const BridgeSettingUpdate.pullRequestRefreshInterval(intervalSeconds: 14).toJson(),
               ),
             ),
-            pathParams: const {},
-            queryParams: const {},
-            fragment: null,
           );
 
       expect(response.status, 400);
@@ -126,7 +117,7 @@ void main() {
           await PatchBridgeSettingsHandler(
             pullRequestRefreshSettingsService: service,
             yoloSettingsService: yoloService,
-          ).handleInternal(
+          ).routeForTest(
             makeRequest(
               "PATCH",
               "/settings",
@@ -135,9 +126,6 @@ void main() {
                 "intervalSeconds": 30.5,
               }),
             ),
-            pathParams: const {},
-            queryParams: const {},
-            fragment: null,
           );
 
       expect(response.status, 400);
@@ -149,15 +137,12 @@ void main() {
           await PatchBridgeSettingsHandler(
             pullRequestRefreshSettingsService: service,
             yoloSettingsService: yoloService,
-          ).handleInternal(
+          ).routeForTest(
             makeRequest(
               "PATCH",
               "/settings",
               body: jsonEncode({"type": "futureSetting", "enabled": true}),
             ),
-            pathParams: const {},
-            queryParams: const {},
-            fragment: null,
           );
 
       expect(response.status, 400);

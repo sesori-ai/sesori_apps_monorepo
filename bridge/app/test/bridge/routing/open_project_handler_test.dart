@@ -106,9 +106,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/open"),
           body: const OpenProjectRequest(path: ""),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -119,9 +116,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/open"),
           body: const OpenProjectRequest(path: "relative/path"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -132,9 +126,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/open"),
           body: const OpenProjectRequest(path: "/tmp/../etc"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -149,9 +140,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/open"),
           body: OpenProjectRequest(path: nonExistent),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(404))),
       );
@@ -162,9 +150,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/open"),
           body: OpenProjectRequest(path: tempFile.path),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -180,9 +165,6 @@ void main() {
             path: tempDir.path,
             gitAction: OpenProjectGitAction.promptIfNeeded,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((response) => response.status, "status", 428)),
       );
@@ -200,9 +182,6 @@ void main() {
             path: tempDir.path,
             gitAction: OpenProjectGitAction.promptIfNeeded,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((response) => response.status, "status", 428)),
       );
@@ -218,9 +197,6 @@ void main() {
           path: tempDir.path,
           gitAction: OpenProjectGitAction.openWithoutGit,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(gitCliApi.initCalls, 0);
@@ -238,9 +214,6 @@ void main() {
           path: tempDir.path,
           gitAction: OpenProjectGitAction.promptIfNeeded,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(gitCliApi.initCalls, 0);
@@ -259,9 +232,6 @@ void main() {
             path: tempDir.path,
             gitAction: gitAction,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         );
 
         expect(result.supportsDedicatedWorktrees, isFalse);
@@ -281,9 +251,6 @@ void main() {
           path: tempDir.path,
           gitAction: OpenProjectGitAction.initializeGit,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(gitCliApi.initCalls, 1);
@@ -301,9 +268,6 @@ void main() {
           path: tempDir.path,
           gitAction: OpenProjectGitAction.initializeGit,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(gitCliApi.initCalls, 1);
@@ -323,9 +287,6 @@ void main() {
           path: tempDir.path,
           gitAction: OpenProjectGitAction.initializeGit,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(gitCliApi.commitCalls, 1);
@@ -342,9 +303,6 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: tempDir.path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastGetCurrentProjectProjectId, isNull);
@@ -356,9 +314,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: tempDir.path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.id, equals(tempDir.path));
@@ -374,9 +329,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: tempDir.path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.id, equals(tempDir.path));
@@ -393,9 +345,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: tempDir.path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.time, const ProjectTime(created: 1234, updated: 1234));
@@ -407,9 +356,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: tempDir.path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.time, const ProjectTime(created: 1234, updated: 1234));
@@ -423,9 +369,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: tempDir.path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.id, tempDir.path);
@@ -444,17 +387,11 @@ void main() {
       final first = await handler.handle(
         makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: tempDir.path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final second = await handler.handle(
         makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: tempDir.path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(first, equals(second));
@@ -467,9 +404,6 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/project/open"),
         body: OpenProjectRequest(path: tempDir.path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final hiddenIds = await db.projectsDao.getHiddenProjectIds();

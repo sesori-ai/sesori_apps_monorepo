@@ -64,9 +64,6 @@ void main() {
           () => handler.handle(
             makeRequest("POST", "/session/prompt/cancel"),
             body: body,
-            pathParams: {},
-            queryParams: {},
-            fragment: null,
           ),
           throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
         );
@@ -81,9 +78,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/prompt/cancel"),
         body: const CancelQueuedPromptRequest(sessionId: "s-1", promptId: "prm_1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, isA<SuccessEmptyResponse>());
@@ -101,9 +95,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/session/prompt/cancel"),
           body: const CancelQueuedPromptRequest(sessionId: "s-1", promptId: "prm_1"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<SessionArchivedReadOnlyException>()),
       );
@@ -116,9 +107,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/session/prompt/cancel"),
           body: const CancelQueuedPromptRequest(sessionId: "s-1", promptId: "prm_gone"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(404))),
       );

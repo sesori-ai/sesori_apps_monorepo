@@ -65,9 +65,6 @@ void main() {
     test("returns typed projects response", () async {
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(response, isA<Projects>());
     });
@@ -75,9 +72,6 @@ void main() {
     test("returns empty list when plugin has no projects", () async {
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(response.data, isEmpty);
       expect(plugin.getProjectsCallCount, 0);
@@ -96,9 +90,6 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final project = response.data[0];
@@ -120,9 +111,6 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final time = response.data[0].time;
@@ -138,9 +126,6 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final row = await projectsDao.getProject(projectId: "p1");
@@ -159,9 +144,6 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.data.length, equals(3));
@@ -181,9 +163,6 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final ids = response.data.map((item) => item.id).toList();

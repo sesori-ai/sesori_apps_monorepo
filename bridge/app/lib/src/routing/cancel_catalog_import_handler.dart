@@ -16,9 +16,6 @@ class CancelCatalogImportHandler({required final CatalogImportService _service})
   Future<SuccessEmptyResponse> handle(
     RelayRequest request, {
     required CatalogImportRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     try {
       _service.cancel(pluginId: body.pluginId);

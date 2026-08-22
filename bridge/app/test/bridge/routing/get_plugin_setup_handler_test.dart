@@ -80,9 +80,6 @@ void main() {
       final operationalBefore = pluginRuntime.activePluginIds;
       final response = await handler.handle(
         makeRequest("GET", "/plugin/setup"),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
 
       expect(response.plugins.map((plugin) => plugin.id), ["blocked", "ready"]);
@@ -95,9 +92,6 @@ void main() {
     test("keeps setup-blocked registrations out of the compatible plugin list", () async {
       final response = await selectableHandler.handle(
         makeRequest("GET", "/plugin"),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
 
       expect(response.plugins.map((plugin) => plugin.id), ["ready"]);

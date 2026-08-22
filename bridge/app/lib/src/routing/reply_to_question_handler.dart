@@ -17,18 +17,11 @@ class ReplyToQuestionHandler({required final PendingInteractionService _pendingI
   Future<SuccessEmptyResponse> handle(
     RelayRequest request, {
     required ReplyToQuestionRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final requestId = body.requestId;
-    if (requestId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty request id");
-    }
+    requireNonEmpty(request, requestId, "request id");
     final sessionId = body.sessionId;
-    if (sessionId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty session id");
-    }
+    requireNonEmpty(request, sessionId, "session id");
 
     await _pendingInteractionService.replyToQuestion(
       questionId: requestId,

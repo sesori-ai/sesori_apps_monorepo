@@ -87,9 +87,6 @@ void main() {
             deleteBranch: false,
             force: false,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -145,9 +142,6 @@ void main() {
           deleteBranch: false,
           force: false,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(worktreeService.checkCallCount, equals(0));
@@ -194,9 +188,6 @@ void main() {
           deleteBranch: false,
           force: false,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       // Allow any fire-and-forget notify to run.
       await Future<void>.delayed(const Duration(milliseconds: 50));
@@ -238,9 +229,6 @@ void main() {
           deleteBranch: false,
           force: false,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(worktreeService.checkCallCount, equals(1));
@@ -273,9 +261,6 @@ void main() {
             deleteBranch: true,
             force: false,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((response) => response.status, "status", 422)),
       );
@@ -314,9 +299,6 @@ void main() {
             deleteBranch: false,
             force: false,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(409))),
       );
@@ -338,7 +320,7 @@ void main() {
         baseCommit: null,
       );
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "PATCH",
           "/session/update/archive",
@@ -352,9 +334,6 @@ void main() {
             ).toJson(),
           ),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, 409);
@@ -380,7 +359,7 @@ void main() {
         pluginId: "stopped-plugin",
       );
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "PATCH",
           "/session/update/archive",
@@ -394,9 +373,6 @@ void main() {
             ).toJson(),
           ),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, 409);
@@ -441,9 +417,6 @@ void main() {
           deleteBranch: false,
           force: true,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(worktreeService.checkCallCount, equals(0));
@@ -452,7 +425,7 @@ void main() {
     });
 
     test("missing binding returns 404 before plugin or cleanup calls", () async {
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "PATCH",
           "/session/update/archive",
@@ -466,9 +439,6 @@ void main() {
             ).toJson(),
           ),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, 404);
@@ -491,7 +461,7 @@ void main() {
         pluginId: "stopped-plugin",
       );
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "PATCH",
           "/session/update/archive",
@@ -505,9 +475,6 @@ void main() {
             ).toJson(),
           ),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, 503);
@@ -549,9 +516,6 @@ void main() {
           deleteBranch: false,
           force: false,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       // Fire-and-forget — give the microtask a chance to run.
@@ -592,9 +556,6 @@ void main() {
           deleteBranch: false,
           force: false,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
@@ -636,9 +597,6 @@ void main() {
           deleteBranch: false,
           force: false,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       var completed = false;
       unawaited(resultFuture.then<void>((_) => completed = true));
@@ -686,9 +644,6 @@ void main() {
           deleteBranch: false,
           force: false,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(worktreeService.checkCallCount, equals(0));
@@ -729,9 +684,6 @@ void main() {
           deleteBranch: false,
           force: false,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.hasWorktree, isTrue);
@@ -769,9 +721,6 @@ void main() {
           deleteBranch: false,
           force: false,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.hasWorktree, isFalse);

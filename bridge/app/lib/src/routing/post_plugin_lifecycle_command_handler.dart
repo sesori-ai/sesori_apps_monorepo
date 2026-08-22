@@ -1,12 +1,10 @@
-import "dart:convert";
-
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../services/plugin_lifecycle_service.dart";
 import "request_handler.dart";
 
 class PostPluginLifecycleCommandHandler({required final PluginLifecycleService _lifecycleService})
-    extends BodyRequestHandler<PluginLifecycleCommandRequest, PluginManagementResponse> {
+    extends TargetBodyRequestHandler<PluginLifecycleCommandRequest, PluginManagementResponse> {
   this
     : super(
         HttpMethod.post,
@@ -19,8 +17,6 @@ class PostPluginLifecycleCommandHandler({required final PluginLifecycleService _
     RelayRequest request, {
     required PluginLifecycleCommandRequest body,
     required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     try {
       final pluginId = pathParams["id"];
@@ -29,12 +25,7 @@ class PostPluginLifecycleCommandHandler({required final PluginLifecycleService _
     } on PluginManagementPluginNotFoundException {
       throw buildErrorResponse(request, 404, "plugin not found");
     } on PluginManagementConflictException catch (error) {
-      throw RelayResponse(
-        id: request.id,
-        status: 409,
-        headers: const {"content-type": "application/json"},
-        body: jsonEncode(error.conflict.toJson()),
-      );
+      throw buildJsonErrorResponse(request, 409, error.conflict.toJson());
     } on PluginManagementMutationOutcomeUncertainException {
       throw buildErrorResponse(request, 503, "plugin mutation outcome is uncertain");
     } on PluginManagementCommandFailedException {
