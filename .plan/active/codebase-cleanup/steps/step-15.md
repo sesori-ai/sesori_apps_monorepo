@@ -4,7 +4,8 @@
 
 Eleven files hand-rolled the same three lines — a `Set<Future<void>>`, a
 `whenComplete` that removes the entry, and a `Future.wait` over a snapshot.
-Eight are migrated here; three are deliberately not:
+Eight of those files are migrated here, carrying **nine** tracked-work sites
+(the orchestrator holds two). Three files are deliberately not migrated:
 
 | Site | Action |
 |---|---|
