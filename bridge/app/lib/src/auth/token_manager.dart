@@ -19,7 +19,7 @@ class TokenManager({
   required final Future<void> Function(TokenData) _saveTokens,
   required final http.Client _ownedClient,
   required final Duration _requestDeadline,
-}) implements AccessTokenProvider, AccessTokenUpdater, TokenRefresher {
+}) implements AccessTokenProvider, TokenRefresher {
   static const Duration defaultRequestDeadline = Duration(seconds: 35);
 
   final BehaviorSubject<String> _tokenSubject = BehaviorSubject.seeded(initialToken);
@@ -29,9 +29,6 @@ class TokenManager({
 
   @override
   ValueStream<String> get tokenStream => _tokenSubject.stream;
-
-  @override
-  set accessToken(String token) => _tokenSubject.add(token);
 
   void dispose() {
     _tokenSubject.close();

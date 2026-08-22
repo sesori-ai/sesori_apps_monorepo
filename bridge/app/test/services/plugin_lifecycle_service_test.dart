@@ -1521,7 +1521,7 @@ void main() {
 
     expect(settingsRepository.settings.plugins.isDisabled(pluginId: "one"), isFalse);
     expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
-    expect(runtime.snapshot.single.eligible, isTrue);
+    expect(runtime.snapshot.single.accessGate != PluginRuntimeAccessGate.disabled, isTrue);
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
     expect(service.compositionView.eligiblePluginIds, ["one"]);
     expect(service.managementSnapshot.plugins.single.runtimeState, shared.PluginRuntimeState.dormant);

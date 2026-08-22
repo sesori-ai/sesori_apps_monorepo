@@ -286,7 +286,7 @@ void main() {
       expect(trackingPlugin.unsubscribeCount, equals(0));
 
       await first.close();
-      await trackingServer.stop();
+      await trackingServer.drain();
       expect(trackingPlugin.unsubscribeCount, equals(0));
     });
 
@@ -714,7 +714,7 @@ void main() {
       await debugServer.start();
       addTearDown(() async {
         dispatcher.release();
-        await debugServer.stop();
+        await debugServer.drain();
       });
 
       final client = HttpClient();
@@ -731,7 +731,7 @@ void main() {
       expect(body, contains('"restarting":true'));
 
       var stopped = false;
-      final stop = debugServer.stop().whenComplete(() => stopped = true);
+      final stop = debugServer.drain().whenComplete(() => stopped = true);
       await Future<void>.delayed(Duration.zero);
       expect(stopped, isFalse);
       dispatcher.release();
@@ -1043,7 +1043,7 @@ class const _DebugServerHarness({
   required final Future<void> runFuture,
 }) {
   Future<void> close() async {
-    await debugServer.stop();
+    await debugServer.drain();
     await runtime.session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
     await runtime.close();

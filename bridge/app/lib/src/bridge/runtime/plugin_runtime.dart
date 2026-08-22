@@ -32,9 +32,7 @@ class const PluginRuntimeSnapshot({
     required final PluginWorkState workState,
     required final int leaseCount,
     required final PluginRuntimeTransition transition,
-  }) {
-  bool get eligible => accessGate != PluginRuntimeAccessGate.disabled;
-}
+  });
 
 typedef SourcedPluginRuntimeEvent = ({
   String pluginId,

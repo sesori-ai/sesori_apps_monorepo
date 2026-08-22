@@ -50,12 +50,10 @@ void main() {
       final operations = <String>[];
 
       coordinator.add(disposable: () => operations.add("parallel.a"));
-      coordinator.addOrdered(
-        action: () async => operations.add("ordered.1"),
+      coordinator.addPhase(phase: BridgeShutdownPhase.lifecycle, action: () async => operations.add("ordered.1"),
         budget: const Duration(seconds: 5),
       );
-      coordinator.addOrdered(
-        action: () async => operations.add("ordered.2"),
+      coordinator.addPhase(phase: BridgeShutdownPhase.lifecycle, action: () async => operations.add("ordered.2"),
         budget: const Duration(seconds: 5),
       );
       coordinator.add(disposable: () => operations.add("parallel.b"));
@@ -72,12 +70,10 @@ void main() {
       );
       final operations = <String>[];
 
-      coordinator.addOrdered(
-        action: () async => throw StateError("plugin shutdown failed"),
+      coordinator.addPhase(phase: BridgeShutdownPhase.lifecycle, action: () async => throw StateError("plugin shutdown failed"),
         budget: const Duration(seconds: 5),
       );
-      coordinator.addOrdered(
-        action: () async => operations.add("ordered.2"),
+      coordinator.addPhase(phase: BridgeShutdownPhase.lifecycle, action: () async => operations.add("ordered.2"),
         budget: const Duration(seconds: 5),
       );
       coordinator.add(disposable: () => operations.add("parallel"));
@@ -225,8 +221,7 @@ void main() {
           backstopExitCode: () => 1,
           exitProcess: exitCalls.add,
         );
-        coordinator.addOrdered(
-          action: () => Completer<void>().future,
+        coordinator.addPhase(phase: BridgeShutdownPhase.lifecycle, action: () => Completer<void>().future,
           budget: const Duration(seconds: 10),
         );
 
@@ -337,7 +332,7 @@ void main() {
           startAbortSignal: StartAbortSignal.never,
           exitProcess: exitCalls.add,
         );
-        coordinator.addOrdered(action: () async {}, budget: const Duration(seconds: 10));
+        coordinator.addPhase(phase: BridgeShutdownPhase.lifecycle, action: () async {}, budget: const Duration(seconds: 10));
         coordinator.add(disposable: () {});
 
         unawaited(coordinator.shutdown());

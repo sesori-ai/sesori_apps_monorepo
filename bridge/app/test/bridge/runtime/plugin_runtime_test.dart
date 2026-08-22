@@ -1010,7 +1010,7 @@ void main() {
 
     expect(result, isA<PluginRuntimeCommandConflict>());
     expect(result.snapshot.state, PluginRuntimeState.active);
-    expect(result.snapshot.eligible, isTrue);
+    expect(result.snapshot.accessGate != PluginRuntimeAccessGate.disabled, isTrue);
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
     expect(
       await runtime.use(pluginId: "one", operation: _TestOperation.read, body: (_) async => "available"),
@@ -1031,7 +1031,7 @@ void main() {
     runtime.commitDisable(pluginId: "one");
 
     expect(runtime.snapshot.single.state, PluginRuntimeState.disabled);
-    expect(runtime.snapshot.single.eligible, isFalse);
+    expect(runtime.snapshot.single.accessGate != PluginRuntimeAccessGate.disabled, isFalse);
     expect(runtime.snapshot.single.startAllowed, isFalse);
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
     expect(await runtime.start(pluginId: "one"), isA<PluginRuntimeCommandConflict>());

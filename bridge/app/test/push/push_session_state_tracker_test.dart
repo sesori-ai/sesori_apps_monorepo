@@ -1124,7 +1124,7 @@ void main() {
 
       clock.advance(const Duration(minutes: 31));
 
-      expect(tracker.findPrunableRootSessionIds(), equals(["root"]));
+      expect(tracker.findPrunableRoots().map((root) => root.rootSessionId).toList(growable: false), equals(["root"]));
 
       final snapshot = tracker.createTelemetrySnapshot();
       expect(snapshot.sessionCount, equals(2));
@@ -1255,7 +1255,7 @@ void main() {
       );
 
       clock.advance(const Duration(minutes: 40));
-      expect(tracker.findPrunableRootSessionIds(), isEmpty);
+      expect(tracker.findPrunableRoots().map((root) => root.rootSessionId).toList(growable: false), isEmpty);
 
       tracker.handleEvent(
         const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
@@ -1270,14 +1270,14 @@ void main() {
       );
 
       clock.advance(const Duration(minutes: 40));
-      expect(tracker.findPrunableRootSessionIds(), isEmpty);
+      expect(tracker.findPrunableRoots().map((root) => root.rootSessionId).toList(growable: false), isEmpty);
 
       tracker.handleEvent(
         const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "child", displaySessionId: null),
       );
 
       clock.advance(const Duration(minutes: 31));
-      expect(tracker.findPrunableRootSessionIds(), equals(["root"]));
+      expect(tracker.findPrunableRoots().map((root) => root.rootSessionId).toList(growable: false), equals(["root"]));
     });
 
     test("late events can rebuild state after a subtree prune", () {
@@ -1540,7 +1540,7 @@ void main() {
       expect(secondPrune.removedSessionCount, equals(0));
       expect(secondPrune.removedMessageRoleCount, equals(0));
       expect(secondPrune.removedPermissionMappingCount, equals(0));
-      expect(tracker.findPrunableRootSessionIds(), isEmpty);
+      expect(tracker.findPrunableRoots().map((root) => root.rootSessionId).toList(growable: false), isEmpty);
     });
 
     test("stale project summaries do not break reparented prune roots", () {
@@ -1585,7 +1585,7 @@ void main() {
       final pruneResult = tracker.pruneRootSubtree(rootSessionId: "root-a");
       expect(pruneResult.removedSessionCount, equals(1));
       expect(tracker.resolveRootSessionId("child"), equals("root-b"));
-      expect(tracker.findPrunableRootSessionIds(), contains("root-b"));
+      expect(tracker.findPrunableRoots().map((root) => root.rootSessionId).toList(growable: false), contains("root-b"));
     });
 
     test("unknown session deletes clear stale parent links so summaries can repair them", () {
@@ -1637,7 +1637,7 @@ void main() {
 
       clock.advance(const Duration(minutes: 31));
 
-      expect(tracker.findPrunableRootSessionIds(), equals(["root"]));
+      expect(tracker.findPrunableRoots().map((root) => root.rootSessionId).toList(growable: false), equals(["root"]));
     });
 
     test("replayed projects summary does not refresh prune age for existing roots", () {
@@ -1660,7 +1660,7 @@ void main() {
       tracker.handleEvent(summaryEvent);
       clock.advance(const Duration(minutes: 11));
 
-      expect(tracker.findPrunableRootSessionIds(), equals(["root"]));
+      expect(tracker.findPrunableRoots().map((root) => root.rootSessionId).toList(growable: false), equals(["root"]));
     });
   });
 }

@@ -113,10 +113,6 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
     return _resolveRootIdleSince(rootSessionId: rootSessionId);
   }
 
-  List<String> findPrunableRootSessionIds() {
-    return findPrunableRoots().map((root) => root.rootSessionId).toList(growable: false);
-  }
-
   List<PushPrunableRoot> findPrunableRoots() {
     return _findPrunableRoots();
   }

@@ -12,9 +12,7 @@ class const PluginLifecycleSnapshot({
   required final PluginWorkState workState,
   required final int leaseCount,
   required final bool transitionSettled,
-}) {
-  bool get eligible => accessGate != PluginRuntimeAccessGate.disabled;
-}
+});
 
 class PluginLifecycleRepository({required final PluginRuntime _runtime}) {
   Future<Map<String, PluginSetupStatus>> inspect({
@@ -52,11 +50,6 @@ class PluginLifecycleRepository({required final PluginRuntime _runtime}) {
 
   PluginRuntimeAuthenticationOperation authenticate({required String pluginId}) =>
       _runtime.authenticate(pluginId: pluginId);
-
-  Future<PluginRuntimeCommandResult> stop({
-    required String pluginId,
-    required PluginStopIntent intent,
-  }) => _runtime.stop(pluginId: pluginId, intent: intent);
 
   Future<PluginRuntimeCommandResult> prepareDisable({
     required String pluginId,

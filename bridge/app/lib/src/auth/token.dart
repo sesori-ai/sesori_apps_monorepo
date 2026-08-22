@@ -98,13 +98,9 @@ Future<void> saveTokens({required TokenData data, required String dataDirectory}
 Future<TokenData> loadTokens({required String dataDirectory}) async {
   final file = File(tokenPath(dataDirectory: dataDirectory));
 
-  try {
-    final content = await file.readAsString();
+  final content = await file.readAsString();
 
-    return TokenData.fromJson(jsonDecodeMap(content));
-  } on FileSystemException {
-    rethrow;
-  }
+  return TokenData.fromJson(jsonDecodeMap(content));
 }
 
 /// Clears the token file by deleting it.
