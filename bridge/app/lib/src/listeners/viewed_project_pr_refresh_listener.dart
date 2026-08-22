@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:rxdart/rxdart.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../services/pr_sync_service.dart";
@@ -16,7 +17,7 @@ class ViewedProjectPrRefreshListener({
   final CompositeSubscription _subscriptions = CompositeSubscription();
   Timer? _timer;
   Future<void>? _disposeFuture;
-  final Set<Future<void>> _activeRefreshes = <Future<void>>{};
+  final PendingOperations _activeRefreshes = PendingOperations();
   int _latestAdmission = 0;
   bool _disposed = false;
   bool _started = false;
@@ -83,13 +84,11 @@ class ViewedProjectPrRefreshListener({
     if (_disposed || projectIds.isEmpty) return;
 
     final admission = ++_latestAdmission;
-    late final Future<void> refresh;
-    refresh = _refresh(
-      projectIds: projectIds,
-      admission: admission,
-    ).whenComplete(() => _activeRefreshes.remove(refresh));
-    _activeRefreshes.add(refresh);
-    unawaited(refresh);
+    unawaited(
+      _activeRefreshes.track(
+        operation: _refresh(projectIds: projectIds, admission: admission),
+      ),
+    );
   }
 
   Future<void> _refresh({
@@ -139,6 +138,6 @@ class ViewedProjectPrRefreshListener({
     _disposed = true;
     _cancelSchedule();
     await _subscriptions.cancel();
-    await Future.wait(List<Future<void>>.of(_activeRefreshes));
+    await _activeRefreshes.drain();
   }
 }

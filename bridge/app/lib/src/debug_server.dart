@@ -3,6 +3,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:rxdart/rxdart.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Console, Log;
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -24,7 +25,7 @@ class DebugServer({
   HttpServer? _server;
   // ignore: cancel_subscriptions - cancelled by the failure-isolated drain.
   StreamSubscription<void>? _localWireEventsSub;
-  final Set<Future<void>> _inFlightRequests = <Future<void>>{};
+  final PendingOperations _inFlightRequests = PendingOperations();
   final Completer<void> _shutdownSignal = Completer<void>();
   Future<void>? _serverClose;
   Future<void>? _drainFuture;
@@ -46,8 +47,7 @@ class DebugServer({
     server
         .listen((request) {
           late final Future<void> operation;
-          operation = _handleRequest(request).whenComplete(() => _inFlightRequests.remove(operation));
-          _inFlightRequests.add(operation);
+          operation = _inFlightRequests.track(operation: _handleRequest(request));
           unawaited(
             operation.catchError((Object error, StackTrace stackTrace) {
               Log.w("debug server request failed", error, stackTrace);
@@ -91,7 +91,7 @@ class DebugServer({
       attempt(_compositeSubscription.cancel),
       if (localWireEventsSub != null) attempt(localWireEventsSub.cancel),
       for (final client in clients) attempt(client.close),
-      attempt(() => Future.wait(_inFlightRequests.toList(growable: false))),
+      attempt(_inFlightRequests.drain),
       attempt(() async {
         await _serverClose;
       }),

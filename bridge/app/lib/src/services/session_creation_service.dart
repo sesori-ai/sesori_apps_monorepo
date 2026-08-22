@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show Log, PluginOperationException, PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
@@ -17,7 +18,7 @@ class SessionCreationService({
   required final SessionRepository _sessionRepository,
   required final SessionMutationDispatcher _sessionMutationDispatcher,
 }) {
-  final Set<Future<void>> _lateMetadataWork = <Future<void>>{};
+  final PendingOperations _lateMetadataWork = PendingOperations();
   bool _acceptingLateMetadata = true;
   Future<void>? _drainFuture;
 
@@ -253,11 +254,11 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
 
   void _startLateMetadata({required Session session, required String? firstText}) {
     if (!_acceptingLateMetadata || firstText == null) return;
-    late final Future<void> work;
-    work = _generateAndApplyMetadata(session: session, firstText: firstText).whenComplete(() {
-      _lateMetadataWork.remove(work);
-    });
-    _lateMetadataWork.add(work);
+    unawaited(
+      _lateMetadataWork.track(
+        operation: _generateAndApplyMetadata(session: session, firstText: firstText),
+      ),
+    );
   }
 
   Future<void> _generateAndApplyMetadata({required Session session, required String firstText}) async {
@@ -306,7 +307,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
 
   Future<void> _drain() async {
     beginShutdown();
-    await Future.wait(_lateMetadataWork.toList(growable: false));
+    await _lateMetadataWork.drain();
   }
 }
 

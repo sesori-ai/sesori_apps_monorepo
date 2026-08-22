@@ -8,6 +8,7 @@ import "package:clock/clock.dart";
 import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
 import "package:rxdart/rxdart.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -757,11 +758,11 @@ class OrchestratorSession._({
   final CompositeSubscription _subscriptions = CompositeSubscription();
   StreamSubscription<NormalizedSourcedBridgeEvent>? _normalizedEventSubscription;
   final Map<String, Future<void>> _pluginEventProcessingTails = <String, Future<void>>{};
-  final Set<Future<void>> _inFlightRelayCompletions = <Future<void>>{};
+  final PendingOperations _inFlightRelayCompletions = PendingOperations();
 
   /// Part captures dispatched without awaiting, kept observable so shutdown
   /// does not close the history database out from under a finalized write.
-  final Set<Future<void>> _pendingPartCaptures = <Future<void>>{};
+  final PendingOperations _pendingPartCaptures = PendingOperations();
   final Map<String, int> _inFlightRouteCounts = <String, int>{};
   Future<void> _projectsSummaryTail = Future<void>.value();
   final Random _backoffJitter = Random();
@@ -1098,7 +1099,7 @@ class OrchestratorSession._({
       await Future.wait(_pluginEventProcessingTails.values);
       // After the tails, because a processed event may have just dispatched
       // its capture.
-      await Future.wait(_pendingPartCaptures.toList(growable: false));
+      await _pendingPartCaptures.drain();
     });
     await attempt(() => _normalizedEventSubscription?.cancel());
     await Future.wait([
@@ -1321,28 +1322,28 @@ class OrchestratorSession._({
       _inFlightRouteCounts.update(routeLabel, (count) => count + 1, ifAbsent: () => 1);
     }
 
-    late final Future<void> trackedCompletion;
-    trackedCompletion = () async {
-      try {
-        await completion;
-      } finally {
-        _inFlightRelayCompletions.remove(trackedCompletion);
-        if (routeLabel != null) {
-          final remaining = _inFlightRouteCounts[routeLabel]! - 1;
-          if (remaining == 0) {
-            _inFlightRouteCounts.remove(routeLabel);
-          } else {
-            _inFlightRouteCounts[routeLabel] = remaining;
-          }
-        }
-      }
-    }();
-    _inFlightRelayCompletions.add(trackedCompletion);
-    trackedCompletion.ignore();
+    _inFlightRelayCompletions
+        .track(
+          operation: () async {
+            try {
+              await completion;
+            } finally {
+              if (routeLabel != null) {
+                final remaining = _inFlightRouteCounts[routeLabel]! - 1;
+                if (remaining == 0) {
+                  _inFlightRouteCounts.remove(routeLabel);
+                } else {
+                  _inFlightRouteCounts[routeLabel] = remaining;
+                }
+              }
+            }
+          }(),
+        )
+        .ignore();
   }
 
   Future<void> _drainRelayCompletions() async {
-    await Future.wait(_inFlightRelayCompletions.toList(growable: false));
+    await _inFlightRelayCompletions.drain();
   }
 
   String _inFlightRelayWorkDiagnostic({required String separator}) {
@@ -1576,8 +1577,7 @@ class OrchestratorSession._({
       // Deliberately not awaited: an ordinary part's wire shape does not depend
       // on its write, and the queue it just joined preserves the order.
       final capture = _chatHistoryService.capturePart(sessionId: sharedPart.sessionID, part: sharedPart);
-      _pendingPartCaptures.add(capture);
-      unawaited(capture.whenComplete(() => _pendingPartCaptures.remove(capture)));
+      unawaited(_pendingPartCaptures.track(operation: capture));
       return visible ? SseEventDelivery.uniform(event: _mapper.buildMessagePartEvent(part: sharedPart)) : null;
     }
 
