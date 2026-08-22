@@ -7,7 +7,8 @@
 - **Plan date:** 2026-08-22
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main` at `ba725ec84`
-- **Plan branch:** `peach-hamster`
+- **Plan branch:** `inline-subtask-plan`
+- **Plan PR:** [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027)
 - **Delivery:** seven PRs: plan, contract + client tile, Claude lifecycle,
   Claude child sessions, Claude live sub-agent streaming, regression docs,
   retirement

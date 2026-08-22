@@ -4,7 +4,9 @@
 
 - **Plan slug:** `claude-inline-subtasks`
 - **Implementation base:** `main` at `ba725ec84`
-- **Series state:** Step 1/7 plan PR in progress
+- **Plan branch:** `inline-subtask-plan`
+- **Series state:** Step 1/7 plan PR
+  [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open
 - **Next action:** merge the plan, then Step 2/7 (contract + client tile)
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts"; the
   completed `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -48,7 +50,7 @@
 
 | Done | Step | Exact PR title | Target | State |
 |---|---|---|---:|---|
-| [ ] | 1/7 | `🌱 [claude-inline-subtasks] docs: plan inline Claude sub-agent subtasks [step 1/7]` | 450-650 | In progress |
+| [ ] | 1/7 | `🌱 [claude-inline-subtasks] docs: plan inline Claude sub-agent subtasks [step 1/7]` | 450-650 | [PR #1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open |
 | [ ] | 2/7 | `⚙️ [claude-inline-subtasks] contract: subtask lifecycle state, cancelled status, child link [step 2/7]` | 500-800 | Pending |
 | [ ] | 3/7 | `🚧 [claude-inline-subtasks] claude: live and replayed subtask lifecycle for Agent calls [step 3/7]` | 900-1,300 | Pending |
 | [ ] | 4/7 | `🚧 [claude-inline-subtasks] claude: sub-agent transcripts as child sessions [step 4/7]` | 900-1,400 | Pending |
@@ -67,7 +69,8 @@
 - [x] Run `architecture-plan-review` through a sub-agent; apply valid findings
   (six applied, see Plan Review).
 - [x] `git diff --check`; plan/tracker titles and step total agree.
-- [ ] Commit, push, open the Step 1 PR, record its URL.
+- [x] Commit, push, open the Step 1 PR
+  ([#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027)).
 
 ## Open Questions
 
@@ -80,7 +83,11 @@
 
 ## Verification Log
 
-- **Step 1:** pending
+- **Step 1:** `git diff --check` passed; plan/tracker slug, seven exact
+  titles, and step total agree; documentation-only diff of ~690 lines (above
+  the 450-650 target because the six applied review findings added named
+  owners and layer splits); PR
+  [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open
 - **Final disposition:** pending
 
 ## Plan Review
