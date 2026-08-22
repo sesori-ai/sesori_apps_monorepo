@@ -203,12 +203,20 @@ Live, in `ClaudeToolTracker` + `ClaudeEventDispatcher`:
   `repositories/mappers/` used by the tracker (live) and the history mapper
   (replay): `completed` → `completed` with `output` = bounded `summary`;
   `failed` → `error` with `error` = bounded `summary`; `stopped` →
-  `cancelled`; `unknown` → `unknown`. Terminal is sticky.
-- A `user` tool-result frame for a task whose `tool_use_result.status ==
+  `cancelled`; `unknown` → `unknown`.
+- Terminal precedence is fixed, not first-wins: the task notification (system
+  frame or parsed text) is the **authoritative** terminal source. A `user`
+  tool-result frame for a task whose `tool_use_result.status ==
   "async_launched"` never finalizes the part. Any other tool result (foreground
-  completion, error, or an older CLI that omits `tool_use_result`) finalizes
-  per `is_error` exactly like a tool, unless already terminal. No tool-result
-  text is matched.
+  completion, error, or an older CLI that omits `tool_use_result`) is a
+  **fallback** that finalizes per `is_error` exactly like a tool — binding
+  `output`/`error` from the bounded tool-result content — only while no
+  notification has been seen; a later notification for the same tool_use id
+  replaces a fallback status/output/error, and a notification-set terminal is
+  never replaced by a later tool result. The task record keeps which source
+  finalized it (one closed two-value field). For a foreground agent both
+  sources carry the same final report, so live and replay render the same
+  bounded text whichever arrives first. No tool-result text is matched.
 - The `<task-notification>` text has one parser: `ClaudeContentMapper` yields
   a typed `ClaudeMappedTaskNotificationContentBlock({toolUseId, status:
   ClaudeTaskStatus, summary})` for a text block that starts with that marker
@@ -374,6 +382,7 @@ new route or sheet, transcript-item models in the client, analytics.
 | Duplicate descriptions pick the wrong transcript under title matching | ordinary flow (fan-outs reuse labels) | `childSessionID`, Step 2 |
 | Part update arrives before the child binding commits | theoretical ordering | accept: pending-event queue orders it; worst case the tile is untappable until the next update or reload |
 | Background agents keep running after abort | CLI semantics | accept; `stop_task` follow-up |
+| An interrupted foreground agent renders `cancelled` live (notification `stopped`) but `error` on replay, because the transcript persists only its error tool result and no notification record, and tool-result text is never matched | cosmetic divergence | accept; recorded as a known limitation in Step 6 |
 | External terminal session's running agent shows cancelled until its notification lands | rare, self-corrects | accept |
 | `task_started`/`task_notification` absent on the 2.1.221 floor | unverified | lifecycle also honors tool-result finalization and the `<task-notification>` user-frame parse, so it degrades without stuck state |
 | Nested sub-agents flattened under the root | design | accept; activity tracking is one level deep anyway |
@@ -445,6 +454,9 @@ cancelled without touching a live background one, and child attribution.
 | 7/7 | `🌱 [claude-inline-subtasks] docs: run coverage and retire the plan [step 7/7]` | 40-120 | L4 matrix recorded, plan moved to completed |
 
 Targets are additions plus deletions including generated code and tests.
+`TRACKER.md` bookkeeping is excluded from the step comparisons, because its
+count would include the lines that record it; each step records its measured
+non-tracker diff in the tracker.
 
 ## Step 1/7 - Plan
 

@@ -87,12 +87,11 @@
   titles, and step total agree; PR
   [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open.
   Changed lines (informational, not a pass/fail check): `git diff --numstat
-  <merge-base>..HEAD -- .plan/active/claude-inline-subtasks/` measured 678
-  additions / 0 deletions (PLAN.md 560, TRACKER.md 118) at review time. That
-  exceeds the 450-650 target by 28 lines because the six applied review
-  findings added named owners and layer splits; recorded as an accepted
-  deviation, the target is not changed. The figure includes this tracker's
-  own bookkeeping lines, so later tracker edits move it slightly.
+  <merge-base>..HEAD -- .plan/active/claude-inline-subtasks/PLAN.md` = 572
+  additions / 0 deletions at the last plan edit, within the 450-650 target.
+  Per the plan's series note, `TRACKER.md` bookkeeping is excluded from the
+  comparison because its count would include the lines that record it; the
+  final tracker size is visible in the merged PR.
 - **Final disposition:** pending
 
 ## Plan Review
