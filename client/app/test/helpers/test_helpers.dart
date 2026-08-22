@@ -22,6 +22,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart"
         ProjectViewClaim,
         ProjectViewPaneClaim,
         ProjectViewingService,
+        RealtimeVoiceApi,
         RouteSource,
         SessionListItemState,
         SessionOptionsCatalog,
@@ -142,6 +143,8 @@ class MockRoomKeyStorage() extends Mock implements RoomKeyStorage;
 class MockRelayClient() extends Mock implements RelayClient;
 
 class MockVoiceApi() extends Mock implements VoiceApi;
+
+class MockRealtimeVoiceApi() extends Mock implements RealtimeVoiceApi;
 
 class MockAudioRecorder() extends Mock implements AudioRecorder;
 

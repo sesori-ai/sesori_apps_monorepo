@@ -55,7 +55,11 @@ export "src/capabilities/server_connection/models/sse_event.dart";
 export "src/capabilities/server_connection/server_connection_config.dart";
 export "src/capabilities/session/session_service.dart";
 // Capabilities
+export "src/capabilities/voice/project_glossary_key.dart";
+export "src/capabilities/voice/realtime_voice_api.dart";
+export "src/capabilities/voice/realtime_voice_protocol.dart";
 export "src/capabilities/voice/voice_api.dart";
+export "src/capabilities/voice/voice_capabilities.dart";
 // Consumers
 export "src/consumers/analytics/session_activity_analytics_listener.dart";
 // Cubits
@@ -120,6 +124,7 @@ export "src/foundation/platform/attachment_thumbnail_storage.dart";
 export "src/foundation/platform/image_clipboard.dart";
 export "src/foundation/platform/image_saver.dart";
 export "src/foundation/platform/image_sharer.dart";
+export "src/foundation/platform/realtime_websocket_connector.dart";
 // Logging
 export "src/logging/logging.dart";
 // Platform interfaces

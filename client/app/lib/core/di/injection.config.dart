@@ -65,6 +65,8 @@ import 'package:sesori_mobile/core/platform/go_router_route_dispatcher.dart'
     as _i610;
 import 'package:sesori_mobile/core/platform/go_router_route_source.dart'
     as _i597;
+import 'package:sesori_mobile/core/platform/io_realtime_websocket_connector.dart'
+    as _i292;
 import 'package:sesori_mobile/core/platform/pasteboard_client.dart' as _i748;
 import 'package:sesori_mobile/core/platform/share_plus_client.dart' as _i1019;
 import 'package:sesori_mobile/core/platform/temporary_directory_client.dart'
@@ -107,6 +109,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i223.FileSaveClient>(() => _i223.FileSaveClient());
     gh.lazySingleton<_i227.GalClient>(() => _i227.GalClient());
+    gh.lazySingleton<_i292.IoRealtimeWebSocketClient>(
+      () => _i292.IoRealtimeWebSocketClient(),
+    );
     gh.lazySingleton<_i748.PasteboardClient>(() => _i748.PasteboardClient());
     gh.lazySingleton<_i1019.SharePlusClient>(() => _i1019.SharePlusClient());
     gh.lazySingleton<_i908.TemporaryDirectoryClient>(
@@ -187,6 +192,11 @@ extension GetItInjectableX on _i174.GetIt {
         temporaryDirectoryClient: gh<_i908.TemporaryDirectoryClient>(),
       ),
     );
+    gh.lazySingleton<_i948.RealtimeWebSocketConnector>(
+      () => _i292.IoRealtimeWebSocketConnector(
+        client: gh<_i292.IoRealtimeWebSocketClient>(),
+      ),
+    );
     gh.lazySingleton<_i948.ImageClipboard>(
       () => _i274.FlutterImageClipboard(
         pasteboardClient: gh<_i748.PasteboardClient>(),
@@ -225,6 +235,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1038.VoiceTranscriptionService>(
       () => _i1038.VoiceTranscriptionService(
         voiceApi: gh<_i948.VoiceApi>(),
+        realtimeVoiceApi: gh<_i948.RealtimeVoiceApi>(),
         recorder: gh<_i1039.AudioRecorder>(),
         recorderPrewarmClient: gh<_i361.RecorderPrewarmClient>(),
         fileProvider: gh<_i62.RecordingFileProvider>(),

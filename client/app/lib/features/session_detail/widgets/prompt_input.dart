@@ -82,6 +82,7 @@ typedef PromptSubmitCallback = void Function({
 
 class const PromptInput({
     super.key,
+    required final String projectId,
     required final bool isBusy,
     /// Whether the session already has (or has queued) messages. Drives the
   /// resting hint copy ("Ask anything..." vs "Follow up...") and, in
@@ -121,6 +122,10 @@ class _PromptInputState() extends State<PromptInput> {
   static const _draftCalculator = ComposerDraftCalculator();
   static const _minimumRecordingDuration = Duration(milliseconds: 200);
   static const _successFeedbackPulseDelay = Duration(milliseconds: 100);
+  static const _emptyVoicePreview = VoiceTranscriptionPreview(
+    confirmedText: "",
+    provisionalText: "",
+  );
   final _controller = TextEditingController();
   final _textScrollController = ScrollController();
   final _focusNode = FocusNode();
@@ -177,6 +182,12 @@ class _PromptInputState() extends State<PromptInput> {
   /// would silently ignore a new start — so starts hold off until the cancel
   /// settles rather than presenting a recording that never began.
   bool _isCancelInFlight = false;
+
+  StreamSubscription<VoiceTranscriptionPreview>? _voicePreviewSub;
+  final ValueNotifier<VoiceTranscriptionPreview> _voicePreview = ValueNotifier<VoiceTranscriptionPreview>(
+    _emptyVoicePreview,
+  );
+  int? _voicePreviewInteractionId;
 
   /// Monotonic id of the current voice interaction, bumped on every start and
   /// cancel. A cancelled transcription's upload can settle long after the
@@ -236,12 +247,14 @@ class _PromptInputState() extends State<PromptInput> {
   void dispose() {
     _maxDurationSub?.cancel();
     _chatInputModeSub?.cancel();
+    _voicePreviewSub?.cancel();
     _minimumRecordingDurationTimer?.cancel();
     // Fire-and-forget cancel if the widget is disposed mid-recording or mid-transcription.
     if (_voiceState != _VoiceState.idle) {
       _voiceService.cancelRecording();
     }
     _cancelDragProgress.dispose();
+    _voicePreview.dispose();
     _controller.dispose();
     _textScrollController.dispose();
     _focusNode.dispose();
@@ -438,7 +451,10 @@ class _PromptInputState() extends State<PromptInput> {
     if (draftChanged || restorationRequested) {
       // A draft identity change means this state moved to another composer. A
       // restoration key change means a fast failed send reused this composer.
-      // Both replace authored content exactly once.
+      // Both replace authored content exactly once, and both invalidate any
+      // voice interaction still streaming into the composer this state just
+      // stopped representing. Staged attachments never carry across either.
+      _cancelVoiceInteractionForDraftReuse();
       _pasteGeneration++;
       _attachments.clear();
       _restoreDraft(draft: widget.initialDraft);
@@ -584,10 +600,11 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   Future<void> _startRecording() async {
+    final interactionId = _voiceInteractionId;
     try {
-      await _voiceService.startRecording();
-      if (!mounted) return;
-      final interactionId = _voiceInteractionId;
+      await _voiceService.startRecording(projectId: widget.projectId);
+      if (!mounted || interactionId != _voiceInteractionId) return;
+      _startVoicePreview(interactionId: interactionId);
       _updateComposerState(update: () => _voiceState = _VoiceState.recording);
       // Startup can finish after the user has already dragged toward cancel.
       // Reapply the latest position once the newly mounted target has layout.
@@ -603,14 +620,18 @@ class _PromptInputState() extends State<PromptInput> {
         _handleRecordDragUpdate(globalPosition: position);
       });
       _minimumRecordingDurationTimer = Timer(_minimumRecordingDuration, () {
-        if (_voiceState == _VoiceState.recording && interactionId == _voiceInteractionId) {
+        if (_voiceState == _VoiceState.recording &&
+            interactionId == _voiceInteractionId) {
           _minimumRecordingDurationReached = true;
         }
       });
-    } on MicrophonePermissionDeniedError {
-      if (!mounted) return;
-      _showComposerNotice(context.loc.voiceErrorPermission);
+    } on VoiceTranscriptionError catch (error) {
+      _stopVoicePreview(clearPreview: true);
+      if (!mounted || interactionId != _voiceInteractionId || error is TranscriptionCancelledError) return;
+      loge("Failed to start recording", error);
+      _showVoiceErrorNotice(error);
     } catch (error) {
+      _stopVoicePreview(clearPreview: true);
       // Typed voice errors and anything else the recorder throws (platform /
       // filesystem failures) both land here: an error escaping this method
       // would leave the in-flight guard and pinned layout stuck, silently
@@ -623,6 +644,87 @@ class _PromptInputState() extends State<PromptInput> {
       );
     }
   }
+
+  void _showVoiceErrorNotice(VoiceTranscriptionError error) {
+    _showComposerNotice(
+      _voiceErrorMessage(error),
+      variant: PregoPopupAlertsNotificationsVariant.error,
+    );
+  }
+
+  String _voiceErrorMessage(VoiceTranscriptionError error) {
+    final loc = context.loc;
+    return switch (error) {
+      MicrophonePermissionDeniedError() => loc.voiceErrorPermission,
+      RecordingFailedError() => loc.voiceErrorRecording,
+      NotRecordingError() => loc.voiceErrorRecording,
+      NotAuthenticatedVoiceError() => loc.voiceErrorNotAuthenticated,
+      ServerVoiceError() => loc.voiceErrorTranscription,
+      EmptyTranscriptError() => loc.voiceErrorTranscription,
+      NetworkVoiceError() => loc.voiceErrorNetwork,
+      TranscriptionCancelledError() => loc.voiceErrorRecording,
+      ContractVoiceError() => loc.voiceErrorContract,
+      RealtimeServerVoiceError(:final code) => _realtimeServerVoiceErrorMessage(code),
+      RealtimeTransportVoiceError() => loc.voiceErrorRealtimeInterrupted,
+      RealtimeContractVoiceError() => loc.voiceErrorContract,
+      RealtimeTimeoutVoiceError() => loc.voiceErrorRealtimeTemporaryUnavailable,
+      VoiceRealtimePartialTranscriptionError(:final failure) => _voiceErrorMessage(failure),
+    };
+  }
+
+  String _realtimeServerVoiceErrorMessage(RealtimeVoiceErrorCode code) {
+    final loc = context.loc;
+    return switch (code) {
+      RealtimeVoiceErrorCode.quotaExhausted => loc.voiceErrorRealtimeQuota,
+      RealtimeVoiceErrorCode.audioTimeout ||
+      RealtimeVoiceErrorCode.providerTimeout ||
+      RealtimeVoiceErrorCode.internalError ||
+      RealtimeVoiceErrorCode.startTimeout ||
+      RealtimeVoiceErrorCode.providerCapacity ||
+      RealtimeVoiceErrorCode.providerUnavailable ||
+      RealtimeVoiceErrorCode.slowClient ||
+      RealtimeVoiceErrorCode.serviceRestarting => loc.voiceErrorRealtimeTemporaryUnavailable,
+      RealtimeVoiceErrorCode.invalidMessage ||
+      RealtimeVoiceErrorCode.unsupportedProtocol ||
+      RealtimeVoiceErrorCode.invalidAudio ||
+      RealtimeVoiceErrorCode.providerRejected => loc.voiceErrorContract,
+    };
+  }
+
+  void _startVoicePreview({required int interactionId}) {
+    _voicePreviewSub?.cancel();
+    _voicePreviewInteractionId = interactionId;
+    _voicePreviewSub = _voiceService.previewStream.listen((preview) {
+      if (!mounted ||
+          _voiceInteractionId != interactionId ||
+          _voicePreviewInteractionId != interactionId) {
+        return;
+      }
+      _setVoicePreview(preview);
+    });
+    _setVoicePreview(_voiceService.currentPreview);
+  }
+
+  void _setVoicePreview(VoiceTranscriptionPreview preview) {
+    final currentPreview = _voicePreview.value;
+    if (currentPreview.confirmedText == preview.confirmedText &&
+        currentPreview.provisionalText == preview.provisionalText) {
+      return;
+    }
+    _voicePreview.value = preview;
+  }
+
+  void _stopVoicePreview({required bool clearPreview}) {
+    _voicePreviewSub?.cancel();
+    _voicePreviewSub = null;
+    _voicePreviewInteractionId = null;
+    if (clearPreview) {
+      _setVoicePreview(_emptyVoicePreview);
+    }
+  }
+
+  bool _hasVoicePreview(VoiceTranscriptionPreview preview) =>
+      preview.confirmedText.isNotEmpty || preview.provisionalText.isNotEmpty;
 
   Future<void> _stopAndTranscribe() async {
     // The upload can outlive this interaction (a cancel settles the state
@@ -665,34 +767,73 @@ class _PromptInputState() extends State<PromptInput> {
       }
     } on TranscriptionCancelledError {
       // User cancelled — nothing to do, finally resets state.
-    } on NotAuthenticatedVoiceError {
+    } on VoiceRealtimePartialTranscriptionError catch (error) {
+      loge("Realtime transcription stopped early", error.failure);
       if (!mounted || stale()) return;
+      // Keep the confirmed text exactly as the provider produced it; a trailing
+      // separator is meaningful when it is appended to the draft. The trimmed
+      // form is only used to reject a whitespace-only partial.
+      final confirmedText = error.confirmedText;
+      if (confirmedText.trim().isNotEmpty) {
+        _appendVoiceTranscript(transcript: confirmedText);
+        _scrollToDraftEndAfterLayout();
+        if (!_isVoiceFirst) {
+          _focusComposerField();
+        }
+      }
       _showComposerNotice(
-        context.loc.voiceErrorNotAuthenticated,
-        variant: PregoPopupAlertsNotificationsVariant.error,
-      );
-    } on NetworkVoiceError {
-      if (!mounted || stale()) return;
-      _showComposerNotice(
-        context.loc.voiceErrorNetwork,
+        _voiceErrorMessage(error.failure),
         variant: PregoPopupAlertsNotificationsVariant.error,
       );
     } on VoiceTranscriptionError catch (error) {
       loge("Transcription failed", error);
       if (!mounted || stale()) return;
-      _showComposerNotice(
-        context.loc.voiceErrorTranscription,
-        variant: PregoPopupAlertsNotificationsVariant.error,
-      );
+      if (error is TranscriptionCancelledError) return;
+      _showVoiceErrorNotice(error);
     } finally {
       if (!stale()) {
         _updateComposerState(
           update: () {
             _voiceState = _VoiceState.idle;
             _pinnedVoiceLayout = null;
+            _stopVoicePreview(clearPreview: true);
             _cancelDragProgress.value = 0;
           },
         );
+      }
+    }
+  }
+
+  void _cancelVoiceInteractionForDraftReuse() {
+    final shouldCancelService =
+        _isRecordStartInFlight || _voiceState != _VoiceState.idle || _isCancelInFlight;
+    _voiceInteractionId++;
+    _recordingPointer = null;
+    _recordingPointerPosition = null;
+    _cancelTargetEngaged = false;
+    _minimumRecordingDurationTimer?.cancel();
+    _minimumRecordingDurationTimer = null;
+    _minimumRecordingDurationReached = false;
+    _releaseRequestedDuringStart = false;
+    _isRecordStartInFlight = false;
+    _voiceState = _VoiceState.idle;
+    _pinnedVoiceLayout = null;
+    _stopVoicePreview(clearPreview: true);
+    _cancelDragProgress.value = 0;
+    if (shouldCancelService) {
+      _isCancelInFlight = true;
+      unawaited(_cancelVoiceServiceForDraftReuse(interactionId: _voiceInteractionId));
+    }
+  }
+
+  Future<void> _cancelVoiceServiceForDraftReuse({required int interactionId}) async {
+    try {
+      await _voiceService.cancelRecording();
+    } catch (error) {
+      loge("Failed to cancel stale voice interaction", error);
+    } finally {
+      if (mounted && interactionId == _voiceInteractionId) {
+        _updateComposerState(update: () => _isCancelInFlight = false);
       }
     }
   }
@@ -709,6 +850,14 @@ class _PromptInputState() extends State<PromptInput> {
     _isApplyingDraft = false;
     _hasText = draft.text.trim().isNotEmpty;
     widget.onDraftChanged(draft);
+  }
+
+  void _appendVoiceTranscript({required String transcript}) {
+    final nextDraft = _draftCalculator.appendVoiceTranscript(
+      draft: _draft,
+      transcript: transcript,
+    );
+    _applyDraft(draft: nextDraft);
   }
 
   void _scrollToDraftEndAfterLayout() {
@@ -740,6 +889,7 @@ class _PromptInputState() extends State<PromptInput> {
     // transcribe the recording being discarded. The id bump orphans any
     // still-pending transcription continuation of this interaction.
     _voiceInteractionId++;
+    _stopVoicePreview(clearPreview: false);
     _minimumRecordingDurationTimer?.cancel();
     _minimumRecordingDurationTimer = null;
     _minimumRecordingDurationReached = false;
@@ -747,6 +897,7 @@ class _PromptInputState() extends State<PromptInput> {
       update: () {
         _voiceState = _VoiceState.idle;
         _pinnedVoiceLayout = null;
+        _setVoicePreview(_emptyVoicePreview);
         _cancelDragProgress.value = 0;
       },
     );
@@ -1681,17 +1832,46 @@ class _PromptInputState() extends State<PromptInput> {
       _VoiceState.idle => KeyedSubtree(key: const ValueKey("voice-slot-idle"), child: idle),
       _VoiceState.recording => KeyedSubtree(
         key: const ValueKey("voice-slot-recording"),
-        child: Center(child: _buildWaveform(context)),
+        child: Center(
+          child: _buildVoiceRealtimeSlot(
+            context,
+            fallbackBuilder: _buildWaveform,
+          ),
+        ),
       ),
       _VoiceState.transcribing => KeyedSubtree(
         key: const ValueKey("voice-slot-transcribing"),
-        child: Center(child: _buildTranscribingShimmer(context)),
+        child: Center(
+          child: _buildVoiceRealtimeSlot(
+            context,
+            fallbackBuilder: _buildTranscribingShimmer,
+          ),
+        ),
       ),
     };
 
     return SizedBox(
       height: height,
       child: AnimatedSwitcher(duration: _morphDuration, child: child),
+    );
+  }
+
+  Widget _buildVoiceRealtimeSlot(
+    BuildContext context, {
+    required Widget Function(BuildContext context) fallbackBuilder,
+  }) {
+    return ValueListenableBuilder<VoiceTranscriptionPreview>(
+      valueListenable: _voicePreview,
+      builder: (context, preview, _) {
+        final hasPreview = _hasVoicePreview(preview);
+        return AnimatedSwitcher(
+          duration: _morphDuration,
+          child: KeyedSubtree(
+            key: ValueKey(hasPreview ? "voice-preview" : "voice-fallback"),
+            child: hasPreview ? _buildVoicePreview(context, preview: preview) : fallbackBuilder(context),
+          ),
+        );
+      },
     );
   }
 
@@ -1705,6 +1885,39 @@ class _PromptInputState() extends State<PromptInput> {
       barColor: prego.colors.textPrimary,
       dotColor: prego.colors.fgQuaternary,
       flattenProgress: _cancelDragProgress,
+    );
+  }
+
+  Widget _buildVoicePreview(BuildContext context, {required VoiceTranscriptionPreview preview}) {
+    final prego = context.prego;
+    final stablePreviewText = preview.confirmedText.trim();
+
+    return Semantics(
+      liveRegion: stablePreviewText.isNotEmpty,
+      label: stablePreviewText,
+      child: ExcludeSemantics(
+        child: RichText(
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: preview.confirmedText,
+                style: prego.textTheme.textMd.regular.copyWith(
+                  color: prego.colors.textPrimary,
+                ),
+              ),
+              TextSpan(
+                text: preview.provisionalText,
+                style: prego.textTheme.textMd.regular.copyWith(
+                  color: prego.colors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -1722,7 +1935,9 @@ class _PromptInputState() extends State<PromptInput> {
         loc.voiceTranscribing,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
+        style: prego.textTheme.textMd.regular.copyWith(
+          color: prego.colors.textPrimary,
+        ),
       ),
     );
   }

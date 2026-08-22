@@ -414,6 +414,12 @@ void main() {
     addTearDown(maxDurationReached.close);
     when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
     when(() => voiceTranscriptionService.prewarmRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.currentPreview).thenReturn(
+      const VoiceTranscriptionPreview(confirmedText: "", provisionalText: ""),
+    );
+    when(
+      () => voiceTranscriptionService.previewStream,
+    ).thenAnswer((_) => const Stream<VoiceTranscriptionPreview>.empty());
 
     when(
       () => pluginPreferenceRepository.readPluginId(bridgeId: any(named: "bridgeId")),
@@ -545,7 +551,7 @@ void main() {
   });
 
   testWidgets("old bridge guidance keeps Create available and Refresh uses legacy routes", (tester) async {
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: "project-1")).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
     when(pluginRepository.listPlugins).thenAnswer(

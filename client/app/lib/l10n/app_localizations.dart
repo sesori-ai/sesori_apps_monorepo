@@ -2449,6 +2449,30 @@ abstract class AppLocalizations {
   /// **'Transcription failed. Please try again.'**
   String get voiceErrorTranscription;
 
+  /// No description provided for @voiceErrorRealtimeQuota.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice input quota reached. Try again later.'**
+  String get voiceErrorRealtimeQuota;
+
+  /// No description provided for @voiceErrorRealtimeTemporaryUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice input is temporarily unavailable. Try again in a moment.'**
+  String get voiceErrorRealtimeTemporaryUnavailable;
+
+  /// No description provided for @voiceErrorRealtimeInterrupted.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice connection was interrupted. Try again.'**
+  String get voiceErrorRealtimeInterrupted;
+
+  /// No description provided for @voiceErrorContract.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice input needs an app update. Update Sesori and try again.'**
+  String get voiceErrorContract;
+
   /// No description provided for @voiceErrorNetwork.
   ///
   /// In en, this message translates to:
