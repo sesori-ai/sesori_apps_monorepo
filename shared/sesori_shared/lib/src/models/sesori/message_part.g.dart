@@ -19,6 +19,7 @@ _MessagePart _$MessagePartFromJson(Map json) => _MessagePart(
   prompt: json['prompt'] as String?,
   description: json['description'] as String?,
   agent: json['agent'] as String?,
+  childSessionID: json['childSessionID'] as String?,
   agentName: json['agentName'] as String?,
   attempt: (json['attempt'] as num?)?.toInt(),
   retryError: json['retryError'] as String?,
@@ -37,6 +38,7 @@ Map<String, dynamic> _$MessagePartToJson(_MessagePart instance) =>
       'prompt': ?instance.prompt,
       'description': ?instance.description,
       'agent': ?instance.agent,
+      'childSessionID': ?instance.childSessionID,
       'agentName': ?instance.agentName,
       'attempt': ?instance.attempt,
       'retryError': ?instance.retryError,
@@ -163,5 +165,6 @@ const _$ToolStatusEnumMap = {
   ToolStatus.running: 'running',
   ToolStatus.completed: 'completed',
   ToolStatus.error: 'error',
+  ToolStatus.cancelled: 'cancelled',
   ToolStatus.unknown: 'unknown',
 };

@@ -933,6 +933,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailToolError => 'Failed';
 
   @override
+  String get sessionDetailToolCancelled => 'Cancelled';
+
+  @override
   String get sessionDetailFollowOutput => 'Follow';
 
   @override

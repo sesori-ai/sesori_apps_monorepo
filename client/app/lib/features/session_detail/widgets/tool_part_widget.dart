@@ -105,6 +105,11 @@ class const ToolPartWidget({super.key, required final MessagePart part}) extends
       color: prego.colors.bgBrandSolid,
     ),
     ToolStatus.error => Icon(Icons.error, size: 16, color: prego.colors.fgErrorPrimary),
+    ToolStatus.cancelled => Icon(
+      Icons.cancel,
+      size: 16,
+      color: prego.colors.textSecondary,
+    ),
     ToolStatus.unknown => Icon(
       Icons.circle_outlined,
       size: 16,
@@ -117,6 +122,7 @@ class const ToolPartWidget({super.key, required final MessagePart part}) extends
     ToolStatus.running => loc.sessionDetailToolRunning,
     ToolStatus.completed => loc.sessionDetailToolCompleted,
     ToolStatus.error => loc.sessionDetailToolError,
+    ToolStatus.cancelled => loc.sessionDetailToolCancelled,
     ToolStatus.unknown => loc.sessionDetailToolUnknown,
   };
 }

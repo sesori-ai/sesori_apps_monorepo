@@ -34,6 +34,7 @@ void main() {
         prompt: null,
         description: null,
         agent: null,
+        childSessionID: null,
         agentName: null,
         attempt: null,
         retryError: null,
@@ -249,7 +250,59 @@ void main() {
         same(optionsChanged),
       );
     });
+
+    test("a subtask's child reference is optional, translated when bound", () {
+      final event = BridgeSseMessagePartUpdated(part: _subtaskPart(childSessionID: "backend-child"));
+
+      expect(mapper.backendSessionIds(event: event), {"backend-session"});
+      expect(mapper.optionalBackendSessionIds(event: event), {"backend-child"});
+
+      final mapped = mapper.map(
+        event: event,
+        sessionIdsByBackendId: const {...ids, "backend-child": "ses-child"},
+      );
+
+      expect((mapped! as BridgeSseMessagePartUpdated).part.sessionID, "ses-session");
+      expect((mapped as BridgeSseMessagePartUpdated).part.childSessionID, "ses-child");
+    });
+
+    test("an unbound child reference becomes null without withholding the part", () {
+      final event = BridgeSseMessagePartUpdated(part: _subtaskPart(childSessionID: "backend-child"));
+
+      final mapped = mapper.map(event: event, sessionIdsByBackendId: ids);
+
+      expect((mapped! as BridgeSseMessagePartUpdated).part.sessionID, "ses-session");
+      expect((mapped as BridgeSseMessagePartUpdated).part.childSessionID, isNull);
+    });
+
+    test("a part with no child reference contributes no optional id", () {
+      final event = BridgeSseMessagePartUpdated(part: _subtaskPart(childSessionID: null));
+
+      expect(mapper.optionalBackendSessionIds(event: event), isEmpty);
+      final mapped = mapper.map(event: event, sessionIdsByBackendId: ids);
+      expect((mapped! as BridgeSseMessagePartUpdated).part.childSessionID, isNull);
+    });
   });
+}
+
+PluginMessagePart _subtaskPart({required String? childSessionID}) {
+  return PluginMessagePart(
+    id: "part",
+    sessionID: "backend-session",
+    messageID: "message",
+    type: PluginMessagePartType.subtask,
+    text: null,
+    tool: null,
+    state: null,
+    prompt: "prompt",
+    description: "description",
+    agent: "explore",
+    childSessionID: childSessionID,
+    agentName: null,
+    attempt: null,
+    retryError: null,
+    attachment: null,
+  );
 }
 
 Map<String, dynamic> _sessionInfo({required String sessionId, required String? parentId}) {

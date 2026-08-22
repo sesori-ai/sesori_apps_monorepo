@@ -433,7 +433,43 @@ class SessionRepository({
         return plugin.getSessionMessages(binding.backendSessionId);
       },
     );
-    return pluginMessages.toSharedMessageWithParts(sessionId: binding.sessionId);
+    return await _resolveChildSessionIds(
+      pluginId: binding.pluginId,
+      messages: pluginMessages.toSharedMessageWithParts(sessionId: binding.sessionId),
+    );
+  }
+
+  /// Translates the backend child references a plugin puts on subtask parts
+  /// into bridge session ids.
+  ///
+  /// Best effort by contract: a child the bridge has not bound yet leaves the
+  /// part with a null reference instead of withholding the page, matching the
+  /// live path where the reference never gates delivery.
+  Future<List<MessageWithParts>> _resolveChildSessionIds({
+    required String pluginId,
+    required List<MessageWithParts> messages,
+  }) async {
+    final backendSessionIds = {
+      for (final message in messages)
+        for (final part in message.parts) ?part.childSessionID,
+    };
+    if (backendSessionIds.isEmpty) return messages;
+    final bindings = await getStoredSessionsByBackendIds(
+      pluginId: pluginId,
+      backendSessionIds: backendSessionIds.toList(growable: false),
+    );
+    return [
+      for (final message in messages)
+        message.copyWith(
+          parts: [
+            for (final part in message.parts)
+              switch (part.childSessionID) {
+                final backendSessionId? => part.copyWith(childSessionID: bindings[backendSessionId]?.id),
+                null => part,
+              },
+          ],
+        ),
+    ];
   }
 
   /// Persists the bridge-owned title override. Null removes the override so

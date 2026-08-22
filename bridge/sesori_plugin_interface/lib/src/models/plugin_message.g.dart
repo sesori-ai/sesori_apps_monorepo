@@ -25,6 +25,7 @@ Map<String, dynamic> _$PluginMessagePartToJson(_PluginMessagePart instance) =>
       'prompt': ?instance.prompt,
       'description': ?instance.description,
       'agent': ?instance.agent,
+      'childSessionID': ?instance.childSessionID,
       'agentName': ?instance.agentName,
       'attempt': ?instance.attempt,
       'retryError': ?instance.retryError,
@@ -87,6 +88,7 @@ const _$PluginToolStatusEnumMap = {
   PluginToolStatus.running: 'running',
   PluginToolStatus.completed: 'completed',
   PluginToolStatus.error: 'error',
+  PluginToolStatus.cancelled: 'cancelled',
   PluginToolStatus.unknown: 'unknown',
 };
 

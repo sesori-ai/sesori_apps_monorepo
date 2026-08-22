@@ -39,6 +39,7 @@ void main() {
         prompt: null,
         description: null,
         agent: null,
+        childSessionID: null,
         agentName: "my-agent",
         attempt: null,
         retryError: null,
@@ -49,6 +50,56 @@ void main() {
 
       expect(shared.agentName, equals("my-agent"));
       expect(shared.sessionID, equals("stable-session"));
+    });
+
+    test("carries the subtask child reference through for its caller to translate", () {
+      const part = PluginMessagePart(
+        id: "p1",
+        sessionID: "s1",
+        messageID: "m1",
+        type: PluginMessagePartType.subtask,
+        text: null,
+        tool: null,
+        state: null,
+        prompt: "explore",
+        description: "Explore",
+        agent: "explore",
+        childSessionID: "backend-child",
+        agentName: null,
+        attempt: null,
+        retryError: null,
+        attachment: null,
+      );
+
+      final shared = part.toShared(sessionId: "stable-session");
+
+      expect(shared.childSessionID, equals("backend-child"));
+      expect(shared.toJson()["childSessionID"], equals("backend-child"));
+    });
+
+    test("omits an absent child reference from the wire payload", () {
+      const part = PluginMessagePart(
+        id: "p1",
+        sessionID: "s1",
+        messageID: "m1",
+        type: PluginMessagePartType.subtask,
+        text: null,
+        tool: null,
+        state: null,
+        prompt: "explore",
+        description: "Explore",
+        agent: "explore",
+        childSessionID: null,
+        agentName: null,
+        attempt: null,
+        retryError: null,
+        attachment: null,
+      );
+
+      final json = part.toShared(sessionId: "stable-session").toJson();
+
+      expect(json.containsKey("childSessionID"), isFalse);
+      expect(MessagePart.fromJson(json).childSessionID, isNull);
     });
 
     test("passes through attempt", () {
@@ -63,6 +114,7 @@ void main() {
         prompt: null,
         description: null,
         agent: null,
+        childSessionID: null,
         agentName: null,
         attempt: 3,
         retryError: null,
@@ -86,6 +138,7 @@ void main() {
         prompt: null,
         description: null,
         agent: null,
+        childSessionID: null,
         agentName: null,
         attempt: 1,
         retryError: "connection timeout",
@@ -109,6 +162,7 @@ void main() {
         prompt: null,
         description: null,
         agent: null,
+        childSessionID: null,
         agentName: null,
         attempt: null,
         retryError: null,
@@ -134,6 +188,7 @@ void main() {
         prompt: null,
         description: null,
         agent: null,
+        childSessionID: null,
         agentName: null,
         attempt: null,
         retryError: null,
@@ -168,6 +223,7 @@ void main() {
         prompt: null,
         description: null,
         agent: null,
+        childSessionID: null,
         agentName: null,
         attempt: null,
         retryError: null,
@@ -196,6 +252,7 @@ void main() {
         prompt: null,
         description: null,
         agent: null,
+        childSessionID: null,
         agentName: null,
         attempt: null,
         retryError: null,
@@ -218,9 +275,25 @@ void main() {
       expect(PluginToolStatus.running.toShared(), equals(ToolStatus.running));
       expect(PluginToolStatus.completed.toShared(), equals(ToolStatus.completed));
       expect(PluginToolStatus.error.toShared(), equals(ToolStatus.error));
+      expect(PluginToolStatus.cancelled.toShared(), equals(ToolStatus.cancelled));
       // Unlike message-part type, unknown is a real renderable state and maps
       // through rather than throwing.
       expect(PluginToolStatus.unknown.toShared(), equals(ToolStatus.unknown));
+    });
+
+    test("cancelled keeps a wire value an older client degrades to unknown", () {
+      const state = PluginToolState(
+        status: PluginToolStatus.cancelled,
+        title: null,
+        output: null,
+        error: null,
+        attachments: [],
+      );
+
+      final json = state.toShared().toJson();
+
+      expect(json["status"], equals("cancelled"));
+      expect(ToolState.fromJson({...json, "status": "a-status-from-a-newer-bridge"}).status, equals(ToolStatus.unknown));
     });
   });
 

@@ -1596,6 +1596,7 @@ void main() {
               prompt: null,
               description: null,
               agent: null,
+              childSessionID: null,
               agentName: null,
               attempt: null,
               retryError: null,
@@ -1616,6 +1617,88 @@ void main() {
       expect(messages.single.info.sessionID, equals("stable-s1"));
       expect(messages.single.parts.single.sessionID, equals("stable-s1"));
       expect(statuses.statuses, equals({"stable-s1": const SessionStatus.busy()}));
+    });
+
+    test("replayed subtask child references map to stable ids, and unbound ones to null", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      for (final (sessionId, backendSessionId) in [("stable-s1", "backend-s1"), ("stable-child", "backend-child")]) {
+        await repository.insertStoredSession(
+          sessionId: sessionId,
+          backendSessionId: backendSessionId,
+          pluginId: plugin.id,
+          projectId: "/repo",
+          isDedicated: false,
+          createdAt: 1,
+          worktreePath: null,
+          branchName: null,
+          baseBranch: null,
+          baseCommit: null,
+          agent: null,
+          agentModel: null,
+        );
+      }
+      plugin.messagesResult = const [
+        PluginMessageWithParts(
+          info: PluginMessageAssistant(
+            id: "message-1",
+            sessionID: "backend-s1",
+            agent: null,
+            modelID: null,
+            providerID: null,
+            time: null,
+          ),
+          parts: [
+            PluginMessagePart(
+              id: "part-bound",
+              sessionID: "backend-s1",
+              messageID: "message-1",
+              type: PluginMessagePartType.subtask,
+              text: null,
+              tool: null,
+              state: null,
+              prompt: "explore",
+              description: "Explore",
+              agent: "explore",
+              childSessionID: "backend-child",
+              agentName: null,
+              attempt: null,
+              retryError: null,
+              attachment: null,
+            ),
+            PluginMessagePart(
+              id: "part-unbound",
+              sessionID: "backend-s1",
+              messageID: "message-1",
+              type: PluginMessagePartType.subtask,
+              text: null,
+              tool: null,
+              state: null,
+              prompt: "review",
+              description: "Review",
+              agent: "explore",
+              childSessionID: "backend-unpublished",
+              agentName: null,
+              attempt: null,
+              retryError: null,
+              attachment: null,
+            ),
+          ],
+        ),
+      ];
+
+      final parts = (await repository.getSessionMessages(sessionId: "stable-s1")).single.parts;
+
+      expect(parts.first.childSessionID, equals("stable-child"));
+      expect(parts.last.childSessionID, isNull);
+      expect(parts.last.description, equals("Review"));
     });
 
     test("session statuses report eligible inactive plugins as unavailable", () async {

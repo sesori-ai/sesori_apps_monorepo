@@ -549,6 +549,7 @@
   "sessionDetailToolRunning": "Running",
   "sessionDetailToolCompleted": "Done",
   "sessionDetailToolError": "Failed",
+  "sessionDetailToolCancelled": "Cancelled",
   "sessionDetailFollowOutput": "Follow",
   "sessionDetailJumpToLatest": "Jump to latest",
   "@sessionDetailJumpToLatest": {

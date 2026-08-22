@@ -1813,6 +1813,12 @@ abstract class AppLocalizations {
   /// **'Failed'**
   String get sessionDetailToolError;
 
+  /// No description provided for @sessionDetailToolCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get sessionDetailToolCancelled;
+
   /// No description provided for @sessionDetailFollowOutput.
   ///
   /// In en, this message translates to:

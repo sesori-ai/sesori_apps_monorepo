@@ -74,6 +74,10 @@ sealed class PluginMessagePart with _$PluginMessagePart {
     required String? prompt,
     required String? description,
     required String? agent,
+
+    /// The backend session hosting this subtask's work, when the backend
+    /// exposes one. The bridge translates it to a bridge session id.
+    required String? childSessionID,
     // agent
     required String? agentName,
     // retry
@@ -107,10 +111,12 @@ sealed class PluginMessageAttachment with _$PluginMessageAttachment {
   }) = PluginMessageAttachmentMetadata;
 }
 
-/// Lifecycle status of a tool invocation. Mirrors the OpenCode `ToolState`
-/// union discriminator so consumers switch on enum members instead of
-/// matching magic strings. The `@JsonValue`s keep the wire form
-/// (`"pending"`, `"running"`, …) unchanged.
+/// Lifecycle status of a tool invocation, and of a subtask whose part carries
+/// a [PluginToolState]. Mirrors the OpenCode `ToolState` union discriminator
+/// so consumers switch on enum members instead of matching magic strings,
+/// plus [cancelled] for work a backend stopped before it produced a result.
+/// The `@JsonValue`s keep the wire form (`"pending"`, `"running"`, …)
+/// unchanged.
 @JsonEnum()
 enum PluginToolStatus() {
   @JsonValue("pending")
@@ -121,6 +127,8 @@ enum PluginToolStatus() {
   completed,
   @JsonValue("error")
   error,
+  @JsonValue("cancelled")
+  cancelled,
   @JsonValue("unknown")
   unknown,
 }

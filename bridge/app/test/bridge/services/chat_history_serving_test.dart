@@ -203,6 +203,7 @@ MessagePart _part({required String id, required String messageId}) => MessagePar
   prompt: null,
   description: null,
   agent: null,
+  childSessionID: null,
   agentName: null,
   attempt: null,
   retryError: null,
