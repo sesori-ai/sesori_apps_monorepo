@@ -655,7 +655,6 @@ class const BridgeRuntimeRunner._() {
             bridgeSettingsRepository: bridgeSettingsRepository,
             idleTimerScheduler: const PluginIdleTimerScheduler(),
             bridgeIdProvider: bridgeRegistrationService,
-          )..registerPlugins(
             plugins: [
               for (final descriptor in knownPlugins)
                 (

@@ -41,8 +41,4 @@ class PushNotificationClient({
       body: jsonEncode(payload.toJson()),
     );
   }
-
-  Future<void> dispose() async {
-    // Shared http client lifetime is owned by the composition root.
-  }
 }

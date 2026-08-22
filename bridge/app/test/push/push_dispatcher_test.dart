@@ -497,14 +497,6 @@ void main() {
         expect(harness.notifier.abortedRootCount, equals(0));
       });
     });
-
-    test("dispose closes the push notification client transport", () async {
-      final harness = _newHarness();
-
-      await harness.dispatcher.dispose();
-
-      expect(harness.client.disposeCallCount, equals(1));
-    });
   });
 }
 
@@ -582,7 +574,6 @@ class ThrowingPushSessionStateTracker({required super.now, final bool throwFindP
 
 class FakePushNotificationClient() extends PushNotificationClient {
   final List<SendNotificationPayload> sentPayloads = [];
-  int disposeCallCount = 0;
 
   this
     : super(
@@ -594,11 +585,6 @@ class FakePushNotificationClient() extends PushNotificationClient {
   @override
   Future<void> sendNotification(SendNotificationPayload payload) async {
     sentPayloads.add(payload);
-  }
-
-  @override
-  Future<void> dispose() async {
-    disposeCallCount += 1;
   }
 }
 
