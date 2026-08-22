@@ -26,6 +26,13 @@ class BufferingStdout() implements Stdout {
 ///
 /// Use this instead of [BufferingStdout] when a test asserts on the number or
 /// order of lines rather than on the whole text.
+///
+/// Unlike the other two fakes, an unimplemented member **throws** rather than
+/// answering `null`. That is deliberate and matches the declarations this
+/// replaced: a test asserting on exact line output wants to hear about an
+/// unexpected call to something like `supportsAnsiEscapes`, whereas returning
+/// `null` for a non-nullable getter would surface later as a confusing type
+/// error far from the cause.
 class CapturingStdout(final List<String> lines) implements Stdout {
   @override
   void writeln([Object? object = ""]) => lines.add(object.toString());
