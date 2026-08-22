@@ -2,11 +2,12 @@ import "dart:convert";
 import "dart:io";
 
 import "package:http/http.dart" as http;
-import "package:sesori_bridge/src/auth/bridge_registration_api.dart";
+import "package:sesori_bridge/src/auth/auth_api.dart";
+import "package:sesori_bridge/src/foundation/abortable_request_client.dart";
 import "package:test/test.dart";
 
 void main() {
-  group("BridgeRegistrationApi.registerBridge", () {
+  group("AuthApi.registerBridge", () {
     test("posts name, platform and bridgeId with bearer token and parses a 200 response", () async {
       final server = await _BridgesTestServer.start(statusCode: 200);
       addTearDown(server.close);
@@ -61,7 +62,7 @@ void main() {
     });
   });
 
-  group("BridgeRegistrationApi.deleteBridge", () {
+  group("AuthApi.deleteBridge", () {
     test("deletes /auth/bridges/:bridgeId with bearer token", () async {
       final server = await _BridgesTestServer.start(statusCode: 200);
       addTearDown(server.close);
@@ -101,10 +102,15 @@ void main() {
   });
 }
 
-BridgeRegistrationApi _createApi(_BridgesTestServer server) {
+AuthApi _createApi(_BridgesTestServer server) {
   final client = http.Client();
   addTearDown(client.close);
-  return BridgeRegistrationApi(authBackendUrl: server.baseUrl, client: client);
+  return AuthApi(
+    authBackendUrl: server.baseUrl,
+    client: client,
+    requestClient: const AbortableRequestClient(),
+    requestDeadline: AuthApi.defaultRequestDeadline,
+  );
 }
 
 class const _RecordedRequest({

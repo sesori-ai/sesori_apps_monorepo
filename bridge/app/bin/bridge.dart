@@ -9,13 +9,15 @@ import 'package:sesori_bridge/src/api/app_onboarding_state_storage.dart';
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
+import 'package:sesori_bridge/src/auth/auth_api.dart';
+import 'package:sesori_bridge/src/auth/auth_repository.dart';
 import 'package:sesori_bridge/src/auth/bridge_id_migration_service.dart';
 import 'package:sesori_bridge/src/auth/bridge_id_storage.dart';
-import 'package:sesori_bridge/src/auth/bridge_registration_api.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_repository.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_service.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
-import 'package:sesori_bridge/src/auth/token_manager.dart';
+import 'package:sesori_bridge/src/auth/token_service.dart';
+import 'package:sesori_bridge/src/foundation/abortable_request_client.dart';
 import 'package:sesori_bridge/src/foundation/bridge_startup_banner_formatter.dart';
 import 'package:sesori_bridge/src/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/foundation/process_runner.dart';
@@ -365,18 +367,22 @@ Future<void> _unregisterBridgeRegistration({
   }
 
   final httpClient = http.Client();
-  final tokenManager = TokenManager(
-    initialToken: tokens.accessToken,
+  final authApi = AuthApi(
     authBackendUrl: authBackendUrl,
+    client: httpClient,
+    requestClient: const AbortableRequestClient(),
+    requestDeadline: AuthApi.defaultRequestDeadline,
+  );
+  final tokenManager = TokenService(
+    initialToken: tokens.accessToken,
     loadTokens: () => loadTokens(dataDirectory: dataDirectory),
     saveTokens: (data) => saveTokens(data: data, dataDirectory: dataDirectory),
-    ownedClient: http.Client(),
-    requestDeadline: TokenManager.defaultRequestDeadline,
+    authRepository: AuthRepository(api: authApi),
   );
   try {
     final registrationService = BridgeRegistrationService(
       repository: BridgeRegistrationRepository(
-        api: BridgeRegistrationApi(authBackendUrl: authBackendUrl, client: httpClient),
+        api: authApi,
       ),
       tokenRefresher: tokenManager,
       bridgeIdStorage: bridgeIdStorage,

@@ -1,24 +1,35 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:sesori_bridge/src/auth/validate.dart';
+import 'package:http/http.dart' as http;
+import 'package:sesori_bridge/src/auth/auth_api.dart';
+import 'package:sesori_bridge/src/foundation/abortable_request_client.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('validateToken', () {
+  group('AuthApi credential endpoints', () {
     late HttpServer server;
-    late String baseUrl;
+    late http.Client client;
+    late AuthApi api;
 
     setUp(() async {
       server = await HttpServer.bind('127.0.0.1', 0);
-      baseUrl = 'http://${server.address.host}:${server.port}';
+      client = http.Client();
+      api = AuthApi(
+        authBackendUrl: 'http://${server.address.host}:${server.port}',
+        client: client,
+        requestClient: const AbortableRequestClient(),
+        requestDeadline: AuthApi.defaultRequestDeadline,
+      );
     });
 
     tearDown(() async {
       await server.close(force: true);
+      client.close();
     });
 
-    test('returns true when /auth/me returns 200', () async {
+    test('decodes /auth/me on 200', () async {
       _handleRequests(server, [
         _RequestResponse(
           path: '/auth/me',
@@ -34,18 +45,12 @@ void main() {
         ),
       ]);
 
-      final result = await validateToken(
-        authBackendURL: baseUrl,
-        accessToken: 'valid-token',
-        refreshToken: 'refresh-token',
-      );
+      final result = await api.getCurrentUser(accessToken: 'valid-token');
 
-      expect(result.isValid, isTrue);
-      expect(result.accessToken, equals('valid-token'));
-      expect(result.refreshToken, equals('refresh-token'));
+      expect(result.user.providerUsername, 'test');
     });
 
-    test('returns false when /auth/me returns 403', () async {
+    test('preserves /auth/me rejection status', () async {
       _handleRequests(server, [
         _RequestResponse(
           path: '/auth/me',
@@ -54,23 +59,14 @@ void main() {
         ),
       ]);
 
-      final result = await validateToken(
-        authBackendURL: baseUrl,
-        accessToken: 'valid-token',
-        refreshToken: 'refresh-token',
+      await expectLater(
+        api.getCurrentUser(accessToken: 'valid-token'),
+        throwsA(isA<AuthApiException>().having((error) => error.statusCode, 'statusCode', 403)),
       );
-
-      expect(result.isValid, isFalse);
-      expect(result.accessToken, equals('valid-token'));
     });
 
-    test('refreshes token on 401 and returns new tokens', () async {
+    test('decodes refreshed tokens on 200', () async {
       _handleRequests(server, [
-        _RequestResponse(
-          path: '/auth/me',
-          statusCode: 401,
-          body: '',
-        ),
         _RequestResponse(
           path: '/auth/refresh',
           statusCode: 200,
@@ -87,24 +83,38 @@ void main() {
         ),
       ]);
 
-      final result = await validateToken(
-        authBackendURL: baseUrl,
-        accessToken: 'expired-token',
-        refreshToken: 'refresh-token',
-      );
+      final result = await api.refreshToken(refreshToken: 'refresh-token');
 
-      expect(result.isValid, isTrue);
-      expect(result.accessToken, equals('new-access-token'));
-      expect(result.refreshToken, equals('new-refresh-token'));
+      expect(result.accessToken, 'new-access-token');
+      expect(result.refreshToken, 'new-refresh-token');
     });
 
-    test('returns false when refresh fails', () async {
+    test('rejects a successful refresh response with empty tokens', () async {
       _handleRequests(server, [
         _RequestResponse(
-          path: '/auth/me',
-          statusCode: 401,
-          body: '',
+          path: '/auth/refresh',
+          statusCode: 200,
+          body: jsonEncode({
+            'accessToken': '',
+            'refreshToken': '',
+            'user': {
+              'id': '1',
+              'provider': 'github',
+              'providerUserId': '1',
+              'providerUsername': 'test',
+            },
+          }),
         ),
+      ]);
+
+      await expectLater(
+        api.refreshToken(refreshToken: 'refresh-token'),
+        throwsA(isA<Exception>().having((error) => error.toString(), 'message', contains('missing tokens'))),
+      );
+    });
+
+    test('preserves refresh rejection status', () async {
+      _handleRequests(server, [
         _RequestResponse(
           path: '/auth/refresh',
           statusCode: 401,
@@ -112,29 +122,51 @@ void main() {
         ),
       ]);
 
-      final result = await validateToken(
-        authBackendURL: baseUrl,
-        accessToken: 'expired-token',
-        refreshToken: 'invalid-refresh',
+      await expectLater(
+        api.refreshToken(refreshToken: 'invalid-refresh'),
+        throwsA(isA<AuthApiException>().having((error) => error.statusCode, 'statusCode', 401)),
       );
-
-      expect(result.isValid, isFalse);
-      expect(result.accessToken, equals('expired-token'));
     });
 
     test('throws on network error', () async {
       await server.close(force: true);
 
       expect(
-        () => validateToken(
-          authBackendURL: 'http://127.0.0.1:1',
-          accessToken: 'token',
-          refreshToken: 'refresh',
-        ),
+        () => api.getCurrentUser(accessToken: 'token'),
         throwsA(isA<Exception>()),
       );
     });
+
+    test('actively aborts current-user and refresh requests at their deadline', () async {
+      for (final operation in ['me', 'refresh']) {
+        final abortAwareClient = _AbortAwareClient();
+        final deadlineApi = AuthApi(
+          authBackendUrl: 'https://auth.example.test',
+          client: abortAwareClient,
+          requestClient: const AbortableRequestClient(),
+          requestDeadline: Duration.zero,
+        );
+
+        final request = operation == 'me'
+            ? deadlineApi.getCurrentUser(accessToken: 'token')
+            : deadlineApi.refreshToken(refreshToken: 'refresh');
+        await expectLater(request, throwsA(isA<http.RequestAbortedException>()));
+        expect(abortAwareClient.abortObserved, isTrue);
+      }
+    });
   });
+}
+
+class _AbortAwareClient() extends http.BaseClient {
+  bool abortObserved = false;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final abortable = request as http.Abortable;
+    await abortable.abortTrigger;
+    abortObserved = true;
+    throw http.RequestAbortedException(request.url);
+  }
 }
 
 class _RequestResponse({required final String path, required final int statusCode, required final String body});

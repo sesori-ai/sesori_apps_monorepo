@@ -1,5 +1,7 @@
 import "dart:io";
 
+import "../foundation/data_directory_hardening.dart";
+
 /// File-backed persistence for the bridge id assigned by the auth server's
 /// `/auth/bridges` endpoint.
 ///
@@ -22,19 +24,7 @@ class BridgeIdStorage({required String filePath}) {
 
   /// Persists [bridgeId], creating the data directory (0700) and the file
   /// (0600) with restricted permissions on Unix, mirroring the token file.
-  Future<void> write({required String bridgeId}) async {
-    final dir = Directory(_path).parent;
-
-    await dir.create(recursive: true);
-    if (!Platform.isWindows) {
-      await Process.run('chmod', ['700', dir.path]);
-    }
-
-    await File(_path).writeAsString(bridgeId);
-    if (!Platform.isWindows) {
-      await Process.run('chmod', ['600', _path]);
-    }
-  }
+  Future<void> write({required String bridgeId}) => writeRestrictedFile(filePath: _path, contents: bridgeId);
 
   /// Deletes the bridge id file. Does nothing when the file is absent.
   Future<void> clear() async {

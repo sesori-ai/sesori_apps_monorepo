@@ -4,7 +4,7 @@ import "package:drift/drift.dart";
 import "package:drift/native.dart";
 import "package:path/path.dart" as path;
 
-import "../../data_directory_hardening.dart";
+import "../../../foundation/data_directory_hardening.dart";
 import "chat_history_dao.dart";
 import "tables/history_messages_table.dart";
 import "tables/history_parts_table.dart";

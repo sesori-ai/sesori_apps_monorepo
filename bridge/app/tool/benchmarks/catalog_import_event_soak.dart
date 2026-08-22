@@ -4,6 +4,7 @@ import "dart:ffi" show Abi;
 import "dart:io";
 
 import "package:args/args.dart";
+import "package:cryptography/cryptography.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
@@ -862,6 +863,7 @@ class _CountingSSEManager({required super.failureReporter}) extends SSEManager {
     : super(
         replayWindow: const Duration(minutes: 1),
         onBytesSent: (_) {},
+        encryptor: RelayCryptoService().createSessionEncryptor(SecretKey(List<int>.filled(32, 0))),
       );
 
   int enqueueCount = 0;

@@ -1,9 +1,14 @@
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:sesori_bridge/src/auth/auth_api.dart';
+import 'package:sesori_bridge/src/auth/auth_repository.dart';
 import 'package:sesori_bridge/src/auth/login_email_api.dart';
 import 'package:sesori_bridge/src/auth/login_email_repository.dart';
 import 'package:sesori_bridge/src/auth/login_oauth_service.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
+import 'package:sesori_bridge/src/foundation/abortable_request_client.dart';
 import 'package:sesori_bridge/src/foundation/legacy_post_update_relaunch.dart';
 import 'package:sesori_bridge/src/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/runtime/bridge_runtime_auth.dart';
@@ -16,6 +21,7 @@ void main() {
       final service = BridgeRuntimeAuthService(
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: _FakeLoginOAuthService(),
+        authRepository: _invalidAuthRepository(),
         environment: const <String, String>{sesoriPostUpdateRestartEnvVar: '1'},
         loadTokens: () async => throw const FileSystemException('missing', 'token.json', OSError('missing', 2)),
         saveTokens: (_) async {},
@@ -48,6 +54,7 @@ void main() {
         lastProvider: AuthProvider.google,
       );
       TokenData? savedTokens;
+      var loadCount = 0;
       final oauthService = _FakeLoginOAuthService(
         result: (tokens: oauthTokens, sessionToken: 'oauth-session-token'),
         onAck: (sessionToken) {
@@ -59,8 +66,12 @@ void main() {
       final service = BridgeRuntimeAuthService(
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: oauthService,
+        authRepository: _invalidAuthRepository(),
         environment: const <String, String>{},
-        loadTokens: () async => storedTokens,
+        loadTokens: () async {
+          loadCount++;
+          return storedTokens;
+        },
         saveTokens: (tokens) async {
           savedTokens = tokens;
         },
@@ -70,7 +81,57 @@ void main() {
       final result = await service.ensureAuthenticated(options: _options(authBackendUrl: authBackend.baseUrl));
 
       expect(result.accessToken, equals('oauth-access-token'));
+      expect(loadCount, 1);
       expect(oauthService.ackCalls, equals(['oauth-session-token']));
+    });
+
+    test('refreshes a rejected stored access token and loads storage once', () async {
+      final storedTokens = TokenData(
+        accessToken: 'expired-access-token',
+        refreshToken: 'stored-refresh-token',
+        lastProvider: AuthProvider.github,
+      );
+      var loadCount = 0;
+      TokenData? savedTokens;
+      final repository = AuthRepository(
+        api: AuthApi(
+          authBackendUrl: 'https://auth.example.test',
+          client: MockClient((request) async {
+            return switch (request.url.path) {
+              '/auth/me' => http.Response('', 401),
+              '/auth/refresh' => http.Response(
+                '{"accessToken":"new-access-token","refreshToken":"new-refresh-token","user":{"id":"1","provider":"github","providerUserId":"1"}}',
+                200,
+              ),
+              _ => http.Response('', 404),
+            };
+          }),
+          requestClient: const AbortableRequestClient(),
+          requestDeadline: AuthApi.defaultRequestDeadline,
+        ),
+      );
+      final service = BridgeRuntimeAuthService(
+        loginEmailRepository: _FakeLoginEmailRepository(),
+        loginOAuthService: _FakeLoginOAuthService(),
+        authRepository: repository,
+        environment: const <String, String>{},
+        loadTokens: () async {
+          loadCount++;
+          return storedTokens;
+        },
+        saveTokens: (tokens) async => savedTokens = tokens,
+        clearTokens: () async {},
+      );
+
+      final result = await service.ensureAuthenticated(
+        options: _options(authBackendUrl: 'https://auth.example.test'),
+      );
+
+      expect(result.accessToken, 'new-access-token');
+      expect(result.refreshToken, 'new-refresh-token');
+      expect(result.lastProvider, AuthProvider.github);
+      expect(savedTokens, result);
+      expect(loadCount, 1);
     });
 
     test('failed OAuth login does not ACK session completion', () async {
@@ -85,6 +146,7 @@ void main() {
       final service = BridgeRuntimeAuthService(
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: oauthService,
+        authRepository: _invalidAuthRepository(),
         environment: const <String, String>{},
         loadTokens: () async => storedTokens,
         saveTokens: (_) async {},
@@ -120,6 +182,7 @@ void main() {
       final service = BridgeRuntimeAuthService(
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: oauthService,
+        authRepository: _invalidAuthRepository(),
         environment: const <String, String>{},
         loadTokens: () async => storedTokens,
         saveTokens: (tokens) async {
@@ -135,6 +198,17 @@ void main() {
       expect(oauthService.ackCalls, equals(['oauth-session-token']));
     });
   });
+}
+
+AuthRepository _invalidAuthRepository() {
+  return AuthRepository(
+    api: AuthApi(
+      authBackendUrl: 'https://auth.example.test',
+      client: MockClient((_) async => http.Response('', 403)),
+      requestClient: const AbortableRequestClient(),
+      requestDeadline: AuthApi.defaultRequestDeadline,
+    ),
+  );
 }
 
 BridgeCliOptions _options({required String authBackendUrl}) {

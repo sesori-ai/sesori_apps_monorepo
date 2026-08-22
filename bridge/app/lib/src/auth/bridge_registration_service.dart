@@ -3,9 +3,9 @@ import "dart:io";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
+import "auth_api.dart";
 import "bridge_id_provider.dart";
 import "bridge_id_storage.dart";
-import "bridge_registration_api.dart";
 import "bridge_registration_repository.dart";
 import "token_refresher.dart";
 

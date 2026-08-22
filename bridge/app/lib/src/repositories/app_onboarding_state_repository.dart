@@ -3,6 +3,7 @@ import "dart:convert";
 import "package:crypto/crypto.dart" show sha256;
 
 import "../api/app_onboarding_state_storage.dart";
+import "../foundation/auth_backend_url.dart";
 
 sealed class const AppOnboardingStateLookup();
 
@@ -40,7 +41,7 @@ class AppOnboardingStateRepository({required final AppOnboardingStateStorage _st
   Future<void> clearAll() => _storage.clearAll();
 
   String _markerKey({required String authBackendUrl, required String userId}) {
-    final normalizedAuthBackend = authBackendUrl.replaceFirst(RegExp(r"/+$"), "");
+    final normalizedAuthBackend = normalizeAuthBackendUrl(url: authBackendUrl);
     return sha256.convert(utf8.encode(jsonEncode([normalizedAuthBackend, userId]))).toString();
   }
 }

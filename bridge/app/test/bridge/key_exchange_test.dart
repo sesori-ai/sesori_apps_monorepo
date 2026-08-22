@@ -13,11 +13,11 @@ void main() {
     test("room key is copied and not affected by external mutation", () async {
       final roomKey = makeRoomKey();
       final originalRoomKey = List<int>.from(roomKey);
-      final manager = KeyExchangeManager(roomKey);
+      final crypto = RelayCryptoService();
+      final manager = KeyExchangeManager(roomKey, cryptoService: crypto);
 
       roomKey[0] ^= 0xFF;
 
-      final crypto = RelayCryptoService();
       final phoneKp = await crypto.generateKeyPair();
       final phonePub = await phoneKp.extractPublicKey();
 
@@ -35,9 +35,8 @@ void main() {
     });
 
     test("handleKeyExchange round-trip returns prefixed framed data", () async {
-      final manager = KeyExchangeManager(makeRoomKey());
-
       final crypto = RelayCryptoService();
+      final manager = KeyExchangeManager(makeRoomKey(), cryptoService: crypto);
       final phoneKp = await crypto.generateKeyPair();
       final phonePub = await phoneKp.extractPublicKey();
       final kxMsg = RelayMessage.keyExchange(
@@ -58,9 +57,8 @@ void main() {
     });
 
     test("key exchange starts without a preceding phone_connected event", () async {
-      final manager = KeyExchangeManager(makeRoomKey());
-
       final crypto = RelayCryptoService();
+      final manager = KeyExchangeManager(makeRoomKey(), cryptoService: crypto);
       final phoneKp = await crypto.generateKeyPair();
       final phonePub = await phoneKp.extractPublicKey();
       final kxMsg = RelayMessage.keyExchange(
@@ -73,7 +71,7 @@ void main() {
     });
 
     test("supports concurrent exchanges", () async {
-      final manager = KeyExchangeManager(makeRoomKey());
+      final manager = KeyExchangeManager(makeRoomKey(), cryptoService: RelayCryptoService());
       const connIDs = [1, 2, 3];
 
       final futures = connIDs.map((_) async {
@@ -95,7 +93,7 @@ void main() {
     });
 
     test("supports repeated exchanges", () async {
-      final manager = KeyExchangeManager(makeRoomKey());
+      final manager = KeyExchangeManager(makeRoomKey(), cryptoService: RelayCryptoService());
 
       Future<Uint8List> exchange() async {
         final crypto = RelayCryptoService();

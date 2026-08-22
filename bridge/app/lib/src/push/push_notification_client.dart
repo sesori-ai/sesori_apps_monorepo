@@ -4,6 +4,7 @@ import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart" show SendNotificationPayload;
 
 import "../auth/token_refresher.dart";
+import "../foundation/auth_backend_url.dart";
 import "push_send_exception.dart";
 
 class PushNotificationClient({
@@ -31,7 +32,7 @@ class PushNotificationClient({
   }
 
   Future<http.Response> _sendPost(SendNotificationPayload payload, String token) {
-    final base = authBackendURL.endsWith("/") ? authBackendURL.substring(0, authBackendURL.length - 1) : authBackendURL;
+    final base = normalizeAuthBackendUrl(url: authBackendURL);
     return _client.post(
       Uri.parse("$base/notifications/send"),
       headers: {

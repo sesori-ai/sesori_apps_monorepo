@@ -5,6 +5,7 @@ import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:sesori_bridge/src/api/sesori_server_api.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
+import "package:sesori_bridge/src/foundation/abortable_request_client.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -20,6 +21,7 @@ void main() {
         }),
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: _FakeTokenRefresher(token: "unused"),
+        requestClient: const AbortableRequestClient(),
       );
 
       final response = await api.getAppClientStatus(accessToken: "secret-token");
@@ -36,12 +38,14 @@ void main() {
         client: MockClient((_) async => http.Response("missing", 503)),
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: _FakeTokenRefresher(token: "unused"),
+        requestClient: const AbortableRequestClient(),
       );
       final malformedApi = SesoriServerApi(
         authBackendUrl: "https://auth.example.test",
         client: MockClient((_) async => http.Response('{"registered":"yes"}', 200)),
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: _FakeTokenRefresher(token: "unused"),
+        requestClient: const AbortableRequestClient(),
       );
 
       await expectLater(
@@ -62,6 +66,7 @@ void main() {
         client: client,
         requestDeadline: Duration.zero,
         tokenRefresher: _FakeTokenRefresher(token: "unused"),
+        requestClient: const AbortableRequestClient(),
       );
 
       await expectLater(api.getAppClientStatus(accessToken: "token"), throwsA(isA<http.RequestAbortedException>()));
@@ -75,6 +80,7 @@ void main() {
         client: client,
         requestDeadline: const Duration(milliseconds: 5),
         tokenRefresher: _FakeTokenRefresher(token: "unused"),
+        requestClient: const AbortableRequestClient(),
       );
 
       await api.getAppClientStatus(accessToken: "token");
@@ -99,11 +105,12 @@ void main() {
         }),
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: tokenRefresher,
+        requestClient: const AbortableRequestClient(),
       );
 
       final response = await api.generateSessionMetadata(
         request: const GenerateSessionMetadataRequest(firstMessage: "Create login flow"),
-        abortSignal: SesoriServerRequestAbortSignal(),
+        abortSignal: AbortSignal(),
       );
 
       expect(response.title, equals("Generated title"));
@@ -129,11 +136,12 @@ void main() {
         }),
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: tokenRefresher,
+        requestClient: const AbortableRequestClient(),
       );
 
       final response = await api.generateSessionMetadata(
         request: const GenerateSessionMetadataRequest(firstMessage: "message"),
-        abortSignal: SesoriServerRequestAbortSignal(),
+        abortSignal: AbortSignal(),
       );
 
       expect(response.title, equals("Retried"));
@@ -155,12 +163,13 @@ void main() {
           }),
           requestDeadline: const Duration(seconds: 1),
           tokenRefresher: tokenRefresher,
+          requestClient: const AbortableRequestClient(),
         );
 
         await expectLater(
           api.generateSessionMetadata(
             request: const GenerateSessionMetadataRequest(firstMessage: "message"),
-            abortSignal: SesoriServerRequestAbortSignal(),
+            abortSignal: AbortSignal(),
           ),
           throwsA(
             isA<SesoriServerApiException>()
@@ -179,12 +188,13 @@ void main() {
         client: MockClient((_) async => http.Response('{"title":1}', 200)),
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: _FakeTokenRefresher(token: "token"),
+        requestClient: const AbortableRequestClient(),
       );
 
       await expectLater(
         api.generateSessionMetadata(
           request: const GenerateSessionMetadataRequest(firstMessage: "message"),
-          abortSignal: SesoriServerRequestAbortSignal(),
+          abortSignal: AbortSignal(),
         ),
         throwsA(
           isA<SesoriServerApiResponseException>()
@@ -202,12 +212,13 @@ void main() {
         client: client,
         requestDeadline: Duration.zero,
         tokenRefresher: _FakeTokenRefresher(token: "token"),
+        requestClient: const AbortableRequestClient(),
       );
 
       await expectLater(
         api.generateSessionMetadata(
           request: const GenerateSessionMetadataRequest(firstMessage: "message"),
-          abortSignal: SesoriServerRequestAbortSignal(),
+          abortSignal: AbortSignal(),
         ),
         throwsA(isA<http.RequestAbortedException>()),
       );
@@ -216,12 +227,13 @@ void main() {
 
     test("actively aborts metadata request on shutdown", () async {
       final client = _AbortAwareClient();
-      final abortSignal = SesoriServerRequestAbortSignal();
+      final abortSignal = AbortSignal();
       final api = SesoriServerApi(
         authBackendUrl: "https://auth.example.test",
         client: client,
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: _FakeTokenRefresher(token: "token"),
+        requestClient: const AbortableRequestClient(),
       );
 
       final response = api.generateSessionMetadata(
@@ -237,7 +249,7 @@ void main() {
 
     test("aborts while acquiring the initial metadata token", () async {
       final tokenRefresher = _PendingTokenRefresher();
-      final abortSignal = SesoriServerRequestAbortSignal();
+      final abortSignal = AbortSignal();
       var requestCount = 0;
       final api = SesoriServerApi(
         authBackendUrl: "https://auth.example.test",
@@ -247,6 +259,7 @@ void main() {
         }),
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: tokenRefresher,
+        requestClient: const AbortableRequestClient(),
       );
 
       final response = api.generateSessionMetadata(
@@ -266,7 +279,7 @@ void main() {
 
     test("aborts while force-refreshing the metadata token after 401", () async {
       final tokenRefresher = _PendingForcedRefreshTokenRefresher();
-      final abortSignal = SesoriServerRequestAbortSignal();
+      final abortSignal = AbortSignal();
       var requestCount = 0;
       final api = SesoriServerApi(
         authBackendUrl: "https://auth.example.test",
@@ -276,6 +289,7 @@ void main() {
         }),
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: tokenRefresher,
+        requestClient: const AbortableRequestClient(),
       );
 
       final response = api.generateSessionMetadata(
@@ -297,12 +311,13 @@ void main() {
       final client = _ImmediateClient(
         responseBody: '{"title":"Generated title","branchName":"generated-branch"}',
       );
-      final abortSignal = SesoriServerRequestAbortSignal();
+      final abortSignal = AbortSignal();
       final api = SesoriServerApi(
         authBackendUrl: "https://auth.example.test",
         client: client,
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: _FakeTokenRefresher(token: "token"),
+        requestClient: const AbortableRequestClient(),
       );
 
       await api.generateSessionMetadata(
