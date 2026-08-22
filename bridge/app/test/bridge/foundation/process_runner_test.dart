@@ -87,6 +87,7 @@ Future<void> main(List<String> arguments) async {
       [parentScript.path, childScript.path, server.port.toString(), childPidFile.path],
       timeout: const Duration(seconds: 3),
     );
+    final timeoutObserved = expectLater(run, throwsA(isA<TimeoutException>()));
     var childConnected = false;
     var parentConnected = false;
     for (var connectionCount = 0; connectionCount < 2; connectionCount++) {
@@ -117,7 +118,7 @@ Future<void> main(List<String> arguments) async {
     expect(childConnected, isTrue);
     expect(parentConnected, isTrue);
     childPid = int.parse(await childPidFile.readAsString());
-    await expectLater(run, throwsA(isA<TimeoutException>()));
+    await timeoutObserved;
     stopwatch.stop();
 
     expect(stopwatch.elapsed, lessThan(const Duration(seconds: 4)));
