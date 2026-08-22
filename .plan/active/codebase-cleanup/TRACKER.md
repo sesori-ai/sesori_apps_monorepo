@@ -5,12 +5,14 @@
 - **Plan slug:** `codebase-cleanup`
 - **Implementation base:** `origin/main` at `084b30276`
 - **Current branch:** `codebase-cleanup-plan`
-- **Series state:** Step 1/45 merged in
-  [#1018](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1018);
-  Step 2/45 in PR
-- **Current step:** 2/45 — delete the dead concurrency copy
-- **Next action:** monitor Step 2; start Step 3 locally (shared dead helpers,
-  models, and the `rxdart` dependency) per the one-step-ahead workflow
+- **Series state:** Steps 1–2/45 merged (#1018, #1019); Step 3/45 in PR.
+  The owner asked for independent steps to run in parallel, up to about five
+  open PRs, so steps that touch disjoint trees are raised concurrently instead
+  of strictly one-step-ahead. Steps that share a package stay serialized:
+  4 after 3 (both `sesori_shared`), and 7's flatten after 5 (both `bridge/app`).
+- **Current step:** 3/45 — shared dead helpers, models, and `rxdart`
+- **Next action:** monitor Step 3; raise Steps 5 (bridge/app dead code) and 6
+  (tooling, dependencies, docs) in parallel — neither shares a tree with 3
 - **Overlapping work:** open PRs #918 (voice streaming), #956 (composer
   drag-and-drop), #939 (macOS list scrolling) overlap Steps 39–41 — rebase and
   re-scope after they merge; active plan `session-refresh-reconnects` owns
@@ -73,7 +75,7 @@
 | Done | Step | Exact PR title | State |
 |---|---|---|---|
 | [x] | 1/45 | `🌱 [codebase-cleanup] docs: raise the reliability cleanup plan [step 1/45]` | Merged in #1018 |
-| [ ] | 2/45 | `🌿 [codebase-cleanup] client(module_core): delete the dead concurrency copy [step 2/45]` | In PR |
+| [x] | 2/45 | `🌿 [codebase-cleanup] client(module_core): delete the dead concurrency copy [step 2/45]` | Merged in #1019 |
 | [ ] | 3/45 | `🌿 [codebase-cleanup] shared: delete dead helpers, models, and the rxdart dependency [step 3/45]` | In PR |
 | [ ] | 4/45 | `🌿 [codebase-cleanup] shared: tighten management fields and correct compatibility markers [step 4/45]` | Not started |
 | [ ] | 5/45 | `🌿 [codebase-cleanup] bridge(app): delete dead production code [step 5/45]` | Not started |
