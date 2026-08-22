@@ -486,9 +486,7 @@ class const CodexPluginDescriptor({
     final RuntimePortPolicy portPolicy;
     if (requestedPort != null) {
       Log.d("[codex] starting on port $requestedPort");
-      // Pre-probe the explicit port so an occupied port fails with a diagnosis
-      // instead of spawning a child doomed to lose the bind race.
-      portPolicy = ExplicitPortPolicy(port: requestedPort, preProbeBindable: true);
+      portPolicy = ExplicitPortPolicy(port: requestedPort);
     } else {
       Log.d("[codex] starting on a dynamic port");
       portPolicy = DynamicPortPolicy(
@@ -497,9 +495,6 @@ class const CodexPluginDescriptor({
         reservedPort: codexNoReservedPort,
         minPort: dynamicCodexPortMin,
         maxPort: dynamicCodexPortMax,
-        // A spawn that cannot even launch (e.g. ENOENT on the binary) fails the
-        // same way on every candidate — fail fast instead of retrying.
-        failFastOnSpawnError: true,
       );
     }
 

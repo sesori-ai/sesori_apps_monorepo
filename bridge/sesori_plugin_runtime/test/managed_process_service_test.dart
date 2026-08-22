@@ -6,6 +6,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
+import "support/in_memory_host_json_store.dart";
+
 const _gracefulShutdownWait = Duration(seconds: 5);
 
 void main() {
@@ -351,6 +353,7 @@ ManagedProcessService<_TestRecord> _service({
     clock: clock,
     runtimeId: "OPENCODE",
     gracefulShutdownWait: _gracefulShutdownWait,
+    intentStore: RuntimeStartIntentStore(store: InMemoryHostJsonStore(), fileName: "opencode-start-intent.json"),
   );
 }
 

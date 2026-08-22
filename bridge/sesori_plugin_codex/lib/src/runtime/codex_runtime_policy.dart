@@ -182,12 +182,10 @@ ManagedRuntimeSpec<CodexOwnershipRecord> buildCodexManagedRuntimeSpec({
     probePortBindable: ({required int port}) => host.ports.isBindable(host: codexLoopbackHost, port: port),
     buildRecord: buildCodexOwnershipRecord,
     portPolicy: portPolicy,
-    healthPolicy: RuntimeHealthPolicy.deadline(
+    healthPolicy: RuntimeHealthPolicy(
       deadline: codexHealthDeadline,
       pollInterval: codexHealthPollInterval,
     ),
-    recordTiming: RuntimeRecordTiming.intentSideFile,
-    failOnEarlyChildExit: true,
   );
 }
 

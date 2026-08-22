@@ -6,10 +6,15 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
+import "support/in_memory_host_json_store.dart";
+
 const _gracefulShutdownWait = Duration(seconds: 5);
-const _legacyHealthPolicy = RuntimeHealthPolicy.attemptCount(
-  attempts: 5,
-  delay: Duration(milliseconds: 500),
+// Five 500ms-spaced probes, expressed as the deadline pacing the supervisor
+// now always uses. Most tests here run on a clock that never advances, so the
+// bound that actually fires is the poll backstop: ceil(1500 / 500) + 2 = 5.
+final _healthPolicy = RuntimeHealthPolicy(
+  deadline: const Duration(milliseconds: 1500),
+  pollInterval: const Duration(milliseconds: 500),
 );
 
 void main() {
@@ -20,12 +25,9 @@ void main() {
       fakes = _Fakes();
     });
 
-    test("retries dynamic candidates after a start race and skips the reserved port", () async {
-      fakes.bindable.byPort.addAll(<int, bool>{49152: true, 49153: true});
-      fakes.spawn.results.addAll(<Object>[
-        StateError("bind race"),
-        _spawned(pid: 101, port: 49153),
-      ]);
+    test("skips the reserved port and starts on the first bindable candidate", () async {
+      fakes.bindable.byPort.addAll(<int, bool>{49152: false, 49153: true});
+      fakes.spawn.results.add(_spawned(pid: 101, port: 49153));
       fakes.probe.results.add(const RuntimeHealthProbe(healthy: true));
 
       final handle = await fakes.service().start(
@@ -35,8 +37,9 @@ void main() {
 
       expect(handle.port, equals(49153));
       expect(handle.isOwned, isTrue);
+      // 4096 is the reserved port: never probed, never spawned on.
       expect(fakes.bindable.probedPorts, equals(<int>[49152, 49153]));
-      expect(fakes.spawn.spawnedPorts, equals(<int>[49152, 49153]));
+      expect(fakes.spawn.spawnedPorts, equals(<int>[49153]));
       expect(fakes.ownership.records.values.single.status, equals(_TestStatus.ready));
       expect(fakes.ownership.records.values.single.port, equals(49153));
     });
@@ -70,16 +73,19 @@ void main() {
 
     test("exhausts all health retries on one port and moves to the next", () async {
       fakes.bindable.byPort.addAll(<int, bool>{49152: true, 49153: true});
+      final firstChild = _spawned(pid: 101, port: 49152);
       fakes.spawn.results.addAll(<Object>[
-        _spawned(pid: 101, port: 49152),
+        firstChild,
         _spawned(pid: 102, port: 49153),
       ]);
       fakes.probe.results.addAll(<RuntimeHealthProbe>[
         for (var i = 0; i < 5; i += 1) const RuntimeHealthProbe(healthy: false, error: "not ready"),
         const RuntimeHealthProbe(healthy: true),
       ]);
-      // The first port's failed-start cleanup finds the child already gone.
+      // The first port's failed start rolls back: its child stops on the
+      // graceful signal and the inspection then finds it gone.
       fakes.processes.inspectResults[101] = <ProcessIdentity?>[null];
+      fakes.processes.gracefulHooks[101] = firstChild.completeExit;
 
       final handle = await fakes.service().start(
         spec: fakes.spec(portPolicy: _dynamic(<int>[49152, 49153])),
@@ -94,7 +100,14 @@ void main() {
       );
       expect(
         fakes.clock.delays,
-        equals(<Duration>[for (var i = 0; i < 6; i += 1) const Duration(milliseconds: 500)]),
+        equals(<Duration>[
+          // Five poll intervals exhaust the first port...
+          for (var i = 0; i < 5; i += 1) const Duration(milliseconds: 500),
+          // ...then its failed start waits out the graceful stop...
+          _gracefulShutdownWait,
+          // ...and the second port answers on its first poll.
+          const Duration(milliseconds: 500),
+        ]),
       );
       expect(fakes.ownership.records.values.single.status, equals(_TestStatus.ready));
       expect(fakes.ownership.records.values.single.port, equals(49153));
@@ -143,14 +156,14 @@ void main() {
       expect(fakes.spawn.spawnedPorts, isEmpty);
     });
 
-    test("fail-fast policy stops on a spawn error instead of retrying", () async {
+    test("stops on a spawn error instead of retrying the next candidate", () async {
       fakes.bindable.byPort.addAll(<int, bool>{49152: true, 49153: true});
       fakes.spawn.results.add(const ProcessException("opencode", <String>["serve"]));
 
       await expectLater(
         fakes.service().start(
           spec: fakes.spec(
-            portPolicy: _dynamic(<int>[49152, 49153], failFastOnSpawnError: true),
+            portPolicy: _dynamic(<int>[49152, 49153]),
           ),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
         ),
@@ -170,7 +183,8 @@ void main() {
     });
 
     test("bypasses discovery but still retries health on the single port", () async {
-      fakes.spawn.results.add(_spawned(pid: 201, port: 4096));
+      final spawned = _spawned(pid: 201, port: 4096);
+      fakes.spawn.results.add(spawned);
       fakes.probe.results.addAll(<RuntimeHealthProbe>[
         for (var i = 0; i < 5; i += 1) const RuntimeHealthProbe(healthy: false, error: "not ready"),
       ]);
@@ -179,6 +193,8 @@ void main() {
         null,
         null,
       ];
+      // The unhealthy child stops on the graceful signal, as a real one does.
+      fakes.processes.gracefulHooks[201] = spawned.completeExit;
 
       await expectLater(
         fakes.service().start(
@@ -188,7 +204,8 @@ void main() {
         throwsA(isA<PluginStartException>()),
       );
 
-      expect(fakes.bindable.probedPorts, isEmpty);
+      // No discovery: the one explicit port is pre-probed, and only that port.
+      expect(fakes.bindable.probedPorts, equals(<int>[4096]));
       expect(fakes.spawn.spawnedPorts, equals(<int>[4096]));
       expect(fakes.probe.probedPorts, equals(<int>[4096, 4096, 4096, 4096, 4096]));
       expect(fakes.processes.signalRequests, equals(<String>["graceful:201"]));
@@ -206,7 +223,7 @@ void main() {
         throwsA(isA<StateError>()),
       );
 
-      expect(fakes.bindable.probedPorts, isEmpty);
+      expect(fakes.bindable.probedPorts, equals(<int>[50128]));
       expect(fakes.spawn.spawnedPorts, equals(<int>[50128]));
       expect(fakes.probe.probedPorts, isEmpty);
       expect(fakes.processes.signalRequests, isEmpty);
@@ -280,13 +297,13 @@ void main() {
       );
     });
 
-    test("optional pre-probe rejects an unbindable explicit port without spawning", () async {
+    test("pre-probe rejects an unbindable explicit port without spawning", () async {
       fakes.bindable.byPort[4096] = false;
 
       await expectLater(
         fakes.service().start(
           spec: fakes.spec(
-            portPolicy: const ExplicitPortPolicy(port: 4096, preProbeBindable: true),
+            portPolicy: const ExplicitPortPolicy(port: 4096),
           ),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
         ),
@@ -298,14 +315,14 @@ void main() {
       expect(fakes.ownership.records, isEmpty);
     });
 
-    test("optional pre-probe proceeds when the explicit port is bindable", () async {
+    test("pre-probe proceeds when the explicit port is bindable", () async {
       fakes.bindable.byPort[4096] = true;
       fakes.spawn.results.add(_spawned(pid: 501, port: 4096));
       fakes.probe.results.add(const RuntimeHealthProbe(healthy: true));
 
       final handle = await fakes.service().start(
         spec: fakes.spec(
-          portPolicy: const ExplicitPortPolicy(port: 4096, preProbeBindable: true),
+          portPolicy: const ExplicitPortPolicy(port: 4096),
         ),
         terminatedBridgeIdentities: const <ProcessIdentity>[],
       );
@@ -334,7 +351,6 @@ void main() {
         fakes.service().start(
           spec: fakes.spec(
             portPolicy: const ExplicitPortPolicy(port: 50140),
-            failOnEarlyChildExit: true,
           ),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
         ),
@@ -343,83 +359,6 @@ void main() {
 
       expect(fakes.probe.probedPorts, isEmpty);
       expect(fakes.ownership.records, isEmpty);
-    });
-
-    test("a failing validateRuntime rolls back the start", () async {
-      fakes.spawn.results.add(_spawned(pid: 701, port: 50141));
-      fakes.probe.results.add(const RuntimeHealthProbe(healthy: true));
-      fakes.processes.inspectResults[701] = <ProcessIdentity?>[null];
-
-      await expectLater(
-        fakes.service().start(
-          spec: fakes.spec(
-            portPolicy: const ExplicitPortPolicy(port: 50141),
-            validateRuntime: ({required int port}) => Future<void>.error(StateError("bad version")),
-          ),
-          terminatedBridgeIdentities: const <ProcessIdentity>[],
-        ),
-        throwsA(isA<PluginStartException>()),
-      );
-
-      expect(fakes.ownership.records, isEmpty);
-      expect(fakes.ownership.upsertedStatuses, equals(<_TestStatus>[_TestStatus.starting]));
-    });
-
-    test("rejects intent side-file record timing when no intent store is wired", () async {
-      fakes.spawn.results.add(_spawned(pid: 801, port: 50142));
-
-      await expectLater(
-        fakes.service().start(
-          spec: fakes.spec(
-            portPolicy: const ExplicitPortPolicy(port: 50142),
-            recordTiming: RuntimeRecordTiming.intentSideFile,
-          ),
-          terminatedBridgeIdentities: const <ProcessIdentity>[],
-        ),
-        throwsA(isA<ArgumentError>()),
-      );
-
-      expect(fakes.spawn.spawnedPorts, isEmpty);
-      expect(fakes.ownership.records, isEmpty);
-    });
-
-    test("rejects a storeless intent timing once, never retrying across dynamic candidates", () async {
-      fakes.bindable.byPort.addAll(<int, bool>{49152: true, 49153: true});
-
-      await expectLater(
-        fakes.service().start(
-          spec: fakes.spec(
-            portPolicy: _dynamic(<int>[49152, 49153]),
-            recordTiming: RuntimeRecordTiming.intentSideFile,
-          ),
-          terminatedBridgeIdentities: const <ProcessIdentity>[],
-        ),
-        throwsA(isA<ArgumentError>()),
-      );
-
-      // Rejected up front, before cleanup and the candidate loop: nothing
-      // probed or spawned.
-      expect(fakes.bindable.probedPorts, isEmpty);
-      expect(fakes.spawn.spawnedPorts, isEmpty);
-    });
-
-    test("restartOnPort rejects a storeless intent timing before waiting on the port", () async {
-      await expectLater(
-        fakes.service().restartOnPort(
-          spec: fakes.spec(
-            portPolicy: const ExplicitPortPolicy(port: 4096),
-            recordTiming: RuntimeRecordTiming.intentSideFile,
-          ),
-          port: 4096,
-          portReleaseTimeout: const Duration(seconds: 2),
-          portReleasePollInterval: const Duration(milliseconds: 250),
-        ),
-        throwsA(isA<ArgumentError>()),
-      );
-
-      // Fails fast: the port-release wait never runs and nothing is spawned.
-      expect(fakes.bindable.probedPorts, isEmpty);
-      expect(fakes.spawn.spawnedPorts, isEmpty);
     });
 
     test("stops the spawned child when the record factory throws", () async {
@@ -463,7 +402,7 @@ void main() {
       final handle = await fakes.service().start(
         spec: fakes.spec(
           portPolicy: const ExplicitPortPolicy(port: 50150),
-          healthPolicy: RuntimeHealthPolicy.deadline(
+          healthPolicy: RuntimeHealthPolicy(
             deadline: const Duration(seconds:5),
             pollInterval: const Duration(seconds: 1),
           ),
@@ -477,18 +416,21 @@ void main() {
     });
 
     test("fails once the deadline elapses", () async {
-      fakes.spawn.results.add(_spawned(pid: 902, port: 50151));
+      final spawned = _spawned(pid: 902, port: 50151);
+      fakes.spawn.results.add(spawned);
       fakes.probe.results.addAll(<RuntimeHealthProbe>[
         const RuntimeHealthProbe(healthy: false, error: "still down"),
         const RuntimeHealthProbe(healthy: false, error: "still down"),
       ]);
       fakes.processes.inspectResults[902] = <ProcessIdentity?>[null];
+      // The unhealthy child stops on the graceful signal, as a real one does.
+      fakes.processes.gracefulHooks[902] = spawned.completeExit;
 
       await expectLater(
         fakes.service().start(
           spec: fakes.spec(
             portPolicy: const ExplicitPortPolicy(port: 50151),
-            healthPolicy: RuntimeHealthPolicy.deadline(
+            healthPolicy: RuntimeHealthPolicy(
               deadline: const Duration(seconds:2),
               pollInterval: const Duration(seconds: 1),
             ),
@@ -504,11 +446,11 @@ void main() {
 
     test("rejects a non-positive poll interval or negative deadline", () {
       expect(
-        () => RuntimeHealthPolicy.deadline(deadline: const Duration(seconds: 5), pollInterval: Duration.zero),
+        () => RuntimeHealthPolicy(deadline: const Duration(seconds: 5), pollInterval: Duration.zero),
         throwsA(isA<AssertionError>()),
       );
       expect(
-        () => RuntimeHealthPolicy.deadline(
+        () => RuntimeHealthPolicy(
           deadline: const Duration(seconds: -1),
           pollInterval: const Duration(seconds: 1),
         ),
@@ -520,15 +462,18 @@ void main() {
       // The default _FakeServerClock never advances, so the deadline can never
       // be reached: only the poll cap can terminate the health loop.
       final stuck = _Fakes();
-      stuck.spawn.results.add(_spawned(pid: 903, port: 50152));
+      final spawned = _spawned(pid: 903, port: 50152);
+      stuck.spawn.results.add(spawned);
       // No probe results configured: every probe reports unhealthy.
       stuck.processes.inspectResults[903] = <ProcessIdentity?>[null];
+      // The unhealthy child stops on the graceful signal, as a real one does.
+      stuck.processes.gracefulHooks[903] = spawned.completeExit;
 
       await expectLater(
         stuck.service().start(
           spec: stuck.spec(
             portPolicy: const ExplicitPortPolicy(port: 50152),
-            healthPolicy: RuntimeHealthPolicy.deadline(
+            healthPolicy: RuntimeHealthPolicy(
               deadline: const Duration(seconds: 2),
               pollInterval: const Duration(seconds: 1),
             ),
@@ -595,11 +540,12 @@ void main() {
     test("aborting during the health loop rolls back and never retries the next port", () async {
       final controller = StartAbortController();
       fakes.bindable.byPort.addAll(<int, bool>{49152: true, 49153: true});
-      final spawned = _spawned(pid: 111, port: 49152, exitImmediately: true);
+      final spawned = _spawned(pid: 111, port: 49152);
       fakes.spawn.results.add(spawned);
       fakes.probe.results.add(const RuntimeHealthProbe(healthy: false, error: "warming up"));
       fakes.probe.onProbe = controller.abort;
       fakes.processes.inspectResults[111] = <ProcessIdentity?>[null];
+      fakes.processes.gracefulHooks[111] = spawned.completeExit;
 
       await expectLater(
         fakes.service().start(
@@ -615,38 +561,21 @@ void main() {
       expect(fakes.ownership.records, isEmpty);
     });
 
-    test("aborting settles as an abort even when the remaining candidates are all invalid", () async {
-      // The first candidate's spawn aborts the start and fails; every later
-      // candidate is the reserved port, so the loop would otherwise skip them
-      // all and end as a generic exhaustion failure instead of an abort.
+    test("aborting after the healthy probe rolls back before marking ready", () async {
       final controller = StartAbortController();
-      fakes.bindable.byPort[49152] = true;
-      fakes.spawn.results.add(StateError("bind race"));
-      fakes.spawn.onSpawn = controller.abort;
-
-      await expectLater(
-        fakes.service().start(
-          spec: fakes.spec(portPolicy: _dynamic(<int>[49152, 4096, 4096, 4096])),
-          terminatedBridgeIdentities: const <ProcessIdentity>[],
-          startAborted: controller.signal,
-        ),
-        throwsA(isA<PluginStartAbortedException>()),
-      );
-
-      expect(fakes.spawn.spawnedPorts, equals(<int>[49152]));
-    });
-
-    test("aborting after validation rolls back before marking ready", () async {
-      final controller = StartAbortController();
-      fakes.spawn.results.add(_spawned(pid: 121, port: 50161, exitImmediately: true));
+      final spawned = _spawned(pid: 121, port: 50161);
+      fakes.spawn.results.add(spawned);
       fakes.probe.results.add(const RuntimeHealthProbe(healthy: true));
       fakes.processes.inspectResults[121] = <ProcessIdentity?>[null];
+      fakes.processes.gracefulHooks[121] = spawned.completeExit;
+      // Abort during the probe that confirms health, so the start settles at
+      // the checkpoint between a healthy runtime and the ready record.
+      fakes.probe.onProbe = controller.abort;
 
       await expectLater(
         fakes.service().start(
           spec: fakes.spec(
             portPolicy: const ExplicitPortPolicy(port: 50161),
-            validateRuntime: ({required int port}) async => controller.abort(),
           ),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
           startAborted: controller.signal,
@@ -748,14 +677,13 @@ Iterable<int> _endless(int value) sync* {
   }
 }
 
-RuntimePortPolicy _dynamic(List<int> candidates, {bool failFastOnSpawnError = false}) {
+RuntimePortPolicy _dynamic(List<int> candidates) {
   return RuntimePortPolicy.dynamic(
     candidates: candidates,
     maxAttempts: 5,
     reservedPort: 4096,
     minPort: 49152,
     maxPort: 65535,
-    failFastOnSpawnError: failFastOnSpawnError,
   );
 }
 
@@ -763,7 +691,10 @@ _FakeSpawnedProcess _spawned({
   required int pid,
   required int port,
   String? startMarker = "open-start",
-  bool exitImmediately = true,
+  // A child that outlives the start is the normal case: the supervisor now
+  // always treats an exit before the first healthy probe as a failed start,
+  // so only tests about that failure opt into `exitImmediately: true`.
+  bool exitImmediately = false,
 }) {
   return _FakeSpawnedProcess(
     identity: _runtimeIdentity(pid: pid, port: port, startMarker: startMarker),
@@ -818,6 +749,7 @@ class _Fakes({_RecordingClock? clock}) {
   final _SpawnPlan spawn = _SpawnPlan();
   final _ProbePlan probe = _ProbePlan();
   final _BindablePlan bindable = _BindablePlan();
+  final InMemoryHostJsonStore intentFiles = InMemoryHostJsonStore();
 
   ManagedProcessService<_TestRecord> service() {
     return ManagedProcessService<_TestRecord>(
@@ -828,15 +760,13 @@ class _Fakes({_RecordingClock? clock}) {
       clock: clock,
       runtimeId: "OPENCODE",
       gracefulShutdownWait: _gracefulShutdownWait,
+      intentStore: RuntimeStartIntentStore(store: intentFiles, fileName: "opencode-start-intent.json"),
     );
   }
 
   ManagedRuntimeSpec<_TestRecord> spec({
     required RuntimePortPolicy portPolicy,
-    RuntimeHealthPolicy healthPolicy = _legacyHealthPolicy,
-    RuntimeRecordTiming recordTiming = RuntimeRecordTiming.afterSpawn,
-    Future<void> Function({required int port})? validateRuntime,
-    bool failOnEarlyChildExit = false,
+    RuntimeHealthPolicy? healthPolicy,
     _TestRecord Function(RuntimeRecordDraft draft)? buildRecord,
   }) {
     return ManagedRuntimeSpec<_TestRecord>(
@@ -845,10 +775,7 @@ class _Fakes({_RecordingClock? clock}) {
       probePortBindable: bindable.bindable,
       buildRecord: buildRecord ?? _buildRecord,
       portPolicy: portPolicy,
-      healthPolicy: healthPolicy,
-      recordTiming: recordTiming,
-      validateRuntime: validateRuntime,
-      failOnEarlyChildExit: failOnEarlyChildExit,
+      healthPolicy: healthPolicy ?? _healthPolicy,
     );
   }
 }
@@ -893,13 +820,12 @@ class _BindablePlan() {
   final Map<int, bool> byPort = <int, bool>{};
   final List<int> probedPorts = <int>[];
 
+  /// Bindable unless a test says otherwise: every start now pre-probes its
+  /// port, so requiring each test to declare the happy answer would be noise.
+  /// [probedPorts] stays the record of what was actually probed.
   Future<bool> bindable({required int port}) async {
     probedPorts.add(port);
-    final value = byPort[port];
-    if (value == null) {
-      throw StateError("No bindability configured for $port");
-    }
-    return value;
+    return byPort[port] ?? true;
   }
 }
 

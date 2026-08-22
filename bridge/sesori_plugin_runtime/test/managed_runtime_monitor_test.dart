@@ -6,8 +6,16 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
+import "support/in_memory_host_json_store.dart";
+
 const _gracefulShutdownWait = Duration(seconds: 5);
-const _legacyHealthPolicy = RuntimeHealthPolicy.attemptCount(attempts: 5, delay: Duration(milliseconds: 500));
+// Five 500ms-spaced probes, expressed as the deadline pacing the supervisor
+// now always uses. Most tests here run on a clock that never advances, so the
+// bound that actually fires is the poll backstop: ceil(1500 / 500) + 2 = 5.
+final _healthPolicy = RuntimeHealthPolicy(
+  deadline: const Duration(milliseconds: 1500),
+  pollInterval: const Duration(milliseconds: 500),
+);
 
 void main() {
   group("ManagedRuntimeMonitor", () {
@@ -403,6 +411,7 @@ class _Fakes({ServerClock? clock}) {
       clock: clock,
       runtimeId: "OPENCODE",
       gracefulShutdownWait: _gracefulShutdownWait,
+      intentStore: RuntimeStartIntentStore(store: InMemoryHostJsonStore(), fileName: "opencode-start-intent.json"),
     );
   }
 
@@ -413,7 +422,7 @@ class _Fakes({ServerClock? clock}) {
       probePortBindable: bindable.bindable,
       buildRecord: (draft) => _record(pid: draft.runtimeIdentity.pid, port: draft.port),
       portPolicy: const ExplicitPortPolicy(port: 4096),
-      healthPolicy: _legacyHealthPolicy,
+      healthPolicy: _healthPolicy,
     );
   }
 

@@ -6,10 +6,18 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
+import "support/in_memory_host_json_store.dart";
+
 const _ownershipFile = "opencode-processes.json";
 const _intentFile = "OPENCODE-start-intent.json";
 const _gracefulShutdownWait = Duration(seconds: 5);
-const _legacyHealthPolicy = RuntimeHealthPolicy.attemptCount(attempts: 5, delay: Duration(milliseconds: 500));
+// Five 500ms-spaced probes, expressed as the deadline pacing the supervisor
+// now always uses. Most tests here run on a clock that never advances, so the
+// bound that actually fires is the poll backstop: ceil(1500 / 500) + 2 = 5.
+final _healthPolicy = RuntimeHealthPolicy(
+  deadline: const Duration(milliseconds: 1500),
+  pollInterval: const Duration(milliseconds: 500),
+);
 
 void main() {
   group("ManagedProcessService intent side-file timing", () {
@@ -141,7 +149,7 @@ class _Harness() {
     };
   }
 
-  final _InMemoryHostJsonStore store = _InMemoryHostJsonStore();
+  final InMemoryHostJsonStore store = InMemoryHostJsonStore();
   final _SpawnPlan spawn = _SpawnPlan();
   final _ProbePlan probe = _ProbePlan();
   final _FakeHostProcessService processes = _FakeHostProcessService();
@@ -187,8 +195,7 @@ class _Harness() {
         status: "starting",
       ),
       portPolicy: ExplicitPortPolicy(port: port),
-      healthPolicy: _legacyHealthPolicy,
-      recordTiming: RuntimeRecordTiming.intentSideFile,
+      healthPolicy: _healthPolicy,
     );
   }
 
@@ -199,45 +206,6 @@ class _Harness() {
     }
     final decoded = Map<String, dynamic>.from(jsonDecode(contents) as Map);
     return decoded.map((key, value) => MapEntry(key, Map<String, dynamic>.from(value as Map)));
-  }
-}
-
-class _InMemoryHostJsonStore() implements HostJsonStore {
-  final Map<String, String> files = <String, String>{};
-
-  @override
-  Future<String?> read({required String name}) async => files[name];
-
-  @override
-  Future<void> write({required String name, required String contents}) async {
-    files[name] = contents;
-  }
-
-  @override
-  Future<void> delete({required String name}) async {
-    files.remove(name);
-  }
-
-  @override
-  Future<void> quarantine({required String name, required String quarantinedName}) async {
-    final contents = files.remove(name);
-    if (contents != null) {
-      files[quarantinedName] = contents;
-    }
-  }
-
-  @override
-  Future<String?> update({
-    required String name,
-    required FutureOr<String?> Function(String? current) transform,
-  }) async {
-    final next = await transform(files[name]);
-    if (next == null) {
-      files.remove(name);
-    } else {
-      files[name] = next;
-    }
-    return next;
   }
 }
 

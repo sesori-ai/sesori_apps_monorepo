@@ -14,10 +14,10 @@ class ManagedProcessService<R>({
   required final String _runtimeId,
   required final Duration _gracefulShutdownWait,
 
-  /// Optional bridge-private side-file store for [RuntimeRecordTiming.intentSideFile].
-  /// Required when that timing is selected; unused for the legacy after-spawn
-  /// timing, so it defaults to null and the legacy path never touches it.
-  final RuntimeStartIntentStore? _intentStore,
+  /// Bridge-private side-file store: an intent record is written before spawn
+  /// and resolved after, so a crash between the two still leaves a reclaimable
+  /// trace of the child we were about to own.
+  required final RuntimeStartIntentStore _intentStore,
 }) {
   final Map<String, _CurrentOwnedRuntimeProcess> _currentOwnedProcessesBySessionId =
       <String, _CurrentOwnedRuntimeProcess>{};
@@ -38,10 +38,6 @@ class ManagedProcessService<R>({
     StartAbortSignal? startAborted,
   }) async {
     final abort = startAborted ?? StartAbortSignal.never;
-
-    // A deterministic configuration error: reject it once, up front, before
-    // cleanup and before the dynamic path can retry it candidate by candidate.
-    _requireIntentStoreFor(spec);
 
     await cleanupStaleOwnedRuntimes(terminatedBridgeIdentities: terminatedBridgeIdentities);
     _throwIfAborted(abort);
@@ -105,10 +101,6 @@ class ManagedProcessService<R>({
     required Duration portReleasePollInterval,
     StartAbortSignal? startAborted,
   }) async {
-    // Reject a misconfigured intent timing up front, before waiting on the port,
-    // so a direct caller fails fast and clearly instead of crashing on a null
-    // intent store deep inside the spawn path.
-    _requireIntentStoreFor(spec);
     final abort = startAborted ?? StartAbortSignal.never;
     _throwIfAborted(abort);
     await _waitForPortRelease(
@@ -119,15 +111,6 @@ class ManagedProcessService<R>({
       abort: abort,
     );
     return await _startAndConfirmHealthy(spec: spec, port: port, abort: abort);
-  }
-
-  /// A managed runtime that opts into intent side-file timing must be given an
-  /// intent store; selecting the timing without one is a deterministic
-  /// configuration error, surfaced before any side effects.
-  void _requireIntentStoreFor(ManagedRuntimeSpec<R> spec) {
-    if (spec.recordTiming == RuntimeRecordTiming.intentSideFile && _intentStore == null) {
-      throw ArgumentError("[$_runtimeId] intent side-file record timing requires an intent store");
-    }
   }
 
   Future<void> _waitForPortRelease({
@@ -170,16 +153,14 @@ class ManagedProcessService<R>({
     required ExplicitPortPolicy policy,
     required StartAbortSignal abort,
   }) async {
-    if (policy.preProbeBindable) {
-      final bindable = await spec.probePortBindable(port: policy.port);
-      if (!bindable) {
-        throw PluginStartException(
-          "[$_runtimeId] explicit port ${policy.port} is already in use",
-          cause: null,
-        );
-      }
-      _throwIfAborted(abort);
+    final bindable = await spec.probePortBindable(port: policy.port);
+    if (!bindable) {
+      throw PluginStartException(
+        "[$_runtimeId] explicit port ${policy.port} is already in use",
+        cause: null,
+      );
     }
+    _throwIfAborted(abort);
     return await _startAndConfirmHealthy(spec: spec, port: policy.port, abort: abort);
   }
 
@@ -219,16 +200,11 @@ class ManagedProcessService<R>({
       } on PluginStartAbortedException {
         rethrow;
       } on PluginStartException catch (error) {
-        // A failure after a successful spawn (health/validation): try the
-        // next candidate, as the legacy path does.
-        lastError = error;
-      } on Object catch (error) {
-        // A spawn that could not launch: retry the next candidate unless the
-        // policy opts into failing fast.
-        if (policy.failFastOnSpawnError) {
-          rethrow;
-        }
-        Log.w("[$_runtimeId] Failed to start runtime on port $port", error);
+        // A failure after a successful spawn (health check): the port was
+        // bindable but the runtime did not come up on it, so try the next
+        // candidate. A spawn that could not launch at all is not caught here —
+        // it is a fatal configuration or environment fault, and retrying it
+        // candidate by candidate would only repeat the same failure.
         lastError = error;
       }
     }
@@ -244,20 +220,17 @@ class ManagedProcessService<R>({
     required int port,
     required StartAbortSignal abort,
   }) async {
-    final usesIntent = spec.recordTiming == RuntimeRecordTiming.intentSideFile;
-    if (usesIntent) {
-      // Record the spawn intent before the child exists, so a crash between
-      // spawn and the ownership write still names the bridge run and the port.
-      await _intentStore!.write(
-        RuntimeStartIntent(
-          ownerSessionId: _bridge.ownerSessionId,
-          port: port,
-          bridgePid: _bridge.identity.pid,
-          bridgeStartMarker: _bridge.identity.startMarker,
-          recordedAt: _clock.now(),
-        ),
-      );
-    }
+    // Record the spawn intent before the child exists, so a crash between
+    // spawn and the ownership write still names the bridge run and the port.
+    await _intentStore.write(
+      RuntimeStartIntent(
+        ownerSessionId: _bridge.ownerSessionId,
+        port: port,
+        bridgePid: _bridge.identity.pid,
+        bridgeStartMarker: _bridge.identity.startMarker,
+        recordedAt: _clock.now(),
+      ),
+    );
 
     // Spawn errors propagate before any ownership state is acquired: the
     // explicit-port caller surfaces them raw, the dynamic caller retries.
@@ -265,9 +238,7 @@ class ManagedProcessService<R>({
     try {
       spawned = await spec.spawn(port: port);
     } on Object {
-      if (usesIntent) {
-        await _clearIntentQuietly();
-      }
+      await _clearIntentQuietly();
       rethrow;
     }
 
@@ -277,9 +248,7 @@ class ManagedProcessService<R>({
     // freshly spawned child is still untracked, so stop it directly.
     if (abort.isAborted) {
       await _stopUntrackedSpawnQuietly(process: spawned, port: port, reason: "after a post-spawn abort");
-      if (usesIntent) {
-        await _clearIntentQuietly();
-      }
+      await _clearIntentQuietly();
       throw const PluginStartAbortedException();
     }
 
@@ -298,9 +267,7 @@ class ManagedProcessService<R>({
       // The child is already running but not yet tracked or recorded — stop it
       // directly so a record-factory failure cannot leak a started runtime.
       await _stopUntrackedSpawnQuietly(process: spawned, port: port, reason: "after a record build error");
-      if (usesIntent) {
-        await _clearIntentQuietly();
-      }
+      await _clearIntentQuietly();
       rethrow;
     }
     trackOwnedRuntime(
@@ -310,27 +277,13 @@ class ManagedProcessService<R>({
 
     try {
       await _ownershipRepository.upsert(record: record);
-      if (usesIntent) {
-        // The starting record is now in the frozen ownership file; an orphan is
-        // trackable from there, so the intent has done its job.
-        await _clearIntentQuietly();
-      }
+      // The starting record is now in the frozen ownership file; an orphan is
+      // trackable from there, so the intent has done its job.
+      await _clearIntentQuietly();
       _throwIfAborted(abort);
 
       final health = await _confirmHealthy(spec: spec, port: port, spawned: spawned, abort: abort);
 
-      final validate = spec.validateRuntime;
-      if (validate != null) {
-        try {
-          await validate(port: port);
-        } on PluginStartAbortedException {
-          rethrow;
-        } on Object catch (error) {
-          // Surface validation failures as a (retryable) start failure rather
-          // than a raw error the dynamic path would mistake for a spawn error.
-          throw PluginStartException("[$_runtimeId] runtime validation failed on port $port", cause: error);
-        }
-      }
       _throwIfAborted(abort);
 
       final readyRecord = _mapper.markReady(record: record);
@@ -350,9 +303,7 @@ class ManagedProcessService<R>({
       } on Object catch (cleanupError, cleanupStackTrace) {
         Log.w("[$_runtimeId] Failed to clean up after a failed start on port $port", cleanupError, cleanupStackTrace);
       }
-      if (usesIntent) {
-        await _clearIntentQuietly();
-      }
+      await _clearIntentQuietly();
       rethrow;
     }
   }
@@ -360,12 +311,8 @@ class ManagedProcessService<R>({
   /// Best-effort removal of the intent side file. An intent-clear failure must
   /// never mask the start error that prompted it, so this only logs.
   Future<void> _clearIntentQuietly() async {
-    final store = _intentStore;
-    if (store == null) {
-      return;
-    }
     try {
-      await store.clear();
+      await _intentStore.clear();
     } on Object catch (error, stackTrace) {
       Log.w("[$_runtimeId] Failed to clear the runtime start-intent side file", error, stackTrace);
     }
@@ -378,45 +325,26 @@ class ManagedProcessService<R>({
     required StartAbortSignal abort,
   }) async {
     final policy = spec.healthPolicy;
-    switch (policy) {
-      case HealthAttemptCountPolicy():
-        RuntimeHealthProbe? last;
-        for (var attempt = 1; attempt <= policy.attempts; attempt += 1) {
-          await _clock.delay(duration: policy.delay);
-          final probe = await _probeOnce(spec: spec, port: port, spawned: spawned, abort: abort);
-          last = probe;
-          if (probe.healthy) {
-            return probe;
-          }
-        }
+    final deadline = _clock.now().add(policy.deadline);
+    // The same clock-independent backstop as the port-release wait: a
+    // non-advancing clock can never reach the deadline, so only a poll
+    // cap keeps an unhealthy runtime from spinning this loop forever
+    // under the startup mutex.
+    final maxPolls = _boundedMaxPolls(timeout: policy.deadline, pollInterval: policy.pollInterval);
+    var polls = 0;
+    while (true) {
+      await _clock.delay(duration: policy.pollInterval);
+      final probe = await _probeOnce(spec: spec, port: port, spawned: spawned, abort: abort);
+      if (probe.healthy) {
+        return probe;
+      }
+      polls += 1;
+      if (polls >= maxPolls || !_clock.now().isBefore(deadline)) {
         throw PluginStartException(
-          "[$_runtimeId] health check failed on port $port after ${policy.attempts} attempt(s)",
-          cause: last?.error,
+          "[$_runtimeId] health check failed on port $port within ${policy.deadline.inMilliseconds}ms",
+          cause: probe.error,
         );
-      case HealthDeadlinePolicy():
-        final deadline = _clock.now().add(policy.deadline);
-        // The same clock-independent backstop as the port-release wait: a
-        // non-advancing clock can never reach the deadline, so only a poll
-        // cap keeps an unhealthy runtime from spinning this loop forever
-        // under the startup mutex.
-        final maxPolls = _boundedMaxPolls(timeout: policy.deadline, pollInterval: policy.pollInterval);
-        var polls = 0;
-        RuntimeHealthProbe? last;
-        while (true) {
-          await _clock.delay(duration: policy.pollInterval);
-          final probe = await _probeOnce(spec: spec, port: port, spawned: spawned, abort: abort);
-          last = probe;
-          if (probe.healthy) {
-            return probe;
-          }
-          polls += 1;
-          if (polls >= maxPolls || !_clock.now().isBefore(deadline)) {
-            throw PluginStartException(
-              "[$_runtimeId] health check failed on port $port within ${policy.deadline.inMilliseconds}ms",
-              cause: last.error,
-            );
-          }
-        }
+      }
     }
   }
 
@@ -428,7 +356,7 @@ class ManagedProcessService<R>({
   }) async {
     _throwIfAborted(abort);
 
-    if (spec.failOnEarlyChildExit && await _spawnedProcessExited(process: spawned)) {
+    if (await _spawnedProcessExited(process: spawned)) {
       // The child we launched is gone; a healthy probe now would be answered
       // by an unrelated process holding the port. Fail authoritatively.
       throw PluginStartException(

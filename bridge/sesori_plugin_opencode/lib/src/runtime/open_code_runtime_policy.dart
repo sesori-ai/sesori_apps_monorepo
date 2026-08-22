@@ -384,11 +384,9 @@ ManagedRuntimeSpec<OpenCodeOwnershipRecord> buildOpenCodeManagedRuntimeSpec({
         probeOpenCodePortBindable(ports: host.ports, port: port, bindHost: bindHost, connectHost: connectHost),
     buildRecord: (draft) => buildOpenCodeOwnershipRecord(draft: draft, bindHost: bindHost),
     portPolicy: portPolicy,
-    healthPolicy: RuntimeHealthPolicy.deadline(
+    healthPolicy: RuntimeHealthPolicy(
       deadline: openCodeHealthDeadline,
       pollInterval: openCodeHealthPollInterval,
     ),
-    recordTiming: RuntimeRecordTiming.intentSideFile,
-    failOnEarlyChildExit: true,
   );
 }

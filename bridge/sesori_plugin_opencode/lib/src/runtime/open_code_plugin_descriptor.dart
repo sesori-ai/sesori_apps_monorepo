@@ -622,9 +622,7 @@ class const OpenCodePluginDescriptor({
         final RuntimePortPolicy portPolicy;
         if (requestedPort != null) {
           Log.d("[opencode] starting on port $requestedPort");
-          // Pre-probe the explicit port so an occupied port fails with a
-          // diagnosis instead of spawning a child doomed to lose the bind race.
-          portPolicy = ExplicitPortPolicy(port: requestedPort, preProbeBindable: true);
+          portPolicy = ExplicitPortPolicy(port: requestedPort);
         } else {
           Log.d("[opencode] starting on a dynamic port");
           portPolicy = DynamicPortPolicy(
@@ -633,9 +631,6 @@ class const OpenCodePluginDescriptor({
             reservedPort: openCodeDefaultPort,
             minPort: dynamicOpenCodePortMin,
             maxPort: dynamicOpenCodePortMax,
-            // A spawn that cannot even launch (e.g. ENOENT on the binary) fails
-            // the same way on every candidate — fail fast instead of retrying.
-            failFastOnSpawnError: true,
           );
         }
 
