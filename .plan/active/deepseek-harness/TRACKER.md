@@ -3,23 +3,23 @@
 ## Current State
 
 - **Plan slug:** `deepseek-harness`
-- **Plan status:** Step 1/15 PR open
-- **Current repository:** `sesori-ai/sesori_apps_monorepo`
-- **Current branch:** `investigate-deepseek-harness`
-- **Current open PR:** [#1036](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1036)
-- **Next action:** pass CI/review and merge Step 1; then start adapter Step 2
-- **Implementation started:** no
+- **Plan status:** Step 4/15 PR open; Step 5/15 local successor starting
+- **Current repository:** `sesori-ai/sesori-deepseek-acp`
+- **Current branch:** `deepseek-harness/step-4-durable-sessions`
+- **Current open PR:** [#3](https://github.com/sesori-ai/sesori-deepseek-acp/pull/3)
+- **Next action:** pass CI/review and merge Step 4; then publish Step 5
+- **Implementation started:** yes
 - **Retirement:** blocked until every required row in `PLAN.md` passes
 
 ## Fixed Delivery Sequence
 
 | Done | Step | Repository | Exact PR title | Complexity | Soft line target | State |
 |---|---|---|---|---|---:|---|
-| [ ] | 1/15 | apps monorepo | `🌱 [deepseek-harness] docs: plan DeepSeek Harness support [step 1/15]` | Trivial documentation, but architecture-bearing review | 1,500 | [PR #1036](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1036) open |
-| [ ] | 2/15 | deepseek adapter | `⚙️ [deepseek-harness] feat(runtime): scaffold the DeepSeek ACP adapter [step 2/15]` | Moderate new transport/repository foundation | 1,000 | Pending Step 1 merge |
-| [ ] | 3/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): compose the DeepSeek coding runtime [step 3/15]` | Complex configuration, security, and lifecycle composition | 1,300 | Pending Step 2 |
-| [ ] | 4/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): add durable ACP sessions and replay [step 4/15]` | Complex persistence and live ownership | 1,450 | Pending Step 3 |
-| [ ] | 5/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): stream DeepSeek turns and interactions [step 5/15]` | Complex concurrent event and interaction flow | 1,450 | Pending Step 4 |
+| [x] | 1/15 | apps monorepo | `🌱 [deepseek-harness] docs: plan DeepSeek Harness support [step 1/15]` | Trivial documentation, but architecture-bearing review | 1,500 | [PR #1036](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1036) merged |
+| [x] | 2/15 | deepseek adapter | `⚙️ [deepseek-harness] feat(runtime): scaffold the DeepSeek ACP adapter [step 2/15]` | Moderate new transport/repository foundation | 1,000 | [PR #1](https://github.com/sesori-ai/sesori-deepseek-acp/pull/1) merged |
+| [x] | 3/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): compose the DeepSeek coding runtime [step 3/15]` | Complex configuration, security, and lifecycle composition | 1,300 | [PR #2](https://github.com/sesori-ai/sesori-deepseek-acp/pull/2) merged |
+| [ ] | 4/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): add durable ACP sessions and replay [step 4/15]` | Complex persistence and live ownership | 1,450 | [PR #3](https://github.com/sesori-ai/sesori-deepseek-acp/pull/3) open |
+| [ ] | 5/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): stream DeepSeek turns and interactions [step 5/15]` | Complex concurrent event and interaction flow | 1,450 | Local successor pending Step 4 merge |
 | [ ] | 6/15 | deepseek adapter | `⚙️ [deepseek-harness] feat(runtime): expose DeepSeek catalogs and commands [step 6/15]` | Moderate option/command boundary | 1,200 | Pending Step 5 |
 | [ ] | 7/15 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): scaffold the DeepSeek bridge plugin [step 7/15]` | Moderate new package and narrow ACP hooks | 1,250 | Pending Step 6 |
 | [ ] | 8/15 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek sessions and history [step 8/15]` | Complex replay and identity flow | 1,450 | Pending Step 7 |
