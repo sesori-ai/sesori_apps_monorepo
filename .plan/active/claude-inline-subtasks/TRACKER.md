@@ -130,11 +130,10 @@
   interface 153, `bridge/app` 2,692, `module_core` 1,315, opencode 434,
   acp 260, codex 392, pi 260, claude 253 — all pass; `flutter test`
   `client/app` 853 — all pass. Changed lines: 716 additions / 63 deletions
-  across 53 files, of which 202/37 are non-generated production code; the
-  rest is generated output and the mechanical `childSessionID: null`
-  argument added at every existing construction site. Over the 500-800
-  target because a required nullable field touches every call site;
-  accepted, target unchanged.
+  across 53 files (779 changed lines, within the 500-800 target), of which
+  202/37 are non-generated production code; the rest is generated output and
+  the mechanical `childSessionID: null` argument a required nullable field
+  forces at every existing construction site.
 - **Step 2 PR:** [#1044](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1044) open
   Per the plan's series note, `TRACKER.md` bookkeeping is excluded from the
   comparison because its count would include the lines that record it; the

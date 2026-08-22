@@ -46,7 +46,7 @@ class const SubtaskPartWidget({
                     projectName: currentProjectName(context),
                     sessionId: targetSessionId,
                     readOnly: true,
-                    sessionTitle: childSession?.title ?? part.description,
+                    sessionTitle: childSession?.title ?? description,
                   ),
                 )
               : null,
