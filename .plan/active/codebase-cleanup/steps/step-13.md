@@ -10,7 +10,7 @@ tests and the Flutter app helper remain in `client/app/test`.
 
 The app and module-core helpers had 1,494 lines between them before this step.
 The resulting public testing implementation plus package-local and app-local
-helpers have 1,042 lines: core/auth-owned mocks, fakes, delegates, fallback
+helpers have 1,047 lines: core/auth-owned mocks, fakes, delegates, fallback
 values, and data factories now live in `package:sesori_dart_core/testing.dart`,
 while `package:test` teardown support remains in the module-core test helper and
 Flutter, Firebase, recording, and app-DI support remains in the app helper.
@@ -28,14 +28,14 @@ wire contract, persisted data, database schema, or user-visible behavior changed
 
 - `dart pub get` from `client`: passed.
 - `dart analyze` in `client/module_core`: clean.
-- `dart test` in `client/module_core`: 1,314 passed.
+- `dart test` in `client/module_core`: 1,315 passed.
 - `dart analyze` in `client/app`: clean.
 - `flutter test` in `client/app`: 842 passed.
 - `dart analyze` in `client/desktop`: clean.
 - `git diff --check`: clean.
 
-The raw diff excluding this evidence file is `+918 / -1,374`.
-That exceeds the 1,500 changed-line soft cap because Git counts the 844-line
+The raw diff excluding this evidence file is `+940 / -1,375`.
+That exceeds the 1,500 changed-line soft cap because Git counts the 849-line
 testing-library extraction as an addition while also counting the consolidated
 helper bodies as deletions; the change is deletion- and relocation-heavy rather
 than new product logic.

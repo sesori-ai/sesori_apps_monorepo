@@ -143,7 +143,12 @@ class FakeSessionUnseenTracker() extends Mock implements SessionUnseenTracker {
 
   @override
   void seedProjects(Map<String, bool> unseenByProjectId, {required int sinceTick}) {
-    _projectUnseen.add({..._projectUnseen.value, ...unseenByProjectId});
+    final projects = Map<String, bool>.from(_projectUnseen.value);
+    for (final entry in unseenByProjectId.entries) {
+      if ((_projectTick[entry.key] ?? 0) > sinceTick) continue;
+      projects[entry.key] = entry.value;
+    }
+    _projectUnseen.add(projects);
   }
 
   @override
