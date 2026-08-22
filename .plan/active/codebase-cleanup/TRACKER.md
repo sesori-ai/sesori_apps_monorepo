@@ -18,13 +18,12 @@
 
 ## Open Decisions (defaults apply until the owner overrides)
 
-- [ ] **D1** minimum supported public peer — default: retain every public
-  release; Step 42 removes nothing until the owner records a baseline here.
-  Candidate on the table: `≥ v1.4.0`, recorded as an owner decision in PR #1017
-  on 2026-08-21 — confirm or replace: `_____`
-- [ ] **D2** flatten `bridge/app/lib/src/bridge/*` into `src/*` — default: not
-  performed (docs-only Step 7) until the owner approves the ~210-file move;
-  recommendation is to approve
+- [x] **D1** minimum supported public peer — **decided `≥ v1.4.0`** by the
+  owner on 2026-08-22 (first recorded in PR #1017 on 2026-08-21); Step 42
+  executes against it with a per-marker peer-verification line; the bridge-id
+  migration consequence (stale `≤ v1.3.x` installs re-register) is accepted
+- [x] **D2** flatten `bridge/app/lib/src/bridge/*` into `src/*` — **approved**
+  by the owner on 2026-08-22; Step 7 performs the move
 - [ ] **D3** `flutter_chat_ui` replacement — default spike, land only on parity
 - [ ] **D4** `cryptography_flutter` — default remove as unused (never enabled)
 - [ ] **D5** Material→Prego dialog breadth — default only what the footer and
@@ -45,16 +44,16 @@
 - [x] No database schema change anywhere in the series.
 - [x] Session-detail refresh coordination, dispatcher merging, orchestrator
   splitting, and `ConnectionService`/`RelayClient` lifecycle redesign are out.
-- [x] Architecture-implementation review only for Steps 7, 15, 17, 18, 21, 22,
-  23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37.
+- [x] Architecture-implementation review only for Steps 4, 7, 15, 17, 18, 20,
+  21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37.
 - [x] 1,500 changed-line soft cap; deletion- or generated-heavy overages are
   recorded with the reason.
 
 ## Complexity Guardrails
 
 - [x] One `PendingOperations` and one `KeyedParallelLock` (both in
-  `sesori_bridge_foundation`), one `AbortableRequestClient`, one
-  `PendingPermissionRegistry` base, one managed-runtime start helper, one
+  `sesori_bridge_foundation`), one `AbortableRequestClient` (app foundation),
+  one `PendingPermissionRegistry` base, one managed-runtime start helper, one
   `RuntimeProbeOutcome`, one `NdjsonProcessClient` (`sesori_plugin_runtime`),
   one per-cubit `LoadedStateAnalyticsReporter` — no second variant of any of
   them, and no caller state on singleton services.
@@ -79,7 +78,7 @@
 | [ ] | 4/45 | `🌿 [codebase-cleanup] shared: tighten management fields and correct compatibility markers [step 4/45]` | Not started |
 | [ ] | 5/45 | `🌿 [codebase-cleanup] bridge(app): delete dead production code [step 5/45]` | Not started |
 | [ ] | 6/45 | `🌿 [codebase-cleanup] tooling: close CI gaps, prune dependencies, and refresh docs [step 6/45]` | Not started |
-| [ ] | 7/45 | `⚙️ [codebase-cleanup] bridge(app): flatten the duplicated layer tree [step 7/45]` | Not started (D2) |
+| [ ] | 7/45 | `⚙️ [codebase-cleanup] bridge(app): flatten the duplicated layer tree [step 7/45]` | Not started (D2 approved) |
 | [ ] | 8/45 | `🌿 [codebase-cleanup] bridge(plugins): add a plugin-interface testing library for console and process fakes [step 8/45]` | Not started |
 | [ ] | 9/45 | `⚙️ [codebase-cleanup] bridge(app): consolidate plugin and repository test fakes [step 9/45]` | Not started |
 | [ ] | 10/45 | `🌿 [codebase-cleanup] bridge(app): consolidate process-runner and service test fakes [step 10/45]` | Not started |
@@ -114,7 +113,7 @@
 | [ ] | 39/45 | `🌿 [codebase-cleanup] client(app): remove in-file duplication from the prompt composer [step 39/45]` | Not started; after #918/#956 |
 | [ ] | 40/45 | `🚧 [codebase-cleanup] client(app): model the voice interaction as one sealed state [step 40/45]` | Not started; after #918 |
 | [ ] | 41/45 | `🚧 [codebase-cleanup] client(app): render the transcript with a plain reversed list [step 41/45]` | Not started (D3); after #939 |
-| [ ] | 42/45 | `🚧 [codebase-cleanup] compat: retire compatibility paths outside the supported baseline [step 42/45]` | Not started (D1) |
+| [ ] | 42/45 | `🚧 [codebase-cleanup] compat: retire compatibility paths outside the supported baseline [step 42/45]` | Not started (D1 = `≥ v1.4.0`) |
 | [ ] | 43/45 | `⚙️ [codebase-cleanup] tooling: align installers, assert codegen freshness, and enable no_slop_linter for small bridge packages [step 43/45]` | Not started (D6) |
 | [ ] | 44/45 | `🌱 [codebase-cleanup] docs: reconcile regression coverage after the cleanup [step 44/45]` | Not started |
 | [ ] | 45/45 | `🌿 [codebase-cleanup] test: verify the cleanup series and retire the plan [step 45/45]` | Not started |
@@ -185,7 +184,7 @@ Each step records here what it found stale relative to the plan before editing.
 | `prompt_input.dart` in-file duplicates | Consolidate | 39 |
 | Voice interaction flags | Sealed state | 40 |
 | `flutter_chat_ui` mirroring glue | Replace on parity (D3) | 41 |
-| Compatibility paths below the D1 baseline | Delete (gated) | 42 |
+| Compatibility paths whose peer is a released Sesori surface `< v1.4.0` (D1 decided) | Delete with a per-marker peer-verification line; keep live on-disk/runtime-format peers | 42 |
 | Installer drift (`install.ps1` vs `install.sh`), no codegen freshness check, `no_slop_linter` absent from bridge | Parity + fixture tests; offline freshness job; enable linter for small packages (D6) | 43 |
 | Mandatory repositories, `StoredSession`, dispatchers, plugin-boundary mapping, SSE ignore arms, archives | Keep | — |
 | PR #1017 `RelayConnectionCoordinator`/`PluginEventProcessingDispatcher` extractions, `_MessageListSynchronizer`, app-level voice/attachment controllers | Not adopted (see PLAN "Relationship To PR #1017"); separate evidence-backed follow-up if wanted | — |
@@ -197,9 +196,10 @@ Each step records here what it found stale relative to the plan before editing.
   passed; no Dart/Flutter suites run.
 - Step 1 merge-base size:
   `git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- .plan/active/codebase-cleanup/PLAN.md .plan/active/codebase-cleanup/TRACKER.md`
-- Self-inclusive result after the second review round and the PR #1017
-  reconciliation: `PLAN.md +1,627`, `TRACKER.md +254`, total `+1,881 / -0`,
-  within the re-widened 1,700–1,900 target (earlier ceilings were exceeded).
+- Self-inclusive result after three review rounds, the PR #1017 reconciliation,
+  and the D1/D2 decisions: `PLAN.md +1,641`, `TRACKER.md +266`, total
+  `+1,907 / -0`, within the final 1,700–2,000 target (earlier ceilings were
+  exceeded as reviews added detail).
 
 ## Plan Review
 
@@ -252,3 +252,15 @@ Each step records here what it found stale relative to the plan before editing.
   helpers, `releaseAssetUrl`, pending-input doc comments, Codex catch fix, the
   `NdjsonProcessClient` contract and runtime home, and its recorded owner
   decisions offered to D1); recorded what is not adopted and why in PLAN.md.
+- **Owner decisions (2026-08-22):** D1 confirmed at `≥ v1.4.0`; D2 approved;
+  #1018 kept as the single plan and #1017 closed in its favor.
+- **Step 1 PR review round 3 (bot, 2026-08-22):** six new findings; five
+  applied (Steps 4 and 20 added to the implementation-review list; Step 7
+  moves `plugin_runtime.dart` to `api/` and keeps `runtime/` as the
+  CLI/composition subsystem; `PendingOperations.track` and
+  `KeyedParallelLock.use` use required named parameters;
+  `AbortableRequestClient` moves to the app's Layer-0 foundation because every
+  consumer is in `bridge/app`; `DiffCubit` takes the reporter directly), one
+  recorded rather than changed (the bridge-id migration deletion stays under
+  the owner-decided D1 because its peer is a released Sesori surface older
+  than v1.4; the re-registration consequence is now written into D1).
