@@ -33,25 +33,11 @@ class BufferingStdout() implements Stdout {
 /// unexpected call to something like `supportsAnsiEscapes`, whereas returning
 /// `null` for a non-nullable getter would surface later as a confusing type
 /// error far from the cause.
-class CapturingStdout(final List<String> lines) implements Stdout {
+class CapturingStdout({required final List<String> lines}) implements Stdout {
   @override
   void writeln([Object? object = ""]) => lines.add(object.toString());
 
   @override
   // ignore: no_slop_linter/prefer_specific_type, Stdout's own signature
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-/// [Stdout] whose writes always throw, for the paths that must survive a
-/// failing console.
-class ThrowingStdout({required final Object _error}) implements Stdout {
-  @override
-  void write(Object? object) => throw _error;
-
-  @override
-  void writeln([Object? object = ""]) => throw _error;
-
-  @override
-  // ignore: no_slop_linter/prefer_specific_type, Stdout's own signature
-  dynamic noSuchMethod(Invocation invocation) => null;
 }

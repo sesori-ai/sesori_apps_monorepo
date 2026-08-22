@@ -113,7 +113,7 @@ void main() {
               const PluginSetupReady.versioned(runtimeVersion: "2026.07.23-e383d2b"),
             );
           },
-          stderr: () => CapturingStdout(stderrLines),
+          stderr: () => CapturingStdout(lines: stderrLines),
         );
       } finally {
         Log.level = previousLogLevel;

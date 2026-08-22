@@ -26,6 +26,21 @@ scripted behaviour rather than being identical, so consolidating them is a
 design exercise rather than a de-duplication, and folding it into the same PR
 would bury the mechanical part. They move to a follow-up.
 
+## Review corrections
+
+Two P1 findings, both applied:
+
+- **`ThrowingStdout` had no consumers.** I exported it alongside the two fakes
+  that do, but the four local `_ThrowingStdout` declarations are in the bespoke
+  group this step deliberately leaves alone, so the shared class replaced
+  nothing. Removed — this step's own rule was that a shared fake must replace
+  at least two real copies, and I broke it in the same file that states it.
+- **`CapturingStdout` took its list positionally.** That copied the shape of the
+  declarations it replaced, but a new shared API has to follow the repository's
+  required-named-parameter rule. It is now
+  `CapturingStdout({required List<String> lines})`, with the four shared call
+  sites updated.
+
 ## Verification
 
 `dart analyze --fatal-infos` clean in all seven affected packages. `dart test`:

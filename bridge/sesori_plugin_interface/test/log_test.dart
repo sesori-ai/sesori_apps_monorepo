@@ -24,8 +24,8 @@ void main() {
           Log.w("w-msg");
           Log.e("e-msg");
         },
-        stdout: () => CapturingStdout(out),
-        stderr: () => CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: out),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(out, isEmpty, reason: "diagnostic logs must never pollute stdout");
@@ -44,8 +44,8 @@ void main() {
           Log.w("warning");
           Log.e("error");
         },
-        stdout: () => CapturingStdout(<String>[]),
-        stderr: () => CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: <String>[]),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(err, hasLength(2), reason: "only warning and error pass at the warning level");
@@ -57,8 +57,8 @@ void main() {
 
       IOOverrides.runZoned(
         () => _LogCaller().emit(),
-        stdout: () => CapturingStdout(<String>[]),
-        stderr: () => CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: <String>[]),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(err, hasLength(1));
@@ -76,8 +76,8 @@ void main() {
 
       IOOverrides.runZoned(
         () => _LogCaller().emit(),
-        stdout: () => CapturingStdout(<String>[]),
-        stderr: () => CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: <String>[]),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(err, hasLength(1));
@@ -95,8 +95,8 @@ void main() {
 
       IOOverrides.runZoned(
         () => Log.w("operation failed", StateError("useful failure"), StackTrace.fromString("useful stack")),
-        stdout: () => CapturingStdout(<String>[]),
-        stderr: () => CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: <String>[]),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(err.single, contains("Bad state: useful failure"));
@@ -112,8 +112,8 @@ void main() {
           Log.w("w-msg");
           Log.e("e-msg");
         },
-        stdout: () => CapturingStdout(<String>[]),
-        stderr: () => CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: <String>[]),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(err, hasLength(2));

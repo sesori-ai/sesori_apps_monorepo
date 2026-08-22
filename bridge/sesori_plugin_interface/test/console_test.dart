@@ -12,8 +12,8 @@ void main() {
 
       IOOverrides.runZoned(
         () => Console.message("hello, user"),
-        stdout: () => CapturingStdout(out),
-        stderr: () => CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: out),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(out, equals(["hello, user"]));
@@ -26,8 +26,8 @@ void main() {
 
       IOOverrides.runZoned(
         () => Console.warning("heads up"),
-        stdout: () => CapturingStdout(out),
-        stderr: () => CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: out),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(err, equals(["heads up"]));
@@ -40,8 +40,8 @@ void main() {
 
       IOOverrides.runZoned(
         () => Console.error("something went wrong"),
-        stdout: () => CapturingStdout(out),
-        stderr: () => CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: out),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(err, equals(["something went wrong"]));
@@ -56,8 +56,8 @@ void main() {
           Console.warning("warn");
           Console.error("boom");
         },
-        stdout: () => CapturingStdout(<String>[]),
-        stderr: () => CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: <String>[]),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(
@@ -77,8 +77,8 @@ void main() {
 
       IOOverrides.runZoned(
         () => Console.message("must still be visible"),
-        stdout: () => CapturingStdout(out),
-        stderr: () => CapturingStdout(<String>[]),
+        stdout: () => CapturingStdout(lines: out),
+        stderr: () => CapturingStdout(lines: <String>[]),
       );
 
       expect(out, equals(["must still be visible"]));

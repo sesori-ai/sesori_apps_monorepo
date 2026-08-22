@@ -142,7 +142,7 @@ void main() {
               result: const CommandResult(exitCode: 0, stdout: secretOutput, stderr: ""),
             ),
           ),
-          stderr: () => CapturingStdout(stderrLines),
+          stderr: () => CapturingStdout(lines: stderrLines),
         );
       } finally {
         Log.level = originalLevel;
