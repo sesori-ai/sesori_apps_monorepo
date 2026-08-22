@@ -2,11 +2,13 @@ import "package:pi_plugin/pi_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:test/test.dart";
 
+import "support/fake_pi_session_storage_api.dart";
+
 void main() {
   group("PiSessionCatalogRepository", () {
     test("maps metadata, normalizes projects, and sorts newest first", () async {
-      final api = _FakeStorageApi(
-        sessions: [
+      final api = FakePiCatalogSessionStorageApi(
+        initialSessions: [
           _metadata(id: "older", cwd: "/repo/./app", updated: 10, created: 5),
           _metadata(id: "newer", cwd: "/repo/app/", updated: 20, created: null, title: "Named"),
         ],
@@ -25,8 +27,8 @@ void main() {
 
     test("filters by normalized project before applying pagination", () async {
       final repository = PiSessionCatalogRepository(
-        storageApi: _FakeStorageApi(
-          sessions: [
+        storageApi: FakePiCatalogSessionStorageApi(
+          initialSessions: [
             _metadata(id: "other", cwd: "/repo/other", updated: 40),
             _metadata(id: "third", cwd: "/repo/app", updated: 30),
             _metadata(id: "second", cwd: "/repo/app", updated: 20),
@@ -45,8 +47,8 @@ void main() {
 
     test("lists direct children using resolved parent ids", () async {
       final repository = PiSessionCatalogRepository(
-        storageApi: _FakeStorageApi(
-          sessions: [
+        storageApi: FakePiCatalogSessionStorageApi(
+          initialSessions: [
             _metadata(id: "root", cwd: "/repo", updated: 30),
             _metadata(id: "child", cwd: "/repo", updated: 20, parentId: "root"),
             _metadata(id: "grandchild", cwd: "/repo", updated: 10, parentId: "child"),
@@ -59,8 +61,8 @@ void main() {
 
     test("resolves the top imported parent and owning worktree project", () async {
       final repository = PiSessionCatalogRepository(
-        storageApi: _FakeStorageApi(
-          sessions: [
+        storageApi: FakePiCatalogSessionStorageApi(
+          initialSessions: [
             _metadata(id: "root", cwd: "/repo", updated: 30),
             _metadata(id: "child", cwd: "/repo/worktree", updated: 20, parentId: "root"),
             _metadata(id: "leaf", cwd: "/repo/worktree", updated: 10, parentId: "child"),
@@ -76,7 +78,7 @@ void main() {
     });
 
     test("retains primed attribution as a scan root after metadata appears", () async {
-      final api = _FakeStorageApi(sessions: const []);
+      final api = FakePiCatalogSessionStorageApi(initialSessions: const []);
       final repository = PiSessionCatalogRepository(storageApi: api);
       repository.primeSessionDirectory(sessionId: "pending", directory: "/repo/new/.");
 
@@ -91,12 +93,12 @@ void main() {
 
       api.sessions = const [];
       await repository.listAllSessions(knownDirectories: const {});
-      expect(api.knownDirectories.last, contains(normalizeProjectDirectory(directory: "/repo/new")));
+      expect(api.listedKnownDirectories.last, contains(normalizeProjectDirectory(directory: "/repo/new")));
     });
 
     test("directory priming preserves pending parent lineage", () async {
       final repository = PiSessionCatalogRepository(
-        storageApi: _FakeStorageApi(sessions: const []),
+        storageApi: FakePiCatalogSessionStorageApi(initialSessions: const []),
       );
       repository.recordPendingSession(
         sessionId: "child",
@@ -113,7 +115,7 @@ void main() {
 
     test("propagates storage failures instead of returning an empty catalog", () async {
       final repository = PiSessionCatalogRepository(
-        storageApi: _FakeStorageApi(sessions: const [], failure: StateError("scan failed")),
+        storageApi: FakePiCatalogSessionStorageApi(initialSessions: const [], listError: StateError("scan failed")),
       );
 
       await expectLater(
@@ -139,29 +141,3 @@ PiSessionMetadata _metadata({
   createdAt: created == null ? null : DateTime.fromMillisecondsSinceEpoch(created, isUtc: true),
   updatedAt: DateTime.fromMillisecondsSinceEpoch(updated, isUtc: true),
 );
-
-final class _FakeStorageApi({required List<PiSessionMetadata> sessions, final Object? failure})
-    implements PiSessionStorageApi {
-  List<PiSessionMetadata> sessions = sessions;
-  final List<Set<String>> knownDirectories = [];
-
-  @override
-  Future<List<PiSessionMetadata>> listSessionMetadata({required Set<String> knownDirectories}) async {
-    this.knownDirectories.add(Set.unmodifiable(knownDirectories));
-    if (failure case final error?) throw error;
-    return sessions;
-  }
-
-  @override
-  Future<String?> resolveEffectiveSessionDirectory({required String directory}) async => null;
-
-  @override
-  Future<PiResolvedSession?> resolveSession({required String sessionId, required Set<String> knownDirectories}) async =>
-      null;
-
-  @override
-  Future<String?> resolveSessionPath({required String sessionId, required Set<String> knownDirectories}) async => null;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}

@@ -9,6 +9,9 @@ import "package:sesori_shared/sesori_shared.dart"
     show ActiveSession, ProjectActivitySummary, maxInlineMessageAttachmentBytes;
 import "package:test/test.dart";
 
+import "support/fake_open_code_api.dart";
+import "support/open_code_fixtures.dart";
+
 void main() {
   group("OpenCodeService.getProjects", () {
     test("returns projects and owns tracker alias bookkeeping", () async {
@@ -216,48 +219,8 @@ void main() {
 
   group("OpenCodeService.getSessions", () {
     final sessions = [
-      const Session(
-        slug: "slug",
-        title: "title",
-        version: "v",
-        time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
-        id: "s1",
-        projectID: "p1",
-        directory: "/repo",
-        workspaceID: null,
-        path: null,
-        parentID: null,
-        summary: null,
-        cost: null,
-        tokens: null,
-        share: null,
-        agent: null,
-        model: null,
-        metadata: null,
-        permission: null,
-        revert: null,
-      ),
-      const Session(
-        slug: "slug",
-        title: "title",
-        version: "v",
-        time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
-        id: "s2",
-        projectID: "p1",
-        directory: "/repo",
-        workspaceID: null,
-        path: null,
-        parentID: null,
-        summary: null,
-        cost: null,
-        tokens: null,
-        share: null,
-        agent: null,
-        model: null,
-        metadata: null,
-        permission: null,
-        revert: null,
-      ),
+      openCodeSession(id: "s1", directory: "/repo"),
+      openCodeSession(id: "s2", directory: "/repo"),
       const Session(
         slug: "slug",
         title: "title",
@@ -1917,181 +1880,6 @@ SseEventData _questionAsked(String id, String sessionId) {
     sessionID: sessionId,
     questions: const [],
   );
-}
-
-class FakeOpenCodeApi({var List<SessionMessagesResponseItem> messages = const [], var Object? messagesError})
-    implements OpenCodeApi {
-  String? lastRequestedSessionId;
-  String? lastRequestedDirectory;
-
-  @override
-  Future<bool> healthCheck() async => true;
-
-  @override
-  Future<List<SessionMessagesResponseItem>> getMessages({required String sessionId, required String? directory}) async {
-    lastRequestedSessionId = sessionId;
-    lastRequestedDirectory = directory;
-    if (messagesError != null) throw messagesError!;
-    return messages;
-  }
-
-  @override
-  Future<List<Command>> listCommands({required String? directory}) async => const [];
-
-  @override
-  Future<Session> createSession({required String directory, String? parentSessionId}) async =>
-      throw UnimplementedError();
-
-  @override
-  Future<Session> getSession({required String sessionId, required String? directory}) async =>
-      throw UnimplementedError();
-
-  @override
-  Future<Session> updateSession({
-    required String sessionId,
-    required Map<String, dynamic> body,
-    required String? directory,
-  }) async => throw UnimplementedError();
-
-  @override
-  Future<List<Session>> getChildren({
-    required String sessionId,
-    required String? directory,
-  }) async => [];
-
-  @override
-  Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async => {};
-
-  @override
-  Future<void> deleteSession({required String sessionId, required String? directory}) async {}
-
-  @override
-  Future<void> removeWorktree({
-    required String directory,
-    required String worktreePath,
-  }) async {}
-
-  @override
-  Future<SessionMessagesResponseItem?> sendPrompt({
-    required String sessionId,
-    required SendPromptBody body,
-    required String? directory,
-  }) async => body.noReply
-      ? SessionMessagesResponseItem.fromJson({
-          "info": {
-            "id": "msg-reserved",
-            "sessionID": sessionId,
-            "role": "user",
-            "time": const {"created": 1},
-            "agent": body.agent ?? "build",
-            "model": const {"providerID": "openai", "modelID": "gpt-4.1"},
-          },
-          "parts": [
-            if (body.parts.isNotEmpty)
-              {
-                "id": "prt-reserved",
-                "sessionID": sessionId,
-                "messageID": "msg-reserved",
-                "type": "text",
-                "text": "",
-              },
-          ],
-        })
-      : null;
-
-  @override
-  Future<void> updateMessagePart({
-    required String sessionId,
-    required String messageId,
-    required String partId,
-    required Part part,
-    required String? directory,
-  }) async {}
-
-  @override
-  Future<void> deleteMessage({
-    required String sessionId,
-    required String messageId,
-    required String? directory,
-  }) async {}
-
-  @override
-  Future<void> sendCommand({
-    required String sessionId,
-    required SendCommandBody body,
-    required String? directory,
-  }) async {}
-
-  @override
-  Future<void> abortSession({required String sessionId, required String? directory}) async {}
-
-  @override
-  Future<List<Agent>> listAgents({required String directory}) async => [];
-
-  @override
-  Future<List<QuestionRequest>> getPendingQuestions({required String? directory}) async => [];
-
-  @override
-  Future<List<PermissionRequest>> getPendingPermissions({required String? directory}) async => [];
-
-  @override
-  Future<void> replyToQuestion({
-    required String questionId,
-    required String? directory,
-    required QuestionReplyBody body,
-  }) async {}
-
-  @override
-  Future<void> replyToPermission({
-    required String requestId,
-    required String? directory,
-    required PluginPermissionReply reply,
-  }) async {}
-
-  @override
-  Future<void> rejectQuestion({
-    required String questionId,
-    required String? directory,
-  }) async {}
-
-  @override
-  Future<Project> getProject({required String directory}) async => throw UnimplementedError();
-
-  @override
-  Future<Project> updateProject({
-    required String projectId,
-    required String directory,
-    required UpdateProjectBody body,
-  }) async => throw UnimplementedError();
-
-  @override
-  Future<List<GlobalSession>> listAllSessions({
-    required String? directory,
-    required bool roots,
-  }) async => [];
-
-  @override
-  Future<List<Project>> listProjects() async => [];
-
-  @override
-  Future<List<Session>> listRootSessions() async => [];
-
-  @override
-  Future<List<Session>> listSessions({String? directory, required bool roots}) async => [];
-
-  @override
-  Future<ProviderListResponse> listProviders() async =>
-      const ProviderListResponse(all: [], defaultValue: {}, connected: []);
-
-  @override
-  Future<ConfigProvidersResponse> listConfigProviders({required String? directory}) async =>
-      const ConfigProvidersResponse(providers: [], defaultValue: {});
-
-  @override
-  Future<Session> forkSession({
-    required String sessionId,
-    required String directory,
-  }) async => throw UnimplementedError();
 }
 
 class FakeOpenCodeRepository._({

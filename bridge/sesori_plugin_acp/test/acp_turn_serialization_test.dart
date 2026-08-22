@@ -84,27 +84,7 @@ void main() {
 
     setUp(() {
       fake = _FlushControlledAcpProcess();
-      final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
-      plugin = TestAcpPlugin(
-        id: "acp",
-        agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
-        launchDirectory: cwd,
-        eventMapper: AcpEventMapper(
-          launchDirectory: cwd,
-          pluginId: "acp",
-          configurationTracker: configurationTracker,
-        ),
-        commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
-        processFactory: (_) async => fake,
-      );
+      plugin = composeTestAcpPlugin(processFactory: (_) async => fake, launchDirectory: cwd);
       emitted.clear();
       streamErrors.clear();
       promptSequence = 0;
@@ -599,25 +579,8 @@ void main() {
     test("queued reconnect authentication failure surfaces on the event stream", () async {
       var processStarts = 0;
       await plugin.dispose();
-      final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
-      plugin = TestAcpPlugin(
-        id: "acp",
-        agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+      plugin = composeTestAcpPlugin(
         launchDirectory: cwd,
-        eventMapper: AcpEventMapper(
-          launchDirectory: cwd,
-          pluginId: "acp",
-          configurationTracker: configurationTracker,
-        ),
-        commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
         processFactory: (_) async {
           processStarts++;
           if (processStarts == 1) return fake;
@@ -962,25 +925,8 @@ void main() {
       // dead client.
       final fakes = [FakeAcpProcess(), FakeAcpProcess()];
       final spawned = <FakeAcpProcess>[];
-      final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
-      final respawning = TestAcpPlugin(
-        id: "acp",
-        agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+      final respawning = composeTestAcpPlugin(
         launchDirectory: cwd,
-        eventMapper: AcpEventMapper(
-          launchDirectory: cwd,
-          pluginId: "acp",
-          configurationTracker: configurationTracker,
-        ),
-        commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
         processFactory: (_) async {
           final next = fakes.removeAt(0);
           spawned.add(next);

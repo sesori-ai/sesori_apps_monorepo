@@ -739,25 +739,8 @@ void main() {
     });
 
     test("a broken history replay surfaces as a typed failure, not an empty thread", () async {
-      final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
-      final failingPlugin = TestAcpPlugin(
-        id: "acp",
-        agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+      final failingPlugin = composeTestAcpPlugin(
         launchDirectory: cwd,
-        eventMapper: AcpEventMapper(
-          launchDirectory: cwd,
-          pluginId: "acp",
-          configurationTracker: configurationTracker,
-        ),
-        commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
         processFactory: _throwReplayProcess,
       );
       addTearDown(failingPlugin.dispose);

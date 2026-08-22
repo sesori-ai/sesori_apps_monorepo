@@ -3,11 +3,14 @@ import "package:opencode_plugin/src/models/openapi/compaction_part.g.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "support/fake_open_code_api.dart";
+import "support/open_code_fixtures.dart";
+
 void main() {
   group("OpenCodeRepository.getProject", () {
     test("maps OpenCode's global project to a folder-specific virtual project", () async {
-      final api = _FakeApi(
-        currentProject: _backendProject(
+      final api = FakeOpenCodeApi(
+        currentProject: openCodeProject(
           id: "global",
           worktree: "/",
           name: "Global",
@@ -24,8 +27,8 @@ void main() {
     });
 
     test("keeps a Git project's canonical worktree identity", () async {
-      final api = _FakeApi(
-        currentProject: _backendProject(
+      final api = FakeOpenCodeApi(
+        currentProject: openCodeProject(
           id: "project-1",
           worktree: "/projects/original",
           name: "Repository",
@@ -43,8 +46,8 @@ void main() {
 
   group("OpenCodeRepository.renameProject", () {
     test("renames a virtual folder without updating the shared global project", () async {
-      final api = _FakeApi(
-        currentProject: _backendProject(
+      final api = FakeOpenCodeApi(
+        currentProject: openCodeProject(
           id: "global",
           worktree: "/",
           name: "Global",
@@ -66,50 +69,10 @@ void main() {
 
   group("OpenCodeRepository.getSessions", () {
     test("excludes child sessions (non-null parentID)", () async {
-      final api = _FakeApi(
+      final api = FakeOpenCodeApi(
         sessions: [
-          const Session(
-            slug: "slug",
-            title: "title",
-            version: "v",
-            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
-            id: "parent-1",
-            projectID: "p1",
-            directory: "/repo",
-            workspaceID: null,
-            path: null,
-            parentID: null,
-            summary: null,
-            cost: null,
-            tokens: null,
-            share: null,
-            agent: null,
-            model: null,
-            metadata: null,
-            permission: null,
-            revert: null,
-          ),
-          const Session(
-            slug: "slug",
-            title: "title",
-            version: "v",
-            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
-            id: "child-1",
-            projectID: "p1",
-            directory: "/repo",
-            parentID: "parent-1",
-            workspaceID: null,
-            path: null,
-            summary: null,
-            cost: null,
-            tokens: null,
-            share: null,
-            agent: null,
-            model: null,
-            metadata: null,
-            permission: null,
-            revert: null,
-          ),
+          openCodeSession(id: "parent-1", directory: "/repo"),
+          openCodeSession(id: "child-1", directory: "/repo", parentID: "parent-1"),
           const Session(
             slug: "slug",
             title: "title",
@@ -165,7 +128,7 @@ void main() {
     });
 
     test("includes sessions with null parentID", () async {
-      final api = _FakeApi(
+      final api = FakeOpenCodeApi(
         sessions: [
           const Session(
             slug: "slug",
@@ -219,7 +182,7 @@ void main() {
     });
 
     test("excludes child sessions from global sessions too", () async {
-      final api = _FakeApi(
+      final api = FakeOpenCodeApi(
         globalSessions: [
           const GlobalSession(
             slug: "slug",
@@ -277,7 +240,7 @@ void main() {
     });
 
     test("filters by worktree directory", () async {
-      final api = _FakeApi(
+      final api = FakeOpenCodeApi(
         sessions: [
           const Session(
             slug: "slug",
@@ -331,7 +294,7 @@ void main() {
     });
 
     test("sorts by updated time descending", () async {
-      final api = _FakeApi(
+      final api = FakeOpenCodeApi(
         sessions: [
           const Session(
             slug: "slug",
@@ -385,7 +348,7 @@ void main() {
     });
 
     test("deduplicates standard and global sessions", () async {
-      final api = _FakeApi(
+      final api = FakeOpenCodeApi(
         sessions: [
           const Session(
             slug: "slug",
@@ -470,7 +433,7 @@ void main() {
     test("ignores the raw project startup timestamp and derives activity from root sessions", () async {
       // OpenCode stamps the raw project update time at server startup, making
       // it newer than actual work. It must not influence project activity.
-      final api = _FakeApi(
+      final api = FakeOpenCodeApi(
         projects: [
           const Project(
             sandboxes: <String>[],
@@ -542,7 +505,7 @@ void main() {
 
     test("derives activity from global sessions into matching real project", () async {
       // Orphaned global sessions under a directory that also has a real project.
-      final api = _FakeApi(
+      final api = FakeOpenCodeApi(
         projects: [
           const Project(
             sandboxes: <String>[],
@@ -591,7 +554,7 @@ void main() {
     });
 
     test("activity is null when no sessions exist", () async {
-      final api = _FakeApi(
+      final api = FakeOpenCodeApi(
         projects: [
           const Project(
             sandboxes: <String>[],
@@ -626,7 +589,7 @@ void main() {
       // Project has sessions from both the real project ID and the global
       // project ID (pre-git-init orphans). Both should contribute to the
       // session-derived activity.
-      final api = _FakeApi(
+      final api = FakeOpenCodeApi(
         projects: [
           const Project(
             sandboxes: <String>[],
@@ -699,7 +662,7 @@ void main() {
     test("creates virtual projects only from global sessions", () async {
       // A directory with only global sessions (no real project entry) should
       // produce a virtual project.
-      final api = _FakeApi(
+      final api = FakeOpenCodeApi(
         projects: [
           const Project(
             sandboxes: <String>[],
@@ -754,7 +717,7 @@ void main() {
       // Sessions belonging to a non-global project ID should not produce
       // virtual projects — they already belong to a real project even if the
       // project entry wasn't returned by the API (edge case).
-      final api = _FakeApi(
+      final api = FakeOpenCodeApi(
         projects: [],
         globalSessions: [
           const GlobalSession(
@@ -794,7 +757,7 @@ void main() {
       // ran OpenCode from /repo/packages/foo). The project worktree is /repo.
       // The session's timestamp should still contribute to the project's
       // session-derived activity.
-      final api = _FakeApi(
+      final api = FakeOpenCodeApi(
         projects: [
           const Project(
             sandboxes: <String>[],
@@ -843,7 +806,7 @@ void main() {
     });
 
     test("attributes sandbox session activity to the canonical project", () async {
-      final api = _FakeApi(
+      final api = FakeOpenCodeApi(
         projects: [
           const Project(
             sandboxes: <String>["/moved/repo", "/second/repo", ""],
@@ -960,7 +923,7 @@ void main() {
     });
 
     test("excludes global meta-project from results", () async {
-      final api = _FakeApi(
+      final api = FakeOpenCodeApi(
         projects: [
           const Project(
             sandboxes: <String>[],
@@ -995,7 +958,7 @@ void main() {
 
   group("OpenCodeRepository.getCommands", () {
     test("maps OpenCode commands to plugin commands in Layer 2", () async {
-      final api = _FakeApi(
+      final api = FakeOpenCodeApi(
         commands: const [
           Command(
             name: "/review-work",
@@ -1034,7 +997,7 @@ void main() {
 
   group("OpenCodeRepository.createSession", () {
     test("trims directory before calling api and mapping projectID", () async {
-      final api = _FakeApi(
+      final api = FakeOpenCodeApi(
         createdSession: const Session(
           slug: "slug",
           version: "v",
@@ -1072,7 +1035,7 @@ void main() {
 
   group("OpenCodeRepository message reservation", () {
     test("lets OpenCode name an empty non-renderable message", () async {
-      final api = _FakeApi();
+      final api = FakeOpenCodeApi();
       final repository = OpenCodeRepository(api);
 
       final messageId = await repository.reserveMessage(
@@ -1098,7 +1061,7 @@ void main() {
     });
 
     test("reserves and converts the exact placeholder part for compaction", () async {
-      final api = _FakeApi();
+      final api = FakeOpenCodeApi();
       final repository = OpenCodeRepository(api);
 
       final reservation = await repository.reserveCompactionMessage(
@@ -1140,7 +1103,7 @@ void main() {
     });
 
     test("deletes a rejected reservation by exact message id", () async {
-      final api = _FakeApi();
+      final api = FakeOpenCodeApi();
       final repository = OpenCodeRepository(api);
 
       await repository.deleteMessage(
@@ -1155,7 +1118,7 @@ void main() {
 
   group("OpenCodeRepository variant passthrough", () {
     test("sendPrompt forwards raw variant", () async {
-      final api = _FakeApi();
+      final api = FakeOpenCodeApi();
       final repository = OpenCodeRepository(api);
 
       await repository.sendPrompt(
@@ -1174,7 +1137,7 @@ void main() {
     });
 
     test("sendPrompt omits variant when null", () async {
-      final api = _FakeApi();
+      final api = FakeOpenCodeApi();
       final repository = OpenCodeRepository(api);
 
       await repository.sendPrompt(
@@ -1192,7 +1155,7 @@ void main() {
     });
 
     test("sendCommand forwards raw variant", () async {
-      final api = _FakeApi();
+      final api = FakeOpenCodeApi();
       final repository = OpenCodeRepository(api);
 
       await repository.sendCommand(
@@ -1214,7 +1177,7 @@ void main() {
 
   group("OpenCodeRepository.addCompactionInstructions", () {
     test("persists instructions as a no-reply prompt", () async {
-      final api = _FakeApi();
+      final api = FakeOpenCodeApi();
       final repository = OpenCodeRepository(api);
 
       await repository.addCompactionInstructions(
@@ -1291,258 +1254,4 @@ void main() {
       expect(withoutVariant.containsKey("variant"), isFalse);
     });
   });
-}
-
-class _FakeApi({
-  List<Session>? sessions,
-  List<GlobalSession>? globalSessions,
-  List<Project>? projects,
-  List<Command>? commands,
-  final Session? _createdSession,
-  final Project? _currentProject,
-}) implements OpenCodeApi {
-  final List<Session> _sessions = sessions ?? [];
-  final List<GlobalSession> _globalSessions = globalSessions ?? [];
-  final List<Project> _projects = projects ?? [];
-  final List<Command> _commands = commands ?? [];
-  String? lastCreateDirectory;
-  String? lastCreateParentSessionId;
-  String? lastPromptSessionId;
-  String? lastPromptDirectory;
-  SendPromptBody? lastPromptBody;
-  final List<SendPromptBody> promptBodies = [];
-  Part? lastUpdatedPart;
-  String? lastUpdatedMessageId;
-  String? lastUpdatedPartId;
-  String? lastDeletedMessageId;
-  String? lastCommandSessionId;
-  String? lastCommandDirectory;
-  SendCommandBody? lastCommandBody;
-  String? lastGetProjectDirectory;
-  int updateProjectCalls = 0;
-
-  @override
-  Future<bool> healthCheck() async => true;
-
-  @override
-  Future<List<Project>> listProjects() async => _projects;
-
-  @override
-  Future<List<Session>> listRootSessions() async => _sessions;
-
-  @override
-  Future<List<Session>> listSessions({String? directory, required bool roots}) async => _sessions;
-
-  @override
-  Future<List<Command>> listCommands({required String? directory}) async => _commands;
-
-  @override
-  Future<Session> createSession({required String directory, String? parentSessionId}) async {
-    lastCreateDirectory = directory;
-    lastCreateParentSessionId = parentSessionId;
-    return _createdSession ??
-        const Session(
-          slug: "slug",
-          version: "v",
-          id: "created",
-          projectID: "global",
-          directory: "/repo",
-          parentID: null,
-          title: "",
-          time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
-          summary: null,
-          workspaceID: null,
-          path: null,
-          cost: null,
-          tokens: null,
-          share: null,
-          agent: null,
-          model: null,
-          metadata: null,
-          permission: null,
-          revert: null,
-        );
-  }
-
-  @override
-  Future<Session> getSession({required String sessionId, required String? directory}) async =>
-      throw UnimplementedError();
-
-  @override
-  Future<Session> updateSession({
-    required String sessionId,
-    required Map<String, dynamic> body,
-    required String? directory,
-  }) async => throw UnimplementedError();
-
-  @override
-  Future<void> deleteSession({required String sessionId, required String? directory}) async {}
-
-  @override
-  Future<void> removeWorktree({
-    required String directory,
-    required String worktreePath,
-  }) async {}
-
-  @override
-  Future<SessionMessagesResponseItem?> sendPrompt({
-    required String sessionId,
-    required SendPromptBody body,
-    required String? directory,
-  }) async {
-    lastPromptSessionId = sessionId;
-    lastPromptDirectory = directory;
-    lastPromptBody = body;
-    promptBodies.add(body);
-    if (!body.noReply) return null;
-    return SessionMessagesResponseItem.fromJson({
-      "info": {
-        "id": "msg-reserved",
-        "sessionID": sessionId,
-        "role": "user",
-        "time": const {"created": 1},
-        "agent": body.agent ?? "build",
-        "model": const {"providerID": "openai", "modelID": "gpt-4.1"},
-      },
-      "parts": [
-        if (body.parts.isNotEmpty)
-          {
-            "id": "prt-reserved",
-            "sessionID": sessionId,
-            "messageID": "msg-reserved",
-            "type": "text",
-            "text": "",
-          },
-      ],
-    });
-  }
-
-  @override
-  Future<void> updateMessagePart({
-    required String sessionId,
-    required String messageId,
-    required String partId,
-    required Part part,
-    required String? directory,
-  }) async {
-    lastUpdatedMessageId = messageId;
-    lastUpdatedPartId = partId;
-    lastUpdatedPart = part;
-  }
-
-  @override
-  Future<void> deleteMessage({
-    required String sessionId,
-    required String messageId,
-    required String? directory,
-  }) async {
-    lastDeletedMessageId = messageId;
-  }
-
-  @override
-  Future<void> sendCommand({
-    required String sessionId,
-    required SendCommandBody body,
-    required String? directory,
-  }) async {
-    lastCommandSessionId = sessionId;
-    lastCommandDirectory = directory;
-    lastCommandBody = body;
-  }
-
-  @override
-  Future<void> abortSession({required String sessionId, required String? directory}) async {}
-
-  @override
-  Future<List<Agent>> listAgents({required String directory}) async => [];
-
-  @override
-  Future<List<QuestionRequest>> getPendingQuestions({required String? directory}) async => [];
-
-  @override
-  Future<List<PermissionRequest>> getPendingPermissions({required String? directory}) async => [];
-
-  @override
-  Future<void> replyToQuestion({
-    required String questionId,
-    required String? directory,
-    required QuestionReplyBody body,
-  }) async {}
-
-  @override
-  Future<void> replyToPermission({
-    required String requestId,
-    required String? directory,
-    required PluginPermissionReply reply,
-  }) async {}
-
-  @override
-  Future<void> rejectQuestion({
-    required String questionId,
-    required String? directory,
-  }) async {}
-
-  @override
-  Future<Project> getProject({required String directory}) async {
-    lastGetProjectDirectory = directory;
-    return _currentProject ?? (throw UnimplementedError());
-  }
-
-  @override
-  Future<List<Session>> getChildren({
-    required String sessionId,
-    required String? directory,
-  }) async => [];
-
-  @override
-  Future<List<SessionMessagesResponseItem>> getMessages({
-    required String sessionId,
-    required String? directory,
-  }) async => [];
-
-  @override
-  Future<List<GlobalSession>> listAllSessions({
-    required String? directory,
-    required bool roots,
-  }) async => _globalSessions;
-
-  @override
-  Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async => {};
-
-  @override
-  Future<ProviderListResponse> listProviders() async =>
-      const ProviderListResponse(all: [], defaultValue: {}, connected: []);
-
-  @override
-  Future<ConfigProvidersResponse> listConfigProviders({required String? directory}) async =>
-      const ConfigProvidersResponse(providers: [], defaultValue: {});
-
-  @override
-  Future<Project> updateProject({
-    required String projectId,
-    required String directory,
-    required UpdateProjectBody body,
-  }) async {
-    updateProjectCalls += 1;
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<Session> forkSession({
-    required String sessionId,
-    required String directory,
-  }) async => throw UnimplementedError();
-}
-
-Project _backendProject({required String id, required String worktree, required String? name}) {
-  return Project(
-    time: const ProjectTime(created: 0, updated: 0, initialized: null),
-    sandboxes: const [],
-    id: id,
-    worktree: worktree,
-    vcs: null,
-    name: name,
-    icon: null,
-    commands: null,
-  );
 }

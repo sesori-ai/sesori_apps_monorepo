@@ -10,25 +10,8 @@ void main() {
 
     setUp(() {
       fake = FakeAcpProcess();
-      final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
-      plugin = TestAcpPlugin(
-        id: "acp",
-        agentDisplayName: "ACP",
+      plugin = composeTestAcpPlugin(
         launchSpec: const AcpLaunchSpec(command: "/opt/agent", args: ["-e", "https://user:secret@host/api", "acp"]),
-        launchDirectory: "/repo",
-        eventMapper: AcpEventMapper(
-          launchDirectory: "/repo",
-          pluginId: "acp",
-          configurationTracker: configurationTracker,
-        ),
-        commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
         processFactory: (_) async => fake,
       );
     });

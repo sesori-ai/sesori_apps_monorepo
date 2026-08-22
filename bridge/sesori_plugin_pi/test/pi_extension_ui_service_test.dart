@@ -12,6 +12,8 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "support/fake_pi_session_storage_api.dart";
+
 void main() {
   late List<PiExtensionUiEvent> events;
   late PiExtensionUiService service;
@@ -21,8 +23,8 @@ void main() {
   setUp(() async {
     events = [];
     projectId = normalizeProjectDirectory(directory: "/repo/worktree");
-    final storage = _FakeStorageApi(
-      sessions: [
+    final storage = FakePiExtensionSessionStorageApi(
+      initialSessions: [
         _metadata(id: "root", cwd: "/repo", updated: 3),
         _metadata(id: "child", cwd: "/repo/worktree", updated: 2, parentId: "root"),
       ],
@@ -258,9 +260,9 @@ void main() {
     final gate = Completer<void>();
     final delayed = PiExtensionUiService(
       catalogRepository: PiSessionCatalogRepository(
-        storageApi: _FakeStorageApi(
-          sessions: [_metadata(id: "child", cwd: "/repo", updated: 1)],
-          gate: gate,
+        storageApi: FakePiExtensionSessionStorageApi(
+          initialSessions: [_metadata(id: "child", cwd: "/repo", updated: 1)],
+          listGate: gate,
         ),
       ),
       processRepository: processes.repository,
@@ -288,9 +290,9 @@ void main() {
     final gate = Completer<void>();
     final delayed = PiExtensionUiService(
       catalogRepository: PiSessionCatalogRepository(
-        storageApi: _FakeStorageApi(
-          sessions: [_metadata(id: "child", cwd: "/repo", updated: 1)],
-          gate: gate,
+        storageApi: FakePiExtensionSessionStorageApi(
+          initialSessions: [_metadata(id: "child", cwd: "/repo", updated: 1)],
+          listGate: gate,
         ),
       ),
       processRepository: processes.repository,
@@ -343,7 +345,10 @@ void main() {
   test("catalog failures cancel the unresolved Pi dialog", () async {
     final failing = PiExtensionUiService(
       catalogRepository: PiSessionCatalogRepository(
-        storageApi: _FakeStorageApi(sessions: const [], error: StateError("catalog unavailable")),
+        storageApi: FakePiExtensionSessionStorageApi(
+          initialSessions: const [],
+          listError: StateError("catalog unavailable"),
+        ),
       ),
       processRepository: processes.repository,
       tracker: PiExtensionUiTracker(),
@@ -374,9 +379,9 @@ void main() {
     final gate = Completer<void>();
     final delayed = PiExtensionUiService(
       catalogRepository: PiSessionCatalogRepository(
-        storageApi: _FakeStorageApi(
-          sessions: [_metadata(id: "child", cwd: "/repo", updated: 1)],
-          gate: gate,
+        storageApi: FakePiExtensionSessionStorageApi(
+          initialSessions: [_metadata(id: "child", cwd: "/repo", updated: 1)],
+          listGate: gate,
         ),
       ),
       processRepository: processes.repository,
@@ -407,8 +412,8 @@ void main() {
     await processes.repository.teardown(sessionId: "child");
     final unavailable = PiExtensionUiService(
       catalogRepository: PiSessionCatalogRepository(
-        storageApi: _FakeStorageApi(
-          sessions: [_metadata(id: "child", cwd: "/repo", updated: 1)],
+        storageApi: FakePiExtensionSessionStorageApi(
+          initialSessions: [_metadata(id: "child", cwd: "/repo", updated: 1)],
         ),
       ),
       processRepository: processes.repository,
@@ -452,7 +457,7 @@ final class const _SentReply({
   required final PiExtensionUiReply reply,
 });
 
-final class _ProcessFixture({required final _FakeStorageApi storage}) {
+final class _ProcessFixture({required final FakePiExtensionSessionStorageApi storage}) {
   final List<FakePiProcess> processes = [FakePiProcess()];
   late int generation;
   late final PiSessionProcessRepository repository = PiSessionProcessRepository(
@@ -531,51 +536,5 @@ PiSessionMetadata _metadata({required String id, required String cwd, required i
       createdAt: null,
       updatedAt: DateTime.fromMillisecondsSinceEpoch(updated, isUtc: true),
     );
-
-final class _FakeStorageApi({
-  required final List<PiSessionMetadata> sessions,
-  final Completer<void>? gate,
-  final Object? error,
-}) implements PiSessionStorageApi {
-  @override
-  Future<List<PiSessionMetadata>> listSessionMetadata({required Set<String> knownDirectories}) async {
-    await gate?.future;
-    if (error case final error?) throw error;
-    return sessions;
-  }
-
-  @override
-  Future<String?> resolveEffectiveSessionDirectory({required String directory}) async => null;
-
-  @override
-  Future<void> clearPendingNewSession({required String sessionId, required Set<String> knownDirectories}) async {}
-
-  @override
-  Future<PiPendingNewSession?> readPendingNewSession({
-    required String sessionId,
-    required Set<String> knownDirectories,
-  }) async => null;
-
-  @override
-  Future<void> writePendingNewSession({
-    required String sessionId,
-    required String cwd,
-    required String? parentSessionPath,
-  }) async {}
-
-  @override
-  Future<PiResolvedSession?> resolveSession({required String sessionId, required Set<String> knownDirectories}) async {
-    for (final metadata in sessions) {
-      if (metadata.id == sessionId) return PiResolvedSession(metadata: metadata, path: "/sessions/$sessionId.jsonl");
-    }
-    return null;
-  }
-
-  @override
-  Future<String?> resolveSessionPath({required String sessionId, required Set<String> knownDirectories}) async => null;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
 
 String _repeat(String value, int count) => List.filled(count, value).join();

@@ -92,27 +92,7 @@ void main() {
     setUp(() {
       fake = FakeAcpProcess();
       emitted = <BridgeSseEvent>[];
-      final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
-      plugin = TestAcpPlugin(
-        id: "acp",
-        agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
-        launchDirectory: cwd,
-        eventMapper: AcpEventMapper(
-          launchDirectory: cwd,
-          pluginId: "acp",
-          configurationTracker: configurationTracker,
-        ),
-        commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
-        processFactory: (_) async => fake,
-      );
+      plugin = composeTestAcpPlugin(processFactory: (_) async => fake, launchDirectory: cwd);
       plugin.events.listen(emitted.add);
     });
 
@@ -227,25 +207,7 @@ void main() {
     final replay = FakeAcpProcess();
     final processes = [live, replay];
     final emitted = <BridgeSseEvent>[];
-    final configurationTracker = AcpSessionConfigurationTracker();
-    final commandTracker = AcpCommandTracker();
-    final plugin = TestAcpPlugin(
-      id: "acp",
-      agentDisplayName: "ACP",
-      launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
-      launchDirectory: "/repo",
-      eventMapper: AcpEventMapper(
-        launchDirectory: "/repo",
-        pluginId: "acp",
-        configurationTracker: configurationTracker,
-      ),
-      commandTracker: commandTracker,
-      sessionOptionsService: AcpSessionOptionsService(
-        configurationTracker: configurationTracker,
-        commandTracker: commandTracker,
-        pluginId: "acp",
-        agentDisplayName: "ACP",
-      ),
+    final plugin = composeTestAcpPlugin(
       processFactory: (_) async => processes.removeAt(0),
     );
     plugin.events.listen(emitted.add);

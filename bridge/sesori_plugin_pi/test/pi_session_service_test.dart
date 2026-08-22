@@ -17,11 +17,12 @@ import "package:pi_plugin/src/trackers/pi_tool_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "support/fake_pi_session_storage_api.dart";
 import "support/pi_rpc_client_test_factory.dart";
 
 void main() {
   test("new session preparation generates a valid secure id and persists its marker", () async {
-    final storage = _Storage(initialResolved: null);
+    final storage = _Storage(initialResolvedSession: null);
     final fixture = _Fixture(processes: const [], storageOverride: storage);
     addTearDown(fixture.dispose);
     final service = fixture.service();
@@ -37,7 +38,7 @@ void main() {
   });
 
   test("prepared sessions retain their marker directory until deletion", () async {
-    final storage = _Storage(initialResolved: null);
+    final storage = _Storage(initialResolvedSession: null);
     final fixture = _Fixture(processes: const [], storageOverride: storage);
     addTearDown(fixture.dispose);
     final service = fixture.service();
@@ -51,7 +52,7 @@ void main() {
 
   test("persisted turns do not rescan pending marker storage", () async {
     final process = FakePiProcess();
-    final storage = _Storage(initialResolved: _resolved());
+    final storage = _Storage(initialResolvedSession: _resolved());
     final fixture = _Fixture(processes: [process], storageOverride: storage);
     addTearDown(fixture.dispose);
     final service = fixture.service();
@@ -98,8 +99,8 @@ void main() {
   test("resolved session clears stale marker before startup and cleanup failure remains best-effort", () async {
     final process = FakePiProcess();
     final storage = _Storage(
-      initialResolved: _resolved(),
-      initialPending: const PiPendingNewSession(id: "session", cwd: "/pending", parentSessionPath: null),
+      initialResolvedSession: _resolved(),
+      initialPendingNewSession: const PiPendingNewSession(id: "session", cwd: "/pending", parentSessionPath: null),
     );
     final fixture = _Fixture(processes: [process], storageOverride: storage);
     addTearDown(fixture.dispose);
@@ -113,7 +114,7 @@ void main() {
 
     final failedCleanupProcess = FakePiProcess();
     final failedCleanupStorage = _Storage(
-      initialResolved: _resolved(id: "other"),
+      initialResolvedSession: _resolved(id: "other"),
       clearError: StateError("marker cleanup failed"),
     );
     final failedCleanupFixture = _Fixture(
@@ -138,8 +139,8 @@ void main() {
     final resumed = FakePiProcess();
     final created = FakePiProcess();
     final storage = _Storage(
-      initialResolved: _resolved(),
-      initialPending: const PiPendingNewSession(id: "session", cwd: "/pending", parentSessionPath: null),
+      initialResolvedSession: _resolved(),
+      initialPendingNewSession: const PiPendingNewSession(id: "session", cwd: "/pending", parentSessionPath: null),
     );
     final fixture = _Fixture(processes: [resumed, created], storageOverride: storage);
     addTearDown(fixture.dispose);
@@ -161,7 +162,7 @@ void main() {
 
   test("new session clears its pending marker once persistence becomes observable", () async {
     final process = FakePiProcess();
-    final storage = _Storage(initialResolved: null);
+    final storage = _Storage(initialResolvedSession: null);
     final fixture = _Fixture(processes: [process], storageOverride: storage);
     addTearDown(fixture.dispose);
     final service = fixture.service();
@@ -191,7 +192,7 @@ void main() {
 
   test("fork preparation resolves a parent from its own project directory", () async {
     final storage = _Storage(
-      initialResolved: PiResolvedSession(
+      initialResolvedSession: PiResolvedSession(
         metadata: PiSessionMetadata(
           id: "parent",
           cwd: "/parent-project",
@@ -233,7 +234,7 @@ void main() {
   test("teardown fences and reaps a process whose spawn completes late", () async {
     final process = FakePiProcess();
     final spawn = Completer<PiProcessHandle>();
-    final storage = _Storage(initialResolved: _resolved());
+    final storage = _Storage(initialResolvedSession: _resolved());
     final identities = PiMessageIdentityTracker(pluginId: "pi");
     final repository = PiSessionProcessRepository(
       storageApi: storage,
@@ -321,7 +322,7 @@ void main() {
       final transient = FakePiProcess();
       final resident = FakePiProcess();
       final gate = Completer<void>();
-      final storage = _Storage(initialResolved: _resolved(), resolveGate: gate);
+      final storage = _Storage(initialResolvedSession: _resolved(), resolveGate: gate);
       final fixture = _Fixture(processes: [transient, resident], storageOverride: storage);
       addTearDown(fixture.dispose);
 
@@ -1517,7 +1518,7 @@ void main() {
 
   test("idle reap preserves pending marker location for later deletion", () async {
     final process = FakePiProcess();
-    final storage = _Storage(initialResolved: null);
+    final storage = _Storage(initialResolvedSession: null);
     final fixture = _Fixture(processes: [process], storageOverride: storage);
     final clock = _ManualClock();
     final service = fixture.service(clock: clock);
@@ -1681,7 +1682,7 @@ final class _Fixture({
   final Duration historyRpcTimeout = const Duration(seconds: 2),
 }) {
   final List<FakePiProcess> _processes = List.of(processes);
-  late final _Storage storage = storageOverride ?? _Storage(initialResolved: _resolved());
+  late final _Storage storage = storageOverride ?? _Storage(initialResolvedSession: _resolved());
   final List<PiLaunchSpec> spawned = [];
   late final PiMessageIdentityTracker identities = PiMessageIdentityTracker(pluginId: "pi");
   late final PiHistoryMapper historyMapper = PiHistoryMapper(pluginId: "pi");
@@ -1740,16 +1741,24 @@ final class _Fixture({
 }
 
 final class _Storage({
-  required final PiResolvedSession? initialResolved,
-  final PiPendingNewSession? initialPending,
+  required super.initialResolvedSession,
+  super.initialPendingNewSession,
   final Completer<void>? resolveGate,
-  final Object? clearError,
+  super.clearError,
   final String? requiredKnownDirectory,
-}) implements PiSessionStorageApi {
-  PiResolvedSession? resolved = initialResolved;
-  PiPendingNewSession? pending = initialPending;
-  Set<String>? clearedDirectories;
-  int resolveCalls = 0;
+}) extends FakePiServiceSessionStorageApi {
+  PiResolvedSession? get resolved => resolvedSession;
+  set resolved(PiResolvedSession? value) => resolvedSession = value;
+  PiPendingNewSession? get pending => pendingNewSession;
+  set pending(PiPendingNewSession? value) => pendingNewSession = value;
+  Set<String>? get clearedDirectories => clearedKnownDirectories;
+
+  @override
+  Future<void> clearPendingNewSession({required String sessionId, required Set<String> knownDirectories}) async {
+    if (clearError case final error?) throw error;
+    await super.clearPendingNewSession(sessionId: sessionId, knownDirectories: knownDirectories);
+  }
+
   @override
   Future<PiResolvedSession?> resolveSession({required String sessionId, required Set<String> knownDirectories}) async {
     resolveCalls++;
@@ -1759,38 +1768,9 @@ final class _Storage({
   }
 
   @override
-  Future<String?> resolveSessionPath({required String sessionId, required Set<String> knownDirectories}) async =>
-      (await resolveSession(sessionId: sessionId, knownDirectories: knownDirectories))?.path;
-
-  @override
-  Future<PiPendingNewSession?> readPendingNewSession({
-    required String sessionId,
-    required Set<String> knownDirectories,
-  }) async => pending;
-
-  @override
-  Future<void> clearPendingNewSession({required String sessionId, required Set<String> knownDirectories}) async {
-    if (clearError case final error?) throw error;
-    clearedDirectories = Set.of(knownDirectories);
-    pending = null;
-  }
-
-  @override
-  Future<void> writePendingNewSession({
-    required String sessionId,
-    required String cwd,
-    required String? parentSessionPath,
-  }) async {
-    pending = PiPendingNewSession(id: sessionId, cwd: cwd, parentSessionPath: parentSessionPath);
-  }
-
-  @override
   Future<List<PiSessionMetadata>> listSessionMetadata({required Set<String> knownDirectories}) async => [
     if (resolved case PiResolvedSession(:final metadata)) metadata,
   ];
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 final class _HistoryStorage({required super.storageApi}) extends PiSessionHistoryStorageApi {
