@@ -3,11 +3,11 @@
 ## Current State
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Implementation base:** `main` at `ba725ec84`
-- **Plan branch:** `inline-subtask-plan`
-- **Series state:** Step 1/8 plan PR
-  [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open
-- **Next action:** merge the plan, then Step 2/8 (contract + client tile)
+- **Implementation base:** `main` at `5ffd05c5e`
+- **Series state:** Step 1/8 merged; Step 2/8 contract PR
+  [#1044](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1044) open
+  (branch `claude-subtask-contract`)
+- **Next action:** merge Step 2/8, then Step 3/8 (Claude subtask lifecycle)
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts"; the
   completed `claude-code-plugin/PROTOCOL.md` is historical and is not edited
 
@@ -69,8 +69,8 @@
 
 | Done | Step | Exact PR title | Target | State |
 |---|---|---|---:|---|
-| [ ] | 1/8 | `🌱 [claude-inline-subtasks] docs: plan inline Claude sub-agent subtasks [step 1/8]` | 450-650 | [PR #1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open |
-| [ ] | 2/8 | `⚙️ [claude-inline-subtasks] contract: subtask lifecycle state, cancelled status, child link [step 2/8]` | 500-800 | Pending |
+| [x] | 1/8 | `🌱 [claude-inline-subtasks] docs: plan inline Claude sub-agent subtasks [step 1/8]` | 450-650 | [PR #1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) merged |
+| [ ] | 2/8 | `⚙️ [claude-inline-subtasks] contract: subtask lifecycle state, cancelled status, child link [step 2/8]` | 500-800 | [PR #1044](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1044) open |
 | [ ] | 3/8 | `🚧 [claude-inline-subtasks] claude: live and replayed subtask lifecycle for Agent calls [step 3/8]` | 900-1,300 | Pending |
 | [ ] | 4/8 | `🚧 [claude-inline-subtasks] claude: sub-agent transcripts as child sessions [step 4/8]` | 900-1,400 | Pending |
 | [ ] | 5/8 | `⚙️ [claude-inline-subtasks] claude: stream sub-agent frames into child sessions [step 5/8]` | 300-500 | Pending |
@@ -122,6 +122,20 @@
   target after the user-review lifecycle amendment, the scoped-stop step the
   user added, two architecture reviews, and the bot rounds; accepted
   deviation, target unchanged.
+- **Step 2:** implemented on `main` at `5ffd05c5e`. Codegen re-run for
+  `sesori_shared`, `sesori_plugin_interface`, and `flutter gen-l10n`.
+  `dart analyze --fatal-infos` clean in `sesori_shared`,
+  `sesori_plugin_interface`, `bridge/app`, and every plugin package;
+  `flutter analyze` clean in `client/app`. `dart test`: shared 358,
+  interface 153, `bridge/app` 2,692, `module_core` 1,315, opencode 434,
+  acp 260, codex 392, pi 260, claude 253 — all pass; `flutter test`
+  `client/app` 853 — all pass. Changed lines: 716 additions / 63 deletions
+  across 53 files, of which 202/37 are non-generated production code; the
+  rest is generated output and the mechanical `childSessionID: null`
+  argument added at every existing construction site. Over the 500-800
+  target because a required nullable field touches every call site;
+  accepted, target unchanged.
+- **Step 2 PR:** [#1044](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1044) open
   Per the plan's series note, `TRACKER.md` bookkeeping is excluded from the
   comparison because its count would include the lines that record it; the
   final tracker size is visible in the merged PR.
