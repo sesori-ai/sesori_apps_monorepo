@@ -279,10 +279,20 @@ Live, in `ClaudeToolTracker` + `ClaudeEventDispatcher`:
   safe stop/suspension refuse and a forced stop interrupts observably),
   `interruptActiveWork`'s active set, and the idle gate in
   `_finish`/`_endSelfStartedTurn`/`_scheduleIdleReap`. A notification that
-  empties the set while nothing else runs emits `BridgeSseSessionIdle`, syncs
-  work state, and arms the reap, symmetrically with a self-started turn
-  ending; the CLI's wake-up turn that usually follows is a self-started turn
-  and is handled by the existing code. On a CLI floor without task frames the
+  empties the set never emits idle by itself: the CLI follows every task
+  notification with a wake-up turn (the notification reaches the model as a
+  user message), so a `ClaudeTaskNotificationMessage` — or, on the floor, a
+  user frame carrying the notification block — that arrives while no turn is
+  active **opens a self-started turn**, exactly as a stream/assistant frame
+  does today; that turn's `result` (or process exit/abort) ends it, and idle,
+  work-state sync, and the reap follow then if the running set is empty. One
+  continuous busy span therefore covers launch → background work → wake-up
+  turn, so the 500 ms completion debounce (`bridge/app/lib/src/push/
+  completion_notifier.dart:14`) never sees a transient idle and the completion
+  push fires once. Residual: a notification with no wake-up turn would hold
+  that self-started turn until abort/delete/exit — the same class of residual
+  as a missing notification, cleared by the same paths. On a CLI floor without
+  task frames the
   service uses the same typed substitutes as the dispatcher: an
   `asyncLaunched` `ClaudeToolUseResult` adds the task and a completed tool
   result or a user frame carrying `ClaudeMappedTaskNotificationContentBlock`
@@ -380,10 +390,13 @@ History replay, in `ClaudeHistoryMapper`:
   `PluginActiveSession.childSessionIds` with only the children whose status
   is busy/retry (the contract's meaning: a finished child drops out while a
   sibling keeps running; today `const []` at `claude_plugin_impl.dart:396`);
-  the root itself is already in the summary
-  because the session service reports it busy while a task runs (lifecycle
-  rule in Step 3), so the `:387` running/awaiting filter needs no change.
-  This reaches the bar, `hasActiveWork`,
+  `mainAgentRunning` is **not** read from the conflated busy status:
+  `ClaudeSessionService` exposes `isTurnRunning(sessionId)` (`pending > 0 ||
+  selfStartedTurn != null`) for it, `childSessionIds` come from the
+  dispatcher's busy children, and the root is included when either is true
+  (today `:381-397` derives both from the status, which with background-only
+  activity would report `mainAgentRunning: true`). This reaches the bar,
+  `hasActiveWork`,
   activity roll-ups, and push grouping through the plugin's existing contract
   surfaces (`session.created`/`session.status` events, `getSessionStatuses`,
   `childSessionIds`); no bridge/app change is needed for that.
@@ -474,7 +487,7 @@ the client, analytics.
 | A task that never reports `task_notification` pins the session busy and the process resident | theoretical (CLI always emits a terminal notification in every observed flow) | accept; abort/delete/exit clear it; Step 3 evaluates `background_tasks_changed` as a reconciliation snapshot |
 | An interrupted foreground agent renders `cancelled` live (notification `stopped`) but `error` on replay, because the transcript persists only its error tool result and no notification record, and tool-result text is never matched | cosmetic divergence | accept; recorded as a known limitation in Step 6 |
 | External terminal session's running agent shows cancelled until its notification lands | rare, self-corrects | accept |
-| `task_started`/`task_notification` absent on the 2.1.221 floor | unverified (no floor build on the dev machine) | every lifecycle trigger has a typed substitute: the `asyncLaunched`/`completed` tool result starts the child lifecycle and the running-task set, and the completed tool result or parsed `<task-notification>` ends them, so parts, children, and reap deferral all work without task frames; the floor is probed in Step 3 if obtainable, else recorded as untested |
+| `task_started`/`task_notification` absent on the 2.1.221 floor | unverified (no floor build on the dev machine) | every lifecycle trigger has a typed substitute: the `asyncLaunched`/`completed` tool result starts the child lifecycle (only `asyncLaunched` adds to the running-task set), and the completed tool result or parsed `<task-notification>` ends them, so parts, children, and reap deferral all work without task frames; the floor is probed in Step 3 if obtainable, else recorded as untested |
 | Nested sub-agents flattened under the root | design | accept; activity tracking is one level deep anyway |
 | Catalog import gains one row per sub-agent transcript | cost | accept; children read meta + stat only |
 
@@ -620,11 +633,15 @@ Scope:
   `interruptActiveWork`, and the idle gate of `_finish`,
   `_endSelfStartedTurn`, and `_scheduleIdleReap`; an emptied set emits idle
   and arms the reap; floor substitutes (async-launch result adds, completed
-  result or parsed notification block removes); `_trackSelfStartedTurn`
-  ignores forwarded child assistant/stream frames. Tests: reap deferred while
-  a task runs and armed after its notification; work state busy across the
-  turn boundary; abort/exit clear; a forwarded child frame after the root
-  result does not open a root turn; dispatch mode unchanged.
+  result or parsed notification block removes); a notification (or
+  notification-bearing user frame) while no turn is active opens a
+  self-started turn; `_trackSelfStartedTurn` ignores forwarded child
+  assistant/stream frames; `isTurnRunning(sessionId)` accessor. Tests: reap
+  deferred while a task runs and armed only after the wake-up turn's result;
+  no transient idle between the last notification and the wake-up turn; work
+  state busy across the turn boundary; abort/exit clear; a forwarded child
+  frame after the root result does not open a root turn; dispatch mode
+  unchanged.
 - Tests: parse, tracker lifecycle (foreground, background, failed, stopped,
   async-launched tool result, process exit), dispatcher event sequences,
   history replay fixtures (inline Dart maps), hidden notification records.
@@ -650,7 +667,9 @@ Scope:
   result); idle on terminal/cancel; `childSessionStatuses` accessor.
 - `claude_plugin_impl.dart`: `getChildSessions`; passes the root directory to
   `beginTurn`; `getSessionStatuses` disjoint union;
-  `getActiveSessionsSummary` fills `childSessionIds`.
+  `getActiveSessionsSummary` fills `childSessionIds` from busy children,
+  derives `mainAgentRunning` from `isTurnRunning`, and includes a root when
+  either is true.
 - `bridge/app`: `ChatHistoryService._containsOpenToolPart` counts open
   subtask parts; `ChatHistoryRepository.finalizeOpenToolParts` finalizes them
   to `cancelled`; tests (a busy root is never swept; an idle root's open

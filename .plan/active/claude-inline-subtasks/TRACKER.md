@@ -38,10 +38,12 @@
 - [x] `ClaudeEventDispatcher` (over the tracker task map) is the sole owner of
   task state, child-session statuses, resident task ids, and `childSessionIds`
   (presentation state); `ClaudeSessionService` gains no presentation field —
-  its separate lifecycle `runningTaskIds` set is the next decision.
-  `ClaudePlugin` forwards the disjoint
-  union of root and child statuses and emits the child `session.created`
-  event on `ClaudeTaskStartedMessage`.
+  its separate lifecycle `runningTaskIds` set is a distinct, already-locked
+  structure (see the running-tasks decision above). `ClaudePlugin` forwards
+  the disjoint union of root and child statuses; the dispatcher constructs the
+  child session and emits created/status/part in order on the first
+  agent-id-bearing signal (`task_started` or an agent-id tool result), with
+  the root directory passed as data via `beginTurn`.
 - [x] `ClaudeHistoryMapper.map(..., residentTaskToolUseIds)` owns the replayed
   running→cancelled downgrade; the composition root passes data only.
 - [x] `ClaudePlugin._handleProcessEvent` owns process-exit cancellation through
@@ -99,9 +101,9 @@
   titles, and step total agree; PR
   [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open.
   Changed lines (informational, not a pass/fail check): `git diff --numstat
-  <merge-base>..HEAD -- .plan/active/claude-inline-subtasks/PLAN.md` = 686
-  additions / 0 deletions at the last plan edit — 36 lines over the 450-650
-  target after the user-review lifecycle amendment and the third bot round;
+  <merge-base>..HEAD -- .plan/active/claude-inline-subtasks/PLAN.md` = 705
+  additions / 0 deletions at the last plan edit — 55 lines over the 450-650
+  target after the user-review lifecycle amendment and the bot rounds;
   accepted deviation, target unchanged.
   Per the plan's series note, `TRACKER.md` bookkeeping is excluded from the
   comparison because its count would include the lines that record it; the
@@ -168,3 +170,11 @@
   2.1.221 floor degrades without losing children or reap deferral. Two
   further threads (abort teardown, reap deferral) were already answered by
   the user-review amendment.
+- **Fourth bot round (chatgpt-codex-connector, cubic-dev-ai), applied:** a
+  task notification (or notification-bearing user frame) arriving while no
+  turn is active opens a self-started turn, so busy spans launch → background
+  work → wake-up turn and the 500 ms completion debounce never sees a
+  transient idle; `getActiveSessionsSummary` derives `mainAgentRunning` from
+  `ClaudeSessionService.isTurnRunning`, not the conflated busy status; risk
+  row and tracker wording aligned (only `asyncLaunched` adds to the running
+  set; dispatcher-owned child creation; `runningTaskIds` is already locked).
