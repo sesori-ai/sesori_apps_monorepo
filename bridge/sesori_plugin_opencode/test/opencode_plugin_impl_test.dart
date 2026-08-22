@@ -6,6 +6,31 @@ import "package:opencode_plugin/opencode_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+
+/// Waits until [count] events of type [T] have been delivered, or fails.
+///
+/// These tests drive a real loopback `HttpServer`, so SSE bytes arrive on
+/// socket I/O rather than on the microtask queue. `pumpEventQueue` bounds the
+/// number of event-loop turns, not delivery, so on a loaded machine it can
+/// return before the bytes land — which is exactly how this suite flaked on CI.
+Future<void> _awaitEvents<T>(
+  List<BridgeSseEvent> events, {
+  required int count,
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (events.whereType<T>().length < count) {
+    if (DateTime.now().isAfter(deadline)) {
+      fail(
+        "timed out waiting for $count $T event(s); got ${events.whereType<T>().length}",
+      );
+    }
+    await pumpEventQueue();
+  }
+  // Let any trailing event settle so "exactly N" assertions stay meaningful.
+  await pumpEventQueue();
+}
+
 void main() {
   group("OpenCodePlugin", () {
     late _FakeOpenCodeServer server;
@@ -309,7 +334,7 @@ void main() {
       await emitMessage(messageId);
       await emitMessage(messageId);
       await emitMessage("msg_typed_in_the_tui");
-      await pumpEventQueue();
+      await _awaitEvents<BridgeSseMessageUpdated>(events, count: 3);
 
       final stamped = events.whereType<BridgeSseMessageUpdated>().toList();
       expect(stamped, hasLength(3));
@@ -483,7 +508,7 @@ void main() {
           }),
         );
       }
-      await pumpEventQueue();
+      await _awaitEvents<BridgeSseMessageUpdated>(events, count: 2);
 
       expect(
         events.whereType<BridgeSseMessageUpdated>().map((event) => event.info["promptId"]),
@@ -533,7 +558,7 @@ void main() {
           },
         }),
       );
-      await pumpEventQueue();
+      await _awaitEvents<BridgeSseMessageUpdated>(events, count: 1);
 
       final echoed = events.whereType<BridgeSseMessageUpdated>().single;
       expect(echoed.info.containsKey("promptId"), isFalse);
@@ -604,7 +629,7 @@ void main() {
           },
         }),
       );
-      await pumpEventQueue();
+      await _awaitEvents<BridgeSseMessageUpdated>(events, count: 1);
 
       final compactEcho = events.whereType<BridgeSseMessageUpdated>().single;
       expect(compactEcho.info["promptId"], equals("prompt-compact"));
