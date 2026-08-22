@@ -590,6 +590,27 @@ void main() {
       expect(retry.next, DateTime.utc(2026, 8, 11, 12).millisecondsSinceEpoch + 1000);
       expect(events.whereType<BridgeSseSessionStatus>().last.status["next"], retry.next);
       expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isTrue);
+
+      // The retried request streaming again is the recovery signal; the turn
+      // is still running, so the session returns to busy rather than idle.
+      process.emit({
+        "type": "stream_event",
+        "session_id": testSessionId,
+        "uuid": "stream-1",
+        "parent_tool_use_id": null,
+        "event": {
+          "type": "message_start",
+          "message": {"id": "msg-recovered", "model": "claude-opus-5"},
+        },
+      });
+      await pump();
+
+      expect((await harness.plugin.getSessionStatuses())[testSessionId], isA<PluginSessionStatusBusy>());
+      expect(
+        shared.SessionStatus.fromJson(events.whereType<BridgeSseSessionStatus>().last.status),
+        isA<shared.SessionStatusBusy>(),
+      );
+      expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isFalse);
       await subscription.cancel();
     });
 
