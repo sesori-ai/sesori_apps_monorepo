@@ -5,8 +5,8 @@ import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart" show GenerateSessionMetadataRequest, jsonDecodeMap;
 
 import "../auth/token_refresher.dart";
-import "app_client_status_response.dart";
-import "generate_session_metadata_response.dart";
+import "models/app_client_status_response.dart";
+import "models/generate_session_metadata_response.dart";
 
 class SesoriServerApiException({
   required final String method,

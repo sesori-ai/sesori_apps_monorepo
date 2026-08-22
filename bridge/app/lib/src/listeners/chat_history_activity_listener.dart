@@ -2,8 +2,8 @@ import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
-import "../bridge/services/chat_history_service.dart";
 import "../repositories/catalog_import_repository.dart";
+import "../services/chat_history_service.dart";
 
 /// Feeds backend activity observed by a catalog import into the history
 /// store's staleness marks, so a session advanced through the backend's own

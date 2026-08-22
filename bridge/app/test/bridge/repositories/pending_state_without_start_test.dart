@@ -1,6 +1,6 @@
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
+import "package:sesori_bridge/src/repositories/permission_repository.dart";
+import "package:sesori_bridge/src/repositories/question_repository.dart";
 import "package:test/test.dart";
 
 import "../../helpers/plugin_runtime_test_support.dart";

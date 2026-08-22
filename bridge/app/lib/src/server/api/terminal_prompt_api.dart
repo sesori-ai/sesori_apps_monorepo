@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import '../../bridge/foundation/legacy_post_update_relaunch.dart';
+import '../../foundation/legacy_post_update_relaunch.dart';
 
 class TerminalPromptApi({
   required final Stdin _stdin,

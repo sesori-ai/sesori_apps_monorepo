@@ -6,11 +6,11 @@ import "package:collection/collection.dart";
 import "package:meta/meta.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" hide PluginRuntimeState;
 import "package:sesori_shared/sesori_shared.dart" as shared show PluginRuntimeState;
+import "package:sesori_shared/sesori_shared.dart" hide PluginRuntimeState;
 
+import "../api/plugin_runtime.dart";
 import "../auth/bridge_id_provider.dart";
-import "../bridge/runtime/plugin_runtime.dart";
 import "../repositories/bridge_settings.dart";
 import "../repositories/bridge_settings_repository.dart";
 import "../repositories/plugin_lifecycle_repository.dart";

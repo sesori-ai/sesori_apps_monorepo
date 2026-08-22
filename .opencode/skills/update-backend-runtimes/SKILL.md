@@ -47,7 +47,7 @@ Dart/Flutter dependency update workflow.
   `bridge/sesori_plugin_omp/test/omp_runtime_manifest_test.dart`
   `bridge/sesori_plugin_omp/test/omp_plugin_descriptor_test.dart`
 - Registered harness source of truth:
-  `bridge/app/lib/src/bridge/runtime/plugin_registry.dart`
+  `bridge/app/lib/src/runtime/plugin_registry.dart`
 - Setup and lifecycle regression contract when a compatibility floor changes:
   `docs/regression/plugin-setup-and-lifecycle.md`
 

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:sesori_bridge/src/api/linux_default_editor_api.dart';
 import 'package:sesori_bridge/src/api/macos_default_editor_api.dart';
 import 'package:sesori_bridge/src/api/windows_default_editor_api.dart';
-import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
+import 'package:sesori_bridge/src/foundation/process_runner.dart';
 import 'package:test/test.dart';
 
 class _FakeProcessRunner({

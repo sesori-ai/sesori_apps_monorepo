@@ -1,8 +1,8 @@
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
-import "package:sesori_bridge/src/bridge/repositories/mappers/project_catalog_mapper.dart";
-import "package:sesori_bridge/src/bridge/repositories/mappers/session_catalog_mapper.dart";
-import "package:sesori_bridge/src/bridge/repositories/mappers/stored_session_mapper.dart";
+import "package:sesori_bridge/src/repositories/mappers/project_catalog_mapper.dart";
+import "package:sesori_bridge/src/repositories/mappers/session_catalog_mapper.dart";
+import "package:sesori_bridge/src/repositories/mappers/stored_session_mapper.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 

@@ -1,5 +1,5 @@
 import "package:args/args.dart";
-import "package:sesori_bridge/src/bridge/runtime/plugin_cli_options_mapper.dart";
+import "package:sesori_bridge/src/runtime/plugin_cli_options_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show PluginConfigException, PluginFlagOption, PluginOption, PluginValueOption;
 import "package:test/test.dart";

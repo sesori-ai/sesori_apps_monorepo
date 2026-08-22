@@ -1,5 +1,5 @@
-import "package:sesori_bridge/src/api/app_client_status_response.dart";
-import "package:sesori_bridge/src/api/generate_session_metadata_response.dart";
+import "package:sesori_bridge/src/api/models/app_client_status_response.dart";
+import "package:sesori_bridge/src/api/models/generate_session_metadata_response.dart";
 import "package:sesori_bridge/src/api/sesori_server_api.dart";
 import "package:sesori_bridge/src/repositories/app_client_status_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";

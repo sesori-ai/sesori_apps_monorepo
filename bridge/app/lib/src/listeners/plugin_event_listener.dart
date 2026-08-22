@@ -1,7 +1,7 @@
 import "dart:async";
 
-import "../bridge/runtime/plugin_runtime.dart";
-import "../bridge/services/session_event_dispatcher.dart";
+import "../api/plugin_runtime.dart";
+import "../services/session_event_dispatcher.dart";
 
 class PluginEventListener({
   required final Stream<SourcedPluginRuntimeEvent> _source,

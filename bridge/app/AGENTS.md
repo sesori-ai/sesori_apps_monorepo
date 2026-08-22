@@ -7,24 +7,24 @@ Dart CLI compiled to a native bundle. Runs headlessly on a laptop or VM, authent
 ```
 bin/bridge.dart                CLI entry point — flag parsing, auth flow, plugin loading
 lib/src/
-├── auth/                      OAuth PKCE login, token storage, profile fetch, validation
-├── bridge/                    Core bridge logic (plugin-agnostic)
-│   ├── relay_client.dart      WebSocket connection to relay, message routing
-│   ├── orchestrator.dart      Coordinates relay + plugin lifecycle + key exchange
-│   ├── key_exchange.dart      X25519 DH key exchange with phones, room key delivery
-│   ├── routing/               Request handler chain (one class per API route)
-│   │   ├── request_handler.dart  Abstract base — declares method + path pattern, implements canHandle/extractParams
-│   │   ├── request_router.dart   Iterates handlers, delegates to first match; returns 404 when none match
-│   │   ├── health_check_handler.dart        GET /global/health
-│   │   ├── get_projects_handler.dart        GET /project
-│   │   ├── get_sessions_handler.dart        GET /session
-│   │   └── get_session_messages_handler.dart GET /session/:id/message
-│   ├── sse/                   SSE stream management (backend-agnostic)
-│   │   ├── sse_manager.dart   SSE stream multiplexing to connected phones
-│   │   └── event_queue.dart   Per-subscriber event buffer with replay
-│   └── debug_server.dart      Debug HTTP server for local testing
-├── listeners/                 Layer 4 reactive/scheduled trigger consumers
-├── server/                    Bridge instance / host services (single-live-bridge enforcement, startup mutex, plugin host abstractions)
+├── foundation/                Layer 0 — relay_client, key_exchange, process primitives
+├── api/                       Layer 1 — database (Drift), gh/git CLI wrappers,
+│                              sesori_server_api, plugin_runtime (plugin access seam)
+├── repositories/              Layer 2 — aggregation + all mapping (mappers/, models/, trackers/)
+├── services/                  Layer 3 — business logic
+├── routing/                   Layer 4 — one handler per API route; request_router returns 404 unmatched
+├── listeners/                 Layer 4 — reactive/scheduled trigger consumers
+├── sse/                       Layer 4 — sse_manager, bridge_event_mapper
+├── orchestrator.dart          Layer 5 — the only cross-layer composition owner
+├── debug_server.dart          Debug HTTP server for local testing
+├── runtime/                   Subsystem — CLI dispatch, startup, shutdown ordering
+├── auth/                      Subsystem — OAuth PKCE login, token storage, profile fetch
+├── push/                      Subsystem — push notification delivery
+├── server/                    Subsystem — single-live-bridge enforcement, startup mutex, plugin host
+├── updater/                   Subsystem — in-place update
+├── control/                   Subsystem — desktop control channel
+├── models/                    Bridge-wide config models
+└── persistence/               Bridge-wide diagnostics persistence
 
 bridge/ workspace modules (siblings of app/):
 ├── sesori_plugin_interface/   Plugin contract — BridgePlugin, BridgePluginDescriptor, PluginHost
@@ -42,9 +42,9 @@ bridge/ workspace modules (siblings of app/):
 | ---------------- | ---------------------------------- | ------------------------------------------------------- |
 | CLI flags        | `bin/bridge.dart`                  | Bridge core flags (`--relay`, repeatable `--import-plugin`, etc.); every registered plugin contributes namespaced options |
 | Auth flow        | `lib/src/auth/`                    | OAuth PKCE with token persistence to disk               |
-| Relay connection | `lib/src/bridge/relay_client.dart` | WebSocket + auth handshake + reconnection               |
-| Key exchange     | `lib/src/bridge/key_exchange.dart` | X25519 → HKDF → room key delivery                       |
-| Request routing  | `lib/src/bridge/routing/`          | Explicit handlers; unmatched routes return 404          |
+| Relay connection | `lib/src/foundation/relay_client.dart` | WebSocket + auth handshake + reconnection               |
+| Key exchange     | `lib/src/foundation/key_exchange.dart` | X25519 → HKDF → room key delivery                       |
+| Request routing  | `lib/src/routing/`                 | Explicit handlers; unmatched routes return 404          |
 | Trigger listeners | `lib/src/listeners/`               | One trigger lifecycle per class; typed output only      |
 | Plugin interface | `../sesori_plugin_interface/`       | BridgePlugin contract for all backends                  |
 | OpenCode plugin  | `../sesori_plugin_opencode/`        | OpenCode backend implementation + models + tests        |

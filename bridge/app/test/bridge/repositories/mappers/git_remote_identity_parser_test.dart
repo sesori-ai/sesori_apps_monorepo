@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/repositories/mappers/git_remote_identity_parser.dart";
+import "package:sesori_bridge/src/repositories/mappers/git_remote_identity_parser.dart";
 import "package:test/test.dart";
 
 void main() {

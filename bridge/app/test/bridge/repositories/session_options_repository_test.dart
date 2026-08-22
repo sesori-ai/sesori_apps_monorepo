@@ -2,9 +2,9 @@ import "dart:convert";
 
 import "package:sesori_bridge/src/api/database/daos/session_options_cache_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/session_options_cache_key.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_options_repository.dart";
-import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
+import "package:sesori_bridge/src/api/plugin_runtime.dart";
+import "package:sesori_bridge/src/repositories/models/session_options_cache_key.dart";
+import "package:sesori_bridge/src/repositories/session_options_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";

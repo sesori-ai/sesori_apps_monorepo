@@ -3,7 +3,7 @@ import "dart:async";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
-import "../bridge/services/pr_sync_service.dart";
+import "../services/pr_sync_service.dart";
 import "../services/project_view_tracker.dart";
 import "../services/pull_request_refresh_settings_service.dart";
 

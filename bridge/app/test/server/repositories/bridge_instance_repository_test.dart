@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
+import 'package:sesori_bridge/src/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/server/api/process_id_lookup_api.dart';
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
 import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository.dart';

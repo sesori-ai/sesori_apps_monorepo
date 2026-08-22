@@ -1,7 +1,7 @@
 import "dart:convert";
 
-import "package:sesori_bridge/src/bridge/routing/post_session_options_handler.dart";
-import "package:sesori_bridge/src/bridge/services/session_options_service.dart";
+import "package:sesori_bridge/src/routing/post_session_options_handler.dart";
+import "package:sesori_bridge/src/services/session_options_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";

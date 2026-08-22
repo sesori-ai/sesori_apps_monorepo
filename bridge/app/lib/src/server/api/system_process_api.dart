@@ -3,7 +3,7 @@ import "dart:io";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "../../bridge/foundation/process_runner.dart";
+import "../../foundation/process_runner.dart";
 
 class SystemProcessApi({
   required final ProcessRunner _processRunner,

@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
-import '../../bridge/foundation/legacy_post_update_relaunch.dart';
+import '../../foundation/legacy_post_update_relaunch.dart';
 import '../foundation/bridge_restart_command.dart';
 import '../foundation/bridge_restart_command_builder.dart';
 import '../foundation/bridge_restart_env.dart';

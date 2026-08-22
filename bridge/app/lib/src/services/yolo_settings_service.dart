@@ -1,8 +1,8 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../bridge/services/permission_auto_approval_service.dart";
 import "../repositories/bridge_settings.dart";
 import "../repositories/bridge_settings_repository.dart";
+import "permission_auto_approval_service.dart";
 
 class YoloSettingsService({
   required final BridgeSettingsRepository _bridgeSettingsRepository,

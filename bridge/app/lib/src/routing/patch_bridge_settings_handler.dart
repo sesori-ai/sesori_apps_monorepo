@@ -2,9 +2,9 @@ import "dart:convert";
 
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../bridge/routing/request_handler.dart";
 import "../services/pull_request_refresh_settings_service.dart";
 import "../services/yolo_settings_service.dart";
+import "request_handler.dart";
 
 class PatchBridgeSettingsHandler({
   required final PullRequestRefreshSettingsService _pullRequestRefreshSettingsService,

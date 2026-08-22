@@ -4,9 +4,9 @@ import "dart:typed_data";
 
 import "package:clock/clock.dart";
 import "package:cryptography/cryptography.dart";
-import "package:sesori_bridge/src/bridge/relay_client.dart";
-import "package:sesori_bridge/src/bridge/sse/sse_event_delivery.dart";
-import "package:sesori_bridge/src/bridge/sse/sse_manager.dart";
+import "package:sesori_bridge/src/foundation/relay_client.dart";
+import "package:sesori_bridge/src/sse/sse_event_delivery.dart";
+import "package:sesori_bridge/src/sse/sse_manager.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 

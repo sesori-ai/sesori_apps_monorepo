@@ -1,7 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../bridge/routing/request_handler.dart";
 import "../services/plugin_lifecycle_service.dart";
+import "request_handler.dart";
 
 class GetPluginManagementHandler({required final PluginLifecycleService _lifecycleService})
     extends GetRequestHandler<PluginManagementResponse> {

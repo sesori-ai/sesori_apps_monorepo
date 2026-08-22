@@ -2,7 +2,7 @@ import "dart:convert";
 import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
-import "package:sesori_bridge/src/bridge/key_exchange.dart";
+import "package:sesori_bridge/src/foundation/key_exchange.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 

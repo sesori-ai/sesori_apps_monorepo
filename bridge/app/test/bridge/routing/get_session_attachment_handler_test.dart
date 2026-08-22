@@ -3,8 +3,8 @@ import "dart:io";
 import "dart:typed_data";
 
 import "package:image/image.dart" as image;
-import "package:sesori_bridge/src/bridge/routing/get_session_attachment_handler.dart";
-import "package:sesori_bridge/src/bridge/services/chat_history_service.dart";
+import "package:sesori_bridge/src/routing/get_session_attachment_handler.dart";
+import "package:sesori_bridge/src/services/chat_history_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 

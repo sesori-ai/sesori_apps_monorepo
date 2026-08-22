@@ -2,7 +2,7 @@ import "dart:typed_data";
 
 import "package:image/image.dart" as image;
 import "package:sesori_bridge/src/api/attachment_spill_storage.dart";
-import "package:sesori_bridge/src/bridge/repositories/attachment_thumbnail_builder.dart";
+import "package:sesori_bridge/src/repositories/attachment_thumbnail_builder.dart";
 import "package:test/test.dart";
 
 void main() {

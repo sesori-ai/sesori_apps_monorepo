@@ -1,0 +1,83 @@
+import "package:sesori_shared/sesori_shared.dart";
+
+import "../../api/database/tables/session_table.dart";
+import "../session_unseen_calculator.dart";
+
+Session enrichSharedSession({
+  required Session session,
+  required SessionDto? storedSession,
+  required PullRequestInfo? pullRequest,
+  required SessionUnseenCalculator unseenCalculator,
+  required bool adoptStoredProjectId,
+}) {
+  var result = session.copyWith(branchName: storedSession?.currentBranchName);
+
+  if (storedSession != null) {
+    final currentTime = session.time;
+    final mergedTime = currentTime != null
+        ? currentTime.copyWith(archived: storedSession.archivedAt)
+        : SessionTime(
+            created: storedSession.createdAt,
+            updated: storedSession.updatedAt,
+            archived: storedSession.archivedAt,
+          );
+    result = result.copyWith(
+      // For a bridge-derived plugin the stored row is the authoritative
+      // session→project attribution (the same rule DerivedSessionBuilder
+      // scopes lists by): the backend reports a worktree session under its
+      // own cwd, so without this rewrite its live created/updated events
+      // would carry the worktree as projectID and the parent project's
+      // session list would drop them as a project mismatch. A native backend
+      // owns its own attribution, so its reported projectID is kept. The
+      // directory intentionally stays the session's real cwd either way.
+      projectID: adoptStoredProjectId ? storedSession.projectId : session.projectID,
+      title: storedSession.title ?? storedSession.catalogTitle,
+      time: mergedTime,
+      hasWorktree: storedSession.worktreePath != null,
+      promptDefaults: _promptDefaultsFromStoredSession(storedSession),
+      unseen: unseenCalculator.isUnseen(
+        activity: storedSession.lastActivityAt,
+        userMessage: storedSession.lastUserMessageAt,
+        seen: storedSession.lastSeenAt,
+      ),
+      lastUserActivityAt: storedSession.lastUserMessageAt,
+    );
+  }
+
+  if (pullRequest != null) {
+    result = result.copyWith(pullRequest: pullRequest);
+  }
+
+  return result;
+}
+
+SessionPromptDefaults? _promptDefaultsFromStoredSession(SessionDto storedSession) {
+  if (storedSession.lastAgent == null && storedSession.lastAgentModel == null) {
+    return null;
+  }
+
+  return SessionPromptDefaults(
+    agent: storedSession.lastAgent,
+    model: storedSession.lastAgentModel,
+  );
+}
+
+List<Session> enrichSharedSessions({
+  required List<Session> sessions,
+  required Map<String, SessionDto> storedSessionsById,
+  required Map<String, PullRequestInfo> pullRequestsBySessionId,
+  required SessionUnseenCalculator unseenCalculator,
+  required bool adoptStoredProjectId,
+}) {
+  return sessions
+      .map(
+        (session) => enrichSharedSession(
+          session: session,
+          storedSession: storedSessionsById[session.id],
+          pullRequest: pullRequestsBySessionId[session.id],
+          unseenCalculator: unseenCalculator,
+          adoptStoredProjectId: adoptStoredProjectId,
+        ),
+      )
+      .toList(growable: false);
+}

@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:sesori_bridge/src/bridge/foundation/legacy_post_update_relaunch.dart';
-import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
+import 'package:sesori_bridge/src/foundation/legacy_post_update_relaunch.dart';
+import 'package:sesori_bridge/src/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
 import 'package:sesori_bridge/src/server/foundation/bridge_restart_command_builder.dart';
 import 'package:sesori_bridge/src/server/foundation/bridge_restart_env.dart';

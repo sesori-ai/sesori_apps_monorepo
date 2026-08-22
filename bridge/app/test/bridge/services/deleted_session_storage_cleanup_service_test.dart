@@ -1,5 +1,5 @@
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/services/deleted_session_storage_cleanup_service.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/services/deleted_session_storage_cleanup_service.dart";
 import "package:test/test.dart";
 
 void main() {
