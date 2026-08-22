@@ -1,21 +1,30 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:sesori_bridge/src/auth/profile.dart';
+import 'package:http/http.dart' as http;
+import 'package:sesori_bridge/src/auth/auth_api.dart';
+import 'package:sesori_bridge/src/foundation/abortable_request_client.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('fetchUsername', () {
     late HttpServer server;
-    late String baseUrl;
+    late http.Client client;
+    late AuthApi api;
 
     setUp(() async {
       server = await HttpServer.bind('127.0.0.1', 0);
-      baseUrl = 'http://${server.address.host}:${server.port}';
+      client = http.Client();
+      api = AuthApi(
+        authBackendUrl: 'http://${server.address.host}:${server.port}',
+        client: client,
+        requestClient: const AbortableRequestClient(),
+      );
     });
 
     tearDown(() async {
       await server.close(force: true);
+      client.close();
     });
 
     test('returns providerUsername on 200', () async {
@@ -39,7 +48,7 @@ void main() {
         await request.response.close();
       });
 
-      final username = await fetchUsername(baseUrl, 'valid-token');
+      final username = await api.fetchUsername(accessToken: 'valid-token');
       expect(username, equals('testuser'));
     });
 
@@ -64,7 +73,7 @@ void main() {
         await request.response.close();
       });
 
-      final username = await fetchUsername(baseUrl, 'valid-token');
+      final username = await api.fetchUsername(accessToken: 'valid-token');
       expect(username, equals('unknown-user'));
     });
 
@@ -75,7 +84,7 @@ void main() {
       });
 
       expect(
-        () => fetchUsername(baseUrl, 'invalid-token'),
+        () => api.fetchUsername(accessToken: 'invalid-token'),
         throwsA(isA<Exception>()),
       );
     });
@@ -84,7 +93,7 @@ void main() {
       await server.close(force: true);
 
       expect(
-        () => fetchUsername('http://127.0.0.1:1', 'token'),
+        () => api.fetchUsername(accessToken: 'token'),
         throwsA(isA<Exception>()),
       );
     });

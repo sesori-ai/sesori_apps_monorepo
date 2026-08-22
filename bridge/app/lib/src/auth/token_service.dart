@@ -6,23 +6,27 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../foundation/abortable_request_client.dart";
+import "../foundation/auth_backend_url.dart";
 import "access_token_provider.dart";
 import "token.dart";
 import "token_refresh_exception.dart";
 import "token_refresher.dart";
 
 /// Takes ownership of the injected HTTP client and closes it in [dispose].
-class TokenManager({
+class TokenService({
   required String initialToken,
-  required final String _authBackendUrl,
+  required String authBackendUrl,
   required final Future<TokenData?> Function() _loadTokens,
   required final Future<void> Function(TokenData) _saveTokens,
   required final http.Client _ownedClient,
   required final Duration _requestDeadline,
+  required final AbortableRequestClient _requestClient,
 }) implements AccessTokenProvider, TokenRefresher {
   static const Duration defaultRequestDeadline = Duration(seconds: 35);
 
   final BehaviorSubject<String> _tokenSubject = BehaviorSubject.seeded(initialToken);
+  final String _authBackendUrl = normalizeAuthBackendUrl(url: authBackendUrl);
 
   @override
   String get accessToken => _tokenSubject.value;
@@ -86,22 +90,16 @@ class TokenManager({
       throw const TokenRefreshException("Refresh token is empty");
     }
 
-    final base = _authBackendUrl.endsWith("/")
-        ? _authBackendUrl.substring(0, _authBackendUrl.length - 1)
-        : _authBackendUrl;
-    final uri = Uri.parse("$base/auth/refresh");
-
-    final abortCompleter = Completer<void>();
-    final deadlineTimer = Timer(_requestDeadline, abortCompleter.complete);
-    final request = http.AbortableRequest("POST", uri, abortTrigger: abortCompleter.future)
-      ..headers["Content-Type"] = "application/json"
-      ..body = jsonEncode({"refreshToken": refreshToken});
-    final http.Response response;
-    try {
-      response = await http.Response.fromStream(await _ownedClient.send(request));
-    } finally {
-      deadlineTimer.cancel();
-    }
+    final uri = Uri.parse("$_authBackendUrl/auth/refresh");
+    final response = await _requestClient.send(
+      client: _ownedClient,
+      method: "POST",
+      url: uri,
+      headers: const {"Content-Type": "application/json"},
+      body: jsonEncode({"refreshToken": refreshToken}),
+      deadline: _requestDeadline,
+      abortSignal: null,
+    );
 
     if (response.statusCode != 200) {
       throw TokenRefreshException("Token refresh failed with status ${response.statusCode}");

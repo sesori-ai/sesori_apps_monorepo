@@ -3,7 +3,6 @@ import "dart:collection";
 import "dart:convert";
 
 import "package:clock/clock.dart";
-import "package:cryptography/cryptography.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -27,6 +26,7 @@ class SSEManager({
   required final Duration replayWindow,
   required final void Function(int bytes) _onBytesSent,
   required final FailureReporter _failureReporter,
+  required final SessionEncryptor _encryptor,
 }) {
   /// Default duration for which orphan queues remain valid after a phone
   /// disconnects. Referenced by the CLI entry point and tests.
@@ -39,13 +39,6 @@ class SSEManager({
   final Map<int, EventQueueSubscription<SesoriSseEvent>> _subscriptions = {};
   final Map<int, Object> _subscriptionOwners = {};
   final Queue<_OrphanQueue> _orphanQueues = Queue<_OrphanQueue>();
-
-  List<int>? _roomKey;
-
-  /// Stores a copy of the room key used to encrypt outgoing SSE events.
-  void setRoomKey(List<int> roomKey) {
-    _roomKey = List<int>.from(roomKey);
-  }
 
   /// Registers [connID] as an SSE subscriber.
   ///
@@ -219,27 +212,13 @@ class SSEManager({
     required RelayConnection connection,
     required Object subscriptionOwner,
   }) {
-    SessionEncryptor? encryptor;
-
     return (SesoriSseEvent event) async {
       Log.v("[sse] dequeuing event for connID=$connID: ${event.runtimeType}");
-      if (_roomKey == null) {
-        Log.w("[sse] dropping — roomKey is null");
-        return;
-      }
-
-      encryptor ??= () {
-        final roomKey = List<int>.from(_roomKey!);
-        final cryptoService = RelayCryptoService();
-        final secretKey = SecretKey(roomKey);
-        return cryptoService.createSessionEncryptor(secretKey);
-      }();
-
       final eventData = jsonEncode(_toOpenCodeFormat(event));
       final relayMessage = RelayMessage.sseEvent(data: eventData);
       final payloadBytes = utf8.encode(jsonEncode(relayMessage.toJson()));
       Log.v("[sse] sending ${payloadBytes.length} bytes to connID=$connID");
-      final framed = await frame(payloadBytes, encryptor: encryptor!);
+      final framed = await frame(payloadBytes, encryptor: _encryptor);
       final outcome = client.sendIfCurrent(
         connection: connection,
         connID: connID,

@@ -2,6 +2,7 @@ import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/api/models/app_client_status_response.dart";
 import "package:sesori_bridge/src/api/models/generate_session_metadata_response.dart";
 import "package:sesori_bridge/src/api/sesori_server_api.dart";
+import "package:sesori_bridge/src/foundation/abortable_request_client.dart";
 import "package:sesori_bridge/src/repositories/session_metadata_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -103,12 +104,12 @@ class _FakeSesoriServerApi({final Object? failure}) implements SesoriServerApi {
   final Object? error = failure;
 
   final List<GenerateSessionMetadataRequest> requests = [];
-  final List<SesoriServerRequestAbortSignal> abortSignals = [];
+  final List<AbortSignal> abortSignals = [];
 
   @override
   Future<GenerateSessionMetadataResponse> generateSessionMetadata({
     required GenerateSessionMetadataRequest request,
-    required SesoriServerRequestAbortSignal abortSignal,
+    required AbortSignal abortSignal,
   }) async {
     requests.add(request);
     abortSignals.add(abortSignal);

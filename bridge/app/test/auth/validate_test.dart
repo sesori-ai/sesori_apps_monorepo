@@ -1,21 +1,30 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:sesori_bridge/src/auth/validate.dart';
+import 'package:http/http.dart' as http;
+import 'package:sesori_bridge/src/auth/auth_api.dart';
+import 'package:sesori_bridge/src/foundation/abortable_request_client.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('validateToken', () {
     late HttpServer server;
-    late String baseUrl;
+    late http.Client client;
+    late AuthApi api;
 
     setUp(() async {
       server = await HttpServer.bind('127.0.0.1', 0);
-      baseUrl = 'http://${server.address.host}:${server.port}';
+      client = http.Client();
+      api = AuthApi(
+        authBackendUrl: 'http://${server.address.host}:${server.port}',
+        client: client,
+        requestClient: const AbortableRequestClient(),
+      );
     });
 
     tearDown(() async {
       await server.close(force: true);
+      client.close();
     });
 
     test('returns true when /auth/me returns 200', () async {
@@ -34,15 +43,17 @@ void main() {
         ),
       ]);
 
-      final result = await validateToken(
-        authBackendURL: baseUrl,
+      final result = await api.validateToken(
         accessToken: 'valid-token',
         refreshToken: 'refresh-token',
       );
 
-      expect(result.isValid, isTrue);
-      expect(result.accessToken, equals('valid-token'));
-      expect(result.refreshToken, equals('refresh-token'));
+      expect(
+        result,
+        isA<TokenValidationValid>()
+            .having((value) => value.accessToken, 'accessToken', 'valid-token')
+            .having((value) => value.refreshToken, 'refreshToken', 'refresh-token'),
+      );
     });
 
     test('returns false when /auth/me returns 403', () async {
@@ -54,14 +65,12 @@ void main() {
         ),
       ]);
 
-      final result = await validateToken(
-        authBackendURL: baseUrl,
+      final result = await api.validateToken(
         accessToken: 'valid-token',
         refreshToken: 'refresh-token',
       );
 
-      expect(result.isValid, isFalse);
-      expect(result.accessToken, equals('valid-token'));
+      expect(result, isA<TokenValidationInvalid>());
     });
 
     test('refreshes token on 401 and returns new tokens', () async {
@@ -87,15 +96,42 @@ void main() {
         ),
       ]);
 
-      final result = await validateToken(
-        authBackendURL: baseUrl,
+      final result = await api.validateToken(
         accessToken: 'expired-token',
         refreshToken: 'refresh-token',
       );
 
-      expect(result.isValid, isTrue);
-      expect(result.accessToken, equals('new-access-token'));
-      expect(result.refreshToken, equals('new-refresh-token'));
+      expect(
+        result,
+        isA<TokenValidationValid>()
+            .having((value) => value.accessToken, 'accessToken', 'new-access-token')
+            .having((value) => value.refreshToken, 'refreshToken', 'new-refresh-token'),
+      );
+    });
+
+    test('rejects a successful refresh response with empty tokens', () async {
+      _handleRequests(server, [
+        _RequestResponse(path: '/auth/me', statusCode: 401, body: ''),
+        _RequestResponse(
+          path: '/auth/refresh',
+          statusCode: 200,
+          body: jsonEncode({
+            'accessToken': '',
+            'refreshToken': '',
+            'user': {
+              'id': '1',
+              'provider': 'github',
+              'providerUserId': '1',
+              'providerUsername': 'test',
+            },
+          }),
+        ),
+      ]);
+
+      await expectLater(
+        api.validateToken(accessToken: 'expired-token', refreshToken: 'refresh-token'),
+        throwsA(isA<Exception>().having((error) => error.toString(), 'message', contains('missing tokens'))),
+      );
     });
 
     test('returns false when refresh fails', () async {
@@ -112,22 +148,19 @@ void main() {
         ),
       ]);
 
-      final result = await validateToken(
-        authBackendURL: baseUrl,
+      final result = await api.validateToken(
         accessToken: 'expired-token',
         refreshToken: 'invalid-refresh',
       );
 
-      expect(result.isValid, isFalse);
-      expect(result.accessToken, equals('expired-token'));
+      expect(result, isA<TokenValidationInvalid>());
     });
 
     test('throws on network error', () async {
       await server.close(force: true);
 
       expect(
-        () => validateToken(
-          authBackendURL: 'http://127.0.0.1:1',
+        () => api.validateToken(
           accessToken: 'token',
           refreshToken: 'refresh',
         ),

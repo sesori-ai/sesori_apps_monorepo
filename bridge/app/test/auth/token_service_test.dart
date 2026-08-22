@@ -4,13 +4,14 @@ import "dart:io";
 
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/token.dart";
-import "package:sesori_bridge/src/auth/token_manager.dart";
 import "package:sesori_bridge/src/auth/token_refresh_exception.dart";
+import "package:sesori_bridge/src/auth/token_service.dart";
+import "package:sesori_bridge/src/foundation/abortable_request_client.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
-  group("TokenManager", () {
+  group("TokenService", () {
     test("Token TTL > 90s returns current token and does not call refresh", () async {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
@@ -472,7 +473,7 @@ class _AbortAwareClient() extends http.BaseClient {
   }
 }
 
-TokenManager _tokenManager({
+TokenService _tokenManager({
   required String initialToken,
   required String authBackendUrl,
   required Future<TokenData?> Function() loadTokens,
@@ -480,13 +481,14 @@ TokenManager _tokenManager({
   http.Client? client,
   Duration requestDeadline = const Duration(seconds: 1),
 }) {
-  final manager = TokenManager(
+  final manager = TokenService(
     initialToken: initialToken,
     authBackendUrl: authBackendUrl,
     loadTokens: loadTokens,
     saveTokens: saveTokens,
     ownedClient: client ?? http.Client(),
     requestDeadline: requestDeadline,
+    requestClient: const AbortableRequestClient(),
   );
   addTearDown(manager.dispose);
   return manager;

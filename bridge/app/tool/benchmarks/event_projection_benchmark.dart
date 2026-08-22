@@ -3,6 +3,7 @@ import "dart:ffi" show Abi;
 import "dart:io";
 
 import "package:args/args.dart";
+import "package:cryptography/cryptography.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/mappers/session_event_mapper.dart";
@@ -99,6 +100,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
         replayWindow: const Duration(minutes: 1),
         onBytesSent: (_) {},
         failureReporter: failureReporter,
+        encryptor: RelayCryptoService().createSessionEncryptor(SecretKey(List<int>.filled(32, 0))),
       );
       final scenario = await _measureKnownRootUpdates(
         database: database,

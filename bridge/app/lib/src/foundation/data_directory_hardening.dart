@@ -40,3 +40,23 @@ Future<void> hardenPath({required String targetPath, required String mode}) asyn
     throw FileSystemException("Failed to set mode $mode", targetPath);
   }
 }
+
+Future<void> writeRestrictedFile({required String filePath, required String contents}) async {
+  final directory = Directory(filePath).parent;
+  await directory.create(recursive: true);
+  await hardenPath(targetPath: directory.path, mode: ownerOnlyDirectoryMode);
+
+  if (Platform.isWindows) {
+    await File(filePath).writeAsString(contents);
+    return;
+  }
+
+  final temporary = File("$filePath.$pid.${DateTime.now().microsecondsSinceEpoch}.tmp");
+  try {
+    await temporary.writeAsString(contents);
+    await hardenPath(targetPath: temporary.path, mode: ownerOnlyFileMode);
+    await temporary.rename(filePath);
+  } finally {
+    if (temporary.existsSync()) temporary.deleteSync();
+  }
+}

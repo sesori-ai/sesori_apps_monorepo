@@ -3,10 +3,13 @@ import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart";
 
-class LoginEmailApi({required final String authBackendUrl}) {
+import "../foundation/auth_backend_url.dart";
+
+class LoginEmailApi({required String authBackendUrl}) {
+  final String authBackendUrl = normalizeAuthBackendUrl(url: authBackendUrl);
+
   Future<AuthResponse> loginWithEmail({required String email, required String password}) async {
-    final base = authBackendUrl.endsWith("/") ? authBackendUrl.substring(0, authBackendUrl.length - 1) : authBackendUrl;
-    final uri = Uri.parse("$base/${AuthProvider.email.apiAuthPath}");
+    final uri = Uri.parse("$authBackendUrl/${AuthProvider.email.apiAuthPath}");
 
     final body = jsonEncode({"email": email, "password": password});
 

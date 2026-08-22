@@ -1,9 +1,13 @@
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:sesori_bridge/src/auth/auth_api.dart';
 import 'package:sesori_bridge/src/auth/login_email_api.dart';
 import 'package:sesori_bridge/src/auth/login_email_repository.dart';
 import 'package:sesori_bridge/src/auth/login_oauth_service.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
+import 'package:sesori_bridge/src/foundation/abortable_request_client.dart';
 import 'package:sesori_bridge/src/foundation/legacy_post_update_relaunch.dart';
 import 'package:sesori_bridge/src/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/runtime/bridge_runtime_auth.dart';
@@ -16,6 +20,7 @@ void main() {
       final service = BridgeRuntimeAuthService(
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: _FakeLoginOAuthService(),
+        authApi: _invalidAuthApi(),
         environment: const <String, String>{sesoriPostUpdateRestartEnvVar: '1'},
         loadTokens: () async => throw const FileSystemException('missing', 'token.json', OSError('missing', 2)),
         saveTokens: (_) async {},
@@ -48,6 +53,7 @@ void main() {
         lastProvider: AuthProvider.google,
       );
       TokenData? savedTokens;
+      var loadCount = 0;
       final oauthService = _FakeLoginOAuthService(
         result: (tokens: oauthTokens, sessionToken: 'oauth-session-token'),
         onAck: (sessionToken) {
@@ -59,8 +65,12 @@ void main() {
       final service = BridgeRuntimeAuthService(
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: oauthService,
+        authApi: _invalidAuthApi(),
         environment: const <String, String>{},
-        loadTokens: () async => storedTokens,
+        loadTokens: () async {
+          loadCount++;
+          return storedTokens;
+        },
         saveTokens: (tokens) async {
           savedTokens = tokens;
         },
@@ -70,6 +80,7 @@ void main() {
       final result = await service.ensureAuthenticated(options: _options(authBackendUrl: authBackend.baseUrl));
 
       expect(result.accessToken, equals('oauth-access-token'));
+      expect(loadCount, 1);
       expect(oauthService.ackCalls, equals(['oauth-session-token']));
     });
 
@@ -85,6 +96,7 @@ void main() {
       final service = BridgeRuntimeAuthService(
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: oauthService,
+        authApi: _invalidAuthApi(),
         environment: const <String, String>{},
         loadTokens: () async => storedTokens,
         saveTokens: (_) async {},
@@ -120,6 +132,7 @@ void main() {
       final service = BridgeRuntimeAuthService(
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: oauthService,
+        authApi: _invalidAuthApi(),
         environment: const <String, String>{},
         loadTokens: () async => storedTokens,
         saveTokens: (tokens) async {
@@ -135,6 +148,14 @@ void main() {
       expect(oauthService.ackCalls, equals(['oauth-session-token']));
     });
   });
+}
+
+AuthApi _invalidAuthApi() {
+  return AuthApi(
+    authBackendUrl: 'https://auth.example.test',
+    client: MockClient((_) async => http.Response('', 403)),
+    requestClient: const AbortableRequestClient(),
+  );
 }
 
 BridgeCliOptions _options({required String authBackendUrl}) {

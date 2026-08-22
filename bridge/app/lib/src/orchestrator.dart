@@ -25,6 +25,7 @@ import "auth/access_token_provider.dart";
 import "auth/bridge_registration_service.dart";
 import "auth/token_refresher.dart";
 import "control/control_status_notifier.dart";
+import "foundation/abortable_request_client.dart";
 import "foundation/filesystem_permission_validator.dart";
 import "foundation/key_exchange.dart";
 import "foundation/process_runner.dart";
@@ -384,6 +385,7 @@ class Orchestrator({
           client: _httpClient,
           requestDeadline: SesoriServerApi.defaultRequestDeadline,
           tokenRefresher: _tokenRefresher,
+          requestClient: const AbortableRequestClient(),
         ),
       ),
       worktreeService: worktreeService,
@@ -401,14 +403,17 @@ class Orchestrator({
       projectRepository: projectRepository,
     );
     final roomKey = _generateRoomKey();
+    final cryptoService = RelayCryptoService();
+    final sessionEncryptor = cryptoService.createSessionEncryptor(SecretKey(roomKey));
+    final keyExchangeManager = KeyExchangeManager(roomKey, cryptoService: cryptoService);
     final bytesSentController = StreamController<int>.broadcast();
     final localWireEventsController = StreamController<SesoriSseEvent>.broadcast();
     final sseManager = SSEManager(
       replayWindow: config.sseReplayWindow,
       onBytesSent: bytesSentController.add,
       failureReporter: _failureReporter,
+      encryptor: sessionEncryptor,
     );
-    sseManager.setRoomKey(roomKey);
 
     final catalogImportRepository = CatalogImportRepository(
       runtime: _pluginRuntime,
@@ -622,7 +627,8 @@ class Orchestrator({
       accessTokenProvider: _accessTokenProvider,
       tokenRefresher: _tokenRefresher,
       bridgeRegistrationService: _bridgeRegistrationService,
-      roomKey: roomKey,
+      sessionEncryptor: sessionEncryptor,
+      keyExchangeManager: keyExchangeManager,
       sseManager: sseManager,
       routedRequestDispatcher: routedRequestDispatcher,
       mapper: BridgeEventMapper(failureReporter: _failureReporter),
@@ -719,7 +725,8 @@ class OrchestratorSession._({
     required final AccessTokenProvider _accessTokenProvider,
     required final TokenRefresher _tokenRefresher,
     required final BridgeRegistrationService _bridgeRegistrationService,
-    required final List<int> _roomKey,
+    required final SessionEncryptor _sessionEncryptor,
+    required final KeyExchangeManager _keyExchangeManager,
     required final SSEManager _sseManager,
     required final RoutedRequestDispatcher _routedRequestDispatcher,
     required final BridgeEventMapper _mapper,
@@ -946,7 +953,6 @@ class OrchestratorSession._({
   Future<void> _startAndServe({
     required Completer<OrchestratorSessionStartResult> readiness,
   }) async {
-    final kxManager = KeyExchangeManager(_roomKey);
     final activePhoneIncarnations = <int, Object>{};
 
     Log.d("registering bridge with auth server...");
@@ -1015,7 +1021,7 @@ class OrchestratorSession._({
     //
     // Identity-gated on purpose: the relay validates the JWT once at connect
     // and never re-checks it for the lifetime of the socket, so a routine
-    // same-user token rotation (TokenManager refreshing near expiry during
+    // same-user token rotation (TokenService refreshing near expiry during
     // metadata generation or push sends, or the GUI pushing a routine refresh)
     // keeps the open socket fully valid. Dropping it would disconnect every
     // phone mid-flight for nothing — see [_requiresRelayReauth].
@@ -1030,7 +1036,6 @@ class OrchestratorSession._({
     await _serveRelayConnections(
       readiness: readiness,
       initialConnection: relayConnection,
-      kxManager: kxManager,
       activePhoneIncarnations: activePhoneIncarnations,
     );
   }
@@ -1131,7 +1136,6 @@ class OrchestratorSession._({
   Future<void> _serveRelayConnections({
     required Completer<OrchestratorSessionStartResult> readiness,
     required RelayConnection initialConnection,
-    required KeyExchangeManager kxManager,
     required Map<int, Object> activePhoneIncarnations,
   }) async {
     var connection = initialConnection;
@@ -1150,8 +1154,6 @@ class OrchestratorSession._({
             iterator: iterator,
             firstRead: firstRead,
             connection: connection,
-            roomKey: _roomKey,
-            kxManager: kxManager,
             activePhoneIncarnations: activePhoneIncarnations,
           );
         } on Object catch (error, stackTrace) {
@@ -1783,12 +1785,12 @@ class OrchestratorSession._({
   /// [ControlTokenUnavailableException] (supervised mode — the GUI reported
   /// signed-out / mid-login and the service invalidated its cache), or any other
   /// refresh failure with NO usable cached token to fall back on (e.g. standalone
-  /// [TokenManager] whose token store was deleted on logout). In both cases the
+  /// [TokenService] whose token store was deleted on logout). In both cases the
   /// caller MUST NOT reconnect — there is no safe token to authenticate with.
   ///
   /// Returns `true` when a refresh succeeds, or when a refresh fails for a reason
   /// other than unavailability AND a usable cached token still exists (e.g.
-  /// standalone [TokenManager] hitting a transiently-down auth-refresh endpoint
+  /// standalone [TokenService] hitting a transiently-down auth-refresh endpoint
   /// while its cached JWT is still valid) — so the reconnect proceeds with that
   /// cached token, preserving the pre-existing standalone resilience.
   Future<bool> _refreshAccessToken() async {
@@ -1886,8 +1888,6 @@ class OrchestratorSession._({
     required StreamIterator<RelayClientMessage> iterator,
     required Future<bool> firstRead,
     required RelayConnection connection,
-    required List<int> roomKey,
-    required KeyExchangeManager kxManager,
     required Map<int, Object> activePhoneIncarnations,
   }) async {
     var hasMessage = await firstRead;
@@ -1966,7 +1966,7 @@ class OrchestratorSession._({
 
           Uint8List encrypted;
           try {
-            encrypted = await kxManager.handleKeyExchange(message: relayMessage);
+            encrypted = await _keyExchangeManager.handleKeyExchange(message: relayMessage);
             Log.d("key exchange OK, sending ready to connID=$connID");
           } catch (e) {
             Log.e("failed key exchange for connId $connID: $e");
@@ -1998,14 +1998,10 @@ class OrchestratorSession._({
           "checking protocolVersion: payload[0]=0x${payload[0].toRadixString(16)} expected=0x${protocolVersion.toRadixString(16)}",
         );
         if (payload[0] == protocolVersion) {
-          final encryptor = RelayCryptoService().createSessionEncryptor(
-            SecretKey(List<int>.from(roomKey)),
-          );
-
           List<int>? decrypted;
           Object? decryptError;
           try {
-            decrypted = await unframe(payload, encryptor: encryptor);
+            decrypted = await unframe(payload, encryptor: _sessionEncryptor);
           } catch (e) {
             decryptError = e;
           }
@@ -2067,7 +2063,7 @@ class OrchestratorSession._({
           );
           Uint8List encryptedAck;
           try {
-            encryptedAck = await frame(ackJSON, encryptor: encryptor);
+            encryptedAck = await frame(ackJSON, encryptor: _sessionEncryptor);
           } catch (_) {
             break processMessage;
           }
@@ -2373,10 +2369,7 @@ class OrchestratorSession._({
     final respJson = jsonEncode(message.toJson());
     final jsonBytes = utf8.encode(respJson);
     Log.v("[response] encrypting ${jsonBytes.length} bytes for connID=$connID");
-    final cryptoService = RelayCryptoService();
-    final encryptionKey = SecretKey(List<int>.from(_roomKey));
-    final encryptor = cryptoService.createSessionEncryptor(encryptionKey);
-    final framed = await frame(jsonBytes, encryptor: encryptor);
+    final framed = await frame(jsonBytes, encryptor: _sessionEncryptor);
     return (payload: framed, cleartextLength: jsonBytes.length);
   }
 

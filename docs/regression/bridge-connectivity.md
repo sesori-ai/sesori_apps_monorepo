@@ -12,7 +12,8 @@ explicit restart, and the connection states the app presents.
   initial summary set up, and the first inbound read armed; earlier failure tears down
   what was acquired and surfaces the error.
 - Relay traffic is end-to-end encrypted and a joining client completes key exchange
-  before it is served; no run may weaken this.
+  before it is served; one room-key encryptor is shared across that bridge
+  session while every encrypted frame receives a fresh nonce.
 - Frames are handled sequentially per connection, but a slow route or unresponsive
   harness must not stall key exchange, disconnect detection, or further requests.
 - Drops reconnect with bounded backoff and a fresh read iterator; takeover backs off on
