@@ -197,6 +197,120 @@ void main() {
       expect(complete.whereType<BridgeSseMessagePartUpdated>().single.part.text, "persisted answer");
     });
 
+    test("numbers per-block assistant frames across the whole message", () {
+      // Claude Code emits one `assistant` frame per content block under the
+      // same message id, before that block stops, with the block alone at
+      // content offset 0 (verified against CLI 2.1.237).
+      _startMessage(mapper, messageId: "msg-split");
+      _map(
+        mapper,
+        _stream(
+          "content_block_start",
+          event: {
+            "index": 0,
+            "content_block": {"type": "thinking", "thinking": ""},
+          },
+        ),
+      );
+      _map(
+        mapper,
+        _stream(
+          "content_block_delta",
+          event: {
+            "index": 0,
+            "delta": {"type": "thinking_delta", "thinking": "reason"},
+          },
+        ),
+      );
+      _map(
+        mapper,
+        _assistant(
+          id: "msg-split",
+          content: const [
+            {"type": "thinking", "thinking": "reason", "signature": "opaque"},
+          ],
+        ),
+      );
+      final thinkingStopped = _map(mapper, _stream("content_block_stop", event: const {"index": 0}));
+      _map(
+        mapper,
+        _stream(
+          "content_block_start",
+          event: {
+            "index": 1,
+            "content_block": {"type": "text", "text": ""},
+          },
+        ),
+      );
+      final textDelta = _map(
+        mapper,
+        _stream(
+          "content_block_delta",
+          event: {
+            "index": 1,
+            "delta": {"type": "text_delta", "text": "answer"},
+          },
+        ),
+      );
+      final textComplete = _map(
+        mapper,
+        _assistant(
+          id: "msg-split",
+          content: const [
+            {"type": "text", "text": "answer"},
+          ],
+        ),
+      );
+      final textStopped = _map(mapper, _stream("content_block_stop", event: const {"index": 1}));
+      _map(
+        mapper,
+        _stream(
+          "content_block_start",
+          event: {
+            "index": 2,
+            "content_block": {
+              "type": "tool_use",
+              "id": "toolu-split",
+              "name": "Read",
+              "input": <String, Object?>{},
+            },
+          },
+        ),
+      );
+      final toolComplete = _map(
+        mapper,
+        _assistant(
+          id: "msg-split",
+          content: const [
+            {
+              "type": "tool_use",
+              "id": "toolu-split",
+              "name": "Read",
+              "input": {"file_path": "a.dart"},
+            },
+          ],
+        ),
+      );
+      final toolStopped = _map(mapper, _stream("content_block_stop", event: const {"index": 2}));
+
+      final thinking = thinkingStopped.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(thinking.id, "msg-split-block-0");
+      expect(thinking.type, PluginMessagePartType.reasoning);
+      expect(thinking.text, "reason");
+      expect((textDelta.single as BridgeSseMessagePartDelta).partID, "msg-split-block-1");
+      // The complete text must finalize the streamed block-1 part, never land
+      // on block-0 as a second text copy over the thinking part.
+      expect(textComplete.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
+      final text = textStopped.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(text.id, "msg-split-block-1");
+      expect(text.type, PluginMessagePartType.text);
+      expect(text.text, "answer");
+      expect(toolComplete.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
+      final tool = toolStopped.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(tool.id, "toolu-split");
+      expect(tool.state?.status, PluginToolStatus.running);
+    });
+
     test("hides local command records and keeps the last real model", () {
       _startMessage(mapper, messageId: "msg-real", model: "claude-opus-5");
       _startMessage(mapper, messageId: "msg-command", model: "<synthetic>");
@@ -219,17 +333,19 @@ void main() {
           ],
         ),
       );
-      final error = _map(
-        mapper,
-        {
-          "type": "result",
-          "subtype": "success",
-          "session_id": "session-1",
-          "uuid": "result-error",
-          "is_error": true,
-          "terminal_reason": "api_error",
-        },
-      ).single as BridgeSseMessageUpdated;
+      final error =
+          _map(
+                mapper,
+                {
+                  "type": "result",
+                  "subtype": "success",
+                  "session_id": "session-1",
+                  "uuid": "result-error",
+                  "is_error": true,
+                  "terminal_reason": "api_error",
+                },
+              ).single
+              as BridgeSseMessageUpdated;
 
       expect(assistant, isEmpty);
       expect(user, isEmpty);
@@ -428,8 +544,7 @@ void main() {
     });
 
     test("strips the bridge worktree envelope from a replayed user frame", () {
-      const envelope =
-          "[SYSTEM CONTEXT \u2014 IMPORTANT]\nWorktree path: /private/worktree\n---\n";
+      const envelope = "[SYSTEM CONTEXT \u2014 IMPORTANT]\nWorktree path: /private/worktree\n---\n";
       final replayed = _map(
         mapper,
         _user(

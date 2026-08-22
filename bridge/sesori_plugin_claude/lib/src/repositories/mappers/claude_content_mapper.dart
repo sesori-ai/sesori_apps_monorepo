@@ -118,7 +118,7 @@ final class const ClaudeContentMapper() {
     final blocks = map(content: content);
     return [
       for (var index = 0; index < blocks.length; index++)
-        _toPart(block: blocks[index], index: index, sessionId: sessionId, messageId: messageId),
+        mapPart(block: blocks[index], index: index, sessionId: sessionId, messageId: messageId),
     ];
   }
 
@@ -250,7 +250,9 @@ final class const ClaudeContentMapper() {
     return PluginMessageAttachment.inlineImage(mime: mime, base64: normalized, filename: null);
   }
 
-  PluginMessagePart _toPart({
+  /// Maps one block that sits at message-level ordinal [index], which names
+  /// parts without a backend identity of their own (text, thinking, images).
+  PluginMessagePart mapPart({
     required ClaudeMappedContentBlock block,
     required int index,
     required String sessionId,

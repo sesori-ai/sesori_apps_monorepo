@@ -27,7 +27,8 @@ defaults and queued client sends coherent.
   concurrently on one plugin, and one slow session or plugin must not stall other
   sessions, other plugins, the relay read loop, or catalog reads.
 - Streaming produces incremental message and part events and a terminal status
-  transition back to idle; retry carries attempt, message, and timing, and
+  transition back to idle; retry carries attempt, message, and timing and
+  returns to busy as soon as the retried request streams output again, and
   finalized messages enter durable history matching a history read. A terminal
   provider failure appears as an inline error message and remains visible after
   refresh or reopen. Backend-provided message timestamps remain present through
