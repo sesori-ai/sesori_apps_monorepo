@@ -30,13 +30,17 @@
   active-work set, and the idle gate/reap, so the idle reaper and safe stops
   never kill a running sub-agent; dispatch mode is unchanged. (User review
   2026-08-22: the idle process reaper had not been considered.)
-- [x] Stop is scoped (Step 6, user direction 2026-08-22): the abort request
-  carries `subAgents: confirm | keep | stop` (`@Default(stop)` for older
-  clients); Claude refuses `confirm` with a 409 `SessionAbortRejection`
-  (count, `mainAgentRunning`) while tasks run, `keep` interrupts without
-  teardown so sub-agents continue, `stop` is today's interrupt + teardown; the
-  client dialog mirrors `session_force_dialog.dart`. Until Step 6, abort keeps
-  today's semantics and sub-agents surface as `cancelled`.
+- [x] Stop is scoped (Step 6, user direction 2026-08-22): a dedicated
+  `AbortSessionRequest { sessionId, subAgents: confirm | keep | stop }`
+  (`@Default(stop)` for older clients); Claude refuses `confirm` with a 409
+  `SessionAbortRejection { runningSubAgentCount, mainAgentRunning }` while
+  typed sub-agents run, `keep` interrupts without teardown so resident tasks
+  continue (interrupt window owned by `ClaudeSessionProcessRepository`),
+  `stop` is today's interrupt + teardown; `SessionRepository.abortSession`
+  maps policy/result in Layer 2; `SessionAbortService` clears the pending
+  abort mark for `rejected`/`keep`; the client probe is side-effect free and
+  the dialog mirrors `session_force_dialog.dart`. Until Step 6, abort keeps
+  today's mechanics and sub-agents surface as `cancelled`.
 - [x] Open subtask parts are swept to `cancelled` only when the root is idle
   (the busy-while-tasks-run rule already protects live sub-agents); no
   child-status lookup in the sweep.
@@ -100,11 +104,12 @@
   a shape usable to reconcile `runningTaskIds` (a task whose notification
   never arrives would otherwise pin the process until abort/exit); Step 3
   capture decides adopt-or-skip.
-- [ ] What the CLI emits between an acknowledged interrupt and the next turn
-  when the process is kept alive for running sub-agents (`keep`); Step 6
-  capture decides whether the existing interrupted-result handling suffices
-  or the dispatcher must drop those frames until the next dispatch or task
-  notification.
+- [ ] Which frame shapes the CLI emits between an acknowledged interrupt and
+  the next turn when the process is kept alive for running sub-agents
+  (`keep`); the owner and policy are fixed (`ClaudeSessionProcessRepository`
+  closes the interrupted window at the next `sendTurn` or the first task
+  notification after the interrupt's result), the Step 6 capture only confirms
+  what is dropped inside that window.
 
 ## Verification Log
 
@@ -112,10 +117,11 @@
   titles, and step total agree; PR
   [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open.
   Changed lines (informational, not a pass/fail check): `git diff --numstat
-  <merge-base>..HEAD -- .plan/active/claude-inline-subtasks/PLAN.md` = 815
-  additions / 0 deletions at the last plan edit — 165 lines over the 450-650
+  <merge-base>..HEAD -- .plan/active/claude-inline-subtasks/PLAN.md` = 907
+  additions / 0 deletions at the last plan edit — 257 lines over the 450-650
   target after the user-review lifecycle amendment, the scoped-stop step the
-  user added, and the bot rounds; accepted deviation, target unchanged.
+  user added, two architecture reviews, and the bot rounds; accepted
+  deviation, target unchanged.
   Per the plan's series note, `TRACKER.md` bookkeeping is excluded from the
   comparison because its count would include the lines that record it; the
   final tracker size is visible in the merged PR.
@@ -160,7 +166,7 @@
   snapshot; tracker bookkeeping excluded from step line targets. Declined:
   updating `docs/regression/` in every behavior PR — the regression README
   explicitly allows reconciliation in the penultimate step of durable planned
-  work, which Step 7 is (Step 6 after the series grew to eight).
+  work, which Step 7 is (it was Step 6 until the series grew to eight).
 - **User review (2026-08-22), applied:** the plan had not considered the
   Claude idle process reaper (`ClaudeSessionService._scheduleIdleReap`), the
   plugin work state that gates safe stops, or that Sesori's abort tears the
@@ -205,3 +211,27 @@
   regression document. Declined: namespacing child ids by root — `agentId`
   is a 17-hex random id, a cross-root collision is not a reachable flow, and
   namespacing would complicate lookups for no observable benefit.
+- **Second `architecture-plan-review` (sub-agent, 2026-08-22) on the
+  scoped-stop and lifecycle changes: rejected with eight findings, all
+  applied directly (no re-review):** dedicated `AbortSessionRequest` instead
+  of the shared `SessionIdRequest`; `SessionAbortRejection` reduced to
+  `{ runningSubAgentCount, mainAgentRunning }`; count limited to typed
+  sub-agents (`ClaudeTaskType` parsed at the boundary, set keeps every type);
+  `SessionRepository.abortSession → SessionAbortResult` with the mappings in
+  Layer 2; abort-service stream emissions defined per outcome (`stop` →
+  aborted, `rejected`/`keep` → clear pending so the later completion push is
+  kept); `keep` post-interrupt window owned by `ClaudeSessionProcessRepository`
+  (closes at the next `sendTurn` or first task notification after the
+  interrupt's result); `ClaudeSessionService` takes `ClaudeContentMapper`
+  and keys floor add/remove by task id (block gains `taskId`); client
+  `SessionRepository`/`SessionService.abortSession` in lockstep. The reviewer
+  explicitly passed the two-structure lifecycle design, the sweep
+  simplification, and the disjoint-union status composition.
+- **Sixth bot round (chatgpt-codex-connector, cubic-dev-ai), applied:**
+  side-effect-free `confirm` (no queue clearing, no child fan-out before a
+  root `aborted` under `stop`); nested-task lifecycle frames resolved through
+  a tool-use-indexed task map; the Step 3 guard extension is recorded as a
+  behavior change for background-only stops; tracker step wording.
+  Accepted limitation: a root whose only resident work is a non-sub-agent
+  background task is busy but absent from the activity summary (no contract
+  slot); recorded in the risk table.

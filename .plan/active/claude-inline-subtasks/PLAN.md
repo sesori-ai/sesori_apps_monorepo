@@ -255,8 +255,8 @@ Live, in `ClaudeToolTracker` + `ClaudeEventDispatcher`:
   sources carry the same final report, so live and replay render the same
   bounded text whichever arrives first. No tool-result text is matched.
 - The `<task-notification>` text has one parser: `ClaudeContentMapper` yields
-  a typed `ClaudeMappedTaskNotificationContentBlock({toolUseId, status:
-  ClaudeTaskStatus, summary})` for a text block that starts with that marker
+  a typed `ClaudeMappedTaskNotificationContentBlock({taskId, toolUseId,
+  status: ClaudeTaskStatus, summary})` for a text block that starts with that marker
   (the same marker-prefix rule as `containsInternalCommandOutput`) **and**
   parses as a complete envelope (`<task-id>`, `<tool-use-id>`, `<status>`
   all present); the transcript DTO additionally reads `origin.kind`, and
@@ -275,13 +275,16 @@ Live, in `ClaudeToolTracker` + `ClaudeEventDispatcher`:
   before `forgetSession`. `ClaudeSessionService` never touches the dispatcher
   or tracker.
 - **Running tasks keep the session alive (lifecycle owner:
-  `ClaudeSessionService`).** `_SessionTurnState` gains `runningTaskIds`,
-  maintained exactly like `wakeupAt`/`selfStartedTurn` from typed frames in
-  `_handleProcessEvent`: `ClaudeTaskStartedMessage` adds `task_id`,
+  `ClaudeSessionService`).** `_SessionTurnState` gains `runningTaskIds`
+  (`{taskId → ClaudeTaskType}`), maintained exactly like
+  `wakeupAt`/`selfStartedTurn` from typed frames in `_handleProcessEvent`:
+  `ClaudeTaskStartedMessage` adds `task_id` with its boundary-parsed
+  `ClaudeTaskType` (`local_agent` → `subAgent`, anything else → `other`),
   `ClaudeTaskNotificationMessage` removes it, `ClaudeSessionProcessExited`
   and `abort` clear it. It covers **every** `task_type` (sub-agents,
   background shells, workflows, nested `owned_by_subagent` tasks), because
-  any of them lives only inside the resident process. The set extends the
+  any of them lives only inside the resident process; the type is read only
+  by the scoped-stop rejection (Step 6). The set extends the
   existing "work in flight" predicate wherever it is evaluated:
   `sessionStatuses` (the root reports **busy** while a task runs, even after
   its turn's `result`), `_syncWorkState` (plugin `PluginWorkState.busy`, so
@@ -306,9 +309,14 @@ Live, in `ClaudeToolTracker` + `ClaudeEventDispatcher`:
   as a missing notification, cleared by the same paths. On a CLI floor without
   task frames the
   service uses the same typed substitutes as the dispatcher: an
-  `asyncLaunched` `ClaudeToolUseResult` adds the task and a completed tool
-  result or a user frame carrying `ClaudeMappedTaskNotificationContentBlock`
-  (via `ClaudeContentMapper`, Layer 2) removes it. `_trackSelfStartedTurn`
+  `asyncLaunched` `ClaudeToolUseResult` adds the task (as `subAgent`, keyed by
+  its `agentId`) and a completed tool result or a user frame carrying
+  `ClaudeMappedTaskNotificationContentBlock` removes it, keyed by the result's
+  `agentId` or the block's validated `taskId` — so the service never needs
+  the dispatcher's tool-use correlation. `ClaudeSessionService` takes
+  `ClaudeContentMapper` as a required constructor dependency for that parse
+  (Layer 2 into Layer 3; the const instance already built in
+  `runtime/claude_plugin_descriptor.dart:216`). `_trackSelfStartedTurn`
   additionally ignores `ClaudeAssistantMessage`/`ClaudeStreamEventMessage`
   frames whose `parentToolUseId` is set: forwarded child frames are task
   activity, already represented by the running set, not a root turn (today
@@ -324,10 +332,14 @@ Live, in `ClaudeToolTracker` + `ClaudeEventDispatcher`:
   the service's running-task set (lifecycle policy) and the dispatcher's task
   map (part presentation, child statuses, frame routing) — fed by the same
   typed frames and never consulting each other.
-- Abort through Step 5 keeps today's semantics — interrupt **then teardown**
+- Abort through Step 5 keeps today's mechanics — interrupt **then teardown**
   — so running sub-agents die with the process and surface as `cancelled`
-  through the process-exit rule. Step 6 ("Scoped stop" below) makes that the
-  `stop` policy and adds `keep`. Residual: if the CLI ever emits no
+  through the process-exit rule. One behavior change lands with Step 3's
+  guard extension: today a background-only session (`pending == 0`,
+  `selfStartedTurn == null`) makes `abort` return early and leaves the process
+  and its sub-agents alive; with `runningTaskIds` in the guard the same stop
+  tears the process down and cancels them. Step 6 ("Scoped stop" below) then
+  makes that the `stop` policy and adds `keep`. Residual: if the CLI ever emits no
   `task_notification` for a task, the session stays busy and the process
   pinned until abort/delete/exit; Step 3's live capture checks whether
   `system/background_tasks_changed {tasks}` is a usable reconciliation
@@ -443,7 +455,15 @@ History replay, in `ClaudeHistoryMapper`:
   tool_use/tool_result frames).
 - The child's first `user` frame renders as its prompt; tool results update the
   child's tool parts; nested `Agent` calls inside a child render as subtask
-  parts with their own `childSessionID`.
+  parts with their own `childSessionID`. Because a nested task's
+  `task_started`/notification frames arrive from the root process without a
+  `parent_tool_use_id` while its tool_use was tracked under the child's
+  rendered session, the tracker's task map is indexed by tool_use id
+  globally (tool ids are unique per process) with the owning rendered
+  session id stored on each record: lifecycle frames resolve by tool_use id
+  regardless of which session's frame carried the tool_use, bind the nested
+  child, and route its forwarded frames; the part update still targets the
+  owning rendered session.
 - History and live use the same ids (transcript `uuid`/`message.id`/tool ids),
   so an open child screen converges after a reload without duplicates, exactly
   as the root session does today.
@@ -455,17 +475,44 @@ day to day that is often not what the user wants. Stop becomes scoped,
 mirroring the delete/archive `force` flow (`SessionCleanupRejection` 409 →
 `client/app/lib/features/session_list/session_force_dialog.dart` → retry):
 
-- Wire: the abort body gains `subAgents: SessionAbortSubAgentPolicy` —
-  `confirm | keep | stop` — with `@Default(stop)` and a dated `COMPATIBILITY`
-  comment: an older client omits it and keeps today's stop-everything
-  behavior; an older bridge ignores the field and stops everything without
-  confirmation (the documented degradation). New shared 409 body
-  `SessionAbortRejection { sessionId, reason: subAgentsRunning,
-  runningSubAgentCount, mainAgentRunning }`, returned only to a client that
-  asked for `confirm`.
-- Bridge: `SessionAbortService.abortSession({sessionId, subAgents})` returns
-  a sealed result (`aborted` | `rejected(SessionAbortRejection)`);
-  `AbortSessionHandler` maps `rejected` to 409 exactly like
+- Wire: a dedicated `AbortSessionRequest { sessionId, subAgents:
+  SessionAbortSubAgentPolicy }` — `confirm | keep | stop`, `@Default(stop)`
+  with a dated `COMPATIBILITY` comment — replaces the generic
+  `SessionIdRequest` body on `/session/abort` only (precedent:
+  `DeleteSessionRequest` is "a superset of `SessionIdRequest`",
+  `shared/sesori_shared/lib/src/models/sesori/session.dart:134`;
+  `SessionIdRequest` itself is untouched because seven other routes share
+  it). An older client's `{sessionId}` body decodes with the default and keeps
+  today's stop-everything behavior; an older bridge ignores the field and
+  stops everything without confirmation (the documented degradation). New 409
+  body `SessionAbortRejection { runningSubAgentCount, mainAgentRunning }` —
+  no discriminator and no session id (one cause, one target; precedent
+  `SessionCleanupRejection` carries only `issues`) — returned only to a
+  client that asked for `confirm`.
+- Count semantics: `runningSubAgentCount` counts **sub-agents only**.
+  `ClaudeTaskStartedMessage` parses `task_type` at the boundary into a closed
+  `ClaudeTaskType` (`local_agent` → `subAgent`, anything else → `other`);
+  the service's running set keeps every type for process/reap safety
+  (`{taskId → ClaudeTaskType}`), and the rejection counts only `subAgent`
+  entries. `keep` keeps the whole resident process, so non-sub-agent tasks
+  survive too; `confirm` with only non-sub-agent tasks running is not refused
+  and proceeds as `stop` — the confirmation is about sub-agents, as asked.
+- Bridge (Layer 2 → 3 → 4): `SessionRepository.abortSession({sessionId,
+  subAgents}) → SessionAbortResult` (`aborted | rejected(
+  SessionAbortRejection)`) stays the only caller of `plugin.abortSession`
+  (`session_repository.dart:999-1011`) and maps `SessionAbortSubAgentPolicy
+  ↔ PluginAbortSubAgentPolicy` and `PluginAbortResult →
+  SessionAbortRejection` in `plugin_to_shared_mapping.dart` (the file Step 2
+  already extends). `SessionAbortService.abortSession` wraps that into its
+  sealed result and owns the push-suppression streams per outcome:
+  `abortStartedSessions` still fires at call time (→
+  `markSessionAbortPending`); `aborted` under `stop` fires `abortedSessions`
+  (today's suppression); `rejected` and `aborted` under `keep` fire
+  `abortFailedSessions` (→ `clearPendingAbort`, `orchestrator.dart:863`), so
+  neither a dismissed dialog nor a kept sub-agent loses its eventual
+  completion push — `keep` deliberately does not suppress the completion that
+  follows the kept work, consistent with the Step 3 "fires once" rule.
+  `AbortSessionHandler` only maps `rejected` → 409 like
   `delete_session_handler.dart`. Plugin stop/suspend paths
   (`interruptActiveWork`) use `stop`.
 - Plugin interface: `BridgePluginApi.abortSession({sessionId, subAgents:
@@ -475,26 +522,44 @@ mirroring the delete/archive `force` flow (`SessionCleanupRejection` 409 →
   policy and keep their stop semantics.
 - Claude (decision owner `ClaudeSessionService.abort`, which already owns the
   running set and the teardown; `ClaudePlugin.abortSession` forwards):
-  `confirm` with a non-empty running set → `rejectedSubAgentsRunning(
-  runningTaskIds.length, isTurnRunning)` with no side effect; `confirm` with
-  no tasks, or `stop` → today's interrupt + teardown (tasks cancelled via
-  process exit); `keep` → interrupt (`cancel_queued`) **without** teardown
-  while tasks run — the process stays resident, tasks continue, their
-  notifications wake the main agent as usual; `keep` with no tasks ≡ `stop`.
-  Open item for the Step 6 live capture: what the CLI emits between an
-  acknowledged interrupt and the next turn when the process is kept (the
-  reason teardown exists today, `claude_session_service.dart:486-489`); the
-  existing interrupted-result handling (`claude_plugin_impl.dart:565-567`)
-  must cover it, or the dispatcher drops those frames until the next dispatch
-  or task notification.
-- Client: `SessionApi.abortSession` parses the 409 into
-  `SessionAbortRejectedException`; `SessionDetailCubit.abort({subAgents})`
-  returns a sealed outcome (`aborted` | `rejected(rejection)`) and holds no
-  new state; the session-detail stop action always sends `confirm` first and,
-  on rejection, shows a dialog modeled on `session_force_dialog.dart` —
-  "Stop main agent only" (shown only when `mainAgentRunning`) and "Stop main
-  agent and N sub-agents" — then retries with `keep` or `stop`. l10n for the
-  dialog.
+  `confirm` with at least one `subAgent` task → `rejectedSubAgentsRunning(
+  subAgentCount, isTurnRunning)` with no side effect; `confirm` otherwise,
+  or `stop` → interrupt + teardown (every resident task cancelled via process
+  exit); `keep` → interrupt (`cancel_queued`, queue cleared as today)
+  **without** teardown while tasks run — the process stays resident, tasks
+  continue, their notifications wake the main agent as usual; `keep` with no
+  tasks ≡ `stop`. The post-interrupt window stays owned where it lives today,
+  `ClaudeSessionProcessRepository` (`_ResidentProcess.interrupted`, set by
+  `interrupt()` and cleared by `sendTurn()`,
+  `claude_session_process_repository.dart:205,250`): under `keep` the
+  repository closes the window at the first of the next `sendTurn` or the
+  first `ClaudeTaskNotificationMessage` for that session after the
+  interrupt's own result, so the recovery/meta frames that teardown used to
+  discard stay dropped by the existing `ClaudeTurnInterrupted`
+  classification while the notification-triggered wake-up turn renders. The
+  dispatcher gains no interrupt state; the Step 6 live capture only confirms
+  which frame shapes appear inside that window.
+- Client (Layer 1 → 2 → 3 → 4, no optional parameters):
+  `SessionApi.abortSession({sessionId, subAgents})` sends
+  `AbortSessionRequest` and parses the 409 into
+  `SessionAbortRejectedException`; `SessionRepository.abortSession({sessionId,
+  subAgents})` forwards and propagates it; `capabilities/session/
+  SessionService.abortSession` is updated in lockstep;
+  `SessionDetailCubit.abort({subAgents})` returns a sealed outcome
+  (`aborted | rejected(rejection)`) and holds no new state. The `confirm`
+  probe is side-effect free: the cubit clears its local prompt queue and
+  recovery bookkeeping (`session_detail_cubit.dart:2243-2248`) only after a
+  root `aborted` outcome or when retrying with `keep`/`stop`, and it sends
+  exactly one root request per attempt — the existing child fan-out
+  (`:2250-2259`, which today aborts every busy/retrying child alongside the
+  root) runs only after a root `aborted` outcome under `stop`, never for
+  `keep` and never before the dialog, so plugins whose children are real
+  sessions keep today's stop-everything behavior while the root policy owns
+  descendant scope. The stop action sends `confirm` first and, on rejection,
+  shows a dialog modeled on `session_force_dialog.dart` — "Stop main agent
+  only" (shown only when `mainAgentRunning`) and "Stop main agent and N
+  sub-agents" — then retries with `keep` or `stop`; dismissing the dialog
+  leaves everything running. l10n for the dialog.
 - Not added: stopping one sub-agent (`stop_task`), a remembered default
   policy, analytics for the choice (candidate event if a default-policy
   decision ever comes up).
@@ -531,9 +596,12 @@ New mutable parts:
   sub-agents; it is lifecycle state, not a second copy of presentation state.
 - Bridge/app: none persistent. The sweep reads the root's existing status.
 - Client: none.
-- Scoped stop (Step 6): one request field and one 409 body on the wire, a
-  sealed abort result in the plugin contract, no bridge state, and a client
-  rejection that lives only for the dialog's lifetime (no new cubit field).
+- Scoped stop (Step 6): one dedicated request model and one 409 body on the
+  wire, a sealed abort result in the plugin contract, no new bridge state
+  (the existing abort-pending/aborted push marks are driven per outcome
+  through the existing streams), the `ClaudeTaskType` on each running-set
+  entry, and a client rejection that lives only for the dialog's lifetime (no
+  new cubit field).
 
 Deliberately not added: `stop_task` (abort already tears the process down),
 a service→dispatcher query for task state, `task_progress` rendering,
@@ -556,6 +624,7 @@ the client, analytics.
 | External terminal session's running agent shows cancelled until its notification lands | rare, self-corrects | accept |
 | `task_started`/`task_notification` absent on the 2.1.221 floor | unverified (no floor build on the dev machine) | every lifecycle trigger has a typed substitute: the `asyncLaunched`/`completed` tool result starts the child lifecycle (only `asyncLaunched` adds to the running-task set), and the completed tool result or parsed `<task-notification>` ends them, so parts, children, and reap deferral all work without task frames; the floor is probed in Step 3 if obtainable, else recorded as untested |
 | Nested sub-agents flattened under the root | design | accept; activity tracking is one level deep anyway |
+| A root whose only resident work is a non-sub-agent background task (shell, workflow) is busy in its status but absent from `getActiveSessionsSummary` (`mainAgentRunning` false, no busy child) | contract gap (`PluginActiveSession` has no background-task slot); rarer than sub-agents | accept; the session still shows busy and is never reaped; no mislabeling as main-agent or child activity; revisit only if project roll-ups for background shells are requested |
 | Catalog import gains one row per sub-agent transcript | cost | accept; children read meta + stat only |
 
 ## Compatibility, Privacy, And Data
@@ -702,16 +771,20 @@ Scope:
   `residentTaskToolUseIds`; `_handleProcessEvent` handles
   `ClaudeSessionProcessExited` via `cancelTasks`; `deleteSession`/dispose call
   it before `forgetSession`.
-- `services/claude_session_service.dart`: `_SessionTurnState.runningTaskIds`
-  tracked from `ClaudeTaskStartedMessage`/`ClaudeTaskNotificationMessage` in
+- `models/claude_task_type.dart`: closed `ClaudeTaskType` (`subAgent` for
+  `local_agent`, `other`), parsed on `ClaudeTaskStartedMessage`.
+- `services/claude_session_service.dart`: `ClaudeContentMapper` becomes a
+  required constructor dependency (descriptor wiring updated);
+  `_SessionTurnState.runningTaskIds` (`{taskId → ClaudeTaskType}`) tracked
+  from `ClaudeTaskStartedMessage`/`ClaudeTaskNotificationMessage` in
   `_handleProcessEvent` (beside `_trackWakeupSchedule`), cleared on process
   exit and abort; folded into `sessionStatuses`, `_syncWorkState`,
-  `interruptActiveWork`, and the idle gate of `_finish`,
-  `_endSelfStartedTurn`, and `_scheduleIdleReap`; an emptied set emits idle
-  and arms the reap; floor substitutes (async-launch result adds, completed
-  result or parsed notification block removes); a notification (or
-  notification-bearing user frame) while no turn is active opens a
-  self-started turn; `_trackSelfStartedTurn` ignores forwarded child
+  `interruptActiveWork`, the `abort` eligibility guard, and the idle gate of
+  `_finish`, `_endSelfStartedTurn`, and `_scheduleIdleReap`; floor
+  substitutes keyed by task id (async-launch result's `agentId` adds,
+  completed result's `agentId` or the parsed block's `taskId` removes); a
+  notification (or notification-bearing user frame) while no turn is active
+  opens a self-started turn; `_trackSelfStartedTurn` ignores forwarded child
   assistant/stream frames; `isTurnRunning(sessionId)` accessor. Tests: reap
   deferred while a task runs and armed only after the wake-up turn's result;
   no transient idle between the last notification and the wake-up turn; work
@@ -761,9 +834,11 @@ child transcript; catalog import lists children under the root.
 
 ## Step 5/8 - Live Sub-Agent Streaming
 
-Scope: dispatcher routing of `parent_tool_use_id` frames to child ids,
-nested mapping, tests proving isolation from the root session and convergence
-with the replayed child transcript.
+Scope: dispatcher routing of `parent_tool_use_id` frames to child ids; the
+tracker's task map indexed by tool_use id globally with the owning rendered
+session on each record, so root-process lifecycle frames for nested tasks
+bind their nested child; tests proving isolation from the root session,
+nested binding, and convergence with the replayed child transcript.
 
 Verification: `dart analyze --fatal-infos` and `dart test` in
 `bridge/sesori_plugin_claude`; manual: open a running sub-agent tile and watch
@@ -773,25 +848,42 @@ parts appear.
 
 Scope:
 
-- `shared`: `SessionAbortSubAgentPolicy` (`confirm | keep | stop`) on the
-  abort request with `@Default(stop)` + dated `COMPATIBILITY` comment;
-  `SessionAbortRejection`; codegen.
-- `sesori_plugin_interface`: `abortSession({sessionId, subAgents})` →
-  `PluginAbortResult`; every plugin updated (non-Claude plugins return
-  `aborted` and ignore the policy).
-- `bridge/app`: `SessionAbortService` sealed result; `AbortSessionHandler`
-  409 mapping; plugin stop/suspend paths pass `stop`; tests.
+- `shared`: `AbortSessionRequest { sessionId, subAgents:
+  SessionAbortSubAgentPolicy @Default(stop) }` with the dated
+  `COMPATIBILITY` comment (`SessionIdRequest` untouched);
+  `SessionAbortRejection { runningSubAgentCount, mainAgentRunning }`;
+  codegen.
+- `sesori_plugin_interface`: `abortSession({sessionId, subAgents:
+  PluginAbortSubAgentPolicy})` → `PluginAbortResult` (`aborted` |
+  `rejectedSubAgentsRunning(count, mainAgentRunning)`); every plugin updated
+  (non-Claude plugins return `aborted` and ignore the policy).
+- `bridge/app`: `SessionRepository.abortSession({sessionId, subAgents}) →
+  SessionAbortResult` with the policy/result mappings in
+  `plugin_to_shared_mapping.dart`; `SessionAbortService` wraps it and emits
+  `abortedSessions` for `stop`, `abortFailedSessions` (clear pending) for
+  `rejected` and `keep`; `AbortSessionHandler` switches to
+  `AbortSessionRequest` and maps `rejected` → 409; plugin stop/suspend paths
+  pass `stop`; tests including the stream emissions per outcome.
 - `sesori_plugin_claude`: `ClaudeSessionService.abort({subAgents})` —
-  `confirm` rejects with count + `isTurnRunning` while tasks run, `keep`
-  interrupts without teardown while tasks run, `stop` unchanged;
-  `ClaudePlugin.abortSession` forwards; one live capture of post-interrupt
-  frames with a kept process, and the handling decided from it; tests for all
-  three policies with and without running tasks, and that `keep` leaves the
-  running set, reap deferral, and child statuses intact.
-- `client`: `SessionApi` 409 parse → `SessionAbortRejectedException`;
-  `SessionDetailCubit.abort({subAgents})` sealed outcome; stop action sends
-  `confirm`, shows the scope dialog on rejection, retries with `keep`/`stop`;
-  l10n; widget/cubit tests.
+  `confirm` rejects with the `subAgent` count + `isTurnRunning` while
+  sub-agents run, `keep` interrupts without teardown while tasks run, `stop`
+  unchanged; `ClaudeSessionProcessRepository` closes the `interrupted` window
+  under `keep` at the next `sendTurn` or the first task notification after the
+  interrupt's result; `ClaudePlugin.abortSession` forwards; one live capture
+  of post-interrupt frames with a kept process confirming the window's frame
+  shapes; tests for all three policies with and without running tasks (incl.
+  non-sub-agent-only tasks), and that `keep` leaves the running set, reap
+  deferral, and child statuses intact and renders the later wake-up turn.
+- `client`: `SessionApi.abortSession({sessionId, subAgents})` sends
+  `AbortSessionRequest` and parses the 409 → `SessionAbortRejectedException`;
+  `SessionRepository.abortSession` and `capabilities/session/SessionService.
+  abortSession` updated in lockstep; `SessionDetailCubit.abort({subAgents})`
+  sealed outcome, side-effect-free `confirm` (queue clearing and the child
+  fan-out only after a root `aborted` under `stop`, queue clearing also on
+  `keep`); stop action sends `confirm`, shows the scope dialog on rejection,
+  retries with `keep`/`stop`, dismiss leaves everything running; l10n;
+  widget/cubit tests (dialog options per `mainAgentRunning`, dismissal keeps
+  queued prompts, single root request per attempt).
 
 Verification: codegen in shared/interface/client; `dart analyze
 --fatal-infos` and `dart test` in shared, interface, bridge/app,
