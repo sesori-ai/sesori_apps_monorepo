@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../motion/prego_reduced_motion.dart';
 import '../theme/prego_theme.dart';
+import 'prego_horizontal_drag_gesture_detector.dart';
 
 /// Builds the secondary actions revealed behind a [PregoSwipeActions] row.
 ///
@@ -122,9 +122,6 @@ const double _commitClearance = 64;
 /// shut and cancels a pending commit.
 const double _flingVelocity = 700;
 
-/// The row-width fraction reserved for a system back gesture where one exists.
-const double _systemBackGestureExclusionFraction = 0.1;
-
 /// One build's strip children, captured as a unit when a close settle begins.
 typedef _StripChildren = ({List<Widget> actions, Widget primary, Widget? leadingPrimary});
 
@@ -195,8 +192,6 @@ class _PregoSwipeActionsState() extends State<PregoSwipeActions> with SingleTick
 
   @override
   Widget build(BuildContext context) {
-    final gestureSettings = MediaQuery.maybeGestureSettingsOf(context);
-    final scrollBehavior = ScrollConfiguration.of(context);
     final strips =
         _frozenStrips ??
         (
@@ -211,23 +206,15 @@ class _PregoSwipeActionsState() extends State<PregoSwipeActions> with SingleTick
 
     final row = TapRegion(
       onTapOutside: (_) => _handleTapOutside(),
-      child: RawGestureDetector(
-        gestures: <Type, GestureRecognizerFactory>{
-          _EdgeSafeHorizontalDragGestureRecognizer:
-              GestureRecognizerFactoryWithHandlers<_EdgeSafeHorizontalDragGestureRecognizer>(
-                () => _EdgeSafeHorizontalDragGestureRecognizer(debugOwner: this),
-                (recognizer) {
-                  recognizer
-                    ..onStart = _handleDragStart
-                    ..onUpdate = _handleDragUpdate
-                    ..onEnd = _handleDragEnd
-                    ..onCancel = _handleDragCancel
-                    ..multitouchDragStrategy = scrollBehavior.getMultitouchDragStrategy(context)
-                    ..gestureSettings = gestureSettings
-                    ..isStartAllowed = (event) => _allowsDragStart(context: context, event: event);
-                },
-              ),
-        },
+      child: PregoHorizontalDragGestureDetector(
+        behavior: null,
+        supportedDevices: null,
+        onHorizontalDragDown: null,
+        onHorizontalDragStart: _handleDragStart,
+        onHorizontalDragUpdate: _handleDragUpdate,
+        onHorizontalDragEnd: _handleDragEnd,
+        onHorizontalDragCancel: _handleDragCancel,
+        crossAxisRejectionSlop: null,
         child: LayoutBuilder(
           builder: (context, constraints) {
             _rowWidth = constraints.maxWidth;
@@ -328,28 +315,6 @@ class _PregoSwipeActionsState() extends State<PregoSwipeActions> with SingleTick
   }
 
   // ── Gesture handling ───────────────────────────────────────────────────────
-
-  bool _allowsDragStart({required BuildContext context, required PointerEvent event}) {
-    if (event.kind != PointerDeviceKind.touch || _rowWidth <= 0) return true;
-
-    final platform = Theme.of(context).platform;
-    final usesAndroidGestureNavigation =
-        platform == TargetPlatform.android && _usesAndroidGestureNavigation(context: context);
-    final excludeStart = platform == TargetPlatform.iOS || usesAndroidGestureNavigation;
-    final excludeEnd = usesAndroidGestureNavigation;
-    if (!excludeStart && !excludeEnd) return true;
-
-    final fromStart = Directionality.of(context) == TextDirection.ltr
-        ? event.localPosition.dx
-        : _rowWidth - event.localPosition.dx;
-    final exclusion = _rowWidth * _systemBackGestureExclusionFraction;
-    return (!excludeStart || fromStart > exclusion) && (!excludeEnd || fromStart < _rowWidth - exclusion);
-  }
-
-  bool _usesAndroidGestureNavigation({required BuildContext context}) {
-    final insets = MediaQuery.maybeSystemGestureInsetsOf(context);
-    return insets != null && (insets.left > 0 || insets.right > 0);
-  }
 
   void _handleDragStart(DragStartDetails details) {
     _dragging = true;
@@ -512,13 +477,6 @@ class _PregoSwipeActionsState() extends State<PregoSwipeActions> with SingleTick
     _watchedScroll?.removeListener(_handleScroll);
     _watchedScroll = null;
   }
-}
-
-class _EdgeSafeHorizontalDragGestureRecognizer({required super.debugOwner}) extends HorizontalDragGestureRecognizer {
-  late bool Function(PointerEvent event) isStartAllowed;
-
-  @override
-  bool isPointerAllowed(PointerEvent event) => super.isPointerAllowed(event) && isStartAllowed(event);
 }
 
 /// One side of a [PregoSwipeActions] row — the trailing strip or the leading

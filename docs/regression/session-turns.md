@@ -166,6 +166,11 @@ defaults and queued client sends coherent.
 - Transcript content scrolling behind the top navigation or floating composer
   dissolves into a strong surface-colour fade, keeping the title and controls
   visually separate and screenshot-readable without text collisions.
+- A leftward touch, stylus, or trackpad drag across the transcript reveals all
+  message timestamps together without changing vertical scroll or follow state,
+  then settles closed on release. System-back edges remain reserved on iOS and
+  Android gesture navigation, mouse drags remain available for text selection,
+  and a horizontal drag inside a fenced code block scrolls only that block.
 
 ## Regression Levels
 
@@ -230,6 +235,9 @@ has started.
   running session as if they were user activity.
 - Scrolled transcript text remains clearly visible through the fade and collides
   with the navigation title or floating composer controls.
+- A timestamp peek responds from a reserved system-back edge, detaches or
+  vertically scrolls the transcript, captures a mouse selection drag, or moves
+  while a fenced code block is handling the horizontal drag.
 
 ## Known Limitations
 
