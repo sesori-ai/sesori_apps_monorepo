@@ -1,4 +1,4 @@
-import "package:test/test.dart";
+import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/subjects.dart";
 import "package:sesori_auth/sesori_auth.dart";
