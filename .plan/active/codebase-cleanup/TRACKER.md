@@ -5,7 +5,9 @@
 - **Plan slug:** `codebase-cleanup`
 - **Implementation base:** `origin/main` at `084b30276`
 - **Current branch:** `codebase-cleanup-plan`
-- **Series state:** Step 1/45 in PR; no implementation started
+- **Series state:** Step 1/45 in PR
+  [#1018](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1018); no
+  implementation started
 - **Current step:** 1/45 — raise the plan
 - **Next action:** merge Step 1; start Step 2 locally (module_core dead
   concurrency copy) per the one-step-ahead workflow
@@ -65,7 +67,7 @@
 
 | Done | Step | Exact PR title | State |
 |---|---|---|---|
-| [ ] | 1/45 | `🌱 [codebase-cleanup] docs: raise the reliability cleanup plan [step 1/45]` | In PR |
+| [ ] | 1/45 | `🌱 [codebase-cleanup] docs: raise the reliability cleanup plan [step 1/45]` | In PR #1018 |
 | [ ] | 2/45 | `🌿 [codebase-cleanup] client(module_core): delete the dead concurrency copy [step 2/45]` | Not started |
 | [ ] | 3/45 | `🌿 [codebase-cleanup] shared: delete dead helpers, models, and the rxdart dependency [step 3/45]` | Not started |
 | [ ] | 4/45 | `🌿 [codebase-cleanup] shared: tighten management fields and correct compatibility markers [step 4/45]` | Not started |
@@ -124,7 +126,8 @@
   posture, L3 boundary, and required matrix.
 - [x] Run architecture plan review through a sub-agent and apply valid findings.
 - [x] Run plan consistency checks and `git diff --check`.
-- [ ] Commit, push, open the Step 1 PR, start its monitor, and record the URL.
+- [x] Commit, push, open the Step 1 PR, start its monitor, and record the URL:
+  [#1018](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1018).
 
 ## Re-verification Log
 
