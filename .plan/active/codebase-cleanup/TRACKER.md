@@ -220,7 +220,7 @@ Each step records here what it found stale relative to the plan before editing.
   1,172 passed in `client/module_core`; `flutter analyze` clean and
   `flutter test test/core` 217 passed in `client/app`.
 - Step 2 size against merge-base, self-inclusive of this record:
-  `+0 / -1,356` (13 files deleted, 2 doc files edited), under the 1,200–1,400
+  `+0 / -1,356` (15 files deleted, 2 doc files edited), under the 1,200–1,400
   target because the deletion is pure and no replacement code was needed.
 - Step 2 architecture implementation review: not run — deletion-only step with
   no new or moved production class, DI change, or contract change, per the
