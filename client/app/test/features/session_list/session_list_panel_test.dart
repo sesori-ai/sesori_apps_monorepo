@@ -30,10 +30,11 @@ void main() {
 
   // Renders the real panel at a fixed width; the header sits inside the panel's
   // own 16pt horizontal padding, so the header content width is [width] - 32.
-  Future<void> pumpPanel(WidgetTester tester, {required double width}) async {
+  Future<void> pumpPanel(WidgetTester tester, {required double width, required TargetPlatform platform}) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(
+          platform: platform,
           colorScheme: PregoColors.light.toFlutterColorScheme(),
           textTheme: PregoTextTheme.light.asFlutterTextTheme(),
           extensions: [PregoDesignSystem.light],
@@ -71,7 +72,7 @@ void main() {
   testWidgets("narrow landscape pane lays out the header without overflow", (tester) async {
     // 258 - 32pt padding = 226pt header — the narrowest real split pane, where
     // the labelled layout used to overflow by 25px across and 310px down.
-    await pumpPanel(tester, width: 258);
+    await pumpPanel(tester, width: 258, platform: TargetPlatform.android);
 
     expect(tester.takeException(), isNull);
     // The action collapses to an icon-only button so the title keeps its width;
@@ -87,10 +88,18 @@ void main() {
     // can't be asserted here: the fixed-width test font renders "New session"
     // far wider than the real font, which would overflow a snug header only in
     // tests — the real-font fit is verified on-device.)
-    await pumpPanel(tester, width: 600);
+    await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
 
     expect(tester.takeException(), isNull);
     expect(find.byIcon(Icons.add), findsOneWidget);
     expect(find.text(newSessionLabel(tester)), findsOneWidget);
+  });
+
+  testWidgets("wide macOS pane keeps pull-to-refresh feedback enabled", (tester) async {
+    await pumpPanel(tester, width: 600, platform: TargetPlatform.macOS);
+
+    final refreshIndicator = tester.widget<RefreshIndicator>(find.byType(RefreshIndicator));
+    expect(refreshIndicator.displacement, greaterThan(0));
+    expect(refreshIndicator.strokeWidth, greaterThan(0));
   });
 }

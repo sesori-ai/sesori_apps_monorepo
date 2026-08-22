@@ -31,6 +31,9 @@ child sessions with titles, activity, statuses, and unseen state.
   are reserved for back; on Android gesture navigation, both 10% edges are
   reserved. Android button navigation and other platforms retain the full row
   as a swipe target.
+- Pull-to-refresh provides visible drag and in-flight feedback in both the
+  full-screen lists and the wide split-view session pane. Releasing a trackpad
+  pull while the refresh is pending keeps the pane's indicator visible.
 - A session created in a dedicated worktree receives a system prompt identifying
   that worktree, its initial branch, and base branch. The prompt requires all
   work to remain in that worktree, while permitting use of the initial branch,
@@ -123,6 +126,8 @@ navigation, and a non-mobile platform; begin drags inside and just outside each
 - Hiding destroys sessions, or a cancelled import destroys the committed catalog.
 - A project or session row animates under a system back gesture, or an edge that
   has no active system back gesture stops accepting row actions.
+- A wide session pane starts a refresh without showing or holding its pull
+  indicator until the operation completes.
 - A generated title/branch update fails to reach list/detail, changes unseen,
   moves the worktree, or rewrites the backend's creation-time system context.
 
@@ -160,7 +165,8 @@ navigation, and a non-mobile platform; begin drags inside and just outside each
   `client/module_core/test/services/session_list_service_test.dart`,
   `client/module_core/test/services/session_unseen_tracker_test.dart`,
   `client/module_core/test/cubits/session_list/session_list_cubit_test.dart`,
-  `client/module_prego/test/interactions/prego_swipe_actions_test.dart`
+  `client/module_prego/test/interactions/prego_swipe_actions_test.dart`,
+  `client/app/test/features/session_list/session_list_panel_test.dart`
 - Client row swipe behavior:
   `client/module_prego/lib/interactions/prego_swipe_actions.dart`
 - Plans (discovery only): `.plan/completed/multi-plugin-release-prep`,
