@@ -2,7 +2,7 @@ import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "../api/plugin_runtime.dart";
+import "../runtime/plugin_runtime.dart";
 import "../services/session_options_service.dart";
 
 class SessionOptionsChangedRefreshListener({

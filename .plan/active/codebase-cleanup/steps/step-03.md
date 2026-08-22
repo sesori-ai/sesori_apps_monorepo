@@ -14,8 +14,19 @@ the plan had not listed as kept. Both stay, with `toUnmodifiableList`. The
 ## Verification
 
 Analyze clean in all 12 bridge packages and all 7 client modules. Tests: shared
-359, `bridge/app` 2,693, opencode 434, `client/module_core` 1,172. Size
-`+52 / -1,553`.
+359, `bridge/app` 2,693, opencode 434, `client/module_core` 1,172.
+
+Size, self-inclusive of this record, measured with
+`git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD`:
+`+52 / -1,553` = 1,605 changed lines, above the 1,500 soft cap. The overage is
+deletion-only: 1,553 of the 1,605 lines are removals, of which 465 are generated
+Freezed/JSON parts for the four dead models. Splitting would have separated a
+helper's removal from the removal of its tests, so it stayed one PR.
+
+The `bridge/app` total differs between step files because the package's own test
+count changed during the series: 2,693 here, then 2,684 in Steps 5 and 7 after
+Step 5 deleted the `PortRepository` and host-factory test files. Each figure is
+correct for the tree it was measured on; they are not meant to be equal.
 
 ## Follow-up
 

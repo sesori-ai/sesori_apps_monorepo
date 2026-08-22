@@ -3,11 +3,11 @@ import "dart:async";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../api/plugin_runtime.dart";
 import "../repositories/mappers/session_event_mapper.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
 import "../repositories/trackers/session_event_tracker.dart";
+import "../runtime/plugin_runtime.dart";
 
 typedef SourcedBridgeEvent = ({
   String pluginId,

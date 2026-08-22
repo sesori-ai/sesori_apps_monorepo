@@ -49,7 +49,8 @@ five open PRs). Steps sharing a package stay serialized: 4 after 3 (both
 - [x] Nothing is extracted unless it replaces at least two copies and owns
   state, a lifecycle, or an invariant.
 - [x] Every step re-verifies its evidence against current `main` before editing
-  and records the delta here.
+  and records the delta in its own `steps/step-NN.md` — never in this file, so
+  parallel steps cannot conflict.
 - [x] No wire-contract or compatibility removal outside Step 42 and D1.
 - [x] No database schema change anywhere in the series.
 - [x] Session-detail refresh coordination, dispatcher merging, orchestrator

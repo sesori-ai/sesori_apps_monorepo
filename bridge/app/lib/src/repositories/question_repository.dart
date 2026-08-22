@@ -4,7 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../api/database/daos/projects_dao.dart";
 import "../api/database/daos/session_dao.dart";
 import "../api/database/tables/session_table.dart";
-import "../api/plugin_runtime.dart";
+import "../runtime/plugin_runtime.dart";
 import "derived_session_builder.dart";
 import "mappers/plugin_question_mapper.dart";
 import "models/project_not_found_exception.dart";

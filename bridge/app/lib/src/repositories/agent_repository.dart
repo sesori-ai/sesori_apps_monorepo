@@ -3,7 +3,7 @@ import "dart:io" as io;
 import "package:sesori_shared/sesori_shared.dart" show Agents, StringExtensions;
 
 import "../api/database/daos/projects_dao.dart";
-import "../api/plugin_runtime.dart";
+import "../runtime/plugin_runtime.dart";
 import "mappers/plugin_agent_mapper.dart";
 import "models/project_not_found_exception.dart";
 

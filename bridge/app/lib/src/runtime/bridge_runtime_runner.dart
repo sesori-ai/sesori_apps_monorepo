@@ -35,7 +35,6 @@ import "../api/bridge_settings_api.dart";
 import "../api/control_secret_api.dart";
 import "../api/database/database.dart";
 import "../api/database/history/chat_history_database.dart";
-import "../api/plugin_runtime.dart";
 import "../api/sesori_server_api.dart";
 import "../auth/access_token_provider.dart";
 import "../auth/bridge_id_migration_service.dart";
@@ -126,6 +125,7 @@ import "bridge_runtime_server_exception.dart";
 import "bridge_shutdown_coordinator.dart";
 import "plugin_generation_factory.dart";
 import "plugin_registry.dart";
+import "plugin_runtime.dart";
 import "runtime_provision_formatter.dart";
 
 /// The deliberate exit outcomes of a supervised bridge, each carrying the

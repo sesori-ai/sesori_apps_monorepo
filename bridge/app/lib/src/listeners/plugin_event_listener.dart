@@ -1,6 +1,6 @@
 import "dart:async";
 
-import "../api/plugin_runtime.dart";
+import "../runtime/plugin_runtime.dart";
 import "../services/session_event_dispatcher.dart";
 
 class PluginEventListener({

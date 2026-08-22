@@ -16,4 +16,10 @@ consumers, so it stays for Step 42.
 
 ## Verification
 
-`bridge/app`: analyze clean, 2,684 tests. Size `+101 / -580`.
+`bridge/app`: analyze clean, 2,684 tests (down from 2,693 in Step 3 because this
+step deletes the `PortRepository` and host-factory test files).
+
+Size, self-inclusive of this record, measured with
+`git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD` against
+merge-base `00cc03563`: `+101 / -580` = 681 changed lines, within the
+700–1,000 target.

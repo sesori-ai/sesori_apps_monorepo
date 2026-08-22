@@ -37,7 +37,7 @@ import "../api/database/daos/session_dao.dart";
 import "../api/database/tables/projects_table.dart" show ProjectDto;
 import "../api/database/tables/pull_requests_table.dart";
 import "../api/database/tables/session_table.dart" show SessionDto;
-import "../api/plugin_runtime.dart";
+import "../runtime/plugin_runtime.dart";
 import "mappers/plugin_activity_summary_mapper.dart";
 import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_message_mapper.dart";

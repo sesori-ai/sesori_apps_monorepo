@@ -3,7 +3,7 @@ import "dart:async";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "../runtime/plugin_generation_factory.dart";
+import "plugin_generation_factory.dart";
 
 enum PluginRuntimeAccessGate() { enabled, draining, disabled }
 

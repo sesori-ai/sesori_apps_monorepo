@@ -5,7 +5,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 import "../api/database/daos/projects_dao.dart";
 import "../api/database/daos/session_dao.dart" show SessionDao;
 import "../api/database/tables/projects_table.dart" show ProjectDto;
-import "../api/plugin_runtime.dart";
+import "../runtime/plugin_runtime.dart";
 import "models/project_activity_evidence.dart";
 import "project_catalog_identity_calculator.dart";
 

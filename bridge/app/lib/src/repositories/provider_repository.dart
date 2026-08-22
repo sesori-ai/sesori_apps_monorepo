@@ -1,7 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart" show ProviderListResponse;
 
 import "../api/database/daos/projects_dao.dart";
-import "../api/plugin_runtime.dart";
+import "../runtime/plugin_runtime.dart";
 import "mappers/plugin_provider_mapper.dart";
 import "models/project_not_found_exception.dart";
 

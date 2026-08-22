@@ -3,7 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/database/daos/session_dao.dart";
 import "../api/database/tables/session_table.dart";
-import "../api/plugin_runtime.dart";
+import "../runtime/plugin_runtime.dart";
 import "mappers/plugin_permission_mapper.dart";
 import "models/session_operation.dart";
 

@@ -8,7 +8,7 @@ import "../api/database/daos/session_dao.dart";
 import "../api/database/tables/session_table.dart";
 import "../api/filesystem_api.dart";
 import "../api/git_cli_api.dart";
-import "../api/plugin_runtime.dart";
+import "../runtime/plugin_runtime.dart";
 import "models/project_not_found_exception.dart";
 import "models/worktree_types.dart";
 

@@ -8,8 +8,7 @@ Dart CLI compiled to a native bundle. Runs headlessly on a laptop or VM, authent
 bin/bridge.dart                CLI entry point — flag parsing, auth flow, plugin loading
 lib/src/
 ├── foundation/                Layer 0 — relay_client, key_exchange, process primitives
-├── api/                       Layer 1 — database (Drift), gh/git CLI wrappers,
-│                              sesori_server_api, plugin_runtime (plugin access seam)
+├── api/                       Layer 1 — database (Drift), gh/git CLI wrappers, sesori_server_api
 ├── repositories/              Layer 2 — aggregation + all mapping (mappers/, models/, trackers/)
 ├── services/                  Layer 3 — business logic
 ├── routing/                   Layer 4 — one handler per API route; request_router returns 404 unmatched
@@ -17,7 +16,9 @@ lib/src/
 ├── sse/                       Layer 4 — sse_manager, bridge_event_mapper
 ├── orchestrator.dart          Layer 5 — the only cross-layer composition owner
 ├── debug_server.dart          Debug HTTP server for local testing
-├── runtime/                   Subsystem — CLI dispatch, startup, shutdown ordering
+├── runtime/                   Subsystem — CLI dispatch, startup, shutdown ordering,
+│                              and PluginRuntime (plugin generation lifecycle;
+│                              repositories reach plugins through it)
 ├── auth/                      Subsystem — OAuth PKCE login, token storage, profile fetch
 ├── push/                      Subsystem — push notification delivery
 ├── server/                    Subsystem — single-live-bridge enforcement, startup mutex, plugin host

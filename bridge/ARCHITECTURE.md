@@ -62,11 +62,24 @@ Layer 5 — Orchestration
 
 ## Subsystems
 
-Three self-contained subsystems live outside the core layer hierarchy:
+Six self-contained subsystems live outside the numbered layer hierarchy:
 
+- **`runtime/`** — Bridge runtime lifecycle: CLI dispatch, startup, shutdown
+  ordering, and the plugin generation/lease lifecycle. `PluginRuntime` is this
+  subsystem's seam; repositories call it to reach a plugin, which is why it
+  stays here rather than in `api/` — it owns lifecycle decisions, not data
+  access, and moving it into Layer 1 would make Layer 1 depend upward on
+  composition.
 - **`auth/`** — Token lifecycle, login flow. No deps on core layers.
 - **`push/`** — Push notification delivery. No deps on core layers.
-- **`server/`** — Process lifecycle wrapper.
+- **`server/`** — Bridge instance and host services: single-live-bridge
+  enforcement, startup mutex, plugin host abstractions.
+- **`updater/`** — In-place update: download, verify, stage, apply.
+- **`control/`** — Desktop control channel (`ControlChannelServer`,
+  `ControlMessageDispatcher`, notifiers).
+
+`models/` and `persistence/` hold bridge-wide config and diagnostics rather than
+belonging to one layer or subsystem.
 
 ## Directory Structure
 
@@ -84,7 +97,6 @@ app/lib/src/
 ├── api/                     # Layer 1 — data sources, one class per tool
 │   ├── database/            # Drift: tables, DAOs, migrations
 │   ├── models/              # API-layer DTOs
-│   ├── plugin_runtime.dart  # plugin access seam consumed by repositories
 │   ├── gh_cli_api.dart
 │   ├── git_cli_api.dart
 │   └── sesori_server_api.dart
@@ -105,7 +117,8 @@ app/lib/src/
 ├── orchestrator.dart        # Layer 5 — the only cross-layer composition owner
 ├── debug_server.dart
 │
-├── runtime/                 # Subsystem — CLI entry, startup, shutdown ordering
+├── runtime/                 # Subsystem — CLI entry, startup/shutdown ordering,
+│                            #   and PluginRuntime (plugin generation lifecycle)
 ├── auth/                    # Subsystem — token lifecycle, login flow
 ├── push/                    # Subsystem — push notification delivery
 ├── server/                  # Subsystem — bridge instance/host services
@@ -115,10 +128,9 @@ app/lib/src/
 └── persistence/             # Bridge-wide diagnostics persistence
 ```
 
-`runtime/` is composition, not a layer: it owns the CLI entry point, startup
-sequencing, and shutdown ordering. The plugin access seam that repositories call
-(`PluginRuntime`) lives in `api/` because it is a data source below the
-repository layer, not part of composition.
+`runtime/` is a subsystem, not a numbered layer: it owns the CLI entry point,
+startup sequencing, shutdown ordering, and the plugin generation lifecycle.
+Repositories reach a plugin through `PluginRuntime`, this subsystem's seam.
 
 ## Key Patterns
 

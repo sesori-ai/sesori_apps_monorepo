@@ -7,7 +7,7 @@ import "../api/database/daos/projects_dao.dart";
 import "../api/database/daos/session_dao.dart";
 import "../api/database/daos/session_options_cache_dao.dart";
 import "../api/database/database.dart";
-import "../api/plugin_runtime.dart";
+import "../runtime/plugin_runtime.dart";
 import "mappers/plugin_agent_mapper.dart";
 import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_provider_mapper.dart";

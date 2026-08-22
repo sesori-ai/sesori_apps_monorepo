@@ -1,7 +1,7 @@
-import "package:sesori_bridge/src/api/plugin_runtime.dart";
 import "package:sesori_bridge/src/repositories/plugin_lifecycle_repository.dart";
 import "package:sesori_bridge/src/routing/get_plugin_setup_handler.dart";
 import "package:sesori_bridge/src/routing/get_plugins_handler.dart";
+import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
