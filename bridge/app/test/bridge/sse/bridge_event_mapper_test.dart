@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/sse/bridge_event_mapper.dart";
+import "package:sesori_bridge/src/sse/bridge_event_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -456,6 +456,8 @@ void main() {
                 awaitingInput: false,
                 isRetrying: false,
                 childSessionIds: [],
+                lastUserActivityAt: null,
+                updatedAt: null,
               ),
             ],
           ),

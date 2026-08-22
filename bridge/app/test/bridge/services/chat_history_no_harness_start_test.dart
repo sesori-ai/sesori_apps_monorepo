@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 

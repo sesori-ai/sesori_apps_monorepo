@@ -1,4 +1,4 @@
-import 'package:sesori_bridge/src/bridge/log_failure_reporter.dart';
+import 'package:sesori_bridge/src/foundation/log_failure_reporter.dart';
 import 'package:test/test.dart';
 
 void main() {

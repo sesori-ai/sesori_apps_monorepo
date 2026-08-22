@@ -1,13 +1,13 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
-import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
-import "package:sesori_bridge/src/bridge/services/stale_session_prompt_options_exception.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/services/session_abort_service.dart";
+import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/session_prompt_service.dart";
+import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";

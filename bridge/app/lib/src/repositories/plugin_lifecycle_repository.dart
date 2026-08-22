@@ -1,6 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "../bridge/runtime/plugin_runtime.dart";
+import "../runtime/plugin_runtime.dart";
 
 class const PluginLifecycleSnapshot({
   required final String pluginId,

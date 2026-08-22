@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:http/http.dart' show ClientException;
 import 'package:path/path.dart' as p;
 
-import '../../bridge/foundation/filesystem_permission_validator.dart';
+import '../../foundation/filesystem_permission_validator.dart';
 import '../foundation/filesystem_cleaner.dart';
 import '../models/release_info.dart';
 import '../models/update_install_result.dart';

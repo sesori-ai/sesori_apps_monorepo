@@ -1,6 +1,6 @@
 import "package:rxdart/rxdart.dart";
-import "package:sesori_bridge/src/bridge/runtime/plugin_generation_factory.dart";
-import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
+import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";
+import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 BenchmarkPluginRuntime createBenchmarkPluginRuntime({required Iterable<BridgePluginApi> plugins}) {

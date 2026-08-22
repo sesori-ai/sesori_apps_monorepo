@@ -1,9 +1,9 @@
 import "dart:async";
 
-import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
-import "package:sesori_bridge/src/bridge/services/session_event_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_event_service.dart";
 import "package:sesori_bridge/src/listeners/plugin_event_listener.dart";
+import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
+import "package:sesori_bridge/src/services/session_event_dispatcher.dart";
+import "package:sesori_bridge/src/services/session_event_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 

@@ -3,11 +3,11 @@ import "dart:convert";
 import "dart:io";
 import "dart:typed_data";
 
-import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/services/chat_history_reconcile_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_event_dispatcher.dart";
 import "package:sesori_bridge/src/listeners/chat_history_listener.dart";
+import "package:sesori_bridge/src/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/services/chat_history_reconcile_service.dart";
+import "package:sesori_bridge/src/services/session_event_dispatcher.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";

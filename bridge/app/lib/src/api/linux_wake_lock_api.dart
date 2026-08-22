@@ -3,7 +3,7 @@ import "dart:io";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
-import "../bridge/foundation/process_starter.dart";
+import "../foundation/process_starter.dart";
 import "wake_lock_client.dart";
 
 class LinuxWakeLockApi({

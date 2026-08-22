@@ -1,8 +1,8 @@
 import "dart:async";
 
-import "package:sesori_bridge/src/bridge/routing/request_handler.dart";
-import "package:sesori_bridge/src/bridge/routing/request_router.dart";
-import "package:sesori_bridge/src/bridge/routing/routed_request.dart";
+import "package:sesori_bridge/src/routing/request_handler.dart";
+import "package:sesori_bridge/src/routing/request_router.dart";
+import "package:sesori_bridge/src/routing/routed_request.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";

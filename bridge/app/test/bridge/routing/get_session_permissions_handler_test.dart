@@ -1,6 +1,6 @@
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/routing/get_session_permissions_handler.dart";
-import "package:sesori_bridge/src/bridge/services/permission_auto_approval_service.dart";
+import "package:sesori_bridge/src/routing/get_session_permissions_handler.dart";
+import "package:sesori_bridge/src/services/permission_auto_approval_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";

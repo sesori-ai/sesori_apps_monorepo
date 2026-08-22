@@ -1,8 +1,8 @@
 import "dart:async";
 
-import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/control/control_status_notifier.dart";
 import "package:sesori_bridge/src/foundation/control_channel_client.dart";
+import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -281,7 +281,7 @@ void main() {
   });
 }
 
-ActiveSession _session(String id) => ActiveSession(id: id);
+ActiveSession _session(String id) => ActiveSession(id: id, lastUserActivityAt: null, updatedAt: null);
 
 SesoriProjectsSummary _summaryWithSessionCount(int count) {
   return SesoriSseEvent.projectsSummary(

@@ -1,6 +1,6 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
-import "../bridge/api/gh_pull_request.dart";
+import "gh_pull_request.dart";
 
 part "gh_pull_request_batch.freezed.dart";
 part "gh_pull_request_batch.g.dart";

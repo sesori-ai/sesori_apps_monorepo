@@ -240,7 +240,7 @@ void main() {
               ProjectActivitySummary(
                 id: "project-a",
                 activeSessions: [
-                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
+                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
                 ],
               ),
             ],
@@ -293,7 +293,7 @@ void main() {
               ProjectActivitySummary(
                 id: "project-a",
                 activeSessions: [
-                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
+                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
                 ],
               ),
             ],
@@ -877,7 +877,7 @@ void main() {
               ProjectActivitySummary(
                 id: "project-a",
                 activeSessions: [
-                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
+                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
                 ],
               ),
             ],
@@ -923,7 +923,7 @@ void main() {
               ProjectActivitySummary(
                 id: "project-a",
                 activeSessions: [
-                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
+                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
                 ],
               ),
             ],
@@ -974,7 +974,7 @@ void main() {
               ProjectActivitySummary(
                 id: "project-a",
                 activeSessions: [
-                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child-1", "child-2"]),
+                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child-1", "child-2"], lastUserActivityAt: null, updatedAt: null),
                 ],
               ),
             ],
@@ -1025,8 +1025,8 @@ void main() {
               ProjectActivitySummary(
                 id: "project-a",
                 activeSessions: [
-                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
-                  ActiveSession(id: "child", mainAgentRunning: false, childSessionIds: ["grandchild"]),
+                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
+                  ActiveSession(id: "child", mainAgentRunning: false, childSessionIds: ["grandchild"], lastUserActivityAt: null, updatedAt: null),
                 ],
               ),
             ],

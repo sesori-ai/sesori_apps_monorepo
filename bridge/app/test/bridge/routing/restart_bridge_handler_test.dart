@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
-import 'package:sesori_bridge/src/bridge/routing/restart_bridge_handler.dart';
-import 'package:sesori_bridge/src/bridge/routing/routed_request.dart';
+import 'package:sesori_bridge/src/foundation/process_runner.dart';
+import 'package:sesori_bridge/src/routing/restart_bridge_handler.dart';
+import 'package:sesori_bridge/src/routing/routed_request.dart';
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
 import 'package:sesori_bridge/src/server/foundation/bridge_restart_command_builder.dart';
 import 'package:sesori_bridge/src/server/repositories/process_repository.dart';

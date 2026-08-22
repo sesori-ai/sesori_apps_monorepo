@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/runtime/plugin_registry.dart";
+import "package:sesori_bridge/src/runtime/plugin_registry.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness;
 import "package:test/test.dart";
 

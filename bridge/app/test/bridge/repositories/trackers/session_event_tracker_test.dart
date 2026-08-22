@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/repositories/trackers/session_event_tracker.dart";
+import "package:sesori_bridge/src/repositories/trackers/session_event_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";

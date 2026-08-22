@@ -396,34 +396,6 @@ void main() {
       expect(_supportedResponse(service).bridgeId, "br_b");
     });
 
-    test("legacy null identity is retained only within its proven connection epoch", () async {
-      final error = ApiError.generic();
-      final repository = _FakePluginRepository()
-        ..queueLoad(_supported(_response(token: "legacy", bridgeId: null)))
-        ..queueLoad(PluginManagementLoadResult.failure(error: error))
-        ..queueLoad(PluginManagementLoadResult.failure(error: error));
-      final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(
-        pluginRepository: repository,
-        connectionService: connection,
-        productAnalyticsService: analytics,
-      );
-      addTearDown(() async {
-        await service.onDispose();
-        await connection.dispose();
-      });
-      await _waitFor(() => service.snapshots.hasValue);
-
-      await service.refresh();
-      expect(service.snapshots.value, isA<PluginManagementLoadResultSupported>());
-
-      connection
-        ..emitStatus(const ConnectionStatus.bridgeOffline(config: _config, health: _health))
-        ..emitStatus(_connected);
-      await _waitFor(() => repository.loadCalls == 3);
-      expect(service.snapshots.value, isA<PluginManagementLoadResultFailure>());
-    });
-
     test("an unexpected bridge identity change is confirmed by one clean load", () async {
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "a", bridgeId: "br_a")))
@@ -1226,7 +1198,7 @@ const _connected = ConnectionStatus.connected(config: _config, health: _health);
 
 PluginManagementResponse _response({
   required String token,
-  String? bridgeId = "br_a",
+  String bridgeId = "br_a",
   int timeout = 10,
 }) {
   return PluginManagementResponse(

@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:sesori_bridge/src/bridge/runtime/bridge_logout_runner.dart';
 import 'package:sesori_bridge/src/repositories/app_onboarding_state_repository.dart';
+import 'package:sesori_bridge/src/runtime/bridge_logout_runner.dart';
 import 'package:sesori_bridge/src/server/foundation/process_match.dart';
 import 'package:sesori_bridge/src/server/foundation/terminal_prompt_decision.dart';
 import 'package:sesori_bridge/src/server/models/bridge_startup_lock.dart';

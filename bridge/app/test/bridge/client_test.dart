@@ -2,7 +2,7 @@ import "dart:async";
 import "dart:io";
 import "dart:typed_data";
 
-import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 

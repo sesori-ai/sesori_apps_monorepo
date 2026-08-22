@@ -1,7 +1,7 @@
 import "dart:io" show ProcessResult;
 
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
-import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
+import "package:sesori_bridge/src/api/git_cli_api.dart";
+import "package:sesori_bridge/src/foundation/process_runner.dart";
 
 /// Test fake for [GitCliApi], for tests that wire a repository but never
 /// exercise git: every git command fails (non-zero exit), so derived reads

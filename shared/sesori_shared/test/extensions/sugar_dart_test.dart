@@ -72,35 +72,35 @@ void main() {
     group("chunked", () {
       test("chunks string into equal parts", () {
         const str = "abcdef";
-        final result = str.chunked(2);
+        final result = str.chunked(chunkSize: 2);
 
         expect(result, equals(["ab", "cd", "ef"]));
       });
 
       test("chunks string with remainder", () {
         const str = "abcde";
-        final result = str.chunked(2);
+        final result = str.chunked(chunkSize: 2);
 
         expect(result, equals(["ab", "cd", "e"]));
       });
 
       test("returns single chunk for chunkSize larger than string", () {
         const str = "abc";
-        final result = str.chunked(5);
+        final result = str.chunked(chunkSize: 5);
 
         expect(result, equals(["abc"]));
       });
 
       test("chunks empty string", () {
         const str = "";
-        final result = str.chunked(2);
+        final result = str.chunked(chunkSize: 2);
 
         expect(result, equals([]));
       });
 
       test("chunks with chunkSize of 1", () {
         const str = "abc";
-        final result = str.chunked(1);
+        final result = str.chunked(chunkSize: 1);
 
         expect(result, equals(["a", "b", "c"]));
       });

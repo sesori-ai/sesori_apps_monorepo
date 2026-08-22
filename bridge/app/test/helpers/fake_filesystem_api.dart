@@ -1,6 +1,6 @@
 import "dart:io" show FileSystemException;
 
-import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
+import "package:sesori_bridge/src/api/filesystem_api.dart";
 
 /// Test fake for [FilesystemApi]. By default every path reports as an existing
 /// directory, so a repository built with it keeps `Project.directoryMissing`

@@ -1,9 +1,9 @@
 import "dart:async";
 
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/services/session_event_dispatcher.dart";
 import "package:sesori_bridge/src/listeners/session_binding_commit_listener.dart";
 import "package:sesori_bridge/src/listeners/session_mutation_listener.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/services/session_event_dispatcher.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 

@@ -1,9 +1,9 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 

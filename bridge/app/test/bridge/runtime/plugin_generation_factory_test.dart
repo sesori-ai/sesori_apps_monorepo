@@ -1,7 +1,7 @@
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_server_exception.dart";
-import "package:sesori_bridge/src/bridge/runtime/plugin_generation_factory.dart";
+import "package:sesori_bridge/src/runtime/bridge_runtime_server_exception.dart";
+import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";
 import "package:sesori_bridge/src/server/api/runtime_file_api.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
 import "package:sesori_bridge/src/server/host/plugin_state_directory.dart";

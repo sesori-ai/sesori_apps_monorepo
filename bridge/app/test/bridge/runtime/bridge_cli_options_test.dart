@@ -2,7 +2,7 @@ import "dart:io";
 
 import "package:args/args.dart";
 import "package:path/path.dart" as path;
-import "package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart";
+import "package:sesori_bridge/src/runtime/bridge_cli_options.dart";
 import "package:test/test.dart";
 
 void main() {

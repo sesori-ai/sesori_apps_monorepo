@@ -1,5 +1,5 @@
-import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
-import "package:sesori_bridge/src/bridge/routing/health_check_handler.dart";
+import "package:sesori_bridge/src/repositories/health_repository.dart";
+import "package:sesori_bridge/src/routing/health_check_handler.dart";
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";

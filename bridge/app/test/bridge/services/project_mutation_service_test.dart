@@ -1,10 +1,10 @@
 import "dart:async";
 
-import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
-import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
-import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
-import "package:sesori_bridge/src/bridge/services/project_mutation_service.dart";
+import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/repositories/project_repository.dart";
+import "package:sesori_bridge/src/services/project_activity_service.dart";
+import "package:sesori_bridge/src/services/project_initialization_service.dart";
+import "package:sesori_bridge/src/services/project_mutation_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 

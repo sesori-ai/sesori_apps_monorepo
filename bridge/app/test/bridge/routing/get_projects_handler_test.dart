@@ -1,8 +1,8 @@
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/routing/get_projects_handler.dart";
-import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/routing/get_projects_handler.dart";
+import "package:sesori_bridge/src/services/project_activity_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";

@@ -2,9 +2,9 @@ import "dart:async";
 import "dart:collection";
 import "dart:io";
 
+import "package:sesori_bridge/src/api/gh_cli_api.dart";
 import "package:sesori_bridge/src/api/gh_pull_request_batch.dart";
-import "package:sesori_bridge/src/bridge/api/gh_cli_api.dart";
-import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
+import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 

@@ -2,8 +2,8 @@ import "dart:async";
 import "dart:io";
 
 import "package:fake_async/fake_async.dart";
-import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/listeners/viewed_project_pr_refresh_listener.dart";
+import "package:sesori_bridge/src/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/services/project_view_tracker.dart";
 import "package:sesori_bridge/src/services/pull_request_refresh_settings_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, LogLevel;

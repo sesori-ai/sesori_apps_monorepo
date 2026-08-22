@@ -6,14 +6,14 @@ import "package:collection/collection.dart";
 import "package:meta/meta.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" hide PluginRuntimeState;
 import "package:sesori_shared/sesori_shared.dart" as shared show PluginRuntimeState;
+import "package:sesori_shared/sesori_shared.dart" hide PluginRuntimeState;
 
 import "../auth/bridge_id_provider.dart";
-import "../bridge/runtime/plugin_runtime.dart";
 import "../repositories/bridge_settings.dart";
 import "../repositories/bridge_settings_repository.dart";
 import "../repositories/plugin_lifecycle_repository.dart";
+import "../runtime/plugin_runtime.dart";
 
 typedef PluginCompositionView = ({
   Set<String> knownPluginIds,
@@ -1155,7 +1155,7 @@ class PluginLifecycleService({
     return _managementRow(plugin: plugin);
   }
 
-  _PluginManagementSnapshot _buildManagementSnapshot({required String? snapshotToken}) {
+  _PluginManagementSnapshot _buildManagementSnapshot({required String snapshotToken}) {
     final registeredPlugins = _registeredPlugins;
     if (registeredPlugins == null || _setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
@@ -1426,7 +1426,7 @@ class PluginLifecycleService({
 
 @immutable
 final class const _PluginManagementSnapshot({
-  required final String? snapshotToken,
+  required final String snapshotToken,
   required final String? defaultPluginId,
   required final int defaultIdleTimeoutMins,
   required final List<PluginManagementMetadata> plugins,

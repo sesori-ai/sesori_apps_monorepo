@@ -2,8 +2,8 @@ import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "../bridge/repositories/session_repository.dart";
-import "../bridge/services/session_options_service.dart";
+import "../repositories/session_repository.dart";
+import "../services/session_options_service.dart";
 
 class SessionOptionsCreationRefreshListener({
   required final Stream<SessionBindingsCommitted> _source,

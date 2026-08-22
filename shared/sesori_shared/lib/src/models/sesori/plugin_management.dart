@@ -1,5 +1,6 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "../../converters/strict_int_json_converter.dart";
 import "plugin_setup_response.dart";
 
 part "plugin_management.freezed.dart";
@@ -64,7 +65,7 @@ sealed class PluginManagementMetadata with _$PluginManagementMetadata {
     required PluginSetupMetadata setup,
     @JsonKey(unknownEnumValue: PluginRuntimeState.unknown) required PluginRuntimeState runtimeState,
     @JsonKey(unknownEnumValue: PluginManagementWorkState.unknown) required PluginManagementWorkState workState,
-    // COMPATIBILITY 2026-08-12 (v1.9.0): Older bridge payloads omit
+    // COMPATIBILITY 2026-08-12 (v1.8.0): Older bridge payloads omit
     // authenticationState, which honestly means no authentication operation
     // was active. Remove @Default after the minimum supported bridge sends it.
     @JsonKey(unknownEnumValue: PluginAuthenticationState.unknown)
@@ -127,14 +128,8 @@ sealed class PluginAuthenticationProgress with _$PluginAuthenticationProgress {
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginManagementResponse with _$PluginManagementResponse {
   const factory({
-    // COMPATIBILITY 2026-07-25 (v1.6.1): Stage 12-P02 and older bridge payloads
-    // omit snapshotToken; null means that peer cannot identify snapshot changes.
-    // Make non-null when those bridge versions are unsupported.
-    required String? snapshotToken,
-    // COMPATIBILITY 2026-07-27 (v1.7.0): Stage 12 bridge payloads omit the
-    // bridge identity; null means the peer cannot scope management snapshots
-    // to a bridge. Make non-null when those bridge versions are unsupported.
-    required String? bridgeId,
+    required String snapshotToken,
+    required String bridgeId,
     required String? defaultPluginId,
     required int defaultIdleTimeoutMins,
     required List<PluginManagementMetadata> plugins,
@@ -177,13 +172,13 @@ sealed class PluginLifecycleCommandRequest with _$PluginLifecycleCommandRequest 
 sealed class PluginIdleTimeoutUpdateRequest with _$PluginIdleTimeoutUpdateRequest {
   @FreezedUnionValue("applyAll")
   const factory applyAll({
-    @JsonKey(fromJson: _strictIntFromJson) required int idleTimeoutMins,
+    @strictIntJsonConverter required int idleTimeoutMins,
   }) = PluginIdleTimeoutApplyAllRequest;
 
   @FreezedUnionValue("setOverride")
   const factory setOverride({
     required String pluginId,
-    @JsonKey(fromJson: _strictIntFromJson) required int idleTimeoutMins,
+    @strictIntJsonConverter required int idleTimeoutMins,
   }) = PluginIdleTimeoutSetOverrideRequest;
 
   @FreezedUnionValue("clearOverride")
@@ -195,10 +190,6 @@ sealed class PluginIdleTimeoutUpdateRequest with _$PluginIdleTimeoutUpdateReques
       _$PluginIdleTimeoutUpdateRequestFromJson(json);
 }
 
-int _strictIntFromJson(num value) {
-  if (value is int) return value;
-  throw const FormatException("Expected an integer");
-}
 
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginLifecycleConflict with _$PluginLifecycleConflict {

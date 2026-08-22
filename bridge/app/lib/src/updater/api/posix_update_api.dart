@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import '../../bridge/foundation/process_runner.dart';
+import '../../foundation/process_runner.dart';
 import 'platform_update_api.dart';
 
 /// POSIX (macOS/Linux) in-place update applier.

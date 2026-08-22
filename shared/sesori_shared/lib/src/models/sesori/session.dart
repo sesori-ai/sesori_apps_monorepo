@@ -57,7 +57,7 @@ sealed class Session with _$Session {
     // the session or an explicit mark-as-read. Defaults to false so older
     // payloads (and the baseline) deserialize as "seen".
     @Default(false) bool unseen,
-    // COMPATIBILITY 2026-08-13 (v1.9.0): Older bridges omit lastUserActivityAt, which means no durable marker is known. Remove this comment after the minimum supported bridge always sends this field.
+    // COMPATIBILITY 2026-08-13 (v1.8.0): Older bridges omit lastUserActivityAt, which means no durable marker is known. Remove this comment after the minimum supported bridge always sends this field.
     required int? lastUserActivityAt,
   }) = _Session;
 
@@ -142,14 +142,14 @@ sealed class SessionMessagesRequest with _$SessionMessagesRequest {
 
     /// Maximum messages to return, newest-first from [before]. Null means the
     /// full transcript.
-    // COMPATIBILITY 2026-08-08 (v1.7.2): Apps that predate pagination omit limit and mean the full transcript. Make this required and drop the unpaged read path once those apps are unsupported.
+    // COMPATIBILITY 2026-08-08 (v1.8.0): Apps that predate pagination omit limit and mean the full transcript. Make this required and drop the unpaged read path once those apps are unsupported.
     required int? limit,
 
     /// Exclusive cursor: return messages ordered strictly before this one.
     /// Null starts from the newest message.
     required int? before,
 
-    // COMPATIBILITY 2026-08-10 (v1.9.0): Apps predating stored transcript images omit attachmentDelivery and require inline payloads. Remove @Default after the minimum supported app sends this field.
+    // COMPATIBILITY 2026-08-10 (v1.8.0): Apps predating stored transcript images omit attachmentDelivery and require inline payloads. Remove @Default after the minimum supported app sends this field.
     @Default(MessageAttachmentDelivery.inline) MessageAttachmentDelivery attachmentDelivery,
   }) = _SessionMessagesRequest;
 

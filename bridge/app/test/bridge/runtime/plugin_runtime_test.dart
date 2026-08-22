@@ -1,9 +1,9 @@
 import "dart:async";
 
 import "package:rxdart/rxdart.dart";
-import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_server_exception.dart";
-import "package:sesori_bridge/src/bridge/runtime/plugin_generation_factory.dart";
-import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
+import "package:sesori_bridge/src/runtime/bridge_runtime_server_exception.dart";
+import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";
+import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 

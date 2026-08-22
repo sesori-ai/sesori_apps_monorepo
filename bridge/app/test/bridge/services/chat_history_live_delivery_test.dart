@@ -5,11 +5,11 @@ import "dart:typed_data";
 import "package:sesori_bridge/src/api/attachment_spill_storage.dart";
 import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
 import "package:sesori_bridge/src/auth/bridge_id_provider.dart";
-import "package:sesori_bridge/src/bridge/repositories/attachment_thumbnail_builder.dart";
-import "package:sesori_bridge/src/bridge/repositories/chat_history_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/services/chat_history_service.dart";
+import "package:sesori_bridge/src/repositories/attachment_thumbnail_builder.dart";
+import "package:sesori_bridge/src/repositories/chat_history_repository.dart";
+import "package:sesori_bridge/src/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/services/chat_history_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 

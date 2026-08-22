@@ -1,7 +1,7 @@
 import "dart:async";
 
 import "package:fake_async/fake_async.dart";
-import "package:sesori_bridge/src/bridge/runtime/bridge_shutdown_coordinator.dart";
+import "package:sesori_bridge/src/runtime/bridge_shutdown_coordinator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show PluginStartAbortedException, StartAbortController, StartAbortSignal;
 import "package:test/test.dart";

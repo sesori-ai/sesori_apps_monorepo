@@ -5,8 +5,8 @@ import 'package:clock/clock.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 import 'package:sesori_shared/sesori_shared.dart';
 
-import '../../bridge/foundation/filesystem_permission_validator.dart';
-import '../../bridge/foundation/process_runner.dart';
+import '../../foundation/filesystem_permission_validator.dart';
+import '../../foundation/process_runner.dart';
 
 const Duration _invalidLockGracePeriod = Duration(seconds: 2);
 
