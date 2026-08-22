@@ -16,7 +16,8 @@ the plan had not listed as kept. Both stay, with `toUnmodifiableList`. The
 Analyze clean in all 12 bridge packages and all 7 client modules. Tests: shared
 359, `bridge/app` 2,693, opencode 434, `client/module_core` 1,172.
 
-Size, self-inclusive of this record, measured with
+Size (informational — self-inclusive of this record, so it cannot validate its
+own budget), measured with
 `git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD`:
 `+52 / -1,553` = 1,605 changed lines, above the 1,500 soft cap. The overage is
 deletion-only: 1,553 of the 1,605 lines are removals, of which 465 are generated

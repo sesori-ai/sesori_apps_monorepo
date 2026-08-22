@@ -30,14 +30,21 @@ Phase-2 deliverables of the paused desktop workstream.
 Codegen regenerated; `dart fix --code=directives_ordering` applied. Renames plus
 their imports only — no logic change.
 
-Size, measured with
-`git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD` against
-merge-base `2ae02d2e6`: `+1,413 / -1,066` = 2,479 changed lines, above the
-1,500 soft cap and the step's 500–900 target. The overage is inherent to the
-change: 161 files are renamed and 309 files referenced them, and git counts a
-moved line as both an addition and a deletion, so the same content is counted
-twice. 865 of the changed lines are rewritten import directives across 248
-files; the rest are the regenerated Freezed/JSON parts that follow their
-sources and the two rewritten architecture documents. No logic line changed, and
-splitting the move would leave the tree half-flattened and non-compiling between
-PRs.
+Size, excluding this evidence file so the figure is an independent budget
+measurement, via
+`git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- bridge/app`
+against merge-base `2ae02d2e6`: **`+1,192 / -876` = 2,068 changed lines** in
+`bridge/app`, above the 1,500 soft cap and the step's 500–900 target.
+
+The overage is inherent to a move: 161 files are renamed and 309 referenced
+them, and git counts a moved line as both an addition and a deletion, so
+identical content is counted twice. 865 of the changed lines are rewritten
+import directives across 248 files; the rest are regenerated Freezed/JSON parts
+following their sources. No logic line changed, and splitting the move would
+leave the tree half-flattened and non-compiling between PRs.
+
+Documentation in the same PR (`bridge/ARCHITECTURE.md`, `bridge/app/AGENTS.md`,
+`bridge/README.md`, the skill reference) accounts for the remainder of the
+merge-base diff. Figures are measured at commit `334361312`; later review
+commits shift them slightly, which is why the budget figure deliberately
+excludes this record.
