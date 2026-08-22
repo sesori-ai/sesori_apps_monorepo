@@ -1954,7 +1954,7 @@ class OrchestratorSession._({
             case "phone_disconnected":
               Log.v("phone_disconnected connID=$connID");
               activePhoneIncarnations.remove(connID);
-              _sseManager.removeSubscriber(connID);
+              _sseManager.unsubscribe(connID);
               _sessionViewTracker.releaseConnection(connID: connID);
               _projectViewTracker.releaseConnection(connID: connID);
           }

@@ -5,14 +5,16 @@
 - **Plan slug:** `codebase-cleanup`
 - **Implementation base:** `origin/main` at `084b30276`
 - **Current branch:** `codebase-cleanup-plan`
-- **Series state:** Steps 1–2/45 merged (#1018, #1019); Step 3/45 in PR.
+- **Series state:** Steps 1–3/45 merged (#1018, #1019, #1020); Step 5/45 in PR.
   The owner asked for independent steps to run in parallel, up to about five
   open PRs, so steps that touch disjoint trees are raised concurrently instead
   of strictly one-step-ahead. Steps that share a package stay serialized:
   4 after 3 (both `sesori_shared`), and 7's flatten after 5 (both `bridge/app`).
-- **Current step:** 3/45 — shared dead helpers, models, and `rxdart`
-- **Next action:** monitor Step 3; raise Steps 5 (bridge/app dead code) and 6
-  (tooling, dependencies, docs) in parallel — neither shares a tree with 3
+- **Current step:** 5/45 — bridge/app dead production code
+- **Next action:** monitor Step 5; raise Step 4 (shared field tightening, which
+  also converts the two `partition`/`chunked` positional parameters flagged on
+  #1020 into required named ones) and Step 6 (tooling, dependencies, docs) in
+  parallel — neither shares a tree with 5
 - **Overlapping work:** open PRs #918 (voice streaming), #956 (composer
   drag-and-drop), #939 (macOS list scrolling) overlap Steps 39–41 — rebase and
   re-scope after they merge; active plan `session-refresh-reconnects` owns
@@ -76,9 +78,9 @@
 |---|---|---|---|
 | [x] | 1/45 | `🌱 [codebase-cleanup] docs: raise the reliability cleanup plan [step 1/45]` | Merged in #1018 |
 | [x] | 2/45 | `🌿 [codebase-cleanup] client(module_core): delete the dead concurrency copy [step 2/45]` | Merged in #1019 |
-| [ ] | 3/45 | `🌿 [codebase-cleanup] shared: delete dead helpers, models, and the rxdart dependency [step 3/45]` | In PR |
+| [x] | 3/45 | `🌿 [codebase-cleanup] shared: delete dead helpers, models, and the rxdart dependency [step 3/45]` | Merged in #1020 |
 | [ ] | 4/45 | `🌿 [codebase-cleanup] shared: tighten management fields and correct compatibility markers [step 4/45]` | Not started |
-| [ ] | 5/45 | `🌿 [codebase-cleanup] bridge(app): delete dead production code [step 5/45]` | Not started |
+| [ ] | 5/45 | `🌿 [codebase-cleanup] bridge(app): delete dead production code [step 5/45]` | In PR |
 | [ ] | 6/45 | `🌿 [codebase-cleanup] tooling: close CI gaps, prune dependencies, and refresh docs [step 6/45]` | Not started |
 | [ ] | 7/45 | `⚙️ [codebase-cleanup] bridge(app): flatten the duplicated layer tree [step 7/45]` | Not started (D2 approved) |
 | [ ] | 8/45 | `🌿 [codebase-cleanup] bridge(plugins): add a plugin-interface testing library for console and process fakes [step 8/45]` | Not started |
@@ -140,6 +142,19 @@
 
 Each step records here what it found stale relative to the plan before editing.
 
+- **Step 5 (2026-08-22):** every listed symbol was re-confirmed to have zero
+  production callers, but the plan under-counted the test coupling. Four
+  removals — `insertStoredSession` (21 test call sites across 7 files),
+  `insertSessionsIfMissing` (29), `getHiddenProjectIds` (14), and
+  `unhideProject` (7) — are DAO/repository fixtures the tests use as their
+  write and observation API, so migrating them is test-infrastructure work.
+  They move to Steps 9/10, which already rewrite those files. Three tracker
+  batch methods (`takeChildren`, `takeTranslations`, `takeReady`) are also
+  deferred: they read private tracker state, so no other public method lets
+  their tests assert per-plugin child isolation and generation supersession.
+  Everything else in the plan's list is deleted here, and the plan's
+  `sesoriPostUpdateRestartEnvVar` still has three production consumers, so it
+  correctly stays for Step 42.
 - **Step 3 (2026-08-22):** member-by-member usage re-check changed the kept
   set. The plan listed `partition` as possibly dead after Step 2; it is alive —
   shared's own `multi_task_isolate_pool.dart` uses it, and also uses
@@ -235,6 +250,17 @@ Each step records here what it found stale relative to the plan before editing.
 - Step 3 architecture implementation review: not run — removal of unused
   members and dead models with no new or moved class, no DI change, and no
   change to any live contract.
+- Step 3 review follow-up: #1020 flagged the two `// ignore:
+  prefer_required_named_parameters` suppressions added to keep `partition` and
+  `String.chunked` positional. Both are valid; the conversion to required named
+  parameters plus its three call sites lands in Step 4, the next step in the
+  same package.
+- Step 5 verification: `dart analyze --fatal-infos` clean in `bridge/app`;
+  `dart test` — 2,684 passed.
+- Step 5 architecture implementation review: not run — deletion of unused
+  members with no new or moved production class, no DI ownership change, and
+  no contract change. `BridgePluginHostImpl` keeps its production constructor;
+  only the test-only `create` factory is gone.
 
 ## Plan Review
 

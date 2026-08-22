@@ -40,9 +40,7 @@ class UpdateCacheApi({
     } on FormatException {
       return null;
     } on Object catch (error) {
-      if (error is FormatException || error is TypeError) {
-        return null;
-      }
+      if (error is TypeError) return null;
       rethrow;
     }
   }

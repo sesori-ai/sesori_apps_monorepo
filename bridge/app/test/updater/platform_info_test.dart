@@ -79,7 +79,7 @@ void main() {
     test('uses the canonical runtime target for current asset name', () {
       final target = currentDistributionTarget();
 
-      expect(getCurrentAssetName(), equals(target.assetName));
+      expect(currentDistributionTarget().assetName, equals(target.assetName));
     });
   });
 

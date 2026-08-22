@@ -41,10 +41,6 @@ class BridgeShutdownCoordinator({
     addPhase(phase: BridgeShutdownPhase.shared, action: disposable);
   }
 
-  void addOrdered({required Future<void> Function() action, required Duration budget}) {
-    addPhase(phase: BridgeShutdownPhase.lifecycle, action: action, budget: budget);
-  }
-
   void addPhase({
     required BridgeShutdownPhase phase,
     required FutureOr<void> Function() action,

@@ -111,7 +111,6 @@ class SSEManager({
   }
 
   /// Alias for [unsubscribe].
-  void removeSubscriber(int connID) => unsubscribe(connID);
 
   /// Pauses all active subscriber queues and moves them to orphan state.
   ///

@@ -48,7 +48,3 @@ final class const DistributionTarget._({required final PlatformTarget platform})
 DistributionTarget currentDistributionTarget() {
   return DistributionTarget.current();
 }
-
-String getCurrentAssetName() {
-  return currentDistributionTarget().assetName;
-}
