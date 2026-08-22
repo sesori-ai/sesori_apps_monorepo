@@ -1,4 +1,4 @@
-import '../bridge/foundation/process_runner.dart';
+import '../foundation/process_runner.dart';
 import 'default_editor_api.dart';
 
 class MacosDefaultEditorApi({

@@ -1,7 +1,7 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/routing/reply_to_question_handler.dart";
+import "package:sesori_bridge/src/routing/reply_to_question_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 

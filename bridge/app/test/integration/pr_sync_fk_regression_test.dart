@@ -22,11 +22,11 @@
 ///   exceptions.
 library;
 
-import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
-import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_target.dart";
+import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
+import "package:sesori_bridge/src/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";

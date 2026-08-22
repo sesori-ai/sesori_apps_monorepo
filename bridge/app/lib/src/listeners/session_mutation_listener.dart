@@ -1,6 +1,6 @@
 import "dart:async";
 
-import "../bridge/services/session_event_dispatcher.dart";
+import "../services/session_event_dispatcher.dart";
 
 class SessionMutationListener({
   required final Stream<LocalSessionEvent> _source,

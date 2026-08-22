@@ -1,5 +1,5 @@
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/routing/get_project_questions_handler.dart";
+import "package:sesori_bridge/src/routing/get_project_questions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";

@@ -1,7 +1,7 @@
 import "dart:async";
 
-import "../bridge/repositories/session_repository.dart";
-import "../bridge/services/session_event_dispatcher.dart";
+import "../repositories/session_repository.dart";
+import "../services/session_event_dispatcher.dart";
 
 class SessionBindingCommitListener({
   required final Stream<SessionBindingsCommitted> _source,

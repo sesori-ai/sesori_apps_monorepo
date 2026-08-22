@@ -4,7 +4,7 @@ import "dart:io";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge/src/auth/access_token_provider.dart";
 import "package:sesori_bridge/src/auth/bridge_id_provider.dart";
-import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/foundation/relay_client.dart";
 
 final class BenchmarkRelayFixture._({
   required final RelayClient client,

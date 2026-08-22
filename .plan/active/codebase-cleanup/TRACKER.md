@@ -1,24 +1,30 @@
 # Codebase Cleanup: Tracker
 
-## Current State
+## How This Tracker Works
+
+This file holds only what GitHub cannot: the owner's decisions, the rules the
+series binds itself to, and the fixed PR titles. It deliberately does **not**
+mirror live PR state.
+
+- **Live status lives on GitHub.** `gh pr list --state all --search "[codebase-cleanup]"`
+  shows every step's PR and whether it is open or merged. Nothing here needs
+  editing when a PR is raised or merged.
+- **Per-step evidence lives in `steps/step-NN.md`**, written only by that step's
+  own PR. No PR ever edits another step's file, so parallel steps cannot
+  conflict here.
+- **This file changes only when a decision, principle, or guardrail changes** —
+  not as bookkeeping.
+
+Steps that touch disjoint trees run in parallel (the owner asked for up to about
+five open PRs). Steps sharing a package stay serialized: 4 after 3 (both
+`sesori_shared`), 7 after 5 (both `bridge/app`).
 
 - **Plan slug:** `codebase-cleanup`
 - **Implementation base:** `origin/main` at `084b30276`
-- **Current branch:** `codebase-cleanup-plan`
-- **Series state:** Steps 1–3/45 merged (#1018, #1019, #1020); Step 5/45 in PR.
-  The owner asked for independent steps to run in parallel, up to about five
-  open PRs, so steps that touch disjoint trees are raised concurrently instead
-  of strictly one-step-ahead. Steps that share a package stay serialized:
-  4 after 3 (both `sesori_shared`), and 7's flatten after 5 (both `bridge/app`).
-- **Current step:** 5/45 — bridge/app dead production code
-- **Next action:** monitor Step 5; raise Step 4 (shared field tightening, which
-  also converts the two `partition`/`chunked` positional parameters flagged on
-  #1020 into required named ones) and Step 6 (tooling, dependencies, docs) in
-  parallel — neither shares a tree with 5
 - **Overlapping work:** open PRs #918 (voice streaming), #956 (composer
   drag-and-drop), #939 (macOS list scrolling) overlap Steps 39–41 — rebase and
-  re-scope after they merge; active plan `session-refresh-reconnects` owns
-  session-detail refresh coordination — Step 31 touches only pure derivation
+  re-scope after they merge; the active `session-refresh-reconnects` plan owns
+  session-detail refresh coordination, so Step 31 touches only pure derivation.
 
 ## Open Decisions (defaults apply until the owner overrides)
 
@@ -43,7 +49,8 @@
 - [x] Nothing is extracted unless it replaces at least two copies and owns
   state, a lifecycle, or an invariant.
 - [x] Every step re-verifies its evidence against current `main` before editing
-  and records the delta here.
+  and records the delta in its own `steps/step-NN.md` — never in this file, so
+  parallel steps cannot conflict.
 - [x] No wire-contract or compatibility removal outside Step 42 and D1.
 - [x] No database schema change anywhere in the series.
 - [x] Session-detail refresh coordination, dispatcher merging, orchestrator
@@ -74,104 +81,55 @@
 
 ## Delivery Steps
 
-| Done | Step | Exact PR title | State |
-|---|---|---|---|
-| [x] | 1/45 | `🌱 [codebase-cleanup] docs: raise the reliability cleanup plan [step 1/45]` | Merged in #1018 |
-| [x] | 2/45 | `🌿 [codebase-cleanup] client(module_core): delete the dead concurrency copy [step 2/45]` | Merged in #1019 |
-| [x] | 3/45 | `🌿 [codebase-cleanup] shared: delete dead helpers, models, and the rxdart dependency [step 3/45]` | Merged in #1020 |
-| [ ] | 4/45 | `🌿 [codebase-cleanup] shared: tighten management fields and correct compatibility markers [step 4/45]` | Not started |
-| [ ] | 5/45 | `🌿 [codebase-cleanup] bridge(app): delete dead production code [step 5/45]` | In PR |
-| [ ] | 6/45 | `🌿 [codebase-cleanup] tooling: close CI gaps, prune dependencies, and refresh docs [step 6/45]` | Not started |
-| [ ] | 7/45 | `⚙️ [codebase-cleanup] bridge(app): flatten the duplicated layer tree [step 7/45]` | Not started (D2 approved) |
-| [ ] | 8/45 | `🌿 [codebase-cleanup] bridge(plugins): add a plugin-interface testing library for console and process fakes [step 8/45]` | Not started |
-| [ ] | 9/45 | `⚙️ [codebase-cleanup] bridge(app): consolidate plugin and repository test fakes [step 9/45]` | Not started |
-| [ ] | 10/45 | `🌿 [codebase-cleanup] bridge(app): consolidate process-runner and service test fakes [step 10/45]` | Not started |
-| [ ] | 11/45 | `🌿 [codebase-cleanup] bridge(plugins): add plugin-local test support for OpenCode, ACP, and Pi [step 11/45]` | Not started |
-| [ ] | 12/45 | `🌿 [codebase-cleanup] client(module_core): consolidate test helpers and cubit harnesses [step 12/45]` | Not started |
-| [ ] | 13/45 | `🌿 [codebase-cleanup] client: publish a module_core testing library and relocate its tests [step 13/45]` | Not started |
-| [ ] | 14/45 | `⚙️ [codebase-cleanup] tests: replace real-duration sleeps with fake time and state awaiting [step 14/45]` | Not started |
-| [ ] | 15/45 | `🌿 [codebase-cleanup] bridge(app): share tracked-work helpers and fix logging consistency [step 15/45]` | Not started |
-| [ ] | 16/45 | `🚧 [codebase-cleanup] bridge(app): remove the triplicated PluginRuntime command preamble [step 16/45]` | Not started |
-| [ ] | 17/45 | `⚙️ [codebase-cleanup] bridge(app): simplify Orchestrator fencing and PluginLifecycleService initialization [step 17/45]` | Not started |
-| [ ] | 18/45 | `🚧 [codebase-cleanup] bridge(app): consolidate auth validation, abortable requests, and encryptor ownership [step 18/45]` | Not started |
-| [ ] | 19/45 | `⚙️ [codebase-cleanup] bridge(app): deduplicate request-handler error mapping and guards [step 19/45]` | Not started |
-| [ ] | 20/45 | `⚙️ [codebase-cleanup] bridge(app): deduplicate SessionRepository, enrichment, and pending-interaction repositories [step 20/45]` | Not started |
-| [ ] | 21/45 | `🚧 [codebase-cleanup] bridge(app): replace hand-rolled FIFO lanes with the foundation ParallelLock [step 21/45]` | Not started |
-| [ ] | 22/45 | `⚙️ [codebase-cleanup] bridge(app): deduplicate updater and server helpers and seal platform trios [step 22/45]` | Not started |
-| [ ] | 23/45 | `⚙️ [codebase-cleanup] bridge(plugins): remove dead contract members and collapse PluginProvider [step 23/45]` | Not started |
-| [ ] | 24/45 | `🌿 [codebase-cleanup] bridge(runtime): remove the migration-era dual-mode runtime knobs [step 24/45]` | Not started |
-| [ ] | 25/45 | `🚧 [codebase-cleanup] bridge(plugins): fold Codex and OpenCode managed-runtime plumbing into sesori_plugin_runtime [step 25/45]` | Not started |
-| [ ] | 26/45 | `🚧 [codebase-cleanup] bridge(plugins): share descriptor setup probing and managed installation [step 26/45]` | Not started |
-| [ ] | 27/45 | `🚧 [codebase-cleanup] bridge(plugins): extract the shared pending-permission registry base [step 27/45]` | Not started |
-| [ ] | 28/45 | `⚙️ [codebase-cleanup] bridge(plugins): share small mapper helpers and lifecycle wrappers [step 28/45]` | Not started |
-| [ ] | 29/45 | `🚧 [codebase-cleanup] bridge(plugins): share stdio pending-request and transport plumbing [step 29/45]` | Not started |
-| [ ] | 30/45 | `⚙️ [codebase-cleanup] client(module_core): delete SessionService and inline thin services [step 30/45]` | Not started |
-| [ ] | 31/45 | `⚙️ [codebase-cleanup] client(module_core): deduplicate SessionDetailCubit derivation and analytics reporting [step 31/45]` | Not started |
-| [ ] | 32/45 | `🚧 [codebase-cleanup] client(module_core): share list-cubit scaffolding and relay request plumbing [step 32/45]` | Not started |
-| [ ] | 33/45 | `🚧 [codebase-cleanup] client(module_core): compose NewSessionState from phase and configuration [step 33/45]` | Not started |
-| [ ] | 34/45 | `⚙️ [codebase-cleanup] client(module_core): unify plugin-management result and failure types [step 34/45]` | Not started |
-| [ ] | 35/45 | `🌿 [codebase-cleanup] client(app, prego): delete dead shell code, components, and localization keys [step 35/45]` | Not started |
-| [ ] | 36/45 | `⚙️ [codebase-cleanup] client(app): replace no-op Firebase SDK adapters with no-op interface implementations [step 36/45]` | Not started |
-| [ ] | 37/45 | `⚙️ [codebase-cleanup] client(app, prego): let grouped rows own separators and share shell helpers [step 37/45]` | Not started |
-| [ ] | 38/45 | `⚙️ [codebase-cleanup] client(app): consolidate sheets, dialogs, and status widgets [step 38/45]` | Not started (D5) |
-| [ ] | 39/45 | `🌿 [codebase-cleanup] client(app): remove in-file duplication from the prompt composer [step 39/45]` | Not started; after #918/#956 |
-| [ ] | 40/45 | `🚧 [codebase-cleanup] client(app): model the voice interaction as one sealed state [step 40/45]` | Not started; after #918 |
-| [ ] | 41/45 | `🚧 [codebase-cleanup] client(app): render the transcript with a plain reversed list [step 41/45]` | Not started (D3); after #939 |
-| [ ] | 42/45 | `🚧 [codebase-cleanup] compat: retire compatibility paths outside the supported baseline [step 42/45]` | Not started (D1 = `≥ v1.4.0`) |
-| [ ] | 43/45 | `⚙️ [codebase-cleanup] tooling: align installers, assert codegen freshness, and enable no_slop_linter for small bridge packages [step 43/45]` | Not started (D6) |
-| [ ] | 44/45 | `🌱 [codebase-cleanup] docs: reconcile regression coverage after the cleanup [step 44/45]` | Not started |
-| [ ] | 45/45 | `🌿 [codebase-cleanup] test: verify the cleanup series and retire the plan [step 45/45]` | Not started |
+Fixed titles and order. Status is GitHub's; evidence is in `steps/step-NN.md`.
 
-## Step 1 Checklist
-
-- [x] Audit bridge core/runtime, bridge repositories/services/routing, plugin
-  packages, shared contracts and compatibility, client `module_core`, Flutter
-  shells and `module_prego`, test suites, and repo-wide smells/tooling/docs.
-- [x] Verify the anchoring claims directly (dead concurrency copy and
-  `dto_parser`, `SessionService` callers, `flutter_chat_ui` imports, stub
-  library, unused `acp_plugin` dependency, `healthCheck` callers, generated
-  OpenCode `GlobalSession`).
-- [x] Record open decisions with defaults, the complexity budget, compatibility
-  posture, L3 boundary, and required matrix.
-- [x] Run architecture plan review through a sub-agent and apply valid findings.
-- [x] Run plan consistency checks and `git diff --check`.
-- [x] Commit, push, open the Step 1 PR, start its monitor, and record the URL:
-  [#1018](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1018).
-
-## Re-verification Log
-
-Each step records here what it found stale relative to the plan before editing.
-
-- **Step 5 (2026-08-22):** every listed symbol was re-confirmed to have zero
-  production callers, but the plan under-counted the test coupling. Four
-  removals — `insertStoredSession` (21 test call sites across 7 files),
-  `insertSessionsIfMissing` (29), `getHiddenProjectIds` (14), and
-  `unhideProject` (7) — are DAO/repository fixtures the tests use as their
-  write and observation API, so migrating them is test-infrastructure work.
-  They move to Steps 9/10, which already rewrite those files. Three tracker
-  batch methods (`takeChildren`, `takeTranslations`, `takeReady`) are also
-  deferred: they read private tracker state, so no other public method lets
-  their tests assert per-plugin child isolation and generation supersession.
-  Everything else in the plan's list is deleted here, and the plan's
-  `sesoriPostUpdateRestartEnvVar` still has three production consumers, so it
-  correctly stays for Step 42.
-- **Step 3 (2026-08-22):** member-by-member usage re-check changed the kept
-  set. The plan listed `partition` as possibly dead after Step 2; it is alive —
-  shared's own `multi_task_isolate_pool.dart` uses it, and also uses
-  `reduceSafe`, which the plan had not listed as kept. Both stay, with
-  `toUnmodifiableList` (used by `partition`). Everything else in the three
-  files was confirmed to have zero consumers: the `.verify(`, `.seeded(`,
-  `.not()`, `unawaited`, and `asyncMap` hits are `ChecksumValidator.verify`,
-  `BehaviorSubject.seeded`, Drift's `Expression.not`, `dart:async`'s
-  `unawaited`, and native `Stream.asyncMap` — not these extensions. The four
-  dead models were confirmed dead (own file, own test, README only).
-- **Step 2 (2026-08-22):** plan evidence held exactly. `dto_parser.dart` still
-  had zero references in `client/`; the concurrency tree's only importer was
-  `dto_parser.dart`; `MessageQueue`/`ConcurrentCache` had no production
-  consumer; the two deep-importing tests were still the only other consumers.
-  Two references the plan had not listed were found and handled:
-  `client/module_core/README.md:30` and the `concurrency/` line in
-  `client/module_core/AGENTS.md`. No barrel export referenced either path.
+| Step | Exact PR title |
+|---|---|
+| 1/45 | `🌱 [codebase-cleanup] docs: raise the reliability cleanup plan [step 1/45]` |
+| 2/45 | `🌿 [codebase-cleanup] client(module_core): delete the dead concurrency copy [step 2/45]` |
+| 3/45 | `🌿 [codebase-cleanup] shared: delete dead helpers, models, and the rxdart dependency [step 3/45]` |
+| 4/45 | `🌿 [codebase-cleanup] shared: tighten management fields and correct compatibility markers [step 4/45]` |
+| 5/45 | `🌿 [codebase-cleanup] bridge(app): delete dead production code [step 5/45]` |
+| 6/45 | `🌿 [codebase-cleanup] tooling: close CI gaps, prune dependencies, and refresh docs [step 6/45]` |
+| 7/45 | `⚙️ [codebase-cleanup] bridge(app): flatten the duplicated layer tree [step 7/45]` |
+| 8/45 | `🌿 [codebase-cleanup] bridge(plugins): add a plugin-interface testing library for console and process fakes [step 8/45]` |
+| 9/45 | `⚙️ [codebase-cleanup] bridge(app): consolidate plugin and repository test fakes [step 9/45]` |
+| 10/45 | `🌿 [codebase-cleanup] bridge(app): consolidate process-runner and service test fakes [step 10/45]` |
+| 11/45 | `🌿 [codebase-cleanup] bridge(plugins): add plugin-local test support for OpenCode, ACP, and Pi [step 11/45]` |
+| 12/45 | `🌿 [codebase-cleanup] client(module_core): consolidate test helpers and cubit harnesses [step 12/45]` |
+| 13/45 | `🌿 [codebase-cleanup] client: publish a module_core testing library and relocate its tests [step 13/45]` |
+| 14/45 | `⚙️ [codebase-cleanup] tests: replace real-duration sleeps with fake time and state awaiting [step 14/45]` |
+| 15/45 | `🌿 [codebase-cleanup] bridge(app): share tracked-work helpers and fix logging consistency [step 15/45]` |
+| 16/45 | `🚧 [codebase-cleanup] bridge(app): remove the triplicated PluginRuntime command preamble [step 16/45]` |
+| 17/45 | `⚙️ [codebase-cleanup] bridge(app): simplify Orchestrator fencing and PluginLifecycleService initialization [step 17/45]` |
+| 18/45 | `🚧 [codebase-cleanup] bridge(app): consolidate auth validation, abortable requests, and encryptor ownership [step 18/45]` |
+| 19/45 | `⚙️ [codebase-cleanup] bridge(app): deduplicate request-handler error mapping and guards [step 19/45]` |
+| 20/45 | `⚙️ [codebase-cleanup] bridge(app): deduplicate SessionRepository, enrichment, and pending-interaction repositories [step 20/45]` |
+| 21/45 | `🚧 [codebase-cleanup] bridge(app): replace hand-rolled FIFO lanes with the foundation ParallelLock [step 21/45]` |
+| 22/45 | `⚙️ [codebase-cleanup] bridge(app): deduplicate updater and server helpers and seal platform trios [step 22/45]` |
+| 23/45 | `⚙️ [codebase-cleanup] bridge(plugins): remove dead contract members and collapse PluginProvider [step 23/45]` |
+| 24/45 | `🌿 [codebase-cleanup] bridge(runtime): remove the migration-era dual-mode runtime knobs [step 24/45]` |
+| 25/45 | `🚧 [codebase-cleanup] bridge(plugins): fold Codex and OpenCode managed-runtime plumbing into sesori_plugin_runtime [step 25/45]` |
+| 26/45 | `🚧 [codebase-cleanup] bridge(plugins): share descriptor setup probing and managed installation [step 26/45]` |
+| 27/45 | `🚧 [codebase-cleanup] bridge(plugins): extract the shared pending-permission registry base [step 27/45]` |
+| 28/45 | `⚙️ [codebase-cleanup] bridge(plugins): share small mapper helpers and lifecycle wrappers [step 28/45]` |
+| 29/45 | `🚧 [codebase-cleanup] bridge(plugins): share stdio pending-request and transport plumbing [step 29/45]` |
+| 30/45 | `⚙️ [codebase-cleanup] client(module_core): delete SessionService and inline thin services [step 30/45]` |
+| 31/45 | `⚙️ [codebase-cleanup] client(module_core): deduplicate SessionDetailCubit derivation and analytics reporting [step 31/45]` |
+| 32/45 | `🚧 [codebase-cleanup] client(module_core): share list-cubit scaffolding and relay request plumbing [step 32/45]` |
+| 33/45 | `🚧 [codebase-cleanup] client(module_core): compose NewSessionState from phase and configuration [step 33/45]` |
+| 34/45 | `⚙️ [codebase-cleanup] client(module_core): unify plugin-management result and failure types [step 34/45]` |
+| 35/45 | `🌿 [codebase-cleanup] client(app, prego): delete dead shell code, components, and localization keys [step 35/45]` |
+| 36/45 | `⚙️ [codebase-cleanup] client(app): replace no-op Firebase SDK adapters with no-op interface implementations [step 36/45]` |
+| 37/45 | `⚙️ [codebase-cleanup] client(app, prego): let grouped rows own separators and share shell helpers [step 37/45]` |
+| 38/45 | `⚙️ [codebase-cleanup] client(app): consolidate sheets, dialogs, and status widgets [step 38/45]` |
+| 39/45 | `🌿 [codebase-cleanup] client(app): remove in-file duplication from the prompt composer [step 39/45]` |
+| 40/45 | `🚧 [codebase-cleanup] client(app): model the voice interaction as one sealed state [step 40/45]` |
+| 41/45 | `🚧 [codebase-cleanup] client(app): render the transcript with a plain reversed list [step 41/45]` |
+| 42/45 | `🚧 [codebase-cleanup] compat: retire compatibility paths outside the supported baseline [step 42/45]` |
+| 43/45 | `⚙️ [codebase-cleanup] tooling: align installers, assert codegen freshness, and enable no_slop_linter for small bridge packages [step 43/45]` |
+| 44/45 | `🌱 [codebase-cleanup] docs: reconcile regression coverage after the cleanup [step 44/45]` |
+| 45/45 | `🌿 [codebase-cleanup] test: verify the cleanup series and retire the plan [step 45/45]` |
 
 ## Cleanup Ledger
 
@@ -221,46 +179,6 @@ Each step records here what it found stale relative to the plan before editing.
 | Installer drift (`install.ps1` vs `install.sh`), no codegen freshness check, `no_slop_linter` absent from bridge | Parity + fixture tests; offline freshness job; enable linter for small packages (D6) | 43 |
 | Mandatory repositories, `StoredSession`, dispatchers, plugin-boundary mapping, SSE ignore arms, archives | Keep | — |
 | PR #1017 `RelayConnectionCoordinator`/`PluginEventProcessingDispatcher` extractions, `_MessageListSynchronizer`, app-level voice/attachment controllers | Not adopted (see PLAN "Relationship To PR #1017"); separate evidence-backed follow-up if wanted | — |
-
-## Verification Record
-
-- Step 1 is documentation-only: title consistency (45 identical titles in
-  both files), numbering 1–45, trailing-whitespace, and `git diff --check`
-  passed; no Dart/Flutter suites run.
-- Step 1 merge-base size:
-  `git diff --numstat "$(git merge-base HEAD origin/main)"...HEAD -- .plan/active/codebase-cleanup/PLAN.md .plan/active/codebase-cleanup/TRACKER.md`
-- Self-inclusive result after three review rounds, the PR #1017 reconciliation,
-  and the D1/D2 decisions: `PLAN.md +1,641`, `TRACKER.md +266`, total
-  `+1,907 / -0`, within the final 1,700–2,000 target (earlier ceilings were
-  exceeded as reviews added detail). Merged in #1018.
-- Step 2 verification: `dart analyze --fatal-infos` clean and `dart test`
-  1,172 passed in `client/module_core`; `flutter analyze` clean and
-  `flutter test test/core` 217 passed in `client/app`.
-- Step 2 size against merge-base, self-inclusive of this record:
-  `+0 / -1,356` (15 files deleted, 2 doc files edited), under the 1,200–1,400
-  target because the deletion is pure and no replacement code was needed.
-- Step 2 architecture implementation review: not run — deletion-only step with
-  no new or moved production class, DI change, or contract change, per the
-  review scope recorded in `PLAN.md`.
-- Step 3 verification: `dart analyze --fatal-infos` clean in all 12 bridge
-  packages and all 7 client modules (the real safety net for removing public
-  shared API); `dart test` — `shared/sesori_shared` 359 passed, `bridge/app`
-  2,693 passed, `sesori_plugin_opencode` 434 passed (the `wait2` consumer),
-  `client/module_core` 1,172 passed (the `chunked`/`normalize` consumer).
-- Step 3 architecture implementation review: not run — removal of unused
-  members and dead models with no new or moved class, no DI change, and no
-  change to any live contract.
-- Step 3 review follow-up: #1020 flagged the two `// ignore:
-  prefer_required_named_parameters` suppressions added to keep `partition` and
-  `String.chunked` positional. Both are valid; the conversion to required named
-  parameters plus its three call sites lands in Step 4, the next step in the
-  same package.
-- Step 5 verification: `dart analyze --fatal-infos` clean in `bridge/app`;
-  `dart test` — 2,684 passed.
-- Step 5 architecture implementation review: not run — deletion of unused
-  members with no new or moved production class, no DI ownership change, and
-  no contract change. `BridgePluginHostImpl` keeps its production constructor;
-  only the test-only `create` factory is gone.
 
 ## Plan Review
 

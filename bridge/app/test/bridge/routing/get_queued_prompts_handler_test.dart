@@ -1,5 +1,5 @@
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/routing/get_queued_prompts_handler.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/routing/get_queued_prompts_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";

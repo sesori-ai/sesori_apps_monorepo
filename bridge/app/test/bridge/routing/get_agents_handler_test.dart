@@ -1,8 +1,8 @@
 import "dart:io" as io;
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
-import "package:sesori_bridge/src/bridge/routing/get_agents_handler.dart";
+import "package:sesori_bridge/src/repositories/agent_repository.dart";
+import "package:sesori_bridge/src/routing/get_agents_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";

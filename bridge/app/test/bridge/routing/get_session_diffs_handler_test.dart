@@ -2,16 +2,16 @@ import "dart:convert";
 import "dart:io";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
-import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
-import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/mappers/git_diff_output_mapper.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_diff_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
-import "package:sesori_bridge/src/bridge/services/session_diff_service.dart";
+import "package:sesori_bridge/src/api/filesystem_api.dart";
+import "package:sesori_bridge/src/api/git_cli_api.dart";
+import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
+import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/repositories/mappers/git_diff_output_mapper.dart";
+import "package:sesori_bridge/src/repositories/session_diff_repository.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/routing/get_session_diffs_handler.dart";
+import "package:sesori_bridge/src/services/session_diff_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 

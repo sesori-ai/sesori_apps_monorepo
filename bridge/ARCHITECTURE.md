@@ -62,53 +62,75 @@ Layer 5 — Orchestration
 
 ## Subsystems
 
-Three self-contained subsystems live outside the core layer hierarchy:
+Six self-contained subsystems live outside the numbered layer hierarchy:
 
+- **`runtime/`** — Bridge runtime lifecycle: CLI dispatch, startup, shutdown
+  ordering, and the plugin generation/lease lifecycle. `PluginRuntime` is this
+  subsystem's seam; repositories call it to reach a plugin, which is why it
+  stays here rather than in `api/` — it owns lifecycle decisions, not data
+  access, and moving it into Layer 1 would make Layer 1 depend upward on
+  composition.
 - **`auth/`** — Token lifecycle, login flow. No deps on core layers.
 - **`push/`** — Push notification delivery. No deps on core layers.
-- **`server/`** — Process lifecycle wrapper.
+- **`server/`** — Bridge instance and host services: single-live-bridge
+  enforcement, startup mutex, plugin host abstractions.
+- **`updater/`** — In-place update: download, verify, stage, apply.
+- **`control/`** — Desktop control channel (`ControlChannelServer`,
+  `ControlMessageDispatcher`, notifiers).
+
+`models/` and `persistence/` hold bridge-wide config and diagnostics rather than
+belonging to one layer or subsystem.
 
 ## Directory Structure
 
+One tree, one layer per directory. Everything under `app/lib/src/` is either a
+numbered layer or a self-contained subsystem — there is no second parallel tree.
+
 ```
 app/lib/src/
-├── foundation/              # Layer 0
+├── foundation/              # Layer 0 — transport/process primitives
 │   ├── relay_client.dart
 │   ├── key_exchange.dart
-│   └── process_runner.dart
+│   ├── process_runner.dart
+│   └── filesystem_permission_validator.dart
 │
-├── api/                     # Layer 1
+├── api/                     # Layer 1 — data sources, one class per tool
 │   ├── database/            # Drift: tables, DAOs, migrations
+│   ├── models/              # API-layer DTOs
 │   ├── gh_cli_api.dart
-│   ├── git_remote_api.dart
+│   ├── git_cli_api.dart
 │   └── sesori_server_api.dart
 │
-├── repositories/            # Layer 2
-│   ├── project_repository.dart
-│   ├── session_repository.dart
-│   ├── pull_request_repository.dart
-│   └── mappers/
+├── repositories/            # Layer 2 — aggregation + mapping
+│   ├── mappers/             # ALL mapping lives here
+│   ├── models/
+│   └── trackers/
 │
-├── services/                # Layer 3
-│   ├── metadata_service.dart
-│   ├── worktree_service.dart
-│   └── pr_sync_service.dart
+├── services/                # Layer 3 — business logic
 │
-├── routing/                 # Layer 4
-│   ├── request_router.dart
-│   └── handlers/
-│
-├── listeners/               # Layer 4
-│
-├── sse/                     # Layer 4
-│   ├── sse_service.dart
+├── routing/                 # Layer 4 — request handlers
+├── listeners/               # Layer 4 — reactive/scheduled triggers
+├── sse/                     # Layer 4 — SSE delivery
+│   ├── sse_manager.dart
 │   └── bridge_event_mapper.dart
 │
-├── orchestrator.dart        # Layer 5
-├── auth/                    # Subsystem
-├── push/                    # Subsystem
-└── server/                  # Subsystem
+├── orchestrator.dart        # Layer 5 — the only cross-layer composition owner
+├── debug_server.dart
+│
+├── runtime/                 # Subsystem — CLI entry, startup/shutdown ordering,
+│                            #   and PluginRuntime (plugin generation lifecycle)
+├── auth/                    # Subsystem — token lifecycle, login flow
+├── push/                    # Subsystem — push notification delivery
+├── server/                  # Subsystem — bridge instance/host services
+├── updater/                 # Subsystem — in-place update
+├── control/                 # Subsystem — desktop control channel
+├── models/                  # Bridge-wide config models
+└── persistence/             # Bridge-wide diagnostics persistence
 ```
+
+`runtime/` is a subsystem, not a numbered layer: it owns the CLI entry point,
+startup sequencing, shutdown ordering, and the plugin generation lifecycle.
+Repositories reach a plugin through `PluginRuntime`, this subsystem's seam.
 
 ## Key Patterns
 

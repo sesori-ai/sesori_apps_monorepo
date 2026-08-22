@@ -1,8 +1,8 @@
 import "dart:async";
 
-import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/repositories/models/session_operation.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginOperationException;
 import "package:test/test.dart";
 

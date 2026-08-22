@@ -18,10 +18,11 @@ lib/src/
 │   └── voice/        VoiceApi (HTTP calls only — recording stays in Flutter)
 ├── cubits/           All state management (login, project_list, session_list, etc.)
 ├── di/               @InjectableInit for core DI registration
-├── extensions/       Dart utility extensions (sugar_dart, iterable_x)
+├── foundation/       Platform interfaces and shared models (analytics, composer)
 ├── logging/          logd/logw/loge with configurable LogLevel
-├── platform/         Abstract interfaces: UrlLauncher, DeepLinkSource, LifecycleSource
-├── reporting/        Error reporting helpers
+├── platform/         Abstract interfaces (UrlLauncher, DeepLinkSource, LifecycleSource,
+│                  RouteSource, NotificationCanceller, …); Flutter adapters live in
+│                  the product shell, mostly under app/lib/core/platform/
 └── routing/          AppRoute enum, AuthRedirectService
 ```
 

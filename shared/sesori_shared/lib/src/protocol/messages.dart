@@ -30,7 +30,7 @@ sealed class RelayMessage with _$RelayMessage {
   @FreezedUnionValue("sse_subscribe")
   const factory sseSubscribe({
     required String path,
-    // COMPATIBILITY 2026-08-10 (v1.9.0): Apps predating stored transcript images omit attachmentDelivery and require inline payloads. Remove @Default after the minimum supported app sends this field.
+    // COMPATIBILITY 2026-08-10 (v1.8.0): Apps predating stored transcript images omit attachmentDelivery and require inline payloads. Remove @Default after the minimum supported app sends this field.
     @Default(MessageAttachmentDelivery.inline) MessageAttachmentDelivery attachmentDelivery,
   }) = RelaySseSubscribe;
 

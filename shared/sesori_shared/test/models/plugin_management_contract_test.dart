@@ -223,29 +223,21 @@ void main() {
     );
   });
 
-  test("older management responses decode without a snapshot token", () {
-    final json = const PluginManagementResponse(
-      snapshotToken: null,
-      bridgeId: null,
-      defaultPluginId: "opencode",
-      defaultIdleTimeoutMins: 30,
-      plugins: [plugin],
-    ).toJson()..remove("snapshotToken");
-
-    expect(PluginManagementResponse.fromJson(json).snapshotToken, isNull);
-  });
-
-  test("management response omits a null bridge ID and decodes a missing one as null", () {
+  test("management responses carry a snapshot token and bridge identity", () {
     final json = const PluginManagementResponse(
       snapshotToken: "snapshot-token",
-      bridgeId: null,
+      bridgeId: "bridge-1",
       defaultPluginId: "opencode",
       defaultIdleTimeoutMins: 30,
       plugins: [plugin],
     ).toJson();
 
-    expect(json, isNot(contains("bridgeId")));
-    expect(PluginManagementResponse.fromJson(json).bridgeId, isNull);
+    expect(json["snapshotToken"], "snapshot-token");
+    expect(json["bridgeId"], "bridge-1");
+
+    final decoded = PluginManagementResponse.fromJson(json);
+    expect(decoded.snapshotToken, "snapshot-token");
+    expect(decoded.bridgeId, "bridge-1");
   });
 
   test("future runtime and work states decode to fail-closed unknown values", () {

@@ -613,6 +613,8 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
               awaitingInput: _rootHasPendingInput(rootId, children),
               isRetrying: isRetrying,
               childSessionIds: children,
+              lastUserActivityAt: null,
+              updatedAt: null,
             ),
           );
     }

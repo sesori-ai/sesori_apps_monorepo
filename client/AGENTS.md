@@ -22,21 +22,21 @@ dart run build_runner build --delete-conflicting-outputs  # per module, after mo
 ## Module Dependency Direction
 
 ```
-client/app ───────────────→ module_app_ui ─┐
-     │                                      │
-     └──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
+client/app ───────────────→ module_core → module_auth → sesori_shared
      │
      └→ module_prego
 
-client/desktop ───────────→ module_app_ui ─┐
-     │                                      │
-     ├──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
+client/desktop ───────────→ module_core → module_auth → sesori_shared
      │
-     └→ module_desktop_core ─────────────────→ module_core
+     ├→ module_desktop_core ─────────────────→ module_core
      │                         │
      │                         └→ sesori_shared
      └→ module_prego
 ```
+
+`module_app_ui` does not exist yet — it is planned for Phase 4 (see
+`client/README.md`) to hold shared Flutter screens. When it lands, both product
+shells depend on it and it sits above `module_core`.
 
 NEVER reverse this. NEVER skip layers. `client/app` and `client/desktop` may
 have `module_auth` as a pubspec dependency solely for the
@@ -44,9 +44,9 @@ have `module_auth` as a pubspec dependency solely for the
 types in source code outside that DI call. All auth functionality is accessed
 through `module_core` interfaces. `module_core` MUST NOT depend on
 `module_desktop_core`. Product shells may import `module_prego` directly for
-shell-owned presentation. `module_app_ui` may depend on `module_core`,
-`module_prego`, `sesori_shared`, and direct Flutter UI dependencies; it must not
-import product shells or `module_desktop_core`.
+shell-owned presentation. Once `module_app_ui` exists it may depend on
+`module_core`, `module_prego`, `sesori_shared`, and direct Flutter UI
+dependencies; it must not import product shells or `module_desktop_core`.
 
 Reusable visual primitives belong in `module_prego`, including any native
 plugin renderer they require. Keep registration automatic through the package's

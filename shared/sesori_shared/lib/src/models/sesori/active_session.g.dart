@@ -16,8 +16,8 @@ _ActiveSession _$ActiveSessionFromJson(Map json) => _ActiveSession(
           .toList() ??
       const [],
   isRetrying: json['isRetrying'] as bool? ?? false,
-  lastUserActivityAt: (json['lastUserActivityAt'] as num?)?.toInt() ?? null,
-  updatedAt: (json['updatedAt'] as num?)?.toInt() ?? null,
+  lastUserActivityAt: (json['lastUserActivityAt'] as num?)?.toInt(),
+  updatedAt: (json['updatedAt'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$ActiveSessionToJson(_ActiveSession instance) =>

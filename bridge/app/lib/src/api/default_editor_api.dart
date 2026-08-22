@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import '../bridge/foundation/process_runner.dart';
+import '../foundation/process_runner.dart';
 import 'linux_default_editor_api.dart';
 import 'macos_default_editor_api.dart';
 import 'windows_default_editor_api.dart';

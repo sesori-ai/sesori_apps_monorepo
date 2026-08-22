@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import '../../bridge/foundation/process_runner.dart';
+import '../../foundation/process_runner.dart';
 import 'posix_update_api.dart';
 import 'windows_update_api.dart';
 

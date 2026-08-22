@@ -1,13 +1,13 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/services/session_cleanup_result.dart";
-import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
+import "package:sesori_bridge/src/repositories/models/session_operation.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/services/session_cleanup_result.dart";
+import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 

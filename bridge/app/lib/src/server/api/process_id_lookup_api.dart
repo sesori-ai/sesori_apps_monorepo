@@ -1,7 +1,7 @@
 import "dart:convert";
 import "dart:io";
 
-import "../../bridge/foundation/process_runner.dart";
+import "../../foundation/process_runner.dart";
 
 sealed class ProcessIdLookupApi._() {
   factory forPlatform({

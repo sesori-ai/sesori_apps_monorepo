@@ -1,9 +1,9 @@
 import "dart:async";
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/repositories/models/session_options_cache_key.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_options_repository.dart";
-import "package:sesori_bridge/src/bridge/services/session_options_service.dart";
+import "package:sesori_bridge/src/repositories/models/session_options_cache_key.dart";
+import "package:sesori_bridge/src/repositories/session_options_repository.dart";
+import "package:sesori_bridge/src/services/session_options_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";

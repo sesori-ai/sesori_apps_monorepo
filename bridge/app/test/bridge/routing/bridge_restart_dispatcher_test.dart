@@ -1,8 +1,8 @@
 import "dart:async";
 import "dart:collection";
 
-import "package:sesori_bridge/src/bridge/routing/bridge_restart_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/routing/routed_request.dart";
+import "package:sesori_bridge/src/routing/bridge_restart_dispatcher.dart";
+import "package:sesori_bridge/src/routing/routed_request.dart";
 import "package:sesori_bridge/src/server/services/bridge_restart_service.dart";
 import "package:test/test.dart";
 

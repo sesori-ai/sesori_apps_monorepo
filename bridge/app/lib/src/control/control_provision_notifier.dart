@@ -3,8 +3,8 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../bridge/repositories/mappers/runtime_provision_progress_mapper.dart";
 import "../foundation/control_channel_client.dart";
+import "../repositories/mappers/runtime_provision_progress_mapper.dart";
 
 /// Owns ALL outbound provision-class control sends in supervised mode: it maps
 /// the bridge's runtime-provisioning progress to the shared wire DTOs and

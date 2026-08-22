@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/repositories/derived_session_builder.dart";
+import "package:sesori_bridge/src/repositories/derived_session_builder.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 

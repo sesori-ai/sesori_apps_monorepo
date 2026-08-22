@@ -2,8 +2,8 @@ import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "../bridge/runtime/plugin_runtime.dart";
-import "../bridge/services/session_options_service.dart";
+import "../runtime/plugin_runtime.dart";
+import "../services/session_options_service.dart";
 
 class SessionOptionsChangedRefreshListener({
   required final PluginRuntime _runtime,

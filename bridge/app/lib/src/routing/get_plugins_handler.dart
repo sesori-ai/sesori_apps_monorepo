@@ -1,8 +1,8 @@
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../auth/bridge_id_provider.dart";
-import "../bridge/routing/request_handler.dart";
 import "../services/plugin_lifecycle_service.dart";
+import "request_handler.dart";
 
 class GetPluginsHandler({
   required final PluginLifecycleService _lifecycleService,

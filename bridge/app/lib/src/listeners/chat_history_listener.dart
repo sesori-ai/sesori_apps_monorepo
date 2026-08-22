@@ -3,8 +3,8 @@ import "dart:async";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../bridge/services/chat_history_service.dart";
-import "../bridge/services/session_event_dispatcher.dart";
+import "../services/chat_history_service.dart";
+import "../services/session_event_dispatcher.dart";
 
 /// Persists finalized message events into the chat history store.
 ///

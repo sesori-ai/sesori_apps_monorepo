@@ -1,6 +1,6 @@
-import "package:sesori_bridge/src/bridge/routing/abort_session_handler.dart";
-import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/routing/abort_session_handler.dart";
+import "package:sesori_bridge/src/services/session_abort_service.dart";
+import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 

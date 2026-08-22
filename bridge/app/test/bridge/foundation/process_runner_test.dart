@@ -1,7 +1,7 @@
 import "dart:async";
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
+import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:test/test.dart";
 
 void main() {

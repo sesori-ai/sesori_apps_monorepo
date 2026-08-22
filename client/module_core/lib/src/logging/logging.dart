@@ -36,7 +36,7 @@ void logt(String message, [Object? error, StackTrace? stackTrace]) {
 void logd(String message, [Object? error, StackTrace? stackTrace]) {
   if (_logLevel.index <= LogLevel.debug.index) {
     // ignore: avoid_print, logging intentionally writes to stdout in pure Dart modules
-    message.chunked(800).forEach(print);
+    message.chunked(chunkSize: 800).forEach(print);
   }
 }
 
@@ -76,7 +76,7 @@ void _printWithDetails(String message, Object? error, StackTrace? stackTrace) {
     print("$message: ${error.toString()}");
   } else {
     // ignore: avoid_print, logging intentionally writes to stdout in pure Dart modules
-    message.chunked(800).forEach(print);
+    message.chunked(chunkSize: 800).forEach(print);
   }
   if (stackTrace != null) {
     // ignore: avoid_print, logging intentionally writes to stdout in pure Dart modules

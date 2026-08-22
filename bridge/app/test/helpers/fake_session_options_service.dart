@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/services/session_options_service.dart";
+import "package:sesori_bridge/src/services/session_options_service.dart";
 
 /// Records explicit refresh calls and otherwise no-ops, so prompt-service
 /// tests can observe cache invalidation without a plugin runtime.

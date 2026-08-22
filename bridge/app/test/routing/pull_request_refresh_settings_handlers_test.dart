@@ -1,11 +1,11 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/api/bridge_settings_api.dart";
-import "package:sesori_bridge/src/bridge/routing/request_handler.dart";
-import "package:sesori_bridge/src/bridge/services/permission_auto_approval_service.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/routing/get_pull_request_refresh_settings_handler.dart";
 import "package:sesori_bridge/src/routing/patch_bridge_settings_handler.dart";
+import "package:sesori_bridge/src/routing/request_handler.dart";
+import "package:sesori_bridge/src/services/permission_auto_approval_service.dart";
 import "package:sesori_bridge/src/services/pull_request_refresh_settings_service.dart";
 import "package:sesori_bridge/src/services/yolo_settings_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
