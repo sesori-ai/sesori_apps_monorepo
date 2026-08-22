@@ -112,6 +112,12 @@ Live stream-json with the plugin's exact flags:
   launches; `status` observed as `completed`, `failed`, `stopped`.
 - `system/task_updated {task_id, patch{status, end_time}}` and
   `system/background_tasks_changed {tasks}` also appear; not needed.
+- `task_id` **is** the sub-agent `agentId`: the probe showed
+  `task_started.task_id`, `task_notification.task_id`, and the same call's
+  `tool_use_result.agentId` carrying one identical value, and the transcript
+  survey showed `<task-id>` in notification records equal to `toolUseResult.
+  agentId` and to the `agent-<agentId>` file stem and meta. Live and persisted
+  child ids are therefore the same canonical `agent-<agentId>`.
 - The parent's `user` tool-result frame carries a top-level `tool_use_result`:
   background launch `{isAsync: true, status: "async_launched", agentId,
   description, resolvedModel, prompt, outputFile, canReadOutputFile}` with the
@@ -204,11 +210,19 @@ Live, in `ClaudeToolTracker` + `ClaudeEventDispatcher`:
   (replay): `completed` → `completed` with `output` = bounded `summary`;
   `failed` → `error` with `error` = bounded `summary`; `stopped` →
   `cancelled`; `unknown` → `unknown`.
+- The tool-use result is parsed at the boundary, never branched on as a raw
+  string: `claude_stream_message.dart` (frame `tool_use_result`) and the
+  transcript DTO (record `toolUseResult`) both yield one sealed
+  `ClaudeToolUseResult` (`lib/src/models/`): `asyncLaunched({required
+  agentId})`, `completed({required agentId?})`, `absent`/`unknown`. The
+  tracker and the history mapper switch on the variant, so an async launch
+  cannot exist without its child identity.
 - Terminal precedence is fixed, not first-wins: the task notification (system
   frame or parsed text) is the **authoritative** terminal source. A `user`
-  tool-result frame for a task whose `tool_use_result.status ==
-  "async_launched"` never finalizes the part. Any other tool result (foreground
-  completion, error, or an older CLI that omits `tool_use_result`) is a
+  tool-result frame whose result is `ClaudeToolUseResultAsyncLaunched` never
+  finalizes the part and binds `childSessionID = agent-<agentId>` if
+  `task_started` has not already done so. Any other tool result (foreground
+  completion, error, or an older CLI that omits the result) is a
   **fallback** that finalizes per `is_error` exactly like a tool — binding
   `output`/`error` from the bounded tool-result content — only while no
   notification has been seen; a later notification for the same tool_use id
@@ -237,12 +251,13 @@ Live, in `ClaudeToolTracker` + `ClaudeEventDispatcher`:
 
 History replay, in `ClaudeHistoryMapper`:
 
-- `Agent`/`Task` tool_use → subtask part; the tool-result record's
-  `toolUseResult.status == "async_launched"` → `running` and
-  `toolUseResult.agentId` → `childSessionID`; any other tool result finalizes
-  per `is_error`; a `ClaudeMappedTaskNotificationContentBlock` in a user
-  record finalizes with its status/summary. The transcript DTO gains `agentId`
-  and `toolUseResult` (`status`, `agentId`).
+- `Agent`/`Task` tool_use → subtask part; a tool-result record whose parsed
+  `ClaudeToolUseResult` is `asyncLaunched(agentId)` → `running` with
+  `childSessionID = agent-<agentId>`; any other tool result finalizes per
+  `is_error` (fallback); a `ClaudeMappedTaskNotificationContentBlock` in a
+  user record finalizes authoritatively with its status/summary, under the
+  same precedence as live. The transcript DTO gains `agentId` and the parsed
+  `toolUseResult` variant.
 - `ClaudeHistoryMapper.map({sessionId, records, residentTaskToolUseIds})`
   owns the downgrade: a replayed subtask that is still `running` stays
   `running` only if its tool_use id is in `residentTaskToolUseIds` — the tasks
@@ -280,26 +295,31 @@ History replay, in `ClaudeHistoryMapper`:
   `agent-` ids; the history mapper gets a child mode keyed by `agentId` (those
   records are sidechain by construction). `getChildSessions(root)` lists the
   same children. `_findSession` resolves children for delete.
-- Live child sessions — one status owner. `ClaudeEventDispatcher` (over the
-  tracker task map) is the sole source of child-session status and exposes
-  `childSessionStatuses({sessionId})`; `ClaudePlugin.getSessionStatuses()`
-  returns the disjoint union of `ClaudeSessionService.sessionStatuses` (roots)
-  and that accessor (children) with no decision of its own, and
+- Live child sessions — one lifecycle owner. `ClaudeEventDispatcher` (over
+  the tracker task map) owns the whole child lifecycle: on `task_started` it
+  builds the child `PluginSession` (id `agent-<task_id>`, `parentID` = root,
+  title = description, directory/projectID = the root directory that
+  `ClaudePlugin` passes as data through `beginTurn({sessionId, directory})`
+  when it dispatches the session's first turn, retained until
+  `forgetSession`) and returns, in this order inside `map()`,
+  `BridgeSseSessionCreated(child)`, `BridgeSseSessionStatus(child, busy)`,
+  then the subtask part update carrying `childSessionID`; on terminal or
+  `cancelTasks` it returns the part update and `BridgeSseSessionStatus(child,
+  idle)` (precedent: `_mapRetry` already emits session status). `ClaudePlugin`
+  only forwards that output to `_eventBuffer`, as it does for every frame. The
+  dispatcher exposes `childSessionStatuses({sessionId})` as the sole source of
+  child status: `ClaudePlugin.getSessionStatuses()` returns the disjoint union
+  of `ClaudeSessionService.sessionStatuses` (roots) and that accessor
+  (children) with no decision of its own, and
   `ClaudePlugin.getActiveSessionsSummary()` fills
-  `PluginActiveSession.childSessionIds` from the same accessor (today
-  `const []` at `claude_plugin_impl.dart:396`). Emission: the dispatcher emits
-  `BridgeSseSessionStatus(child, busy)` on `task_started` and `idle` on
-  terminal/`cancelTasks` inside `map()` (precedent: `_mapRetry` already emits
-  session status). `ClaudePlugin._handleProcessEvent` emits
-  `BridgeSseSessionCreated(child)` when the frame is a
-  `ClaudeTaskStartedMessage`, building the child `PluginSession` from
-  `_findSession(root)` (directory/projectID) plus the frame's description, and
-  adds it to `_eventBuffer` **before** the dispatcher's events for that frame
-  (precedent: the typed `ClaudeInitMessage`/`ClaudeApiRetryMessage` handling
-  at `:574-586`). This reaches the bar, `hasActiveWork`, activity roll-ups,
-  and push grouping through the plugin's existing contract surfaces
-  (`session.status` events, `getSessionStatuses`, `childSessionIds`); no
-  bridge/app change is needed for that.
+  `PluginActiveSession.childSessionIds` from it (today `const []` at
+  `claude_plugin_impl.dart:396`) **and keeps a root in the summary when it
+  has running children even though its own status is idle** (today `:387`
+  skips roots that are neither running nor awaiting input, which would drop
+  exactly the background-agent case). This reaches the bar, `hasActiveWork`,
+  activity roll-ups, and push grouping through the plugin's existing contract
+  surfaces (`session.created`/`session.status` events, `getSessionStatuses`,
+  `childSessionIds`); no bridge/app change is needed for that.
 - Delete: root deletion also removes `<root>/` (its `subagents/`) through the
   API's `deleteSessionDirectory`; child deletion removes the `.jsonl` and
   `.meta.json`. Rename/archive on a child are no-ops, as today for OpenCode
@@ -308,9 +328,13 @@ History replay, in `ClaudeHistoryMapper`:
   no tool link) — honest limitation.
 - Bridge sweep extension (bridge/app, same PR), layered: `ChatHistoryService`
   (Layer 3, which already holds `_sessionRepository` and
-  `_chatHistoryRepository`) resolves the statuses of the `childSessionID`s
-  referenced by open subtask parts through `SessionRepository.getSessionStatus`
-  and passes the keep-open set down as data:
+  `_chatHistoryRepository`) resolves the statuses of the distinct
+  `childSessionID`s referenced by open subtask parts against **one** status
+  snapshot — a new `SessionRepository.getSessionStatuses({sessionIds})` that
+  reads the bindings once and calls the owning plugin's `getSessionStatuses()`
+  once, instead of the per-id `getSessionStatus` (`session_repository.dart:
+  1054`), which fetches the whole plugin map per call — and passes the
+  keep-open set down as data:
   `ChatHistoryRepository.finalizeOpenToolParts({sessionId, updatedAt,
   keepOpenChildSessionIds})`. The repository performs no status lookup and
   never imports `SessionRepository`. The ids come from the in-memory page on
@@ -360,11 +384,12 @@ New mutable parts:
 
 - Claude plugin: one per-session task map in `ClaudeToolTracker`
   (`tool_use_id → {messageId, description, prompt, agent, taskId, status,
-  output}`) owned through `ClaudeEventDispatcher`, plus the derived
-  `parent_tool_use_id → childSessionId` routing view over it. Cleared on
-  `forgetSession`/`cancelTasks` only. Child statuses, resident task ids, and
-  `childSessionIds` are accessors over that one map; `ClaudeSessionService`
-  gains no field.
+  output, finalizedBy}`) owned through `ClaudeEventDispatcher`, plus the
+  derived `parent_tool_use_id → childSessionId` routing view over it, and one
+  per-session root directory recorded at `beginTurn` for child construction.
+  Cleared on `forgetSession`/`cancelTasks` only. Child statuses, resident task
+  ids, and `childSessionIds` are accessors over that one map;
+  `ClaudeSessionService` gains no field.
 - Bridge/app: none persistent. The sweep reads existing session statuses.
 - Client: none.
 
@@ -494,9 +519,11 @@ Scope:
 
 - `models/claude_task_status.dart`: closed `ClaudeTaskStatus` enum;
   `repositories/mappers/`: the single `toPluginToolStatus()` mapping.
+- `models/claude_tool_use_result.dart`: sealed `ClaudeToolUseResult`
+  (`asyncLaunched(agentId)`, `completed(agentId?)`, `absent`, `unknown`).
 - `claude_stream_message.dart`: `ClaudeTaskStartedMessage`,
   `ClaudeTaskNotificationMessage` (status parsed to `ClaudeTaskStatus`);
-  `ClaudeUserMessage.toolUseResult` (status, agentId).
+  `ClaudeUserMessage.toolUseResult` parsed to `ClaudeToolUseResult`.
 - `claude_content_mapper.dart`: `ClaudeMappedTaskNotificationContentBlock`
   (marker-prefix parse; never rendered).
 - `claude_tool_tracker.dart`: `task` kind; per-session task map surviving
@@ -532,15 +559,18 @@ Scope:
   child detection, `agent-` id resolution, legacy exclusion, root/child
   delete decisions, roots-only `getSessions`.
 - `claude_history_mapper.dart`: child mode keyed by `agentId`.
-- `claude_event_dispatcher.dart`: child `BridgeSseSessionStatus` events,
-  `childSessionStatuses` accessor.
-- `claude_plugin_impl.dart`: `getChildSessions`; child
-  `BridgeSseSessionCreated` on `ClaudeTaskStartedMessage`;
-  `getSessionStatuses` disjoint union; `getActiveSessionsSummary`
-  `childSessionIds`; `childSessionID` on the part via the dispatcher.
-- `bridge/app`: `ChatHistoryService` resolves keep-open child ids for both
-  sweep triggers; `ChatHistoryRepository.finalizeOpenToolParts(...,
-  keepOpenChildSessionIds)` + `openSubtaskChildSessionIds`; tests.
+- `claude_event_dispatcher.dart`: `beginTurn({sessionId, directory})`; child
+  `PluginSession` construction and ordered created/status/part emission;
+  idle on terminal/cancel; `childSessionStatuses` accessor.
+- `claude_plugin_impl.dart`: `getChildSessions`; passes the root directory to
+  `beginTurn`; `getSessionStatuses` disjoint union;
+  `getActiveSessionsSummary` fills `childSessionIds` and keeps idle roots
+  with running children.
+- `bridge/app`: `SessionRepository.getSessionStatuses({sessionIds})` (one
+  binding read, one plugin call); `ChatHistoryService` resolves keep-open
+  child ids from that snapshot for both sweep triggers;
+  `ChatHistoryRepository.finalizeOpenToolParts(..., keepOpenChildSessionIds)`
+  + `openSubtaskChildSessionIds`; tests.
 - Tests: catalog (children, missing parent, legacy layout excluded), child
   history read, live event sequences, delete paths, sweep keeps busy children
   and cancels dead ones.

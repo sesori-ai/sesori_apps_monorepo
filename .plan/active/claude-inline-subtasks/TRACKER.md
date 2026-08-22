@@ -87,7 +87,7 @@
   titles, and step total agree; PR
   [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open.
   Changed lines (informational, not a pass/fail check): `git diff --numstat
-  <merge-base>..HEAD -- .plan/active/claude-inline-subtasks/PLAN.md` = 572
+  <merge-base>..HEAD -- .plan/active/claude-inline-subtasks/PLAN.md` = 602
   additions / 0 deletions at the last plan edit, within the 450-650 target.
   Per the plan's series note, `TRACKER.md` bookkeeping is excluded from the
   comparison because its count would include the lines that record it; the
@@ -120,3 +120,17 @@
      decisions with `ClaudeSessionRecord.parentId` (Layer 2).
 - **Not re-reviewed:** the corrected plan was not resubmitted; a later
   considerable change would trigger another review.
+- **PR bot review rounds (cubic-dev-ai, chatgpt-codex-connector), applied as
+  plan refinements:** task notification is the authoritative terminal source
+  and the tool result a replaceable fallback (interrupted-foreground replay
+  divergence accepted); `task_id == agentId` evidence recorded; tool-use
+  results parsed at the boundary into sealed `ClaudeToolUseResult`; the
+  dispatcher owns child `PluginSession` construction and ordered
+  created/status/part emission (root directory passed via `beginTurn`),
+  superseding the earlier "plugin emits child created" wording;
+  `getActiveSessionsSummary` keeps idle roots with running children; sweep
+  resolves child statuses from one `getSessionStatuses({sessionIds})`
+  snapshot; tracker bookkeeping excluded from step line targets. Declined:
+  updating `docs/regression/` in every behavior PR — the regression README
+  explicitly allows reconciliation in the penultimate step of durable planned
+  work, which Step 6 is.
