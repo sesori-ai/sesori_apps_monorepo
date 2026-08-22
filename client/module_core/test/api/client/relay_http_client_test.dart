@@ -1,12 +1,12 @@
 import "dart:async";
 
-import "package:flutter_test/flutter_test.dart";
+import "package:test/test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../../helpers/test_helpers.dart";
+import "../../helpers/test_helpers.dart";
 
 void main() {
   setUpAll(() {

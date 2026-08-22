@@ -20,10 +20,19 @@ class PendingOperations() {
 
   /// Registers [operation] and removes it once it settles.
   ///
-  /// Returns the same future so a caller can still `await` or `unawaited` it.
+  /// Returns [operation] itself, so a caller can still await it, attach
+  /// `catchError`, or `ignore()` it.
+  ///
+  /// This takes ownership of the errors on its own bookkeeping future only.
+  /// `whenComplete` returns a *new* future that also completes with
+  /// [operation]'s error, and the bridge runs in the root zone with no
+  /// `runZonedGuarded`, so leaving that derived future unlistened would turn
+  /// any failing tracked operation into a process-fatal unhandled async error.
+  /// It is therefore ignored here. The caller remains responsible for
+  /// [operation]'s own errors, exactly as before it was tracked.
   Future<void> track({required Future<void> operation}) {
     _operations.add(operation);
-    unawaited(operation.whenComplete(() => _operations.remove(operation)));
+    operation.whenComplete(() => _operations.remove(operation)).ignore();
     return operation;
   }
 

@@ -1,7 +1,7 @@
 import "dart:convert";
 import "dart:typed_data";
 
-import "package:flutter_test/flutter_test.dart";
+import "package:test/test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart";
 

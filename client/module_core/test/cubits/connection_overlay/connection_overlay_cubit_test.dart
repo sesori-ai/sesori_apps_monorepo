@@ -1,5 +1,5 @@
 import "package:bloc_test/bloc_test.dart";
-import "package:flutter_test/flutter_test.dart";
+import "package:test/test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
