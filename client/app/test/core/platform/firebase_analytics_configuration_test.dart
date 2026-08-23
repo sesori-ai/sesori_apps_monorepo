@@ -39,16 +39,20 @@ void main() {
     expectAppleKeyDisabled(key: "FIREBASE_ANALYTICS_COLLECTION_ENABLED");
   });
 
-  test("Android uses the official Firebase Test Lab environment signal", () {
+  test("Android reads the Firebase Test Lab signal from every settings table", () {
     expect(
       androidMainActivity,
       contains('const val FIREBASE_TEST_LAB_CHANNEL_NAME = "com.sesori.app/firebase-test-lab"'),
     );
-    expect(androidMainActivity, contains('"isRunning" ->'));
-    expect(
-      androidMainActivity,
-      contains('Settings.System.getString(contentResolver, "firebase.test.lab") == "true"'),
-    );
+    expect(androidMainActivity, contains('"isRunning" -> result.success(isRunningInFirebaseTestLab())'));
+    expect(androidMainActivity, contains('const val FIREBASE_TEST_LAB_SETTING = "firebase.test.lab"'));
+    for (final table in const ["System", "Global", "Secure"]) {
+      expect(
+        androidMainActivity,
+        contains("Settings.$table.getString(contentResolver, FIREBASE_TEST_LAB_SETTING) != null"),
+        reason: "Test Lab detection must accept any value present in Settings.$table",
+      );
+    }
   });
 
   test("automatic Firebase screen reporting is disabled on every Firebase-enabled target", () {
