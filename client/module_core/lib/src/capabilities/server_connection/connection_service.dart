@@ -427,6 +427,10 @@ class ConnectionService(
     _status.add(const ConnectionStatus.disconnected());
   }
 
+  /// Triggers [reconnect] when not already connected or reconnecting, then
+  /// waits until the status settles (connected, lost, bridge offline) or
+  /// [timeout] elapses. A timeout is logged and absorbed so callers can fall
+  /// through to their own fetch, which fails with a user-visible error.
   Future<void> reconnectAndAwaitOutcome({required Duration timeout}) async {
     if (_status.value is ConnectionConnected) return;
     if (_status.value is! ConnectionReconnecting) {
