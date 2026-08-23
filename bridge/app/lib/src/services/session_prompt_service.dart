@@ -4,6 +4,7 @@ import "dart:math";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../foundation/random_hex_id.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
 import "archived_session_validator.dart";
@@ -202,11 +203,9 @@ class SessionPromptService({
 
   /// Bridge-generated prompt identity for sends that carry none (old clients,
   /// bridge-originated initial commands).
-  static String generatePromptId() {
-    final buffer = StringBuffer("prm_");
-    for (var index = 0; index < 16; index++) {
-      buffer.write(_secureRandom.nextInt(256).toRadixString(16).padLeft(2, "0"));
-    }
-    return buffer.toString();
-  }
+  static String generatePromptId() => generateRandomHexId(
+    secureRandom: _secureRandom,
+    prefix: "prm_",
+    byteLength: 16,
+  );
 }

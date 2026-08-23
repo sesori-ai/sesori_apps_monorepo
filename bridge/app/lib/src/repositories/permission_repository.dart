@@ -32,17 +32,17 @@ class PermissionRepository({required final PluginRuntime _runtime, required fina
       pluginId: binding.pluginId,
       operation: SessionOperation.getPendingPermissions,
       body: (plugin, _) async {
-        Set<String>? tombstoned;
-        if (plugin is BridgeDerivedProjectsPluginApi) {
-          tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
-          if (tombstoned.contains(binding.backendSessionId)) return const <PendingPermission>[];
-        }
+        final tombstones = await _pendingSupport.readPendingTombstones(
+          plugin: plugin,
+          backendSessionId: binding.backendSessionId,
+        );
+        if (tombstones == null) return const <PendingPermission>[];
         final permissions = await plugin.getPendingPermissions(sessionId: binding.backendSessionId);
         return await _pendingSupport.mapPermissions(
           pluginId: plugin.id,
           permissions: [
             for (final permission in permissions)
-              if (tombstoned == null || _isVisible(permission, tombstoned)) permission,
+              if (_isVisible(permission, tombstones)) permission,
           ],
         );
       },

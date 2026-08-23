@@ -37,8 +37,8 @@ import "../api/database/daos/session_dao.dart";
 import "../api/database/tables/projects_table.dart" show ProjectDto;
 import "../api/database/tables/pull_requests_table.dart";
 import "../api/database/tables/session_table.dart" show SessionDto;
+import "../foundation/random_hex_id.dart";
 import "../runtime/plugin_runtime.dart";
-import "generated_session_id.dart";
 import "mappers/plugin_activity_summary_mapper.dart";
 import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_message_mapper.dart";
@@ -763,10 +763,7 @@ class SessionRepository({
         );
         final hydratedProject =
             existing ??
-            _projectCatalogIdentityCalculator.hiddenPlaceholder(
-              projectId: project.id,
-              path: project.directory,
-            );
+            _hiddenProjectPlaceholder(projectId: project.id, path: project.directory);
         if (hydratedProjectIds.contains(hydratedProject.projectId)) continue;
         final sessions = await plugin.getSessions(project.directory, start: null, limit: null);
         hydratedProjectIds.add(hydratedProject.projectId);
@@ -843,10 +840,7 @@ class SessionRepository({
       );
       final hydratedProject =
           existingProject ??
-          _projectCatalogIdentityCalculator.hiddenPlaceholder(
-            projectId: preferredProjectId,
-            path: projectDirectory,
-          );
+          _hiddenProjectPlaceholder(projectId: preferredProjectId, path: projectDirectory);
       await _projectsDao.insertProjectIfMissing(
         projectId: hydratedProject.projectId,
         path: projectDirectory,
@@ -1539,13 +1533,30 @@ class SessionRepository({
     throw StateError('Plugin "$pluginId" does not support persisted session cleanup');
   }
 
+  ProjectDto _hiddenProjectPlaceholder({
+    required String projectId,
+    required String path,
+  }) => ProjectDto(
+    projectId: projectId,
+    path: path,
+    hidden: true,
+    prCacheGithubLogin: null,
+    createdAt: 0,
+    updatedAt: 0,
+    projectionUpdatedAt: 0,
+  );
+
   Future<List<String>> _allocateSessionIds({required int count}) async {
     final allocated = <String>[];
     final reserved = <String>{};
     while (allocated.length < count) {
       final candidates = <String>{};
       while (candidates.length < count - allocated.length) {
-        final candidate = generateSessionId(secureRandom: _secureRandom);
+        final candidate = generateRandomHexId(
+          secureRandom: _secureRandom,
+          prefix: "ses_",
+          byteLength: 16,
+        );
         if (reserved.add(candidate)) candidates.add(candidate);
       }
       final occupied = await _sessionDao.getSessionsByIds(
@@ -1558,7 +1569,11 @@ class SessionRepository({
 
   Future<String> _allocateSessionId({Set<String>? reservedSessionIds}) async {
     while (true) {
-      final candidate = generateSessionId(secureRandom: _secureRandom);
+      final candidate = generateRandomHexId(
+        secureRandom: _secureRandom,
+        prefix: "ses_",
+        byteLength: 16,
+      );
       if (reservedSessionIds != null && !reservedSessionIds.add(candidate)) continue;
       if (await _sessionDao.getSession(sessionId: candidate) == null) return candidate;
       reservedSessionIds?.remove(candidate);

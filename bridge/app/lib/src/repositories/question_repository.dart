@@ -38,17 +38,17 @@ class QuestionRepository({
       pluginId: binding.pluginId,
       operation: SessionOperation.getPendingQuestions,
       body: (plugin, _) async {
-        Set<String>? tombstoned;
-        if (plugin is BridgeDerivedProjectsPluginApi) {
-          tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
-          if (tombstoned.contains(binding.backendSessionId)) return const <PendingQuestion>[];
-        }
+        final tombstones = await _pendingSupport.readPendingTombstones(
+          plugin: plugin,
+          backendSessionId: binding.backendSessionId,
+        );
+        if (tombstones == null) return const <PendingQuestion>[];
         final questions = await plugin.getPendingQuestions(sessionId: binding.backendSessionId);
         return await _pendingSupport.mapQuestions(
           pluginId: plugin.id,
           questions: [
             for (final question in questions)
-              if (tombstoned == null || _isVisible(question, tombstoned)) question,
+              if (_isVisible(question, tombstones)) question,
           ],
         );
       },

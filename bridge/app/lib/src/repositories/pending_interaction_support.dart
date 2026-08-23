@@ -22,11 +22,11 @@ class PendingInteractionSupport({required final SessionDao _sessionDao}) {
     return binding;
   }
 
-  Future<Set<String>?> tombstonesFor({
+  Future<Set<String>?> readPendingTombstones({
     required BridgePluginApi plugin,
     required String backendSessionId,
   }) async {
-    if (plugin is! BridgeDerivedProjectsPluginApi) return null;
+    if (plugin is! BridgeDerivedProjectsPluginApi) return const <String>{};
     final tombstones = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
     return tombstones.contains(backendSessionId) ? null : tombstones;
   }

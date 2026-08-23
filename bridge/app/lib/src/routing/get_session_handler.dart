@@ -28,6 +28,10 @@ class GetSessionHandler({
     final sessionId = body.sessionId;
     requireNonEmpty(request: request, value: sessionId, label: "session id");
 
+    final catalogSession = await _sessionRepository.getCatalogSession(sessionId: sessionId);
+    if (catalogSession == null) {
+      throw buildErrorResponse(request, 404, "session not found");
+    }
     final verifiedGithubLogin = await _prSyncService.verifyGithubIdentity().timeout(
       _identityVerificationTimeout,
       onTimeout: () {
@@ -43,17 +47,9 @@ class GetSessionHandler({
         return null;
       },
     );
-    final catalogSession = await _sessionRepository.getCatalogSession(sessionId: sessionId);
-    final session = catalogSession == null
-        ? null
-        : (await _sessionRepository.enrichSessions(
-            sessions: [catalogSession],
-            verifiedGithubLogin: verifiedGithubLogin,
-          )).single;
-    if (session == null) {
-      throw buildErrorResponse(request, 404, "session not found");
-    }
-
-    return session;
+    return (await _sessionRepository.enrichSessions(
+      sessions: [catalogSession],
+      verifiedGithubLogin: verifiedGithubLogin,
+    )).single;
   }
 }

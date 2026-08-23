@@ -12,8 +12,8 @@ import "../api/database/daos/session_dao.dart";
 import "../api/database/tables/catalog_hydrations_table.dart";
 import "../api/database/tables/projects_table.dart";
 import "../api/database/tables/session_table.dart";
+import "../foundation/random_hex_id.dart";
 import "../runtime/plugin_runtime.dart";
-import "generated_session_id.dart";
 import "models/catalog_import_control.dart";
 import "project_catalog_identity_calculator.dart";
 
@@ -564,7 +564,11 @@ class CatalogImportRepository({
 
   String _allocateSessionId({required Set<String> reservedIds}) {
     while (true) {
-      final candidate = generateSessionId(secureRandom: _secureRandom);
+      final candidate = generateRandomHexId(
+        secureRandom: _secureRandom,
+        prefix: "ses_",
+        byteLength: 16,
+      );
       if (reservedIds.add(candidate)) return candidate;
     }
   }

@@ -20,16 +20,6 @@ class const ProjectCatalogIdentityCalculator() {
     return result;
   }
 
-  ProjectDto hiddenPlaceholder({required String projectId, required String path}) => ProjectDto(
-    projectId: projectId,
-    path: path,
-    hidden: true,
-    prCacheGithubLogin: null,
-    createdAt: 0,
-    updatedAt: 0,
-    projectionUpdatedAt: 0,
-  );
-
   /// Prefers the supplied durable id, then the normalized observed path.
   /// Returns null when neither signal identifies an existing catalog row.
   ProjectDto? calculate({
