@@ -22,6 +22,7 @@ explicit restart, and the connection states the app presents.
   failures return 500.
 - Drops reconnect with bounded backoff and a fresh read iterator; takeover backs off on
   a longer jittered curve, a revoked bridge re-registers, and a token change re-auths.
+- Ordered mutation and event lanes continue processing later work after one operation fails, and graceful shutdown drains work accepted before shutdown began.
 - Deliberate shutdown is not an outage; a handshake cancelled mid-flight closes at
   once and can never later authenticate.
 - One live bridge per account holds the slot; a second start resolves ownership

@@ -1,4 +1,7 @@
+import "dart:async";
+
 import "package:bloc_test/bloc_test.dart";
+import "package:cupertino_ui/cupertino_ui.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -96,10 +99,25 @@ void main() {
   });
 
   testWidgets("wide macOS pane keeps pull-to-refresh feedback enabled", (tester) async {
+    final refreshCompleter = Completer<bool>();
+    when(
+      () => cubit.refreshSessions(waitForPrData: true),
+    ).thenAnswer((_) => refreshCompleter.future);
     await pumpPanel(tester, width: 600, platform: TargetPlatform.macOS);
 
     final refreshIndicator = tester.widget<RefreshIndicator>(find.byType(RefreshIndicator));
     expect(refreshIndicator.displacement, greaterThan(0));
     expect(refreshIndicator.strokeWidth, greaterThan(0));
+
+    unawaited(tester.state<RefreshIndicatorState>(find.byType(RefreshIndicator)).show());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
+    expect(find.byType(RefreshProgressIndicator), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    refreshCompleter.complete(true);
+    await tester.pump();
   });
 }

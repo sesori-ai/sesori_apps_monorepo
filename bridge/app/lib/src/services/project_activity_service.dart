@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:math";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ParallelLock;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -16,7 +17,7 @@ class ProjectActivityService({
 }) {
   final StreamController<ProjectActivityChange> _changes = StreamController<ProjectActivityChange>.broadcast();
 
-  Future<void> _writeTail = Future<void>.value();
+  final ParallelLock _writeLock = ParallelLock(maxParallelOperations: 1);
   bool _disposing = false;
 
   Stream<ProjectActivityChange> get changes => _changes.stream;
@@ -168,9 +169,7 @@ class ProjectActivityService({
     if (_disposing) {
       return Future<T>.error(StateError("ProjectActivityService is disposed"));
     }
-    final result = _writeTail.then((_) => operation());
-    _writeTail = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
-    return result;
+    return _writeLock.use(operation: operation);
   }
 
   void _emit({required String projectId, required int updatedAt}) {
@@ -180,7 +179,7 @@ class ProjectActivityService({
   Future<void> dispose() async {
     if (_disposing) return;
     _disposing = true;
-    await _writeTail;
+    await _writeLock.idle;
     await _changes.close();
   }
 }

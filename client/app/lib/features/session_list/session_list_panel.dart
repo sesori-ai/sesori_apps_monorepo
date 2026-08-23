@@ -136,10 +136,10 @@ class const SessionListPanel({
       ],
     );
     if (state is SessionListLoaded) {
-      // This control owns drag progress and the held in-flight presentation;
-      // PregoActivityIndicator cannot replace either interaction state.
+      // This adaptive control owns drag progress and the held in-flight
+      // presentation; PregoActivityIndicator cannot replace either state.
       // ignore: no_slop_linter/avoid_flutter_spinners
-      scrollView = RefreshIndicator(
+      scrollView = RefreshIndicator.adaptive(
         onRefresh: () => refreshSessionList(context),
         child: scrollView,
       );

@@ -1,3 +1,4 @@
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ParallelLock;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/filesystem_repository.dart";
@@ -22,7 +23,7 @@ class ProjectMutationService({
   required final ProjectActivityService _projectActivityService,
   required final ProjectRepository _projectRepository,
 }) {
-  Future<void> _tail = Future<void>.value();
+  final ParallelLock _lock = ParallelLock(maxParallelOperations: 1);
 
   Future<Project> createProject({required String path}) {
     return _enqueue(() async {
@@ -62,9 +63,5 @@ class ProjectMutationService({
     return _enqueue(() => _projectRepository.hideProject(projectId: projectId));
   }
 
-  Future<T> _enqueue<T>(Future<T> Function() workflow) {
-    final result = _tail.then((_) => workflow());
-    _tail = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
-    return result;
-  }
+  Future<T> _enqueue<T>(Future<T> Function() workflow) => _lock.use(operation: workflow);
 }
