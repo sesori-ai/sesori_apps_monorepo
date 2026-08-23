@@ -32,7 +32,7 @@ child sessions with titles, activity, statuses, and unseen state.
   reserved. Android button navigation and other platforms retain the full row
   as a swipe target.
 - Pull-to-refresh provides visible drag and in-flight feedback in both the
-  full-screen lists and the wide split-view session pane. On iOS and macOS,
+  full-screen lists and the wide split-view session pane. On every platform,
   releasing a pull while the refresh is pending keeps the pane content
   displaced and its Cupertino indicator visible.
 - A session created in a dedicated worktree receives a system prompt identifying

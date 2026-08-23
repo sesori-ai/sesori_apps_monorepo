@@ -98,6 +98,13 @@ void main() {
     expect(find.text(newSessionLabel(tester)), findsOneWidget);
   });
 
+  testWidgets("wide Android pane uses the Cupertino refresh control", (tester) async {
+    await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
+
+    expect(find.byType(CupertinoSliverRefreshControl, skipOffstage: false), findsOneWidget);
+    expect(find.byType(RefreshIndicator), findsNothing);
+  });
+
   testWidgets("wide macOS pane stays displaced while refresh is pending", (tester) async {
     final refreshCompleter = Completer<bool>();
     var refreshStarted = false;

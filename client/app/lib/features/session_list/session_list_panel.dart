@@ -125,18 +125,12 @@ class const SessionListPanel({
   Widget _buildScrollableContent(BuildContext context, {required SessionListState state}) {
     final isRefreshing = state is SessionListLoaded && state.isRefreshing;
     final canRefresh = state is SessionListLoaded;
-    final usesCupertinoRefresh =
-        canRefresh &&
-        switch (Theme.of(context).platform) {
-          TargetPlatform.iOS || TargetPlatform.macOS => true,
-          TargetPlatform.android || TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => false,
-        };
-    Widget scrollView = CustomScrollView(
-      physics: usesCupertinoRefresh
+    return CustomScrollView(
+      physics: canRefresh
           ? const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics())
           : const AlwaysScrollableScrollPhysics(),
       slivers: [
-        if (usesCupertinoRefresh)
+        if (canRefresh)
           CupertinoSliverRefreshControl(
             onRefresh: () => refreshSessionList(context),
           ),
@@ -149,16 +143,6 @@ class const SessionListPanel({
         ),
       ],
     );
-    if (canRefresh && !usesCupertinoRefresh) {
-      // Material platforms use the overlay control; Apple platforms need the
-      // sliver above so the list remains displaced while refresh is pending.
-      // ignore: no_slop_linter/avoid_flutter_spinners
-      scrollView = RefreshIndicator(
-        onRefresh: () => refreshSessionList(context),
-        child: scrollView,
-      );
-    }
-    return scrollView;
   }
 
   String _title({required AppLocalizations loc}) => switch (projectName) {
