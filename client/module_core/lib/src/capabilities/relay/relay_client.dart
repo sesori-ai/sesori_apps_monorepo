@@ -800,9 +800,9 @@ class RelayClient._({
 
 /// Internal signal that the relay reported the bridge offline during the
 /// initial handshake (no bridge in the account group yet). Distinct from a
-/// fatal connection error so [RelayClient.connect] resolves into
-/// [RelayClient.connect] returning with [RelayClient.isConnected] false and
-/// keeps the socket open instead of tearing it down.
+/// fatal connection error so [RelayClient.connect] returns with
+/// [RelayClient.isConnected] false and keeps the socket open instead of
+/// tearing it down.
 class const _BridgeOfflineDuringHandshake() implements Exception;
 
 /// A request frame was sent (or may have been sent) but its response can no

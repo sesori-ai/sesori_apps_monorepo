@@ -76,6 +76,7 @@ cd shared/sesori_shared && dart test test/protocol/framing_test.dart            
 cd shared/sesori_shared && dart analyze --fatal-infos                               # clean
 cd client/app && flutter test test/capabilities test/core/api                       # 77 passing
 cd client/app && flutter test test/features/session_list                            # 87 passing
+cd client/app && flutter test test/features/project_list                            # 89 passing (post-CI fix)
 cd client/app && flutter analyze --fatal-infos                                      # clean
 cd client/module_desktop_core && dart analyze --fatal-infos                         # clean
 cd client/desktop && flutter analyze --fatal-infos                                  # clean
@@ -84,6 +85,12 @@ git diff --check                                                                
 
 The pinned formatter formatted compatible files and hit its known Dart 3.13
 enhanced-enum crash in `relay_client.dart`; all analyzers remain clean.
+
+Mobile CI initially failed on `client/app`
+`project_list_nav_bar_test.dart` ("pulling the disconnected page down
+re-attempts the bridge connection"): that app-level test still stubbed and
+verified the removed direct `reconnect()` call. It now stubs and verifies
+`reconnectAndAwaitOutcome(timeout: 15s)`.
 
 Architecture implementation review approved the new service contract, request
 ID ownership, DI construction, shared framing boundary, and cubit integration
