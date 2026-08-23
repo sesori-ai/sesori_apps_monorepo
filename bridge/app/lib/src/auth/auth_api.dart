@@ -3,7 +3,7 @@ import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../foundation/abortable_request_client.dart";
+import "../foundation/abortable_request.dart";
 import "../foundation/auth_backend_url.dart";
 
 const String oauthSessionTokenHeader = "X-Sesori-Session-Token";
@@ -29,7 +29,6 @@ class BridgeRegistrationException({required final int statusCode, required Strin
 class AuthApi({
   required String authBackendUrl,
   required final http.Client _client,
-  required final AbortableRequestClient _requestClient,
   required final Duration _requestDeadline,
 }) {
   static const Duration defaultRequestDeadline = Duration(seconds: 35);
@@ -104,7 +103,7 @@ class AuthApi({
     required String? bridgeId,
     required String accessToken,
   }) async {
-    final response = await _requestClient.send(
+    final response = await sendAbortableRequest(
       client: _client,
       method: "POST",
       url: _uri("auth/bridges"),
@@ -123,7 +122,7 @@ class AuthApi({
   }
 
   Future<void> deleteBridge({required String bridgeId, required String accessToken}) async {
-    final response = await _requestClient.send(
+    final response = await sendAbortableRequest(
       client: _client,
       method: "DELETE",
       url: _uri("auth/bridges/${Uri.encodeComponent(bridgeId)}"),
@@ -139,7 +138,7 @@ class AuthApi({
 
   Future<AuthMeResponse> getCurrentUser({required String accessToken}) async {
     final uri = _uri("auth/me");
-    final response = await _requestClient.send(
+    final response = await sendAbortableRequest(
       client: _client,
       method: "GET",
       url: uri,
@@ -158,7 +157,7 @@ class AuthApi({
     required String refreshToken,
   }) async {
     final uri = _uri("auth/refresh");
-    final response = await _requestClient.send(
+    final response = await sendAbortableRequest(
       client: _client,
       method: "POST",
       url: uri,

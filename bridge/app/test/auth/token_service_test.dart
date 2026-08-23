@@ -8,7 +8,6 @@ import "package:sesori_bridge/src/auth/auth_repository.dart";
 import "package:sesori_bridge/src/auth/token.dart";
 import "package:sesori_bridge/src/auth/token_refresh_exception.dart";
 import "package:sesori_bridge/src/auth/token_service.dart";
-import "package:sesori_bridge/src/foundation/abortable_request_client.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -19,7 +18,7 @@ void main() {
       addTearDown(server.close);
 
       final currentToken = _makeJwtFromNow(120);
-      final manager = _tokenManager(
+      final manager = _tokenService(
         initialToken: currentToken,
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(accessToken: "a", refreshToken: "r", lastProvider: AuthProvider.github),
@@ -51,7 +50,7 @@ void main() {
       // await on it would time the test out instead of racing a fixed delay.
       final loadInvoked = Completer<void>();
       final loadGate = Completer<void>();
-      final manager = _tokenManager(
+      final manager = _tokenService(
         initialToken: currentToken,
         authBackendUrl: server.baseUrl,
         loadTokens: () async {
@@ -89,7 +88,7 @@ void main() {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
-      final manager = _tokenManager(
+      final manager = _tokenService(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(
@@ -110,7 +109,7 @@ void main() {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
-      final manager = _tokenManager(
+      final manager = _tokenService(
         initialToken: _makeJwtFromNow(300),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(
@@ -131,7 +130,7 @@ void main() {
       final server = await _RefreshTestServer.start(responseDelay: const Duration(milliseconds: 80));
       addTearDown(server.close);
 
-      final manager = _tokenManager(
+      final manager = _tokenService(
         initialToken: _makeJwtFromNow(300),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(
@@ -157,7 +156,7 @@ void main() {
       addTearDown(server.close);
 
       TokenData? savedTokens;
-      final manager = _tokenManager(
+      final manager = _tokenService(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(
@@ -184,7 +183,7 @@ void main() {
 
       var loadCalls = 0;
       TokenData? savedTokens;
-      final manager = _tokenManager(
+      final manager = _tokenService(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async {
@@ -219,7 +218,7 @@ void main() {
       var loadCalls = 0;
       TokenData? savedTokens;
       final initialToken = _makeJwtFromNow(10);
-      final manager = _tokenManager(
+      final manager = _tokenService(
         initialToken: initialToken,
         authBackendUrl: server.baseUrl,
         loadTokens: () async {
@@ -252,7 +251,7 @@ void main() {
       var loadCalls = 0;
       TokenData? savedTokens;
       final initialToken = _makeJwtFromNow(10);
-      final manager = _tokenManager(
+      final manager = _tokenService(
         initialToken: initialToken,
         authBackendUrl: server.baseUrl,
         loadTokens: () async {
@@ -280,7 +279,7 @@ void main() {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
-      final manager = _tokenManager(
+      final manager = _tokenService(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(
@@ -300,7 +299,7 @@ void main() {
       final server = await _RefreshTestServer.start(statusCode: 401);
       addTearDown(server.close);
 
-      final manager = _tokenManager(
+      final manager = _tokenService(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(
@@ -315,7 +314,7 @@ void main() {
     });
 
     test("network error during refresh throws", () async {
-      final manager = _tokenManager(
+      final manager = _tokenService(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: "http://127.0.0.1:1",
         loadTokens: () async => TokenData(
@@ -332,7 +331,7 @@ void main() {
 
     test("request deadline settles a stalled refresh", () async {
       final client = _AbortAwareClient();
-      final manager = _tokenManager(
+      final manager = _tokenService(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: "https://auth.example.test",
         loadTokens: () async => TokenData(
@@ -353,7 +352,7 @@ void main() {
 
     test("request deadline actively aborts the refresh request", () async {
       final client = _AbortAwareClient();
-      final manager = _tokenManager(
+      final manager = _tokenService(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: "https://auth.example.test",
         loadTokens: () async => TokenData(
@@ -376,7 +375,7 @@ void main() {
         () async {
           final client = _AbortAwareClient();
           final currentToken = _makeJwtFromNow(60);
-          final manager = _tokenManager(
+          final manager = _tokenService(
             initialToken: currentToken,
             authBackendUrl: "https://auth.example.test",
             loadTokens: () async => TokenData(
@@ -403,7 +402,7 @@ void main() {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
-      final manager = _tokenManager(
+      final manager = _tokenService(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async => null,
@@ -417,7 +416,7 @@ void main() {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
-      final manager = _tokenManager(
+      final manager = _tokenService(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async =>
@@ -433,7 +432,7 @@ void main() {
       addTearDown(server.close);
 
       const malformedJwt = "not-a-jwt";
-      final manager = _tokenManager(
+      final manager = _tokenService(
         initialToken: malformedJwt,
         authBackendUrl: server.baseUrl,
         loadTokens: () async => TokenData(
@@ -475,7 +474,7 @@ class _AbortAwareClient() extends http.BaseClient {
   }
 }
 
-TokenService _tokenManager({
+TokenService _tokenService({
   required String initialToken,
   required String authBackendUrl,
   required Future<TokenData?> Function() loadTokens,
@@ -492,7 +491,6 @@ TokenService _tokenManager({
       api: AuthApi(
         authBackendUrl: authBackendUrl,
         client: resolvedClient,
-        requestClient: const AbortableRequestClient(),
         requestDeadline: requestDeadline,
       ),
     ),

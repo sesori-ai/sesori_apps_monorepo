@@ -4,7 +4,7 @@ import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart" show GenerateSessionMetadataRequest;
 
 import "../api/sesori_server_api.dart";
-import "../foundation/abortable_request_client.dart";
+import "../foundation/abortable_request.dart";
 
 typedef GeneratedSessionMetadata = ({String title, String branchName});
 

@@ -53,7 +53,6 @@ import "../control/bridge_control_message_dispatcher.dart";
 import "../control/control_channel_loss_listener.dart";
 import "../control/control_provision_notifier.dart";
 import "../control/control_status_notifier.dart";
-import "../foundation/abortable_request_client.dart";
 import "../foundation/app_connection_wait_indicator.dart";
 import "../foundation/app_onboarding_formatter.dart";
 import "../foundation/control_channel_client.dart";
@@ -323,7 +322,6 @@ class const BridgeRuntimeRunner._() {
     final authApi = AuthApi(
       authBackendUrl: options.authBackendUrl,
       client: httpClient,
-      requestClient: const AbortableRequestClient(),
       requestDeadline: AuthApi.defaultRequestDeadline,
     );
     final authRepository = AuthRepository(api: authApi);
@@ -562,7 +560,7 @@ class const BridgeRuntimeRunner._() {
       } else {
         final authTokens = await runtimeAuthService.ensureAuthenticated(options: options);
         authAccessToken = authTokens.accessToken;
-        final tokenManager = TokenService(
+        final tokenService = TokenService(
           initialToken: authAccessToken,
           loadTokens: () => loadTokens(dataDirectory: options.dataDirectory),
           saveTokens: (data) => saveTokens(
@@ -571,9 +569,9 @@ class const BridgeRuntimeRunner._() {
           ),
           authRepository: authRepository,
         );
-        shutdownCoordinator.add(disposable: tokenManager.dispose);
-        accessTokenProvider = tokenManager;
-        tokenRefresher = tokenManager;
+        shutdownCoordinator.add(disposable: tokenService.dispose);
+        accessTokenProvider = tokenService;
+        tokenRefresher = tokenService;
       }
       await runtimeAuthService.logAuthenticatedUser(
         accessToken: authAccessToken,
@@ -918,7 +916,6 @@ class const BridgeRuntimeRunner._() {
               client: httpClient,
               requestDeadline: SesoriServerApi.defaultRequestDeadline,
               tokenRefresher: tokenRefresher,
-              requestClient: const AbortableRequestClient(),
             ),
           ),
           stateRepository: AppOnboardingStateRepository(

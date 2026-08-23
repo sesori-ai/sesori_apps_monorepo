@@ -17,7 +17,8 @@ The implementation now:
 - keeps startup token validation and refresh policy in
   `BridgeRuntimeAuthService` and renames `TokenManager` to `TokenService`;
 - routes auth, registration, and `SesoriServerApi` requests through one
-  `AbortableRequestClient` contract;
+  `sendAbortableRequest` foundation function (the `http.Client` stays the only
+  injected transport seam);
 - keeps request deadlines active through response-body consumption, rejects
   already-aborted requests before dispatch, and detaches timers/listeners after
   completion;
@@ -27,7 +28,8 @@ The implementation now:
 - shares one room-key `SessionEncryptor` across routed responses and SSE frames
   while retaining independent ephemeral encryptors for key exchanges;
 - centralizes restricted temporary-write, permission, and rename behavior for
-  bridge-id and onboarding-marker files; and
+  the token, bridge-id, and onboarding-marker files in `writeRestrictedFile`;
+  and
 - relocates data-directory hardening to the foundation layer used by all file
   boundaries.
 
@@ -65,4 +67,8 @@ tokens are rejected again, with direct regression coverage. No findings remain.
 Follow-up pull-request review moved endpoint-result mapping into
 `AuthRepository`, kept startup validation policy in the runtime service, bounded
 the underlying validation requests, and flushed private temporary files before
-rename.
+rename. A later pass replaced the injected `final` `AbortableRequestClient`
+(not substitutable outside its library, so the constructor parameter was dead
+flexibility) with a plain function, folded `saveTokens` into
+`writeRestrictedFile` as planned, and restored the 401-then-refresh-rejected
+startup coverage with a `MockClient` instead of an unused local HTTP server.

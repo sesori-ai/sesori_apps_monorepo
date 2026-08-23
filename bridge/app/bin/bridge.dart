@@ -17,7 +17,6 @@ import 'package:sesori_bridge/src/auth/bridge_registration_repository.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_service.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
 import 'package:sesori_bridge/src/auth/token_service.dart';
-import 'package:sesori_bridge/src/foundation/abortable_request_client.dart';
 import 'package:sesori_bridge/src/foundation/bridge_startup_banner_formatter.dart';
 import 'package:sesori_bridge/src/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/foundation/process_runner.dart';
@@ -370,10 +369,9 @@ Future<void> _unregisterBridgeRegistration({
   final authApi = AuthApi(
     authBackendUrl: authBackendUrl,
     client: httpClient,
-    requestClient: const AbortableRequestClient(),
     requestDeadline: AuthApi.defaultRequestDeadline,
   );
-  final tokenManager = TokenService(
+  final tokenService = TokenService(
     initialToken: tokens.accessToken,
     loadTokens: () => loadTokens(dataDirectory: dataDirectory),
     saveTokens: (data) => saveTokens(data: data, dataDirectory: dataDirectory),
@@ -384,14 +382,14 @@ Future<void> _unregisterBridgeRegistration({
       repository: BridgeRegistrationRepository(
         api: authApi,
       ),
-      tokenRefresher: tokenManager,
+      tokenRefresher: tokenService,
       bridgeIdStorage: bridgeIdStorage,
       hostName: Platform.localHostname,
       platform: BridgeRegistrationService.currentPlatformName(),
     );
     await registrationService.unregister().timeout(const Duration(seconds: 10));
   } finally {
-    tokenManager.dispose();
+    tokenService.dispose();
     httpClient.close();
   }
 }

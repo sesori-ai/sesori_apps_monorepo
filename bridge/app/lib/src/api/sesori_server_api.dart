@@ -5,7 +5,7 @@ import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart" show GenerateSessionMetadataRequest, jsonDecodeMap;
 
 import "../auth/token_refresher.dart";
-import "../foundation/abortable_request_client.dart";
+import "../foundation/abortable_request.dart";
 import "../foundation/auth_backend_url.dart";
 import "models/app_client_status_response.dart";
 import "models/generate_session_metadata_response.dart";
@@ -34,7 +34,6 @@ class SesoriServerApi({
   required final http.Client _client,
   required final Duration _requestDeadline,
   required final TokenRefresher _tokenRefresher,
-  required final AbortableRequestClient _requestClient,
 }) {
   static const Duration defaultRequestDeadline = Duration(seconds: 35);
 
@@ -42,7 +41,7 @@ class SesoriServerApi({
 
   Future<AppClientStatusResponse> getAppClientStatus({required String accessToken}) async {
     final uri = Uri.parse("$_authBackendUrl/auth/app-clients/status");
-    final response = await _requestClient.send(
+    final response = await sendAbortableRequest(
       client: _client,
       method: "GET",
       url: uri,
@@ -131,7 +130,7 @@ class SesoriServerApi({
     required String accessToken,
     required AbortSignal abortSignal,
   }) {
-    return _requestClient.send(
+    return sendAbortableRequest(
       client: _client,
       method: "POST",
       url: uri,

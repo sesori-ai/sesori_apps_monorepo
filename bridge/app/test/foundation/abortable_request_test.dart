@@ -2,11 +2,10 @@ import "dart:async";
 import "dart:convert";
 
 import "package:http/http.dart" as http;
-import "package:sesori_bridge/src/foundation/abortable_request_client.dart";
+import "package:sesori_bridge/src/foundation/abortable_request.dart";
 import "package:test/test.dart";
 
 void main() {
-  const requestClient = AbortableRequestClient();
   final url = Uri.parse("https://auth.example.test/request");
 
   test("an already-aborted signal prevents the request from starting", () async {
@@ -14,7 +13,7 @@ void main() {
     final abortSignal = AbortSignal()..abort();
 
     await expectLater(
-      requestClient.send(
+      sendAbortableRequest(
         client: client,
         method: "POST",
         url: url,
@@ -33,7 +32,7 @@ void main() {
     final client = _BodyStallClient();
 
     await expectLater(
-      requestClient.send(
+      sendAbortableRequest(
         client: client,
         method: "GET",
         url: url,
@@ -52,7 +51,7 @@ void main() {
     final client = _ImmediateClient();
     final abortSignal = AbortSignal();
 
-    final response = await requestClient.send(
+    final response = await sendAbortableRequest(
       client: client,
       method: "POST",
       url: url,

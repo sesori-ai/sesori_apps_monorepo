@@ -8,7 +8,6 @@ import 'package:sesori_bridge/src/auth/login_email_api.dart';
 import 'package:sesori_bridge/src/auth/login_email_repository.dart';
 import 'package:sesori_bridge/src/auth/login_oauth_service.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
-import 'package:sesori_bridge/src/foundation/abortable_request_client.dart';
 import 'package:sesori_bridge/src/foundation/legacy_post_update_relaunch.dart';
 import 'package:sesori_bridge/src/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/runtime/bridge_runtime_auth.dart';
@@ -21,7 +20,7 @@ void main() {
       final service = BridgeRuntimeAuthService(
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: _FakeLoginOAuthService(),
-        authRepository: _invalidAuthRepository(),
+        authRepository: _expiredTokensAuthRepository(),
         environment: const <String, String>{sesoriPostUpdateRestartEnvVar: '1'},
         loadTokens: () async => throw const FileSystemException('missing', 'token.json', OSError('missing', 2)),
         saveTokens: (_) async {},
@@ -41,8 +40,6 @@ void main() {
     });
 
     test('OAuth login ACK is sent only after tokens are persisted', () async {
-      final authBackend = await _InvalidTokenAuthBackend.start();
-      addTearDown(authBackend.close);
       final storedTokens = TokenData(
         accessToken: 'expired-access-token',
         refreshToken: 'expired-refresh-token',
@@ -66,7 +63,7 @@ void main() {
       final service = BridgeRuntimeAuthService(
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: oauthService,
-        authRepository: _invalidAuthRepository(),
+        authRepository: _expiredTokensAuthRepository(),
         environment: const <String, String>{},
         loadTokens: () async {
           loadCount++;
@@ -78,7 +75,7 @@ void main() {
         clearTokens: () async {},
       );
 
-      final result = await service.ensureAuthenticated(options: _options(authBackendUrl: authBackend.baseUrl));
+      final result = await service.ensureAuthenticated(options: _options(authBackendUrl: 'https://auth.example.test'));
 
       expect(result.accessToken, equals('oauth-access-token'));
       expect(loadCount, 1);
@@ -106,7 +103,6 @@ void main() {
               _ => http.Response('', 404),
             };
           }),
-          requestClient: const AbortableRequestClient(),
           requestDeadline: AuthApi.defaultRequestDeadline,
         ),
       );
@@ -135,8 +131,6 @@ void main() {
     });
 
     test('failed OAuth login does not ACK session completion', () async {
-      final authBackend = await _InvalidTokenAuthBackend.start();
-      addTearDown(authBackend.close);
       final storedTokens = TokenData(
         accessToken: 'expired-access-token',
         refreshToken: 'expired-refresh-token',
@@ -146,7 +140,7 @@ void main() {
       final service = BridgeRuntimeAuthService(
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: oauthService,
-        authRepository: _invalidAuthRepository(),
+        authRepository: _expiredTokensAuthRepository(),
         environment: const <String, String>{},
         loadTokens: () async => storedTokens,
         saveTokens: (_) async {},
@@ -154,7 +148,7 @@ void main() {
       );
 
       await expectLater(
-        service.ensureAuthenticated(options: _options(authBackendUrl: authBackend.baseUrl)),
+        service.ensureAuthenticated(options: _options(authBackendUrl: 'https://auth.example.test')),
         throwsA(isA<Exception>().having((error) => error.toString(), 'message', contains('authorization denied'))),
       );
 
@@ -162,8 +156,6 @@ void main() {
     });
 
     test('OAuth ACK failure does not fail persisted login', () async {
-      final authBackend = await _InvalidTokenAuthBackend.start();
-      addTearDown(authBackend.close);
       final storedTokens = TokenData(
         accessToken: 'expired-access-token',
         refreshToken: 'expired-refresh-token',
@@ -182,7 +174,7 @@ void main() {
       final service = BridgeRuntimeAuthService(
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: oauthService,
-        authRepository: _invalidAuthRepository(),
+        authRepository: _expiredTokensAuthRepository(),
         environment: const <String, String>{},
         loadTokens: () async => storedTokens,
         saveTokens: (tokens) async {
@@ -191,7 +183,7 @@ void main() {
         clearTokens: () async {},
       );
 
-      final result = await service.ensureAuthenticated(options: _options(authBackendUrl: authBackend.baseUrl));
+      final result = await service.ensureAuthenticated(options: _options(authBackendUrl: 'https://auth.example.test'));
 
       expect(result.accessToken, equals('oauth-access-token'));
       expect(savedTokens, isNotNull);
@@ -200,12 +192,13 @@ void main() {
   });
 }
 
-AuthRepository _invalidAuthRepository() {
+/// Rejects the stored access token (401) and its refresh token (401), so
+/// [BridgeRuntimeAuthService.ensureAuthenticated] must fall through to login.
+AuthRepository _expiredTokensAuthRepository() {
   return AuthRepository(
     api: AuthApi(
       authBackendUrl: 'https://auth.example.test',
-      client: MockClient((_) async => http.Response('', 403)),
-      requestClient: const AbortableRequestClient(),
+      client: MockClient((_) async => http.Response('', 401)),
       requestDeadline: AuthApi.defaultRequestDeadline,
     ),
   );
@@ -266,33 +259,5 @@ class _FakeLoginOAuthService({
     if (ackError != null) {
       throw ackError;
     }
-  }
-}
-
-class _InvalidTokenAuthBackend._(final HttpServer _server) {
-  this {
-    _listen();
-  }
-
-  static Future<_InvalidTokenAuthBackend> start() async {
-    final server = await HttpServer.bind('127.0.0.1', 0);
-    return _InvalidTokenAuthBackend._(server);
-  }
-
-  String get baseUrl => 'http://${_server.address.host}:${_server.port}';
-
-  void _listen() {
-    _server.listen((request) async {
-      if (request.uri.path == '/auth/me' || request.uri.path == '/auth/refresh') {
-        request.response.statusCode = 401;
-      } else {
-        request.response.statusCode = 404;
-      }
-      await request.response.close();
-    });
-  }
-
-  Future<void> close() async {
-    await _server.close(force: true);
   }
 }
