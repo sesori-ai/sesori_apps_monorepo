@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/auth_api.dart";
+import "package:sesori_bridge/src/foundation/abortable_request.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -108,6 +109,7 @@ AuthApi _createApi(_BridgesTestServer server) {
     authBackendUrl: server.baseUrl,
     client: client,
     requestDeadline: AuthApi.defaultRequestDeadline,
+    sendRequest: sendRequestWithDeadline,
   );
 }
 

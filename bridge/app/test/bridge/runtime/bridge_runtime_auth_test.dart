@@ -8,6 +8,7 @@ import 'package:sesori_bridge/src/auth/login_email_api.dart';
 import 'package:sesori_bridge/src/auth/login_email_repository.dart';
 import 'package:sesori_bridge/src/auth/login_oauth_service.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
+import 'package:sesori_bridge/src/foundation/abortable_request.dart';
 import 'package:sesori_bridge/src/foundation/legacy_post_update_relaunch.dart';
 import 'package:sesori_bridge/src/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/runtime/bridge_runtime_auth.dart';
@@ -104,6 +105,7 @@ void main() {
             };
           }),
           requestDeadline: AuthApi.defaultRequestDeadline,
+          sendRequest: sendRequestWithDeadline,
         ),
       );
       final service = BridgeRuntimeAuthService(
@@ -200,6 +202,7 @@ AuthRepository _expiredTokensAuthRepository() {
       authBackendUrl: 'https://auth.example.test',
       client: MockClient((_) async => http.Response('', 401)),
       requestDeadline: AuthApi.defaultRequestDeadline,
+      sendRequest: sendRequestWithDeadline,
     ),
   );
 }

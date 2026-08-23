@@ -17,6 +17,23 @@ final class AbortSignal() {
   }
 }
 
+Future<http.Response> sendRequestWithDeadline({
+  required http.Client client,
+  required String method,
+  required Uri url,
+  required Map<String, String>? headers,
+  required String? body,
+  required Duration deadline,
+}) => sendAbortableRequest(
+  client: client,
+  method: method,
+  url: url,
+  headers: headers,
+  body: body,
+  deadline: deadline,
+  abortSignal: null,
+);
+
 /// Sends one HTTP request whose [deadline] and optional [abortSignal] abort the
 /// underlying operation, including response-body consumption.
 Future<http.Response> sendAbortableRequest({

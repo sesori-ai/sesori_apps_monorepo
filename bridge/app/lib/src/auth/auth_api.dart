@@ -3,11 +3,17 @@ import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../foundation/abortable_request.dart";
-import "../foundation/auth_backend_url.dart";
-
 const String oauthSessionTokenHeader = "X-Sesori-Session-Token";
 const Duration _bridgeRegistrationDeadline = Duration(seconds: 15);
+
+typedef AuthRequestSender = Future<http.Response> Function({
+  required http.Client client,
+  required String method,
+  required Uri url,
+  required Map<String, String>? headers,
+  required String? body,
+  required Duration deadline,
+});
 
 class AuthApiException({
   required final String method,
@@ -27,15 +33,14 @@ class BridgeRegistrationException({required final int statusCode, required Strin
 }
 
 class AuthApi({
-  required String authBackendUrl,
+  required final String authBackendUrl,
   required final http.Client _client,
   required final Duration _requestDeadline,
+  required final AuthRequestSender _sendRequest,
 }) {
   static const Duration defaultRequestDeadline = Duration(seconds: 35);
 
-  final String _authBackendUrl = normalizeAuthBackendUrl(url: authBackendUrl);
-
-  Uri _uri(String path) => Uri.parse("$_authBackendUrl/$path");
+  Uri _uri(String path) => Uri.parse("$authBackendUrl/$path");
 
   Future<AuthInitResponse> initOAuthSession({
     required OAuthProvider provider,
@@ -103,7 +108,7 @@ class AuthApi({
     required String? bridgeId,
     required String accessToken,
   }) async {
-    final response = await sendAbortableRequest(
+    final response = await _sendRequest(
       client: _client,
       method: "POST",
       url: _uri("auth/bridges"),
@@ -113,7 +118,6 @@ class AuthApi({
       },
       body: jsonEncode(RegisterBridgeRequest(name: name, platform: platform, bridgeId: bridgeId).toJson()),
       deadline: _bridgeRegistrationDeadline,
-      abortSignal: null,
     );
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw BridgeRegistrationException(statusCode: response.statusCode, body: response.body);
@@ -122,14 +126,13 @@ class AuthApi({
   }
 
   Future<void> deleteBridge({required String bridgeId, required String accessToken}) async {
-    final response = await sendAbortableRequest(
+    final response = await _sendRequest(
       client: _client,
       method: "DELETE",
       url: _uri("auth/bridges/${Uri.encodeComponent(bridgeId)}"),
       headers: {"Authorization": "Bearer $accessToken"},
       body: null,
       deadline: _bridgeRegistrationDeadline,
-      abortSignal: null,
     );
     if (response.statusCode != 200) {
       throw BridgeRegistrationException(statusCode: response.statusCode, body: response.body);
@@ -138,14 +141,13 @@ class AuthApi({
 
   Future<AuthMeResponse> getCurrentUser({required String accessToken}) async {
     final uri = _uri("auth/me");
-    final response = await sendAbortableRequest(
+    final response = await _sendRequest(
       client: _client,
       method: "GET",
       url: uri,
       headers: {"Authorization": "Bearer $accessToken"},
       body: null,
       deadline: _requestDeadline,
-      abortSignal: null,
     );
     if (response.statusCode != 200) {
       throw AuthApiException(method: "GET", uri: uri, statusCode: response.statusCode, body: response.body);
@@ -157,14 +159,13 @@ class AuthApi({
     required String refreshToken,
   }) async {
     final uri = _uri("auth/refresh");
-    final response = await sendAbortableRequest(
+    final response = await _sendRequest(
       client: _client,
       method: "POST",
       url: uri,
       headers: const {"Content-Type": "application/json"},
       body: jsonEncode({"refreshToken": refreshToken}),
       deadline: _requestDeadline,
-      abortSignal: null,
     );
     if (response.statusCode != 200) {
       throw AuthApiException(method: "POST", uri: uri, statusCode: response.statusCode, body: response.body);

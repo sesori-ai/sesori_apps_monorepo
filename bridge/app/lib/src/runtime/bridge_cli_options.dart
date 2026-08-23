@@ -4,6 +4,8 @@ import "package:args/args.dart" show ArgParserException, ArgResults;
 import "package:path/path.dart" as path;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
 
+import "../foundation/auth_backend_url.dart";
+
 class const BridgeCliOptions({
   required final List<String> cliArgs,
   required final String relayUrl,
@@ -120,15 +122,14 @@ class const BridgeCliOptions({
     required Map<String, String> environment,
     required String defaultAuthUrl,
   }) {
+    final String rawUrl;
     if (authBackendFlag.isNotEmpty) {
-      return authBackendFlag;
+      rawUrl = authBackendFlag;
+    } else if (environment["AUTH_BACKEND_URL"] case final envValue? when envValue.isNotEmpty) {
+      rawUrl = envValue;
+    } else {
+      rawUrl = defaultAuthUrl;
     }
-
-    final envValue = environment["AUTH_BACKEND_URL"];
-    if (envValue != null && envValue.isNotEmpty) {
-      return envValue;
-    }
-
-    return defaultAuthUrl;
+    return normalizeAuthBackendUrl(url: rawUrl);
   }
 }

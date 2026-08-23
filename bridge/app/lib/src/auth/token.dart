@@ -5,7 +5,7 @@ import 'package:path/path.dart' as path;
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 import 'package:sesori_shared/sesori_shared.dart';
 
-import '../foundation/data_directory_hardening.dart';
+import 'restricted_file_writer.dart';
 
 /// TokenData holds authentication tokens for the Sesori Bridge.
 class TokenData({
@@ -75,7 +75,11 @@ Future<String?> readLegacyBridgeId({required String dataDirectory}) async {
 
 /// Saves the token data to the token file, creating the data directory (0700)
 /// and the file (0600) with restricted permissions on Unix.
-Future<void> saveTokens({required TokenData data, required String dataDirectory}) {
+Future<void> saveTokens({
+  required TokenData data,
+  required String dataDirectory,
+  required RestrictedFileWriter writeRestrictedFile,
+}) {
   return writeRestrictedFile(
     filePath: tokenPath(dataDirectory: dataDirectory),
     contents: const JsonEncoder.withIndent('  ').convert(data.toJson()),

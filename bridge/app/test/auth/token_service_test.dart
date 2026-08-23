@@ -8,6 +8,7 @@ import "package:sesori_bridge/src/auth/auth_repository.dart";
 import "package:sesori_bridge/src/auth/token.dart";
 import "package:sesori_bridge/src/auth/token_refresh_exception.dart";
 import "package:sesori_bridge/src/auth/token_service.dart";
+import "package:sesori_bridge/src/foundation/abortable_request.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -492,6 +493,7 @@ TokenService _tokenService({
         authBackendUrl: authBackendUrl,
         client: resolvedClient,
         requestDeadline: requestDeadline,
+        sendRequest: sendRequestWithDeadline,
       ),
     ),
   );

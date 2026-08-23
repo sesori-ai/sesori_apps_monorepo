@@ -3,11 +3,7 @@ import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../foundation/auth_backend_url.dart";
-
-class LoginEmailApi({required String authBackendUrl}) {
-  final String authBackendUrl = normalizeAuthBackendUrl(url: authBackendUrl);
-
+class LoginEmailApi({required final String authBackendUrl}) {
   Future<AuthResponse> loginWithEmail({required String email, required String password}) async {
     final uri = Uri.parse("$authBackendUrl/${AuthProvider.email.apiAuthPath}");
 
