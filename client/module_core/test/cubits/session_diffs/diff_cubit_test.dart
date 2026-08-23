@@ -161,6 +161,53 @@ void main() {
       ).called(2);
     });
 
+    test("an empty diff does not retry while a manual refresh is loading", () async {
+      final analyticsStates = BehaviorSubject<ProductAnalyticsState>.seeded(ProductAnalyticsState.initial);
+      addTearDown(analyticsStates.close);
+      when(() => mockProductAnalyticsService.state).thenAnswer((_) => analyticsStates.value);
+      when(() => mockProductAnalyticsService.stateStream).thenAnswer((_) => analyticsStates.stream);
+      when(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).thenAnswer((_) async => AnalyticsDeliveryResult.failed);
+      final refreshResponse = Completer<ApiResponse<SessionDiffsResponse>>();
+      var requestCount = 0;
+      when(() => mockSessionRepository.getSessionDiffs(sessionId: sessionId)).thenAnswer(
+        (_) => ++requestCount == 1
+            ? Future.value(ApiResponse.success(const SessionDiffsResponse(diffs: <FileDiff>[])))
+            : refreshResponse.future,
+      );
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      final refresh = cubit.refresh();
+      expect(cubit.state, isA<DiffStateLoading>());
+      analyticsStates.add(
+        const ProductAnalyticsState(
+          preference: ProductAnalyticsPreferenceKnown(
+            preference: ProductAnalyticsPreference.enabled,
+          ),
+          synchronization: ProductAnalyticsSynchronized(),
+          availability: ProductAnalyticsActive(),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.sessionDiffViewed(
+            changeState: AnalyticsChangeState.empty,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(1);
+      refreshResponse.complete(ApiResponse.error(ApiError.generic()));
+      await refresh;
+    });
+
     // -------------------------------------------------------------------------
     // 1. init → loading → loaded
     // -------------------------------------------------------------------------

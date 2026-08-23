@@ -353,6 +353,7 @@ class ProjectListCubit(
     final hasRegisteredBridges = await _registeredBridgesService.hasRegisteredBridges();
     if (isClosed) return;
     if (!_isBridgeUnavailable) return;
+    _loadedStateAnalyticsReporter.clearCurrentOccurrence();
     emit(ProjectListState.bridgeDisconnected(hasRegisteredBridges: hasRegisteredBridges));
   }
 
@@ -373,6 +374,7 @@ class ProjectListCubit(
   }
 
   Future<void> loadProjects() async {
+    _loadedStateAnalyticsReporter.clearCurrentOccurrence();
     emit(const ProjectListState.loading());
     await _fetchProjects();
   }
@@ -430,6 +432,7 @@ class ProjectListCubit(
   /// fetching. This ensures the retry actually reaches the bridge instead
   /// of failing immediately with a "not connected" error.
   Future<void> retryLoadProjects() async {
+    _loadedStateAnalyticsReporter.clearCurrentOccurrence();
     emit(const ProjectListState.loading());
     // Yield to the event loop so the loading indicator renders before
     // the reconnection / fetch attempt (which may resolve synchronously
@@ -729,6 +732,7 @@ class ProjectListCubit(
           await _emitBridgeDisconnected();
         } else {
           loge("Project list load failed", error);
+          _loadedStateAnalyticsReporter.clearCurrentOccurrence();
           emit(ProjectListState.failed(reason: error.remoteFailureReason));
         }
         return false;

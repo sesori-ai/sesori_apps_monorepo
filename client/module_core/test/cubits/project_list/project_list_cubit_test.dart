@@ -339,6 +339,46 @@ void main() {
       ).called(2);
     });
 
+    test("an empty inventory does not retry after the cubit leaves loaded state", () async {
+      when(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).thenAnswer((_) async => AnalyticsDeliveryResult.failed);
+      var requestCount = 0;
+      when(() => mockProjectRepository.listProjects()).thenAnswer(
+        (_) async => ++requestCount == 1
+            ? ApiResponse.success(const Projects(data: <ProjectSummary>[]))
+            : ApiResponse.error(ApiError.generic()),
+      );
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      await cubit.loadProjects();
+      expect(cubit.state, isA<ProjectListFailed>());
+      analyticsStateController.add(
+        const ProductAnalyticsState(
+          preference: ProductAnalyticsPreferenceKnown(
+            preference: ProductAnalyticsPreference.enabled,
+          ),
+          synchronization: ProductAnalyticsSynchronized(),
+          availability: ProductAnalyticsActive(),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.projectInventoryLoaded(
+            inventoryState: AnalyticsInventoryState.empty,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(1);
+    });
+
     // -------------------------------------------------------------------------
     // Test 1: constructor triggers load — success with projects
     // -------------------------------------------------------------------------

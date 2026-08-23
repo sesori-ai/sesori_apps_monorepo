@@ -86,6 +86,7 @@ class DiffCubit({
 
   Future<bool> _fetchAndEmit({required bool showLoading}) async {
     if (showLoading) {
+      _loadedStateAnalyticsReporter.clearCurrentOccurrence();
       emit(const DiffState.loading());
     }
     try {
@@ -101,11 +102,13 @@ class DiffCubit({
           );
           return true;
         case ErrorResponse(:final error):
+          _loadedStateAnalyticsReporter.clearCurrentOccurrence();
           emit(DiffState.failed(error: error));
           return false;
       }
     } catch (e) {
       if (isClosed) return false;
+      _loadedStateAnalyticsReporter.clearCurrentOccurrence();
       emit(DiffState.failed(error: e));
       return false;
     }

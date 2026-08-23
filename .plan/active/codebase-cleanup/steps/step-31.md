@@ -37,8 +37,19 @@ without changing refresh coordination, analytics events, or product behavior.
 - Added the caught error and stack trace to best-effort session-event failure,
   project-view declaration, relay send, and subscription-cleanup logs.
 
-The implementation deletes 424 lines and adds 681 across production, tests,
-generated output, and this evidence file.
+Change-budget totals exclude this evidence file and use the merge base with
+`origin/main`:
+
+```bash
+BASE=$(git merge-base HEAD origin/main)
+git diff --numstat "$BASE"...HEAD -- client/app/lib client/module_core/lib
+git diff --numstat "$BASE"...HEAD -- client/app/test client/module_core/test
+```
+
+| Scope | Additions | Deletions |
+| --- | ---: | ---: |
+| Production/lib, including generated Freezed output | 357 | 393 |
+| Tests | 350 | 31 |
 
 ## Behavior
 

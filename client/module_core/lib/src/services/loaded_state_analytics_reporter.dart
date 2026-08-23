@@ -71,6 +71,10 @@ class LoadedStateAnalyticsReporter({
     _attempt(occurrence: occurrence);
   }
 
+  void clearCurrentOccurrence() {
+    _currentOccurrence = null;
+  }
+
   void _retryCurrentClassification() {
     if (_closed) return;
     final occurrence = _currentOccurrence;
