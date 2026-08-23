@@ -1,3 +1,4 @@
+import "package:cupertino_ui/cupertino_ui.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -123,9 +124,22 @@ class const SessionListPanel({
   /// pull-to-refresh (only once the list has loaded).
   Widget _buildScrollableContent(BuildContext context, {required SessionListState state}) {
     final isRefreshing = state is SessionListLoaded && state.isRefreshing;
+    final canRefresh = state is SessionListLoaded;
+    final usesCupertinoRefresh =
+        canRefresh &&
+        switch (Theme.of(context).platform) {
+          TargetPlatform.iOS || TargetPlatform.macOS => true,
+          TargetPlatform.android || TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => false,
+        };
     Widget scrollView = CustomScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
+      physics: usesCupertinoRefresh
+          ? const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics())
+          : const AlwaysScrollableScrollPhysics(),
       slivers: [
+        if (usesCupertinoRefresh)
+          CupertinoSliverRefreshControl(
+            onRefresh: () => refreshSessionList(context),
+          ),
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
         SessionListContent(
           projectName: projectName,
@@ -135,11 +149,11 @@ class const SessionListPanel({
         ),
       ],
     );
-    if (state is SessionListLoaded) {
-      // This adaptive control owns drag progress and the held in-flight
-      // presentation; PregoActivityIndicator cannot replace either state.
+    if (canRefresh && !usesCupertinoRefresh) {
+      // Material platforms use the overlay control; Apple platforms need the
+      // sliver above so the list remains displaced while refresh is pending.
       // ignore: no_slop_linter/avoid_flutter_spinners
-      scrollView = RefreshIndicator.adaptive(
+      scrollView = RefreshIndicator(
         onRefresh: () => refreshSessionList(context),
         child: scrollView,
       );

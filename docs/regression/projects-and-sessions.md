@@ -33,8 +33,8 @@ child sessions with titles, activity, statuses, and unseen state.
   as a swipe target.
 - Pull-to-refresh provides visible drag and in-flight feedback in both the
   full-screen lists and the wide split-view session pane. Releasing a trackpad
-  pull while the refresh is pending keeps the pane's indicator visible, using
-  the Cupertino indicator style on iOS and macOS.
+  pull while the refresh is pending keeps the pane content displaced and its
+  indicator visible, using the Cupertino indicator style on iOS and macOS.
 - A session created in a dedicated worktree receives a system prompt identifying
   that worktree, its initial branch, and base branch. The prompt requires all
   work to remain in that worktree, while permitting use of the initial branch,
