@@ -88,7 +88,6 @@ class const _NotificationSettingsBody() extends StatelessWidget {
                           subtitle: loc.notificationCategoryConnectionStatusDescription,
                           preferences: preferences,
                           updatingCategories: updatingCategories,
-                          isLast: true,
                         ),
                       ],
                     ),
@@ -105,7 +104,6 @@ class const _NotificationSettingsBody() extends StatelessWidget {
                           subtitle: null,
                           preferences: preferences,
                           updatingCategories: updatingCategories,
-                          isLast: true,
                         ),
                       ],
                     ),
@@ -132,7 +130,6 @@ class const _NotificationPreferencesUnavailable() extends StatelessWidget {
           icon: TablerRegular.info_circle,
           title: Text(context.loc.notificationPreferencesUnavailableTitle),
           subtitle: Text(context.loc.notificationPreferencesUnavailableDescription),
-          isLast: true,
         ),
       ],
     );
@@ -155,7 +152,6 @@ class const _NotificationPreferencesFailure() extends StatelessWidget {
             size: PregoButtonsSolidSize.sm,
             onPressed: context.read<NotificationPreferencesCubit>().retry,
           ),
-          isLast: true,
         ),
       ],
     );
@@ -168,7 +164,6 @@ class const _NotificationToggleRow({
   required final String? subtitle,
   required final Map<NotificationCategory, bool> preferences,
   required final Set<NotificationCategory> updatingCategories,
-  final bool isLast = false,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -204,7 +199,6 @@ class const _NotificationToggleRow({
         subtitle: subtitle != null ? Text(subtitle) : null,
         trailing: trailing,
         onTap: isUpdating ? null : () => toggle(enabled: !enabled),
-        isLast: isLast,
       ),
     );
   }

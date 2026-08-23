@@ -38,7 +38,6 @@ class const BridgeSettingsSection({super.key}) extends StatelessWidget {
               BridgeSettingsFailure() ||
               BridgeSettingsReady() => null,
             },
-            isLast: true,
           ),
         ],
       ),

@@ -59,9 +59,9 @@ void main() async {
     SystemUiMode.edgeToEdge,
     overlays: SystemUiOverlay.values,
   );
-  final shouldInitializeFirebase = _shouldInitializeFirebase;
-  final supportsFirebaseAnalytics = _supportsFirebaseAnalytics;
-  final supportsFirebaseCrashlytics = _supportsFirebaseCrashlytics;
+  final shouldInitializeFirebase = _supportsFirebase;
+  final supportsFirebaseAnalytics = _supportsFirebase;
+  final supportsFirebaseCrashlytics = _supportsFirebase;
   if (shouldInitializeFirebase) {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   }
@@ -229,31 +229,7 @@ Future<void> _runNotificationStartupStep(Future<void> Function() step) async {
   }
 }
 
-bool get _shouldInitializeFirebase {
-  if (kIsWeb) {
-    return false;
-  }
-
-  return switch (defaultTargetPlatform) {
-    TargetPlatform.android => !kProfileMode,
-    TargetPlatform.iOS || TargetPlatform.macOS => true,
-    TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => false,
-  };
-}
-
-bool get _supportsFirebaseAnalytics {
-  if (kIsWeb) {
-    return false;
-  }
-
-  return switch (defaultTargetPlatform) {
-    TargetPlatform.android => !kProfileMode,
-    TargetPlatform.iOS || TargetPlatform.macOS => true,
-    TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => false,
-  };
-}
-
-bool get _supportsFirebaseCrashlytics {
+bool get _supportsFirebase {
   if (kIsWeb) {
     return false;
   }

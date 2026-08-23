@@ -101,7 +101,6 @@ class const _SettingsBody() extends StatelessWidget {
                           title: Text(loc.settingsProfileTitle),
                           trailing: const Icon(TablerRegular.chevron_right),
                           onTap: () => context.pushRoute(const AppRoute.settingsProfile()),
-                          isLast: true,
                         ),
                     ],
                   ),
@@ -124,7 +123,6 @@ class const _SettingsBody() extends StatelessWidget {
                           presentation: HarnessSettingsPresentation.pushed,
                         ),
                       ),
-                      isLast: true,
                     ),
                   ],
                 ),
@@ -161,7 +159,6 @@ class const _SettingsBody() extends StatelessWidget {
                         icon: TablerRegular.brand_twitter,
                         title: loc.settingsSupportX,
                         url: SupportLinks.x,
-                        isLast: true,
                       ),
                     ],
                   ),
@@ -180,7 +177,6 @@ class const _SettingsBody() extends StatelessWidget {
                         icon: TablerRegular.lock,
                         title: loc.settingsLegalPrivacy,
                         document: LegalDocument.privacy,
-                        isLast: true,
                       ),
                     ],
                   ),
@@ -205,7 +201,6 @@ class const _SupportRow({
   required final IconData icon,
   required final String title,
   required final String url,
-  final bool isLast = false,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -216,7 +211,6 @@ class const _SupportRow({
       onTap: () => unawaited(
         openExternalLink(url: Uri.parse(url), mode: UrlLaunchMode.externalApp).then<void>((_) {}),
       ),
-      isLast: isLast,
     );
   }
 }
@@ -227,7 +221,6 @@ class const _LegalRow({
   required final IconData icon,
   required final String title,
   required final LegalDocument document,
-  final bool isLast = false,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -236,7 +229,6 @@ class const _LegalRow({
       title: Text(title),
       trailing: const Icon(TablerRegular.chevron_right),
       onTap: () => unawaited(showLegalDocumentSheet(context, document: document)),
-      isLast: isLast,
     );
   }
 }

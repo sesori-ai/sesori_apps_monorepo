@@ -1,7 +1,6 @@
 import "dart:async";
 
 import "package:cupertino_ui/cupertino_ui.dart" show CupertinoColors, CupertinoDynamicColor;
-import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -18,6 +17,7 @@ import "../../core/extensions/text_style_x.dart";
 import "../../core/external_link.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/support_links.dart";
+import "../../core/utils/copy_text_to_clipboard.dart";
 import "../../core/widgets/connection_banner.dart";
 import "../../core/widgets/connection_graphic.dart";
 import "add_project_dialog.dart";

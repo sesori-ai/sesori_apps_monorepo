@@ -27,6 +27,7 @@ export 'components/navigation/prego_top_bar_inset.dart'
     show PregoTopBarInsetBuilder, PregoTopBarInsetScope, pregoTopBarInsetOf;
 export 'components/navigation/prego_top_navigation.dart';
 export 'components/navigation/prego_top_navigation_sheets.dart';
+export 'components/prego_size_observer.dart';
 export 'components/surfaces/prego_bottom_sheet.dart';
 export 'components/surfaces/prego_grouped_rows.dart';
 export 'components/surfaces/prego_surfaces.dart';

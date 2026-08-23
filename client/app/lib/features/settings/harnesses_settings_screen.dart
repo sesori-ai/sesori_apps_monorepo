@@ -1,6 +1,5 @@
 import "dart:async";
 
-import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
@@ -12,6 +11,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
+import "../../core/utils/copy_text_to_clipboard.dart";
 import "../../core/widgets/connection_banner.dart";
 import "widgets/settings_section.dart";
 
@@ -206,7 +206,6 @@ class const _UnsupportedView() extends StatelessWidget {
           icon: TablerRegular.info_circle,
           title: Text(context.loc.harnessesUnsupportedTitle),
           subtitle: Text(context.loc.harnessesUnsupportedDescription),
-          isLast: true,
         ),
       ],
     );
@@ -232,7 +231,6 @@ class const _FailureView() extends StatelessWidget {
               onPressed: context.read<PluginManagementCubit>().refresh,
             ),
           ),
-          isLast: true,
         ),
       ],
     );
@@ -313,7 +311,6 @@ class const _ReadyView({required final PluginManagementReady state}) extends Sta
                   onTap: _controlsBlocked(state.action)
                       ? null
                       : () => _editDefaultTimeout(context: context, state: state),
-                  isLast: true,
                 ),
               ],
             ),
@@ -329,7 +326,6 @@ class const _ReadyView({required final PluginManagementReady state}) extends Sta
                       icon: TablerRegular.info_circle,
                       title: Text(loc.harnessesEmptyTitle),
                       subtitle: Text(loc.harnessesEmptyDescription),
-                      isLast: true,
                     ),
                   ],
                 )
@@ -374,7 +370,6 @@ class const _MessageRow({
             onPressed: onDismiss,
             icon: const Icon(TablerRegular.x),
           ),
-          isLast: true,
         ),
       ],
     );
@@ -473,34 +468,11 @@ class const _HarnessControlCard({
           _FactRow(
             title: loc.harnessesSetupStatus,
             value: _setupStatus(context: context, state: plugin.setup.state),
-            isLast:
-                !(runtimeVersion != null ||
-                    showRuntime ||
-                    showWork ||
-                    showExternal ||
-                    showInstall ||
-                    showAuthentication ||
-                    showLifecycle ||
-                    showSetupRefresh ||
-                    showRestart ||
-                    showTimeout ||
-                    showClearTimeout),
           ),
           if (runtimeVersion != null)
             _FactRow(
               title: loc.harnessesRuntimeVersion,
               value: runtimeVersion,
-              isLast:
-                  !(showRuntime ||
-                      showWork ||
-                      showExternal ||
-                      showInstall ||
-                      showAuthentication ||
-                      showLifecycle ||
-                      showSetupRefresh ||
-                      showRestart ||
-                      showTimeout ||
-                      showClearTimeout),
             ),
           if (showAuthentication)
             PregoGroupedRow(
@@ -518,43 +490,16 @@ class const _HarnessControlCard({
               onTap: blocked || authenticationStarting
                   ? null
                   : () => context.read<PluginManagementCubit>().startAuthentication(pluginId: pluginId),
-              isLast:
-                  !(showRuntime ||
-                      showWork ||
-                      showExternal ||
-                      showInstall ||
-                      showLifecycle ||
-                      showSetupRefresh ||
-                      showRestart ||
-                      showTimeout ||
-                      showClearTimeout),
             ),
           if (showRuntime)
             _FactRow(
               title: loc.harnessesRuntimeStatus,
               value: _runtimeStatus(context: context, state: plugin.runtimeState),
-              isLast:
-                  !(showWork ||
-                      showExternal ||
-                      showInstall ||
-                      showLifecycle ||
-                      showSetupRefresh ||
-                      showRestart ||
-                      showTimeout ||
-                      showClearTimeout),
             ),
           if (showWork)
             _FactRow(
               title: loc.harnessesWorkStatus,
               value: _workStatus(context: context, state: plugin.workState),
-              isLast:
-                  !(showExternal ||
-                      showInstall ||
-                      showLifecycle ||
-                      showSetupRefresh ||
-                      showRestart ||
-                      showTimeout ||
-                      showClearTimeout),
             ),
           if (showExternal)
             PregoGroupedRow(
@@ -562,8 +507,6 @@ class const _HarnessControlCard({
               icon: TablerRegular.info_circle,
               title: Text(loc.harnessManagementExternalTitle),
               subtitle: Text(loc.harnessManagementExternalDescription),
-              isLast:
-                  !(showInstall || showLifecycle || showSetupRefresh || showRestart || showTimeout || showClearTimeout),
             ),
           if (showInstall)
             PregoGroupedRow(
@@ -592,7 +535,6 @@ class const _HarnessControlCard({
               onTap: blocked || installing
                   ? null
                   : () => context.read<PluginManagementCubit>().install(pluginId: pluginId),
-              isLast: !(showLifecycle || showSetupRefresh || showRestart || showTimeout || showClearTimeout),
             ),
           if (showLifecycle)
             MergeSemantics(
@@ -612,7 +554,6 @@ class const _HarnessControlCard({
                     : () => enabled
                           ? context.read<PluginManagementCubit>().disable(pluginId: pluginId)
                           : context.read<PluginManagementCubit>().enable(pluginId: pluginId),
-                isLast: !(showSetupRefresh || showRestart || showTimeout || showClearTimeout),
               ),
             ),
           if (showSetupRefresh)
@@ -621,7 +562,6 @@ class const _HarnessControlCard({
               icon: TablerRegular.refresh,
               title: Text(loc.harnessManagementRefreshSetup),
               onTap: blocked ? null : () => context.read<PluginManagementCubit>().refreshSetup(pluginId: pluginId),
-              isLast: !(showRestart || showTimeout || showClearTimeout),
             ),
           if (showRestart)
             PregoGroupedRow(
@@ -629,7 +569,6 @@ class const _HarnessControlCard({
               icon: TablerRegular.rotate_clockwise,
               title: Text(loc.harnessManagementRestart),
               onTap: blocked ? null : () => context.read<PluginManagementCubit>().restart(pluginId: pluginId),
-              isLast: !(showTimeout || showClearTimeout),
             ),
           if (showTimeout)
             PregoGroupedRow(
@@ -645,7 +584,6 @@ class const _HarnessControlCard({
               ),
               trailing: Text(_timeoutLabel(context: context, minutes: plugin.idleTimeoutMins)),
               onTap: blocked ? null : () => _editHarnessTimeout(context: context, plugin: plugin),
-              isLast: !showClearTimeout,
             ),
           if (showClearTimeout)
             PregoGroupedRow(
@@ -655,7 +593,6 @@ class const _HarnessControlCard({
               onTap: blocked
                   ? null
                   : () => context.read<PluginManagementCubit>().clearIdleTimeoutOverride(pluginId: pluginId),
-              isLast: true,
             ),
         ],
       ),
@@ -663,7 +600,7 @@ class const _HarnessControlCard({
   }
 }
 
-class const _FactRow({required final String title, required final String value, required final bool isLast}) extends StatelessWidget {
+class const _FactRow({required final String title, required final String value}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PregoGroupedRow(
@@ -673,7 +610,6 @@ class const _FactRow({required final String title, required final String value, 
         textAlign: TextAlign.end,
         style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
       ),
-      isLast: isLast,
     );
   }
 }
@@ -850,7 +786,6 @@ class _TimeoutSheetState() extends State<_TimeoutSheet> {
                       activeColor: context.prego.colors.fgBrandPrimary,
                     ),
                     onTap: () => _select(_TimeoutChoice.custom),
-                    isLast: true,
                   ),
                 ),
               ],
@@ -999,16 +934,11 @@ Future<void> _showAuthenticationSheet({
 
 class const _AuthenticationSheet() extends StatelessWidget {
   Future<void> _copyCode({required BuildContext context, required String code}) async {
-    try {
-      await Clipboard.setData(ClipboardData(text: code));
-      if (!context.mounted) return;
-      PregoPopupAlertPresenter.of(context).show(
-        title: context.loc.harnessAuthenticationCodeCopied,
-        variant: PregoPopupAlertsNotificationsVariant.success,
-      );
-    } on Object catch (error, stackTrace) {
-      logw("Failed to copy authentication code", error, stackTrace);
-    }
+    if (!await copyTextToClipboard(text: code, operation: "authentication code") || !context.mounted) return;
+    PregoPopupAlertPresenter.of(context).show(
+      title: context.loc.harnessAuthenticationCodeCopied,
+      variant: PregoPopupAlertsNotificationsVariant.success,
+    );
   }
 
   @override
@@ -1066,7 +996,6 @@ class const _AuthenticationSheet() extends StatelessWidget {
                   onPressed: () => _copyCode(context: context, code: challenge.userCode),
                   icon: const Icon(TablerRegular.copy),
                 ),
-                isLast: true,
               ),
             ],
           ),

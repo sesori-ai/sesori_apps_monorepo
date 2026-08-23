@@ -14,7 +14,7 @@ void main() {
     await tester.pumpWidget(
       _harness(
         const PregoGroupedRows(
-          children: [PregoGroupedRow(title: Text("Alpha"), isLast: true)],
+          children: [PregoGroupedRow(title: Text("Alpha"))],
         ),
       ),
     );
@@ -36,7 +36,6 @@ void main() {
               title: const Text("Notifications"),
               trailing: const Icon(TablerRegular.chevron_right),
               onTap: () => taps++,
-              isLast: true,
             ),
           ],
         ),
@@ -57,7 +56,7 @@ void main() {
         const PregoGroupedRows(
           children: [
             PregoGroupedRow(title: Text("Alpha"), subtitle: Text("first")),
-            PregoGroupedRow(title: Text("Beta"), isLast: true),
+            PregoGroupedRow(title: Text("Beta")),
           ],
         ),
       ),
@@ -75,7 +74,7 @@ void main() {
         const PregoGroupedRows(
           children: [
             PregoGroupedRow(title: Text("Alpha"), subtitle: Text("first")),
-            PregoGroupedRow(title: Text("Beta"), isLast: true),
+            PregoGroupedRow(title: Text("Beta")),
           ],
         ),
       ),
