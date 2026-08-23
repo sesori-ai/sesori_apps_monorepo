@@ -58,7 +58,6 @@ class OmpPlugin._({
       repository: catalogRepository,
       tracker: catalogTracker,
       totalTimeout: const Duration(seconds: 20),
-      maxModels: 24,
     );
     final ompSessionOptionsService = OmpSessionOptionsService(
       catalogService: catalogService,

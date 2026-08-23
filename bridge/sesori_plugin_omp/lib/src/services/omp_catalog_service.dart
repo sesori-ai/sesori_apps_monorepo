@@ -13,7 +13,6 @@ class OmpCatalogService({
   required final OmpCatalogRepository _repository,
   required final OmpCatalogTracker _tracker,
   required final Duration _totalTimeout,
-  required final int _maxModels,
 }) {
   final Map<String, Future<OmpCatalogDiscoveryResult>> _inFlight = {};
   Future<void> _leaseTail = Future.value();
@@ -73,7 +72,9 @@ class OmpCatalogService({
       }
 
       final thinkingByModel = <String, OmpThinkingOptions>{};
-      for (final model in initial.models.take(_maxModels)) {
+      // The total deadline bounds this sweep. A count cap would make every larger
+      // healthy catalog partial, so it could never replace an older complete cache.
+      for (final model in initial.models) {
         try {
           final snapshot = await _repository.selectModel(
             sessionId: sessionId,
