@@ -82,11 +82,7 @@ void main() {
         limit: null,
         verifiedGithubLogin: null,
       );
-      final detail = await repository.getSessionForProject(
-        projectId: "project-X",
-        sessionId: "stable-id",
-        verifiedGithubLogin: null,
-      );
+      final detail = await repository.getCatalogSession(sessionId: "stable-id");
 
       expect(listed.single.id, "stable-id");
       expect(listed.single.pluginId, "offline-plugin");
@@ -136,13 +132,7 @@ void main() {
             verifiedGithubLogin: null,
           )
           .timeout(const Duration(seconds: 1));
-      final detail = await repository
-          .getSessionForProject(
-            projectId: "project-X",
-            sessionId: "root",
-            verifiedGithubLogin: null,
-          )
-          .timeout(const Duration(seconds: 1));
+      final detail = await repository.getCatalogSession(sessionId: "root").timeout(const Duration(seconds: 1));
       final children = await repository.getChildSessions(sessionId: "root").timeout(const Duration(seconds: 1));
 
       expect(roots.single.id, "root");
@@ -165,11 +155,7 @@ void main() {
         throwsA(isA<ProjectNotFoundException>()),
       );
       expect(
-        await repository.getSessionForProject(
-          projectId: "project-X",
-          sessionId: "missing",
-          verifiedGithubLogin: null,
-        ),
+        await repository.getCatalogSession(sessionId: "missing"),
         isNull,
       );
       await expectLater(
@@ -242,6 +228,7 @@ Future<void> _insertRoot({
     lastAgent: null,
     lastAgentModel: null,
     pluginId: pluginId,
+    preservePullRequestScope: false,
   );
   await database.sessionDao.updateObservedSessionProjection(
     sessionId: sessionId,

@@ -269,6 +269,7 @@ void main() {
       lastAgent: null,
       lastAgentModel: null,
       pluginId: "one",
+      preservePullRequestScope: false,
     );
     final patch = harness.composition.session.localWireEvents
         .where((event) => event is SesoriSessionUnseenChanged)
@@ -880,6 +881,7 @@ Future<void> _insertEventSession({required AppDatabase database, required String
   await database.projectsDao.insertProjectsIfMissing(projectIds: ["project"]);
   await database.sessionDao.insertSession(
     pluginId: pluginId,
+    preservePullRequestScope: false,
     sessionId: "stable-session",
     backendSessionId: "backend-session",
     projectId: "project",

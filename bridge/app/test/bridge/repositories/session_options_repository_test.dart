@@ -51,6 +51,7 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "plugin-1",
+        preservePullRequestScope: false,
       );
 
       expect(await repository.resolveProjectPath(projectId: "project-1"), "/projects/current");

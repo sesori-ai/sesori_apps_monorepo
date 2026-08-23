@@ -2,10 +2,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/database/daos/session_dao.dart";
-import "../api/database/tables/session_table.dart";
 import "../runtime/plugin_runtime.dart";
-import "mappers/plugin_permission_mapper.dart";
 import "models/session_operation.dart";
+import "pending_interaction_support.dart";
 
 /// Layer 2 repository wrapping [plugin_interface.BridgePlugin] for permission operations.
 ///
@@ -17,10 +16,12 @@ import "models/session_operation.dart";
 /// plugin-contract [plugin_interface.PermissionReply] to keep the two enums
 /// decoupled.
 class PermissionRepository({required final PluginRuntime _runtime, required final SessionDao _sessionDao}) {
+  late final PendingInteractionSupport _pendingSupport = PendingInteractionSupport(sessionDao: _sessionDao);
+
   /// Pending permissions to surface on [sessionId]'s screen (its own plus any
   /// descendant session whose root resolves to it).
   Future<List<PendingPermission>> getPendingPermissions({required String sessionId}) async {
-    final binding = await _requireBinding(
+    final binding = await _pendingSupport.requireBinding(
       sessionId: sessionId,
       operation: SessionOperation.getPendingPermissions,
     );
@@ -37,7 +38,7 @@ class PermissionRepository({required final PluginRuntime _runtime, required fina
           if (tombstoned.contains(binding.backendSessionId)) return const <PendingPermission>[];
         }
         final permissions = await plugin.getPendingPermissions(sessionId: binding.backendSessionId);
-        return await _mapPendingPermissions(
+        return await _pendingSupport.mapPermissions(
           pluginId: plugin.id,
           permissions: [
             for (final permission in permissions)
@@ -51,17 +52,18 @@ class PermissionRepository({required final PluginRuntime _runtime, required fina
     return pending ?? const [];
   }
 
-  static bool _isVisible(PluginPendingPermission permission, Set<String> tombstoned) {
-    return !tombstoned.contains(permission.sessionID) &&
-        (permission.displaySessionId == null || !tombstoned.contains(permission.displaySessionId));
-  }
+  bool _isVisible(PluginPendingPermission permission, Set<String> tombstoned) => _pendingSupport.isVisible(
+    sessionId: permission.sessionID,
+    displaySessionId: permission.displaySessionId,
+    tombstones: tombstoned,
+  );
 
   Future<void> replyToPermission({
     required String requestId,
     required String sessionId,
     required PermissionReply reply,
   }) async {
-    final binding = await _requireBinding(
+    final binding = await _pendingSupport.requireBinding(
       sessionId: sessionId,
       operation: SessionOperation.replyToPermission,
     );
@@ -69,32 +71,16 @@ class PermissionRepository({required final PluginRuntime _runtime, required fina
       pluginId: binding.pluginId,
       operation: SessionOperation.replyToPermission,
       body: (plugin) async {
-        if (plugin is BridgeDerivedProjectsPluginApi) {
-          final tombstoned = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
-          if (tombstoned.contains(binding.backendSessionId)) {
-            throw PluginOperationException.notFound(
-              SessionOperation.replyToPermission.name,
-              message: "session ${binding.backendSessionId} was deleted",
-            );
-          }
-          final pending = await plugin.getPendingPermissions(sessionId: binding.backendSessionId);
-          for (final permission in pending) {
-            if (permission.id != requestId) continue;
-            if (tombstoned.contains(permission.sessionID)) {
-              throw PluginOperationException.notFound(
-                SessionOperation.replyToPermission.name,
-                message: "session ${permission.sessionID} was deleted",
-              );
-            }
-            if (permission.displaySessionId case final displaySessionId? when tombstoned.contains(displaySessionId)) {
-              throw PluginOperationException.notFound(
-                SessionOperation.replyToPermission.name,
-                message: "display session $displaySessionId was deleted",
-              );
-            }
-            break;
-          }
-        }
+        await _pendingSupport.throwIfMutationTargetTombstoned(
+          interactionId: requestId,
+          backendSessionId: binding.backendSessionId,
+          operation: SessionOperation.replyToPermission,
+          plugin: plugin,
+          readPending: () async => [
+            for (final permission in await plugin.getPendingPermissions(sessionId: binding.backendSessionId))
+              (id: permission.id, sessionID: permission.sessionID, displaySessionId: permission.displaySessionId),
+          ],
+        );
         return await plugin.replyToPermission(
           requestId: requestId,
           sessionId: binding.backendSessionId,
@@ -109,45 +95,4 @@ class PermissionRepository({required final PluginRuntime _runtime, required fina
     .always => .always,
     .reject => .reject,
   };
-
-  Future<SessionDto> _requireBinding({
-    required String sessionId,
-    required SessionOperation operation,
-  }) async {
-    final binding = await _sessionDao.getSession(sessionId: sessionId);
-    if (binding == null) {
-      throw PluginOperationException.notFound(
-        operation.name,
-        message: "session $sessionId was not found",
-      );
-    }
-    return binding;
-  }
-
-  Future<List<PendingPermission>> _mapPendingPermissions({
-    required String pluginId,
-    required List<PluginPendingPermission> permissions,
-  }) async {
-    final backendSessionIds = {
-      for (final permission in permissions) ...{
-        permission.sessionID,
-        ?permission.displaySessionId,
-      },
-    };
-    final bindings = await _sessionDao.getSessionsByBackendIds(
-      pluginId: pluginId,
-      backendSessionIds: backendSessionIds.toList(growable: false),
-    );
-    return [
-      for (final permission in permissions)
-        if (bindings[permission.sessionID] case final session?)
-          if (permission.displaySessionId == null || bindings.containsKey(permission.displaySessionId))
-            permission.toSharedPendingPermission(
-              sessionId: session.sessionId,
-              displaySessionId: permission.displaySessionId == null
-                  ? null
-                  : bindings[permission.displaySessionId]!.sessionId,
-            ),
-    ];
-  }
 }

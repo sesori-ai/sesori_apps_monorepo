@@ -32,6 +32,7 @@ void main() {
       final createdAt = DateTime.now().millisecondsSinceEpoch;
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "ses-1",
         backendSessionId: "ses-1",
         projectId: "proj-1",
@@ -64,6 +65,7 @@ void main() {
       final createdAt = DateTime.now().millisecondsSinceEpoch;
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "ses-simple",
         backendSessionId: "ses-simple",
         projectId: "proj-1",
@@ -92,6 +94,7 @@ void main() {
     test("replaceGeneratedBranch conditionally updates durable and current branch names", () async {
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "ses-generated-branch",
         backendSessionId: "ses-generated-branch",
         projectId: "proj-1",
@@ -130,6 +133,7 @@ void main() {
     test("replaceGeneratedBranch preserves a concurrently switched current branch", () async {
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "ses-switched-branch",
         backendSessionId: "ses-switched-branch",
         projectId: "proj-1",
@@ -202,6 +206,7 @@ void main() {
     test("insertSession persists optional prompt defaults", () async {
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "ses-insert-defaults",
         backendSessionId: "ses-insert-defaults",
         projectId: "proj-1",
@@ -231,6 +236,7 @@ void main() {
     test("updatePromptDefaults overwrites all prompt default fields", () async {
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "ses-update-defaults",
         backendSessionId: "ses-update-defaults",
         projectId: "proj-1",
@@ -270,6 +276,7 @@ void main() {
     test("setTitleIfNull ignores catalog title and does not replace a bridge title", () async {
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "ses-generated-title",
         backendSessionId: "ses-generated-title",
         projectId: "proj-1",
@@ -333,6 +340,7 @@ void main() {
     test("delete session then get returns null", () async {
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "ses-2",
         backendSessionId: "ses-2",
         projectId: "proj-2",
@@ -356,6 +364,7 @@ void main() {
     test("deleteSession is no-op for unknown sessionId", () async {
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "ses-3",
         backendSessionId: "ses-3",
         projectId: "proj-3",
@@ -412,6 +421,7 @@ void main() {
     test("setArchived updates archivedAt", () async {
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "ses-4",
         backendSessionId: "ses-4",
         projectId: "proj-4",
@@ -439,6 +449,7 @@ void main() {
     test("getSessionsByProject and getSessionsByIds return expected sessions", () async {
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "ses-a",
         backendSessionId: "ses-a",
         projectId: "proj-x",
@@ -454,6 +465,7 @@ void main() {
       );
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "ses-b",
         backendSessionId: "ses-b",
         projectId: "proj-x",
@@ -469,6 +481,7 @@ void main() {
       );
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "ses-c",
         backendSessionId: "ses-c",
         projectId: "proj-y",
@@ -498,6 +511,7 @@ void main() {
       test("returns empty when both params are null", () async {
         await dao.insertSession(
           pluginId: "opencode",
+          preservePullRequestScope: false,
           sessionId: "ses-1",
           backendSessionId: "ses-1",
           projectId: "proj-1",
@@ -525,6 +539,7 @@ void main() {
       test("finds other session sharing worktreePath", () async {
         await dao.insertSession(
           pluginId: "opencode",
+          preservePullRequestScope: false,
           sessionId: "ses-a",
           backendSessionId: "ses-a",
           projectId: "proj-1",
@@ -540,6 +555,7 @@ void main() {
         );
         await dao.insertSession(
           pluginId: "opencode",
+          preservePullRequestScope: false,
           sessionId: "ses-b",
           backendSessionId: "ses-b",
           projectId: "proj-1",
@@ -568,6 +584,7 @@ void main() {
       test("finds other session sharing branchName", () async {
         await dao.insertSession(
           pluginId: "opencode",
+          preservePullRequestScope: false,
           sessionId: "ses-a",
           backendSessionId: "ses-a",
           projectId: "proj-1",
@@ -583,6 +600,7 @@ void main() {
         );
         await dao.insertSession(
           pluginId: "opencode",
+          preservePullRequestScope: false,
           sessionId: "ses-b",
           backendSessionId: "ses-b",
           projectId: "proj-1",
@@ -611,6 +629,7 @@ void main() {
       test("excludes the current session from results", () async {
         await dao.insertSession(
           pluginId: "opencode",
+          preservePullRequestScope: false,
           sessionId: "ses-a",
           backendSessionId: "ses-a",
           projectId: "proj-1",
@@ -638,6 +657,7 @@ void main() {
       test("excludes archived sessions", () async {
         await dao.insertSession(
           pluginId: "opencode",
+          preservePullRequestScope: false,
           sessionId: "ses-a",
           backendSessionId: "ses-a",
           projectId: "proj-1",
@@ -653,6 +673,7 @@ void main() {
         );
         await dao.insertSession(
           pluginId: "opencode",
+          preservePullRequestScope: false,
           sessionId: "ses-b",
           backendSessionId: "ses-b",
           projectId: "proj-1",
@@ -686,6 +707,7 @@ void main() {
       test("uses OR logic when both worktreePath and branchName provided", () async {
         await dao.insertSession(
           pluginId: "opencode",
+          preservePullRequestScope: false,
           sessionId: "ses-a",
           backendSessionId: "ses-a",
           projectId: "proj-1",
@@ -701,6 +723,7 @@ void main() {
         );
         await dao.insertSession(
           pluginId: "opencode",
+          preservePullRequestScope: false,
           sessionId: "ses-b",
           backendSessionId: "ses-b",
           projectId: "proj-1",
@@ -716,6 +739,7 @@ void main() {
         );
         await dao.insertSession(
           pluginId: "opencode",
+          preservePullRequestScope: false,
           sessionId: "ses-c",
           backendSessionId: "ses-c",
           projectId: "proj-1",
@@ -746,6 +770,7 @@ void main() {
         // name. Cleanup of one must not be blocked by the other.
         await dao.insertSession(
           pluginId: "opencode",
+          preservePullRequestScope: false,
           sessionId: "ses-a",
           backendSessionId: "ses-a",
           projectId: "proj-1",
@@ -761,6 +786,7 @@ void main() {
         );
         await dao.insertSession(
           pluginId: "opencode",
+          preservePullRequestScope: false,
           sessionId: "ses-b",
           backendSessionId: "ses-b",
           projectId: "proj-2",
@@ -843,6 +869,7 @@ void main() {
       // Pre-insert a full session with worktree state.
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "sess-existing",
         backendSessionId: "sess-existing",
         projectId: "proj-1",
@@ -1020,6 +1047,7 @@ void main() {
         expect(
           () async => await dao.insertSession(
             pluginId: "opencode",
+            preservePullRequestScope: false,
             sessionId: "s2",
             backendSessionId: "s2",
             projectId: "nonexistent",

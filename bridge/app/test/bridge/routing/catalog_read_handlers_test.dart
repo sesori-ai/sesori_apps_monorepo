@@ -52,6 +52,7 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "offline-plugin",
+        preservePullRequestScope: false,
       );
       await database.sessionDao.insertObservedChild(
         sessionId: "child",

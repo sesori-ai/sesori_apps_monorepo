@@ -743,6 +743,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
         pluginId: "fake",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "p1",
@@ -1054,7 +1055,7 @@ void main() {
       try {
         final result = await response;
         expect(result.items, hasLength(1));
-        expect(result.items.single.branchName, "feature/b");
+        expect(result.items.single.branchName, isNull);
         expect(result.items.single.pullRequest?.number, 98);
         expect(sessionRepository.getSessionsCallCount, equals(1));
       } finally {
@@ -1218,7 +1219,7 @@ void main() {
           )
           .timeout(prRefreshTimeout);
 
-      expect(result.items.single.branchName, "feature/new");
+      expect(result.items.single.branchName, isNull);
       expect(result.items.single.pullRequest?.number, 100);
       expect(sessionRepository.getSessionsCallCount, 1);
       expect(sessionRepository.enrichSessionsCallCount, 1);

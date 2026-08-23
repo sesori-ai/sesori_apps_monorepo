@@ -110,9 +110,6 @@ SessionRepository singlePluginSessionRepository({
           plugins: [plugin],
           eligiblePluginIds: eligiblePluginIds,
         ),
-    bridgeDerivedProjectPluginIds: {
-      if (plugin is BridgeDerivedProjectsPluginApi) plugin.id,
-    },
     sessionDao: sessionDao,
     projectsDao: projectsDao,
     pullRequestDao: pullRequestDao,

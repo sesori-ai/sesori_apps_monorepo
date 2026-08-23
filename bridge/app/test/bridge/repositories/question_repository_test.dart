@@ -41,6 +41,7 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "codex",
+        preservePullRequestScope: false,
       );
     }
 
@@ -65,6 +66,7 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           pluginId: "codex",
+          preservePullRequestScope: false,
         );
       } else {
         await db.sessionDao.insertObservedChild(
@@ -263,6 +265,7 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "codex",
+        preservePullRequestScope: false,
       );
       final plugin = _FakeDerivedQuestionPlugin(
         launchDirectory: parent,

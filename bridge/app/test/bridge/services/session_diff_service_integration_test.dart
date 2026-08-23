@@ -361,6 +361,7 @@ Future<void> _insertStoredSession({
   await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
   await db.sessionDao.insertSession(
     pluginId: "opencode",
+    preservePullRequestScope: false,
     sessionId: sessionId,
     backendSessionId: sessionId,
     projectId: projectId,
@@ -385,6 +386,7 @@ Future<void> _insertInPlaceStoredSession({
   await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
   await db.sessionDao.insertSession(
     pluginId: "opencode",
+    preservePullRequestScope: false,
     sessionId: sessionId,
     backendSessionId: sessionId,
     projectId: projectId,

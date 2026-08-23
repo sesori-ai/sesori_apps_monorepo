@@ -51,6 +51,7 @@ void main() {
       );
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "/repo",
@@ -77,6 +78,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "/repo",
@@ -101,6 +103,7 @@ void main() {
 
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: true,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "/repo",
@@ -123,6 +126,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "stable-root-id",
         backendSessionId: "backend-root-id",
         projectId: "/repo",
@@ -156,6 +160,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       await dao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "stable-root-id",
         backendSessionId: "backend-root-id",
         projectId: "/repo",

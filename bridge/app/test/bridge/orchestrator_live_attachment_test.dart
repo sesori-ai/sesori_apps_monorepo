@@ -424,6 +424,7 @@ Future<void> _insertRootSession({required AppDatabase database}) async {
     lastAgent: null,
     lastAgentModel: null,
     pluginId: _pluginId,
+    preservePullRequestScope: false,
   );
 }
 

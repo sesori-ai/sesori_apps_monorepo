@@ -122,7 +122,7 @@ class ProjectRepository({
   /// the resolved project's path after [resolveProjectOpenTarget] took its snapshot.
   Future<
     ({
-      ProjectActivity committedActivity,
+      ProjectTime committedActivity,
       Project committedProject,
       bool updatedAtAdvanced,
     })
@@ -145,31 +145,31 @@ class ProjectRepository({
       );
       final committedProject = existing == null ? target : target.copyWith(id: existing.projectId);
       final currentActivity = _mapActivity(existing);
-      final committedActivity = ProjectActivity(
-        createdAt: currentActivity?.createdAt ?? observedAt,
-        updatedAt: max(currentActivity?.updatedAt ?? observedAt, observedAt),
+      final committedActivity = ProjectTime(
+        created: currentActivity?.created ?? observedAt,
+        updated: max(currentActivity?.updated ?? observedAt, observedAt),
       );
       await _projectsDao.recordOpenedProject(
         projectId: committedProject.id,
         path: committedProject.path,
         displayName: null,
-        createdAt: committedActivity.createdAt,
-        updatedAt: committedActivity.updatedAt,
+        createdAt: committedActivity.created,
+        updatedAt: committedActivity.updated,
       );
       return (
         committedActivity: committedActivity,
         committedProject: committedProject,
-        updatedAtAdvanced: currentActivity == null || committedActivity.updatedAt > currentActivity.updatedAt,
+        updatedAtAdvanced: currentActivity == null || committedActivity.updated > currentActivity.updated,
       );
     });
   }
 
   Future<Project> mapOpenedProject({
     required Project project,
-    required ProjectActivity committedActivity,
+    required ProjectTime committedActivity,
   }) async {
     return project.copyWith(
-      time: _activityToTime(committedActivity),
+      time: committedActivity,
       hasUnseenChanges: await projectHasUnseenChanges(projectId: project.id),
       directoryMissing: _directoryMissing(project.path),
     );
@@ -236,7 +236,7 @@ class ProjectRepository({
     return StoredProjectActivity(projectId: session.projectId, activity: activity);
   }
 
-  Future<Map<String, ProjectActivity>> getActivities({required Set<String> projectIds}) async {
+  Future<Map<String, ProjectTime>> getActivities({required Set<String> projectIds}) async {
     final projects = await _projectsDao.getAllProjects();
     return {
       for (final project in projects)
@@ -244,12 +244,12 @@ class ProjectRepository({
     };
   }
 
-  Future<ProjectActivity?> getActivity({required String projectId}) async {
+  Future<ProjectTime?> getActivity({required String projectId}) async {
     return _mapActivity(await _projectsDao.getProject(projectId: projectId));
   }
 
-  Future<void> writeActivity({required String projectId, required ProjectActivity activity}) =>
-      _projectsDao.setActivity(projectId: projectId, createdAt: activity.createdAt, updatedAt: activity.updatedAt);
+  Future<void> writeActivity({required String projectId, required ProjectTime activity}) =>
+      _projectsDao.setActivity(projectId: projectId, createdAt: activity.created, updatedAt: activity.updated);
 
   bool _directoryMissing(String path) {
     try {
@@ -276,12 +276,8 @@ class ProjectRepository({
     },
   );
 
-  static ProjectTime _activityToTime(ProjectActivity activity) {
-    return ProjectTime(created: activity.createdAt, updated: activity.updatedAt);
-  }
-
-  static ProjectActivity? _mapActivity(ProjectDto? project) {
+  static ProjectTime? _mapActivity(ProjectDto? project) {
     if (project == null) return null;
-    return ProjectActivity(createdAt: project.createdAt, updatedAt: project.updatedAt);
+    return ProjectTime(created: project.createdAt, updated: project.updatedAt);
   }
 }

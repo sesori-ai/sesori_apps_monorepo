@@ -131,6 +131,7 @@ void main() {
       await projectsDao.insertProjectsIfMissing(projectIds: [_projectId]); // satisfy v5 FK constraint
       await sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "parent-001",
         backendSessionId: "parent-001",
         projectId: _projectId,

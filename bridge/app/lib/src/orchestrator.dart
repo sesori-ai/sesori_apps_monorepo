@@ -215,10 +215,6 @@ class Orchestrator({
     final gitCliApi = GitCliApi(processRunner: _processRunner, gitPathExists: _gitPathExists);
     final sessionRepository = SessionRepository(
       runtime: _pluginRuntime,
-      bridgeDerivedProjectPluginIds: {
-        for (final entry in pluginComposition.projectOwnershipById.entries)
-          if (entry.value == PluginProjectOwnership.bridgeDerived) entry.key,
-      },
       sessionDao: _database.sessionDao,
       projectsDao: _database.projectsDao,
       pullRequestDao: _database.pullRequestDao,

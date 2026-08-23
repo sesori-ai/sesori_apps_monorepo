@@ -91,6 +91,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
@@ -122,6 +123,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
@@ -153,6 +155,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
@@ -184,6 +187,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
@@ -221,6 +225,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
@@ -261,6 +266,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
@@ -301,6 +307,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
