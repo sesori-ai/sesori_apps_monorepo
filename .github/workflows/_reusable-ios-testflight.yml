@@ -93,8 +93,12 @@ jobs:
           bundler-cache: true
           working-directory: client/app/ios
 
+      # The build stamp mirrors the Android lane so the analytics build window
+      # applies per build, not per platform; see _flutter_build_appbundle.
       - name: Generate iOS build config
-        run: flutter build ios --config-only --release --no-codesign
+        run: |
+          flutter build ios --config-only --release --no-codesign \
+            --dart-define=SESORI_BUILD_EPOCH_SECONDS=$(date -u +%s)
         working-directory: client/app
 
       - name: Deploy to TestFlight

@@ -21,7 +21,7 @@ void main() {
     final startupStarted = Completer<void>();
     final allowStartupFinish = Completer<void>();
 
-    void configureDependencies() => events.add("configureDependencies");
+    Future<void> configureDependencies() async => events.add("configureDependencies");
 
     void initializeDeepLinks() => events.add("deepLinks");
 

@@ -216,11 +216,16 @@ platform :android do
   # not from the fastlane folder. Output lands at
   # client/app/build/app/outputs/bundle/release/app-release.aab thanks to the
   # build dir redirect in client/app/android/build.gradle.kts.
+  # SESORI_BUILD_EPOCH_SECONDS lets the app keep analytics off for a short window
+  # after compilation, when an unauthenticated launch is almost certainly Play's
+  # pre-launch crawl rather than a person. Production ships a promoted internal
+  # build days later, long after the window closed.
   private_lane :_flutter_build_appbundle do |options|
     build_number = options[:build_number]
     flutter_root = File.expand_path(File.join("..", ".."), Dir.pwd)
     Dir.chdir(flutter_root) do
-      sh "flutter build appbundle --release --build-number=#{build_number}"
+      sh "flutter build appbundle --release --build-number=#{build_number} " \
+         "--dart-define=SESORI_BUILD_EPOCH_SECONDS=#{Time.now.utc.to_i}"
     end
   end
 

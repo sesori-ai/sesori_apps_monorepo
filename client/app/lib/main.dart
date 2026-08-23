@@ -19,7 +19,6 @@ import "core/extensions/appearance_mode_x.dart";
 import "core/extensions/build_context_x.dart";
 import "core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "core/platform/firebase_analytics_startup.dart";
-import "core/platform/firebase_test_lab_environment.dart";
 import "core/routing/app_router.dart";
 import "core/routing/deep_link_service.dart";
 import "firebase_options.dart";
@@ -67,17 +66,16 @@ void main() async {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   }
 
-  final analyticsRuntimeCapability = await _createAnalyticsRuntimeCapability(
-    shouldInitializeFirebase: shouldInitializeFirebase,
-    supportsFirebaseAnalytics: supportsFirebaseAnalytics,
-  );
-
   await bootstrapSesoriApp(
     shouldInitializeFirebase: shouldInitializeFirebase,
-    configureDependenciesFn: () {
-      configureDependencies(
+    configureDependenciesFn: () async {
+      await configureDependencies(
         firebaseEnabled: shouldInitializeFirebase,
-        analyticsRuntimeCapability: analyticsRuntimeCapability,
+        createAnalyticsRuntimeCapability: ({required authSession}) => _createAnalyticsRuntimeCapability(
+          shouldInitializeFirebase: shouldInitializeFirebase,
+          supportsFirebaseAnalytics: supportsFirebaseAnalytics,
+          authSession: authSession,
+        ),
       );
       _configureFirebaseSdk(
         supportsCrashlytics: supportsFirebaseCrashlytics,
@@ -101,7 +99,7 @@ void main() async {
 
 Future<void> bootstrapSesoriApp({
   required bool shouldInitializeFirebase,
-  required void Function() configureDependenciesFn,
+  required Future<void> Function() configureDependenciesFn,
   required void Function() initializeDeepLinks,
   required Future<void> Function() startProductAnalyticsFn,
   required Future<void> Function() startAnalyticsRouteListenerFn,
@@ -110,7 +108,7 @@ Future<void> bootstrapSesoriApp({
   required Future<ChatInputMode> Function() readChatInputModeFn,
   required void Function(Widget app) runAppFn,
 }) async {
-  configureDependenciesFn();
+  await configureDependenciesFn();
   initializeDeepLinks();
   await startProductAnalyticsFn();
   await startAnalyticsRouteListenerFn();
@@ -159,13 +157,14 @@ Future<void> bootstrapSesoriApp({
 Future<AnalyticsRuntimeCapability> _createAnalyticsRuntimeCapability({
   required bool shouldInitializeFirebase,
   required bool supportsFirebaseAnalytics,
+  required AuthSession authSession,
 }) async {
   final capability = !shouldInitializeFirebase || !supportsFirebaseAnalytics
       ? const AnalyticsRuntimeCapability.disabled(
           reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
         )
       : await FirebaseAnalyticsStartup(analytics: FirebaseAnalytics.instance).configure(
-          ineligibilityReason: await _analyticsIneligibilityReason(),
+          ineligibilityReason: await _analyticsIneligibilityReason(authSession: authSession),
         );
   if (capability case AnalyticsRuntimeDisabled(:final reason)) {
     logi("Firebase analytics runtime disabled (${reason.name})");
@@ -173,14 +172,33 @@ Future<AnalyticsRuntimeCapability> _createAnalyticsRuntimeCapability({
   return capability;
 }
 
+/// Unix seconds at which the release lanes compiled this binary. Builds made
+/// outside those lanes leave it 0, which reads as a build too old for a store
+/// crawl to still be running it.
+const _buildEpochSeconds = int.fromEnvironment("SESORI_BUILD_EPOCH_SECONDS");
+
+/// How long after compilation a store may still be crawling the binary. Play
+/// runs its pre-launch report against every track upload "subject to capacity",
+/// so this is a heuristic on Google's scheduling delay, not a contract.
+const _buildWindow = Duration(hours: 2);
+
+/// Whether a binary stamped at [buildEpochSeconds] could still be under a store
+/// pre-launch crawl at [now].
+bool isWithinBuildWindow({required int buildEpochSeconds, required DateTime now}) =>
+    buildEpochSeconds > 0 &&
+    now.isBefore(DateTime.fromMillisecondsSinceEpoch(buildEpochSeconds * 1000, isUtc: true).add(_buildWindow));
+
 /// Why this process must not report analytics, or null when it may.
-Future<AnalyticsRuntimeDisabledReason?> _analyticsIneligibilityReason() async {
+///
+/// Store crawlers never sign in, so an unauthenticated launch inside the build
+/// window is treated as one. A signed-in device keeps reporting at any time.
+Future<AnalyticsRuntimeDisabledReason?> _analyticsIneligibilityReason({required AuthSession authSession}) async {
   if (!kReleaseMode) return AnalyticsRuntimeDisabledReason.debugOrProfile;
-  return switch (await const FirebaseTestLabEnvironment().detect()) {
-    FirebaseTestLabEnvironmentStatus.notRunning => null,
-    FirebaseTestLabEnvironmentStatus.running => AnalyticsRuntimeDisabledReason.automatedTestEnvironment,
-    FirebaseTestLabEnvironmentStatus.unknown => AnalyticsRuntimeDisabledReason.environmentDetectionFailed,
-  };
+  if (isWithinBuildWindow(buildEpochSeconds: _buildEpochSeconds, now: DateTime.now()) &&
+      !await authSession.hasLocallyValidSession()) {
+    return AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated;
+  }
+  return null;
 }
 
 Future<void> startNotificationStartup({

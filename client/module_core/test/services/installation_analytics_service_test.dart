@@ -40,13 +40,7 @@ void main() {
   });
 
   test("disabled runtimes emit nothing", () async {
-    for (final reason in [
-      AnalyticsRuntimeDisabledReason.debugOrProfile,
-      AnalyticsRuntimeDisabledReason.automatedTestEnvironment,
-      AnalyticsRuntimeDisabledReason.environmentDetectionFailed,
-      AnalyticsRuntimeDisabledReason.unsupportedPlatform,
-      AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
-    ]) {
+    for (final reason in AnalyticsRuntimeDisabledReason.values) {
       final repository = _RecordingAnalyticsRepository();
       final service = InstallationAnalyticsService(
         capability: AnalyticsRuntimeCapability.disabled(reason: reason),
