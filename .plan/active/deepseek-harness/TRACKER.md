@@ -3,11 +3,11 @@
 ## Current State
 
 - **Plan slug:** `deepseek-harness`
-- **Plan status:** Step 4/15 merged; Step 5/15 verified and ready for PR
+- **Plan status:** Step 5/15 PR open; Step 6/15 verified locally
 - **Current repository:** `sesori-ai/sesori-deepseek-acp`
-- **Current branch:** `deepseek-harness/step-5-stream-turns`
-- **Current open PR:** none; Step 5 PR is being prepared
-- **Next action:** publish Step 5, start its monitor, then begin Step 6 locally
+- **Current branch:** `deepseek-harness/step-6-catalogs-commands`
+- **Current open PR:** [#4](https://github.com/sesori-ai/sesori-deepseek-acp/pull/4)
+- **Next action:** merge Step 5, sync Step 6 to `main`, then publish Step 6
 - **Implementation started:** yes
 - **Retirement:** blocked until every required row in `PLAN.md` passes
 
@@ -19,8 +19,8 @@
 | [x] | 2/15 | deepseek adapter | `⚙️ [deepseek-harness] feat(runtime): scaffold the DeepSeek ACP adapter [step 2/15]` | Moderate new transport/repository foundation | 1,000 | [PR #1](https://github.com/sesori-ai/sesori-deepseek-acp/pull/1) merged |
 | [x] | 3/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): compose the DeepSeek coding runtime [step 3/15]` | Complex configuration, security, and lifecycle composition | 1,300 | [PR #2](https://github.com/sesori-ai/sesori-deepseek-acp/pull/2) merged |
 | [x] | 4/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): add durable ACP sessions and replay [step 4/15]` | Complex persistence and live ownership | 1,450 | [PR #3](https://github.com/sesori-ai/sesori-deepseek-acp/pull/3) merged |
-| [ ] | 5/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): stream DeepSeek turns and interactions [step 5/15]` | Complex concurrent event and interaction flow | 1,450 | Local implementation verified; PR pending |
-| [ ] | 6/15 | deepseek adapter | `⚙️ [deepseek-harness] feat(runtime): expose DeepSeek catalogs and commands [step 6/15]` | Moderate option/command boundary | 1,200 | Pending Step 5 |
+| [ ] | 5/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): stream DeepSeek turns and interactions [step 5/15]` | Complex concurrent event and interaction flow | 1,450 | [PR #4](https://github.com/sesori-ai/sesori-deepseek-acp/pull/4) open; CI passing |
+| [ ] | 6/15 | deepseek adapter | `⚙️ [deepseek-harness] feat(runtime): expose DeepSeek catalogs and commands [step 6/15]` | Moderate option/command boundary | 1,200 | Local implementation verified; awaiting Step 5 merge |
 | [ ] | 7/15 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): scaffold the DeepSeek bridge plugin [step 7/15]` | Moderate new package and narrow ACP hooks | 1,250 | Pending Step 6 |
 | [ ] | 8/15 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek sessions and history [step 8/15]` | Complex replay and identity flow | 1,450 | Pending Step 7 |
 | [ ] | 9/15 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek turns and interactions [step 9/15]` | Complex events, questions, and permissions | 1,450 | Pending Step 8 |
@@ -76,6 +76,7 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 | 2026-08-22 | Architecture plan review | Rejected draft with seven concrete findings | Clarified class composition/layers, moved DTO mapping to repositories, removed two unjustified Services, assigned the ACP live-client hook, fixed interaction ownership, made JSON Schema/corpus authoritative, and made Step 15 verification-only. Per repository rules, valid findings were applied without a second approval review. |
 | 2026-08-23 | Step 4 architecture implementation review | Pass | Durable session ownership, persistence, and replay matched the planned one-process boundary. |
 | 2026-08-23 | Step 5 architecture implementation review | Rejected first pass; passed second pass | Consolidated duplicate live/replay mappings into one event projector with thin delivery and collection sinks. |
+| 2026-08-23 | Step 6 architecture implementation review | Rejected first pass; passed second pass | Changed cold rename from retained ACP ownership to one coordinated resume/rename/flush/notify/dispose transition. |
 
 ## Verification Log
 
@@ -99,11 +100,20 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 
 ### Step 5/15
 
-- [x] `npm run check`: lint, typecheck, 63 tests, and build pass
+- [x] `npm run check`: lint, typecheck, 66 tests, and build pass
 - [x] `npm ls --depth=0`; exact direct dependency closure
 - [x] `npm audit --omit=dev`: 0 vulnerabilities
 - [x] Architecture implementation review passed after consolidating event projection
-- [x] Changed-line count: 1,221 of the 1,450-line target
+- [x] Changed-line count: 1,317 of the 1,450-line target
+- [x] PR #4 opened; review fixes pushed; CI passing
+
+### Step 6/15
+
+- [x] `npm run check`: lint, typecheck, 69 tests, and build pass
+- [x] `npm ls --depth=0`; exact direct dependency closure
+- [x] `npm audit --omit=dev`: 0 vulnerabilities
+- [x] Architecture implementation review passed after making cold rename temporary
+- [x] Changed-line count: 669 of the 1,200-line target
 
 Later implementation and live evidence is appended here by step. Never mark a
 regression row passed without the boundary and matrix required by `PLAN.md`.
