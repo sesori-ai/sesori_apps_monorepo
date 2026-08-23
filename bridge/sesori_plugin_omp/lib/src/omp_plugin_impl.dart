@@ -115,6 +115,7 @@ class OmpPlugin._({
   }
 
   final Map<String, _OmpAgentInitiatedTurn> _agentInitiatedTurns = {};
+  final Set<String> _agentInitiatedTurnFences = {};
 
   this
     : super(
@@ -200,8 +201,12 @@ class OmpPlugin._({
 
   @override
   Future<void> deleteSession(String sessionId) async {
+    _agentInitiatedTurnFences.remove(sessionId);
     _forgetAgentInitiatedTurn(sessionId: sessionId);
     await super.deleteSession(sessionId);
+    // Active deletion calls the overridden abort path, which re-adds the
+    // fence while the session settles; a successful delete owns final cleanup.
+    _agentInitiatedTurnFences.remove(sessionId);
     _ompSessionOptionsService.forgetSession(sessionId: sessionId);
   }
 
@@ -211,6 +216,7 @@ class OmpPlugin._({
     final sessionId = notification.params["sessionId"];
     final update = notification.params["update"];
     if (sessionId is! String || sessionId.isEmpty || update is! Map) return;
+    if (_agentInitiatedTurnFences.contains(sessionId)) return;
     final kind = AcpSessionUpdateKind.parse(update["sessionUpdate"]);
     if (!kind.carriesAgentWork || hasBridgePromptTurn(sessionId: sessionId)) return;
 
@@ -248,11 +254,25 @@ class OmpPlugin._({
     _agentInitiatedTurns.remove(sessionId)?.timer?.cancel();
   }
 
+  @override
+  void onBridgePromptTurnStarted({required String sessionId}) {
+    _agentInitiatedTurnFences.remove(sessionId);
+    _forgetAgentInitiatedTurn(sessionId: sessionId);
+  }
+
+  @override
+  Future<void> abortSession({required String sessionId}) async {
+    _agentInitiatedTurnFences.add(sessionId);
+    _forgetAgentInitiatedTurn(sessionId: sessionId);
+    await super.abortSession(sessionId: sessionId);
+  }
+
   void _clearAgentInitiatedTurnTimers() {
     for (final turn in _agentInitiatedTurns.values) {
       turn.timer?.cancel();
     }
     _agentInitiatedTurns.clear();
+    _agentInitiatedTurnFences.clear();
   }
 
   @override

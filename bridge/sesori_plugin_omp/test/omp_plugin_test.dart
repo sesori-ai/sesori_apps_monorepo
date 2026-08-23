@@ -223,6 +223,72 @@ void main() {
       expect(events.whereType<BridgeSseSessionStatus>(), isEmpty);
     });
 
+    test("stop fences late unbracketed output until the next prompt", () async {
+      await connect();
+      final session = await create("session-1");
+      void emitAgentWork(String text) {
+        fake.emit({
+          "jsonrpc": "2.0",
+          "method": AcpMethods.sessionUpdate,
+          "params": {
+            "sessionId": session.id,
+            "update": {
+              "sessionUpdate": "agent_message_chunk",
+              "content": {"type": "text", "text": text},
+            },
+          },
+        });
+      }
+
+      emitAgentWork("Background work");
+      await Future<void>.delayed(Duration.zero);
+      expect(plugin.getActiveSessionsSummary(), isNotEmpty);
+
+      await plugin.abortSession(sessionId: session.id);
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+      events.clear();
+      emitAgentWork("Late cancellation output");
+      await Future<void>.delayed(Duration.zero);
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(events.whereType<BridgeSseSessionStatus>(), isEmpty);
+
+      await send(session.id, "continue");
+      final prompt = await waitForFrame(AcpMethods.sessionPrompt);
+      respond(prompt, {"stopReason": "end_turn"});
+      for (var i = 0; i < 200 && plugin.getActiveSessionsSummary().isNotEmpty; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      emitAgentWork("New background work");
+      await Future<void>.delayed(Duration.zero);
+      expect(plugin.getActiveSessionsSummary(), isNotEmpty, reason: "an explicit prompt clears the stop fence");
+    });
+
+    test("process reset emits idle for a vouched turn", () async {
+      await connect();
+      final session = await create("session-1");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": AcpMethods.sessionUpdate,
+        "params": {
+          "sessionId": session.id,
+          "update": {
+            "sessionUpdate": "tool_call",
+            "toolCallId": "background-1",
+            "title": "Background work",
+          },
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(plugin.getActiveSessionsSummary(), isNotEmpty);
+      events.clear();
+
+      await plugin.resetConnectionAfterExit();
+
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(plugin.currentWorkState, PluginWorkState.unknown);
+      expect(events.whereType<BridgeSseSessionIdle>(), hasLength(1));
+    });
+
     test("does not prompt after a partially applied model selection", () async {
       await connect();
       final creating = plugin.createSession(

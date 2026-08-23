@@ -283,6 +283,10 @@ abstract class AcpPlugin({
   /// lifecycle signals that standard ACP does not model.
   void onLiveAgentNotification(AcpNotification notification) {}
 
+  /// Invoked when an explicit bridge prompt takes ownership of [sessionId].
+  /// Harnesses can retire backend-specific autonomous-turn bookkeeping here.
+  void onBridgePromptTurnStarted({required String sessionId}) {}
+
   /// Whether this bridge has an accepted prompt running or queued for
   /// [sessionId]. Agent-initiated output must only be vouched when this is
   /// false; an ordinary prompt already owns its lifecycle.
@@ -1149,6 +1153,7 @@ abstract class AcpPlugin({
     final state = _turnStates.putIfAbsent(sessionId, _SessionTurnState.new);
     // An explicit prompt supersedes any heuristically vouched autonomous turn;
     // its request/response pair now owns the lifecycle exactly.
+    onBridgePromptTurnStarted(sessionId: sessionId);
     _agentInitiatedTurnSessions.remove(sessionId);
     if (turn case _QueuedAcpTurn(:final queuedPrompt)) {
       state.queue.add(queuedPrompt);
@@ -1854,6 +1859,7 @@ abstract class AcpPlugin({
     for (final sessionId in _agentInitiatedTurnSessions) {
       if (!hasBridgePromptTurn(sessionId: sessionId)) {
         _sessionStatuses[sessionId] = const PluginSessionStatus.idle();
+        _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));
       }
     }
     _agentInitiatedTurnSessions.clear();
