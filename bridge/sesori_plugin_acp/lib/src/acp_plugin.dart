@@ -109,6 +109,10 @@ abstract class AcpPlugin({
 
   final Map<String, PluginSessionStatus> _sessionStatuses = {};
 
+  /// Sessions doing agent-initiated work that ACP did not bracket with a
+  /// `session/prompt` request. OMP async-job delivery is the concrete case.
+  final Set<String> _agentInitiatedTurnSessions = {};
+
   /// Sessions whose initial user message was synthesized by this bridge
   /// process. History replay reuses that message identity to avoid a load/SSE
   /// race rendering the same prompt twice.
@@ -274,6 +278,59 @@ abstract class AcpPlugin({
     required Object error,
   }) => const [];
 
+  /// Observes a live notification after resume-history suppression but before
+  /// ordinary event mapping. Harnesses can use this for backend-specific
+  /// lifecycle signals that standard ACP does not model.
+  void onLiveAgentNotification(AcpNotification notification) {}
+
+  /// Whether this bridge has an accepted prompt running or queued for
+  /// [sessionId]. Agent-initiated output must only be vouched when this is
+  /// false; an ordinary prompt already owns its lifecycle.
+  bool hasBridgePromptTurn({required String sessionId}) => (_turnStates[sessionId]?.pending ?? 0) > 0;
+
+  /// Starts an agent-initiated turn that ACP did not bracket with
+  /// `session/prompt`. Returns whether this call opened the turn.
+  bool markAgentInitiatedTurnActive({required String sessionId, required int observedAt}) {
+    if (!_agentInitiatedTurnSessions.add(sessionId)) return false;
+    recordSessionActivity(sessionId: sessionId, observedAt: observedAt);
+    _sessionStatuses[sessionId] = const PluginSessionStatus.busy();
+    _syncWorkState();
+    _eventBuffer.add(
+      BridgeSseSessionStatus(
+        sessionID: sessionId,
+        status: const shared.SessionStatus.busy().toJson(),
+      ),
+    );
+    _eventBuffer.add(const BridgeSseProjectUpdated());
+    return true;
+  }
+
+  /// Settles a previously vouched agent-initiated turn. Returns whether one was
+  /// open. A bridge-owned prompt that has since started remains authoritative.
+  bool markAgentInitiatedTurnIdle({required String sessionId, required int? lastObservedAt}) {
+    if (!_agentInitiatedTurnSessions.remove(sessionId)) return false;
+    if (lastObservedAt != null) {
+      recordSessionActivity(sessionId: sessionId, observedAt: lastObservedAt);
+    }
+    if (!hasBridgePromptTurn(sessionId: sessionId)) {
+      _sessionStatuses[sessionId] = const PluginSessionStatus.idle();
+      _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));
+      _eventBuffer.add(const BridgeSseProjectUpdated());
+    }
+    _syncWorkState();
+    return true;
+  }
+
+  /// Emits a monotonic session-recency update at an observed activity instant.
+  void recordSessionActivity({required String sessionId, required int observedAt}) {
+    _eventBuffer.add(
+      eventMapper.mapSessionActivity(
+        sessionId: sessionId,
+        updatedAtMs: observedAt,
+      ),
+    );
+  }
+
   /// Invoked when the agent subprocess is torn down for a respawn (see
   /// [resetConnectionAfterExit]). The replacement process starts with none of
   /// the prior process's applied state, so a subclass that caches process-global
@@ -309,6 +366,7 @@ abstract class AcpPlugin({
         return;
       }
     }
+    onLiveAgentNotification(notification);
     eventMapper.map(notification).forEach(_eventBuffer.add);
   }
 
@@ -405,6 +463,7 @@ abstract class AcpPlugin({
   /// is left intact — the plugin stays alive, only the connection is reset.
   /// Never throws.
   Future<void> resetConnectionAfterExit() async {
+    _clearAgentInitiatedTurns();
     _workState.set(PluginWorkState.unknown);
     _connectFuture = null;
     _authenticationFailure = null;
@@ -842,7 +901,10 @@ abstract class AcpPlugin({
     await _connectedClient();
     // Another matching send may have been admitted while connection awaited.
     if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
-    _recordSessionActivity(sessionId);
+    recordSessionActivity(
+      sessionId: sessionId,
+      observedAt: DateTime.now().millisecondsSinceEpoch,
+    );
     final text = parts
         .whereType<PluginPromptPartText>()
         .map((part) => part.text)
@@ -895,7 +957,10 @@ abstract class AcpPlugin({
     await _connectedClient();
     // Another matching send may have been admitted while connection awaited.
     if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
-    _recordSessionActivity(sessionId);
+    recordSessionActivity(
+      sessionId: sessionId,
+      observedAt: DateTime.now().millisecondsSinceEpoch,
+    );
     final blocks = _contentBlocks([PluginPromptPart.text(text: body)]);
     if (blocks.isEmpty) return;
     _enqueueTurn(
@@ -948,15 +1013,6 @@ abstract class AcpPlugin({
       params: {"sessionId": sessionId},
     );
     _approvalRegistry?.cancelForSession(sessionId);
-  }
-
-  void _recordSessionActivity(String sessionId) {
-    _eventBuffer.add(
-      eventMapper.mapSessionActivity(
-        sessionId: sessionId,
-        updatedAtMs: DateTime.now().millisecondsSinceEpoch,
-      ),
-    );
   }
 
   /// The directory a session should be loaded/operated in — its own canonical
@@ -1091,6 +1147,9 @@ abstract class AcpPlugin({
     required _AcpTurn turn,
   }) {
     final state = _turnStates.putIfAbsent(sessionId, _SessionTurnState.new);
+    // An explicit prompt supersedes any heuristically vouched autonomous turn;
+    // its request/response pair now owns the lifecycle exactly.
+    _agentInitiatedTurnSessions.remove(sessionId);
     if (turn case _QueuedAcpTurn(:final queuedPrompt)) {
       state.queue.add(queuedPrompt);
     }
@@ -1357,6 +1416,7 @@ abstract class AcpPlugin({
 
   @override
   Future<void> abortSession({required String sessionId}) async {
+    markAgentInitiatedTurnIdle(sessionId: sessionId, lastObservedAt: null);
     // Aborting means "stop this conversation now": drop the queued-but-
     // undispatched turns first so they don't dispatch after the cancel. The
     // in-flight turn (if any) ends via the agent's cancellation, which
@@ -1454,6 +1514,7 @@ abstract class AcpPlugin({
       }
     }
     _turnStates.remove(sessionId);
+    _agentInitiatedTurnSessions.remove(sessionId);
     _pendingSelections.remove(sessionId);
     _inFlightTurnSessions.remove(sessionId);
     if (_lastTurnSessionId == sessionId) _lastTurnSessionId = null;
@@ -1743,9 +1804,10 @@ abstract class AcpPlugin({
     // live in different opened directories, not just the launch CWD.
     final byProject = <String, List<PluginActiveSession>>{};
     for (final sessionId in _sessionStatuses.keys) {
-      // A session with any unfinished turn (running or queued behind one)
-      // counts as running, so it stays active until its last turn settles.
-      final running = (_turnStates[sessionId]?.pending ?? 0) > 0;
+      // A session with any unfinished bridge turn (running or queued behind
+      // one), or a harness-vouched agent-initiated turn, counts as running.
+      final running =
+          (_turnStates[sessionId]?.pending ?? 0) > 0 || _agentInitiatedTurnSessions.contains(sessionId);
       final awaiting = registry?.hasPendingInput(sessionId) ?? false;
       if (!running && !awaiting) continue;
       (byProject[directoryForSession(sessionId: sessionId)] ??= []).add(
@@ -1787,9 +1849,23 @@ abstract class AcpPlugin({
     }
   }
 
+  void _clearAgentInitiatedTurns() {
+    if (_agentInitiatedTurnSessions.isEmpty) return;
+    for (final sessionId in _agentInitiatedTurnSessions) {
+      if (!hasBridgePromptTurn(sessionId: sessionId)) {
+        _sessionStatuses[sessionId] = const PluginSessionStatus.idle();
+      }
+    }
+    _agentInitiatedTurnSessions.clear();
+    _syncWorkState();
+    _eventBuffer.add(const BridgeSseProjectUpdated());
+  }
+
   void _syncWorkState() {
     final busy =
-        _turnStates.values.any((state) => state.pending > 0) || (_approvalRegistry?.hasAnyPendingInput ?? false);
+        _turnStates.values.any((state) => state.pending > 0) ||
+        _agentInitiatedTurnSessions.isNotEmpty ||
+        (_approvalRegistry?.hasAnyPendingInput ?? false);
     _workState.set(busy ? PluginWorkState.busy : PluginWorkState.idle);
   }
 }

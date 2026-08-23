@@ -192,6 +192,7 @@ void main() {
               launchDirectory: launchDirectory,
               scratchDirectory: scratchDirectory,
               processFactory: (_) async => throw StateError("connection failed"),
+              agentInitiatedTurnQuietPeriod: OmpPlugin.defaultAgentInitiatedTurnQuietPeriod,
             ),
         buildRuntimeAssetService: _runtimeAssets,
         connectBudget: const Duration(milliseconds: 20),
@@ -220,6 +221,7 @@ void main() {
               binaryPath: binaryPath,
               launchDirectory: launchDirectory,
               scratchDirectory: scratchDirectory,
+              agentInitiatedTurnQuietPeriod: OmpPlugin.defaultAgentInitiatedTurnQuietPeriod,
               processFactory: (_) async {
                 if (attempts++ == 0) throw StateError("connection failed");
                 return process;

@@ -50,8 +50,11 @@ child sessions with titles, activity, statuses, and unseen state.
   that is newer. A plugin that reports an updated time only at import or rename
   — Claude and Pi, unlike Codex, ACP, and OpenCode — therefore still shows a
   recently prompted session as recent, instead of the transcript time read at
-  the last import. Marking a session unread never moves that time, and
-  assistant-only work does not advance it past the prompt that started it.
+  the last import. Marking a session unread never moves that time, and ordinary
+  assistant-only work does not advance it past the prompt that started it. OMP
+  agent-initiated async-job turns are the exception: ACP supplies no prompt
+  lifecycle for them, so their first and last observed work updates advance the
+  backend-reported time that keeps the row honest.
 - A newly committed session can list before generated metadata. Later generated
   title and eligible dedicated-branch refinement reuse `session.updated`; lists
   and detail adopt the durable session facts without marking unseen or moving the

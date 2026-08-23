@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io" show Directory;
 
 import "package:acp_plugin/acp_plugin.dart";
@@ -16,10 +17,12 @@ import "trackers/omp_catalog_tracker.dart";
 
 /// Oh My Pi backend over ACP.
 ///
-/// OMP diverges from stock ACP in three policies: it serializes every prompt
-/// process-wide, replaces an in-flight turn when another input arrives, and
-/// supports standard form elicitation. Its project-scoped model/mode/thinking
-/// catalog and persisted-session cleanup run over isolated scratch processes.
+/// OMP diverges from stock ACP in four policies: it serializes every prompt
+/// process-wide, replaces an in-flight turn when another input arrives,
+/// supports standard form elicitation, and can stream agent-initiated async-job
+/// turns after `session/prompt` has returned. Its project-scoped
+/// model/mode/thinking catalog and persisted-session cleanup run over isolated
+/// scratch processes.
 class OmpPlugin._({
   required super.launchSpec,
   required super.launchDirectory,
@@ -29,13 +32,20 @@ class OmpPlugin._({
   required final OmpCatalogService _catalogService,
   required final OmpSessionOptionsService _ompSessionOptionsService,
   required final OmpSessionCleanupService _cleanupService,
+  required final Duration _agentInitiatedTurnQuietPeriod,
   super.processFactory,
 }) extends AcpPlugin implements PersistedSessionCleanupApi {
+  /// ACP v1 has no completion marker for OMP's agent-initiated turns. Silence
+  /// is therefore the only available boundary; a later update starts another
+  /// turn if a slow provider exceeds this window.
+  static const Duration defaultAgentInitiatedTurnQuietPeriod = Duration(minutes: 2);
+
   factory({
     String binaryPath = OmpBinary.defaultBinary,
     String? launchDirectory,
     String? scratchDirectory,
     required AcpProcessFactory processFactory,
+    required Duration agentInitiatedTurnQuietPeriod,
   }) {
     final cwd = launchDirectory ?? Directory.current.path;
     final launchSpec = OmpBinary.launchSpec(
@@ -99,9 +109,12 @@ class OmpPlugin._({
       catalogService: catalogService,
       ompSessionOptionsService: ompSessionOptionsService,
       cleanupService: cleanupService,
+      agentInitiatedTurnQuietPeriod: agentInitiatedTurnQuietPeriod,
       processFactory: processFactory,
     );
   }
+
+  final Map<String, _OmpAgentInitiatedTurn> _agentInitiatedTurns = {};
 
   this
     : super(
@@ -187,12 +200,66 @@ class OmpPlugin._({
 
   @override
   Future<void> deleteSession(String sessionId) async {
+    _forgetAgentInitiatedTurn(sessionId: sessionId);
     await super.deleteSession(sessionId);
     _ompSessionOptionsService.forgetSession(sessionId: sessionId);
   }
 
   @override
-  void onConnectionReset() => _ompSessionOptionsService.resetConnection();
+  void onLiveAgentNotification(AcpNotification notification) {
+    if (notification.method != AcpMethods.sessionUpdate) return;
+    final sessionId = notification.params["sessionId"];
+    final update = notification.params["update"];
+    if (sessionId is! String || sessionId.isEmpty || update is! Map) return;
+    final kind = AcpSessionUpdateKind.parse(update["sessionUpdate"]);
+    if (!kind.carriesAgentWork || hasBridgePromptTurn(sessionId: sessionId)) return;
+
+    final observedAt = DateTime.now().millisecondsSinceEpoch;
+    final opened = markAgentInitiatedTurnActive(
+      sessionId: sessionId,
+      observedAt: observedAt,
+    );
+    var turn = _agentInitiatedTurns[sessionId];
+    if (opened || turn == null) {
+      turn?.timer?.cancel();
+      turn = _OmpAgentInitiatedTurn(firstObservedAt: observedAt);
+      _agentInitiatedTurns[sessionId] = turn;
+    }
+    turn.lastObservedAt = observedAt;
+    turn.timer?.cancel();
+    final trackedTurn = turn;
+    turn.timer = Timer(
+      _agentInitiatedTurnQuietPeriod,
+      () => _settleAgentInitiatedTurn(sessionId: sessionId, expected: trackedTurn),
+    );
+  }
+
+  void _settleAgentInitiatedTurn({required String sessionId, required _OmpAgentInitiatedTurn expected}) {
+    if (!identical(_agentInitiatedTurns[sessionId], expected)) return;
+    _agentInitiatedTurns.remove(sessionId);
+    expected.timer?.cancel();
+    markAgentInitiatedTurnIdle(
+      sessionId: sessionId,
+      lastObservedAt: expected.lastObservedAt > expected.firstObservedAt ? expected.lastObservedAt : null,
+    );
+  }
+
+  void _forgetAgentInitiatedTurn({required String sessionId}) {
+    _agentInitiatedTurns.remove(sessionId)?.timer?.cancel();
+  }
+
+  void _clearAgentInitiatedTurnTimers() {
+    for (final turn in _agentInitiatedTurns.values) {
+      turn.timer?.cancel();
+    }
+    _agentInitiatedTurns.clear();
+  }
+
+  @override
+  void onConnectionReset() {
+    _clearAgentInitiatedTurnTimers();
+    _ompSessionOptionsService.resetConnection();
+  }
 
   @override
   Iterable<BridgeSseEvent> mapPromptFailure({
@@ -205,6 +272,7 @@ class OmpPlugin._({
 
   @override
   Future<void> dispose() async {
+    _clearAgentInitiatedTurnTimers();
     try {
       await _catalogService.dispose();
     } on Object catch (error, stack) {
@@ -231,4 +299,9 @@ class OmpPlugin._({
     final details = data["details"];
     return details is String && details.startsWith("No model selected.");
   }
+}
+
+class _OmpAgentInitiatedTurn({required final int firstObservedAt}) {
+  int lastObservedAt = 0;
+  Timer? timer;
 }

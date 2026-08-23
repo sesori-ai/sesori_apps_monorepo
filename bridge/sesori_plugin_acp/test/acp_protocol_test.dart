@@ -87,6 +87,15 @@ void main() {
     expect(AcpStopReason.parse("???"), AcpStopReason.unknown);
   });
 
+  test("AcpSessionUpdateKind distinguishes agent work from protocol noise", () {
+    expect(AcpSessionUpdateKind.parse("agent_message_chunk").carriesAgentWork, isTrue);
+    expect(AcpSessionUpdateKind.parse("tool_call_update").carriesAgentWork, isTrue);
+    expect(AcpSessionUpdateKind.parse("plan").carriesAgentWork, isTrue);
+    expect(AcpSessionUpdateKind.parse("user_message_chunk").carriesAgentWork, isFalse);
+    expect(AcpSessionUpdateKind.parse("usage_update").carriesAgentWork, isFalse);
+    expect(AcpSessionUpdateKind.parse("future_update"), AcpSessionUpdateKind.unknown);
+  });
+
   group("AcpSessionListResult", () {
     test("parses sessions with ISO-8601 and epoch-ms timestamps", () {
       final result = AcpSessionListResult.fromJson({

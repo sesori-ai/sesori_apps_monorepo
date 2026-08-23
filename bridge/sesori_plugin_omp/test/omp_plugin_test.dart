@@ -18,6 +18,7 @@ void main() {
       events = [];
       plugin = OmpPlugin(
         launchDirectory: "/repo",
+        agentInitiatedTurnQuietPeriod: const Duration(milliseconds: 100),
         processFactory: (spec) async {
           launchSpec = spec;
           return fake;
@@ -118,6 +119,108 @@ void main() {
       expect(plugin.cancelsActiveTurnForQueuedInput, isTrue);
       expect(plugin.failsTurnOnSelectionError, isTrue);
       expect(plugin.supportsFormElicitation, isTrue);
+    });
+
+    test("vouches unbracketed agent work as active until the quiet window", () async {
+      await connect();
+      final session = await create("session-1");
+      events.clear();
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": AcpMethods.sessionUpdate,
+        "params": {
+          "sessionId": session.id,
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "Background work resumed"},
+          },
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      final active = plugin.getActiveSessionsSummary().single.activeSessions.single;
+      expect(active.id, session.id);
+      expect(active.mainAgentRunning, isTrue);
+      expect((await plugin.getSessionStatuses())[session.id], isA<PluginSessionStatusBusy>());
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+      expect(events.whereType<BridgeSseSessionUpdated>(), hasLength(1));
+      expect(events.whereType<BridgeSseSessionStatus>(), hasLength(1));
+
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": AcpMethods.sessionUpdate,
+        "params": {
+          "sessionId": session.id,
+          "update": {
+            "sessionUpdate": "agent_thought_chunk",
+            "content": {"type": "text", "text": "Still working"},
+          },
+        },
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(plugin.getActiveSessionsSummary(), isNotEmpty, reason: "later work must re-arm the quiet window");
+      await Future<void>.delayed(const Duration(milliseconds: 70));
+
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect((await plugin.getSessionStatuses())[session.id], isA<PluginSessionStatusIdle>());
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      expect(events.whereType<BridgeSseSessionIdle>(), hasLength(1));
+      expect(events.whereType<BridgeSseSessionUpdated>(), hasLength(2));
+    });
+
+    test("does not vouch ordinary output already owned by a prompt", () async {
+      await connect();
+      final session = await create("session-1");
+      await send(session.id, "inspect it");
+      final prompt = await waitForFrame(AcpMethods.sessionPrompt);
+      events.clear();
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": AcpMethods.sessionUpdate,
+        "params": {
+          "sessionId": session.id,
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "Done"},
+          },
+        },
+      });
+      respond(prompt, {"stopReason": "end_turn"});
+      for (var i = 0; i < 200 && events.whereType<BridgeSseSessionIdle>().isEmpty; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      expect(events.whereType<BridgeSseSessionIdle>(), hasLength(1));
+      expect(events.whereType<BridgeSseSessionUpdated>(), isEmpty);
+    });
+
+    test("does not vouch unbracketed non-work updates", () async {
+      await connect();
+      final session = await create("session-1");
+      events.clear();
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": AcpMethods.sessionUpdate,
+        "params": {
+          "sessionId": session.id,
+          "update": {
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": <Object?>[],
+          },
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect((await plugin.getSessionStatuses())[session.id], isA<PluginSessionStatusIdle>());
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      expect(events.whereType<BridgeSseSessionStatus>(), isEmpty);
     });
 
     test("does not prompt after a partially applied model selection", () async {
@@ -518,6 +621,7 @@ void main() {
       final specs = <AcpLaunchSpec>[];
       plugin = OmpPlugin(
         launchDirectory: "/repo",
+        agentInitiatedTurnQuietPeriod: const Duration(milliseconds: 100),
         processFactory: (spec) async {
           specs.add(spec);
           final process = FakeAcpProcess();

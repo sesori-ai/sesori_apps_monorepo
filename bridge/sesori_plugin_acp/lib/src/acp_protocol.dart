@@ -34,6 +34,55 @@ abstract final class AcpMethods() {
   static const String elicitationCreate = "elicitation/create";
 }
 
+/// Known `session/update.update.sessionUpdate` variants.
+enum AcpSessionUpdateKind() {
+  agentMessageChunk,
+  agentThoughtChunk,
+  userMessageChunk,
+  toolCall,
+  toolCallUpdate,
+  plan,
+  currentModeUpdate,
+  configOptionUpdate,
+  availableCommandsUpdate,
+  sessionInfoUpdate,
+  usageUpdate,
+  unknown;
+
+  static AcpSessionUpdateKind parse(Object? raw) {
+    return switch (raw) {
+      "agent_message_chunk" => AcpSessionUpdateKind.agentMessageChunk,
+      "agent_thought_chunk" => AcpSessionUpdateKind.agentThoughtChunk,
+      "user_message_chunk" => AcpSessionUpdateKind.userMessageChunk,
+      "tool_call" => AcpSessionUpdateKind.toolCall,
+      "tool_call_update" => AcpSessionUpdateKind.toolCallUpdate,
+      "plan" => AcpSessionUpdateKind.plan,
+      "current_mode_update" => AcpSessionUpdateKind.currentModeUpdate,
+      "config_option_update" => AcpSessionUpdateKind.configOptionUpdate,
+      "available_commands_update" => AcpSessionUpdateKind.availableCommandsUpdate,
+      "session_info_update" => AcpSessionUpdateKind.sessionInfoUpdate,
+      "usage_update" => AcpSessionUpdateKind.usageUpdate,
+      _ => AcpSessionUpdateKind.unknown,
+    };
+  }
+
+  /// Whether this update proves that the agent is doing user-visible work.
+  bool get carriesAgentWork => switch (this) {
+    AcpSessionUpdateKind.agentMessageChunk ||
+    AcpSessionUpdateKind.agentThoughtChunk ||
+    AcpSessionUpdateKind.toolCall ||
+    AcpSessionUpdateKind.toolCallUpdate ||
+    AcpSessionUpdateKind.plan => true,
+    AcpSessionUpdateKind.userMessageChunk ||
+    AcpSessionUpdateKind.currentModeUpdate ||
+    AcpSessionUpdateKind.configOptionUpdate ||
+    AcpSessionUpdateKind.availableCommandsUpdate ||
+    AcpSessionUpdateKind.sessionInfoUpdate ||
+    AcpSessionUpdateKind.usageUpdate ||
+    AcpSessionUpdateKind.unknown => false,
+  };
+}
+
 /// An auth method advertised by the agent in the `initialize` result.
 enum AcpAuthMethodType() {
   terminal,

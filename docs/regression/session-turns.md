@@ -101,7 +101,13 @@ defaults and queued client sends coherent.
   remain absent. OMP preserves its active-prompt replacement semantics by
   cancelling the active turn immediately, then dispatching the newly queued
   input after cancellation settles; Cursor and Hermes retain ordinary FIFO turn
-  boundaries.
+  boundaries. OMP async-job auto-delivery can begin another agent turn after
+  `session/prompt` has already returned, with only unbracketed `session/update`
+  work notifications. The bridge treats the first such text, reasoning, tool,
+  or plan update as running work, refreshes session recency, and keeps the turn
+  active until 120 seconds of quiet. Protocol-noise updates never create a
+  running turn; stop, deletion, process reset, and a new explicit prompt clear
+  the heuristic state.
 - Normalized user-message events feed the durable user-side activity marker used
   to order running roots. Known event times are applied monotonically. Backend
   input represented as a user message, including automatic compaction or other
@@ -197,6 +203,9 @@ has started.
 
 - A slash command holds the client request open for the whole run, or a slow
   plugin blocks unrelated sessions, other plugins, or relay traffic.
+- OMP continues streaming an async-job follow-up while the session/project row
+  reports idle or keeps its pre-follow-up timestamp, non-work ACP traffic makes
+  an idle row look active, or heuristic activity survives stop/reset/deletion.
 - Streaming stalls, duplicates or loses parts, shows an empty user bubble, or
   orders a late envelope at the wrong transcript position; the session never
   returns to idle. A terminal provider failure returns to idle without showing

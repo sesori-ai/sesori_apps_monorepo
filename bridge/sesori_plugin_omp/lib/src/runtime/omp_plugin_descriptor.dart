@@ -55,6 +55,7 @@ OmpPlugin _buildOmpPlugin({
   launchDirectory: launchDirectory,
   scratchDirectory: scratchDirectory,
   processFactory: processFactory,
+  agentInitiatedTurnQuietPeriod: OmpPlugin.defaultAgentInitiatedTurnQuietPeriod,
 );
 
 final class const OmpPluginDescriptor({
