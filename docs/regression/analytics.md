@@ -27,10 +27,11 @@ excluded, and the warehouse is external.
   disable, logout, or account switch. Results state SDK acceptance, not delivery.
 - Firebase Analytics collection defaults off at native startup and is enabled only after consent in an eligible release
   process. Debug/profile runs emit neither automatic nor Sesori-defined analytics events. The release lanes stamp each
-  binary with its build time; for two hours after that stamp an unauthenticated launch is treated as a store pre-launch
-  crawl and stays off, while a device with a locally valid session reports at any time. The window is a heuristic on
-  Play's crawl scheduling, so a late crawl can still register as an install; the L5 pre-launch check measures that
-  residue.
+  binary with its build time; for two hours after that stamp an unauthenticated Android launch is treated as a Play
+  pre-launch crawl and stays off, while a device with a locally valid session reports at any time. The window is a
+  heuristic on Play's crawl scheduling, so a late crawl can still register as an install, and a build promoted to
+  production inside its window hides unauthenticated first launches for the remainder; the L5 pre-launch check
+  measures the crawl residue.
 
 ## Regression Levels
 

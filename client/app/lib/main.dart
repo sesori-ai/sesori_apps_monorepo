@@ -183,18 +183,24 @@ const _buildEpochSeconds = int.fromEnvironment("SESORI_BUILD_EPOCH_SECONDS");
 const _buildWindow = Duration(hours: 2);
 
 /// Whether a binary stamped at [buildEpochSeconds] could still be under a store
-/// pre-launch crawl at [now].
-bool isWithinBuildWindow({required int buildEpochSeconds, required DateTime now}) =>
-    buildEpochSeconds > 0 &&
-    now.isBefore(DateTime.fromMillisecondsSinceEpoch(buildEpochSeconds * 1000, isUtc: true).add(_buildWindow));
+/// pre-launch crawl at [now]. A clock behind the stamp says nothing about the
+/// crawl, so it reads as outside the window.
+bool isWithinBuildWindow({required int buildEpochSeconds, required DateTime now}) {
+  if (buildEpochSeconds <= 0) return false;
+  final buildTime = DateTime.fromMillisecondsSinceEpoch(buildEpochSeconds * 1000, isUtc: true);
+  return !now.isBefore(buildTime) && now.isBefore(buildTime.add(_buildWindow));
+}
 
 /// Why this process must not report analytics, or null when it may.
 ///
-/// Store crawlers never sign in, so an unauthenticated launch inside the build
-/// window is treated as one. A signed-in device keeps reporting at any time.
+/// Play's pre-launch report is the only store process that launches the app
+/// after an upload; TestFlight runs nothing, so only Android is gated. Crawlers
+/// never sign in, so an unauthenticated launch inside the build window is
+/// treated as one. A signed-in device keeps reporting at any time.
 Future<AnalyticsRuntimeDisabledReason?> _analyticsIneligibilityReason({required AuthSession authSession}) async {
   if (!kReleaseMode) return AnalyticsRuntimeDisabledReason.debugOrProfile;
-  if (isWithinBuildWindow(buildEpochSeconds: _buildEpochSeconds, now: DateTime.now()) &&
+  if (defaultTargetPlatform == TargetPlatform.android &&
+      isWithinBuildWindow(buildEpochSeconds: _buildEpochSeconds, now: DateTime.now()) &&
       !await authSession.hasLocallyValidSession()) {
     return AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated;
   }

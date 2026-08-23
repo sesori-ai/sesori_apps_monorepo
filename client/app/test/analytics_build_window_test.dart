@@ -22,4 +22,11 @@ void main() {
   test("an unstamped build is never inside the window", () {
     expect(isWithinBuildWindow(buildEpochSeconds: 0, now: buildTime), isFalse);
   });
+
+  test("a clock behind the stamp is outside the window", () {
+    expect(
+      isWithinBuildWindow(buildEpochSeconds: buildEpochSeconds, now: buildTime.subtract(const Duration(days: 400))),
+      isFalse,
+    );
+  });
 }

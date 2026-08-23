@@ -93,8 +93,9 @@ jobs:
           bundler-cache: true
           working-directory: client/app/ios
 
-      # The build stamp mirrors the Android lane so the analytics build window
-      # applies per build, not per platform; see _flutter_build_appbundle.
+      # The build stamp mirrors the Android lane so every lane-built binary
+      # carries its build time. The analytics gate that reads it is Android-only
+      # (TestFlight runs no crawl), so on iOS the value is informational.
       - name: Generate iOS build config
         run: |
           flutter build ios --config-only --release --no-codesign \
