@@ -37,7 +37,6 @@ import "../api/database/daos/session_dao.dart";
 import "../api/database/tables/projects_table.dart" show ProjectDto;
 import "../api/database/tables/pull_requests_table.dart";
 import "../api/database/tables/session_table.dart" show SessionDto;
-import "../foundation/random_hex_id.dart";
 import "../runtime/plugin_runtime.dart";
 import "mappers/plugin_activity_summary_mapper.dart";
 import "mappers/plugin_command_mapper.dart";
@@ -53,6 +52,7 @@ import "models/session_operation.dart";
 import "models/stored_session.dart";
 import "models/verified_github_login.dart";
 import "project_catalog_identity_calculator.dart";
+import "random_hex_id.dart";
 import "session_unseen_calculator.dart";
 
 enum SessionBindingCommitKind() { sessionCreation, catalogSync }

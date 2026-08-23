@@ -1,6 +1,6 @@
 import "dart:math";
 
-import "package:sesori_bridge/src/foundation/random_hex_id.dart";
+import "package:sesori_bridge/src/repositories/random_hex_id.dart";
 import "package:test/test.dart";
 
 void main() {

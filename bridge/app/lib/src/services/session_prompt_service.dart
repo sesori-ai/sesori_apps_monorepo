@@ -4,8 +4,8 @@ import "dart:math";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../foundation/random_hex_id.dart";
 import "../repositories/models/session_operation.dart";
+import "../repositories/random_hex_id.dart";
 import "../repositories/session_repository.dart";
 import "archived_session_validator.dart";
 import "session_operation_dispatcher.dart";
