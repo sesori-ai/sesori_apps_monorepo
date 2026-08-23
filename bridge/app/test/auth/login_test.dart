@@ -10,7 +10,7 @@ import 'package:sesori_bridge/src/auth/auth_api.dart';
 import 'package:sesori_bridge/src/auth/login_email_api.dart';
 import 'package:sesori_bridge/src/auth/login_email_repository.dart';
 import 'package:sesori_bridge/src/auth/login_oauth_service.dart';
-import 'package:sesori_bridge/src/foundation/abortable_request_client.dart';
+import 'package:sesori_bridge/src/foundation/abortable_request.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 import 'package:test/test.dart';
 
@@ -279,8 +279,8 @@ void main() {
         final api = AuthApi(
           authBackendUrl: authServer.baseUrl,
           client: authServer.client,
-          requestClient: const AbortableRequestClient(),
           requestDeadline: AuthApi.defaultRequestDeadline,
+          sendRequest: sendRequestWithDeadline,
         );
 
         await api.ackOAuthSessionCompletion(sessionToken: 'session-token-123');
@@ -530,8 +530,8 @@ LoginOAuthService _createOAuthService({
     api: AuthApi(
       authBackendUrl: authServer.baseUrl,
       client: authServer.client,
-      requestClient: const AbortableRequestClient(),
       requestDeadline: AuthApi.defaultRequestDeadline,
+      sendRequest: sendRequestWithDeadline,
     ),
     clientType: AuthClientType.bridgeMacos,
     device: DeviceInfo(name: 'Test Mac', osVersion: 'macOS 14.5', appVersion: '1.2.0'),

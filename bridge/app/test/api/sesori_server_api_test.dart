@@ -5,7 +5,7 @@ import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:sesori_bridge/src/api/sesori_server_api.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
-import "package:sesori_bridge/src/foundation/abortable_request_client.dart";
+import "package:sesori_bridge/src/foundation/abortable_request.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -21,7 +21,6 @@ void main() {
         }),
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: _FakeTokenRefresher(token: "unused"),
-        requestClient: const AbortableRequestClient(),
       );
 
       final response = await api.getAppClientStatus(accessToken: "secret-token");
@@ -38,14 +37,12 @@ void main() {
         client: MockClient((_) async => http.Response("missing", 503)),
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: _FakeTokenRefresher(token: "unused"),
-        requestClient: const AbortableRequestClient(),
       );
       final malformedApi = SesoriServerApi(
         authBackendUrl: "https://auth.example.test",
         client: MockClient((_) async => http.Response('{"registered":"yes"}', 200)),
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: _FakeTokenRefresher(token: "unused"),
-        requestClient: const AbortableRequestClient(),
       );
 
       await expectLater(
@@ -66,7 +63,6 @@ void main() {
         client: client,
         requestDeadline: Duration.zero,
         tokenRefresher: _FakeTokenRefresher(token: "unused"),
-        requestClient: const AbortableRequestClient(),
       );
 
       await expectLater(api.getAppClientStatus(accessToken: "token"), throwsA(isA<http.RequestAbortedException>()));
@@ -80,7 +76,6 @@ void main() {
         client: client,
         requestDeadline: const Duration(milliseconds: 5),
         tokenRefresher: _FakeTokenRefresher(token: "unused"),
-        requestClient: const AbortableRequestClient(),
       );
 
       await api.getAppClientStatus(accessToken: "token");
@@ -105,7 +100,6 @@ void main() {
         }),
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: tokenRefresher,
-        requestClient: const AbortableRequestClient(),
       );
 
       final response = await api.generateSessionMetadata(
@@ -136,7 +130,6 @@ void main() {
         }),
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: tokenRefresher,
-        requestClient: const AbortableRequestClient(),
       );
 
       final response = await api.generateSessionMetadata(
@@ -163,7 +156,6 @@ void main() {
           }),
           requestDeadline: const Duration(seconds: 1),
           tokenRefresher: tokenRefresher,
-          requestClient: const AbortableRequestClient(),
         );
 
         await expectLater(
@@ -188,7 +180,6 @@ void main() {
         client: MockClient((_) async => http.Response('{"title":1}', 200)),
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: _FakeTokenRefresher(token: "token"),
-        requestClient: const AbortableRequestClient(),
       );
 
       await expectLater(
@@ -212,7 +203,6 @@ void main() {
         client: client,
         requestDeadline: Duration.zero,
         tokenRefresher: _FakeTokenRefresher(token: "token"),
-        requestClient: const AbortableRequestClient(),
       );
 
       await expectLater(
@@ -233,7 +223,6 @@ void main() {
         client: client,
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: _FakeTokenRefresher(token: "token"),
-        requestClient: const AbortableRequestClient(),
       );
 
       final response = api.generateSessionMetadata(
@@ -259,7 +248,6 @@ void main() {
         }),
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: tokenRefresher,
-        requestClient: const AbortableRequestClient(),
       );
 
       final response = api.generateSessionMetadata(
@@ -289,7 +277,6 @@ void main() {
         }),
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: tokenRefresher,
-        requestClient: const AbortableRequestClient(),
       );
 
       final response = api.generateSessionMetadata(
@@ -317,7 +304,6 @@ void main() {
         client: client,
         requestDeadline: const Duration(seconds: 1),
         tokenRefresher: _FakeTokenRefresher(token: "token"),
-        requestClient: const AbortableRequestClient(),
       );
 
       await api.generateSessionMetadata(

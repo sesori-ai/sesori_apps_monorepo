@@ -53,10 +53,11 @@ import "../control/bridge_control_message_dispatcher.dart";
 import "../control/control_channel_loss_listener.dart";
 import "../control/control_provision_notifier.dart";
 import "../control/control_status_notifier.dart";
-import "../foundation/abortable_request_client.dart";
+import "../foundation/abortable_request.dart";
 import "../foundation/app_connection_wait_indicator.dart";
 import "../foundation/app_onboarding_formatter.dart";
 import "../foundation/control_channel_client.dart";
+import "../foundation/data_directory_hardening.dart";
 import "../foundation/log_failure_reporter.dart";
 import "../foundation/process_runner.dart";
 import "../foundation/process_runner_command_executor.dart";
@@ -323,8 +324,8 @@ class const BridgeRuntimeRunner._() {
     final authApi = AuthApi(
       authBackendUrl: options.authBackendUrl,
       client: httpClient,
-      requestClient: const AbortableRequestClient(),
       requestDeadline: AuthApi.defaultRequestDeadline,
+      sendRequest: sendRequestWithDeadline,
     );
     final authRepository = AuthRepository(api: authApi);
     final runtimeAuthService = BridgeRuntimeAuthService(
@@ -348,6 +349,7 @@ class const BridgeRuntimeRunner._() {
       saveTokens: (data) => saveTokens(
         data: data,
         dataDirectory: options.dataDirectory,
+        writeRestrictedFile: writeRestrictedFile,
       ),
       clearTokens: () => clearTokens(dataDirectory: options.dataDirectory),
     );
@@ -358,6 +360,7 @@ class const BridgeRuntimeRunner._() {
     // before authentication.
     final bridgeIdStorage = BridgeIdStorage(
       filePath: bridgeIdPath(dataDirectory: options.dataDirectory),
+      writeRestrictedFile: writeRestrictedFile,
     );
 
     try {
@@ -562,18 +565,19 @@ class const BridgeRuntimeRunner._() {
       } else {
         final authTokens = await runtimeAuthService.ensureAuthenticated(options: options);
         authAccessToken = authTokens.accessToken;
-        final tokenManager = TokenService(
+        final tokenService = TokenService(
           initialToken: authAccessToken,
           loadTokens: () => loadTokens(dataDirectory: options.dataDirectory),
           saveTokens: (data) => saveTokens(
             data: data,
             dataDirectory: options.dataDirectory,
+            writeRestrictedFile: writeRestrictedFile,
           ),
           authRepository: authRepository,
         );
-        shutdownCoordinator.add(disposable: tokenManager.dispose);
-        accessTokenProvider = tokenManager;
-        tokenRefresher = tokenManager;
+        shutdownCoordinator.add(disposable: tokenService.dispose);
+        accessTokenProvider = tokenService;
+        tokenRefresher = tokenService;
       }
       await runtimeAuthService.logAuthenticatedUser(
         accessToken: authAccessToken,
@@ -918,7 +922,6 @@ class const BridgeRuntimeRunner._() {
               client: httpClient,
               requestDeadline: SesoriServerApi.defaultRequestDeadline,
               tokenRefresher: tokenRefresher,
-              requestClient: const AbortableRequestClient(),
             ),
           ),
           stateRepository: AppOnboardingStateRepository(

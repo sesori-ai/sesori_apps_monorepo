@@ -2,6 +2,7 @@ import "dart:io";
 
 import "package:path/path.dart" as path;
 import "package:sesori_bridge/src/auth/token.dart";
+import "package:sesori_bridge/src/foundation/data_directory_hardening.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -102,7 +103,11 @@ void main() {
         lastProvider: AuthProvider.github,
       );
 
-      await saveTokens(data: data, dataDirectory: firstRoot);
+      await saveTokens(
+        data: data,
+        dataDirectory: firstRoot,
+        writeRestrictedFile: writeRestrictedFile,
+      );
 
       expect(File(tokenPath(dataDirectory: firstRoot)).existsSync(), isTrue);
       expect(File(tokenPath(dataDirectory: secondRoot)).existsSync(), isFalse);

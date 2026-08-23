@@ -24,6 +24,12 @@ void main() {
     expect(options.authBackendUrl, "https://api.sesori.com");
   });
 
+  test("auth backend removes every trailing slash at composition", () {
+    final options = _parseOptions(args: ["--auth-backend", "https://auth.example.test///"]);
+
+    expect(options.authBackendUrl, "https://auth.example.test");
+  });
+
   test("debug port is parsed when present", () {
     final options = _parseOptions(args: ["--debug-port", "8080"]);
 

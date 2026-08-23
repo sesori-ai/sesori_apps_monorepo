@@ -25,7 +25,6 @@ import "auth/access_token_provider.dart";
 import "auth/bridge_registration_service.dart";
 import "auth/token_refresher.dart";
 import "control/control_status_notifier.dart";
-import "foundation/abortable_request_client.dart";
 import "foundation/filesystem_permission_validator.dart";
 import "foundation/key_exchange.dart";
 import "foundation/process_runner.dart";
@@ -385,7 +384,6 @@ class Orchestrator({
           client: _httpClient,
           requestDeadline: SesoriServerApi.defaultRequestDeadline,
           tokenRefresher: _tokenRefresher,
-          requestClient: const AbortableRequestClient(),
         ),
       ),
       worktreeService: worktreeService,

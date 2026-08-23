@@ -1,6 +1,6 @@
 # Step 19/45 - Deduplicate request-handler error mapping and guards
 
-## Re-verification against the Step 18 parent
+## Re-verification against merged Step 18
 
 `GetRequestHandler` and `BodyRequestHandler` still repeated the same exception
 mapping, and the router had a third generic-failure fallback with a different
@@ -47,15 +47,14 @@ status behavior. `docs/regression/bridge-connectivity.md` records this boundary.
 - Searches confirmed no client production branch on status 502 and no remaining
   routing-handler fragment argument or unused target-parameter declaration.
 
-The Step 18 parent used for scope measurement is
-`b030075882a24d1d0ea850af291f44a2e5508104`. The production routing diff is
+The merged Step 18 parent used for scope measurement is
+`aa92bc5f8754c5662d07f620d4d45a2d47918b5a`. The production routing diff is
 `+188 / -459`; the routing-test diff is `+137 / -1132`. This evidence file and
 the regression-document update are excluded from those totals.
 
 ## Architecture implementation review
 
-The required `architecture-implementation-review` skill was unavailable when
-invoked, and the reviewer performed no substitute review. An independent
-production review found that the restart handler bypassed the shared guard and
-that one project-id guard remained duplicated; both findings were fixed before
-final verification.
+Step 19 is not architecture-review scoped by the plan. An independent production
+review found that the restart handler bypassed the shared guard and that one
+project-id guard remained duplicated; both findings were fixed before final
+verification.
