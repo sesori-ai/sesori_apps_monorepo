@@ -67,6 +67,7 @@
 | State routing | Through `ProjectListCubit`, `SessionListCubit`, `PluginManagementCubit` | Keeps the shell's Layer-4 boundary and puts the refresh in the object that already owns refreshing |
 | Fan-out membership | Recorded on dispatch, not acknowledgement | `RelayResponseLostException` and timeouts can fire after the request landed |
 | Harness predicate | `runtimeState.isRoutable` | `isEnabled` is true for `blocked` and `failed`, which the bridge rejects with `503` |
+| Counts reduction | Summed across harnesses; delta only if every harness reported one | A delta missing a harness's contribution would understate the result while reading as authoritative |
 | Completion wording | New items, with a totals fallback | Reporting 193 totals after a no-op rescan would be actively misleading |
 | New-count transport | One nullable `CatalogImportNewItems` object | Two independent `int?` fields make `{5, null}` representable and meaningless |
 | Recovery read | Seed only from non-terminal statuses | `latestStatuses` retains terminal statuses forever |
@@ -280,7 +281,7 @@ committed import raises no list invalidation.
 - **Step 1 documentation validation:** `git diff --check` passed; step tokens
   and exact PR titles diffed clean between `PLAN.md` and `TRACKER.md`; plan
   files only in the diff
-- **Step 1 changed lines:** 1,144 documentation-only insertions, 0 deletions, from
+- **Step 1 changed lines:** 1,156 documentation-only insertions, 0 deletions, from
   `git diff --numstat <merge-base>...HEAD` (informational only; the figure counts
   these verification-log lines, so it cannot independently validate the target)
 - **Step 1 review:** `architecture-plan-review` rejected the first revision;

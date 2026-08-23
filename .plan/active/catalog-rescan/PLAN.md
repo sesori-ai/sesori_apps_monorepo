@@ -262,6 +262,15 @@ The success summary is worded from the counts carrier:
 - totals only, which is what an older bridge sends:
   `43 projects, 193 sessions`.
 
+Across an N-harness fan-out the counts are **summed**, not taken from whichever
+harness finished last. The carrier is `CatalogRescanDelta` only when every
+succeeded harness reported `newItems`; if any one omitted it, the whole row
+falls back to `CatalogRescanTotals` summed the same way, because a delta missing
+one harness's contribution would understate the result and read as authoritative.
+Every harness in a fan-out answers from the same bridge, so in practice the
+mixed case arises only if a bridge reports inconsistently; the rule exists so
+that case degrades honestly rather than silently.
+
 Cancel issues one `DELETE /plugin/import` per harness still running.
 
 ### Non-gesture twin on Settings to Harnesses
@@ -731,7 +740,9 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
 - Leave `sse_event.dart` and `sse_event_tracker.dart` untouched.
 - Tests: aggregation across two concurrent harnesses; all five states including
   a mixed success/failure fan-out; the older-bridge payload with `newItems`
-  omitted; a reconnect whose `GET` holds only terminal statuses producing no
+  omitted; a two-harness success summing both deltas rather than reporting one;
+  a two-harness success where one omitted `newItems` falling back to summed
+  totals; a reconnect whose `GET` holds only terminal statuses producing no
   row; a reconnect whose `GET` holds an in-flight status producing a running
   row; a disconnect clearing an active rescan; a fan-out where one harness
   answers `503`; cancel issuing one `DELETE` per running harness; a **second
