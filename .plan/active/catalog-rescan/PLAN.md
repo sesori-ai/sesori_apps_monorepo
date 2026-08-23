@@ -791,7 +791,7 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
   harness in a fan-out answers `404`; and let a recovery-seeded rescan resolve
   to `CatalogRescanIdle` rather than to a terminal summary.
 - Leave `sse_event.dart` and `sse_event_tracker.dart` untouched.
-- Tests: aggregation across two concurrent harnesses; all five states including
+- Tests: aggregation across two concurrent harnesses; all seven states including
   a mixed success/failure fan-out; the older-bridge payload with `newItems`
   omitted; a two-harness success summing both deltas rather than reporting one;
   a two-harness success where one omitted `newItems` falling back to summed
@@ -866,7 +866,7 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
   per plugin id by `PluginManagementCubit` and rendered on that card, so a
   targeted `503`, `404`, or unsupported-bridge answer lands on the harness the
   user selected instead of the shared row.
-- New `app_en.arb` resources for both captions, the five row states, the delta
+- New `app_en.arb` resources for both captions, the seven row states, the delta
   and totals wordings, the `Nothing new` case, the partly-failed wording, the
   bounded failure line naming the bridge log, and the Settings action with its
   semantics label and its rejection message.

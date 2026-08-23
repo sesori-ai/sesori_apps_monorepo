@@ -175,7 +175,7 @@
 - [ ] Record membership on dispatch; keep a harness on timeout or lost response.
 - [ ] Select harnesses by `runtimeState.isRoutable`.
 - [ ] Never lift `CatalogImportFailed.message` into client state.
-- [ ] Prove aggregation across two harnesses, all five states including a mixed
+- [ ] Prove aggregation across two harnesses, all seven states including a mixed
   outcome, the older-bridge payload, both reconnect cases, a disconnect, a
   `503` in the fan-out, cancel fanning out one `DELETE` per running id, a
   second sequential rescan not inheriting the previous aggregate, a failure
@@ -199,13 +199,13 @@
 - [ ] Give all three cubits a rescan subscription, state, and intent methods.
 - [ ] Refresh both lists on `CatalogRescanSucceeded` and
   `CatalogRescanPartlyFailed`.
-- [ ] Build the rescan row in `client/app/lib/core/widgets/` with all five
+- [ ] Build the rescan row in `client/app/lib/core/widgets/` with all seven
   presentations, no timer, and no bridge-supplied text.
 - [ ] Wire all three hosts through their cubits; no widget touches the service.
 - [ ] Add the per-harness Settings action with `isRoutable` enablement and a
   surfaced targeted rejection.
 - [ ] Add every `app_en.arb` resource and commit the generated l10n.
-- [ ] Prove the five row states, the totals fallback, cancel, dismiss, the
+- [ ] Prove the seven row states, the totals fallback, cancel, dismiss, the
   Settings action's enablement and rejection, exactly one list refresh per
   cubit on terminal success, and that no fixture message reaches a rendered
   string.
@@ -244,7 +244,7 @@
 | 4 | `cancelCatalogImport()` had no `pluginId` and could not be implemented | Signature corrected; `cancel()` now fans out one `DELETE` per running harness, recorded in the complexity budget |
 | 5 | The management-snapshot collaborator and the state's location were undeclared | Both declared: `PluginManagementService.snapshots`, and `services/models/catalog_rescan_state.dart` |
 | 6 | The 4s auto-dismiss timer was owned by the row, not the state owner | Moved to `CatalogRescanService`; the row owns no timer |
-| 7 | The terminal state could not represent an N-harness outcome | Replaced with five sealed variants including `CatalogRescanPartlyFailed` |
+| 7 | The terminal state could not represent an N-harness outcome | Replaced with sealed variants including `CatalogRescanPartlyFailed`; round three extended the set to seven |
 | 8 | Nothing stated the rescan state's lifetime across disconnect or bridge change | Lifetime table added; resets to idle, no generation or fence machinery |
 | 9 | The rescan row widget's home was unnamed while two features consume it | Named `client/app/lib/core/widgets/` |
 | 10 | The delta counts were two independently nullable ints on wire and client | Grouped into one nullable `CatalogImportNewItems` and a sealed `CatalogRescanCounts` |
