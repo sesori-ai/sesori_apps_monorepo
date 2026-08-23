@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `deepseek-harness`
-- **Status:** Step 5/15 in review; Step 6/15 verified locally
+- **Status:** Step 5/15 merged; Step 6/15 in review; Step 7/15 starting locally
 - **Plan date:** 2026-08-22
 - **Implementation base:** `origin/main` at
   `ebcc09bf255e1410720be616b883fa40af95d4a4`
