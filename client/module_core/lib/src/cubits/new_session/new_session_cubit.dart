@@ -39,13 +39,16 @@ class NewSessionCubit({
 }) extends Cubit<NewSessionState> {
   this
     : super(
-        NewSessionState.idle(
-          availablePlugins: const [],
-          selectedPlugin: null,
-          options: const NewSessionOptionsLoadingState(source: null),
-          backendScope: _selectionTracker.backendScope.invalidate(),
-          isPluginDiscoveryInFlight: false,
-          projectWorktreeCapability: NewSessionProjectWorktreeCapability.loading,
+        NewSessionState.composing(
+          config: NewSessionComposeConfig(
+            availablePlugins: const [],
+            selectedPlugin: null,
+            options: const NewSessionOptionsLoadingState(source: null),
+            backendScope: _selectionTracker.backendScope.invalidate(),
+            isPluginDiscoveryInFlight: false,
+            projectWorktreeCapability: NewSessionProjectWorktreeCapability.loading,
+          ),
+          phase: const NewSessionPhase.idle(),
         ),
       ) {
     _wasConnected = _connectionService.currentStatus is ConnectionConnected;
@@ -77,7 +80,7 @@ class NewSessionCubit({
         );
       }
     }
-    if (!reconnected || state is NewSessionSending || state is NewSessionCreated) return;
+    if (!reconnected || state.phase is NewSessionPhaseSending || state is NewSessionCreated) return;
     unawaited(_discoverPlugins());
     unawaited(_loadProjectCapability());
   }
@@ -172,37 +175,26 @@ class NewSessionCubit({
   }) {
     if (isClosed) return;
     final current = state;
-    final next = switch (current) {
-      NewSessionRestoringSubmission(:final submission, :final reason) => NewSessionState.restoringSubmission(
-        submission: submission,
-        reason: reason,
-        availablePlugins: availablePlugins,
-        selectedPlugin: selectedPlugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: false,
-        projectWorktreeCapability: projectWorktreeCapability,
-      ),
-      NewSessionCreationError(:final reason) => NewSessionState.creationError(
-        reason: reason,
-        availablePlugins: availablePlugins,
-        selectedPlugin: selectedPlugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: false,
-        projectWorktreeCapability: projectWorktreeCapability,
-      ),
-      NewSessionIdle() || NewSessionDiscoveryError() => NewSessionState.idle(
-        availablePlugins: availablePlugins,
-        selectedPlugin: selectedPlugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: false,
-        projectWorktreeCapability: projectWorktreeCapability,
-      ),
-      NewSessionSending() || NewSessionCreated() => null,
+    if (current is! NewSessionComposing) return;
+    final phase = switch (current.phase) {
+      NewSessionPhaseIdle() || NewSessionPhaseDiscoveryError() => const NewSessionPhase.idle(),
+      NewSessionPhaseRestoringSubmission() || NewSessionPhaseCreationError() => current.phase,
+      NewSessionPhaseSending() => null,
     };
-    if (next != null) emit(next);
+    if (phase == null) return;
+    emit(
+      current.copyWith(
+        config: NewSessionComposeConfig(
+          availablePlugins: availablePlugins,
+          selectedPlugin: selectedPlugin,
+          options: options,
+          backendScope: backendScope,
+          isPluginDiscoveryInFlight: false,
+          projectWorktreeCapability: projectWorktreeCapability,
+        ),
+        phase: phase,
+      ),
+    );
   }
 
   void _emitDiscoveryError({required RemoteFailureReason reason}) {
@@ -222,11 +214,17 @@ class NewSessionCubit({
     };
     final backendScope =
         data?.backendScope.invalidate() ?? const NewSessionBackendScope.unverified(lastIdentifiedBridgeId: null);
-    final next = switch (state) {
-      NewSessionRestoringSubmission(:final submission, reason: final creationReason) =>
-        NewSessionState.restoringSubmission(
-          submission: submission,
-          reason: creationReason,
+    final current = state;
+    if (current is! NewSessionComposing) return;
+    final phase = switch (current.phase) {
+      NewSessionPhaseIdle() || NewSessionPhaseDiscoveryError() => NewSessionPhase.discoveryError(reason: reason),
+      NewSessionPhaseRestoringSubmission() || NewSessionPhaseCreationError() => current.phase,
+      NewSessionPhaseSending() => null,
+    };
+    if (phase == null) return;
+    emit(
+      current.copyWith(
+        config: NewSessionComposeConfig(
           availablePlugins: data?.plugins ?? const [],
           selectedPlugin: data?.plugin,
           options: options,
@@ -234,27 +232,9 @@ class NewSessionCubit({
           isPluginDiscoveryInFlight: false,
           projectWorktreeCapability: data?.projectWorktreeCapability ?? NewSessionProjectWorktreeCapability.unavailable,
         ),
-      NewSessionCreationError(reason: final creationReason) => NewSessionState.creationError(
-        reason: creationReason,
-        availablePlugins: data?.plugins ?? const [],
-        selectedPlugin: data?.plugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: false,
-        projectWorktreeCapability: data?.projectWorktreeCapability ?? NewSessionProjectWorktreeCapability.unavailable,
+        phase: phase,
       ),
-      NewSessionIdle() || NewSessionDiscoveryError() => NewSessionState.discoveryError(
-        reason: reason,
-        availablePlugins: data?.plugins ?? const [],
-        selectedPlugin: data?.plugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: false,
-        projectWorktreeCapability: data?.projectWorktreeCapability ?? NewSessionProjectWorktreeCapability.unavailable,
-      ),
-      NewSessionSending() || NewSessionCreated() => null,
-    };
-    if (next != null) emit(next);
+    );
   }
 
   Future<void> _loadProjectCapability() async {
@@ -302,7 +282,7 @@ class NewSessionCubit({
   void selectPlugin({required String pluginId}) {
     final current = state;
     final data = current.agentModelData;
-    if (current is NewSessionSending ||
+    if (current.phase is NewSessionPhaseSending ||
         current is NewSessionCreated ||
         data == null ||
         !data.backendScope.isVerified ||
@@ -354,7 +334,7 @@ class NewSessionCubit({
     final data = current.agentModelData;
     final plugin = data?.plugin;
     final source = data?.optionsState.source;
-    if (current is NewSessionSending ||
+    if (current.phase is NewSessionPhaseSending ||
         current is NewSessionCreated ||
         !(data?.backendScope.isVerified ?? false) ||
         data == null ||
@@ -534,12 +514,12 @@ class NewSessionCubit({
 
   bool _canApplyLoad({required int generation, required String? pluginId}) {
     if (isClosed || generation != _loadGeneration) return false;
-    if (pluginId == null && (state is NewSessionSending || state is NewSessionCreated)) return false;
+    if (pluginId == null && (state.phase is NewSessionPhaseSending || state is NewSessionCreated)) return false;
     return pluginId == null || state.agentModelData?.plugin?.id == pluginId;
   }
 
   bool get _canEditComposer {
-    if (state is NewSessionSending || state is NewSessionCreated) return false;
+    if (state.phase is NewSessionPhaseSending || state is NewSessionCreated) return false;
     final data = state.agentModelData;
     return data != null && !data.isLoading && (data.plugin?.isRoutable ?? false);
   }
@@ -550,7 +530,7 @@ class NewSessionCubit({
   /// not exist. Held back while discovery is in flight, which the screen is
   /// already reporting on its own.
   bool get needsHarnessDiscovery {
-    if (state is NewSessionSending || state is NewSessionCreated) return false;
+    if (state.phase is NewSessionPhaseSending || state is NewSessionCreated) return false;
     final data = state.agentModelData;
     return data != null && data.plugins.isEmpty && !data.isPluginDiscoveryInFlight;
   }
@@ -599,55 +579,20 @@ class NewSessionCubit({
     required NewSessionProjectWorktreeCapability projectWorktreeCapability,
   }) {
     if (isClosed) return;
-    final next = switch (state) {
-      NewSessionIdle() => NewSessionState.idle(
-        availablePlugins: availablePlugins,
-        selectedPlugin: selectedPlugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
-        projectWorktreeCapability: projectWorktreeCapability,
+    final current = state;
+    if (current is! NewSessionComposing) return;
+    emit(
+      current.copyWith(
+        config: NewSessionComposeConfig(
+          availablePlugins: availablePlugins,
+          selectedPlugin: selectedPlugin,
+          options: options,
+          backendScope: backendScope,
+          isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
+          projectWorktreeCapability: projectWorktreeCapability,
+        ),
       ),
-      NewSessionSending(:final submission) => NewSessionState.sending(
-        submission: submission,
-        availablePlugins: availablePlugins,
-        selectedPlugin: selectedPlugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
-        projectWorktreeCapability: projectWorktreeCapability,
-      ),
-      NewSessionRestoringSubmission(:final submission, :final reason) => NewSessionState.restoringSubmission(
-        submission: submission,
-        reason: reason,
-        availablePlugins: availablePlugins,
-        selectedPlugin: selectedPlugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
-        projectWorktreeCapability: projectWorktreeCapability,
-      ),
-      NewSessionCreationError(:final reason) => NewSessionState.creationError(
-        reason: reason,
-        availablePlugins: availablePlugins,
-        selectedPlugin: selectedPlugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
-        projectWorktreeCapability: projectWorktreeCapability,
-      ),
-      NewSessionDiscoveryError(:final reason) => NewSessionState.discoveryError(
-        reason: reason,
-        availablePlugins: availablePlugins,
-        selectedPlugin: selectedPlugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
-        projectWorktreeCapability: projectWorktreeCapability,
-      ),
-      NewSessionCreated() => null,
-    };
-    if (next != null) emit(next);
+    );
   }
 
   void _replaceOptionsData({required NewSessionOptionsData options}) {
@@ -756,7 +701,7 @@ class NewSessionCubit({
   void clearStagedCommand() {
     final current = state;
     if (current is NewSessionCreated) return;
-    if (current is! NewSessionSending && !_canEditComposer) return;
+    if (current.phase is! NewSessionPhaseSending && !_canEditComposer) return;
     final options = current.agentModelData?.optionsState.data;
     if (options == null) return;
     _replaceOptionsData(options: _newSessionOptionsService.clearStagedCommand(options: options));
@@ -769,7 +714,7 @@ class NewSessionCubit({
     required List<ComposerAttachment> attachments,
   }) async {
     final current = state;
-    if (current is NewSessionSending || current is NewSessionCreated) return;
+    if (current.phase is NewSessionPhaseSending || current is NewSessionCreated) return;
     final config = current.agentModelData;
     final selectedPlugin = config?.plugin;
     if (config == null ||
@@ -817,14 +762,16 @@ class NewSessionCubit({
       pluginId: pluginId,
     );
     emit(
-      NewSessionState.sending(
-        submission: submission,
-        availablePlugins: config.plugins,
-        selectedPlugin: selectedPlugin,
-        options: config.optionsState,
-        backendScope: config.backendScope,
-        isPluginDiscoveryInFlight: false,
-        projectWorktreeCapability: config.projectWorktreeCapability,
+      NewSessionState.composing(
+        config: NewSessionComposeConfig(
+          availablePlugins: config.plugins,
+          selectedPlugin: selectedPlugin,
+          options: config.optionsState,
+          backendScope: config.backendScope,
+          isPluginDiscoveryInFlight: false,
+          projectWorktreeCapability: config.projectWorktreeCapability,
+        ),
+        phase: NewSessionPhase.sending(submission: submission),
       ),
     );
 
@@ -898,15 +845,19 @@ class NewSessionCubit({
           ),
         };
         emit(
-          NewSessionState.restoringSubmission(
-            submission: submission,
-            reason: error.remoteFailureReason,
-            availablePlugins: latest.plugins,
-            selectedPlugin: latest.plugin,
-            options: restoredOptions,
-            backendScope: latest.backendScope,
-            isPluginDiscoveryInFlight: false,
-            projectWorktreeCapability: latest.projectWorktreeCapability,
+          NewSessionState.composing(
+            config: NewSessionComposeConfig(
+              availablePlugins: latest.plugins,
+              selectedPlugin: latest.plugin,
+              options: restoredOptions,
+              backendScope: latest.backendScope,
+              isPluginDiscoveryInFlight: false,
+              projectWorktreeCapability: latest.projectWorktreeCapability,
+            ),
+            phase: NewSessionPhase.restoringSubmission(
+              submission: submission,
+              reason: error.remoteFailureReason,
+            ),
           ),
         );
         if (!latest.backendScope.isVerified && _wasConnected) {
@@ -949,18 +900,10 @@ class NewSessionCubit({
 
   void acknowledgeRestoredSubmission({required NewSessionSubmissionSnapshot submission}) {
     final current = state;
-    if (current is! NewSessionRestoringSubmission || !identical(current.submission, submission)) return;
-    emit(
-      NewSessionState.creationError(
-        reason: current.reason,
-        availablePlugins: current.availablePlugins,
-        selectedPlugin: current.selectedPlugin,
-        options: current.options,
-        backendScope: current.backendScope,
-        isPluginDiscoveryInFlight: current.isPluginDiscoveryInFlight,
-        projectWorktreeCapability: current.projectWorktreeCapability,
-      ),
-    );
+    if (current is! NewSessionComposing) return;
+    final phase = current.phase;
+    if (phase is! NewSessionPhaseRestoringSubmission || !identical(phase.submission, submission)) return;
+    emit(current.copyWith(phase: NewSessionPhase.creationError(reason: phase.reason)));
   }
 
   ComposerDraft get composerDraft => _composerDraft;

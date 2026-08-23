@@ -1957,7 +1957,7 @@ void main() {
     expect(tester.widget<PromptInput>(find.byType(PromptInput)).restorationKey, isNull);
     expect(
       tester.element(find.byType(PromptInput)).read<NewSessionCubit>().state,
-      isA<NewSessionCreationError>(),
+      isA<NewSessionComposing>().having((state) => state.phase, "phase", isA<NewSessionPhaseCreationError>()),
     );
     expect(creationCalls, 1);
     expect(identical(submittedAttachments.single.single, attachment), isTrue);

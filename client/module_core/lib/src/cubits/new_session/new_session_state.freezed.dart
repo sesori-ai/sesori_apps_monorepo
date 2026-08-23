@@ -537,6 +537,562 @@ String toString() {
 
 
 /// @nodoc
+mixin _$NewSessionComposeConfig {
+
+ List<PluginMetadata> get availablePlugins; PluginMetadata? get selectedPlugin; NewSessionOptionsLoadState get options; NewSessionBackendScope get backendScope; bool get isPluginDiscoveryInFlight; NewSessionProjectWorktreeCapability get projectWorktreeCapability;
+/// Create a copy of NewSessionComposeConfig
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NewSessionComposeConfigCopyWith<NewSessionComposeConfig> get copyWith => _$NewSessionComposeConfigCopyWithImpl<NewSessionComposeConfig>(this as NewSessionComposeConfig, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionComposeConfig&&const DeepCollectionEquality().equals(other.availablePlugins, availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.options, options) || other.options == options)&&(identical(other.backendScope, backendScope) || other.backendScope == backendScope)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&(identical(other.projectWorktreeCapability, projectWorktreeCapability) || other.projectWorktreeCapability == projectWorktreeCapability));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(availablePlugins),selectedPlugin,options,backendScope,isPluginDiscoveryInFlight,projectWorktreeCapability);
+
+@override
+String toString() {
+  return 'NewSessionComposeConfig(availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, options: $options, backendScope: $backendScope, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, projectWorktreeCapability: $projectWorktreeCapability)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $NewSessionComposeConfigCopyWith<$Res>  {
+  factory $NewSessionComposeConfigCopyWith(NewSessionComposeConfig value, $Res Function(NewSessionComposeConfig) _then) = _$NewSessionComposeConfigCopyWithImpl;
+@useResult
+$Res call({
+ List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, NewSessionProjectWorktreeCapability projectWorktreeCapability
+});
+
+
+$PluginMetadataCopyWith<$Res>? get selectedPlugin;$NewSessionOptionsLoadStateCopyWith<$Res> get options;$NewSessionBackendScopeCopyWith<$Res> get backendScope;
+
+}
+/// @nodoc
+class _$NewSessionComposeConfigCopyWithImpl<$Res>
+    implements $NewSessionComposeConfigCopyWith<$Res> {
+  _$NewSessionComposeConfigCopyWithImpl(this._self, this._then);
+
+  final NewSessionComposeConfig _self;
+  final $Res Function(NewSessionComposeConfig) _then;
+
+/// Create a copy of NewSessionComposeConfig
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? projectWorktreeCapability = null,}) {
+  return _then(NewSessionComposeConfig(
+availablePlugins: null == availablePlugins ? _self.availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
+as List<PluginMetadata>,selectedPlugin: freezed == selectedPlugin ? _self.selectedPlugin : selectedPlugin // ignore: cast_nullable_to_non_nullable
+as PluginMetadata?,options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
+as NewSessionOptionsLoadState,backendScope: null == backendScope ? _self.backendScope : backendScope // ignore: cast_nullable_to_non_nullable
+as NewSessionBackendScope,isPluginDiscoveryInFlight: null == isPluginDiscoveryInFlight ? _self.isPluginDiscoveryInFlight : isPluginDiscoveryInFlight // ignore: cast_nullable_to_non_nullable
+as bool,projectWorktreeCapability: null == projectWorktreeCapability ? _self.projectWorktreeCapability : projectWorktreeCapability // ignore: cast_nullable_to_non_nullable
+as NewSessionProjectWorktreeCapability,
+  ));
+}
+/// Create a copy of NewSessionComposeConfig
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PluginMetadataCopyWith<$Res>? get selectedPlugin {
+    if (_self.selectedPlugin == null) {
+    return null;
+  }
+
+  return $PluginMetadataCopyWith<$Res>(_self.selectedPlugin!, (value) {
+    return _then(_self.copyWith(selectedPlugin: value));
+  });
+}/// Create a copy of NewSessionComposeConfig
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NewSessionOptionsLoadStateCopyWith<$Res> get options {
+  
+  return $NewSessionOptionsLoadStateCopyWith<$Res>(_self.options, (value) {
+    return _then(_self.copyWith(options: value));
+  });
+}/// Create a copy of NewSessionComposeConfig
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NewSessionBackendScopeCopyWith<$Res> get backendScope {
+  
+  return $NewSessionBackendScopeCopyWith<$Res>(_self.backendScope, (value) {
+    return _then(_self.copyWith(backendScope: value));
+  });
+}
+}
+
+
+
+/// @nodoc
+
+
+class _NewSessionComposeConfig implements NewSessionComposeConfig {
+  const _NewSessionComposeConfig({required  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.options, required this.backendScope, required this.isPluginDiscoveryInFlight, required this.projectWorktreeCapability}): _availablePlugins = availablePlugins;
+  
+
+ final  List<PluginMetadata> _availablePlugins;
+@override List<PluginMetadata> get availablePlugins {
+  if (_availablePlugins is EqualUnmodifiableListView) return _availablePlugins;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_availablePlugins);
+}
+
+@override final  PluginMetadata? selectedPlugin;
+@override final  NewSessionOptionsLoadState options;
+@override final  NewSessionBackendScope backendScope;
+@override final  bool isPluginDiscoveryInFlight;
+@override final  NewSessionProjectWorktreeCapability projectWorktreeCapability;
+
+/// Create a copy of NewSessionComposeConfig
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$NewSessionComposeConfigCopyWith<_NewSessionComposeConfig> get copyWith => __$NewSessionComposeConfigCopyWithImpl<_NewSessionComposeConfig>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _NewSessionComposeConfig&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.options, options) || other.options == options)&&(identical(other.backendScope, backendScope) || other.backendScope == backendScope)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&(identical(other.projectWorktreeCapability, projectWorktreeCapability) || other.projectWorktreeCapability == projectWorktreeCapability));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,options,backendScope,isPluginDiscoveryInFlight,projectWorktreeCapability);
+
+@override
+String toString() {
+  return 'NewSessionComposeConfig(availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, options: $options, backendScope: $backendScope, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, projectWorktreeCapability: $projectWorktreeCapability)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$NewSessionComposeConfigCopyWith<$Res> implements $NewSessionComposeConfigCopyWith<$Res> {
+  factory _$NewSessionComposeConfigCopyWith(_NewSessionComposeConfig value, $Res Function(_NewSessionComposeConfig) _then) = __$NewSessionComposeConfigCopyWithImpl;
+@override @useResult
+$Res call({
+ List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, NewSessionProjectWorktreeCapability projectWorktreeCapability
+});
+
+
+@override $PluginMetadataCopyWith<$Res>? get selectedPlugin;@override $NewSessionOptionsLoadStateCopyWith<$Res> get options;@override $NewSessionBackendScopeCopyWith<$Res> get backendScope;
+
+}
+/// @nodoc
+class __$NewSessionComposeConfigCopyWithImpl<$Res>
+    implements _$NewSessionComposeConfigCopyWith<$Res> {
+  __$NewSessionComposeConfigCopyWithImpl(this._self, this._then);
+
+  final _NewSessionComposeConfig _self;
+  final $Res Function(_NewSessionComposeConfig) _then;
+
+/// Create a copy of NewSessionComposeConfig
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? projectWorktreeCapability = null,}) {
+  return _then(_NewSessionComposeConfig(
+availablePlugins: null == availablePlugins ? _self._availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
+as List<PluginMetadata>,selectedPlugin: freezed == selectedPlugin ? _self.selectedPlugin : selectedPlugin // ignore: cast_nullable_to_non_nullable
+as PluginMetadata?,options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
+as NewSessionOptionsLoadState,backendScope: null == backendScope ? _self.backendScope : backendScope // ignore: cast_nullable_to_non_nullable
+as NewSessionBackendScope,isPluginDiscoveryInFlight: null == isPluginDiscoveryInFlight ? _self.isPluginDiscoveryInFlight : isPluginDiscoveryInFlight // ignore: cast_nullable_to_non_nullable
+as bool,projectWorktreeCapability: null == projectWorktreeCapability ? _self.projectWorktreeCapability : projectWorktreeCapability // ignore: cast_nullable_to_non_nullable
+as NewSessionProjectWorktreeCapability,
+  ));
+}
+
+/// Create a copy of NewSessionComposeConfig
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PluginMetadataCopyWith<$Res>? get selectedPlugin {
+    if (_self.selectedPlugin == null) {
+    return null;
+  }
+
+  return $PluginMetadataCopyWith<$Res>(_self.selectedPlugin!, (value) {
+    return _then(_self.copyWith(selectedPlugin: value));
+  });
+}/// Create a copy of NewSessionComposeConfig
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NewSessionOptionsLoadStateCopyWith<$Res> get options {
+  
+  return $NewSessionOptionsLoadStateCopyWith<$Res>(_self.options, (value) {
+    return _then(_self.copyWith(options: value));
+  });
+}/// Create a copy of NewSessionComposeConfig
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NewSessionBackendScopeCopyWith<$Res> get backendScope {
+  
+  return $NewSessionBackendScopeCopyWith<$Res>(_self.backendScope, (value) {
+    return _then(_self.copyWith(backendScope: value));
+  });
+}
+}
+
+/// @nodoc
+mixin _$NewSessionPhase {
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhase);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'NewSessionPhase()';
+}
+
+
+}
+
+/// @nodoc
+class $NewSessionPhaseCopyWith<$Res>  {
+$NewSessionPhaseCopyWith(NewSessionPhase _, $Res Function(NewSessionPhase) __);
+}
+
+
+
+/// @nodoc
+
+
+class NewSessionPhaseIdle implements NewSessionPhase {
+  const NewSessionPhaseIdle();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseIdle);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'NewSessionPhase.idle()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
+class NewSessionPhaseSending implements NewSessionPhase {
+  const NewSessionPhaseSending({required this.submission});
+  
+
+ final  NewSessionSubmissionSnapshot submission;
+
+/// Create a copy of NewSessionPhase
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NewSessionPhaseSendingCopyWith<NewSessionPhaseSending> get copyWith => _$NewSessionPhaseSendingCopyWithImpl<NewSessionPhaseSending>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseSending&&(identical(other.submission, submission) || other.submission == submission));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,submission);
+
+@override
+String toString() {
+  return 'NewSessionPhase.sending(submission: $submission)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $NewSessionPhaseSendingCopyWith<$Res> implements $NewSessionPhaseCopyWith<$Res> {
+  factory $NewSessionPhaseSendingCopyWith(NewSessionPhaseSending value, $Res Function(NewSessionPhaseSending) _then) = _$NewSessionPhaseSendingCopyWithImpl;
+@useResult
+$Res call({
+ NewSessionSubmissionSnapshot submission
+});
+
+
+$NewSessionSubmissionSnapshotCopyWith<$Res> get submission;
+
+}
+/// @nodoc
+class _$NewSessionPhaseSendingCopyWithImpl<$Res>
+    implements $NewSessionPhaseSendingCopyWith<$Res> {
+  _$NewSessionPhaseSendingCopyWithImpl(this._self, this._then);
+
+  final NewSessionPhaseSending _self;
+  final $Res Function(NewSessionPhaseSending) _then;
+
+/// Create a copy of NewSessionPhase
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? submission = null,}) {
+  return _then(NewSessionPhaseSending(
+submission: null == submission ? _self.submission : submission // ignore: cast_nullable_to_non_nullable
+as NewSessionSubmissionSnapshot,
+  ));
+}
+
+/// Create a copy of NewSessionPhase
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NewSessionSubmissionSnapshotCopyWith<$Res> get submission {
+  
+  return $NewSessionSubmissionSnapshotCopyWith<$Res>(_self.submission, (value) {
+    return _then(_self.copyWith(submission: value));
+  });
+}
+}
+
+/// @nodoc
+
+
+class NewSessionPhaseRestoringSubmission implements NewSessionPhase {
+  const NewSessionPhaseRestoringSubmission({required this.submission, required this.reason});
+  
+
+ final  NewSessionSubmissionSnapshot submission;
+ final  RemoteFailureReason reason;
+
+/// Create a copy of NewSessionPhase
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NewSessionPhaseRestoringSubmissionCopyWith<NewSessionPhaseRestoringSubmission> get copyWith => _$NewSessionPhaseRestoringSubmissionCopyWithImpl<NewSessionPhaseRestoringSubmission>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseRestoringSubmission&&(identical(other.submission, submission) || other.submission == submission)&&(identical(other.reason, reason) || other.reason == reason));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,submission,reason);
+
+@override
+String toString() {
+  return 'NewSessionPhase.restoringSubmission(submission: $submission, reason: $reason)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $NewSessionPhaseRestoringSubmissionCopyWith<$Res> implements $NewSessionPhaseCopyWith<$Res> {
+  factory $NewSessionPhaseRestoringSubmissionCopyWith(NewSessionPhaseRestoringSubmission value, $Res Function(NewSessionPhaseRestoringSubmission) _then) = _$NewSessionPhaseRestoringSubmissionCopyWithImpl;
+@useResult
+$Res call({
+ NewSessionSubmissionSnapshot submission, RemoteFailureReason reason
+});
+
+
+$NewSessionSubmissionSnapshotCopyWith<$Res> get submission;
+
+}
+/// @nodoc
+class _$NewSessionPhaseRestoringSubmissionCopyWithImpl<$Res>
+    implements $NewSessionPhaseRestoringSubmissionCopyWith<$Res> {
+  _$NewSessionPhaseRestoringSubmissionCopyWithImpl(this._self, this._then);
+
+  final NewSessionPhaseRestoringSubmission _self;
+  final $Res Function(NewSessionPhaseRestoringSubmission) _then;
+
+/// Create a copy of NewSessionPhase
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? submission = null,Object? reason = null,}) {
+  return _then(NewSessionPhaseRestoringSubmission(
+submission: null == submission ? _self.submission : submission // ignore: cast_nullable_to_non_nullable
+as NewSessionSubmissionSnapshot,reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as RemoteFailureReason,
+  ));
+}
+
+/// Create a copy of NewSessionPhase
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NewSessionSubmissionSnapshotCopyWith<$Res> get submission {
+  
+  return $NewSessionSubmissionSnapshotCopyWith<$Res>(_self.submission, (value) {
+    return _then(_self.copyWith(submission: value));
+  });
+}
+}
+
+/// @nodoc
+
+
+class NewSessionPhaseCreationError implements NewSessionPhase {
+  const NewSessionPhaseCreationError({required this.reason});
+  
+
+ final  RemoteFailureReason reason;
+
+/// Create a copy of NewSessionPhase
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NewSessionPhaseCreationErrorCopyWith<NewSessionPhaseCreationError> get copyWith => _$NewSessionPhaseCreationErrorCopyWithImpl<NewSessionPhaseCreationError>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseCreationError&&(identical(other.reason, reason) || other.reason == reason));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,reason);
+
+@override
+String toString() {
+  return 'NewSessionPhase.creationError(reason: $reason)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $NewSessionPhaseCreationErrorCopyWith<$Res> implements $NewSessionPhaseCopyWith<$Res> {
+  factory $NewSessionPhaseCreationErrorCopyWith(NewSessionPhaseCreationError value, $Res Function(NewSessionPhaseCreationError) _then) = _$NewSessionPhaseCreationErrorCopyWithImpl;
+@useResult
+$Res call({
+ RemoteFailureReason reason
+});
+
+
+
+
+}
+/// @nodoc
+class _$NewSessionPhaseCreationErrorCopyWithImpl<$Res>
+    implements $NewSessionPhaseCreationErrorCopyWith<$Res> {
+  _$NewSessionPhaseCreationErrorCopyWithImpl(this._self, this._then);
+
+  final NewSessionPhaseCreationError _self;
+  final $Res Function(NewSessionPhaseCreationError) _then;
+
+/// Create a copy of NewSessionPhase
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? reason = null,}) {
+  return _then(NewSessionPhaseCreationError(
+reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as RemoteFailureReason,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class NewSessionPhaseDiscoveryError implements NewSessionPhase {
+  const NewSessionPhaseDiscoveryError({required this.reason});
+  
+
+ final  RemoteFailureReason reason;
+
+/// Create a copy of NewSessionPhase
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NewSessionPhaseDiscoveryErrorCopyWith<NewSessionPhaseDiscoveryError> get copyWith => _$NewSessionPhaseDiscoveryErrorCopyWithImpl<NewSessionPhaseDiscoveryError>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseDiscoveryError&&(identical(other.reason, reason) || other.reason == reason));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,reason);
+
+@override
+String toString() {
+  return 'NewSessionPhase.discoveryError(reason: $reason)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $NewSessionPhaseDiscoveryErrorCopyWith<$Res> implements $NewSessionPhaseCopyWith<$Res> {
+  factory $NewSessionPhaseDiscoveryErrorCopyWith(NewSessionPhaseDiscoveryError value, $Res Function(NewSessionPhaseDiscoveryError) _then) = _$NewSessionPhaseDiscoveryErrorCopyWithImpl;
+@useResult
+$Res call({
+ RemoteFailureReason reason
+});
+
+
+
+
+}
+/// @nodoc
+class _$NewSessionPhaseDiscoveryErrorCopyWithImpl<$Res>
+    implements $NewSessionPhaseDiscoveryErrorCopyWith<$Res> {
+  _$NewSessionPhaseDiscoveryErrorCopyWithImpl(this._self, this._then);
+
+  final NewSessionPhaseDiscoveryError _self;
+  final $Res Function(NewSessionPhaseDiscoveryError) _then;
+
+/// Create a copy of NewSessionPhase
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? reason = null,}) {
+  return _then(NewSessionPhaseDiscoveryError(
+reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as RemoteFailureReason,
+  ));
+}
+
+
+}
+
+/// @nodoc
 mixin _$NewSessionState {
 
 
@@ -570,79 +1126,65 @@ $NewSessionStateCopyWith(NewSessionState _, $Res Function(NewSessionState) __);
 /// @nodoc
 
 
-class NewSessionIdle implements NewSessionState {
-  const NewSessionIdle({required  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.options, required this.backendScope, required this.isPluginDiscoveryInFlight, required this.projectWorktreeCapability}): _availablePlugins = availablePlugins;
+class NewSessionComposing implements NewSessionState {
+  const NewSessionComposing({required this.config, required this.phase});
   
 
- final  List<PluginMetadata> _availablePlugins;
- List<PluginMetadata> get availablePlugins {
-  if (_availablePlugins is EqualUnmodifiableListView) return _availablePlugins;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_availablePlugins);
-}
-
- final  PluginMetadata? selectedPlugin;
- final  NewSessionOptionsLoadState options;
- final  NewSessionBackendScope backendScope;
- final  bool isPluginDiscoveryInFlight;
- final  NewSessionProjectWorktreeCapability projectWorktreeCapability;
+ final  NewSessionComposeConfig config;
+ final  NewSessionPhase phase;
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$NewSessionIdleCopyWith<NewSessionIdle> get copyWith => _$NewSessionIdleCopyWithImpl<NewSessionIdle>(this, _$identity);
+$NewSessionComposingCopyWith<NewSessionComposing> get copyWith => _$NewSessionComposingCopyWithImpl<NewSessionComposing>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionIdle&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.options, options) || other.options == options)&&(identical(other.backendScope, backendScope) || other.backendScope == backendScope)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&(identical(other.projectWorktreeCapability, projectWorktreeCapability) || other.projectWorktreeCapability == projectWorktreeCapability));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionComposing&&(identical(other.config, config) || other.config == config)&&(identical(other.phase, phase) || other.phase == phase));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,options,backendScope,isPluginDiscoveryInFlight,projectWorktreeCapability);
+int get hashCode => Object.hash(runtimeType,config,phase);
 
 @override
 String toString() {
-  return 'NewSessionState.idle(availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, options: $options, backendScope: $backendScope, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, projectWorktreeCapability: $projectWorktreeCapability)';
+  return 'NewSessionState.composing(config: $config, phase: $phase)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $NewSessionIdleCopyWith<$Res> implements $NewSessionStateCopyWith<$Res> {
-  factory $NewSessionIdleCopyWith(NewSessionIdle value, $Res Function(NewSessionIdle) _then) = _$NewSessionIdleCopyWithImpl;
+abstract mixin class $NewSessionComposingCopyWith<$Res> implements $NewSessionStateCopyWith<$Res> {
+  factory $NewSessionComposingCopyWith(NewSessionComposing value, $Res Function(NewSessionComposing) _then) = _$NewSessionComposingCopyWithImpl;
 @useResult
 $Res call({
- List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, NewSessionProjectWorktreeCapability projectWorktreeCapability
+ NewSessionComposeConfig config, NewSessionPhase phase
 });
 
 
-$PluginMetadataCopyWith<$Res>? get selectedPlugin;$NewSessionOptionsLoadStateCopyWith<$Res> get options;$NewSessionBackendScopeCopyWith<$Res> get backendScope;
+$NewSessionComposeConfigCopyWith<$Res> get config;$NewSessionPhaseCopyWith<$Res> get phase;
 
 }
 /// @nodoc
-class _$NewSessionIdleCopyWithImpl<$Res>
-    implements $NewSessionIdleCopyWith<$Res> {
-  _$NewSessionIdleCopyWithImpl(this._self, this._then);
+class _$NewSessionComposingCopyWithImpl<$Res>
+    implements $NewSessionComposingCopyWith<$Res> {
+  _$NewSessionComposingCopyWithImpl(this._self, this._then);
 
-  final NewSessionIdle _self;
-  final $Res Function(NewSessionIdle) _then;
+  final NewSessionComposing _self;
+  final $Res Function(NewSessionComposing) _then;
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? projectWorktreeCapability = null,}) {
-  return _then(NewSessionIdle(
-availablePlugins: null == availablePlugins ? _self._availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
-as List<PluginMetadata>,selectedPlugin: freezed == selectedPlugin ? _self.selectedPlugin : selectedPlugin // ignore: cast_nullable_to_non_nullable
-as PluginMetadata?,options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
-as NewSessionOptionsLoadState,backendScope: null == backendScope ? _self.backendScope : backendScope // ignore: cast_nullable_to_non_nullable
-as NewSessionBackendScope,isPluginDiscoveryInFlight: null == isPluginDiscoveryInFlight ? _self.isPluginDiscoveryInFlight : isPluginDiscoveryInFlight // ignore: cast_nullable_to_non_nullable
-as bool,projectWorktreeCapability: null == projectWorktreeCapability ? _self.projectWorktreeCapability : projectWorktreeCapability // ignore: cast_nullable_to_non_nullable
-as NewSessionProjectWorktreeCapability,
+@pragma('vm:prefer-inline') $Res call({Object? config = null,Object? phase = null,}) {
+  return _then(NewSessionComposing(
+config: null == config ? _self.config : config // ignore: cast_nullable_to_non_nullable
+as NewSessionComposeConfig,phase: null == phase ? _self.phase : phase // ignore: cast_nullable_to_non_nullable
+as NewSessionPhase,
   ));
 }
 
@@ -650,507 +1192,19 @@ as NewSessionProjectWorktreeCapability,
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$PluginMetadataCopyWith<$Res>? get selectedPlugin {
-    if (_self.selectedPlugin == null) {
-    return null;
-  }
-
-  return $PluginMetadataCopyWith<$Res>(_self.selectedPlugin!, (value) {
-    return _then(_self.copyWith(selectedPlugin: value));
+$NewSessionComposeConfigCopyWith<$Res> get config {
+  
+  return $NewSessionComposeConfigCopyWith<$Res>(_self.config, (value) {
+    return _then(_self.copyWith(config: value));
   });
 }/// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$NewSessionOptionsLoadStateCopyWith<$Res> get options {
+$NewSessionPhaseCopyWith<$Res> get phase {
   
-  return $NewSessionOptionsLoadStateCopyWith<$Res>(_self.options, (value) {
-    return _then(_self.copyWith(options: value));
-  });
-}/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$NewSessionBackendScopeCopyWith<$Res> get backendScope {
-  
-  return $NewSessionBackendScopeCopyWith<$Res>(_self.backendScope, (value) {
-    return _then(_self.copyWith(backendScope: value));
-  });
-}
-}
-
-/// @nodoc
-
-
-class NewSessionSending implements NewSessionState {
-  const NewSessionSending({required this.submission, required  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.options, required this.backendScope, required this.isPluginDiscoveryInFlight, required this.projectWorktreeCapability}): _availablePlugins = availablePlugins;
-  
-
- final  NewSessionSubmissionSnapshot submission;
- final  List<PluginMetadata> _availablePlugins;
- List<PluginMetadata> get availablePlugins {
-  if (_availablePlugins is EqualUnmodifiableListView) return _availablePlugins;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_availablePlugins);
-}
-
- final  PluginMetadata? selectedPlugin;
- final  NewSessionOptionsLoadState options;
- final  NewSessionBackendScope backendScope;
- final  bool isPluginDiscoveryInFlight;
- final  NewSessionProjectWorktreeCapability projectWorktreeCapability;
-
-/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$NewSessionSendingCopyWith<NewSessionSending> get copyWith => _$NewSessionSendingCopyWithImpl<NewSessionSending>(this, _$identity);
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionSending&&(identical(other.submission, submission) || other.submission == submission)&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.options, options) || other.options == options)&&(identical(other.backendScope, backendScope) || other.backendScope == backendScope)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&(identical(other.projectWorktreeCapability, projectWorktreeCapability) || other.projectWorktreeCapability == projectWorktreeCapability));
-}
-
-
-@override
-int get hashCode => Object.hash(runtimeType,submission,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,options,backendScope,isPluginDiscoveryInFlight,projectWorktreeCapability);
-
-@override
-String toString() {
-  return 'NewSessionState.sending(submission: $submission, availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, options: $options, backendScope: $backendScope, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, projectWorktreeCapability: $projectWorktreeCapability)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $NewSessionSendingCopyWith<$Res> implements $NewSessionStateCopyWith<$Res> {
-  factory $NewSessionSendingCopyWith(NewSessionSending value, $Res Function(NewSessionSending) _then) = _$NewSessionSendingCopyWithImpl;
-@useResult
-$Res call({
- NewSessionSubmissionSnapshot submission, List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, NewSessionProjectWorktreeCapability projectWorktreeCapability
-});
-
-
-$NewSessionSubmissionSnapshotCopyWith<$Res> get submission;$PluginMetadataCopyWith<$Res>? get selectedPlugin;$NewSessionOptionsLoadStateCopyWith<$Res> get options;$NewSessionBackendScopeCopyWith<$Res> get backendScope;
-
-}
-/// @nodoc
-class _$NewSessionSendingCopyWithImpl<$Res>
-    implements $NewSessionSendingCopyWith<$Res> {
-  _$NewSessionSendingCopyWithImpl(this._self, this._then);
-
-  final NewSessionSending _self;
-  final $Res Function(NewSessionSending) _then;
-
-/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? submission = null,Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? projectWorktreeCapability = null,}) {
-  return _then(NewSessionSending(
-submission: null == submission ? _self.submission : submission // ignore: cast_nullable_to_non_nullable
-as NewSessionSubmissionSnapshot,availablePlugins: null == availablePlugins ? _self._availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
-as List<PluginMetadata>,selectedPlugin: freezed == selectedPlugin ? _self.selectedPlugin : selectedPlugin // ignore: cast_nullable_to_non_nullable
-as PluginMetadata?,options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
-as NewSessionOptionsLoadState,backendScope: null == backendScope ? _self.backendScope : backendScope // ignore: cast_nullable_to_non_nullable
-as NewSessionBackendScope,isPluginDiscoveryInFlight: null == isPluginDiscoveryInFlight ? _self.isPluginDiscoveryInFlight : isPluginDiscoveryInFlight // ignore: cast_nullable_to_non_nullable
-as bool,projectWorktreeCapability: null == projectWorktreeCapability ? _self.projectWorktreeCapability : projectWorktreeCapability // ignore: cast_nullable_to_non_nullable
-as NewSessionProjectWorktreeCapability,
-  ));
-}
-
-/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$NewSessionSubmissionSnapshotCopyWith<$Res> get submission {
-  
-  return $NewSessionSubmissionSnapshotCopyWith<$Res>(_self.submission, (value) {
-    return _then(_self.copyWith(submission: value));
-  });
-}/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$PluginMetadataCopyWith<$Res>? get selectedPlugin {
-    if (_self.selectedPlugin == null) {
-    return null;
-  }
-
-  return $PluginMetadataCopyWith<$Res>(_self.selectedPlugin!, (value) {
-    return _then(_self.copyWith(selectedPlugin: value));
-  });
-}/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$NewSessionOptionsLoadStateCopyWith<$Res> get options {
-  
-  return $NewSessionOptionsLoadStateCopyWith<$Res>(_self.options, (value) {
-    return _then(_self.copyWith(options: value));
-  });
-}/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$NewSessionBackendScopeCopyWith<$Res> get backendScope {
-  
-  return $NewSessionBackendScopeCopyWith<$Res>(_self.backendScope, (value) {
-    return _then(_self.copyWith(backendScope: value));
-  });
-}
-}
-
-/// @nodoc
-
-
-class NewSessionRestoringSubmission implements NewSessionState {
-  const NewSessionRestoringSubmission({required this.submission, required this.reason, required  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.options, required this.backendScope, required this.isPluginDiscoveryInFlight, required this.projectWorktreeCapability}): _availablePlugins = availablePlugins;
-  
-
- final  NewSessionSubmissionSnapshot submission;
- final  RemoteFailureReason reason;
- final  List<PluginMetadata> _availablePlugins;
- List<PluginMetadata> get availablePlugins {
-  if (_availablePlugins is EqualUnmodifiableListView) return _availablePlugins;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_availablePlugins);
-}
-
- final  PluginMetadata? selectedPlugin;
- final  NewSessionOptionsLoadState options;
- final  NewSessionBackendScope backendScope;
- final  bool isPluginDiscoveryInFlight;
- final  NewSessionProjectWorktreeCapability projectWorktreeCapability;
-
-/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$NewSessionRestoringSubmissionCopyWith<NewSessionRestoringSubmission> get copyWith => _$NewSessionRestoringSubmissionCopyWithImpl<NewSessionRestoringSubmission>(this, _$identity);
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionRestoringSubmission&&(identical(other.submission, submission) || other.submission == submission)&&(identical(other.reason, reason) || other.reason == reason)&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.options, options) || other.options == options)&&(identical(other.backendScope, backendScope) || other.backendScope == backendScope)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&(identical(other.projectWorktreeCapability, projectWorktreeCapability) || other.projectWorktreeCapability == projectWorktreeCapability));
-}
-
-
-@override
-int get hashCode => Object.hash(runtimeType,submission,reason,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,options,backendScope,isPluginDiscoveryInFlight,projectWorktreeCapability);
-
-@override
-String toString() {
-  return 'NewSessionState.restoringSubmission(submission: $submission, reason: $reason, availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, options: $options, backendScope: $backendScope, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, projectWorktreeCapability: $projectWorktreeCapability)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $NewSessionRestoringSubmissionCopyWith<$Res> implements $NewSessionStateCopyWith<$Res> {
-  factory $NewSessionRestoringSubmissionCopyWith(NewSessionRestoringSubmission value, $Res Function(NewSessionRestoringSubmission) _then) = _$NewSessionRestoringSubmissionCopyWithImpl;
-@useResult
-$Res call({
- NewSessionSubmissionSnapshot submission, RemoteFailureReason reason, List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, NewSessionProjectWorktreeCapability projectWorktreeCapability
-});
-
-
-$NewSessionSubmissionSnapshotCopyWith<$Res> get submission;$PluginMetadataCopyWith<$Res>? get selectedPlugin;$NewSessionOptionsLoadStateCopyWith<$Res> get options;$NewSessionBackendScopeCopyWith<$Res> get backendScope;
-
-}
-/// @nodoc
-class _$NewSessionRestoringSubmissionCopyWithImpl<$Res>
-    implements $NewSessionRestoringSubmissionCopyWith<$Res> {
-  _$NewSessionRestoringSubmissionCopyWithImpl(this._self, this._then);
-
-  final NewSessionRestoringSubmission _self;
-  final $Res Function(NewSessionRestoringSubmission) _then;
-
-/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? submission = null,Object? reason = null,Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? projectWorktreeCapability = null,}) {
-  return _then(NewSessionRestoringSubmission(
-submission: null == submission ? _self.submission : submission // ignore: cast_nullable_to_non_nullable
-as NewSessionSubmissionSnapshot,reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as RemoteFailureReason,availablePlugins: null == availablePlugins ? _self._availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
-as List<PluginMetadata>,selectedPlugin: freezed == selectedPlugin ? _self.selectedPlugin : selectedPlugin // ignore: cast_nullable_to_non_nullable
-as PluginMetadata?,options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
-as NewSessionOptionsLoadState,backendScope: null == backendScope ? _self.backendScope : backendScope // ignore: cast_nullable_to_non_nullable
-as NewSessionBackendScope,isPluginDiscoveryInFlight: null == isPluginDiscoveryInFlight ? _self.isPluginDiscoveryInFlight : isPluginDiscoveryInFlight // ignore: cast_nullable_to_non_nullable
-as bool,projectWorktreeCapability: null == projectWorktreeCapability ? _self.projectWorktreeCapability : projectWorktreeCapability // ignore: cast_nullable_to_non_nullable
-as NewSessionProjectWorktreeCapability,
-  ));
-}
-
-/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$NewSessionSubmissionSnapshotCopyWith<$Res> get submission {
-  
-  return $NewSessionSubmissionSnapshotCopyWith<$Res>(_self.submission, (value) {
-    return _then(_self.copyWith(submission: value));
-  });
-}/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$PluginMetadataCopyWith<$Res>? get selectedPlugin {
-    if (_self.selectedPlugin == null) {
-    return null;
-  }
-
-  return $PluginMetadataCopyWith<$Res>(_self.selectedPlugin!, (value) {
-    return _then(_self.copyWith(selectedPlugin: value));
-  });
-}/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$NewSessionOptionsLoadStateCopyWith<$Res> get options {
-  
-  return $NewSessionOptionsLoadStateCopyWith<$Res>(_self.options, (value) {
-    return _then(_self.copyWith(options: value));
-  });
-}/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$NewSessionBackendScopeCopyWith<$Res> get backendScope {
-  
-  return $NewSessionBackendScopeCopyWith<$Res>(_self.backendScope, (value) {
-    return _then(_self.copyWith(backendScope: value));
-  });
-}
-}
-
-/// @nodoc
-
-
-class NewSessionCreationError implements NewSessionState {
-  const NewSessionCreationError({required this.reason, required  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.options, required this.backendScope, required this.isPluginDiscoveryInFlight, required this.projectWorktreeCapability}): _availablePlugins = availablePlugins;
-  
-
- final  RemoteFailureReason reason;
- final  List<PluginMetadata> _availablePlugins;
- List<PluginMetadata> get availablePlugins {
-  if (_availablePlugins is EqualUnmodifiableListView) return _availablePlugins;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_availablePlugins);
-}
-
- final  PluginMetadata? selectedPlugin;
- final  NewSessionOptionsLoadState options;
- final  NewSessionBackendScope backendScope;
- final  bool isPluginDiscoveryInFlight;
- final  NewSessionProjectWorktreeCapability projectWorktreeCapability;
-
-/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$NewSessionCreationErrorCopyWith<NewSessionCreationError> get copyWith => _$NewSessionCreationErrorCopyWithImpl<NewSessionCreationError>(this, _$identity);
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionCreationError&&(identical(other.reason, reason) || other.reason == reason)&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.options, options) || other.options == options)&&(identical(other.backendScope, backendScope) || other.backendScope == backendScope)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&(identical(other.projectWorktreeCapability, projectWorktreeCapability) || other.projectWorktreeCapability == projectWorktreeCapability));
-}
-
-
-@override
-int get hashCode => Object.hash(runtimeType,reason,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,options,backendScope,isPluginDiscoveryInFlight,projectWorktreeCapability);
-
-@override
-String toString() {
-  return 'NewSessionState.creationError(reason: $reason, availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, options: $options, backendScope: $backendScope, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, projectWorktreeCapability: $projectWorktreeCapability)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $NewSessionCreationErrorCopyWith<$Res> implements $NewSessionStateCopyWith<$Res> {
-  factory $NewSessionCreationErrorCopyWith(NewSessionCreationError value, $Res Function(NewSessionCreationError) _then) = _$NewSessionCreationErrorCopyWithImpl;
-@useResult
-$Res call({
- RemoteFailureReason reason, List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, NewSessionProjectWorktreeCapability projectWorktreeCapability
-});
-
-
-$PluginMetadataCopyWith<$Res>? get selectedPlugin;$NewSessionOptionsLoadStateCopyWith<$Res> get options;$NewSessionBackendScopeCopyWith<$Res> get backendScope;
-
-}
-/// @nodoc
-class _$NewSessionCreationErrorCopyWithImpl<$Res>
-    implements $NewSessionCreationErrorCopyWith<$Res> {
-  _$NewSessionCreationErrorCopyWithImpl(this._self, this._then);
-
-  final NewSessionCreationError _self;
-  final $Res Function(NewSessionCreationError) _then;
-
-/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? reason = null,Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? projectWorktreeCapability = null,}) {
-  return _then(NewSessionCreationError(
-reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as RemoteFailureReason,availablePlugins: null == availablePlugins ? _self._availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
-as List<PluginMetadata>,selectedPlugin: freezed == selectedPlugin ? _self.selectedPlugin : selectedPlugin // ignore: cast_nullable_to_non_nullable
-as PluginMetadata?,options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
-as NewSessionOptionsLoadState,backendScope: null == backendScope ? _self.backendScope : backendScope // ignore: cast_nullable_to_non_nullable
-as NewSessionBackendScope,isPluginDiscoveryInFlight: null == isPluginDiscoveryInFlight ? _self.isPluginDiscoveryInFlight : isPluginDiscoveryInFlight // ignore: cast_nullable_to_non_nullable
-as bool,projectWorktreeCapability: null == projectWorktreeCapability ? _self.projectWorktreeCapability : projectWorktreeCapability // ignore: cast_nullable_to_non_nullable
-as NewSessionProjectWorktreeCapability,
-  ));
-}
-
-/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$PluginMetadataCopyWith<$Res>? get selectedPlugin {
-    if (_self.selectedPlugin == null) {
-    return null;
-  }
-
-  return $PluginMetadataCopyWith<$Res>(_self.selectedPlugin!, (value) {
-    return _then(_self.copyWith(selectedPlugin: value));
-  });
-}/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$NewSessionOptionsLoadStateCopyWith<$Res> get options {
-  
-  return $NewSessionOptionsLoadStateCopyWith<$Res>(_self.options, (value) {
-    return _then(_self.copyWith(options: value));
-  });
-}/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$NewSessionBackendScopeCopyWith<$Res> get backendScope {
-  
-  return $NewSessionBackendScopeCopyWith<$Res>(_self.backendScope, (value) {
-    return _then(_self.copyWith(backendScope: value));
-  });
-}
-}
-
-/// @nodoc
-
-
-class NewSessionDiscoveryError implements NewSessionState {
-  const NewSessionDiscoveryError({required this.reason, required  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.options, required this.backendScope, required this.isPluginDiscoveryInFlight, required this.projectWorktreeCapability}): _availablePlugins = availablePlugins;
-  
-
- final  RemoteFailureReason reason;
- final  List<PluginMetadata> _availablePlugins;
- List<PluginMetadata> get availablePlugins {
-  if (_availablePlugins is EqualUnmodifiableListView) return _availablePlugins;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_availablePlugins);
-}
-
- final  PluginMetadata? selectedPlugin;
- final  NewSessionOptionsLoadState options;
- final  NewSessionBackendScope backendScope;
- final  bool isPluginDiscoveryInFlight;
- final  NewSessionProjectWorktreeCapability projectWorktreeCapability;
-
-/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$NewSessionDiscoveryErrorCopyWith<NewSessionDiscoveryError> get copyWith => _$NewSessionDiscoveryErrorCopyWithImpl<NewSessionDiscoveryError>(this, _$identity);
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionDiscoveryError&&(identical(other.reason, reason) || other.reason == reason)&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.options, options) || other.options == options)&&(identical(other.backendScope, backendScope) || other.backendScope == backendScope)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&(identical(other.projectWorktreeCapability, projectWorktreeCapability) || other.projectWorktreeCapability == projectWorktreeCapability));
-}
-
-
-@override
-int get hashCode => Object.hash(runtimeType,reason,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,options,backendScope,isPluginDiscoveryInFlight,projectWorktreeCapability);
-
-@override
-String toString() {
-  return 'NewSessionState.discoveryError(reason: $reason, availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, options: $options, backendScope: $backendScope, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, projectWorktreeCapability: $projectWorktreeCapability)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $NewSessionDiscoveryErrorCopyWith<$Res> implements $NewSessionStateCopyWith<$Res> {
-  factory $NewSessionDiscoveryErrorCopyWith(NewSessionDiscoveryError value, $Res Function(NewSessionDiscoveryError) _then) = _$NewSessionDiscoveryErrorCopyWithImpl;
-@useResult
-$Res call({
- RemoteFailureReason reason, List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, NewSessionProjectWorktreeCapability projectWorktreeCapability
-});
-
-
-$PluginMetadataCopyWith<$Res>? get selectedPlugin;$NewSessionOptionsLoadStateCopyWith<$Res> get options;$NewSessionBackendScopeCopyWith<$Res> get backendScope;
-
-}
-/// @nodoc
-class _$NewSessionDiscoveryErrorCopyWithImpl<$Res>
-    implements $NewSessionDiscoveryErrorCopyWith<$Res> {
-  _$NewSessionDiscoveryErrorCopyWithImpl(this._self, this._then);
-
-  final NewSessionDiscoveryError _self;
-  final $Res Function(NewSessionDiscoveryError) _then;
-
-/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? reason = null,Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? projectWorktreeCapability = null,}) {
-  return _then(NewSessionDiscoveryError(
-reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as RemoteFailureReason,availablePlugins: null == availablePlugins ? _self._availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
-as List<PluginMetadata>,selectedPlugin: freezed == selectedPlugin ? _self.selectedPlugin : selectedPlugin // ignore: cast_nullable_to_non_nullable
-as PluginMetadata?,options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
-as NewSessionOptionsLoadState,backendScope: null == backendScope ? _self.backendScope : backendScope // ignore: cast_nullable_to_non_nullable
-as NewSessionBackendScope,isPluginDiscoveryInFlight: null == isPluginDiscoveryInFlight ? _self.isPluginDiscoveryInFlight : isPluginDiscoveryInFlight // ignore: cast_nullable_to_non_nullable
-as bool,projectWorktreeCapability: null == projectWorktreeCapability ? _self.projectWorktreeCapability : projectWorktreeCapability // ignore: cast_nullable_to_non_nullable
-as NewSessionProjectWorktreeCapability,
-  ));
-}
-
-/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$PluginMetadataCopyWith<$Res>? get selectedPlugin {
-    if (_self.selectedPlugin == null) {
-    return null;
-  }
-
-  return $PluginMetadataCopyWith<$Res>(_self.selectedPlugin!, (value) {
-    return _then(_self.copyWith(selectedPlugin: value));
-  });
-}/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$NewSessionOptionsLoadStateCopyWith<$Res> get options {
-  
-  return $NewSessionOptionsLoadStateCopyWith<$Res>(_self.options, (value) {
-    return _then(_self.copyWith(options: value));
-  });
-}/// Create a copy of NewSessionState
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$NewSessionBackendScopeCopyWith<$Res> get backendScope {
-  
-  return $NewSessionBackendScopeCopyWith<$Res>(_self.backendScope, (value) {
-    return _then(_self.copyWith(backendScope: value));
+  return $NewSessionPhaseCopyWith<$Res>(_self.phase, (value) {
+    return _then(_self.copyWith(phase: value));
   });
 }
 }
