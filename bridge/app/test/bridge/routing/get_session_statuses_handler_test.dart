@@ -64,9 +64,6 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("GET", "/session/status"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.statuses, equals({"stable-root": const SessionStatus.idle()}));
@@ -102,9 +99,6 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("GET", "/session/status"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.statuses["stable-idle-session"], equals(const SessionStatus.idle()));

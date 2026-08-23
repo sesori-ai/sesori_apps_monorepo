@@ -96,9 +96,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/project/create"),
         body: ProjectPathRequest(path: path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(Directory(path).existsSync(), isTrue);
@@ -123,9 +120,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/project/create"),
         body: ProjectPathRequest(path: path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.id, equals(path));
@@ -144,9 +138,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/create"),
           body: ProjectPathRequest(path: existing.path),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(409))),
       );
@@ -157,9 +148,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/create"),
           body: const ProjectPathRequest(path: ""),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -170,9 +158,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/create"),
           body: const ProjectPathRequest(path: "relative/project"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -183,9 +168,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/create"),
           body: ProjectPathRequest(path: "${tempDir.path}/../escape"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -198,9 +180,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/create"),
           body: ProjectPathRequest(path: path),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -213,9 +192,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/project/create"),
         body: ProjectPathRequest(path: path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.id, path);

@@ -80,9 +80,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
@@ -103,9 +100,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendPromptParts, isNotNull);
@@ -127,9 +121,6 @@ void main() {
           model: PromptModel(providerID: "openai", modelID: "gpt-4o"),
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendPromptAgent, equals("planner"));
@@ -162,9 +153,6 @@ void main() {
           model: PromptModel(providerID: "openai", modelID: "gpt-5"),
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, equals(const SuccessEmptyResponse()));
@@ -192,9 +180,6 @@ void main() {
           ),
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendPromptSessionId, equals("backend-s42"));
@@ -217,9 +202,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, equals(const SuccessEmptyResponse()));
@@ -237,9 +219,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
@@ -259,9 +238,6 @@ void main() {
           model: null,
           command: "review",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendPromptSessionId, isNull);
@@ -287,9 +263,6 @@ void main() {
           model: null,
           command: "attach",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendCommandSessionId, equals("backend-s8"));
@@ -310,9 +283,6 @@ void main() {
           model: null,
           command: "attach",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendCommandUserVisibleArguments, isNull);
@@ -330,9 +300,6 @@ void main() {
           model: PromptModel(providerID: "openai", modelID: "gpt-5.4"),
           command: "review",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendPromptSessionId, isNull);
@@ -366,9 +333,6 @@ void main() {
           model: PromptModel(providerID: "anthropic", modelID: "claude-sonnet"),
           command: "review",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, equals(const SuccessEmptyResponse()));
@@ -418,9 +382,6 @@ void main() {
             model: PromptModel(providerID: "new-provider", modelID: "new-model"),
             command: null,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<StateError>()),
       );
@@ -471,9 +432,6 @@ void main() {
             model: PromptModel(providerID: "new-provider", modelID: "new-model"),
             command: "review",
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<StateError>()),
       );
@@ -512,9 +470,6 @@ void main() {
           model: PromptModel(providerID: "openai", modelID: "gpt-5"),
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, equals(const SuccessEmptyResponse()));
@@ -535,9 +490,6 @@ void main() {
           model: PromptModel(providerID: "openai", modelID: "gpt-5.4"),
           command: "   ",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendPromptSessionId, equals("backend-s9"));
@@ -560,16 +512,13 @@ void main() {
             model: null,
             command: null,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
     });
 
     test("missing binding returns 404 before plugin I/O", () async {
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/prompt_async",
@@ -585,9 +534,6 @@ void main() {
             ).toJson(),
           ),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, 404);
@@ -605,7 +551,7 @@ void main() {
         agentModel: null,
       );
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/prompt_async",
@@ -621,9 +567,6 @@ void main() {
             ).toJson(),
           ),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, 503);
@@ -634,7 +577,7 @@ void main() {
     test("stale options rejection returns 409 with the recognizable error body", () async {
       plugin.sendPromptError = const PluginStaleOptionsException("sendPrompt", message: "unsupported Claude agent");
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/prompt_async",
@@ -650,9 +593,6 @@ void main() {
             ).toJson(),
           ),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, 409);

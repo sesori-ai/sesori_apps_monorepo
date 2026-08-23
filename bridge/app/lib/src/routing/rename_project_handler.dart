@@ -20,9 +20,6 @@ class RenameProjectHandler(final ProjectRepository _projectRepository)
   Future<Project> handle(
     RelayRequest request, {
     required RenameProjectRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final name = body.name.trim();
     if (name.isEmpty) {

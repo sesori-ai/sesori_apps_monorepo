@@ -7,7 +7,7 @@ import "package:meta/meta.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Console;
 import "package:sesori_shared/sesori_shared.dart";
 
-import "login_oauth_api.dart";
+import "auth_api.dart";
 import "token.dart";
 
 const int _totalLoginTimeoutSeconds = 300; // 5 minutes, matching server session expiry
@@ -133,7 +133,9 @@ bool _isWindowsSubsystemForLinux(Map<String, String> env) {
 }
 
 class LoginOAuthService({
-    required final LoginOAuthApi _api,
+    required final AuthApi _api,
+    required final AuthClientType _clientType,
+    required final DeviceInfo _device,
     required final Future<void> Function(String url) _browserLauncher,
     required final BrowserOpenability Function() _browserOpenability,
     @visibleForTesting final Duration _pollInterval = _defaultPollInterval,
@@ -152,6 +154,8 @@ class LoginOAuthService({
     final initResp = await _api.initOAuthSession(
       provider: provider,
       sessionToken: sessionToken,
+      clientType: _clientType,
+      device: _device,
     );
 
     // The URL is ALWAYS printed, on its own line, so login works even when no

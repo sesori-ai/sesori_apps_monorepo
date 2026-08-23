@@ -4,11 +4,10 @@ import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Conso
 
 import 'package:sesori_shared/sesori_shared.dart';
 
+import '../auth/auth_repository.dart';
 import '../auth/login_email_repository.dart';
 import '../auth/login_oauth_service.dart';
-import '../auth/profile.dart';
 import '../auth/token.dart';
-import '../auth/validate.dart';
 import '../foundation/legacy_post_update_relaunch.dart';
 import 'bridge_cli_options.dart';
 
@@ -17,6 +16,7 @@ const Duration _oAuthAckTimeout = Duration(seconds: 5);
 class const BridgeRuntimeAuthService({
   required final LoginEmailRepository _loginEmailRepository,
   required final LoginOAuthService _loginOAuthService,
+  required final AuthRepository _authRepository,
   required final Map<String, String> _environment,
   required final Future<TokenData> Function() _loadTokens,
   required final Future<void> Function(TokenData tokens) _saveTokens,
@@ -59,22 +59,36 @@ class const BridgeRuntimeAuthService({
   }
 
   Future<TokenData> ensureAuthenticated({required BridgeCliOptions options}) async {
+    TokenData? storedTokens;
     try {
-      final storedTokens = await _loadTokens();
+      storedTokens = await _loadTokens();
       try {
-        final validation = await validateToken(
-          authBackendURL: options.authBackendUrl,
-          accessToken: storedTokens.accessToken,
-          refreshToken: storedTokens.refreshToken,
-        );
-        if (validation.isValid) {
-          final tokensToSave = TokenData(
-            accessToken: validation.accessToken,
-            refreshToken: validation.refreshToken,
-            lastProvider: storedTokens.lastProvider,
-          );
-          await _saveTokens(tokensToSave);
-          return tokensToSave;
+        final lookup = await _authRepository.lookupCurrentUser(accessToken: storedTokens.accessToken);
+        switch (lookup) {
+          case AuthUserFound():
+            final tokensToSave = TokenData(
+              accessToken: storedTokens.accessToken,
+              refreshToken: storedTokens.refreshToken,
+              lastProvider: storedTokens.lastProvider,
+            );
+            await _saveTokens(tokensToSave);
+            return tokensToSave;
+          case AuthUserRejected(statusCode: 401):
+            final refresh = await _authRepository.refreshToken(refreshToken: storedTokens.refreshToken);
+            switch (refresh) {
+              case AuthTokenRefreshed(:final response):
+                final tokensToSave = TokenData(
+                  accessToken: response.accessToken,
+                  refreshToken: response.refreshToken,
+                  lastProvider: storedTokens.lastProvider,
+                );
+                await _saveTokens(tokensToSave);
+                return tokensToSave;
+              case AuthTokenRefreshRejected():
+                break;
+            }
+          case AuthUserRejected():
+            break;
         }
       } catch (error) {
         throw Exception('validate stored tokens: $error');
@@ -90,20 +104,11 @@ class const BridgeRuntimeAuthService({
     } on FormatException {
       // Invalid token data (e.g., missing/invalid lastProvider) — treat as no valid tokens
       await _clearTokens();
+      storedTokens = null;
       // Fall through to login below
     }
 
-    AuthProvider provider;
-    try {
-      final storedTokens = await _loadTokens();
-      provider = storedTokens.lastProvider;
-    } on PathNotFoundException {
-      provider = await promptForProvider();
-    } on FileSystemException catch (error) {
-      throw Exception('load stored tokens: $error');
-    } on FormatException {
-      provider = await promptForProvider();
-    }
+    final provider = storedTokens?.lastProvider ?? await promptForProvider();
 
     return await _loginAndPersist(
       authBackendUrl: options.authBackendUrl,
@@ -112,11 +117,10 @@ class const BridgeRuntimeAuthService({
   }
 
   Future<void> logAuthenticatedUser({
-    required String authBackendUrl,
     required String accessToken,
   }) async {
     try {
-      final username = await fetchUsername(authBackendUrl, accessToken);
+      final username = await _authRepository.fetchUsername(accessToken: accessToken);
       Console.message('Authenticated as $username');
     } catch (error) {
       Log.w('Authenticated (unable to fetch profile username: $error)');

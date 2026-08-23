@@ -1,19 +1,14 @@
-import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/subjects.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
-
-import "../../helpers/test_helpers.dart";
-
-class MockAuthTokenProvider() extends Mock implements AuthTokenProvider;
-
-class MockAuthSession() extends Mock implements AuthSession;
+import "package:sesori_dart_core/testing.dart";
+import "package:test/test.dart";
 
 void main() {
-  setUpAll(registerAllFallbackValues);
+  setUpAll(registerCoreFallbackValues);
 
   late MockRelayCryptoService cryptoService;
   late MockRoomKeyStorage roomKeyStorage;

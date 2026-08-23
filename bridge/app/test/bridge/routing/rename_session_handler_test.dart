@@ -93,9 +93,6 @@ void main() {
       await handler.handle(
         makeRequest("PATCH", "/session/title"),
         body: const RenameSessionRequest(sessionId: "s1", title: "New Title"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       await sessionMutationDispatcher.dispose();
 
@@ -163,9 +160,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("PATCH", "/session/title"),
         body: const RenameSessionRequest(sessionId: "s1", title: "Renamed Session"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.id, equals("s1"));
@@ -186,24 +180,18 @@ void main() {
         () => handler.handle(
           makeRequest("PATCH", "/session/title"),
           body: const RenameSessionRequest(sessionId: "", title: "New Title"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
     });
 
     test("missing binding returns 404 before plugin I/O", () async {
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "PATCH",
           "/session/title",
           body: jsonEncode(const RenameSessionRequest(sessionId: "missing", title: "New Title").toJson()),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, 404);
@@ -226,7 +214,7 @@ void main() {
         agentModel: null,
       );
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "PATCH",
           "/session/title",
@@ -234,9 +222,6 @@ void main() {
             const RenameSessionRequest(sessionId: "stale-plugin-session", title: "New Title").toJson(),
           ),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, 200);

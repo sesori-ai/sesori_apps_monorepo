@@ -9,9 +9,6 @@ class GetPluginManagementHandler({required final PluginLifecycleService _lifecyc
 
   @override
   Future<PluginManagementResponse> handle(
-    RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
-  }) async => _lifecycleService.managementSnapshot;
+    RelayRequest request,
+  ) async => _lifecycleService.managementSnapshot;
 }

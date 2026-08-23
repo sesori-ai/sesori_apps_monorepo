@@ -31,20 +31,25 @@ void main() {
       expect(candidates, everyElement(startsWith("/Applications")));
     });
 
-    test("windows probes the stable path and hash subdirectories newest first", () async {
+    test("windows probes the stable path and hash subdirectories newest first", () {
       final localAppData = Directory.systemTemp.createTempSync("codex-locator-test");
       addTearDown(() => localAppData.deleteSync(recursive: true));
-      final binDir = Directory(p.join(localAppData.path, "OpenAI", "Codex", "bin"))
-        ..createSync(recursive: true);
+      final binDir = Directory(p.join(localAppData.path, "OpenAI", "Codex", "bin"))..createSync(recursive: true);
       final older = Directory(p.join(binDir.path, "aaaa1111"))..createSync();
-      // Directory mtimes cannot be set directly from dart:io; a real delay
-      // between creations keeps newest-first ordering observable.
-      await Future<void>.delayed(const Duration(milliseconds: 1100));
       final newer = Directory(p.join(binDir.path, "bbbb2222"))..createSync();
+      final modificationTimes = {
+        older.path: DateTime.utc(2026, 8, 22, 12),
+        newer.path: DateTime.utc(2026, 8, 22, 13),
+      };
 
-      final candidates = codexDesktopAppCliCandidates(
-        environment: {"LOCALAPPDATA": localAppData.path},
-        os: PlatformOs.windows,
+      final candidates = IOOverrides.runZoned(
+        () => codexDesktopAppCliCandidates(
+          environment: {"LOCALAPPDATA": localAppData.path},
+          os: PlatformOs.windows,
+        ),
+        statSync: (path) => modificationTimes[path] == null
+            ? FileStat.statSync(path)
+            : _FakeFileStat(modified: modificationTimes[path]!),
       );
 
       expect(candidates, [
@@ -71,4 +76,12 @@ void main() {
       );
     });
   });
+}
+
+final class _FakeFileStat({@override required final DateTime modified}) implements FileStat {
+  @override
+  FileSystemEntityType get type => FileSystemEntityType.directory;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

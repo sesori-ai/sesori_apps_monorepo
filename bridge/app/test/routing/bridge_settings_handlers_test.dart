@@ -38,11 +38,8 @@ void main() {
     tearDown(() => repository.dispose());
 
     test("GET returns both settings from one committed snapshot", () async {
-      final response = await GetBridgeSettingsHandler(settingsRepository: repository).handleInternal(
+      final response = await GetBridgeSettingsHandler(settingsRepository: repository).routeForTest(
         makeRequest("GET", "/settings"),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
 
       expect(response.status, 200);
@@ -56,11 +53,8 @@ void main() {
     });
 
     test("PATCH persists and returns the committed setting", () async {
-      final response = await patchHandler.handleInternal(
+      final response = await patchHandler.routeForTest(
         makeRequest("PATCH", "/settings", body: jsonEncode(const BridgeSettingUpdate.yolo(enabled: true).toJson())),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
 
       expect(response.status, 200);

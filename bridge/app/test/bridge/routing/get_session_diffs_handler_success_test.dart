@@ -127,15 +127,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -216,15 +213,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {
@@ -283,15 +277,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {
@@ -352,15 +343,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {
@@ -421,15 +409,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {
@@ -488,15 +473,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "unicode-session")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {
@@ -549,15 +531,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "large-base-session")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {

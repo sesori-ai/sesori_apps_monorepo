@@ -23,43 +23,40 @@ void main() {
       pluginRuntime = createTestPluginRuntime(plugins: [_ReadyPluginApi()]);
       lifecycleService =
           PluginLifecycleService(
-              lifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
-              preferredDefaultPluginId: legacyMissingPluginId,
-              bridgeSettingsRepository: createTestBridgeSettingsRepository(),
-              idleTimerScheduler: const PluginIdleTimerScheduler(),
-              bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
-            )
-            ..registerPlugins(
-              plugins: const [
-                (
-                  id: "ready",
-                  displayName: "Ready",
-                  activationPolicy: PluginActivationPolicy.onDemand,
-                  residencyPolicy: PluginResidencyPolicy.transient,
-                  sessionOptionsScope: PluginSessionOptionsScope.project,
-                  managementCapabilities: defaultManagementCapabilities,
-                  supportsPromptAttachments: false,
-                ),
-                (
-                  id: "blocked",
-                  displayName: "Blocked",
-                  activationPolicy: PluginActivationPolicy.onDemand,
-                  residencyPolicy: PluginResidencyPolicy.transient,
-                  sessionOptionsScope: PluginSessionOptionsScope.project,
-                  managementCapabilities: defaultManagementCapabilities,
-                  supportsPromptAttachments: false,
-                ),
-              ],
-            )
-            ..initialize(
-              disabledPluginIds: const {},
-              setupById: const {
-                "ready": PluginSetupReady(),
-                "blocked": PluginSetupAuthenticationRequired(
-                  actionHint: "Authenticate the backend locally, then retry.",
-                ),
-              },
-            );
+            lifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
+            preferredDefaultPluginId: legacyMissingPluginId,
+            bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+            idleTimerScheduler: const PluginIdleTimerScheduler(),
+            bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+            plugins: const [
+              (
+                id: "ready",
+                displayName: "Ready",
+                activationPolicy: PluginActivationPolicy.onDemand,
+                residencyPolicy: PluginResidencyPolicy.transient,
+                sessionOptionsScope: PluginSessionOptionsScope.project,
+                managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
+              ),
+              (
+                id: "blocked",
+                displayName: "Blocked",
+                activationPolicy: PluginActivationPolicy.onDemand,
+                residencyPolicy: PluginResidencyPolicy.transient,
+                sessionOptionsScope: PluginSessionOptionsScope.project,
+                managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
+              ),
+            ],
+          )..initialize(
+            disabledPluginIds: const {},
+            setupById: const {
+              "ready": PluginSetupReady(),
+              "blocked": PluginSetupAuthenticationRequired(
+                actionHint: "Authenticate the backend locally, then retry.",
+              ),
+            },
+          );
       await Future<void>.delayed(Duration.zero);
       handler = GetPluginSetupHandler(lifecycleService: lifecycleService);
       selectableHandler = GetPluginsHandler(
@@ -83,9 +80,6 @@ void main() {
       final operationalBefore = pluginRuntime.activePluginIds;
       final response = await handler.handle(
         makeRequest("GET", "/plugin/setup"),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
 
       expect(response.plugins.map((plugin) => plugin.id), ["blocked", "ready"]);
@@ -98,9 +92,6 @@ void main() {
     test("keeps setup-blocked registrations out of the compatible plugin list", () async {
       final response = await selectableHandler.handle(
         makeRequest("GET", "/plugin"),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
 
       expect(response.plugins.map((plugin) => plugin.id), ["ready"]);

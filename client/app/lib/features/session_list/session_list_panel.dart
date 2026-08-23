@@ -136,7 +136,10 @@ class const SessionListPanel({
       ],
     );
     if (state is SessionListLoaded) {
-      scrollView = RefreshIndicator.noSpinner(
+      // This control owns drag progress and the held in-flight presentation;
+      // PregoActivityIndicator cannot replace either interaction state.
+      // ignore: no_slop_linter/avoid_flutter_spinners
+      scrollView = RefreshIndicator(
         onRefresh: () => refreshSessionList(context),
         child: scrollView,
       );

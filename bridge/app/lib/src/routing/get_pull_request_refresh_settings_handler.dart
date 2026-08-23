@@ -10,9 +10,6 @@ class GetPullRequestRefreshSettingsHandler({required final PullRequestRefreshSet
 
   @override
   Future<PullRequestRefreshSettingsResponse> handle(
-    RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
-  }) => _settingsService.readCommittedSettings();
+    RelayRequest request,
+  ) => _settingsService.readCommittedSettings();
 }

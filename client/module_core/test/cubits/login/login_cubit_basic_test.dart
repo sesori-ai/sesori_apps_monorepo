@@ -1,28 +1,24 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
-import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/src/cubits/login/login_cubit.dart";
 import "package:sesori_dart_core/src/cubits/login/login_state.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
-import "package:sesori_dart_core/src/platform/url_launcher.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/services/installation_analytics_service.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart" show AuthInitResponse, AuthProvider;
+import "package:test/test.dart";
 
-import "../../helpers/test_helpers.dart";
-
-class MockUrlLauncher() extends Mock implements UrlLauncher;
-
-class MockLifecycleSource() extends Mock implements LifecycleSource;
+class StrictMockLifecycleSource() extends Mock implements LifecycleSource;
 
 class MockInstallationAnalyticsService() extends Mock implements InstallationAnalyticsService;
 
 void main() {
   setUpAll(() {
-    registerAllFallbackValues();
+    registerCoreFallbackValues();
     registerFallbackValue(AuthProvider.github);
     registerFallbackValue(LoginAttemptFailureCause.unknown);
   });
@@ -31,14 +27,14 @@ void main() {
     late MockOAuthFlowProvider mockOAuthFlowProvider;
     late MockUrlLauncher mockUrlLauncher;
     late MockAuthSession mockAuthSession;
-    late MockLifecycleSource mockLifecycleSource;
+    late StrictMockLifecycleSource mockLifecycleSource;
     late MockInstallationAnalyticsService mockInstallationAnalyticsService;
 
     setUp(() {
       mockOAuthFlowProvider = MockOAuthFlowProvider();
       mockUrlLauncher = MockUrlLauncher();
       mockAuthSession = MockAuthSession();
-      mockLifecycleSource = MockLifecycleSource();
+      mockLifecycleSource = StrictMockLifecycleSource();
       mockInstallationAnalyticsService = MockInstallationAnalyticsService();
 
       // Default mock behaviors

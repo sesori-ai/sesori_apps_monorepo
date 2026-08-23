@@ -12,9 +12,14 @@ explicit restart, and the connection states the app presents.
   initial summary set up, and the first inbound read armed; earlier failure tears down
   what was acquired and surfaces the error.
 - Relay traffic is end-to-end encrypted and a joining client completes key exchange
-  before it is served; no run may weaken this.
+  before it is served; one room-key encryptor is shared across that bridge
+  session while every encrypted frame receives a fresh nonce.
 - Frames are handled sequentially per connection, but a slow route or unresponsive
   harness must not stall key exchange, disconnect detection, or further requests.
+- Matched handler failures are mapped at one route boundary: unmatched routes
+  remain 404, status-bearing plugin failures preserve their status, statusless
+  plugin-operation failures remain 502, and unexpected handler or router
+  failures return 500.
 - Drops reconnect with bounded backoff and a fresh read iterator; takeover backs off on
   a longer jittered curve, a revoked bridge re-registers, and a token change re-auths.
 - Deliberate shutdown is not an outage; a handshake cancelled mid-flight closes at
@@ -54,6 +59,8 @@ the bridge starts, how many clients are present, and whether restart is explicit
 - Health keeps responding while clients cannot reach the bridge after relay
   acceptance or client reachability was independently established, or one slow
   route freezes all traffic.
+- Equivalent route failures produce different statuses depending on the handler
+  type, or an unexpected bridge failure is reported as an upstream 502.
 - Reconnect tight-looping, an exhausted iterator reused, or two bridges displacing each
   other without backoff.
 - A bridge registering a network-derived numeric hostname as its machine name.

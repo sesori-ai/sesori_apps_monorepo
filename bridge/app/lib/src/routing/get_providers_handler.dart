@@ -17,9 +17,6 @@ class GetProvidersHandler(final ProviderRepository _repository)
   Future<ProviderListResponse> handle(
     RelayRequest request, {
     required PluginProjectIdRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) {
     return _repository.getProviders(
       projectId: body.projectId,

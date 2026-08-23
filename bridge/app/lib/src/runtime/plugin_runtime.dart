@@ -88,7 +88,7 @@ class PluginRuntime({
   final Set<StartAbortController> _authenticationAbortControllers = <StartAbortController>{};
 
   Stream<List<PluginRuntimeSnapshot>> get snapshots => _snapshotsSubject.stream;
-  List<PluginRuntimeSnapshot> get snapshot => List<PluginRuntimeSnapshot>.unmodifiable(_buildSnapshots());
+  List<PluginRuntimeSnapshot> get snapshot => _buildSnapshots();
   Stream<SourcedPluginRuntimeEvent> get backendEvents => _backendEventsSubject.stream;
   Stream<SourcedPluginProvisionProgress> get provisionProgress => _provisionProgressSubject.stream;
 
@@ -249,19 +249,7 @@ class PluginRuntime({
     required String pluginId,
     required Enum operation,
     required Future<T> Function(BridgePluginApi api) body,
-  }) async {
-    final lease = await _acquire(pluginId: pluginId, operation: operation, startIfNeeded: true);
-    try {
-      final result = await body(lease.api);
-      _requireCurrentGeneration(lease: lease, operation: operation);
-      return result;
-    } on PluginAuthenticationRequiredException catch (error) {
-      _handleAuthenticationRequired(lease: lease, failure: error);
-      rethrow;
-    } finally {
-      _release(lease);
-    }
-  }
+  }) async => (await useWithGeneration(pluginId: pluginId, operation: operation, body: body)).value;
 
   Future<({T value, int generation})> useWithGeneration<T>({
     required String pluginId,
@@ -546,12 +534,84 @@ class PluginRuntime({
   Future<PluginRuntimeCommandResult> stop({
     required String pluginId,
     required PluginStopIntent intent,
-  }) => _stop(pluginId: pluginId, intent: intent);
+  }) async {
+    final slot = _requireSlot(pluginId);
+    if (_stopPreconditionConflict(slot: slot, intent: intent) case final conflict?) return conflict;
+    final hadPlugin = slot.plugin != null || slot.startFuture != null;
+    if (!hadPlugin) return PluginRuntimeCommandCurrent(snapshot: _snapshotFor(slot));
+
+    final generationLabel = slot.generation?.toString() ?? "pending";
+    Log.d('Stopping plugin "$pluginId" generation $generationLabel (${intent.name})');
+    final commandTransition = _beginCommandTransition(
+      slot: slot,
+      transition: PluginRuntimeTransition.stopping,
+    );
+    String? failureMessage;
+    try {
+      await _stopCurrentGeneration(slot: slot, intent: intent);
+      if (!_ownsCommandTransition(slot: slot, commandTransition: commandTransition)) {
+        return PluginRuntimeCommandConflict(
+          snapshot: _snapshotFor(slot),
+          reasons: const [PluginRuntimeConflictReason.transitioning],
+        );
+      }
+      slot.state = PluginRuntimeState.dormant;
+    } on Object catch (error) {
+      if (!_ownsCommandTransition(slot: slot, commandTransition: commandTransition)) {
+        return PluginRuntimeCommandConflict(
+          snapshot: _snapshotFor(slot),
+          reasons: const [PluginRuntimeConflictReason.transitioning],
+        );
+      }
+      slot.state = PluginRuntimeState.failed;
+      failureMessage = "$error";
+    } finally {
+      _settleCommandTransition(slot: slot, commandTransition: commandTransition);
+    }
+    if (failureMessage != null) {
+      return PluginRuntimeCommandFailed(snapshot: _snapshotFor(slot), message: failureMessage);
+    }
+    Log.d('Plugin "$pluginId" generation $generationLabel stopped');
+    return PluginRuntimeCommandApplied(snapshot: _snapshotFor(slot));
+  }
 
   Future<PluginRuntimeCommandResult> prepareDisable({
     required String pluginId,
     required PluginStopIntent intent,
-  }) => _prepareDisable(pluginId: pluginId, intent: intent);
+  }) async {
+    final slot = _requireSlot(pluginId);
+    if (_stopPreconditionConflict(slot: slot, intent: intent) case final conflict?) return conflict;
+    final hadPlugin = slot.plugin != null || slot.startFuture != null;
+    slot.accessGate = PluginRuntimeAccessGate.draining;
+    slot.setupInspectionRevision++;
+    _publishSnapshots();
+
+    final commandTransition = _beginCommandTransition(
+      slot: slot,
+      transition: PluginRuntimeTransition.stopping,
+    );
+    if (!hadPlugin) return PluginRuntimeCommandCurrent(snapshot: _snapshotFor(slot));
+
+    final generationLabel = slot.generation?.toString() ?? "pending";
+    Log.d('Preparing plugin "$pluginId" generation $generationLabel for disable (${intent.name})');
+    try {
+      await _stopCurrentGeneration(slot: slot, intent: intent);
+      if (!_ownsCommandTransition(slot: slot, commandTransition: commandTransition)) {
+        throw StateError('Plugin "$pluginId" disable preparation lost transition ownership.');
+      }
+      slot.state = PluginRuntimeState.dormant;
+      _publishSnapshots();
+      return PluginRuntimeCommandApplied(snapshot: _snapshotFor(slot));
+    } on Object catch (error) {
+      if (_ownsCommandTransition(slot: slot, commandTransition: commandTransition)) {
+        slot
+          ..state = PluginRuntimeState.failed
+          ..accessGate = PluginRuntimeAccessGate.enabled;
+        _settleCommandTransition(slot: slot, commandTransition: commandTransition);
+      }
+      return PluginRuntimeCommandFailed(snapshot: _snapshotFor(slot), message: "$error");
+    }
+  }
 
   void commitDisable({required String pluginId}) {
     final slot = _requireSlot(pluginId);
@@ -581,7 +641,148 @@ class PluginRuntime({
   Future<PluginRuntimeCommandResult> restart({
     required String pluginId,
     required PluginStopIntent intent,
-  }) => _restart(pluginId: pluginId, intent: intent);
+  }) async {
+    final slot = _requireSlot(pluginId);
+    if (!_shuttingDown && slot.accessGate == PluginRuntimeAccessGate.enabled && !slot.startAllowed) {
+      return PluginRuntimeCommandFailed(
+        snapshot: _snapshotFor(slot),
+        message: "plugin $pluginId is unavailable",
+      );
+    }
+    if (_stopPreconditionConflict(slot: slot, intent: intent) case final conflict?) return conflict;
+
+    final commandTransition = _beginCommandTransition(
+      slot: slot,
+      transition: PluginRuntimeTransition.restarting,
+    );
+    String? failureMessage;
+    try {
+      await _stopCurrentGeneration(slot: slot, intent: intent);
+      if (!_ownsCommandTransition(slot: slot, commandTransition: commandTransition)) {
+        return PluginRuntimeCommandConflict(
+          snapshot: _snapshotFor(slot),
+          reasons: const [PluginRuntimeConflictReason.transitioning],
+        );
+      }
+      slot.state = PluginRuntimeState.dormant;
+      if (_shuttingDown) {
+        failureMessage = "bridge is shutting down";
+      } else {
+        final plugin = await _beginStart(
+          slot: slot,
+          transition: PluginRuntimeTransition.restarting,
+          clearTransitionOnSettle: false,
+        );
+        if (!_ownsCommandTransition(slot: slot, commandTransition: commandTransition)) {
+          return PluginRuntimeCommandConflict(
+            snapshot: _snapshotFor(slot),
+            reasons: const [PluginRuntimeConflictReason.transitioning],
+          );
+        }
+        if (plugin == null || !_hasOperationalGeneration(slot)) failureMessage = "plugin failed to restart";
+      }
+    } on Object catch (error) {
+      if (!_ownsCommandTransition(slot: slot, commandTransition: commandTransition)) {
+        return PluginRuntimeCommandConflict(
+          snapshot: _snapshotFor(slot),
+          reasons: const [PluginRuntimeConflictReason.transitioning],
+        );
+      }
+      slot.state = PluginRuntimeState.failed;
+      failureMessage = "$error";
+    } finally {
+      _settleCommandTransition(slot: slot, commandTransition: commandTransition);
+    }
+    if (failureMessage != null) {
+      return PluginRuntimeCommandFailed(snapshot: _snapshotFor(slot), message: failureMessage);
+    }
+    return PluginRuntimeCommandApplied(snapshot: _snapshotFor(slot));
+  }
+
+  PluginRuntimeCommandResult? _stopPreconditionConflict({
+    required _PluginRuntimeSlot slot,
+    required PluginStopIntent intent,
+  }) {
+    if (_shuttingDown) {
+      return PluginRuntimeCommandFailed(snapshot: _snapshotFor(slot), message: "bridge is shutting down");
+    }
+    if (slot.accessGate == PluginRuntimeAccessGate.disabled) {
+      return PluginRuntimeCommandConflict(
+        snapshot: _snapshotFor(slot),
+        reasons: const [PluginRuntimeConflictReason.notEligible],
+      );
+    }
+    if (slot.accessGate == PluginRuntimeAccessGate.draining) {
+      return PluginRuntimeCommandConflict(
+        snapshot: _snapshotFor(slot),
+        reasons: const [PluginRuntimeConflictReason.transitioning],
+      );
+    }
+    final forceCanTakeOverTransition =
+        intent == PluginStopIntent.force &&
+        slot.commandTransition == null &&
+        slot.cleanupFuture == null &&
+        (slot.transition == PluginRuntimeTransition.starting ||
+            (slot.transition == PluginRuntimeTransition.stopping && slot.plugin != null));
+    if (slot.commandTransition != null ||
+        (slot.transition != PluginRuntimeTransition.none && !forceCanTakeOverTransition)) {
+      return PluginRuntimeCommandConflict(
+        snapshot: _snapshotFor(slot),
+        reasons: const [PluginRuntimeConflictReason.transitioning],
+      );
+    }
+    final hadPlugin = slot.plugin != null || slot.startFuture != null;
+    final hasLiveGeneration = slot.plugin != null;
+    if (intent == PluginStopIntent.safe && hadPlugin && slot.leaseCount > 0) {
+      return PluginRuntimeCommandConflict(
+        snapshot: _snapshotFor(slot),
+        reasons: const [PluginRuntimeConflictReason.inFlight],
+      );
+    }
+    if (intent == PluginStopIntent.safe && hasLiveGeneration && slot.workState == PluginWorkState.busy) {
+      return PluginRuntimeCommandConflict(
+        snapshot: _snapshotFor(slot),
+        reasons: const [PluginRuntimeConflictReason.busy],
+      );
+    }
+    if (intent == PluginStopIntent.safe && hasLiveGeneration && slot.workState == PluginWorkState.unknown) {
+      return PluginRuntimeCommandConflict(
+        snapshot: _snapshotFor(slot),
+        reasons: const [PluginRuntimeConflictReason.workStateUnknown],
+      );
+    }
+    return null;
+  }
+
+  _CommandTransition _beginCommandTransition({
+    required _PluginRuntimeSlot slot,
+    required PluginRuntimeTransition transition,
+  }) {
+    final commandTransition = (owner: Object(), completer: Completer<void>());
+    slot
+      ..commandTransition = commandTransition
+      ..transition = transition;
+    _publishSnapshots();
+    return commandTransition;
+  }
+
+  bool _ownsCommandTransition({
+    required _PluginRuntimeSlot slot,
+    required _CommandTransition commandTransition,
+  }) => identical(slot.commandTransition?.owner, commandTransition.owner);
+
+  void _settleCommandTransition({
+    required _PluginRuntimeSlot slot,
+    required _CommandTransition commandTransition,
+  }) {
+    if (_ownsCommandTransition(slot: slot, commandTransition: commandTransition)) {
+      slot
+        ..commandTransition = null
+        ..transition = PluginRuntimeTransition.none;
+    }
+    _publishSnapshots();
+    if (!commandTransition.completer.isCompleted) commandTransition.completer.complete();
+  }
 
   void beginShutdown() {
     if (_shuttingDown) return;
@@ -696,7 +897,7 @@ class PluginRuntime({
           }
           try {
             await slot.cleanupFuture;
-            await slot.commandTransitionCompleter?.future;
+            await slot.commandTransition?.completer.future;
             await _waitForDurableCommits(slot);
             await _cancelAndShutdownGeneration(slot: slot, plugin: slot.plugin);
           } on Object catch (error, stackTrace) {
@@ -712,362 +913,26 @@ class PluginRuntime({
     }
   }
 
-  Future<PluginRuntimeCommandResult> _stop({
-    required String pluginId,
-    required PluginStopIntent intent,
-  }) async {
-    final slot = _requireSlot(pluginId);
-    if (_shuttingDown) {
-      return PluginRuntimeCommandFailed(snapshot: _snapshotFor(slot), message: "bridge is shutting down");
-    }
-    if (slot.accessGate == PluginRuntimeAccessGate.disabled) {
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.notEligible],
-      );
-    }
-    if (slot.accessGate == PluginRuntimeAccessGate.draining) {
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.transitioning],
-      );
-    }
-    final forceCanTakeOverTransition =
-        intent == PluginStopIntent.force &&
-        slot.commandTransitionOwner == null &&
-        slot.cleanupFuture == null &&
-        (slot.transition == PluginRuntimeTransition.starting ||
-            (slot.transition == PluginRuntimeTransition.stopping && slot.plugin != null));
-    if (slot.commandTransitionOwner != null ||
-        (slot.transition != PluginRuntimeTransition.none && !forceCanTakeOverTransition)) {
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.transitioning],
-      );
-    }
-    final hadPlugin = slot.plugin != null || slot.startFuture != null;
-    final hasLiveGeneration = slot.plugin != null;
-    if (intent == PluginStopIntent.safe && hadPlugin && slot.leaseCount > 0) {
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.inFlight],
-      );
-    }
-    if (intent == PluginStopIntent.safe && hasLiveGeneration && slot.workState == PluginWorkState.busy) {
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.busy],
-      );
-    }
-    if (intent == PluginStopIntent.safe && hasLiveGeneration && slot.workState == PluginWorkState.unknown) {
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.workStateUnknown],
-      );
-    }
-    if (!hadPlugin) return PluginRuntimeCommandCurrent(snapshot: _snapshotFor(slot));
-    final generationLabel = slot.generation?.toString() ?? "pending";
-    Log.d('Stopping plugin "$pluginId" generation $generationLabel (${intent.name})');
-    final transitionOwner = Object();
-    final transitionCompleter = Completer<void>();
-    slot
-      ..commandTransitionOwner = transitionOwner
-      ..commandTransitionCompleter = transitionCompleter
-      ..transition = PluginRuntimeTransition.stopping;
-    _publishSnapshots();
-    String? failureMessage;
-    try {
-      await _stopCurrentGeneration(slot: slot, intent: intent);
-      if (!identical(slot.commandTransitionOwner, transitionOwner)) {
-        return PluginRuntimeCommandConflict(
-          snapshot: _snapshotFor(slot),
-          reasons: const [PluginRuntimeConflictReason.transitioning],
-        );
-      }
-      slot.state = PluginRuntimeState.dormant;
-    } on Object catch (error) {
-      if (!identical(slot.commandTransitionOwner, transitionOwner)) {
-        return PluginRuntimeCommandConflict(
-          snapshot: _snapshotFor(slot),
-          reasons: const [PluginRuntimeConflictReason.transitioning],
-        );
-      }
-      slot.state = PluginRuntimeState.failed;
-      failureMessage = "$error";
-    } finally {
-      if (identical(slot.commandTransitionOwner, transitionOwner)) {
-        slot
-          ..commandTransitionOwner = null
-          ..commandTransitionCompleter = null
-          ..transition = PluginRuntimeTransition.none;
-      }
-      _publishSnapshots();
-      if (!transitionCompleter.isCompleted) transitionCompleter.complete();
-    }
-    if (failureMessage != null) {
-      return PluginRuntimeCommandFailed(snapshot: _snapshotFor(slot), message: failureMessage);
-    }
-    Log.d('Plugin "$pluginId" generation $generationLabel stopped');
-    return hadPlugin
-        ? PluginRuntimeCommandApplied(snapshot: _snapshotFor(slot))
-        : PluginRuntimeCommandCurrent(snapshot: _snapshotFor(slot));
-  }
-
-  Future<PluginRuntimeCommandResult> _prepareDisable({
-    required String pluginId,
-    required PluginStopIntent intent,
-  }) async {
-    final slot = _requireSlot(pluginId);
-    if (_shuttingDown) {
-      return PluginRuntimeCommandFailed(snapshot: _snapshotFor(slot), message: "bridge is shutting down");
-    }
-    if (slot.accessGate == PluginRuntimeAccessGate.disabled) {
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.notEligible],
-      );
-    }
-    if (slot.accessGate == PluginRuntimeAccessGate.draining) {
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.transitioning],
-      );
-    }
-    slot.accessGate = PluginRuntimeAccessGate.draining;
-    slot.setupInspectionRevision++;
-    _publishSnapshots();
-
-    final forceCanTakeOverTransition =
-        intent == PluginStopIntent.force &&
-        slot.commandTransitionOwner == null &&
-        slot.cleanupFuture == null &&
-        (slot.transition == PluginRuntimeTransition.starting ||
-            (slot.transition == PluginRuntimeTransition.stopping && slot.plugin != null));
-    if (slot.commandTransitionOwner != null ||
-        (slot.transition != PluginRuntimeTransition.none && !forceCanTakeOverTransition)) {
-      _restoreDisableAccess(slot);
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.transitioning],
-      );
-    }
-    final hadPlugin = slot.plugin != null || slot.startFuture != null;
-    final hasLiveGeneration = slot.plugin != null;
-    if (intent == PluginStopIntent.safe && hadPlugin && slot.leaseCount > 0) {
-      _restoreDisableAccess(slot);
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.inFlight],
-      );
-    }
-    if (intent == PluginStopIntent.safe && hasLiveGeneration && slot.workState == PluginWorkState.busy) {
-      _restoreDisableAccess(slot);
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.busy],
-      );
-    }
-    if (intent == PluginStopIntent.safe && hasLiveGeneration && slot.workState == PluginWorkState.unknown) {
-      _restoreDisableAccess(slot);
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.workStateUnknown],
-      );
-    }
-
-    final transitionOwner = Object();
-    final transitionCompleter = Completer<void>();
-    slot
-      ..commandTransitionOwner = transitionOwner
-      ..commandTransitionCompleter = transitionCompleter
-      ..transition = PluginRuntimeTransition.stopping;
-    _publishSnapshots();
-    if (!hadPlugin) return PluginRuntimeCommandCurrent(snapshot: _snapshotFor(slot));
-
-    final generationLabel = slot.generation?.toString() ?? "pending";
-    Log.d('Preparing plugin "$pluginId" generation $generationLabel for disable (${intent.name})');
-    try {
-      await _stopCurrentGeneration(slot: slot, intent: intent);
-      if (!identical(slot.commandTransitionOwner, transitionOwner)) {
-        throw StateError('Plugin "$pluginId" disable preparation lost transition ownership.');
-      }
-      slot.state = PluginRuntimeState.dormant;
-      _publishSnapshots();
-      return PluginRuntimeCommandApplied(snapshot: _snapshotFor(slot));
-    } on Object catch (error) {
-      if (identical(slot.commandTransitionOwner, transitionOwner)) {
-        slot.state = PluginRuntimeState.failed;
-        _restoreOwnedDisablePreparation(
-          slot: slot,
-          transitionOwner: transitionOwner,
-          transitionCompleter: transitionCompleter,
-        );
-      }
-      return PluginRuntimeCommandFailed(snapshot: _snapshotFor(slot), message: "$error");
-    }
-  }
-
-  void _restoreDisableAccess(_PluginRuntimeSlot slot) {
-    slot.accessGate = PluginRuntimeAccessGate.enabled;
-    _publishSnapshots();
-  }
-
-  void _restoreOwnedDisablePreparation({
-    required _PluginRuntimeSlot slot,
-    required Object transitionOwner,
-    required Completer<void> transitionCompleter,
-  }) {
-    if (!identical(slot.commandTransitionOwner, transitionOwner) ||
-        !identical(slot.commandTransitionCompleter, transitionCompleter)) {
-      return;
-    }
-    slot
-      ..accessGate = PluginRuntimeAccessGate.enabled
-      ..commandTransitionOwner = null
-      ..commandTransitionCompleter = null
-      ..transition = PluginRuntimeTransition.none;
-    if (!transitionCompleter.isCompleted) transitionCompleter.complete();
-    _publishSnapshots();
-  }
-
   bool _isPreparedDisableSlot(_PluginRuntimeSlot slot) {
     return slot.accessGate == PluginRuntimeAccessGate.draining &&
-        slot.commandTransitionOwner != null &&
-        slot.commandTransitionCompleter != null &&
+        slot.commandTransition != null &&
         slot.transition == PluginRuntimeTransition.stopping &&
         slot.plugin == null &&
         slot.startFuture == null;
   }
 
   void _settlePreparedDisable(_PluginRuntimeSlot slot) {
-    final transitionCompleter = slot.commandTransitionCompleter;
+    final commandTransition = slot.commandTransition;
     slot
-      ..commandTransitionOwner = null
-      ..commandTransitionCompleter = null
+      ..commandTransition = null
       ..transition = PluginRuntimeTransition.none;
     try {
       _publishSnapshots();
     } finally {
-      if (transitionCompleter != null && !transitionCompleter.isCompleted) transitionCompleter.complete();
-    }
-  }
-
-  Future<PluginRuntimeCommandResult> _restart({
-    required String pluginId,
-    required PluginStopIntent intent,
-  }) async {
-    final slot = _requireSlot(pluginId);
-    if (_shuttingDown) {
-      return PluginRuntimeCommandFailed(snapshot: _snapshotFor(slot), message: "bridge is shutting down");
-    }
-    if (slot.accessGate == PluginRuntimeAccessGate.disabled) {
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.notEligible],
-      );
-    }
-    if (slot.accessGate == PluginRuntimeAccessGate.draining) {
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.transitioning],
-      );
-    }
-    if (!slot.startAllowed) {
-      return PluginRuntimeCommandFailed(
-        snapshot: _snapshotFor(slot),
-        message: "plugin $pluginId is unavailable",
-      );
-    }
-    final forceCanTakeOverTransition =
-        intent == PluginStopIntent.force &&
-        slot.commandTransitionOwner == null &&
-        slot.cleanupFuture == null &&
-        (slot.transition == PluginRuntimeTransition.starting ||
-            (slot.transition == PluginRuntimeTransition.stopping && slot.plugin != null));
-    if (slot.commandTransitionOwner != null ||
-        (slot.transition != PluginRuntimeTransition.none && !forceCanTakeOverTransition)) {
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.transitioning],
-      );
-    }
-    final hadPlugin = slot.plugin != null || slot.startFuture != null;
-    final hasLiveGeneration = slot.plugin != null;
-    if (intent == PluginStopIntent.safe && hadPlugin && slot.leaseCount > 0) {
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.inFlight],
-      );
-    }
-    if (intent == PluginStopIntent.safe && hasLiveGeneration && slot.workState == PluginWorkState.busy) {
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.busy],
-      );
-    }
-    if (intent == PluginStopIntent.safe && hasLiveGeneration && slot.workState == PluginWorkState.unknown) {
-      return PluginRuntimeCommandConflict(
-        snapshot: _snapshotFor(slot),
-        reasons: const [PluginRuntimeConflictReason.workStateUnknown],
-      );
-    }
-
-    final transitionOwner = Object();
-    final transitionCompleter = Completer<void>();
-    slot
-      ..commandTransitionOwner = transitionOwner
-      ..commandTransitionCompleter = transitionCompleter
-      ..transition = PluginRuntimeTransition.restarting;
-    _publishSnapshots();
-    String? failureMessage;
-    try {
-      await _stopCurrentGeneration(slot: slot, intent: intent);
-      if (!identical(slot.commandTransitionOwner, transitionOwner)) {
-        return PluginRuntimeCommandConflict(
-          snapshot: _snapshotFor(slot),
-          reasons: const [PluginRuntimeConflictReason.transitioning],
-        );
+      if (commandTransition != null && !commandTransition.completer.isCompleted) {
+        commandTransition.completer.complete();
       }
-      slot.state = PluginRuntimeState.dormant;
-      if (_shuttingDown) {
-        failureMessage = "bridge is shutting down";
-      } else {
-        final plugin = await _beginStart(
-          slot: slot,
-          transition: PluginRuntimeTransition.restarting,
-          clearTransitionOnSettle: false,
-        );
-        if (!identical(slot.commandTransitionOwner, transitionOwner)) {
-          return PluginRuntimeCommandConflict(
-            snapshot: _snapshotFor(slot),
-            reasons: const [PluginRuntimeConflictReason.transitioning],
-          );
-        }
-        if (plugin == null || !_hasOperationalGeneration(slot)) failureMessage = "plugin failed to restart";
-      }
-    } on Object catch (error) {
-      if (!identical(slot.commandTransitionOwner, transitionOwner)) {
-        return PluginRuntimeCommandConflict(
-          snapshot: _snapshotFor(slot),
-          reasons: const [PluginRuntimeConflictReason.transitioning],
-        );
-      }
-      slot.state = PluginRuntimeState.failed;
-      failureMessage = "$error";
-    } finally {
-      if (identical(slot.commandTransitionOwner, transitionOwner)) {
-        slot
-          ..commandTransitionOwner = null
-          ..commandTransitionCompleter = null
-          ..transition = PluginRuntimeTransition.none;
-      }
-      _publishSnapshots();
-      if (!transitionCompleter.isCompleted) transitionCompleter.complete();
     }
-    if (failureMessage != null) {
-      return PluginRuntimeCommandFailed(snapshot: _snapshotFor(slot), message: failureMessage);
-    }
-    return PluginRuntimeCommandApplied(snapshot: _snapshotFor(slot));
   }
 
   Future<void> _stopCurrentGeneration({
@@ -1574,7 +1439,7 @@ class PluginRuntime({
     }
     if (status is PluginStopping) {
       slot.state = PluginRuntimeState.stopping;
-      if (slot.commandTransitionOwner == null) {
+      if (slot.commandTransition == null) {
         slot.transition = PluginRuntimeTransition.stopping;
       }
       _publishSnapshots();
@@ -1600,7 +1465,7 @@ class PluginRuntime({
     slot
       ..state = PluginRuntimeState.stopping
       ..workState = PluginWorkState.unknown;
-    if (slot.commandTransitionOwner == null) {
+    if (slot.commandTransition == null) {
       slot.transition = PluginRuntimeTransition.stopping;
     }
     _publishSnapshots();
@@ -1629,7 +1494,7 @@ class PluginRuntime({
           // The initiating start failure is already surfaced by its owner.
         }
         if (identical(slot.cleanupFuture, cleanup)) slot.cleanupFuture = null;
-        if (slot.commandTransitionOwner == null &&
+        if (slot.commandTransition == null &&
             slot.generation == generation &&
             slot.transition == PluginRuntimeTransition.stopping) {
           slot.transition = PluginRuntimeTransition.none;
@@ -1699,7 +1564,7 @@ class PluginRuntime({
           slot
             ..state = PluginRuntimeState.blocked
             ..workState = PluginWorkState.unknown;
-          if (slot.commandTransitionOwner == null) {
+          if (slot.commandTransition == null) {
             slot.transition = PluginRuntimeTransition.none;
           }
         }
@@ -1793,7 +1658,9 @@ class PluginRuntime({
     return slot;
   }
 
-  List<PluginRuntimeSnapshot> _buildSnapshots() => [for (final slot in _slots.values) _snapshotFor(slot)];
+  List<PluginRuntimeSnapshot> _buildSnapshots() => List<PluginRuntimeSnapshot>.unmodifiable([
+    for (final slot in _slots.values) _snapshotFor(slot),
+  ]);
 
   PluginRuntimeSnapshot _snapshotFor(_PluginRuntimeSlot slot) {
     final state = switch (slot.accessGate) {
@@ -1824,6 +1691,8 @@ class PluginRuntime({
   }
 }
 
+typedef _CommandTransition = ({Object owner, Completer<void> completer});
+
 class _PluginRuntimeSlot({required final PluginRuntimeRegistration registration}) {
   PluginSetupStatus setup = const PluginSetupUnknown(actionHint: null);
   PluginRuntimeAccessGate accessGate = PluginRuntimeAccessGate.disabled;
@@ -1833,8 +1702,7 @@ class _PluginRuntimeSlot({required final PluginRuntimeRegistration registration}
   PluginRuntimeState state = PluginRuntimeState.disabled;
   PluginWorkState workState = PluginWorkState.unknown;
   PluginRuntimeTransition transition = PluginRuntimeTransition.none;
-  Object? commandTransitionOwner;
-  Completer<void>? commandTransitionCompleter;
+  _CommandTransition? commandTransition;
   int leaseCount = 0;
   int durableCommitCount = 0;
   Completer<void>? durableCommitsDrained;

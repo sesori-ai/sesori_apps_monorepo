@@ -24,14 +24,9 @@ class GetSessionHandler({
   Future<Session> handle(
     RelayRequest request, {
     required SessionIdRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final sessionId = body.sessionId;
-    if (sessionId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty session id");
-    }
+    requireNonEmpty(request: request, value: sessionId, label: "session id");
 
     final projectId = await _sessionRepository.findProjectIdForSession(sessionId: sessionId);
     if (projectId == null) {

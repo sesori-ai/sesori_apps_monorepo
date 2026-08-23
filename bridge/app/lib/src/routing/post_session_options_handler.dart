@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -17,9 +15,7 @@ class PostSessionOptionsHandler({
   @override
   Future<RelayResponse> handleInternal(
     RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
+    required RequestTargetParams targetParams,
   }) async {
     final rawBody = request.body;
     if (rawBody == null) return _error(request: request, status: 400, code: SessionOptionsErrorCode.unknown);
@@ -40,7 +36,7 @@ class PostSessionOptionsHandler({
       return _error(request: request, status: 400, code: SessionOptionsErrorCode.unknown);
     }
 
-    final refresh = queryParams["refresh"];
+    final refresh = targetParams.queryParams["refresh"];
     if (refresh != null && refresh != "false" && refresh != "true") {
       return _error(request: request, status: 400, code: SessionOptionsErrorCode.unknown);
     }
@@ -59,11 +55,7 @@ class PostSessionOptionsHandler({
     }
 
     return switch (outcome) {
-      SessionOptionsAvailable(:final response) => _jsonResponse(
-        request: request,
-        status: 200,
-        body: response.toJson(),
-      ),
+      SessionOptionsAvailable(:final response) => buildOkJsonResponse(request: request, body: response.toJson()),
       SessionOptionsCacheUnavailable() => _error(
         request: request,
         status: 503,
@@ -97,24 +89,9 @@ class PostSessionOptionsHandler({
     required RelayRequest request,
     required int status,
     required SessionOptionsErrorCode code,
-  }) {
-    return _jsonResponse(
-      request: request,
-      status: status,
-      body: SessionOptionsErrorResponse(code: code).toJson(),
-    );
-  }
-
-  RelayResponse _jsonResponse({
-    required RelayRequest request,
-    required int status,
-    required Map<String, dynamic> body,
-  }) {
-    return RelayResponse(
-      id: request.id,
-      status: status,
-      headers: const {"content-type": "application/json"},
-      body: jsonEncode(body),
-    );
-  }
+  }) => buildJsonErrorResponse(
+    request: request,
+    status: status,
+    body: SessionOptionsErrorResponse(code: code).toJson(),
+  );
 }

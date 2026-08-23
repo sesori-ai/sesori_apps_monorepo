@@ -27,7 +27,8 @@ defaults and queued client sends coherent.
   concurrently on one plugin, and one slow session or plugin must not stall other
   sessions, other plugins, the relay read loop, or catalog reads.
 - Streaming produces incremental message and part events and a terminal status
-  transition back to idle; retry carries attempt, message, and timing, and
+  transition back to idle; retry carries attempt, message, and timing and
+  returns to busy as soon as the retried request streams output again, and
   finalized messages enter durable history matching a history read. A terminal
   provider failure appears as an inline error message and remains visible after
   refresh or reopen. Backend-provided message timestamps remain present through
@@ -166,6 +167,11 @@ defaults and queued client sends coherent.
 - Transcript content scrolling behind the top navigation or floating composer
   dissolves into a strong surface-colour fade, keeping the title and controls
   visually separate and screenshot-readable without text collisions.
+- A leftward touch, stylus, or trackpad drag across the transcript reveals all
+  message timestamps together without changing vertical scroll or follow state,
+  then settles closed on release. System-back edges remain reserved on iOS and
+  Android gesture navigation, mouse drags remain available for text selection,
+  and a horizontal drag inside a fenced code block scrolls only that block.
 
 ## Regression Levels
 
@@ -230,6 +236,9 @@ has started.
   running session as if they were user activity.
 - Scrolled transcript text remains clearly visible through the fade and collides
   with the navigation title or floating composer controls.
+- A timestamp peek responds from a reserved system-back edge, detaches or
+  vertically scrolls the transcript, captures a mouse selection drag, or moves
+  while a fenced code block is handling the horizontal drag.
 
 ## Known Limitations
 

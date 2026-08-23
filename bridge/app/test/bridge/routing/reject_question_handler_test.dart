@@ -38,15 +38,12 @@ void main() {
     test("returns 409 for an archived session", () async {
       await db.sessionDao.setArchived(sessionId: "ses-1", archivedAt: 7, updatedAt: 7, projectionUpdatedAt: 7);
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/question/reject",
           body: jsonEncode(const RejectQuestionRequest(requestId: "q-1", sessionId: "ses-1").toJson()),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, 409);
@@ -61,9 +58,6 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/question/reject"),
         body: const RejectQuestionRequest(requestId: "q1", sessionId: "ses-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastRejectQuestionId, equals("q1"));
@@ -82,9 +76,6 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/question/reject"),
         body: const RejectQuestionRequest(requestId: "q1", sessionId: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastRejectQuestionId, equals("q1"));
@@ -96,9 +87,6 @@ void main() {
         handler.handle(
           makeRequest("POST", "/question/reject"),
           body: const RejectQuestionRequest(requestId: "missing", sessionId: null),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
       );
@@ -122,9 +110,6 @@ void main() {
         handler.handle(
           makeRequest("POST", "/question/reject"),
           body: const RejectQuestionRequest(requestId: "q1", sessionId: null),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 409)),
       );
@@ -135,9 +120,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/question/reject"),
         body: const RejectQuestionRequest(requestId: "q1", sessionId: "ses-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, equals(const SuccessEmptyResponse()));
@@ -148,9 +130,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/question/reject"),
           body: const RejectQuestionRequest(requestId: "", sessionId: null),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );

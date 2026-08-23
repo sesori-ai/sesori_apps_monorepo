@@ -16,18 +16,18 @@ void main() {
           _TestHandler(
             method: HttpMethod.get,
             path: "/session/:id",
-            handle: ({required request, required pathParams, required queryParams, required fragment}) async {
+            handle: ({required request, required targetParams}) async {
               calls.add("first");
-              expect(pathParams, {"id": "s1"});
-              expect(queryParams, {"view": "full"});
-              expect(fragment, "messages");
+              expect(targetParams.pathParams, {"id": "s1"});
+              expect(targetParams.queryParams, {"view": "full"});
+
               return _response(request: request, status: 201, body: "first");
             },
           ),
           _TestHandler(
             method: HttpMethod.get,
             path: "/session/:id",
-            handle: ({required request, required pathParams, required queryParams, required fragment}) async {
+            handle: ({required request, required targetParams}) async {
               calls.add("second");
               return _response(request: request, status: 202, body: "second");
             },
@@ -60,7 +60,7 @@ void main() {
         _TestHandler(
           method: HttpMethod.get,
           path: "/original",
-          handle: ({required request, required pathParams, required queryParams, required fragment}) async {
+          handle: ({required request, required targetParams}) async {
             return _response(request: request, status: 200, body: "original");
           },
         ),
@@ -72,7 +72,7 @@ void main() {
           _TestHandler(
             method: HttpMethod.get,
             path: "/replacement",
-            handle: ({required request, required pathParams, required queryParams, required fragment}) async {
+            handle: ({required request, required targetParams}) async {
               return _response(request: request, status: 200, body: "replacement");
             },
           ),
@@ -112,7 +112,7 @@ void main() {
       );
       expect(invalidTarget.routeIdentity, isA<InvalidTargetRoute>());
       expect(invalidTarget.routeIdentity.diagnosticLabel, "GET invalid target");
-      expect((await invalidTarget.completion).response.status, 502);
+      expect((await invalidTarget.completion).response.status, 500);
     });
 
     test("returns route identity before asynchronous completion", () async {
@@ -122,7 +122,7 @@ void main() {
           _TestHandler(
             method: HttpMethod.get,
             path: "/session/:id",
-            handle: ({required request, required pathParams, required queryParams, required fragment}) {
+            handle: ({required request, required targetParams}) {
               return responseGate.future;
             },
           ),
@@ -150,7 +150,7 @@ void main() {
           _TestHandler(
             method: HttpMethod.get,
             path: "/plugin-failure",
-            handle: ({required request, required pathParams, required queryParams, required fragment}) {
+            handle: ({required request, required targetParams}) {
               throw const PluginOperationException.notFound("test");
             },
           ),
@@ -163,13 +163,13 @@ void main() {
       expect(response.body, contains("PluginOperationException"));
     });
 
-    test("maps unexpected routing failures to 502", () async {
+    test("maps unexpected routing failures to 500", () async {
       final router = RequestRouter(
         handlers: [
           _TestHandler(
             method: HttpMethod.get,
             path: "/failure",
-            handle: ({required request, required pathParams, required queryParams, required fragment}) {
+            handle: ({required request, required targetParams}) {
               throw StateError("boom");
             },
           ),
@@ -178,7 +178,7 @@ void main() {
 
       final response = await _route(router, _request(method: "GET", path: "/failure"));
 
-      expect(response.status, 502);
+      expect(response.status, 500);
       expect(response.body, contains("boom"));
     });
   });
@@ -189,9 +189,7 @@ class _TestHandler({
   required String path,
   required final Future<RelayResponse> Function({
     required RelayRequest request,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
+    required RequestTargetParams targetParams,
   })
   _handle,
 }) extends RequestHandlerBase {
@@ -200,16 +198,9 @@ class _TestHandler({
   @override
   Future<RelayResponse> handleInternal(
     RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
+    required RequestTargetParams targetParams,
   }) {
-    return _handle(
-      request: request,
-      pathParams: pathParams,
-      queryParams: queryParams,
-      fragment: fragment,
-    );
+    return _handle(request: request, targetParams: targetParams);
   }
 }
 

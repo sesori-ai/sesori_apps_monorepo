@@ -49,9 +49,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/project/questions"),
         body: const ProjectIdRequest(projectId: "/tmp/project"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.data, isA<List<PendingQuestion>>());
@@ -81,9 +78,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/project/questions"),
         body: const ProjectIdRequest(projectId: "/tmp/project"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final item = response.data.first;
@@ -109,9 +103,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/questions"),
           body: const ProjectIdRequest(projectId: ""),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );

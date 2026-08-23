@@ -5,8 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 class LoginEmailApi({required final String authBackendUrl}) {
   Future<AuthResponse> loginWithEmail({required String email, required String password}) async {
-    final base = authBackendUrl.endsWith("/") ? authBackendUrl.substring(0, authBackendUrl.length - 1) : authBackendUrl;
-    final uri = Uri.parse("$base/${AuthProvider.email.apiAuthPath}");
+    final uri = Uri.parse("$authBackendUrl/${AuthProvider.email.apiAuthPath}");
 
     final body = jsonEncode({"email": email, "password": password});
 

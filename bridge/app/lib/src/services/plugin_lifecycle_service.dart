@@ -50,6 +50,19 @@ typedef PluginInstallProgressUpdate = ({
 
 typedef PluginAuthenticationProgressUpdate = ({String pluginId, PluginAuthenticationProgress progress});
 
+List<RegisteredPluginMetadata> _validateAndSortPlugins(List<RegisteredPluginMetadata> plugins) {
+  final ids = plugins.map((plugin) => plugin.id).toList(growable: false);
+  if (ids.toSet().length != ids.length) {
+    throw ArgumentError.value(plugins, "plugins", "must not contain duplicate ids");
+  }
+  final sorted = [...plugins]
+    ..sort((left, right) {
+      final byName = left.displayName.toLowerCase().compareTo(right.displayName.toLowerCase());
+      return byName != 0 ? byName : left.id.compareTo(right.id);
+    });
+  return List<RegisteredPluginMetadata>.unmodifiable(sorted);
+}
+
 class const PluginIdleTimerScheduler() {
   Timer schedule({required Duration duration, required void Function() onElapsed}) {
     return Timer(duration, onElapsed);
@@ -62,12 +75,22 @@ class PluginLifecycleService({
   required final BridgeSettingsRepository _bridgeSettingsRepository,
   required final PluginIdleTimerScheduler _idleTimerScheduler,
   required final BridgeIdProvider _bridgeIdProvider,
+  required List<RegisteredPluginMetadata> plugins,
 }) {
-  List<RegisteredPluginMetadata>? _registeredPlugins;
-  Set<String>? _knownPluginIds;
-  Map<String, PluginResidencyPolicy>? _residencyPolicyById;
-  late Map<String, PluginSessionOptionsScope> _sessionOptionsScopeById;
-  Map<String, Set<PluginControlCapability>>? _managementCapabilitiesById;
+  final List<RegisteredPluginMetadata> _registeredPlugins = _validateAndSortPlugins(plugins);
+  final Set<String> _knownPluginIds = Set<String>.unmodifiable(plugins.map((plugin) => plugin.id));
+  final Map<String, PluginResidencyPolicy> _residencyPolicyById = Map<String, PluginResidencyPolicy>.unmodifiable({
+    for (final plugin in plugins) plugin.id: plugin.residencyPolicy,
+  });
+  final Map<String, PluginSessionOptionsScope> _sessionOptionsScopeById =
+      Map<String, PluginSessionOptionsScope>.unmodifiable({
+        for (final plugin in plugins) plugin.id: plugin.sessionOptionsScope,
+      });
+  final Map<String, Set<PluginControlCapability>> _managementCapabilitiesById =
+      Map<String, Set<PluginControlCapability>>.unmodifiable({
+        for (final plugin in plugins)
+          plugin.id: Set<PluginControlCapability>.unmodifiable(plugin.managementCapabilities),
+      });
   List<String>? _eligiblePluginIds;
   Set<String> _startAllowedPluginIds = {};
   Map<String, PluginMetadata> _metadataById = <String, PluginMetadata>{};
@@ -80,7 +103,7 @@ class PluginLifecycleService({
   final StreamController<PluginAuthenticationProgressUpdate> _authenticationProgressController =
       StreamController<PluginAuthenticationProgressUpdate>.broadcast(sync: true);
   final Map<String, DateTime> _lastInstallDownloadEmit = {};
-  StreamSubscription<List<PluginLifecycleSnapshot>>? _runtimeSubscription;
+  StreamSubscription<List<PluginRuntimeSnapshot>>? _runtimeSubscription;
   Future<void>? _disposeFuture;
   Future<void> _settingsMutationTail = Future<void>.value();
   final Map<String, _ActivePluginCommand> _activePluginCommands = {};
@@ -90,30 +113,6 @@ class PluginLifecycleService({
   _PluginManagementSnapshot? _lastPublishedManagementSnapshot;
   final Random _random = Random.secure();
   bool _disposing = false;
-
-  void registerPlugins({required List<RegisteredPluginMetadata> plugins}) {
-    if (_registeredPlugins != null) throw StateError("Plugins are already registered.");
-    final ids = plugins.map((plugin) => plugin.id).toList(growable: false);
-    if (ids.toSet().length != ids.length) {
-      throw ArgumentError.value(plugins, "plugins", "must not contain duplicate ids");
-    }
-    final sorted = [...plugins]
-      ..sort((left, right) {
-        final byName = left.displayName.toLowerCase().compareTo(right.displayName.toLowerCase());
-        return byName != 0 ? byName : left.id.compareTo(right.id);
-      });
-    _registeredPlugins = List<RegisteredPluginMetadata>.unmodifiable(sorted);
-    _knownPluginIds = Set<String>.unmodifiable(ids);
-    _residencyPolicyById = Map<String, PluginResidencyPolicy>.unmodifiable({
-      for (final plugin in plugins) plugin.id: plugin.residencyPolicy,
-    });
-    _sessionOptionsScopeById = Map<String, PluginSessionOptionsScope>.unmodifiable({
-      for (final plugin in plugins) plugin.id: plugin.sessionOptionsScope,
-    });
-    _managementCapabilitiesById = Map<String, Set<PluginControlCapability>>.unmodifiable({
-      for (final plugin in plugins) plugin.id: Set<PluginControlCapability>.unmodifiable(plugin.managementCapabilities),
-    });
-  }
 
   Set<String> uncontrollableDisabledPluginIds({required Set<String> disabledPluginIds}) {
     if (_eligiblePluginIds != null) throw StateError("Plugin lifecycle is already initialized.");
@@ -129,19 +128,14 @@ class PluginLifecycleService({
     required Map<String, PluginSetupStatus> setupById,
   }) {
     if (_eligiblePluginIds != null) throw StateError("Plugin lifecycle is already initialized.");
-    final registeredPlugins = _registeredPlugins;
-    final knownPluginIds = _knownPluginIds;
-    if (registeredPlugins == null || knownPluginIds == null) {
-      throw StateError("Plugins have not been registered.");
-    }
-    if (setupById.keys.toSet().difference(knownPluginIds).isNotEmpty ||
-        knownPluginIds.difference(setupById.keys.toSet()).isNotEmpty) {
+    if (setupById.keys.toSet().difference(_knownPluginIds).isNotEmpty ||
+        _knownPluginIds.difference(setupById.keys.toSet()).isNotEmpty) {
       throw ArgumentError.value(setupById, "setupById", "must contain exactly every registered plugin id");
     }
 
     _setupById = Map<String, PluginSetupStatus>.unmodifiable(setupById);
     final eligiblePluginIds = List<String>.unmodifiable([
-      for (final plugin in registeredPlugins)
+      for (final plugin in _registeredPlugins)
         if (!disabledPluginIds.contains(plugin.id)) plugin.id,
     ]);
     final setupReadyPluginIds = <String>{
@@ -154,7 +148,7 @@ class PluginLifecycleService({
     _rebuildMetadata();
     final defaultPluginId = _selectableDefaultPluginId();
     final eagerPluginIds = List<String>.unmodifiable([
-      for (final plugin in registeredPlugins)
+      for (final plugin in _registeredPlugins)
         if (eligiblePluginIds.contains(plugin.id) &&
             setupReadyPluginIds.contains(plugin.id) &&
             plugin.activationPolicy == PluginActivationPolicy.eager)
@@ -176,12 +170,10 @@ class PluginLifecycleService({
   }
 
   PluginCompositionView get compositionView {
-    final knownPluginIds = _knownPluginIds;
     final eligiblePluginIds = _requireEligiblePluginIds();
-    if (knownPluginIds == null) throw StateError("Plugin lifecycle has not been initialized.");
     return (
-      knownPluginIds: knownPluginIds,
-      orderedPluginIds: List<String>.unmodifiable(_registeredPlugins!.map((plugin) => plugin.id)),
+      knownPluginIds: _knownPluginIds,
+      orderedPluginIds: List<String>.unmodifiable(_registeredPlugins.map((plugin) => plugin.id)),
       eligiblePluginIds: eligiblePluginIds,
       defaultPluginId: _selectableDefaultPluginId(),
       projectOwnershipById: Map<String, PluginProjectOwnership>.unmodifiable({
@@ -206,14 +198,13 @@ class PluginLifecycleService({
   }
 
   PluginSetupResponse get setupSnapshot {
-    final registeredPlugins = _registeredPlugins;
     final setupById = _setupById;
-    if (registeredPlugins == null || setupById == null) {
+    if (setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
     }
     return PluginSetupResponse(
       plugins: [
-        for (final plugin in registeredPlugins) _mapSetupMetadata(plugin: plugin, setup: setupById[plugin.id]!),
+        for (final plugin in _registeredPlugins) _mapSetupMetadata(plugin: plugin, setup: setupById[plugin.id]!),
       ],
     );
   }
@@ -224,7 +215,7 @@ class PluginLifecycleService({
   }
 
   _PluginManagementSnapshot _requireManagementSnapshot() {
-    if (_registeredPlugins == null || _setupById == null) {
+    if (_setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
     }
     final snapshot = _lastPublishedManagementSnapshot;
@@ -270,11 +261,10 @@ class PluginLifecycleService({
     required String pluginId,
     required PluginLifecycleCommandRequest request,
   }) {
-    final knownPluginIds = _knownPluginIds;
-    if (knownPluginIds == null || _setupById == null) {
+    if (_setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
     }
-    if (!knownPluginIds.contains(pluginId)) {
+    if (!_knownPluginIds.contains(pluginId)) {
       throw PluginManagementPluginNotFoundException(pluginId);
     }
     if (_lastPublishedManagementSnapshot == null) {
@@ -337,11 +327,10 @@ class PluginLifecycleService({
   Stream<PluginAuthenticationProgressUpdate> get authenticationProgress => _authenticationProgressController.stream;
 
   Future<PluginAuthenticationChallengeResponse> authenticate({required String pluginId}) {
-    final knownPluginIds = _knownPluginIds;
-    if (knownPluginIds == null || _setupById == null) {
+    if (_setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
     }
-    if (!knownPluginIds.contains(pluginId)) {
+    if (!_knownPluginIds.contains(pluginId)) {
       throw PluginManagementPluginNotFoundException(pluginId);
     }
     _requireBridgeId();
@@ -387,11 +376,10 @@ class PluginLifecycleService({
   }
 
   Future<SuccessEmptyResponse> cancelAuthentication({required String pluginId}) async {
-    final knownPluginIds = _knownPluginIds;
-    if (knownPluginIds == null || _setupById == null) {
+    if (_setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
     }
-    if (!knownPluginIds.contains(pluginId)) {
+    if (!_knownPluginIds.contains(pluginId)) {
       throw PluginManagementPluginNotFoundException(pluginId);
     }
     _requireBridgeId();
@@ -627,8 +615,7 @@ class PluginLifecycleService({
   }
 
   Future<PluginManagementResponse> updateIdleTimeout({required PluginIdleTimeoutUpdateRequest request}) {
-    final knownPluginIds = _knownPluginIds;
-    if (knownPluginIds == null || _setupById == null) {
+    if (_setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
     }
     if (_lastPublishedManagementSnapshot == null) {
@@ -639,7 +626,7 @@ class PluginLifecycleService({
         break;
       case PluginIdleTimeoutSetOverrideRequest(:final pluginId) ||
           PluginIdleTimeoutClearOverrideRequest(:final pluginId):
-        if (!knownPluginIds.contains(pluginId)) {
+        if (!_knownPluginIds.contains(pluginId)) {
           throw PluginManagementPluginNotFoundException(pluginId);
         }
     }
@@ -759,10 +746,7 @@ class PluginLifecycleService({
     if (!_requireEligiblePluginIds().contains(pluginId)) return;
     final result = await _lifecycleRepository.prepareDisable(
       pluginId: pluginId,
-      intent: switch (mode) {
-        PluginStopMode.safe => PluginStopIntent.safe,
-        PluginStopMode.force => PluginStopIntent.force,
-      },
+      intent: _mapStopIntent(mode: mode),
     );
     switch (result) {
       case PluginRuntimeCommandConflict(:final reasons):
@@ -912,7 +896,7 @@ class PluginLifecycleService({
       _startAllowedPluginIds.remove(pluginId);
     }
     _eligiblePluginIds = List<String>.unmodifiable([
-      for (final plugin in _registeredPlugins!)
+      for (final plugin in _registeredPlugins)
         if (eligibleIds.contains(plugin.id)) plugin.id,
     ]);
     _rebuildMetadata();
@@ -935,7 +919,7 @@ class PluginLifecycleService({
     PluginRuntimeConflictReason.notEligible => PluginLifecycleConflictReason.notEnabled,
   };
 
-  void _applyRuntimeSnapshots(List<PluginLifecycleSnapshot> snapshots) {
+  void _applyRuntimeSnapshots(List<PluginRuntimeSnapshot> snapshots) {
     final setupById = _setupById;
     if (setupById != null) {
       _setupById = Map<String, PluginSetupStatus>.unmodifiable({
@@ -950,14 +934,10 @@ class PluginLifecycleService({
     for (final snapshot in snapshots) {
       final current = _metadataById[snapshot.pluginId];
       if (current == null) continue;
-      final state = switch (snapshot.state) {
-        PluginRuntimeState.dormant ||
-        PluginRuntimeState.active ||
-        PluginRuntimeState.starting => PluginLifecycleState.ready,
-        PluginRuntimeState.degraded || PluginRuntimeState.stopping => PluginLifecycleState.degraded,
-        PluginRuntimeState.failed => PluginLifecycleState.failed,
-        PluginRuntimeState.disabled || PluginRuntimeState.blocked => PluginLifecycleState.unavailable,
-      };
+      final state = _lifecycleState(
+        runtimeState: snapshot.state,
+        unavailableState: PluginLifecycleState.unavailable,
+      );
       _metadataById[snapshot.pluginId] = current.copyWith(state: state, actionHint: _actionHint(state));
     }
     final subject = _metadataSubject;
@@ -971,21 +951,16 @@ class PluginLifecycleService({
     final snapshots = {for (final snapshot in _lifecycleRepository.snapshot) snapshot.pluginId: snapshot};
     final setupById = _requireSetupById();
     _metadataById = <String, PluginMetadata>{
-      for (final plugin in _registeredPlugins!)
+      for (final plugin in _registeredPlugins)
         if (_requireEligiblePluginIds().contains(plugin.id))
           plugin.id: () {
             final runtimeState = snapshots[plugin.id]?.state;
-            final state = switch (runtimeState) {
-              PluginRuntimeState.dormant ||
-              PluginRuntimeState.starting ||
-              PluginRuntimeState.active => PluginLifecycleState.ready,
-              PluginRuntimeState.degraded || PluginRuntimeState.stopping => PluginLifecycleState.degraded,
-              PluginRuntimeState.failed => PluginLifecycleState.failed,
-              PluginRuntimeState.disabled || PluginRuntimeState.blocked || null =>
-                setupById[plugin.id] is PluginSetupReady
-                    ? PluginLifecycleState.ready
-                    : PluginLifecycleState.unavailable,
-            };
+            final state = _lifecycleState(
+              runtimeState: runtimeState,
+              unavailableState: setupById[plugin.id] is PluginSetupReady
+                  ? PluginLifecycleState.ready
+                  : PluginLifecycleState.unavailable,
+            );
             return PluginMetadata(
               id: plugin.id,
               displayName: plugin.displayName,
@@ -1024,7 +999,19 @@ class PluginLifecycleService({
     return null;
   }
 
-  bool _isSelectable(PluginLifecycleSnapshot snapshot) {
+  PluginLifecycleState _lifecycleState({
+    required PluginRuntimeState? runtimeState,
+    required PluginLifecycleState unavailableState,
+  }) => switch (runtimeState) {
+    PluginRuntimeState.dormant ||
+    PluginRuntimeState.active ||
+    PluginRuntimeState.starting => PluginLifecycleState.ready,
+    PluginRuntimeState.degraded || PluginRuntimeState.stopping => PluginLifecycleState.degraded,
+    PluginRuntimeState.failed => PluginLifecycleState.failed,
+    PluginRuntimeState.disabled || PluginRuntimeState.blocked || null => unavailableState,
+  };
+
+  bool _isSelectable(PluginRuntimeSnapshot snapshot) {
     if (snapshot.accessGate != PluginRuntimeAccessGate.enabled) return false;
     return switch (snapshot.state) {
       PluginRuntimeState.dormant ||
@@ -1101,27 +1088,21 @@ class PluginLifecycleService({
       };
 
   Set<String> _pluginIdsSupporting({required PluginControlCapability capability}) {
-    final capabilitiesById = _managementCapabilitiesById;
-    if (capabilitiesById == null) throw StateError("Plugins have not been registered.");
     return {
-      for (final MapEntry(key: pluginId, value: capabilities) in capabilitiesById.entries)
+      for (final MapEntry(key: pluginId, value: capabilities) in _managementCapabilitiesById.entries)
         if (capabilities.contains(capability)) pluginId,
     };
   }
 
   Set<String> _pluginIdsWithout({required PluginControlCapability capability}) {
-    final capabilitiesById = _managementCapabilitiesById;
-    if (capabilitiesById == null) throw StateError("Plugins have not been registered.");
     return {
-      for (final MapEntry(key: pluginId, value: capabilities) in capabilitiesById.entries)
+      for (final MapEntry(key: pluginId, value: capabilities) in _managementCapabilitiesById.entries)
         if (!capabilities.contains(capability)) pluginId,
     };
   }
 
   Set<PluginControlCapability> _managementCapabilitiesForPluginId({required String pluginId}) {
-    final capabilitiesById = _managementCapabilitiesById;
-    if (capabilitiesById == null) throw StateError("Plugins have not been registered.");
-    return capabilitiesById[pluginId] ?? (throw StateError('Plugin "$pluginId" is not registered.'));
+    return _managementCapabilitiesById[pluginId] ?? (throw StateError('Plugin "$pluginId" is not registered.'));
   }
 
   void _requireManagementCapability({required String pluginId, required PluginControlCapability capability}) {
@@ -1151,13 +1132,12 @@ class PluginLifecycleService({
   }
 
   PluginManagementMetadata _managementRowForPluginId(String pluginId) {
-    final plugin = _registeredPlugins!.singleWhere((candidate) => candidate.id == pluginId);
+    final plugin = _registeredPlugins.singleWhere((candidate) => candidate.id == pluginId);
     return _managementRow(plugin: plugin);
   }
 
   _PluginManagementSnapshot _buildManagementSnapshot({required String snapshotToken}) {
-    final registeredPlugins = _registeredPlugins;
-    if (registeredPlugins == null || _setupById == null) {
+    if (_setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
     }
     final settings = _bridgeSettingsRepository.currentSettings;
@@ -1165,7 +1145,7 @@ class PluginLifecycleService({
       snapshotToken: snapshotToken,
       defaultPluginId: _selectableDefaultPluginId(),
       defaultIdleTimeoutMins: settings.plugins.defaults.idleTimeoutMins ?? defaultPluginIdleTimeoutMins,
-      plugins: [for (final plugin in registeredPlugins) _managementRow(plugin: plugin)],
+      plugins: [for (final plugin in _registeredPlugins) _managementRow(plugin: plugin)],
     );
   }
 
@@ -1189,10 +1169,8 @@ class PluginLifecycleService({
   }
 
   bool get _hasCompleteManagementRuntimeSnapshot {
-    final registeredPlugins = _registeredPlugins;
-    if (registeredPlugins == null) return false;
     final runtimePluginIds = _lifecycleRepository.snapshot.map((snapshot) => snapshot.pluginId).toSet();
-    return registeredPlugins.every((plugin) => runtimePluginIds.contains(plugin.id));
+    return _registeredPlugins.every((plugin) => runtimePluginIds.contains(plugin.id));
   }
 
   shared.PluginRuntimeState _mapRuntimeState(PluginRuntimeState state) => switch (state) {
@@ -1283,8 +1261,8 @@ class PluginLifecycleService({
     if (firstError != null) Error.throwWithStackTrace(firstError, firstStackTrace!);
   }
 
-  List<String> _buildReadyPluginIds(List<PluginLifecycleSnapshot> snapshots) {
-    final byId = <String, PluginLifecycleSnapshot>{
+  List<String> _buildReadyPluginIds(List<PluginRuntimeSnapshot> snapshots) {
+    final byId = <String, PluginRuntimeSnapshot>{
       for (final snapshot in snapshots) snapshot.pluginId: snapshot,
     };
     return List<String>.unmodifiable([
@@ -1298,21 +1276,11 @@ class PluginLifecycleService({
     ]);
   }
 
-  void _publishReadyPluginIds(List<PluginLifecycleSnapshot> snapshots) {
+  void _publishReadyPluginIds(List<PluginRuntimeSnapshot> snapshots) {
     final subject = _readyPluginIdsSubject;
     if (subject == null || subject.isClosed) return;
     final next = _buildReadyPluginIds(snapshots);
-    final current = subject.value;
-    if (current.length == next.length) {
-      var equal = true;
-      for (var index = 0; index < current.length; index++) {
-        if (current[index] != next[index]) {
-          equal = false;
-          break;
-        }
-      }
-      if (equal) return;
-    }
+    if (const ListEquality<String>().equals(subject.value, next)) return;
     subject.add(next);
   }
 
@@ -1323,7 +1291,7 @@ class PluginLifecycleService({
     _publishReadyPluginIds(_lifecycleRepository.snapshot);
   }
 
-  void _syncIdleTimers(List<PluginLifecycleSnapshot> snapshots) {
+  void _syncIdleTimers(List<PluginRuntimeSnapshot> snapshots) {
     if (_disposing) return;
     final currentIds = snapshots.map((snapshot) => snapshot.pluginId).toSet();
     _idleTimers.keys.where((pluginId) => !currentIds.contains(pluginId)).toList().forEach(_cancelIdleTimer);
@@ -1355,11 +1323,11 @@ class PluginLifecycleService({
     _idleTimers.remove(pluginId)?.timer.cancel();
   }
 
-  bool _isIdleCandidate(PluginLifecycleSnapshot snapshot) {
+  bool _isIdleCandidate(PluginRuntimeSnapshot snapshot) {
     return snapshot.accessGate == PluginRuntimeAccessGate.enabled &&
         snapshot.workState == PluginWorkState.idle &&
         snapshot.leaseCount == 0 &&
-        snapshot.transitionSettled &&
+        snapshot.transition == PluginRuntimeTransition.none &&
         (snapshot.state == PluginRuntimeState.active || snapshot.state == PluginRuntimeState.degraded);
   }
 
@@ -1379,7 +1347,7 @@ class PluginLifecycleService({
   /// backend the bridge does not own (OpenCode attach mode) or own idle
   /// reclamation internally (Claude's per-session process reap).
   int _suspensionIdleTimeoutMins(String pluginId) {
-    final residencyPolicy = _residencyPolicyById?[pluginId];
+    final residencyPolicy = _residencyPolicyById[pluginId];
     if (residencyPolicy == null) throw StateError("Plugin lifecycle has not been registered.");
     if (residencyPolicy == PluginResidencyPolicy.resident) return 0;
     return _effectiveIdleTimeoutMins(pluginId);

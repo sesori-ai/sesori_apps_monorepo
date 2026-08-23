@@ -51,9 +51,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/project/base-branch"),
         body: const ProjectIdRequest(projectId: "unknown-project"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.baseBranch, isNull);
@@ -65,9 +62,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/project/base-branch"),
         body: const ProjectIdRequest(projectId: "/Users/dev/my-app"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.baseBranch, equals("develop"));
@@ -79,9 +73,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/project/base-branch"),
         body: const ProjectIdRequest(projectId: "proj-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.baseBranch, equals("main"));
@@ -91,9 +82,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/project/base-branch"),
         body: const ProjectIdRequest(projectId: "unknown-project"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.repoSlug, isNull);
@@ -122,9 +110,6 @@ void main() {
       final response = await slugHandler.handle(
         makeRequest("POST", "/project/base-branch"),
         body: const ProjectIdRequest(projectId: "/Users/dev/my-app"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.baseBranch, equals("develop"));

@@ -1,6 +1,6 @@
-import "package:flutter_test/flutter_test.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/converters/http_method_converter.dart";
+import "package:test/test.dart";
 
 void main() {
   group("HttpMethodConverter", () {
@@ -80,6 +80,5 @@ void main() {
         expect(result, equals("DELETE"));
       });
     });
-
   });
 }

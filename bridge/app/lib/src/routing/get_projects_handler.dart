@@ -10,11 +10,8 @@ class GetProjectsHandler({required final ProjectActivityService _projectActivity
 
   @override
   Future<Projects> handle(
-    RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
-  }) async {
+    RelayRequest request,
+  ) async {
     final projects = await _projectActivityService.getProjects();
     return Projects(data: projects);
   }

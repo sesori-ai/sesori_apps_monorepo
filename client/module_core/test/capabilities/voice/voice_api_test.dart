@@ -1,16 +1,15 @@
 import "dart:async";
 import "dart:io";
 
-import "package:flutter_test/flutter_test.dart";
 import "package:http/http.dart" as http;
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/voice/voice_api.dart";
-
-import "../../helpers/test_helpers.dart";
+import "package:sesori_dart_core/testing.dart";
+import "package:test/test.dart";
 
 void main() {
-  setUpAll(registerAllFallbackValues);
+  setUpAll(registerCoreFallbackValues);
 
   group("VoiceApi.transcribe", () {
     late MockAuthenticatedHttpApiClient mockAuthenticatedHttpApiClient;

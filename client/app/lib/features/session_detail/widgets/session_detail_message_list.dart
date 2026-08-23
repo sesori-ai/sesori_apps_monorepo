@@ -6,6 +6,7 @@ import "package:flutter_chat_ui/flutter_chat_ui.dart" as chat_ui;
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "assistant_message_card.dart";
@@ -123,10 +124,18 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// rarer/longer labels ellipsize in [MessageTimestampReveal].
   static const double _kMaxReveal = 108;
 
-  /// Horizontal travel before a drag is treated as a timestamp peek
-  /// rather than a scroll. Kept below `kTouchSlop` so the peek engages
-  /// promptly, but only when horizontal travel clearly dominates.
-  static const double _kRevealEngageSlop = 8;
+  /// Disallowed-direction or vertical-dominant travel that releases the
+  /// pending timestamp gesture. Kept below `kTouchSlop` so small vertical and
+  /// rightward-first drags remain available to the transcript.
+  static const double _kRevealPendingRejectionSlop = 8;
+
+  static const Set<PointerDeviceKind> _kRevealPointerDevices = {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.invertedStylus,
+    PointerDeviceKind.trackpad,
+    PointerDeviceKind.unknown,
+  };
 
   /// Synthetic controller-entry id for the shimmering retry-error row
   /// pinned at the newest edge. Domain message ids come from the
@@ -158,24 +167,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// drag moves the whole transcript in lockstep.
   late final AnimationController _revealController;
 
-  /// Pointer-tracking state for the reveal "peek" gesture (see
-  /// [_onRevealPointerMove]). `_revealPointer` is the active pointer id;
-  /// `_revealEngaged`/`_revealRejected` latch the horizontal-vs-vertical
-  /// decision for the duration of one gesture.
-  int? _revealPointer;
-  Offset _revealStart = Offset.zero;
-  bool _revealEngaged = false;
-  bool _revealRejected = false;
+  /// Captured on horizontal-drag down, before the outer trackpad listener can
+  /// detach. Once the horizontal recognizer wins, suppression restores this
+  /// state and keeps the timestamp peek from disturbing follow mode.
   bool _revealStartedFollowing = false;
 
-  /// True while a trackpad pan-zoom owns the reveal. The pointer-drag and
-  /// pan-zoom paths share the engage/reject latches above, so exactly one
-  /// may drive the peek at a time: whichever gesture starts first claims
-  /// ownership (`_revealPointer` for finger/stylus, this flag for
-  /// trackpad) and the other path no-ops until it releases. Guards against
-  /// a stray pan on a touchscreen-plus-trackpad device resetting the
-  /// latches — or springing the gutter shut — mid touch drag.
-  bool _revealPanActive = false;
+  bool _revealDragActive = false;
+  bool _revealDetachSuppressed = false;
 
   /// Snapshot taken at the moment of detach. `null` means "not frozen
   /// — use live `widget.*` props".
@@ -587,16 +585,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         // Lift the pill clear of the floating composer overlaid below.
         bottomInset: widget.bottomInset,
       ),
-      // Horizontal "peek" gesture: slide the transcript left to reveal
-      // each message's timestamp on the right. Driven by a raw [Listener]
-      // rather than a drag GestureDetector on purpose — a competing
-      // horizontal drag recognizer would join the gesture arena and stop
-      // the list's vertical scroll recognizer from being the sole member,
-      // which would break small-drag detach. The Listener never joins the
-      // arena, so vertical scrolling is untouched; we disambiguate
-      // direction ourselves and only steer the reveal on horizontal-
-      // dominant gestures. `translucent` so the whole list area is tracked
-      // while taps and selection still reach the cards below.
+      // Horizontal "peek" gesture: slide the transcript left to reveal each
+      // message's timestamp on the right. This participates in the gesture
+      // arena so a nested horizontal scrollable, such as a fenced code block,
+      // wins exclusively. Early cross-axis rejection preserves the list's
+      // eager small-vertical-drag detach behavior.
       //
       // Input source is chosen by the pointer's *device kind*, not the
       // OS — so a desktop touchscreen still peeks by finger and an
@@ -608,80 +601,83 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       //   path ignores the mouse kind) so it keeps selecting message
       //   text; hijacking it for the peek would make selection impossible.
       //
-      // Both handler sets are always bound; each only fires for its own
-      // device kind, so they never compete.
-      child: Listener(
-        behavior: HitTestBehavior.translucent,
-        onPointerDown: _onRevealPointerDown,
-        onPointerMove: _onRevealPointerMove,
-        onPointerUp: _onRevealPointerUp,
-        onPointerCancel: _onRevealPointerCancel,
-        onPointerPanZoomStart: _onRevealPanZoomStart,
-        onPointerPanZoomUpdate: _onRevealPanZoomUpdate,
-        onPointerPanZoomEnd: _onRevealPanZoomEnd,
-        child: chat_ui.Chat(
-          key: _kListViewKey,
-          currentUserId: _kUserAuthorId,
-          resolveUser: _resolveUser,
-          chatController: _chatController,
-          theme: _chatThemeFor(theme: Theme.of(context)),
-          backgroundColor: Colors.transparent,
-          builders: chat_core.Builders(
-            // Full-row control: drop the package's bubble/alignment/
-            // gesture wrapper and render our cards bare, exactly as the
-            // previous ListView did.
-            chatMessageBuilder: (
-              context,
-              message,
-              index,
-              animation,
-              child, {
-              bool? isRemoved,
-              required bool isSentByMe,
-              chat_core.MessageGroupStatus? groupStatus,
-            }) => child,
-            customMessageBuilder:
-                (
-                  context,
-                  message,
-                  index, {
-                  required bool isSentByMe,
-                  chat_core.MessageGroupStatus? groupStatus,
-                }) => _buildRow(
-                  entry: message,
-                  messages: messages,
-                  indexById: indexById,
-                  transientSubmissions: transientSubmissions,
-                  streamingText: streamingText,
-                  children: children,
-                  childStatuses: childStatuses,
-                  retryErrorMessage: retryErrorMessage,
-                ),
-            // The prompt input and tasks bar live outside this widget; reserve
-            // no composer space inside the list.
-            composerBuilder: (context) => const SizedBox.shrink(),
-            // Follow/detach owns the jump affordance via the overlay pill.
-            scrollToBottomBuilder: (context, animation, onPressed) => const SizedBox.shrink(),
-            // The loaded view renders its own empty state before this
-            // widget is ever mounted.
-            emptyChatListBuilder: (context) => const SizedBox.shrink(),
-            chatAnimatedListBuilder: (context, itemBuilder) => chat_ui.ChatAnimatedListReversed(
-              itemBuilder: itemBuilder,
-              scrollController: _follow.scrollController,
-              insertAnimationDuration: Duration.zero,
-              removeAnimationDuration: Duration.zero,
-              shouldScrollToEndWhenSendingMessage: false,
-              topPadding: 8 + widget.topInset,
-              bottomPadding: 8 + widget.bottomInset,
-              handleSafeArea: false,
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-              // Always allow overscroll/bounce, even when the transcript is
-              // shorter than the viewport, so the list never feels locked.
-              physics: const AlwaysScrollableScrollPhysics(),
-              // The list is reversed, so "end" is the top: scrolling back
-              // through history is what asks for the older page. Null once
-              // the start is loaded, which stops the package asking again.
-              onEndReached: widget.onLoadOlderMessages,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: _onNestedScrollNotification,
+        child: PregoHorizontalDragGestureDetector(
+          behavior: HitTestBehavior.translucent,
+          supportedDevices: _kRevealPointerDevices,
+          onHorizontalDragDown: _onRevealDragDown,
+          onHorizontalDragStart: _onRevealDragStart,
+          onHorizontalDragUpdate: _onRevealDragUpdate,
+          onHorizontalDragEnd: _onRevealDragEnd,
+          onHorizontalDragCancel: _onRevealDragCancel,
+          pendingRejectionSlop: _kRevealPendingRejectionSlop,
+          direction: PregoHorizontalDragDirection.left,
+          dragStartBehavior: DragStartBehavior.down,
+          child: chat_ui.Chat(
+            key: _kListViewKey,
+            currentUserId: _kUserAuthorId,
+            resolveUser: _resolveUser,
+            chatController: _chatController,
+            theme: _chatThemeFor(theme: Theme.of(context)),
+            backgroundColor: Colors.transparent,
+            builders: chat_core.Builders(
+              // Full-row control: drop the package's bubble/alignment/
+              // gesture wrapper and render our cards bare, exactly as the
+              // previous ListView did.
+              chatMessageBuilder: (
+                context,
+                message,
+                index,
+                animation,
+                child, {
+                bool? isRemoved,
+                required bool isSentByMe,
+                chat_core.MessageGroupStatus? groupStatus,
+              }) => child,
+              customMessageBuilder:
+                  (
+                    context,
+                    message,
+                    index, {
+                    required bool isSentByMe,
+                    chat_core.MessageGroupStatus? groupStatus,
+                  }) => _buildRow(
+                    entry: message,
+                    messages: messages,
+                    indexById: indexById,
+                    transientSubmissions: transientSubmissions,
+                    streamingText: streamingText,
+                    children: children,
+                    childStatuses: childStatuses,
+                    retryErrorMessage: retryErrorMessage,
+                  ),
+              // The prompt input and tasks bar live outside this widget; reserve
+              // no composer space inside the list.
+              composerBuilder: (context) => const SizedBox.shrink(),
+              // Follow/detach owns the jump affordance via the overlay pill.
+              scrollToBottomBuilder: (context, animation, onPressed) => const SizedBox.shrink(),
+              // The loaded view renders its own empty state before this
+              // widget is ever mounted.
+              emptyChatListBuilder: (context) => const SizedBox.shrink(),
+              chatAnimatedListBuilder: (context, itemBuilder) => chat_ui.ChatAnimatedListReversed(
+                itemBuilder: itemBuilder,
+                scrollController: _follow.scrollController,
+                insertAnimationDuration: Duration.zero,
+                removeAnimationDuration: Duration.zero,
+                shouldScrollToEndWhenSendingMessage: false,
+                topPadding: 8 + widget.topInset,
+                bottomPadding: 8 + widget.bottomInset,
+                handleSafeArea: false,
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+                // Always allow overscroll/bounce, even when the transcript is
+                // shorter than the viewport, so the list never feels locked.
+                physics: const AlwaysScrollableScrollPhysics(),
+                // The list is reversed, so "end" is the top: scrolling back
+                // through history is what asks for the older page. Null once
+                // the start is loaded, which stops the package asking again.
+                onEndReached: widget.onLoadOlderMessages,
+              ),
             ),
           ),
         ),
@@ -814,137 +810,60 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     );
   }
 
-  void _onRevealPointerDown(PointerDownEvent event) {
-    // The first pointer owns the peek for its whole lifetime; ignore
-    // secondary touches so a stray second finger can't strand the
-    // gesture state (and the detach suppression) on the wrong pointer.
-    if (_revealPointer != null) return;
-    // A trackpad pan already owns the reveal — don't let a concurrent
-    // touch claim the shared latches out from under it.
-    if (_revealPanActive) return;
-    // A mouse press-and-drag is the text-selection gesture, so never
-    // hijack it for the peek — regardless of OS. (A trackpad click also
-    // reports as a mouse pointer; its two-finger swipe arrives separately
-    // via the pan-zoom path.) Finger and stylus drags drive the peek.
-    if (event.kind == PointerDeviceKind.mouse) return;
-    _revealPointer = event.pointer;
-    _revealStart = event.position;
-    _revealEngaged = false;
-    _revealRejected = false;
-    // Remember whether we were following when the gesture began: only
-    // then is a detach during this gesture "spurious" and worth undoing.
+  void _onRevealDragDown(DragDownDetails details) {
     _revealStartedFollowing = _follow.following;
   }
 
-  void _onRevealPointerMove(PointerMoveEvent event) {
-    if (event.pointer != _revealPointer || _revealRejected) return;
-
-    if (!_revealEngaged) {
-      // Disambiguate direction once the pointer clears the slop. Vertical,
-      // ambiguous, and rightward drags are left untouched: the scrollable
-      // keeps its eager small-drag detach, and a rightward drag stays free
-      // for the system back-swipe and any future gestures. The gutter is
-      // on the right, so only a clear leftward drag opens it.
-      final dx = event.position.dx - _revealStart.dx;
-      final dy = event.position.dy - _revealStart.dy;
-      if (dx.abs() < _kRevealEngageSlop && dy.abs() < _kRevealEngageSlop) return;
-      if (dy.abs() >= dx.abs() || dx > 0) {
-        _revealRejected = true;
-        return;
-      }
-      _revealEngaged = true;
-      // Take over any in-flight spring-back so the manual drag doesn't
-      // fight the closing animation. (Done here, not on pointer-down, so a
-      // vertical scroll that follows a release still springs shut.)
-      _revealController.stop();
-      // The scrollable fires a spurious drag-start as it claims the
-      // pointer. Only undo/suppress the resulting detach when we began
-      // the gesture following — otherwise the user was deliberately
-      // scrolled up reading history, and force-re-attaching here would
-      // discard their snapshot and teleport them to the newest edge.
-      if (_revealStartedFollowing) {
-        _follow.suppressDetach();
-      }
+  void _onRevealDragStart(DragStartDetails details) {
+    _revealDragActive = true;
+    _revealController.stop();
+    if (_revealStartedFollowing) {
+      _follow.suppressDetach();
+      _revealDetachSuppressed = true;
     }
+  }
 
-    // Dragging left (negative dx) opens the gutter further; dragging back
-    // right closes it. Normalise the per-move pixel delta by the gutter
-    // width and clamp to [0, 1].
-    final next = (_revealController.value - event.delta.dx / _kMaxReveal).clamp(0.0, 1.0);
+  void _onRevealDragUpdate(DragUpdateDetails details) {
+    final next = (_revealController.value - (details.primaryDelta ?? 0) / _kMaxReveal).clamp(0.0, 1.0);
     _revealController.value = next;
   }
 
-  void _onRevealPointerUp(PointerUpEvent event) {
-    if (event.pointer != _revealPointer) return;
+  void _onRevealDragEnd(DragEndDetails details) => _endReveal();
+
+  void _onRevealDragCancel() {
+    if (!_revealDragActive) {
+      scheduleMicrotask(() {
+        if (mounted && !_revealDragActive) _revealStartedFollowing = false;
+      });
+      return;
+    }
     _endReveal();
   }
 
-  void _onRevealPointerCancel(PointerCancelEvent event) {
-    if (event.pointer != _revealPointer) return;
-    _endReveal();
-  }
-
-  // ---------------------------------------------------------------------------
-  // Trackpad reveal: horizontal two-finger pan-zoom. Mirrors the touch
-  // pointer-drag path above (slop, horizontal-dominant gating, detach
-  // suppression, spring-back) but reads the cumulative `pan` and
-  // per-event `panDelta` from the pan-zoom stream instead of raw pointer
-  // positions. Reuses the same engage/reject/started-following latches as
-  // the pointer path, so a [_revealPanActive] / `_revealPointer`
-  // ownership handshake keeps the two from clobbering each other when a
-  // device has both a touchscreen and a trackpad.
-  // ---------------------------------------------------------------------------
-
-  void _onRevealPanZoomStart(PointerPanZoomStartEvent event) {
-    // A finger/stylus drag already owns the reveal — don't reset its
-    // latches from under it (see [_revealPanActive]).
-    if (_revealPointer != null) return;
-    _revealPanActive = true;
-    _revealEngaged = false;
-    _revealRejected = false;
-    _revealStartedFollowing = _follow.following;
-  }
-
-  void _onRevealPanZoomUpdate(PointerPanZoomUpdateEvent event) {
-    if (!_revealPanActive || _revealRejected) return;
-
-    if (!_revealEngaged) {
-      // Same direction disambiguation as the touch path: only a clear
-      // leftward pan opens the right-hand gutter; vertical, ambiguous and
-      // rightward pans are left for the list's own scroll handling.
-      final dx = event.pan.dx;
-      final dy = event.pan.dy;
-      if (dx.abs() < _kRevealEngageSlop && dy.abs() < _kRevealEngageSlop) return;
-      if (dy.abs() >= dx.abs() || dx > 0) {
-        _revealRejected = true;
-        return;
-      }
-      _revealEngaged = true;
-      _revealController.stop();
-      // The list's scroll plumbing detaches on pan-zoom start; undo that
-      // for a horizontal peek, but only when we began following (see the
-      // touch path for the rationale).
-      if (_revealStartedFollowing) {
-        _follow.suppressDetach();
-      }
+  bool _onNestedScrollNotification(ScrollNotification notification) {
+    if (notification is! ScrollStartNotification ||
+        notification.metrics.axis != Axis.horizontal ||
+        !_revealStartedFollowing ||
+        _revealDragActive) {
+      return false;
     }
 
-    final next = (_revealController.value - event.panDelta.dx / _kMaxReveal).clamp(0.0, 1.0);
-    _revealController.value = next;
-  }
-
-  void _onRevealPanZoomEnd(PointerPanZoomEndEvent event) {
-    // Ignore a pan that never claimed the reveal (a finger drag owned it).
-    if (!_revealPanActive) return;
-    _endReveal();
+    // A nested horizontal scrollable won after trackpad pan-start detached the
+    // transcript. Restore the follow state captured by drag-down; vertical
+    // scroll notifications deliberately leave that detach intact.
+    _follow.suppressDetach();
+    _follow.releaseDetachSuppression();
+    _revealStartedFollowing = false;
+    return false;
   }
 
   void _endReveal() {
-    _revealPointer = null;
-    _revealPanActive = false;
-    _revealEngaged = false;
-    _revealRejected = false;
-    _follow.releaseDetachSuppression();
+    _revealDragActive = false;
+    _revealStartedFollowing = false;
+    if (_revealDetachSuppressed) {
+      _revealDetachSuppressed = false;
+      _follow.releaseDetachSuppression();
+    }
     if (_revealController.value == 0) return;
     // Spring the gutter shut, honouring the OS reduce-motion preference
     // like the rest of the app's decorative animations.

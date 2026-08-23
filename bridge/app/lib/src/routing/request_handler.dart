@@ -17,52 +17,20 @@ abstract class GetRequestHandler<RES extends Object>(
   this : super(HttpMethod.get, path);
 
   Future<RES> handle(
-    RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
-  });
+    RelayRequest request,
+  );
 
   @override
   Future<RelayResponse> handleInternal(
     RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
+    required RequestTargetParams targetParams,
   }) async {
-    try {
-      final result = await handle(
-        request,
-        pathParams: pathParams,
-        queryParams: queryParams,
-        fragment: fragment,
-      );
-
-      return buildOkJsonResponse(request, result);
-    } on ProjectNotFoundException {
-      return buildErrorResponse(request, 404, "project not found");
-    } on SessionArchivedReadOnlyException catch (err) {
-      return buildArchivedRejectionResponse(request, err.rejection);
-    } on PluginOperationException catch (err, stackTrace) {
-      Log.w("${request.method} ${request.path}: upstream failure", err, stackTrace);
-      return buildErrorResponse(request, err.statusCode ?? 502, err.toString());
-    } on RelayResponse catch (err) {
-      if (err.status >= 200 && err.status < 300) {
-        // we don't expect to throw success responses from handleBody
-        // -- so we'll treat this as an internal server error
-        throw buildErrorResponse(request, 500, "Internal Server Error: threw success response");
-      } else {
-        // just return the error response
-        return err;
-      }
-    } catch (err, stackTrace) {
-      Log.w("${request.method} ${request.path}: handler failed", err, stackTrace);
-      return buildErrorResponse(request, 500, "Internal Server Error: $err");
-    }
+    final result = await handle(request);
+    return buildOkJsonResponse(request: request, body: result);
   }
 }
 
-abstract class BodyRequestHandler<REQ, RES extends Object>(
+abstract class _BodyRequestHandlerBase<REQ, RES extends Object>(
   super.method,
   super.path, {
   required final REQ Function(Map<String, dynamic> json) _fromJson,
@@ -70,9 +38,7 @@ abstract class BodyRequestHandler<REQ, RES extends Object>(
   @override
   Future<RelayResponse> handleInternal(
     RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
+    required RequestTargetParams targetParams,
   }) async {
     final body = request.body;
     if (body == null) {
@@ -90,51 +56,59 @@ abstract class BodyRequestHandler<REQ, RES extends Object>(
     } catch (err) {
       return buildErrorResponse(request, 400, "Bad Request: invalid JSON body: $err");
     }
-    try {
-      final result = await handle(
-        request,
-        body: bodyParsed,
-        pathParams: pathParams,
-        queryParams: queryParams,
-        fragment: fragment,
-      );
-
-      return buildOkJsonResponse(request, result);
-    } on ProjectNotFoundException {
-      return buildErrorResponse(request, 404, "project not found");
-    } on SessionArchivedReadOnlyException catch (err) {
-      return buildArchivedRejectionResponse(request, err.rejection);
-    } on StaleSessionPromptOptionsException catch (err) {
-      // The client only learns the opaque code, so this is the sole place that
-      // retains which plugin operation rejected the selection and where.
-      Log.w("${request.method} ${request.path}: stale session options", err.cause, err.causeStackTrace);
-      return buildStaleOptionsRejectionResponse(request, err.message);
-    } on PluginOperationException catch (err, stackTrace) {
-      Log.w("${request.method} ${request.path}: upstream failure", err, stackTrace);
-      return buildErrorResponse(request, err.statusCode ?? 502, err.toString());
-    } on RelayResponse catch (err) {
-      if (err.status >= 200 && err.status < 300) {
-        // we don't expect to throw success responses from handleBody
-        // -- so we'll treat this as an internal server error
-        throw buildErrorResponse(request, 500, "Internal Server Error: threw success response");
-      } else {
-        // just return the error response
-        return err;
-      }
-    } catch (err, stackTrace) {
-      Log.w("${request.method} ${request.path}: handler failed", err, stackTrace);
-      return buildErrorResponse(request, 500, "Internal Server Error: $err");
-    }
+    final result = await handleParsed(request, body: bodyParsed, targetParams: targetParams);
+    return buildOkJsonResponse(request: request, body: result);
   }
+
+  Future<RES> handleParsed(
+    RelayRequest request, {
+    required REQ body,
+    required RequestTargetParams targetParams,
+  });
+}
+
+abstract class BodyRequestHandler<REQ, RES extends Object>(
+  super.method,
+  super.path, {
+  required super.fromJson,
+}) extends _BodyRequestHandlerBase<REQ, RES> {
+  @override
+  Future<RES> handleParsed(
+    RelayRequest request, {
+    required REQ body,
+    required RequestTargetParams targetParams,
+  }) => handle(request, body: body);
+
+  Future<RES> handle(
+    RelayRequest request, {
+    required REQ body,
+  });
+}
+
+abstract class TargetBodyRequestHandler<REQ, RES extends Object>(
+  super.method,
+  super.path, {
+  required super.fromJson,
+}) extends _BodyRequestHandlerBase<REQ, RES> {
+  @override
+  Future<RES> handleParsed(
+    RelayRequest request, {
+    required REQ body,
+    required RequestTargetParams targetParams,
+  }) => handle(
+    request,
+    body: body,
+    pathParams: targetParams.pathParams,
+  );
 
   Future<RES> handle(
     RelayRequest request, {
     required REQ body,
     required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   });
 }
+
+typedef RequestTargetParams = ({Map<String, String> pathParams, Map<String, String> queryParams});
 
 /// A single interceptor in the request routing chain.
 ///
@@ -174,14 +148,12 @@ abstract class const RequestHandlerBase(
   ({
     Map<String, String> pathParams,
     Map<String, String> queryParams,
-    String? fragment,
   })
   extractTargetParams({required Uri target}) {
     final uri = target;
     final pathParams = path == "*" ? <String, String>{} : (_matchPathParams(uri.path, path) ?? {});
     final queryParams = Map<String, String>.from(uri.queryParameters);
-    final fragment = uri.fragment.isEmpty ? null : uri.fragment;
-    return (pathParams: pathParams, queryParams: queryParams, fragment: fragment);
+    return (pathParams: pathParams, queryParams: queryParams);
   }
 
   // ── Handler contract ────────────────────────────────────────────────────────
@@ -190,31 +162,58 @@ abstract class const RequestHandlerBase(
   ///
   /// Only called when [matches] returned `true` for the same request.
   ///
-  /// - [pathParams] — values extracted from `:param` placeholders in [path],
-  ///   e.g. `"/session/:id/message"` yields `{"id": "abc"}`.
-  /// - [queryParams] — key/value pairs from the query string.
-  /// - [fragment] — URL fragment (`#…`), or `null` if absent.
+  /// [targetParams] contains values extracted from `:param` placeholders in
+  /// [path] and key/value pairs from the query string.
   Future<RelayResponse> handleInternal(
     RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
+    required RequestTargetParams targetParams,
   });
 
   Future<RoutedRequestOutcome> routeInternal({
     required RelayRequest request,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
+    required RequestTargetParams targetParams,
+  }) => _guard(
+    request: request,
+    operation: () => handleRouteInternal(request: request, targetParams: targetParams),
+  );
+
+  Future<RoutedRequestOutcome> handleRouteInternal({
+    required RelayRequest request,
+    required RequestTargetParams targetParams,
+  }) async => ResponseOnly(
+    response: await handleInternal(request, targetParams: targetParams),
+  );
+
+  Future<RoutedRequestOutcome> _guard({
+    required RelayRequest request,
+    required Future<RoutedRequestOutcome> Function() operation,
   }) async {
-    return ResponseOnly(
-      response: await handleInternal(
-        request,
-        pathParams: pathParams,
-        queryParams: queryParams,
-        fragment: fragment,
-      ),
-    );
+    try {
+      return await operation();
+    } on ProjectNotFoundException {
+      return ResponseOnly(response: buildErrorResponse(request, 404, "project not found"));
+    } on SessionArchivedReadOnlyException catch (error) {
+      return ResponseOnly(
+        response: buildArchivedRejectionResponse(request: request, rejection: error.rejection),
+      );
+    } on StaleSessionPromptOptionsException catch (error) {
+      Log.w("${request.method} ${request.path}: stale session options", error.cause, error.causeStackTrace);
+      return ResponseOnly(
+        response: buildStaleOptionsRejectionResponse(request: request, message: error.message),
+      );
+    } on PluginOperationException catch (error, stackTrace) {
+      Log.w("${request.method} ${request.path}: upstream failure", error, stackTrace);
+      return ResponseOnly(response: buildErrorResponse(request, error.statusCode ?? 502, error.toString()));
+    } on RelayResponse catch (error, stackTrace) {
+      if (error.status < 200 || error.status >= 300) return ResponseOnly(response: error);
+      Log.w("${request.method} ${request.path}: handler threw success response", error, stackTrace);
+      return ResponseOnly(
+        response: buildErrorResponse(request, 500, "Internal Server Error: threw success response"),
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("${request.method} ${request.path}: handler failed", error, stackTrace);
+      return ResponseOnly(response: buildErrorResponse(request, 500, "Internal Server Error: $error"));
+    }
   }
 
   // ── Shared helpers ──────────────────────────────────────────────────────────
@@ -228,35 +227,41 @@ abstract class const RequestHandlerBase(
   }
 
   /// Builds a 200 JSON response.
-  RelayResponse buildOkJsonResponse(RelayRequest request, Object body) => RelayResponse(
+  RelayResponse buildOkJsonResponse({required RelayRequest request, required Object body}) => RelayResponse(
     id: request.id,
     status: 200,
     headers: {"content-type": "application/json"},
     body: jsonEncode(body),
   );
 
+  RelayResponse buildJsonErrorResponse({required RelayRequest request, required int status, required Object body}) =>
+      RelayResponse(
+        id: request.id,
+        status: status,
+        headers: {"content-type": "application/json"},
+        body: jsonEncode(body),
+      );
+
   /// Builds the 409 response every archived-session refusal shares.
-  RelayResponse buildArchivedRejectionResponse(
-    RelayRequest request,
-    SessionArchivedRejection rejection,
-  ) => RelayResponse(
-    id: request.id,
-    status: 409,
-    headers: {"content-type": "application/json"},
-    body: jsonEncode(rejection.toJson()),
-  );
+  RelayResponse buildArchivedRejectionResponse({
+    required RelayRequest request,
+    required SessionArchivedRejection rejection,
+  }) => buildJsonErrorResponse(request: request, status: 409, body: rejection.toJson());
 
   /// Builds the 409 response telling the client its session options selection
   /// (agent, model, or variant) is no longer offered and must be refreshed
   /// before resending.
-  RelayResponse buildStaleOptionsRejectionResponse(RelayRequest request, String? message) => RelayResponse(
-    id: request.id,
-    status: 409,
-    headers: {"content-type": "application/json"},
-    body: jsonEncode(
-      SendPromptErrorResponse(code: SendPromptErrorCode.staleSessionOptions, message: message).toJson(),
-    ),
-  );
+  RelayResponse buildStaleOptionsRejectionResponse({required RelayRequest request, required String? message}) =>
+      buildJsonErrorResponse(
+        request: request,
+        status: 409,
+        body: SendPromptErrorResponse(code: SendPromptErrorCode.staleSessionOptions, message: message).toJson(),
+      );
+
+  String requireNonEmpty({required RelayRequest request, required String value, required String label}) {
+    if (value.isEmpty) throw buildErrorResponse(request, 400, "empty $label");
+    return value;
+  }
 
   /// Builds an error response with the given [status] and plain-text [message].
   RelayResponse buildErrorResponse(

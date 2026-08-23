@@ -14,13 +14,8 @@ class MarkSessionSeenHandler({required final SessionUnseenService _sessionUnseen
   Future<SuccessEmptyResponse> handle(
     RelayRequest request, {
     required MarkSessionSeenRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
-    if (body.sessionId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty session id");
-    }
+    requireNonEmpty(request: request, value: body.sessionId, label: "session id");
     if (body.read) {
       await _sessionUnseenService.markRead(sessionId: body.sessionId);
     } else {

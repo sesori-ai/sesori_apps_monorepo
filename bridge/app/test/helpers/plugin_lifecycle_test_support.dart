@@ -36,8 +36,6 @@ Future<PluginLifecycleService> createPluginLifecycleService({
           bridgeSettingsRepository: settingsRepository,
           idleTimerScheduler: const PluginIdleTimerScheduler(),
           bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
-        )
-        ..registerPlugins(
           plugins: [
             for (final plugin in plugins)
               (

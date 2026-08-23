@@ -20,9 +20,6 @@ class CreateProjectHandler({required final ProjectMutationService _projectMutati
   Future<Project> handle(
     RelayRequest request, {
     required ProjectPathRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final path = body.path;
 

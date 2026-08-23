@@ -8,8 +8,8 @@ import "routed_request.dart";
 ///
 /// Handlers are checked in registration order. The first matching handler wins.
 ///
-/// Error handling is centralised here: any exception thrown by a handler is
-/// converted to a `502` response so callers never have to deal with routing
+/// Error handling is centralised here: any exception escaping a handler is
+/// converted to a `500` response so callers never have to deal with routing
 /// failures.
 class RequestRouter({
   required List<RequestHandlerBase> handlers,
@@ -68,12 +68,10 @@ class RequestRouter({
     required MatchedRoute identity,
   }) async {
     try {
-      final (:pathParams, :queryParams, :fragment) = handler.extractTargetParams(target: target);
+      final targetParams = handler.extractTargetParams(target: target);
       return await handler.routeInternal(
         request: request,
-        pathParams: pathParams,
-        queryParams: queryParams,
-        fragment: fragment,
+        targetParams: targetParams,
       );
     } on PluginOperationException catch (error, stackTrace) {
       Log.w("${identity.diagnosticLabel}: upstream error", error, stackTrace);
@@ -107,7 +105,7 @@ class RequestRouter({
   RelayResponse _failed({required RelayRequest request, required Object error}) {
     return RelayResponse(
       id: request.id,
-      status: 502,
+      status: 500,
       headers: const {},
       body: "request failed: $error",
     );

@@ -32,6 +32,7 @@ export 'components/surfaces/prego_grouped_rows.dart';
 export 'components/surfaces/prego_surfaces.dart';
 export 'icons/tabler_icons.g.dart';
 export 'icons/vespr_icons.g.dart';
+export 'interactions/prego_horizontal_drag_gesture_detector.dart';
 export 'interactions/prego_swipe_actions.dart';
 export 'motion/prego_reduced_motion.dart';
 export 'theme/prego_glass.dart';

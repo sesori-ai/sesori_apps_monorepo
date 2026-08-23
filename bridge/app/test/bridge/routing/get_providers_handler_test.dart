@@ -47,9 +47,6 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1", pluginId: "opencode"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(plugin.lastGetProvidersProjectId, equals("project-1"));
     });
@@ -60,9 +57,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(response, isA<ProviderListResponse>());
     });
@@ -71,9 +65,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(response.items, isEmpty);
     });
@@ -96,9 +87,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final provider = response.items[0];
@@ -123,9 +111,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final provider = response.items[0];
@@ -148,9 +133,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final provider = response.items[0];
@@ -176,9 +158,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final models = response.items[0].models;
@@ -231,9 +210,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final models = response.items[0].models;
@@ -269,9 +245,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final model = response.items.single.models["openai/gpt-4.1-mini"]!;
@@ -299,9 +272,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final models = response.items[0].models;
@@ -327,9 +297,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.items.single.models["gpt-4.1"]!.isAvailable, isTrue);
@@ -351,9 +318,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.items[0].models, isEmpty);
@@ -389,9 +353,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.items, hasLength(3));

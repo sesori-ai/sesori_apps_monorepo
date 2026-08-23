@@ -18,9 +18,6 @@ class CreateSessionHandler({
   Future<Session> handle(
     RelayRequest request, {
     required CreateSessionRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     return await _sessionCreationService.createSession(request: body);
   }

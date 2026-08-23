@@ -37,25 +37,27 @@ import "../api/database/database.dart";
 import "../api/database/history/chat_history_database.dart";
 import "../api/sesori_server_api.dart";
 import "../auth/access_token_provider.dart";
+import "../auth/auth_api.dart";
+import "../auth/auth_repository.dart";
 import "../auth/bridge_id_migration_service.dart";
 import "../auth/bridge_id_storage.dart";
-import "../auth/bridge_registration_api.dart";
 import "../auth/bridge_registration_repository.dart";
 import "../auth/bridge_registration_service.dart";
 import "../auth/login_email_api.dart";
 import "../auth/login_email_repository.dart";
-import "../auth/login_oauth_api.dart";
 import "../auth/login_oauth_service.dart";
 import "../auth/token.dart";
-import "../auth/token_manager.dart";
 import "../auth/token_refresher.dart";
+import "../auth/token_service.dart";
 import "../control/bridge_control_message_dispatcher.dart";
 import "../control/control_channel_loss_listener.dart";
 import "../control/control_provision_notifier.dart";
 import "../control/control_status_notifier.dart";
+import "../foundation/abortable_request.dart";
 import "../foundation/app_connection_wait_indicator.dart";
 import "../foundation/app_onboarding_formatter.dart";
 import "../foundation/control_channel_client.dart";
+import "../foundation/data_directory_hardening.dart";
 import "../foundation/log_failure_reporter.dart";
 import "../foundation/process_runner.dart";
 import "../foundation/process_runner_command_executor.dart";
@@ -319,20 +321,25 @@ class const BridgeRuntimeRunner._() {
       localHostname: _localHostname(),
     );
     final bridgeClientType = _bridgeClientType();
+    final authApi = AuthApi(
+      authBackendUrl: options.authBackendUrl,
+      client: httpClient,
+      requestDeadline: AuthApi.defaultRequestDeadline,
+      sendRequest: sendRequestWithDeadline,
+    );
+    final authRepository = AuthRepository(api: authApi);
     final runtimeAuthService = BridgeRuntimeAuthService(
+      authRepository: authRepository,
       loginEmailRepository: LoginEmailRepository(
         emailAuthApi: LoginEmailApi(authBackendUrl: options.authBackendUrl),
         promptForCredentials: terminalPromptRepository.promptForEmailCredentials,
       ),
       loginOAuthService: LoginOAuthService(
-        api: LoginOAuthApi(
-          authBackendUrl: options.authBackendUrl,
-          client: httpClient,
+        api: authApi,
+        clientType: bridgeClientType,
+        device: _bridgeDeviceInfo(
           clientType: bridgeClientType,
-          device: _bridgeDeviceInfo(
-            clientType: bridgeClientType,
-            machineName: machineName,
-          ),
+          machineName: machineName,
         ),
         browserLauncher: openOAuthBrowser,
         browserOpenability: detectBrowserOpenability,
@@ -342,6 +349,7 @@ class const BridgeRuntimeRunner._() {
       saveTokens: (data) => saveTokens(
         data: data,
         dataDirectory: options.dataDirectory,
+        writeRestrictedFile: writeRestrictedFile,
       ),
       clearTokens: () => clearTokens(dataDirectory: options.dataDirectory),
     );
@@ -352,6 +360,7 @@ class const BridgeRuntimeRunner._() {
     // before authentication.
     final bridgeIdStorage = BridgeIdStorage(
       filePath: bridgeIdPath(dataDirectory: options.dataDirectory),
+      writeRestrictedFile: writeRestrictedFile,
     );
 
     try {
@@ -408,8 +417,7 @@ class const BridgeRuntimeRunner._() {
         // runtime (unregister/register), after the migration below, so building
         // it before that migration is safe.
         supervisedRegistrationService = _buildRegistrationService(
-          httpClient: httpClient,
-          authBackendUrl: options.authBackendUrl,
+          authApi: authApi,
           tokenRefresher: controlChannelTokenService,
           bridgeIdStorage: bridgeIdStorage,
           machineName: machineName,
@@ -533,7 +541,7 @@ class const BridgeRuntimeRunner._() {
       // In supervised mode the GUI is the token authority: the control-channel
       // token service is the access-token provider + refresher, pulling tokens
       // from the GUI over the loopback channel. Standalone keeps the
-      // TokenManager, which refreshes against the auth server with the locally
+      // TokenService, which refreshes against the auth server with the locally
       // stored refresh token (no GUI exists to ask).
       final String authAccessToken;
       final AccessTokenProvider accessTokenProvider;
@@ -557,23 +565,21 @@ class const BridgeRuntimeRunner._() {
       } else {
         final authTokens = await runtimeAuthService.ensureAuthenticated(options: options);
         authAccessToken = authTokens.accessToken;
-        final tokenManager = TokenManager(
+        final tokenService = TokenService(
           initialToken: authAccessToken,
-          authBackendUrl: options.authBackendUrl,
           loadTokens: () => loadTokens(dataDirectory: options.dataDirectory),
           saveTokens: (data) => saveTokens(
             data: data,
             dataDirectory: options.dataDirectory,
+            writeRestrictedFile: writeRestrictedFile,
           ),
-          ownedClient: http.Client(),
-          requestDeadline: TokenManager.defaultRequestDeadline,
+          authRepository: authRepository,
         );
-        shutdownCoordinator.add(disposable: tokenManager.dispose);
-        accessTokenProvider = tokenManager;
-        tokenRefresher = tokenManager;
+        shutdownCoordinator.add(disposable: tokenService.dispose);
+        accessTokenProvider = tokenService;
+        tokenRefresher = tokenService;
       }
       await runtimeAuthService.logAuthenticatedUser(
-        authBackendUrl: options.authBackendUrl,
         accessToken: authAccessToken,
       );
 
@@ -587,8 +593,7 @@ class const BridgeRuntimeRunner._() {
         bridgeRegistrationService = supervisedRegistrationService;
       } else {
         bridgeRegistrationService = _buildRegistrationService(
-          httpClient: httpClient,
-          authBackendUrl: options.authBackendUrl,
+          authApi: authApi,
           tokenRefresher: tokenRefresher,
           bridgeIdStorage: bridgeIdStorage,
           machineName: machineName,
@@ -655,7 +660,6 @@ class const BridgeRuntimeRunner._() {
             bridgeSettingsRepository: bridgeSettingsRepository,
             idleTimerScheduler: const PluginIdleTimerScheduler(),
             bridgeIdProvider: bridgeRegistrationService,
-          )..registerPlugins(
             plugins: [
               for (final descriptor in knownPlugins)
                 (
@@ -1123,18 +1127,14 @@ class const BridgeRuntimeRunner._() {
   /// route the logout command, while standalone builds it after interactive auth
   /// yields its refresher — both from one definition.
   static BridgeRegistrationService _buildRegistrationService({
-    required http.Client httpClient,
-    required String authBackendUrl,
+    required AuthApi authApi,
     required TokenRefresher tokenRefresher,
     required BridgeIdStorage bridgeIdStorage,
     required String machineName,
   }) {
     return BridgeRegistrationService(
       repository: BridgeRegistrationRepository(
-        api: BridgeRegistrationApi(
-          authBackendUrl: authBackendUrl,
-          client: httpClient,
-        ),
+        api: authApi,
       ),
       tokenRefresher: tokenRefresher,
       bridgeIdStorage: bridgeIdStorage,

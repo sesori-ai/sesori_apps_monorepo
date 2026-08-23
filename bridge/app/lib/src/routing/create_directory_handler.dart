@@ -31,9 +31,6 @@ class CreateDirectoryHandler({required final FilesystemRepository _filesystemRep
   Future<FilesystemSuggestion> handle(
     RelayRequest request, {
     required FilesystemCreateDirectoryRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final parentPath = body.parentPath;
     final name = body.name.trim();

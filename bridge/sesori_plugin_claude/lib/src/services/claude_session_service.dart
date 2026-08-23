@@ -634,6 +634,7 @@ final class ClaudeSessionService({
         // turn and carries a new `ScheduleWakeup` must keep the new schedule.
         _trackSelfStartedTurn(sessionId: event.sessionId, message: event.message);
         _trackWakeupSchedule(sessionId: event.sessionId, message: event.message);
+        _settleRetry(sessionId: event.sessionId, message: event.message);
         final request = event.controlRequest;
         if (request != null) _approvals.handle(sessionId: event.sessionId, message: request);
       case ClaudeSessionProcessExited():
@@ -696,6 +697,15 @@ final class ClaudeSessionService({
       case ClaudeStreamMessage():
         break;
     }
+  }
+
+  /// Returns a retrying session to busy as soon as its retried request streams
+  /// output again. Only a new turn or the turn's end clears the status
+  /// otherwise, so a recovered retry would stay visible for the whole turn.
+  void _settleRetry({required String sessionId, required ClaudeStreamMessage message}) {
+    if (message is! ClaudeStreamEventMessage && message is! ClaudeAssistantMessage) return;
+    if (_retryStatuses.remove(sessionId) == null) return;
+    _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const shared.SessionStatus.busy().toJson()));
   }
 
   void _endSelfStartedTurn({required String sessionId, required _SessionTurnState state}) {

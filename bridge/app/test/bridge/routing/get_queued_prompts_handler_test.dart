@@ -47,9 +47,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/session/queued_prompts"),
           body: const SessionIdRequest(sessionId: ""),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -64,9 +61,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/queued_prompts"),
         body: const SessionIdRequest(sessionId: "s-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.data, const [
@@ -79,9 +73,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/queued_prompts"),
         body: const SessionIdRequest(sessionId: "s-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.data, isEmpty);
@@ -92,9 +83,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/session/queued_prompts"),
           body: const SessionIdRequest(sessionId: "missing"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<PluginOperationException>().having((e) => e.statusCode, "statusCode", equals(404))),
       );

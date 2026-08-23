@@ -498,11 +498,11 @@ void main() {
           projectId: any(named: "projectId"),
         ),
       );
-      for (var i = 0; i < 100; i++) {
-        final state = cubit.state;
-        if (state is SessionDetailLoaded && !state.isRefreshing) break;
-        await Future<void>.delayed(const Duration(milliseconds: 5));
-      }
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && !state.isRefreshing,
+        description: "completed refresh",
+      );
 
       final refreshed = cubit.state as SessionDetailLoaded;
       expect(refreshed.isRefreshing, isFalse);
@@ -614,9 +614,7 @@ void main() {
           isBridgeConnected: true,
         ),
       );
-      for (var i = 0; i < 100 && sendCalls < 2; i++) {
-        await Future<void>.delayed(const Duration(milliseconds: 5));
-      }
+      await _awaitCondition(() => sendCalls == 2);
 
       expect(sendCalls, 2);
       expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
@@ -1037,7 +1035,11 @@ void main() {
       );
 
       // Wait for the failure state to be emitted
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailFailed,
+        description: "SessionDetailFailed",
+      );
       expect(cubit.state, isA<SessionDetailFailed>());
 
       // Now reload manually — the old buffered event should NOT be replayed
@@ -1100,7 +1102,11 @@ void main() {
       final cubit = createCubit(loadService: mockLoadService);
 
       // Wait for the failure state
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailFailed,
+        description: "SessionDetailFailed",
+      );
       expect(cubit.state, isA<SessionDetailFailed>());
 
       // Emit an event while in failed state — should be dropped
@@ -1778,33 +1784,31 @@ void main() {
 }
 
 Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
-  for (var i = 0; i < 100; i++) {
-    if (cubit.state is SessionDetailLoaded) return;
-    await Future<void>.delayed(const Duration(milliseconds: 5));
-  }
-  fail("Timed out waiting for SessionDetailLoaded; current state: ${cubit.state}");
+  await awaitState(
+    cubit: cubit,
+    predicate: (state) => state is SessionDetailLoaded,
+    description: "SessionDetailLoaded",
+  );
 }
 
 Future<void> _awaitLoadedWithCommand(
   SessionDetailCubit cubit, {
   required String command,
 }) async {
-  for (var i = 0; i < 100; i++) {
-    final state = cubit.state;
-    if (state is SessionDetailLoaded &&
+  await awaitState(
+    cubit: cubit,
+    predicate: (state) =>
+        state is SessionDetailLoaded &&
         !state.isRefreshing &&
-        state.availableCommands.any((item) => item.name == command)) {
-      return;
-    }
-    await Future<void>.delayed(const Duration(milliseconds: 5));
-  }
-  fail("Timed out waiting for '$command'; current state: ${cubit.state}");
+        state.availableCommands.any((item) => item.name == command),
+    description: "available command '$command'",
+  );
 }
 
 Future<void> _awaitCondition(bool Function() condition) async {
   for (var i = 0; i < 100; i++) {
     if (condition()) return;
-    await Future<void>.delayed(const Duration(milliseconds: 5));
+    await Future<void>.delayed(Duration.zero);
   }
   fail("Timed out waiting for condition");
 }

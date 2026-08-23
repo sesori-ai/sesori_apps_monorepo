@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../motion/prego_reduced_motion.dart';
 import '../theme/prego_theme.dart';
+import 'prego_horizontal_drag_gesture_detector.dart';
 
 /// Builds the secondary actions revealed behind a [PregoSwipeActions] row.
 ///
@@ -51,6 +52,11 @@ typedef PregoSwipeActionBuilder = Widget Function(BuildContext context, VoidCall
 /// an alternative path to the same actions (the project row's long-press
 /// menu). While a side is closed its actions are excluded from semantics and
 /// focus traversal entirely, so the row still reads as one button.
+///
+/// Touch drags beginning at a system-back edge stay out of this row's gesture
+/// arena: the leading 10% on iOS, and both 10% edges on Android when the view
+/// reports gesture-navigation insets. Button-navigation Android and all other
+/// platforms retain the full row as a swipe target.
 class const PregoSwipeActions({
   super.key,
 
@@ -200,11 +206,15 @@ class _PregoSwipeActionsState() extends State<PregoSwipeActions> with SingleTick
 
     final row = TapRegion(
       onTapOutside: (_) => _handleTapOutside(),
-      child: GestureDetector(
+      child: PregoHorizontalDragGestureDetector(
+        behavior: null,
+        supportedDevices: null,
+        onHorizontalDragDown: null,
         onHorizontalDragStart: _handleDragStart,
         onHorizontalDragUpdate: _handleDragUpdate,
         onHorizontalDragEnd: _handleDragEnd,
         onHorizontalDragCancel: _handleDragCancel,
+        pendingRejectionSlop: null,
         child: LayoutBuilder(
           builder: (context, constraints) {
             _rowWidth = constraints.maxWidth;

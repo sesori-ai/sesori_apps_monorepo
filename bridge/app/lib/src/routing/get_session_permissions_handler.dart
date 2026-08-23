@@ -26,14 +26,9 @@ class GetSessionPermissionsHandler({
   Future<PendingPermissionResponse> handle(
     RelayRequest request, {
     required SessionIdRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final sessionId = body.sessionId;
-    if (sessionId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty session id");
-    }
+    requireNonEmpty(request: request, value: sessionId, label: "session id");
 
     final permissions = await _permissionRepository.getPendingPermissions(sessionId: sessionId);
     return PendingPermissionResponse(

@@ -1,14 +1,13 @@
 import "package:bloc_test/bloc_test.dart";
-import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/connection_overlay/connection_overlay_cubit.dart";
 import "package:sesori_dart_core/src/cubits/connection_overlay/connection_overlay_state.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
-
-import "../../helpers/test_helpers.dart";
+import "package:test/test.dart";
 
 void main() {
   group("ConnectionOverlayCubit", () {
@@ -40,8 +39,7 @@ void main() {
       await registeredStream.close();
     });
 
-    ConnectionOverlayCubit buildCubit() =>
-        ConnectionOverlayCubit(mockConnectionService, mockRegisteredBridgesService);
+    ConnectionOverlayCubit buildCubit() => ConnectionOverlayCubit(mockConnectionService, mockRegisteredBridgesService);
 
     blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
       "starts hidden and not connected when disconnected and not registered",

@@ -1,27 +1,21 @@
 import "dart:async";
-import "dart:convert";
 
-import "package:http/http.dart" as http;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "access_token_provider.dart";
+import "auth_repository.dart";
 import "token.dart";
 import "token_refresh_exception.dart";
 import "token_refresher.dart";
 
-/// Takes ownership of the injected HTTP client and closes it in [dispose].
-class TokenManager({
+class TokenService({
   required String initialToken,
-  required final String _authBackendUrl,
   required final Future<TokenData?> Function() _loadTokens,
   required final Future<void> Function(TokenData) _saveTokens,
-  required final http.Client _ownedClient,
-  required final Duration _requestDeadline,
+  required final AuthRepository _authRepository,
 }) implements AccessTokenProvider, TokenRefresher {
-  static const Duration defaultRequestDeadline = Duration(seconds: 35);
-
   final BehaviorSubject<String> _tokenSubject = BehaviorSubject.seeded(initialToken);
 
   @override
@@ -32,7 +26,6 @@ class TokenManager({
 
   void dispose() {
     _tokenSubject.close();
-    _ownedClient.close();
   }
 
   @override
@@ -86,28 +79,13 @@ class TokenManager({
       throw const TokenRefreshException("Refresh token is empty");
     }
 
-    final base = _authBackendUrl.endsWith("/")
-        ? _authBackendUrl.substring(0, _authBackendUrl.length - 1)
-        : _authBackendUrl;
-    final uri = Uri.parse("$base/auth/refresh");
-
-    final abortCompleter = Completer<void>();
-    final deadlineTimer = Timer(_requestDeadline, abortCompleter.complete);
-    final request = http.AbortableRequest("POST", uri, abortTrigger: abortCompleter.future)
-      ..headers["Content-Type"] = "application/json"
-      ..body = jsonEncode({"refreshToken": refreshToken});
-    final http.Response response;
-    try {
-      response = await http.Response.fromStream(await _ownedClient.send(request));
-    } finally {
-      deadlineTimer.cancel();
-    }
-
-    if (response.statusCode != 200) {
-      throw TokenRefreshException("Token refresh failed with status ${response.statusCode}");
-    }
-
-    final authResponse = AuthResponse.fromJson(jsonDecodeMap(response.body));
+    final refresh = await _authRepository.refreshToken(refreshToken: refreshToken);
+    final authResponse = switch (refresh) {
+      AuthTokenRefreshed(:final response) => response,
+      AuthTokenRefreshRejected(:final statusCode) => throw TokenRefreshException(
+        "Token refresh failed with status $statusCode",
+      ),
+    };
 
     // Re-read the token file before persisting (and before publishing the new
     // access token in-memory) so a logout that deletes it mid-refresh is not

@@ -50,9 +50,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/project/hide"),
         body: const ProjectIdRequest(projectId: "p1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final hiddenIds = await db.projectsDao.getHiddenProjectIds();
@@ -65,9 +62,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/hide"),
           body: const ProjectIdRequest(projectId: ""),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", 400)),
       );
@@ -78,9 +72,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/project/hide"),
         body: const ProjectIdRequest(projectId: projectId),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final hiddenIds = await db.projectsDao.getHiddenProjectIds();

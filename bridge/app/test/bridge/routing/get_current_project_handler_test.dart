@@ -56,9 +56,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/current"),
           body: const ProjectIdRequest(projectId: ""),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", 400)),
       );
@@ -68,9 +65,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/project/current"),
         body: const ProjectIdRequest(projectId: "/tmp/project"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, isA<Project>());
@@ -92,9 +86,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/project/current"),
         body: const ProjectIdRequest(projectId: "/tmp/project"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastGetCurrentProjectProjectId, isNull);
@@ -106,15 +97,12 @@ void main() {
     });
 
     test("returns 404 for an unknown project id without creating a row", () async {
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/project/current",
           body: jsonEncode(const ProjectIdRequest(projectId: "/unknown").toJson()),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(404));

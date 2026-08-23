@@ -1,5 +1,5 @@
-import "package:flutter_test/flutter_test.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:test/test.dart";
 
 void main() {
   group("ServerConnectionConfig", () {

@@ -2,6 +2,7 @@ import "package:flutter/gestures.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/core/widgets/code_block.dart";
 import "package:sesori_mobile/features/session_detail/widgets/message_timestamp_reveal.dart";
 import "package:sesori_mobile/features/session_detail/widgets/queued_message_bubble.dart";
 import "package:sesori_mobile/features/session_detail/widgets/retry_error_message_card.dart";
@@ -19,6 +20,8 @@ class const _SessionDetailMessageListHarness({
   final List<QueuedSessionPrompt> initialBridgeQueuedPrompts = const [],
   final String? initialRetryErrorMessage,
   final Future<void> Function()? onLoadOlderMessages,
+  final TargetPlatform? platform,
+  final EdgeInsets systemGestureInsets = EdgeInsets.zero,
 }) extends StatefulWidget {
   @override
   State<_SessionDetailMessageListHarness> createState() => _SessionDetailMessageListHarnessState();
@@ -108,8 +111,12 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: ThemeData(extensions: [PregoDesignSystem.light]),
-      darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
+      theme: ThemeData(platform: widget.platform, extensions: [PregoDesignSystem.light]),
+      darkTheme: ThemeData(platform: widget.platform, extensions: [PregoDesignSystem.dark]),
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(systemGestureInsets: widget.systemGestureInsets),
+        child: child!,
+      ),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
@@ -877,7 +884,11 @@ void main() {
     // gesture to increasing scroll offset (i.e. scrolling toward older
     // content, away from the newest-at-bottom edge).
     final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
-    await gesture.moveBy(const Offset(0, 300));
+    // Establish vertical intent first so the timestamp recognizer leaves the
+    // arena, matching the stream of move events produced by a real drag.
+    await gesture.moveBy(const Offset(0, 12));
+    await tester.pump();
+    await gesture.moveBy(const Offset(0, 288));
     await tester.pump();
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
     expect(_position(tester).pixels, greaterThan(20));
@@ -1097,6 +1108,161 @@ void main() {
     expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
   });
 
+  testWidgets("iOS system-back edge does not peek timestamps", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final created = DateTime.now().millisecondsSinceEpoch;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        platform: TargetPlatform.iOS,
+        initialMessages: [
+          for (var i = 0; i < 12; i++)
+            _message(
+              messageId: "u$i",
+              role: "user",
+              text: _multilineText(label: "Message $i", lines: 6),
+              createdAtMs: created,
+            ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final textFinder = find.textContaining("Message 11").first;
+    final restX = tester.getTopLeft(textFinder).dx;
+    final y = tester.getCenter(find.byKey(_listViewKey)).dy;
+
+    final edgeGesture = await tester.startGesture(Offset(40, y));
+    await edgeGesture.moveBy(const Offset(-160, 0));
+    await tester.pump();
+    expect(tester.getTopLeft(textFinder).dx, restX);
+    await edgeGesture.up();
+
+    final contentGesture = await tester.startGesture(Offset(140, y));
+    await contentGesture.moveBy(const Offset(-160, 0));
+    await tester.pump();
+    expect(tester.getTopLeft(textFinder).dx, lessThan(restX));
+    await contentGesture.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("Android gesture navigation keeps both system-back edges out of timestamp peeks", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final created = DateTime.now().millisecondsSinceEpoch;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        platform: TargetPlatform.android,
+        systemGestureInsets: const EdgeInsets.symmetric(horizontal: 24),
+        initialMessages: [
+          for (var i = 0; i < 12; i++)
+            _message(
+              messageId: "u$i",
+              role: "user",
+              text: _multilineText(label: "Message $i", lines: 6),
+              createdAtMs: created,
+            ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final textFinder = find.textContaining("Message 11").first;
+    final restX = tester.getTopLeft(textFinder).dx;
+    final y = tester.getCenter(find.byKey(_listViewKey)).dy;
+
+    final startEdgeGesture = await tester.startGesture(Offset(40, y));
+    await startEdgeGesture.moveBy(const Offset(-160, 0));
+    await tester.pump();
+    expect(tester.getTopLeft(textFinder).dx, restX);
+    await startEdgeGesture.up();
+
+    final endEdgeGesture = await tester.startGesture(Offset(860, y));
+    await endEdgeGesture.moveBy(const Offset(-160, 0));
+    await tester.pump();
+    expect(tester.getTopLeft(textFinder).dx, restX);
+    await endEdgeGesture.up();
+
+    final contentGesture = await tester.startGesture(Offset(450, y));
+    await contentGesture.moveBy(const Offset(-160, 0));
+    await tester.pump();
+    expect(tester.getTopLeft(textFinder).dx, lessThan(restX));
+    await contentGesture.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("a fenced code block scrolls horizontally without peeking timestamps", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final created = DateTime.now().millisecondsSinceEpoch;
+    final longCode = List.filled(16, "final horizontalOverflow = true; ").join();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [
+          ..._userMessages(count: 10),
+          _message(
+            messageId: "assistant-code",
+            role: "assistant",
+            text: "```dart\n$longCode\n```",
+            createdAtMs: created,
+          ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final codeBlockFinder = find.byType(CodeBlock);
+    expect(codeBlockFinder, findsOneWidget);
+    final horizontalScrollableFinder = find.descendant(
+      of: codeBlockFinder,
+      matching: find.byWidgetPredicate(
+        (widget) => widget is Scrollable && axisDirectionToAxis(widget.axisDirection) == Axis.horizontal,
+      ),
+    );
+    expect(horizontalScrollableFinder, findsOneWidget);
+
+    final codeBlockRestX = tester.getTopLeft(codeBlockFinder).dx;
+    final transcriptRestPixels = _position(tester).pixels;
+    final horizontalPosition = tester.state<ScrollableState>(horizontalScrollableFinder).position;
+    expect(horizontalPosition.pixels, 0);
+
+    final gesture = await tester.startGesture(tester.getCenter(find.byType(SingleChildScrollView)));
+    for (var i = 0; i < 6; i++) {
+      await gesture.moveBy(const Offset(-40, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    expect(horizontalPosition.pixels, greaterThan(0));
+    expect(tester.getTopLeft(codeBlockFinder).dx, closeTo(codeBlockRestX, 0.5));
+    expect(_position(tester).pixels, transcriptRestPixels);
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    final touchScrollPixels = horizontalPosition.pixels;
+    final trackpad = await tester.createGesture(kind: PointerDeviceKind.trackpad);
+    final trackpadOrigin = tester.getCenter(find.byType(SingleChildScrollView));
+    await trackpad.panZoomStart(trackpadOrigin);
+    for (var i = 1; i <= 6; i++) {
+      await trackpad.panZoomUpdate(trackpadOrigin, pan: Offset(40.0 * i, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    expect(horizontalPosition.pixels, lessThan(touchScrollPixels));
+    expect(tester.getTopLeft(codeBlockFinder).dx, closeTo(codeBlockRestX, 0.5));
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+
+    await trackpad.panZoomEnd();
+    await tester.pumpAndSettle();
+  });
+
   testWidgets("peeking timestamps while detached does not snap back to the latest edge", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -1238,7 +1404,7 @@ void main() {
     expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
   });
 
-  testWidgets("a rightward drag does not engage the peek (gutter is on the right)", (tester) async {
+  testWidgets("a rightward-first drag yields when it turns into a vertical scroll", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -1269,6 +1435,12 @@ void main() {
     await tester.pump();
 
     expect(tester.getTopLeft(textFinder).dx, restX, reason: "rightward drag must not open the timestamp gutter");
+
+    await gesture.moveBy(const Offset(0, 300));
+    await tester.pump();
+
+    expect(_position(tester).pixels, greaterThan(20));
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
 
     await gesture.up();
     await tester.pumpAndSettle();

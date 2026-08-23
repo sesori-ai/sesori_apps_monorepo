@@ -18,9 +18,6 @@ class AbortSessionHandler({
   Future<SuccessEmptyResponse> handle(
     RelayRequest request, {
     required SessionIdRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    String? fragment,
   }) async {
     await _sessionAbortService.abortSession(sessionId: body.sessionId);
     return const SuccessEmptyResponse();

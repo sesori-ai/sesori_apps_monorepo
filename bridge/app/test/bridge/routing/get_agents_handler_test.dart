@@ -34,9 +34,6 @@ void main() {
     test("falls back to the bridge CWD because the route carries no project", () async {
       await handler.handle(
         makeRequest("GET", "/agent"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastAgentsProjectId, equals(io.Directory.current.path));
@@ -45,9 +42,6 @@ void main() {
     test("returns typed list", () async {
       final response = await handler.handle(
         makeRequest("GET", "/agent"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.agents, isA<List<AgentInfo>>());
@@ -66,9 +60,6 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("GET", "/agent"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final agent = response.agents[0];
@@ -92,9 +83,6 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("GET", "/agent"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.agents.single.mode, equals(AgentMode.unknown));
@@ -120,9 +108,6 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("GET", "/agent"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.agents[0].model, isNotNull);

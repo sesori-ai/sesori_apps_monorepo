@@ -13,11 +13,9 @@ class RestartBridgeHandler({required final BridgeRestartService _restartService}
   this : super(HttpMethod.post, "/global/restart");
 
   @override
-  Future<RoutedRequestOutcome> routeInternal({
+  Future<RoutedRequestOutcome> handleRouteInternal({
     required RelayRequest request,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
+    required RequestTargetParams targetParams,
   }) async {
     final bool canRestart = await _restartService.canRestart();
     if (!canRestart) {
@@ -36,15 +34,11 @@ class RestartBridgeHandler({required final BridgeRestartService _restartService}
   @override
   Future<RelayResponse> handleInternal(
     RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
+    required RequestTargetParams targetParams,
   }) async {
     return (await routeInternal(
       request: request,
-      pathParams: pathParams,
-      queryParams: queryParams,
-      fragment: fragment,
+      targetParams: targetParams,
     )).response;
   }
 }

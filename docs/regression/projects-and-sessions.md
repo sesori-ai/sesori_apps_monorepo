@@ -26,6 +26,14 @@ child sessions with titles, activity, statuses, and unseen state.
 - Opening validates the path and surfaces the git-initialization choice. Hiding
   delists without destroying sessions or history. Import is explicit, per
   plugin, atomic, non-destructive, cancellable, and attributes progress.
+- Project and session row actions remain swipeable without competing visually
+  with system back navigation. On iOS, drags beginning in the row's leading 10%
+  are reserved for back; on Android gesture navigation, both 10% edges are
+  reserved. Android button navigation and other platforms retain the full row
+  as a swipe target.
+- Pull-to-refresh provides visible drag and in-flight feedback in both the
+  full-screen lists and the wide split-view session pane. Releasing a trackpad
+  pull while the refresh is pending keeps the pane's indicator visible.
 - A session created in a dedicated worktree receives a system prompt identifying
   that worktree, its initial branch, and base branch. The prompt requires all
   work to remain in that worktree, while permitting use of the initial branch,
@@ -81,7 +89,7 @@ child sessions with titles, activity, statuses, and unseen state.
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: project list and one project's session list return committed data with plugin attribution. |
 | L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. |
-| L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; one representative plugin proves two running roots and two projects with running roots reorder after committed user-side activity, inactive session/project order is unchanged, a live patch reorders without another status event or project summary, and omitted ordering facts use updated-time fallbacks. Focused ACP protocol and client ordering tests prove the exact awaiting-only state is not promoted because normal production root prompts remain running while awaiting input. Lists and unseen badges render. |
+| L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; one representative plugin proves two running roots and two projects with running roots reorder after committed user-side activity, inactive session/project order is unchanged, a live patch reorders without another status event or project summary, and omitted ordering facts use updated-time fallbacks. Focused ACP protocol and client ordering tests prove the exact awaiting-only state is not promoted because normal production root prompts remain running while awaiting input. Lists and unseen badges render; project and session row swipes stay inert from the iOS back edge and both Android gesture-navigation edges while remaining active at unreserved edges and under Android button navigation. |
 | L4 Extended | Relay integration, every supporting production plugin: bridge and plugin restart preserve identity and overrides; a moved backend-native project keeps them while a moved bridge-derived project is discovered as new without mutating the old catalog; a cancelled or failed import leaves the prior catalog intact; reads during import stay consistent; an unavailable plugin is reported while others keep listing. |
 | L5 Full | Client end to end, every supporting production plugin: multiple clients observe consistent listings and unseen transitions; large catalogs and paged listings behave; unattributed payloads resolve to the historical identity. |
 
@@ -94,6 +102,9 @@ disposable sessions and projects and restore hidden-state changes afterwards.
 For activity order, vary REST versus live delivery, null versus populated
 markers, ties, awaiting-only versus running state, and assistant/tool updates
 after a marker has been established.
+For list-row swipes, alternate iOS, Android gesture navigation, Android button
+navigation, and a non-mobile platform; begin drags inside and just outside each
+10% edge buffer.
 
 ## Failure Signals
 
@@ -113,6 +124,10 @@ after a marker has been established.
   the top of its list while still displaying that stale time.
 - Unseen never clears, clears without viewing, or an unavailable plugin is idle.
 - Hiding destroys sessions, or a cancelled import destroys the committed catalog.
+- A project or session row animates under a system back gesture, or an edge that
+  has no active system back gesture stops accepting row actions.
+- A wide session pane starts a refresh without showing or holding its pull
+  indicator until the operation completes.
 - A generated title/branch update fails to reach list/detail, changes unseen,
   moves the worktree, or rewrites the backend's creation-time system context.
 
@@ -149,7 +164,11 @@ after a marker has been established.
   `bridge/sesori_plugin_pi/test/pi_session_catalog_repository_test.dart`,
   `client/module_core/test/services/session_list_service_test.dart`,
   `client/module_core/test/services/session_unseen_tracker_test.dart`,
-  `client/module_core/test/cubits/session_list/session_list_cubit_test.dart`
+  `client/module_core/test/cubits/session_list/session_list_cubit_test.dart`,
+  `client/module_prego/test/interactions/prego_swipe_actions_test.dart`,
+  `client/app/test/features/session_list/session_list_panel_test.dart`
+- Client row swipe behavior:
+  `client/module_prego/lib/interactions/prego_swipe_actions.dart`
 - Plans (discovery only): `.plan/completed/multi-plugin-release-prep`,
   `setup-aware-plugin-management`, `relay-request-concurrency`;
   `.plan/active/session-user-interaction-order`

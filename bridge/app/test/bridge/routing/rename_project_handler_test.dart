@@ -53,9 +53,6 @@ void main() {
       await handler.handle(
         makeRequest("PATCH", "/project/name"),
         body: const RenameProjectRequest(projectId: "p1", name: "New Name"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect((await db.projectsDao.getProject(projectId: "p1"))?.displayName, "New Name");
@@ -67,9 +64,6 @@ void main() {
           () => handler.handle(
             makeRequest("PATCH", "/project/name"),
             body: RenameProjectRequest(projectId: "p1", name: name),
-            pathParams: const {},
-            queryParams: const {},
-            fragment: null,
           ),
           throwsA(isA<RelayResponse>().having((response) => response.status, "status", 400)),
         );
@@ -81,9 +75,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("PATCH", "/project/name"),
         body: const RenameProjectRequest(projectId: "p1", name: "Renamed Project"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.id, equals("p1"));

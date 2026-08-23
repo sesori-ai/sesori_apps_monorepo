@@ -16,9 +16,6 @@ class PostAgentsHandler(final AgentRepository _repository) extends BodyRequestHa
   Future<Agents> handle(
     RelayRequest request, {
     required PluginProjectIdRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) {
     return _repository.getAgents(
       projectId: body.projectId,

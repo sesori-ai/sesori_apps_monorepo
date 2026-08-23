@@ -30,31 +30,28 @@ void main() {
     final bridgeSettingsRepository = createTestBridgeSettingsRepository();
     final lifecycleService =
         PluginLifecycleService(
-            lifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
-            preferredDefaultPluginId: legacyMissingPluginId,
-            bridgeSettingsRepository: bridgeSettingsRepository,
-            idleTimerScheduler: const PluginIdleTimerScheduler(),
-            bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
-          )
-          ..registerPlugins(
-            plugins: const [
-              (
-                id: "opencode",
-                displayName: "OpenCode",
-                activationPolicy: PluginActivationPolicy.onDemand,
-                residencyPolicy: PluginResidencyPolicy.transient,
-                sessionOptionsScope: PluginSessionOptionsScope.project,
-                managementCapabilities: defaultManagementCapabilities,
-                supportsPromptAttachments: false,
-              ),
-            ],
-          )
-          ..initialize(
-            disabledPluginIds: const {"opencode"},
-            setupById: const {
-              "opencode": PluginSetupNotInspected(),
-            },
-          );
+          lifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
+          preferredDefaultPluginId: legacyMissingPluginId,
+          bridgeSettingsRepository: bridgeSettingsRepository,
+          idleTimerScheduler: const PluginIdleTimerScheduler(),
+          bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+          plugins: const [
+            (
+              id: "opencode",
+              displayName: "OpenCode",
+              activationPolicy: PluginActivationPolicy.onDemand,
+              residencyPolicy: PluginResidencyPolicy.transient,
+              sessionOptionsScope: PluginSessionOptionsScope.project,
+              managementCapabilities: defaultManagementCapabilities,
+              supportsPromptAttachments: false,
+            ),
+          ],
+        )..initialize(
+          disabledPluginIds: const {"opencode"},
+          setupById: const {
+            "opencode": PluginSetupNotInspected(),
+          },
+        );
     final httpClient = http.Client();
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -242,8 +239,14 @@ void main() {
       expect(await localPluginEvent.timeout(const Duration(seconds: 2)), isA<SesoriVcsBranchUpdated>());
       connectGate.complete();
 
-      await expectLater(startFuture, throwsA(isA<Exception>()));
-      await expectLater(stopped, throwsA(isA<Exception>()));
+      await expectLater(
+        startFuture,
+        throwsA(isA<StateError>().having((error) => error.message, "message", "connect failed")),
+      );
+      await expectLater(
+        stopped,
+        throwsA(isA<StateError>().having((error) => error.message, "message", "connect failed")),
+      );
       await expectLater(localWireEventsDone, completes);
       await expectLater(session.start(), throwsA(isA<StateError>()));
 

@@ -9,11 +9,8 @@ class GetCatalogImportStatusesHandler({required final CatalogImportService _serv
 
   @override
   Future<CatalogImportStatusesResponse> handle(
-    RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
-  }) async {
+    RelayRequest request,
+  ) async {
     return CatalogImportStatusesResponse(statuses: _service.latestStatuses);
   }
 }

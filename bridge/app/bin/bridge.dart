@@ -9,14 +9,17 @@ import 'package:sesori_bridge/src/api/app_onboarding_state_storage.dart';
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
+import 'package:sesori_bridge/src/auth/auth_api.dart';
+import 'package:sesori_bridge/src/auth/auth_repository.dart';
 import 'package:sesori_bridge/src/auth/bridge_id_migration_service.dart';
 import 'package:sesori_bridge/src/auth/bridge_id_storage.dart';
-import 'package:sesori_bridge/src/auth/bridge_registration_api.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_repository.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_service.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
-import 'package:sesori_bridge/src/auth/token_manager.dart';
+import 'package:sesori_bridge/src/auth/token_service.dart';
+import 'package:sesori_bridge/src/foundation/abortable_request.dart';
 import 'package:sesori_bridge/src/foundation/bridge_startup_banner_formatter.dart';
+import 'package:sesori_bridge/src/foundation/data_directory_hardening.dart';
 import 'package:sesori_bridge/src/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/foundation/process_runner_command_executor.dart';
@@ -340,6 +343,7 @@ Future<void> _unregisterBridgeRegistration({
 }) async {
   final bridgeIdStorage = BridgeIdStorage(
     filePath: bridgeIdPath(dataDirectory: dataDirectory),
+    writeRestrictedFile: writeRestrictedFile,
   );
   // Adopt a legacy id persisted inside token.json first, so a never-reconnected
   // legacy install still unregisters cleanly; the service reads the bridge id
@@ -365,27 +369,35 @@ Future<void> _unregisterBridgeRegistration({
   }
 
   final httpClient = http.Client();
-  final tokenManager = TokenManager(
-    initialToken: tokens.accessToken,
+  final authApi = AuthApi(
     authBackendUrl: authBackendUrl,
+    client: httpClient,
+    requestDeadline: AuthApi.defaultRequestDeadline,
+    sendRequest: sendRequestWithDeadline,
+  );
+  final tokenService = TokenService(
+    initialToken: tokens.accessToken,
     loadTokens: () => loadTokens(dataDirectory: dataDirectory),
-    saveTokens: (data) => saveTokens(data: data, dataDirectory: dataDirectory),
-    ownedClient: http.Client(),
-    requestDeadline: TokenManager.defaultRequestDeadline,
+    saveTokens: (data) => saveTokens(
+      data: data,
+      dataDirectory: dataDirectory,
+      writeRestrictedFile: writeRestrictedFile,
+    ),
+    authRepository: AuthRepository(api: authApi),
   );
   try {
     final registrationService = BridgeRegistrationService(
       repository: BridgeRegistrationRepository(
-        api: BridgeRegistrationApi(authBackendUrl: authBackendUrl, client: httpClient),
+        api: authApi,
       ),
-      tokenRefresher: tokenManager,
+      tokenRefresher: tokenService,
       bridgeIdStorage: bridgeIdStorage,
       hostName: Platform.localHostname,
       platform: BridgeRegistrationService.currentPlatformName(),
     );
     await registrationService.unregister().timeout(const Duration(seconds: 10));
   } finally {
-    tokenManager.dispose();
+    tokenService.dispose();
     httpClient.close();
   }
 }
