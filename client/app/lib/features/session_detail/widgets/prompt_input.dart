@@ -28,7 +28,11 @@ enum _VoiceState() { idle, recording, transcribing }
 enum _PasteImageResult() { noImage, handled, stale }
 
 final class _ComposerPasteAction({
-    required final Future<_PasteImageResult> Function() _pasteImage,
+    required final Future<void> Function({
+      required TextEditingValue initialValue,
+      required FutureOr<void> Function() onTextPaste,
+      required VoidCallback? onImagePasted,
+    }) _pasteImageOrText,
     required final TextEditingController _controller,
   }) extends Action<PasteTextIntent> {
 
@@ -40,31 +44,14 @@ final class _ComposerPasteAction({
     final initialValue = _controller.value;
     unawaited(
       _pasteImageOrText(
-        intent: intent,
-        textPasteAction: textPasteAction,
         initialValue: initialValue,
+        onTextPaste: () {
+          textPasteAction?.invoke(intent);
+        },
+        onImagePasted: null,
       ),
     );
     return null;
-  }
-
-  Future<void> _pasteImageOrText({
-    required PasteTextIntent intent,
-    required Action<PasteTextIntent>? textPasteAction,
-    required TextEditingValue initialValue,
-  }) async {
-    try {
-      if (await _pasteImage() != _PasteImageResult.noImage) return;
-      // Preserve the selection from the paste intent when only the caret moved
-      // while the clipboard image probe was pending. Never overwrite text that
-      // genuinely changed during that interval.
-      if (_controller.text == initialValue.text && initialValue.selection.isValid) {
-        _controller.selection = initialValue.selection;
-      }
-      textPasteAction?.invoke(intent);
-    } catch (error, stackTrace) {
-      loge("Failed to handle composer paste", error, stackTrace);
-    }
   }
 
   @override
@@ -208,7 +195,7 @@ class _PromptInputState() extends State<PromptInput> {
   void initState() {
     super.initState();
     _pasteAction = _ComposerPasteAction(
-      pasteImage: _handlePasteImage,
+      pasteImageOrText: _pasteImageOrText,
       controller: _controller,
     );
     final chatInputModeCubit = context.read<ChatInputModeCubit>();
@@ -217,7 +204,7 @@ class _PromptInputState() extends State<PromptInput> {
       if (!mounted || _chatInputMode == inputMode) return;
       _updateComposerState(update: () => _chatInputMode = inputMode);
     });
-    _restoreDraft(draft: widget.initialDraft);
+    _applyDraft(draft: widget.initialDraft, notify: false);
     _restoreInitialAttachments();
     _syncSurfaceStyle();
     _hasText = _controller.text.trim().isNotEmpty;
@@ -226,7 +213,7 @@ class _PromptInputState() extends State<PromptInput> {
     unawaited(_voiceService.prewarmRecording());
     _maxDurationSub = _voiceService.onMaxDurationReached.listen((_) {
       if (_voiceState == _VoiceState.recording && mounted) {
-        _showRecordingLimitReached();
+        _showComposerNotice(context.loc.voiceRecordingLimitReached);
         _stopAndTranscribe();
       }
     });
@@ -246,19 +233,6 @@ class _PromptInputState() extends State<PromptInput> {
     _textScrollController.dispose();
     _focusNode.dispose();
     super.dispose();
-  }
-
-  void _restoreDraft({required ComposerDraft draft}) {
-    _isApplyingDraft = true;
-    _draft = draft;
-    final value = TextEditingValue(
-      text: draft.text,
-      selection: TextSelection.collapsed(offset: draft.text.length),
-    );
-    _controller.value = value;
-    _previousEditingValue = value;
-    _isApplyingDraft = false;
-    _hasText = draft.text.trim().isNotEmpty;
   }
 
   void _restoreInitialAttachments() {
@@ -441,7 +415,7 @@ class _PromptInputState() extends State<PromptInput> {
       // Both replace authored content exactly once.
       _pasteGeneration++;
       _attachments.clear();
-      _restoreDraft(draft: widget.initialDraft);
+      _applyDraft(draft: widget.initialDraft, notify: false);
       _restoreInitialAttachments();
     }
     // Switching the new-session harness to one that drops image parts strands
@@ -650,7 +624,7 @@ class _PromptInputState() extends State<PromptInput> {
         draft: _draft,
         transcript: transcript,
       );
-      _applyDraft(draft: nextDraft);
+      _applyDraft(draft: nextDraft, notify: true);
       // Reward the completed outcome, not release that merely starts transcription.
       unawaited(_playSuccessFeedback(interactionId: interactionId));
       _scrollToDraftEndAfterLayout();
@@ -697,7 +671,7 @@ class _PromptInputState() extends State<PromptInput> {
     }
   }
 
-  void _applyDraft({required ComposerDraft draft}) {
+  void _applyDraft({required ComposerDraft draft, required bool notify}) {
     _isApplyingDraft = true;
     _draft = draft;
     final value = TextEditingValue(
@@ -708,7 +682,7 @@ class _PromptInputState() extends State<PromptInput> {
     _previousEditingValue = value;
     _isApplyingDraft = false;
     _hasText = draft.text.trim().isNotEmpty;
-    widget.onDraftChanged(draft);
+    if (notify) widget.onDraftChanged(draft);
   }
 
   void _scrollToDraftEndAfterLayout() {
@@ -787,13 +761,6 @@ class _PromptInputState() extends State<PromptInput> {
     PregoPopupAlertPresenter.of(context).show(
       title: message,
       variant: variant,
-    );
-  }
-
-  void _showRecordingLimitReached() {
-    PregoPopupAlertPresenter.of(context).show(
-      title: context.loc.voiceRecordingLimitReached,
-      variant: PregoPopupAlertsNotificationsVariant.warning,
     );
   }
 
@@ -913,7 +880,27 @@ class _PromptInputState() extends State<PromptInput> {
                     child: switch (_layout) {
                       ComposerSurfaceLayout.typing => _buildTypingComposer(context),
                       ComposerSurfaceLayout.compact => _buildCompactComposer(context),
-                      ComposerSurfaceLayout.holdToTalk => _buildHoldToTalkComposer(context),
+                      ComposerSurfaceLayout.holdToTalk => _buildVoicePill(
+                        context,
+                        hint: context.loc.sessionDetailHoldToTalk,
+                        trailing: Row(
+                          spacing: PregoSpacing.sm,
+                          children: [
+                            Tooltip(
+                              message: context.loc.sessionDetailTypeMessage,
+                              child: PregoButtonsSolid.iconOnly(
+                                leadingIcon: TablerRegular.keyboard,
+                                hierarchy: PregoButtonsSolidHierarchy.secondary,
+                                size: PregoButtonsSolidSize.lg,
+                                onPressed: _enterTypingMode,
+                              ),
+                            ),
+                            // The resting voice pill has no send affordance,
+                            // but stopping in-flight work must stay reachable.
+                            if (widget.isBusy) _buildPrimaryActionButton(context),
+                          ],
+                        ),
+                      ),
                     },
                   ),
                 ),
@@ -1079,12 +1066,12 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  /// Voice-first resting state: one pill whose whole centre is a
-  /// press-and-hold voice target, with a keyboard button to switch to typing
-  /// (and the stop control alongside while the agent is busy).
-  Widget _buildHoldToTalkComposer(BuildContext context) {
+  Widget _buildVoicePill(
+    BuildContext context, {
+    required String hint,
+    required Widget trailing,
+  }) {
     final prego = context.prego;
-    final loc = context.loc;
 
     return _buildVoicePillSurface(
       context,
@@ -1101,7 +1088,9 @@ class _PromptInputState() extends State<PromptInput> {
                 height: _actionButtonSize,
                 idle: Center(
                   child: Text(
-                    loc.sessionDetailHoldToTalk,
+                    hint,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
                   ),
                 ),
@@ -1110,23 +1099,7 @@ class _PromptInputState() extends State<PromptInput> {
           ),
           _buildCollapsibleTrailing(
             visible: _displayedVoiceState != _VoiceState.recording,
-            child: Row(
-              spacing: PregoSpacing.sm,
-              children: [
-                Tooltip(
-                  message: loc.sessionDetailTypeMessage,
-                  child: PregoButtonsSolid.iconOnly(
-                    leadingIcon: TablerRegular.keyboard,
-                    hierarchy: PregoButtonsSolidHierarchy.secondary,
-                    size: PregoButtonsSolidSize.lg,
-                    onPressed: _enterTypingMode,
-                  ),
-                ),
-                // The resting voice pill has no send affordance, but stopping
-                // the agent's in-flight work must stay reachable.
-                if (widget.isBusy) _buildPrimaryActionButton(context),
-              ],
-            ),
+            child: trailing,
           ),
         ],
       ),
@@ -1166,19 +1139,7 @@ class _PromptInputState() extends State<PromptInput> {
               ),
             ),
           ),
-          Row(
-            spacing: PregoSpacing.sm,
-            children: [
-              // The mic owns the hold gesture, so it must stay mounted (and
-              // under the finger) for the whole recording; only the primary
-              // action collapses away.
-              _buildMicButton(context),
-              _buildCollapsibleTrailing(
-                visible: _displayedVoiceState != _VoiceState.recording,
-                child: _buildPrimaryActionButton(context),
-              ),
-            ],
-          ),
+          _buildMicAndPrimaryActions(context),
         ],
       ),
     );
@@ -1277,7 +1238,14 @@ class _PromptInputState() extends State<PromptInput> {
               ),
             ],
           ),
-          if (voiceFirst) _buildTypingVoicePill(context) else _buildTypingActionRow(context),
+          if (voiceFirst)
+            _buildVoicePill(
+              context,
+              hint: _hasText ? loc.sessionDetailHoldToTalkMore : loc.sessionDetailHoldToTalk,
+              trailing: _buildPrimaryActionButton(context),
+            )
+          else
+            _buildTypingActionRow(context),
         ],
       ),
     );
@@ -1300,9 +1268,8 @@ class _PromptInputState() extends State<PromptInput> {
           unawaited(
             _pasteImageOrText(
               initialValue: initialValue,
-              onTextPaste: existingPasteCallback == null
-                  ? () => editableTextState.pasteText(SelectionChangedCause.toolbar)
-                  : () async => existingPasteCallback(),
+              onTextPaste:
+                  existingPasteCallback ?? () => editableTextState.pasteText(SelectionChangedCause.toolbar),
               onImagePasted: editableTextState.hideToolbar,
             ),
           );
@@ -1390,46 +1357,6 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  /// The voice-first typing container's bottom strip: a hold-to-talk pill of
-  /// its own, with the send action on its trailing edge — the design's
-  /// `Typing input container`.
-  Widget _buildTypingVoicePill(BuildContext context) {
-    final prego = context.prego;
-    final loc = context.loc;
-
-    return _buildVoicePillSurface(
-      context,
-      surfaceStyle: PregoComposerSurfaceStyle.subtle,
-      tightensTrailingWhileRecording: true,
-      child: Row(
-        spacing: PregoSpacing.md,
-        children: [
-          _buildLeadingSlot(context),
-          Expanded(
-            child: _buildHoldSurface(
-              context,
-              child: _buildVoiceAwareSlot(
-                height: _actionButtonSize,
-                idle: Center(
-                  child: Text(
-                    _hasText ? loc.sessionDetailHoldToTalkMore : loc.sessionDetailHoldToTalk,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          _buildCollapsibleTrailing(
-            visible: _displayedVoiceState != _VoiceState.recording,
-            child: _buildPrimaryActionButton(context),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// The text-first typing container's bottom strip: accordion, a voice-aware
   /// gap, then mic and send/stop.
   Widget _buildTypingActionRow(BuildContext context) {
@@ -1443,16 +1370,20 @@ class _PromptInputState() extends State<PromptInput> {
             idle: const SizedBox(),
           ),
         ),
-        Row(
-          spacing: PregoSpacing.sm,
-          children: [
-            // Gesture owner during a recording hold — never collapsed.
-            _buildMicButton(context),
-            _buildCollapsibleTrailing(
-              visible: _displayedVoiceState != _VoiceState.recording,
-              child: _buildPrimaryActionButton(context),
-            ),
-          ],
+        _buildMicAndPrimaryActions(context),
+      ],
+    );
+  }
+
+  Widget _buildMicAndPrimaryActions(BuildContext context) {
+    return Row(
+      spacing: PregoSpacing.sm,
+      children: [
+        // The mic owns the hold gesture, so only the primary action collapses.
+        _buildMicButton(context),
+        _buildCollapsibleTrailing(
+          visible: _displayedVoiceState != _VoiceState.recording,
+          child: _buildPrimaryActionButton(context),
         ),
       ],
     );
@@ -1550,8 +1481,8 @@ class _PromptInputState() extends State<PromptInput> {
 
   Future<void> _pasteImageOrText({
     required TextEditingValue initialValue,
-    required Future<void> Function() onTextPaste,
-    required VoidCallback onImagePasted,
+    required FutureOr<void> Function() onTextPaste,
+    required VoidCallback? onImagePasted,
   }) async {
     try {
       switch (await _handlePasteImage()) {
@@ -1564,7 +1495,7 @@ class _PromptInputState() extends State<PromptInput> {
           await onTextPaste();
           return;
         case _PasteImageResult.handled:
-          if (mounted) onImagePasted();
+          if (mounted) onImagePasted?.call();
           return;
         case _PasteImageResult.stale:
           return;
