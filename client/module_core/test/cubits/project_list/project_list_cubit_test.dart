@@ -14,6 +14,7 @@ import "package:sesori_dart_core/src/cubits/project_list/project_list_state.dart
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_preference.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
+import "package:sesori_dart_core/src/services/loaded_state_analytics_reporter.dart";
 import "package:sesori_dart_core/src/services/models/product_analytics_state.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
@@ -133,6 +134,9 @@ void main() {
       sessionUnseenTracker: fakeSessionUnseenTracker,
       registeredBridgesService: mockRegisteredBridgesService,
       productAnalyticsService: mockProductAnalyticsService,
+      loadedStateAnalyticsReporter: LoadedStateAnalyticsReporter.projectInventory(
+        productAnalyticsService: mockProductAnalyticsService,
+      ),
       failureReporter: mockFailureReporter,
     );
 

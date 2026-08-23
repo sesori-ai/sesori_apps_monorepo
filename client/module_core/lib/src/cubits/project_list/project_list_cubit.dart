@@ -15,6 +15,7 @@ import "../../platform/route_source.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
 import "../../routing/app_routes.dart";
+import "../../services/loaded_state_analytics_reporter.dart";
 import "../../services/models/session_activity_info.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/project_list_service.dart";
@@ -32,22 +33,19 @@ const refreshThrottleDuration = Duration(seconds: 30);
 @visibleForTesting
 const initialProjectLoadConnectionWaitTimeout = Duration(seconds: 15);
 
-enum _InventoryAnalyticsGuard() { ready, inFlight, consumed }
-
 class ProjectListCubit(
-    final ProjectRepository _projectRepository,
-    final ConnectionService _connectionService,
-    final SseEventTracker _sseEventTracker,
-    RouteSource routeSource, {
-    required final ProjectListService _projectListService,
-    required final SessionUnseenTracker _sessionUnseenTracker,
-    required final RegisteredBridgesService _registeredBridgesService,
-    required final ProductAnalyticsService _productAnalyticsService,
-    required final FailureReporter _failureReporter,
-  }) extends Cubit<ProjectListState> {
+  final ProjectRepository _projectRepository,
+  final ConnectionService _connectionService,
+  final SseEventTracker _sseEventTracker,
+  RouteSource routeSource, {
+  required final ProjectListService _projectListService,
+  required final SessionUnseenTracker _sessionUnseenTracker,
+  required final RegisteredBridgesService _registeredBridgesService,
+  required final ProductAnalyticsService _productAnalyticsService,
+  required final LoadedStateAnalyticsReporter _loadedStateAnalyticsReporter,
+  required final FailureReporter _failureReporter,
+}) extends Cubit<ProjectListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
-  _InventoryAnalyticsGuard _emptyInventoryAnalytics = _InventoryAnalyticsGuard.ready;
-  _InventoryAnalyticsGuard _nonEmptyInventoryAnalytics = _InventoryAnalyticsGuard.ready;
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   this : super(const ProjectListState.loading()) {
@@ -118,17 +116,6 @@ class ProjectListCubit(
     _subscriptions.add(
       _connectionService.dataMayBeStale.listen((_) => _onStaleReconnect()),
     );
-
-    // 6. Empty diagnostics cannot be deferred. If the first successful load
-    //    beats preference reconciliation, retry its bounded classification on
-    //    the later active edge without fetching or polling.
-    _subscriptions.add(
-      _productAnalyticsService.stateStream
-          .map((state) => state.isActive)
-          .distinct()
-          .where((isActive) => isActive)
-          .listen((_) => _retryCurrentInventoryAnalytics()),
-    );
   }
 
   void reportNeedHelpMenuOpened({required OnboardingSurface surface}) {
@@ -180,64 +167,6 @@ class ProjectListCubit(
           logw("Failed to deliver onboarding analytics event");
         }
       }),
-    );
-  }
-
-  void _retryCurrentInventoryAnalytics() {
-    if (isClosed) return;
-    final current = state;
-    if (current is ProjectListLoaded) {
-      _reportInventoryLoaded(isEmpty: current.projects.isEmpty);
-    }
-  }
-
-  void _reportInventoryLoaded({required bool isEmpty}) {
-    final guard = isEmpty ? _emptyInventoryAnalytics : _nonEmptyInventoryAnalytics;
-    if (guard != _InventoryAnalyticsGuard.ready) return;
-    final attemptedWhileActive = _productAnalyticsService.state.isActive;
-    if (isEmpty) {
-      _emptyInventoryAnalytics = _InventoryAnalyticsGuard.inFlight;
-    } else {
-      _nonEmptyInventoryAnalytics = _InventoryAnalyticsGuard.inFlight;
-    }
-
-    unawaited(
-      _productAnalyticsService
-          .logEvent(
-            event: ProductAnalyticsEvent.projectInventoryLoaded(
-              inventoryState: isEmpty ? AnalyticsInventoryState.empty : AnalyticsInventoryState.nonEmpty,
-            ),
-            occurredAtUtc: DateTime.now().toUtc(),
-          )
-          .then<void>((result) {
-            final consumed =
-                result == AnalyticsDeliveryResult.acceptedBySdk ||
-                (!isEmpty && result == AnalyticsDeliveryResult.deferredUntilPreference);
-            final next = consumed ? _InventoryAnalyticsGuard.consumed : _InventoryAnalyticsGuard.ready;
-            if (isEmpty) {
-              _emptyInventoryAnalytics = next;
-            } else {
-              _nonEmptyInventoryAnalytics = next;
-            }
-            final isActive = _productAnalyticsService.state.isActive;
-            if (!consumed && isActive) {
-              logw("Failed to deliver project inventory analytics event");
-            }
-            if (!consumed && isEmpty && !attemptedWhileActive && isActive) {
-              _retryCurrentInventoryAnalytics();
-            }
-          })
-          .catchError((Object error, StackTrace stackTrace) {
-            if (isEmpty) {
-              _emptyInventoryAnalytics = _InventoryAnalyticsGuard.ready;
-            } else {
-              _nonEmptyInventoryAnalytics = _InventoryAnalyticsGuard.ready;
-            }
-            logw("Failed to report project inventory analytics event", error, stackTrace);
-            if (isEmpty && !attemptedWhileActive && _productAnalyticsService.state.isActive) {
-              _retryCurrentInventoryAnalytics();
-            }
-          }),
     );
   }
 
@@ -785,7 +714,10 @@ class ProjectListCubit(
             unseenByProjectId: _unseenByProjectId(sortedProjects),
           ),
         );
-        _reportInventoryLoaded(isEmpty: sortedProjects.isEmpty);
+        _loadedStateAnalyticsReporter.reportLoaded(
+          isEmpty: sortedProjects.isEmpty,
+          occurredAtUtc: DateTime.now().toUtc(),
+        );
         return true;
 
       case ErrorResponse(:final error):
@@ -804,8 +736,9 @@ class ProjectListCubit(
   }
 
   @override
-  Future<void> close() {
-    _subscriptions.dispose();
-    return super.close();
+  Future<void> close() async {
+    await _subscriptions.dispose();
+    await _loadedStateAnalyticsReporter.close();
+    return await super.close();
   }
 }

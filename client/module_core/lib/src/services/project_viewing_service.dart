@@ -290,8 +290,8 @@ class ProjectViewingService({
           _lastSentProjectId = projectId;
           _hasSent = true;
         })
-        .catchError((Object _) {
-          logw("project view declaration failed");
+        .catchError((Object error, StackTrace stackTrace) {
+          logw("project view declaration failed", error, stackTrace);
         });
     unawaited(_sendTail);
   }
@@ -317,8 +317,8 @@ class ProjectViewingService({
     _disposed = true;
     try {
       await _subscriptions.dispose();
-    } on Object catch (_) {
-      logw("project view subscription cleanup failed");
+    } on Object catch (error, stackTrace) {
+      logw("project view subscription cleanup failed", error, stackTrace);
     }
     _listClaim = null;
     _detailClaim = null;

@@ -43,7 +43,6 @@ enum _SessionRefreshTrigger(final String logValue) {
   dataMayBeStale("data_may_be_stale"),
   waitingForConnection("waiting_for_connection"),
   queuedEvent("queued_event");
-
 }
 
 enum _SessionRefreshAction() { observed, ignored, queued, coalesced, started, completed }
@@ -117,13 +116,13 @@ class SessionDetailCubit(
   bool _reassertViewAfterRefresh = false;
 
   /// Pending session-scoped SSE events that arrived while the cubit was in
-  /// [SessionDetailLoading] or [SessionDetailFailed] state. Replayed once the
-  /// state transitions to [SessionDetailLoaded].
+  /// [SessionDetailLoading]. Replayed once state becomes [SessionDetailLoaded];
+  /// failed loads clear them.
   final List<SesoriSessionEvent> _pendingSessionEvents = [];
 
   /// Pending global SSE events that arrived while the cubit was in
-  /// [SessionDetailLoading] or [SessionDetailFailed] state. Replayed once the
-  /// state transitions to [SessionDetailLoaded].
+  /// [SessionDetailLoading]. Replayed once state becomes [SessionDetailLoaded];
+  /// failed loads clear them.
   final List<SseEvent> _pendingGlobalEvents = [];
 
   /// Fires the [SesoriQuestionAsked] whenever a new question arrives, so the
@@ -494,53 +493,22 @@ class SessionDetailCubit(
       final result = await _loadService.reload(sessionId: _sessionId, projectId: _projectId);
       if (isClosed) return _SessionRefreshResult.closed;
       if (connectionGeneration != _connectionGeneration) {
-        final latest = state;
-        if (latest is SessionDetailLoaded) {
-          emit(
-            latest.copyWith(
-              isRefreshing: false,
-              queuedMessages: _promptQueue.items,
-              awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
-              sendingSubmission: _promptQueue.active,
-            ),
-          );
-        }
+        _emitRefreshEnded();
         return _SessionRefreshResult.staleConnection;
       }
 
       switch (result) {
         case SessionDetailLoadResultLoaded(:final snapshot):
           _waitingForConnection = false;
-          final latestAssistant = _latestAssistantOrErrorMessage(snapshot.messages);
-          final childIds = snapshot.childSessions.map((c) => c.id).toSet();
-          final childStatuses = Map<String, SessionStatus>.fromEntries(
-            snapshot.statuses.entries.where((e) => childIds.contains(e.key)),
-          );
-          final availableAgents = snapshot.agents
-              .whereType<AgentInfo>()
-              .where((a) => !a.hidden && a.mode != AgentMode.subagent)
-              .toList();
-          final availableProviders = snapshot.providerData?.items ?? <ProviderInfo>[];
+          final derived = _deriveSnapshot(snapshot);
+          final latestAssistant = derived.latestAssistant;
+          final availableAgents = derived.agents;
+          final availableProviders = derived.providers;
 
           final streamingText = _streamingBuffer.snapshot();
           _streamingBuffer.clear();
 
-          final assistantAgentModel = switch (latestAssistant) {
-            MessageAssistant(:final modelID, :final providerID) => _resolveAgentModel(
-              agents: availableAgents,
-              providerID: providerID,
-              modelID: modelID,
-            ),
-            MessageError(:final modelID, :final providerID) => _resolveAgentModel(
-              agents: availableAgents,
-              providerID: providerID,
-              modelID: modelID,
-            ),
-            MessageUser() || null => null,
-          };
-
-          final refreshedChildSessions = [...snapshot.childSessions];
-          _sortChildrenByUpdatedDesc(refreshedChildSessions);
+          final refreshedChildSessions = derived.children;
 
           final latest = state;
           if (latest is! SessionDetailLoaded) return _SessionRefreshResult.closed;
@@ -557,11 +525,7 @@ class SessionDetailCubit(
           _reconcileStagedWithSnapshot(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch);
 
           final refreshedSessionStatus = snapshot.statuses[_sessionId] ?? const SessionStatus.idle();
-          final retryMessage = switch (refreshedSessionStatus) {
-            SessionStatusRetry(:final message) => message,
-            SessionStatusIdle() => null,
-            SessionStatusBusy() => null,
-          };
+          final queue = _queueView(bridgePrompts: snapshot.bridgeQueuedPrompts);
 
           // The transcript is being replaced wholesale, so any older-page
           // request still in flight no longer joins onto it.
@@ -581,14 +545,13 @@ class SessionDetailCubit(
               isLoadingOlderMessages: false,
               streamingText: streamingText,
               sessionStatus: refreshedSessionStatus,
-              retryErrorMessage: retryMessage,
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
               pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
               bridgeQueuedPrompts: snapshot.bridgeQueuedPrompts,
               agent: latestAssistant?.agent,
-              assistantAgentModel: assistantAgentModel,
+              assistantAgentModel: derived.assistantAgentModel,
               children: refreshedChildSessions,
-              childStatuses: childStatuses,
+              childStatuses: derived.childStatuses,
               isArchived: snapshot.isArchived,
               availableAgents: availableAgents,
               availableProviders: availableProviders,
@@ -601,9 +564,9 @@ class SessionDetailCubit(
                 availableCommands: availableCommands,
                 stagedCommand: preservedStagedCommand,
               ),
-              queuedMessages: _visibleStagedItems(bridgePrompts: snapshot.bridgeQueuedPrompts),
-              awaitingBridgeSubmissions: _visibleAwaitingBridge(bridgePrompts: snapshot.bridgeQueuedPrompts),
-              sendingSubmission: _visibleStagedSending(bridgePrompts: snapshot.bridgeQueuedPrompts),
+              queuedMessages: queue.queuedMessages,
+              awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
+              sendingSubmission: queue.sendingSubmission,
               isRefreshing: false,
               availableVariants: availableVariants,
             ),
@@ -621,49 +584,32 @@ class SessionDetailCubit(
           return _SessionRefreshResult.applied;
         case SessionDetailLoadResultWaitingForConnection():
           _waitingForConnection = true;
-          final latest = state;
-          if (latest is SessionDetailLoaded) {
-            emit(
-              latest.copyWith(
-                isRefreshing: false,
-                queuedMessages: _promptQueue.items,
-                awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
-                sendingSubmission: _promptQueue.active,
-              ),
-            );
-          }
+          _emitRefreshEnded();
           return _SessionRefreshResult.waitingForConnection;
         case SessionDetailLoadResultFailed(:final error, :final stackTrace):
           logw("Silent refresh failed", error, stackTrace);
-          final latest = state;
-          if (latest is SessionDetailLoaded) {
-            emit(
-              latest.copyWith(
-                isRefreshing: false,
-                queuedMessages: _promptQueue.items,
-                awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
-                sendingSubmission: _promptQueue.active,
-              ),
-            );
-          }
+          _emitRefreshEnded();
           return _SessionRefreshResult.failed;
       }
     } on Object catch (error, stackTrace) {
       logw("Silent refresh failed", error, stackTrace);
       if (isClosed) return _SessionRefreshResult.closed;
-      final latest = state;
-      if (latest is SessionDetailLoaded) {
-        emit(
-          latest.copyWith(
-            isRefreshing: false,
-            queuedMessages: _promptQueue.items,
-            awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
-            sendingSubmission: _promptQueue.active,
-          ),
-        );
-      }
+      _emitRefreshEnded();
       return _SessionRefreshResult.failed;
     }
+  }
+
+  void _emitRefreshEnded() {
+    final latest = state;
+    if (latest is! SessionDetailLoaded) return;
+    emit(
+      latest.copyWith(
+        isRefreshing: false,
+        queuedMessages: _promptQueue.items,
+        awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
+        sendingSubmission: _promptQueue.active,
+      ),
+    );
   }
 
   Future<_SessionRefreshResult> _traceRefresh({
@@ -809,7 +755,9 @@ class SessionDetailCubit(
               reason: "Failed to handle session event",
               information: [event.runtimeType.toString()],
             )
-            .catchError((_) {}),
+            .catchError((Object error, StackTrace stackTrace) {
+              logw("Failed to record session event handler failure", error, stackTrace);
+            }),
       );
     }
   }
@@ -1017,7 +965,9 @@ class SessionDetailCubit(
               reason: "Failed to handle global session event",
               information: [data.runtimeType.toString()],
             )
-            .catchError((_) {}),
+            .catchError((Object error, StackTrace stackTrace) {
+              logw("Failed to record global session event handler failure", error, stackTrace);
+            }),
       );
     }
   }
@@ -1200,12 +1150,13 @@ class SessionDetailCubit(
       for (final prompt in current.bridgeQueuedPrompts)
         if (prompt.id != promptId) prompt,
     ];
+    final queue = _queueView(bridgePrompts: bridgePrompts);
     emit(
       current.copyWith(
         bridgeQueuedPrompts: bridgePrompts,
-        queuedMessages: _visibleStagedItems(bridgePrompts: bridgePrompts),
-        awaitingBridgeSubmissions: _visibleAwaitingBridge(bridgePrompts: bridgePrompts),
-        sendingSubmission: _visibleStagedSending(bridgePrompts: bridgePrompts),
+        queuedMessages: queue.queuedMessages,
+        awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
+        sendingSubmission: queue.sendingSubmission,
       ),
     );
     // The delivered prompt's own send may have stopped the drain on a lost
@@ -1223,12 +1174,13 @@ class SessionDetailCubit(
     for (final prompt in prompts) {
       _promptQueue.removeByPromptId(prompt.id);
     }
+    final queue = _queueView(bridgePrompts: prompts);
     emit(
       current.copyWith(
         bridgeQueuedPrompts: prompts,
-        queuedMessages: _visibleStagedItems(bridgePrompts: prompts),
-        awaitingBridgeSubmissions: _visibleAwaitingBridge(bridgePrompts: prompts),
-        sendingSubmission: _visibleStagedSending(bridgePrompts: prompts),
+        queuedMessages: queue.queuedMessages,
+        awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
+        sendingSubmission: queue.sendingSubmission,
       ),
     );
   }
@@ -1250,12 +1202,13 @@ class SessionDetailCubit(
       for (final prompt in current.bridgeQueuedPrompts)
         if (prompt.id != promptId) prompt,
     ];
+    final queue = _queueView(bridgePrompts: bridgePrompts);
     emit(
       current.copyWith(
         bridgeQueuedPrompts: bridgePrompts,
-        queuedMessages: _visibleStagedItems(bridgePrompts: bridgePrompts),
-        awaitingBridgeSubmissions: _visibleAwaitingBridge(bridgePrompts: bridgePrompts),
-        sendingSubmission: _visibleStagedSending(bridgePrompts: bridgePrompts),
+        queuedMessages: queue.queuedMessages,
+        awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
+        sendingSubmission: queue.sendingSubmission,
       ),
     );
   }
@@ -1287,15 +1240,8 @@ class SessionDetailCubit(
 
   void _onSessionStatus({required SessionStatus status}) {
     final current = state;
-    if (current is! SessionDetailLoaded) return;
-
-    if (isClosed) return;
-    final retryMessage = switch (status) {
-      SessionStatusRetry(:final message) => message,
-      SessionStatusIdle() => null,
-      SessionStatusBusy() => null,
-    };
-    emit(current.copyWith(sessionStatus: status, retryErrorMessage: retryMessage));
+    if (current is! SessionDetailLoaded || isClosed) return;
+    emit(current.copyWith(sessionStatus: status));
   }
 
   // ---------------------------------------------------------------------------
@@ -1581,11 +1527,12 @@ class SessionDetailCubit(
     if (isClosed) return;
     final current = known ?? state;
     if (current is! SessionDetailLoaded) return;
+    final queue = _queueView(bridgePrompts: current.bridgeQueuedPrompts);
     emit(
       current.copyWith(
-        queuedMessages: _visibleStagedItems(bridgePrompts: current.bridgeQueuedPrompts),
-        awaitingBridgeSubmissions: _visibleAwaitingBridge(bridgePrompts: current.bridgeQueuedPrompts),
-        sendingSubmission: _visibleStagedSending(bridgePrompts: current.bridgeQueuedPrompts),
+        queuedMessages: queue.queuedMessages,
+        awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
+        sendingSubmission: queue.sendingSubmission,
       ),
     );
   }
@@ -1619,6 +1566,12 @@ class SessionDetailCubit(
   /// Staged sends not yet owned by the bridge. A staged copy whose id the
   /// bridge queue already lists renders nowhere; its in-flight send settles
   /// (or its idempotent retry no-ops) without a second bubble.
+  _QueueView _queueView({required List<QueuedSessionPrompt> bridgePrompts}) => (
+    queuedMessages: _visibleStagedItems(bridgePrompts: bridgePrompts),
+    awaitingBridgeSubmissions: _visibleAwaitingBridge(bridgePrompts: bridgePrompts),
+    sendingSubmission: _visibleStagedSending(bridgePrompts: bridgePrompts),
+  );
+
   List<QueuedSessionSubmission> _visibleStagedItems({required List<QueuedSessionPrompt> bridgePrompts}) {
     if (bridgePrompts.isEmpty) return _promptQueue.items;
     final bridgeIds = {for (final prompt in bridgePrompts) prompt.id};
@@ -2064,31 +2017,15 @@ class SessionDetailCubit(
     required String requestId,
     required String sessionId,
     required List<ReplyAnswer> answers,
-  }) async {
-    if (_refuseWhenArchived(action: "reply to a question")) return false;
-
-    // Optimistically remove before the API call so the screen sees the
-    // updated state synchronously (prevents auto-chain re-opening the
-    // same question).
-    _onQuestionResolved(requestId);
-    _notificationCanceller.cancelForSession(sessionId: sessionId);
-    try {
-      final result = await _sessionRepository.replyToQuestion(
-        requestId: requestId,
-        sessionId: sessionId,
-        answers: answers,
-      );
-      if (result case ErrorResponse(:final error)) {
-        throw error;
-      }
-      _reportProductEvent(event: const ProductAnalyticsEvent.sessionQuestionAnswered());
-      return true;
-    } on Object catch (e, st) {
-      loge("Failed to reply to question $requestId", e, st);
-      await _loadMessages(isReload: true);
-      return false;
-    }
-  }
+  }) => _submitReply(
+    requestId: requestId,
+    sessionId: sessionId,
+    archivedAction: "reply to a question",
+    failureAction: "reply to question",
+    resolve: _onQuestionResolved,
+    submit: () => _sessionRepository.replyToQuestion(requestId: requestId, sessionId: sessionId, answers: answers),
+    reportSuccess: () => _reportProductEvent(event: const ProductAnalyticsEvent.sessionQuestionAnswered()),
+  );
 
   Future<bool> rejectQuestion(String requestId) async {
     if (_refuseWhenArchived(action: "reject a question")) return false;
@@ -2100,50 +2037,54 @@ class SessionDetailCubit(
     final ownerSessionId = current is SessionDetailLoaded
         ? (current.pendingQuestions.firstWhereOrNull((q) => q.id == requestId)?.sessionID ?? _sessionId)
         : _sessionId;
-    _onQuestionResolved(requestId);
-    _notificationCanceller.cancelForSession(sessionId: _sessionId);
-    try {
-      final result = await _sessionRepository.rejectQuestion(requestId: requestId, sessionId: ownerSessionId);
-      if (result case ErrorResponse(:final error)) {
-        throw error;
-      }
-      _reportProductEvent(event: const ProductAnalyticsEvent.sessionQuestionRejected());
-      return true;
-    } on Object catch (e, st) {
-      loge("Failed to reject question $requestId", e, st);
-      await _loadMessages(isReload: true);
-      return false;
-    }
+    return await _submitReply(
+      requestId: requestId,
+      sessionId: _sessionId,
+      archivedAction: "reject a question",
+      failureAction: "reject question",
+      resolve: _onQuestionResolved,
+      submit: () => _sessionRepository.rejectQuestion(requestId: requestId, sessionId: ownerSessionId),
+      reportSuccess: () => _reportProductEvent(event: const ProductAnalyticsEvent.sessionQuestionRejected()),
+      checkArchived: false,
+    );
   }
 
   Future<bool> replyToPermission({
     required String requestId,
     required String sessionId,
     required PermissionReply reply,
-  }) async {
-    if (_refuseWhenArchived(action: "reply to a permission")) return false;
+  }) => _submitReply(
+    requestId: requestId,
+    sessionId: sessionId,
+    archivedAction: "reply to a permission",
+    failureAction: "reply to permission",
+    resolve: _onPermissionResolved,
+    submit: () => _permissionRepository.replyToPermission(requestId: requestId, sessionId: sessionId, reply: reply),
+    reportSuccess: () => _reportProductEvent(
+      event: ProductAnalyticsEvent.sessionPermissionAnswered(decision: _analyticsPermissionDecision(reply: reply)),
+    ),
+  );
 
-    _onPermissionResolved(requestId);
+  Future<bool> _submitReply({
+    required String requestId,
+    required String sessionId,
+    required String archivedAction,
+    required String failureAction,
+    required void Function(String requestId) resolve,
+    required Future<ApiResponse<void>> Function() submit,
+    required void Function() reportSuccess,
+    bool checkArchived = true,
+  }) async {
+    if (checkArchived && _refuseWhenArchived(action: archivedAction)) return false;
+    resolve(requestId);
     _notificationCanceller.cancelForSession(sessionId: sessionId);
     try {
-      final result = await _permissionRepository.replyToPermission(
-        requestId: requestId,
-        sessionId: sessionId,
-        reply: reply,
-      );
-      switch (result) {
-        case SuccessResponse():
-          _reportProductEvent(
-            event: ProductAnalyticsEvent.sessionPermissionAnswered(
-              decision: _analyticsPermissionDecision(reply: reply),
-            ),
-          );
-          return true;
-        case ErrorResponse(:final error):
-          throw error;
-      }
-    } on Object catch (e, st) {
-      loge("Failed to reply to permission $requestId", e, st);
+      final result = await submit();
+      if (result case ErrorResponse(:final error)) throw error;
+      reportSuccess();
+      return true;
+    } on Object catch (error, stackTrace) {
+      loge("Failed to $failureAction $requestId", error, stackTrace);
       await _loadMessages(isReload: true);
       return false;
     }
@@ -2271,20 +2212,34 @@ class SessionDetailCubit(
     }
   }
 
+  _SnapshotDerivation _deriveSnapshot(SessionDetailSnapshot snapshot) {
+    final latestAssistant = _latestAssistantOrErrorMessage(snapshot.messages);
+    final children = [...snapshot.childSessions];
+    _sortChildrenByUpdatedDesc(children);
+    final childIds = children.map((child) => child.id).toSet();
+    final agents = snapshot.agents.where((agent) => !agent.hidden && agent.mode != AgentMode.subagent).toList();
+    final assistantAgentModel = switch (latestAssistant) {
+      MessageAssistant(:final modelID, :final providerID) || MessageError(:final modelID, :final providerID) =>
+        _resolveAgentModel(agents: agents, providerID: providerID, modelID: modelID),
+      MessageUser() || null => null,
+    };
+    return (
+      latestAssistant: latestAssistant,
+      assistantAgentModel: assistantAgentModel,
+      children: children,
+      childStatuses: Map.fromEntries(snapshot.statuses.entries.where((entry) => childIds.contains(entry.key))),
+      agents: agents,
+      providers: snapshot.providerData?.items ?? <ProviderInfo>[],
+    );
+  }
+
   SessionDetailLoaded _buildLoadedState({required SessionDetailSnapshot snapshot, required int parkEpochAtFetch}) {
     _reconcileStagedWithSnapshot(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch);
-    final latestAssistant = _latestAssistantOrErrorMessage(snapshot.messages);
-    final childSessions = [...snapshot.childSessions];
-    _sortChildrenByUpdatedDesc(childSessions);
-    final childIds = childSessions.map((c) => c.id).toSet();
-    final childStatuses = Map<String, SessionStatus>.fromEntries(
-      snapshot.statuses.entries.where((e) => childIds.contains(e.key)),
-    );
-    final agents = snapshot.agents
-        .whereType<AgentInfo>()
-        .where((a) => !a.hidden && a.mode != AgentMode.subagent)
-        .toList();
-    final providers = snapshot.providerData?.items ?? <ProviderInfo>[];
+    final derived = _deriveSnapshot(snapshot);
+    final latestAssistant = derived.latestAssistant;
+    final childSessions = derived.children;
+    final agents = derived.agents;
+    final providers = derived.providers;
 
     final persistedDefaults = snapshot.promptDefaults;
     final persistedAgent = persistedDefaults?.agent;
@@ -2298,20 +2253,7 @@ class SessionDetailCubit(
         ? persistedAgent
         : (agents.isNotEmpty ? agents.first.name : "build");
 
-    final assistantAgentModel = switch (latestAssistant) {
-      MessageAssistant(:final modelID, :final providerID) => _resolveAgentModel(
-        agents: agents,
-        providerID: providerID,
-        modelID: modelID,
-      ),
-      MessageError(:final modelID, :final providerID) => _resolveAgentModel(
-        agents: agents,
-        providerID: providerID,
-        modelID: modelID,
-      ),
-      MessageUser() || null => null,
-    };
-
+    final assistantAgentModel = derived.assistantAgentModel;
     final defaultAgentModel = hasValidPersistedModel
         ? persistedModel
         : (assistantAgentModel ?? _fallbackAgentModel(agents: agents, providers: providers));
@@ -2322,11 +2264,7 @@ class SessionDetailCubit(
     );
 
     final initialSessionStatus = snapshot.statuses[_sessionId] ?? const SessionStatus.idle();
-    final initialRetryMessage = switch (initialSessionStatus) {
-      SessionStatusRetry(:final message) => message,
-      SessionStatusIdle() => null,
-      SessionStatusBusy() => null,
-    };
+    final queue = _queueView(bridgePrompts: snapshot.bridgeQueuedPrompts);
 
     _transcriptGeneration++;
     return SessionDetailLoaded(
@@ -2334,7 +2272,6 @@ class SessionDetailCubit(
       olderMessagesCursor: snapshot.olderMessagesCursor,
       streamingText: const {},
       sessionStatus: initialSessionStatus,
-      retryErrorMessage: initialRetryMessage,
       pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
       pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
       bridgeQueuedPrompts: snapshot.bridgeQueuedPrompts,
@@ -2344,12 +2281,12 @@ class SessionDetailCubit(
       agent: latestAssistant?.agent,
       assistantAgentModel: assistantAgentModel,
       children: childSessions,
-      childStatuses: childStatuses,
+      childStatuses: derived.childStatuses,
       isRootSession: snapshot.isRootSession,
       isArchived: snapshot.isArchived,
-      queuedMessages: _visibleStagedItems(bridgePrompts: snapshot.bridgeQueuedPrompts),
-      awaitingBridgeSubmissions: _visibleAwaitingBridge(bridgePrompts: snapshot.bridgeQueuedPrompts),
-      sendingSubmission: _visibleStagedSending(bridgePrompts: snapshot.bridgeQueuedPrompts),
+      queuedMessages: queue.queuedMessages,
+      awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
+      sendingSubmission: queue.sendingSubmission,
       availableAgents: agents,
       availableProviders: providers,
       availableCommands: snapshot.commands,
@@ -2444,3 +2381,18 @@ class SessionDetailCubit(
     return super.close();
   }
 }
+
+typedef _QueueView = ({
+  List<QueuedSessionSubmission> queuedMessages,
+  List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+  QueuedSessionSubmission? sendingSubmission,
+});
+
+typedef _SnapshotDerivation = ({
+  Message? latestAssistant,
+  AgentModel? assistantAgentModel,
+  List<Session> children,
+  Map<String, SessionStatus> childStatuses,
+  List<AgentInfo> agents,
+  List<ProviderInfo> providers,
+});

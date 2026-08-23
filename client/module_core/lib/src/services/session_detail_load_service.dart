@@ -355,7 +355,7 @@ class const SessionDetailSnapshot({
   required final List<PendingPermission> pendingPermissions,
   required final List<Session> childSessions,
   required final Map<String, SessionStatus> statuses,
-  required final List<AgentInfo?> agents,
+  required final List<AgentInfo> agents,
   required final ProviderListResponse? providerData,
   required final List<CommandInfo> commands,
   required final String? canonicalSessionTitle,

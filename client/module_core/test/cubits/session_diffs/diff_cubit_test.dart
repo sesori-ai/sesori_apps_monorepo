@@ -9,6 +9,7 @@ import "package:sesori_dart_core/src/cubits/session_diffs/diff_state.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_preference.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
+import "package:sesori_dart_core/src/services/loaded_state_analytics_reporter.dart";
 import "package:sesori_dart_core/src/services/models/product_analytics_state.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -40,7 +41,9 @@ void main() {
     DiffCubit buildCubit({Duration staleRetryDelay = const Duration(milliseconds: 10)}) => DiffCubit(
       sessionRepository: mockSessionRepository,
       connectionService: mockConnectionService,
-      productAnalyticsService: mockProductAnalyticsService,
+      loadedStateAnalyticsReporter: LoadedStateAnalyticsReporter.sessionDiff(
+        productAnalyticsService: mockProductAnalyticsService,
+      ),
       sessionId: sessionId,
       staleRetryDelay: staleRetryDelay,
     );

@@ -149,7 +149,6 @@ SessionDetailLoaded _loadedState({
     stagedCommand: null,
     isRefreshing: false,
     availableVariants: const [SessionVariant(id: "xhigh"), SessionVariant(id: "low")],
-    retryErrorMessage: null,
   );
 }
 
@@ -670,7 +669,6 @@ void main() {
       stagedCommand: null,
       isRefreshing: false,
       availableVariants: const [SessionVariant(id: "xhigh"), SessionVariant(id: "low")],
-      retryErrorMessage: null,
     );
 
     final controller = StreamController<SessionDetailState>.broadcast();

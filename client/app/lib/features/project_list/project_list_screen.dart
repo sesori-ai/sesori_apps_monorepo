@@ -46,6 +46,9 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
             sessionUnseenTracker: getIt<SessionUnseenTracker>(),
             registeredBridgesService: getIt<RegisteredBridgesService>(),
             productAnalyticsService: getIt<ProductAnalyticsService>(),
+            loadedStateAnalyticsReporter: LoadedStateAnalyticsReporter.projectInventory(
+              productAnalyticsService: getIt<ProductAnalyticsService>(),
+            ),
             failureReporter: getIt<FailureReporter>(),
           ),
         ),

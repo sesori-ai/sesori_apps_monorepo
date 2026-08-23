@@ -469,8 +469,8 @@ class RelayClient._({
     }
     try {
       await _sendEncryptedMessage(RelayMessage.projectView(projectId: projectId));
-    } on Object catch (_) {
-      logw("sendProjectView failed: disconnect race");
+    } on Object catch (error, stackTrace) {
+      logw("sendProjectView failed: disconnect race", error, stackTrace);
     }
   }
 

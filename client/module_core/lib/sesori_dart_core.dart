@@ -154,6 +154,7 @@ export "src/routing/notification_open_dispatcher.dart";
 export "src/services/composer_draft_calculator.dart";
 export "src/services/foreground_notification_dispatcher.dart";
 export "src/services/installation_analytics_service.dart";
+export "src/services/loaded_state_analytics_reporter.dart";
 export "src/services/message_thumbnail_cache_service.dart";
 export "src/services/models/new_session_backend_scope.dart";
 export "src/services/models/new_session_options_source.dart";

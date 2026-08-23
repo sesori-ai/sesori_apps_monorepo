@@ -16,7 +16,9 @@ class const SessionDiffsScreen({
       create: (_) => DiffCubit(
         sessionRepository: getIt<SessionRepository>(),
         connectionService: getIt<ConnectionService>(),
-        productAnalyticsService: getIt<ProductAnalyticsService>(),
+        loadedStateAnalyticsReporter: LoadedStateAnalyticsReporter.sessionDiff(
+          productAnalyticsService: getIt<ProductAnalyticsService>(),
+        ),
         sessionId: sessionId,
         staleRetryDelay: const Duration(seconds: 5),
       ),
