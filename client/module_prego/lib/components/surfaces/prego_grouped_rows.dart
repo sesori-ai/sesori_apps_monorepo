@@ -39,14 +39,21 @@ class const PregoGroupedRows({
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (var index = 0; index < children.length; index++)
-            _GroupedRowPosition(isLast: index == children.length - 1, child: children[index]),
+            _GroupedRowPosition(
+              key: switch (children[index].key) {
+                final key? => ValueKey<Key>(key),
+                null => null,
+              },
+              isLast: index == children.length - 1,
+              child: children[index],
+            ),
         ],
       ),
     );
   }
 }
 
-class const _GroupedRowPosition({required final bool isLast, required super.child}) extends InheritedWidget {
+class const _GroupedRowPosition({super.key, required final bool isLast, required super.child}) extends InheritedWidget {
   static bool isLastOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<_GroupedRowPosition>()?.isLast ?? false;
 

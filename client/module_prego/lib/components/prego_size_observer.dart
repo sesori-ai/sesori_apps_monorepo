@@ -7,7 +7,8 @@ class const PregoSizeObserver({
   required super.child,
 }) extends SingleChildRenderObjectWidget {
   @override
-  PregoSizeObserverRenderObject createRenderObject(BuildContext context) => PregoSizeObserverRenderObject(onSizeChanged);
+  PregoSizeObserverRenderObject createRenderObject(BuildContext context) =>
+      PregoSizeObserverRenderObject(onSizeChanged: onSizeChanged);
 
   @override
   void updateRenderObject(BuildContext context, PregoSizeObserverRenderObject renderObject) {
@@ -15,7 +16,7 @@ class const PregoSizeObserver({
   }
 }
 
-class PregoSizeObserverRenderObject(var ValueChanged<Size> onSizeChanged) extends RenderProxyBox {
+class PregoSizeObserverRenderObject({required var ValueChanged<Size> onSizeChanged}) extends RenderProxyBox {
   Size? _lastReportedSize;
 
   @override

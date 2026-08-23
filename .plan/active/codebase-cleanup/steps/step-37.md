@@ -11,7 +11,7 @@
 
 ## Changes
 
-- `PregoGroupedRows` now wraps children in private position scope; `PregoGroupedRow` suppresses divider from container-owned last position.
+- `PregoGroupedRows` now wraps children in keyed private position scope; `PregoGroupedRow` suppresses divider from container-owned last position while keyed children retain state when reordered.
 - Added `copyTextToClipboard`, returning success and logging recovered clipboard failures; all three text-copy paths use it. Syntax-highlight fallback now logs original error and stack trace.
 - Added exported `PregoSizeObserver`; Prego scaffold measurements and session-detail composer measurement use it.
 - Consolidated three identical Firebase platform-support getters into `_supportsFirebase`.
@@ -33,8 +33,8 @@ git diff --numstat "$BASE"...HEAD -- client/app/test client/module_prego/test
 
 | Scope | Files | Additions | Deletions |
 | --- | ---: | ---: | ---: |
-| Production/lib | 18 | 82 | 215 |
-| Tests | 1 | 3 | 4 |
+| Production/lib | 18 | 90 | 215 |
+| Tests | 1 | 46 | 4 |
 
 Twenty paths change including this evidence file. There is no new dependency,
 DI registration, state, compatibility path, or generated source.
@@ -47,7 +47,7 @@ DI registration, state, compatibility path, or generated source.
 
 - `flutter pub get` (`client/app`) — pass; lockfile unchanged after keyboard rollback.
 - `flutter analyze --fatal-infos` (`client/module_prego`) — pass.
-- `flutter test` (`client/module_prego`) — pass, 214 tests.
+- `flutter test` (`client/module_prego`) — pass, 215 tests, including keyed grouped-row state retention after reordering.
 - `flutter analyze --fatal-infos` (`client/app`) — pass.
 - `flutter test test/features/settings test/features/session_detail test/main_startup_notification_wiring_test.dart test/features/new_session/new_session_screen_test.dart` (`client/app`) — pass, 347 tests.
 - Experimental MediaQuery keyboard run — failed direct system-back test and was fully reverted; final required matrix passes with fork.
