@@ -242,6 +242,37 @@ void main() {
       );
     });
 
+    testWidgets("full body reserves the handled bottom safe area", (tester) async {
+      final devicePixelRatio = tester.view.devicePixelRatio;
+      tester.view.padding = FakeViewPadding(bottom: 34 * devicePixelRatio);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showPregoBottomSheet<void>(
+                  context: context,
+                  title: "Sized",
+                  bodySize: PregoBottomSheetBodySize.full,
+                  builder: (_) => const ColoredBox(key: Key("body"), color: Colors.red),
+                ),
+                child: const Text("Open"),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getSize(find.byKey(const Key("body"))).height,
+        closeTo(600 - PregoBottomSheet.contentTopInset - 34, 0.5),
+      );
+    });
+
     testWidgets("bounded body floors exhausted keyboard space at zero", (tester) async {
       addTearDown(tester.view.resetViewInsets);
       await tester.pumpWidget(

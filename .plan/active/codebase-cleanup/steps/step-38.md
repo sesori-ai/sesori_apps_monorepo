@@ -44,21 +44,21 @@ Totals exclude this evidence file and use `origin/main`:
 
 | Scope | Files | Additions | Deletions |
 | --- | ---: | ---: | ---: |
-| Production/lib | 20 | 413 | 678 |
-| Tests | 2 | 121 | 0 |
+| Production/lib | 20 | 434 | 678 |
+| Tests | 2 | 152 | 0 |
 | Regression docs | 3 | 9 | 0 |
 
-Net production change: **-265 lines**. There is no new dependency, DI
+Net production change: **-244 lines**. There is no new dependency, DI
 registration, persisted state, compatibility path, or generated source.
 
 ## Verification
 
 - `flutter analyze --fatal-infos` (`client/module_prego`) — pass.
-- `flutter test` (`client/module_prego`) — pass, 219 tests.
+- `flutter test` (`client/module_prego`) — pass, 220 tests.
 - `flutter analyze --fatal-infos` (`client/app`) — pass.
 - `flutter test test/features/session_list test/features/project_list test/features/settings test/features/session_detail`
   (`client/app`) — pass, 480 tests.
-- Post-review focused sheet tests — pass, 14 tests.
+- Post-review focused sheet tests — pass, 15 tests.
 - `git diff --check` — pass.
 
 Architecture implementation review approved the package boundaries and shared

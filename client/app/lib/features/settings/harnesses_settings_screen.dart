@@ -897,7 +897,9 @@ class const _AuthenticationSheet() extends StatelessWidget {
       PluginAuthenticationPresentationBrowserLaunchFailedState(:final userCode) ||
       PluginAuthenticationPresentationCancelling(:final userCode) ||
       PluginAuthenticationPresentationCancellingUncertain(:final userCode) => userCode,
-      _ => throw StateError("Expected an authentication challenge"),
+      PluginAuthenticationPresentationIdle() ||
+      PluginAuthenticationPresentationStarting() ||
+      PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
     };
     return Padding(
       padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
@@ -945,7 +947,9 @@ class const _AuthenticationSheet() extends StatelessWidget {
               PluginAuthenticationPresentationCancelling() => loc.harnessAuthenticationCancelling,
               PluginAuthenticationPresentationChallenge() ||
               PluginAuthenticationPresentationBrowserLaunchFailedState() => loc.harnessAuthenticationWaiting,
-              _ => throw StateError("Expected an authentication challenge"),
+              PluginAuthenticationPresentationIdle() ||
+              PluginAuthenticationPresentationStarting() ||
+              PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
             },
             textAlign: TextAlign.center,
             style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
@@ -963,7 +967,9 @@ class const _AuthenticationSheet() extends StatelessWidget {
               PluginAuthenticationPresentationChallenge() ||
               PluginAuthenticationPresentationBrowserLaunchFailedState() =>
                 context.read<PluginManagementCubit>().launchAuthenticationBrowser,
-              _ => throw StateError("Expected an authentication challenge"),
+              PluginAuthenticationPresentationIdle() ||
+              PluginAuthenticationPresentationStarting() ||
+              PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
             },
           ),
           const SizedBox(height: PregoSpacing.md),
@@ -971,7 +977,12 @@ class const _AuthenticationSheet() extends StatelessWidget {
             key: const Key("harness_authentication_cancel"),
             label: switch (challenge) {
               PluginAuthenticationPresentationCancelling() => loc.harnessAuthenticationCancelling,
-              _ => loc.harnessAuthenticationCancel,
+              PluginAuthenticationPresentationChallenge() ||
+              PluginAuthenticationPresentationBrowserLaunchFailedState() ||
+              PluginAuthenticationPresentationCancellingUncertain() => loc.harnessAuthenticationCancel,
+              PluginAuthenticationPresentationIdle() ||
+              PluginAuthenticationPresentationStarting() ||
+              PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
             },
             hierarchy: PregoButtonsSolidHierarchy.secondary,
             size: PregoButtonsSolidSize.lg,
@@ -980,7 +991,13 @@ class const _AuthenticationSheet() extends StatelessWidget {
             isLoading: challenge is PluginAuthenticationPresentationCancelling,
             onPressed: switch (challenge) {
               PluginAuthenticationPresentationCancelling() => null,
-              _ => context.read<PluginManagementCubit>().cancelAuthentication,
+              PluginAuthenticationPresentationChallenge() ||
+              PluginAuthenticationPresentationBrowserLaunchFailedState() ||
+              PluginAuthenticationPresentationCancellingUncertain() =>
+                context.read<PluginManagementCubit>().cancelAuthentication,
+              PluginAuthenticationPresentationIdle() ||
+              PluginAuthenticationPresentationStarting() ||
+              PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
             },
           ),
         ],

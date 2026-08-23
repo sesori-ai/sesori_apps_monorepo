@@ -252,12 +252,16 @@ Future<T?> showPregoBottomSheet<T>({
       if (bodySize != PregoBottomSheetBodySize.natural) {
         final screenHeight = MediaQuery.heightOf(sheetContext);
         final keyboard = MediaQuery.viewInsetsOf(sheetContext).bottom;
-        final maxBody = math.max(0.0, screenHeight - topInset - PregoBottomSheet.contentTopInset - keyboard);
-        final preferredHeight = switch (bodySize) {
-          PregoBottomSheetBodySize.natural => maxBody,
-          PregoBottomSheetBodySize.seventyPercent => math.min(screenHeight * 0.7 - keyboard, maxBody),
-          PregoBottomSheetBodySize.full => maxBody,
-        };
+        final bottomInset = keyboard > 0
+            ? keyboard
+            : (handleBottomSafeArea ? MediaQuery.paddingOf(sheetContext).bottom : 0.0);
+        final maxBody = math.max(
+          0.0,
+          screenHeight - topInset - PregoBottomSheet.contentTopInset - bottomInset,
+        );
+        final preferredHeight = bodySize == PregoBottomSheetBodySize.full
+            ? maxBody
+            : math.min(screenHeight * 0.7 - keyboard, maxBody);
         final height = math.min(math.max(preferredHeight, screenHeight * 0.3), maxBody);
         body = SizedBox(height: height, child: body);
       }
