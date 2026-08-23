@@ -52,7 +52,7 @@ unchanged. No wire or persisted contract changed.
 ```bash
 cd client/module_core && dart run build_runner build --delete-conflicting-outputs  # 0 outputs
 cd client/module_core && dart analyze --fatal-infos                                # clean
-cd client/module_core && dart test test/cubits/session_detail test/cubits/project_list test/cubits/session_diffs test/services/loaded_state_analytics_reporter_test.dart test/services/product_analytics_service_test.dart  # 308 passing
+cd client/module_core && dart test test/cubits/session_detail test/cubits/project_list test/cubits/session_diffs test/services/loaded_state_analytics_reporter_test.dart test/services/product_analytics_service_test.dart test/services/installation_analytics_service_test.dart  # 312 passing
 cd client/app && flutter analyze --fatal-infos                                     # clean
 cd client/app && flutter test test/features/session_detail                         # 240 passing
 cd client/module_desktop_core && dart analyze --fatal-infos                        # clean
