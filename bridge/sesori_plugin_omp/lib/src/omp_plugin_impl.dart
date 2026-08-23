@@ -204,7 +204,6 @@ class OmpPlugin._({
     _agentInitiatedTurnFences.add(sessionId);
     _settleTrackedAgentInitiatedTurn(sessionId: sessionId);
     await super.deleteSession(sessionId);
-    _agentInitiatedTurnFences.remove(sessionId);
     _ompSessionOptionsService.forgetSession(sessionId: sessionId);
   }
 
@@ -269,17 +268,17 @@ class OmpPlugin._({
     await super.abortSession(sessionId: sessionId);
   }
 
-  void _clearAgentInitiatedTurnTimers() {
-    for (final turn in _agentInitiatedTurns.values) {
-      turn.timer?.cancel();
+  void _fenceAndSettleAgentInitiatedTurns() {
+    final sessionIds = _agentInitiatedTurns.keys.toList(growable: false);
+    _agentInitiatedTurnFences.addAll(sessionIds);
+    for (final sessionId in sessionIds) {
+      _settleTrackedAgentInitiatedTurn(sessionId: sessionId);
     }
-    _agentInitiatedTurns.clear();
-    _agentInitiatedTurnFences.clear();
   }
 
   @override
   void onConnectionReset() {
-    _clearAgentInitiatedTurnTimers();
+    _fenceAndSettleAgentInitiatedTurns();
     _ompSessionOptionsService.resetConnection();
   }
 
@@ -294,7 +293,7 @@ class OmpPlugin._({
 
   @override
   Future<void> dispose() async {
-    _clearAgentInitiatedTurnTimers();
+    _fenceAndSettleAgentInitiatedTurns();
     try {
       await _catalogService.dispose();
     } on Object catch (error, stack) {

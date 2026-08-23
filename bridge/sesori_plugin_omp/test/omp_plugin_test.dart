@@ -18,7 +18,7 @@ void main() {
       events = [];
       plugin = OmpPlugin(
         launchDirectory: "/repo",
-        agentInitiatedTurnQuietPeriod: const Duration(milliseconds: 100),
+        agentInitiatedTurnQuietPeriod: const Duration(milliseconds: 500),
         processFactory: (spec) async {
           launchSpec = spec;
           return fake;
@@ -147,7 +147,7 @@ void main() {
       expect(events.whereType<BridgeSseSessionUpdated>(), hasLength(1));
       expect(events.whereType<BridgeSseSessionStatus>(), hasLength(1));
 
-      await Future<void>.delayed(const Duration(milliseconds: 60));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
       fake.emit({
         "jsonrpc": "2.0",
         "method": AcpMethods.sessionUpdate,
@@ -159,9 +159,9 @@ void main() {
           },
         },
       });
-      await Future<void>.delayed(const Duration(milliseconds: 60));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
       expect(plugin.getActiveSessionsSummary(), isNotEmpty, reason: "later work must re-arm the quiet window");
-      await Future<void>.delayed(const Duration(milliseconds: 70));
+      await Future<void>.delayed(const Duration(milliseconds: 450));
 
       expect(plugin.getActiveSessionsSummary(), isEmpty);
       expect((await plugin.getSessionStatuses())[session.id], isA<PluginSessionStatusIdle>());
@@ -287,6 +287,22 @@ void main() {
       expect(plugin.getActiveSessionsSummary(), isEmpty);
       expect(await plugin.getSessionStatuses(), isNot(contains(session.id)));
       expect(events.whereType<BridgeSseSessionIdle>(), hasLength(1));
+      events.clear();
+      plugin.handleAgentNotification(
+        AcpNotification(
+          method: AcpMethods.sessionUpdate,
+          params: {
+            "sessionId": session.id,
+            "update": {
+              "sessionUpdate": "agent_message_chunk",
+              "content": {"type": "text", "text": "Late deleted-session output"},
+            },
+          },
+        ),
+      );
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(events.whereType<BridgeSseSessionStatus>(), isEmpty);
     });
 
     test("process reset emits idle for a vouched turn", () async {
@@ -313,6 +329,22 @@ void main() {
       expect(plugin.getActiveSessionsSummary(), isEmpty);
       expect(plugin.currentWorkState, PluginWorkState.unknown);
       expect(events.whereType<BridgeSseSessionIdle>(), hasLength(1));
+      events.clear();
+      plugin.handleAgentNotification(
+        AcpNotification(
+          method: AcpMethods.sessionUpdate,
+          params: {
+            "sessionId": session.id,
+            "update": {
+              "sessionUpdate": "agent_message_chunk",
+              "content": {"type": "text", "text": "Late pre-reset output"},
+            },
+          },
+        ),
+      );
+      expect(plugin.currentWorkState, PluginWorkState.unknown);
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(events.whereType<BridgeSseSessionStatus>(), isEmpty);
     });
 
     test("does not prompt after a partially applied model selection", () async {
@@ -713,7 +745,7 @@ void main() {
       final specs = <AcpLaunchSpec>[];
       plugin = OmpPlugin(
         launchDirectory: "/repo",
-        agentInitiatedTurnQuietPeriod: const Duration(milliseconds: 100),
+        agentInitiatedTurnQuietPeriod: const Duration(milliseconds: 500),
         processFactory: (spec) async {
           specs.add(spec);
           final process = FakeAcpProcess();
