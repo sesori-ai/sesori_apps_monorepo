@@ -810,9 +810,8 @@ class ChatHistoryService({
     }
   }
 
-  Future<void> _enqueue({required String sessionId, required Future<void> Function() write}) {
-    return _enqueueAll(sessionIds: [sessionId], write: write);
-  }
+  Future<void> _enqueue({required String sessionId, required Future<void> Function() write}) =>
+      _writeLock.use(key: sessionId, operation: write);
 
   /// Runs [read] after the session's pending writes and holds the queue for
   /// its duration, so a write enqueued while it runs commits after it rather
@@ -827,21 +826,27 @@ class ChatHistoryService({
 
   /// Runs [write] after every listed session's pending writes, and holds all
   /// listed session lanes for its duration.
+  ///
+  /// Deadlock-freedom rests on submitting every reservation in this one
+  /// synchronous burst: `use` takes its FIFO position on each lane before
+  /// returning, so two multi-session writes meet in the same relative order on
+  /// every lane they share. Do not await between the submissions. Duplicate
+  /// ids collapse to one lane because a second reservation on the same lane
+  /// would wait behind the first forever.
   Future<void> _enqueueAll({required List<String> sessionIds, required Future<void> Function() write}) async {
-    final orderedSessionIds = sessionIds.toSet().toList()..sort();
-    final acquired = [for (final _ in orderedSessionIds) Completer<void>()];
+    final lanes = [for (final sessionId in sessionIds.toSet()) (sessionId: sessionId, acquired: Completer<void>())];
     final release = Completer<void>();
     final reservations = [
-      for (var index = 0; index < orderedSessionIds.length; index++)
+      for (final lane in lanes)
         _writeLock.use(
-          key: orderedSessionIds[index],
+          key: lane.sessionId,
           operation: () async {
-            acquired[index].complete();
+            lane.acquired.complete();
             await release.future;
           },
         ),
     ];
-    await Future.wait([for (final lane in acquired) lane.future]);
+    await Future.wait([for (final lane in lanes) lane.acquired.future]);
     try {
       await write();
     } finally {

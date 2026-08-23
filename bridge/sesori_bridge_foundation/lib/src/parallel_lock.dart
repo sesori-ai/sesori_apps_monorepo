@@ -1,11 +1,13 @@
-import "dart:async" show Completer, FutureOr;
+import "dart:async" show Completer, FutureOr, unawaited;
 import "dart:collection" show Queue;
+
+import "pending_operations.dart";
 
 /// Runs at most [maxParallelOperations] callbacks at once in FIFO order.
 final class ParallelLock({required int maxParallelOperations}) {
   final Queue<Completer<void>> _waiters = Queue<Completer<void>>();
   int _availablePermits = _validateMaxParallelOperations(maxParallelOperations);
-  final Set<Future<void>> _pending = {};
+  final PendingOperations _pending = PendingOperations();
 
   static int _validateMaxParallelOperations(int maxParallelOperations) {
     if (maxParallelOperations < 1) {
@@ -14,21 +16,21 @@ final class ParallelLock({required int maxParallelOperations}) {
     return maxParallelOperations;
   }
 
-  Future<void> get idle => Future.wait<void>(_pending);
+  /// Completes once every operation accepted before this call has settled,
+  /// whether it succeeded or failed. Operations submitted later are not awaited.
+  Future<void> get idle => _pending.drain();
 
-  Future<T> use<T>({required FutureOr<T> Function() operation}) {
+  /// Queues [operation] synchronously — before this call returns it is already
+  /// covered by [idle] and holds its FIFO position — then runs it once a permit
+  /// is free. The lane is released whether [operation] succeeds or throws.
+  Future<T> use<T>({required FutureOr<T> Function() operation}) async {
     final completed = Completer<void>();
-    _pending.add(completed.future);
-    return _run(operation: operation, completed: completed);
-  }
-
-  Future<T> _run<T>({required FutureOr<T> Function() operation, required Completer<void> completed}) async {
+    unawaited(_pending.track(operation: completed.future));
     await _acquire();
     try {
       return await operation();
     } finally {
       _release();
-      _pending.remove(completed.future);
       completed.complete();
     }
   }
@@ -67,8 +69,7 @@ final class KeyedParallelLock<K>() {
     final entry = _entries.putIfAbsent(key, _KeyedLockEntry.new);
     entry.users++;
     return entry.lock.use(operation: operation).whenComplete(() {
-      entry.users--;
-      if (entry.users == 0 && identical(_entries[key], entry)) _entries.remove(key);
+      if (--entry.users == 0) _entries.remove(key);
     });
   }
 }
