@@ -1,7 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../api/database/daos/session_dao.dart";
 import "../runtime/plugin_runtime.dart";
 import "models/session_operation.dart";
 import "pending_interaction_support.dart";
@@ -15,9 +14,10 @@ import "pending_interaction_support.dart";
 /// Also maps the wire-format [PermissionReply] (from `sesori_shared`) to the
 /// plugin-contract [plugin_interface.PermissionReply] to keep the two enums
 /// decoupled.
-class PermissionRepository({required final PluginRuntime _runtime, required final SessionDao _sessionDao}) {
-  late final PendingInteractionSupport _pendingSupport = PendingInteractionSupport(sessionDao: _sessionDao);
-
+class PermissionRepository({
+  required final PluginRuntime _runtime,
+  required final PendingInteractionSupport _pendingSupport,
+}) {
   /// Pending permissions to surface on [sessionId]'s screen (its own plus any
   /// descendant session whose root resolves to it).
   Future<List<PendingPermission>> getPendingPermissions({required String sessionId}) async {

@@ -1,4 +1,5 @@
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/repositories/pending_interaction_support.dart";
 import "package:sesori_bridge/src/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/repositories/question_repository.dart";
 import "package:test/test.dart";
@@ -37,6 +38,7 @@ void main() {
     test("questions report none without asking the plugin", () async {
       final repository = QuestionRepository(
         runtime: runtime,
+        pendingSupport: PendingInteractionSupport(sessionDao: database.sessionDao),
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         aggregateSourceDeadline: const Duration(seconds: 5),
@@ -54,7 +56,7 @@ void main() {
     test("permissions report none without asking the plugin", () async {
       final repository = PermissionRepository(
         runtime: runtime,
-        sessionDao: database.sessionDao,
+        pendingSupport: PendingInteractionSupport(sessionDao: database.sessionDao),
       );
       runtime.stoppedPluginIds.add(plugin.id);
 
@@ -76,6 +78,7 @@ void main() {
     test("a running backend is still asked", () async {
       final repository = QuestionRepository(
         runtime: runtime,
+        pendingSupport: PendingInteractionSupport(sessionDao: database.sessionDao),
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         aggregateSourceDeadline: const Duration(seconds: 5),

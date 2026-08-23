@@ -34,9 +34,9 @@ git diff --numstat 0491271256e8714d0e0c58a18742fa20830555be -- .plan
 git diff --shortstat 0491271256e8714d0e0c58a18742fa20830555be -- bridge/app/lib bridge/app/test bridge/app/tool .plan
 ```
 
-Final rows: production `406 insertions, 592 deletions`; app tests `209
-insertions, 165 deletions`; tools `4 insertions, 14 deletions`; plan evidence
-`61 insertions, 0 deletions`. Combined: `58 files changed, 680 insertions, 771
+Final rows: production `412 insertions, 595 deletions`; app tests `220
+insertions, 167 deletions`; tools `4 insertions, 14 deletions`; plan evidence
+`61 insertions, 0 deletions`. Combined: `59 files changed, 697 insertions, 776
 deletions`. Excluded scope: files outside `bridge/app/{lib,test,tool}` and
 `.plan`.
 

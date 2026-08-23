@@ -15,12 +15,12 @@ import "pending_interaction_support.dart";
 /// wire models so routing handlers stay plugin-agnostic.
 class QuestionRepository({
   required final PluginRuntime _runtime,
+  required final PendingInteractionSupport _pendingSupport,
   required final SessionDao _sessionDao,
   required final ProjectsDao _projectsDao,
   required final Duration _aggregateSourceDeadline,
 }) {
   static const DerivedSessionBuilder _derivedSessionBuilder = DerivedSessionBuilder();
-  late final PendingInteractionSupport _pendingSupport = PendingInteractionSupport(sessionDao: _sessionDao);
 
   /// Pending questions to surface on [sessionId]'s screen (its own plus any
   /// descendant session whose root resolves to it).
