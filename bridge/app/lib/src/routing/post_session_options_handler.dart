@@ -55,11 +55,7 @@ class PostSessionOptionsHandler({
     }
 
     return switch (outcome) {
-      SessionOptionsAvailable(:final response) => _jsonResponse(
-        request: request,
-        status: 200,
-        body: response.toJson(),
-      ),
+      SessionOptionsAvailable(:final response) => buildOkJsonResponse(request, response.toJson()),
       SessionOptionsCacheUnavailable() => _error(
         request: request,
         status: 503,
@@ -93,17 +89,5 @@ class PostSessionOptionsHandler({
     required RelayRequest request,
     required int status,
     required SessionOptionsErrorCode code,
-  }) {
-    return _jsonResponse(
-      request: request,
-      status: status,
-      body: SessionOptionsErrorResponse(code: code).toJson(),
-    );
-  }
-
-  RelayResponse _jsonResponse({
-    required RelayRequest request,
-    required int status,
-    required Map<String, dynamic> body,
-  }) => buildJsonErrorResponse(request, status, body);
+  }) => buildJsonErrorResponse(request, status, SessionOptionsErrorResponse(code: code).toJson());
 }
