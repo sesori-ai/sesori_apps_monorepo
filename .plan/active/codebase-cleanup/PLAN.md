@@ -743,13 +743,13 @@ All verified with whole-word grep over lib, bin, and test across the repo.
 - Hand-rolled "await previous; try; finally release" tails with divergent error
   policy: single tails at `project_mutation_service.dart:25,65-69`,
   `project_activity_service.dart:19,167-174`, `session_unseen_service.dart:57,361-374`,
-  `bridge_settings_repository.dart:19,84-111`, `chat_history_service.dart:55,209-240`,
-  `session_options_service.dart:170-199`; keyed tails at
+  `bridge_settings_repository.dart:19,84-111`, `chat_history_service.dart:55,209-240`;
+  keyed tails at `session_options_service.dart:170-199`,
   `chat_history_service.dart:824-858` (`_enqueueRead`/`_enqueueAll`
   near-duplicates) and `session_event_dispatcher.dart:108-147`.
   `sesori_bridge_foundation/lib/src/parallel_lock.dart:5-43` is an error-safe
   FIFO lane used once (`project_repository.dart:33`).
-- Change: Phase A — six single tails → `ParallelLock(maxParallelOperations: 1)`
+- Change: Phase A — five single tails → `ParallelLock(maxParallelOperations: 1)`
   plus a new `Future<void> get idle` on `ParallelLock` that resolves when no
   operation is running or queued at call time (later enqueues are not awaited —
   the same meaning as today's `await _writeTail` at dispose); Phase B — a
@@ -757,7 +757,8 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   (`use({required K key, required Future<T> Function() operation})`, per-key
   `idle`, entries removed when idle — required named parameters like the
   existing `ParallelLock.use(operation:)`) for the
-  two keyed sites; `ChatHistoryService._enqueueAll` stays a private method of
+  three keyed sites (including the already key-scoped session-options
+  invalidations); `ChatHistoryService._enqueueAll` stays a private method of
   that service expressed as ordered acquisition of the per-key locks, and
   `_enqueueRead` becomes a one-line `use`. Unifying the divergent per-site
   error policy onto the lock's error-safe release is an intentional behavior

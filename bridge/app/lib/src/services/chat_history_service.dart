@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:typed_data";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show KeyedParallelLock, ParallelLock;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -50,9 +51,9 @@ class ChatHistoryService({
   required final AttachmentThumbnailBuilder _attachmentThumbnailBuilder,
   required final BridgeIdProvider _bridgeIdProvider,
 }) {
-  final Map<String, Future<void>> _writeQueues = {};
+  final KeyedParallelLock<String> _writeLock = KeyedParallelLock<String>();
   final Map<String, Future<void>> _inFlightBackfills = {};
-  Future<void> _thumbnailGenerationLane = Future.value();
+  final ParallelLock _thumbnailGenerationLock = ParallelLock(maxParallelOperations: 1);
 
   /// One page of the session's messages, served from the store whenever it is
   /// known to be current and falling back to the backend otherwise.
@@ -206,38 +207,38 @@ class ChatHistoryService({
     required AttachmentStorageScope storageScope,
     required String attachmentId,
   }) {
-    final result = _thumbnailGenerationLane.then((_) async {
-      final original = await _chatHistoryRepository.readStoredAttachment(
-        storageScope: storageScope,
-        attachmentId: attachmentId,
-      );
-      if (original == null) return const SessionAttachmentMissing();
-      if (original.length > maxTranscriptImageBytes) {
-        return const SessionAttachmentTooLarge();
-      }
-      final built = await _attachmentThumbnailBuilder.build(bytes: original);
-      return switch (built) {
-        AttachmentThumbnailRendered(:final bytes, :final format) =>
-          await _chatHistoryRepository.writeStoredAttachmentThumbnail(
-                storageScope: storageScope,
-                attachmentId: attachmentId,
-                format: format,
-                bytes: bytes,
-              )
-              ? SessionAttachmentFound(bytes: bytes, mime: format.mime)
-              : const SessionAttachmentMissing(),
-        AttachmentThumbnailUnsupported() => const SessionAttachmentUnsupported(),
-        AttachmentThumbnailTooLarge() => const SessionAttachmentTooLarge(),
-        AttachmentThumbnailFailed(:final cause, :final stackTrace) => _logThumbnailFailure(
-          sessionId: sessionId,
+    return _thumbnailGenerationLock.use(
+      operation: () async {
+        final original = await _chatHistoryRepository.readStoredAttachment(
+          storageScope: storageScope,
           attachmentId: attachmentId,
-          cause: cause,
-          stackTrace: stackTrace,
-        ),
-      };
-    });
-    _thumbnailGenerationLane = result.then<void>((_) {}, onError: (Object _) {});
-    return result;
+        );
+        if (original == null) return const SessionAttachmentMissing();
+        if (original.length > maxTranscriptImageBytes) {
+          return const SessionAttachmentTooLarge();
+        }
+        final built = await _attachmentThumbnailBuilder.build(bytes: original);
+        return switch (built) {
+          AttachmentThumbnailRendered(:final bytes, :final format) =>
+            await _chatHistoryRepository.writeStoredAttachmentThumbnail(
+                  storageScope: storageScope,
+                  attachmentId: attachmentId,
+                  format: format,
+                  bytes: bytes,
+                )
+                ? SessionAttachmentFound(bytes: bytes, mime: format.mime)
+                : const SessionAttachmentMissing(),
+          AttachmentThumbnailUnsupported() => const SessionAttachmentUnsupported(),
+          AttachmentThumbnailTooLarge() => const SessionAttachmentTooLarge(),
+          AttachmentThumbnailFailed(:final cause, :final stackTrace) => _logThumbnailFailure(
+            sessionId: sessionId,
+            attachmentId: attachmentId,
+            cause: cause,
+            stackTrace: stackTrace,
+          ),
+        };
+      },
+    );
   }
 
   SessionAttachmentResult _logThumbnailFailure({
@@ -821,39 +822,31 @@ class ChatHistoryService({
   /// reads are bounded local queries. Attachment rendition reads deliberately
   /// hold the queue through decode and derived-file persistence so archive or
   /// purge cannot invalidate their selected source underneath them.
-  Future<T> _enqueueRead<T>({required String sessionId, required Future<T> Function() read}) {
-    final pending = _writeQueues[sessionId] ?? Future<void>.value();
-    final result = pending.then((_) => read());
-    final tail = result.then<void>((_) {}, onError: (Object _) {});
-    _writeQueues[sessionId] = tail;
-    unawaited(
-      tail.whenComplete(() {
-        if (identical(_writeQueues[sessionId], tail)) _writeQueues.remove(sessionId);
-      }),
-    );
-    return result;
-  }
+  Future<T> _enqueueRead<T>({required String sessionId, required Future<T> Function() read}) =>
+      _writeLock.use(key: sessionId, operation: read);
 
-  /// Runs [write] after every listed session's pending writes, and makes it
-  /// the new tail for all of them.
-  Future<void> _enqueueAll({required List<String> sessionIds, required Future<void> Function() write}) {
-    final pending = Future.wait([
-      for (final sessionId in sessionIds) _writeQueues[sessionId] ?? Future<void>.value(),
-    ]);
-    final result = pending.then((_) => write());
-    // The queue continues from a swallowed copy so one failed write does not
-    // poison later writes for the session; the caller still sees the error.
-    final tail = result.then<void>((_) {}, onError: (Object _) {});
-    for (final sessionId in sessionIds) {
-      _writeQueues[sessionId] = tail;
+  /// Runs [write] after every listed session's pending writes, and holds all
+  /// listed session lanes for its duration.
+  Future<void> _enqueueAll({required List<String> sessionIds, required Future<void> Function() write}) async {
+    final orderedSessionIds = sessionIds.toSet().toList()..sort();
+    final acquired = [for (final _ in orderedSessionIds) Completer<void>()];
+    final release = Completer<void>();
+    final reservations = [
+      for (var index = 0; index < orderedSessionIds.length; index++)
+        _writeLock.use(
+          key: orderedSessionIds[index],
+          operation: () async {
+            acquired[index].complete();
+            await release.future;
+          },
+        ),
+    ];
+    await Future.wait([for (final lane in acquired) lane.future]);
+    try {
+      await write();
+    } finally {
+      release.complete();
+      await Future.wait(reservations);
     }
-    unawaited(
-      tail.whenComplete(() {
-        for (final sessionId in sessionIds) {
-          if (identical(_writeQueues[sessionId], tail)) _writeQueues.remove(sessionId);
-        }
-      }),
-    );
-    return result;
   }
 }

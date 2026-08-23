@@ -56,7 +56,9 @@ variant, and worktree mode, and creating the session with its first input.
   behind it; the surface never names that split, because the user cannot act on
   it and the line above the composer already says what is missing.
 - Concurrent requests coalesce; an incomplete observation never replaces a
-  complete cached one, and a moved project invalidates its entries.
+  complete cached one, and a moved project invalidates its entries. Rejected-selection
+  invalidation keeps its epoch checks before serving or committing, so a retained
+  snapshot invalidated during discovery is not served once.
 - Backend notifications use scoped event domains: Codex skill changes emit a
   command-catalog invalidation rather than project activity, while MCP startup
   changes remain MCP-tool events.

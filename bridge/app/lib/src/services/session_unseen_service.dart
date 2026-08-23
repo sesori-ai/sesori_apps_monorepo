@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ParallelLock;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../repositories/project_repository.dart";
@@ -54,7 +55,7 @@ class SessionUnseenService({
   /// (aggregate=false) could be emitted after "B got activity" (aggregate=true)
   /// and leave clients with a stale `false`. The operations are tiny,
   /// infrequent DB writes, so the reduced concurrency is irrelevant.
-  Future<void> _writeTail = Future<void>.value();
+  final ParallelLock _writeLock = ParallelLock(maxParallelOperations: 1);
 
   this {
     _viewStartsSubscription = _viewTracker.viewStarts.listen(_onViewStarted);
@@ -350,8 +351,7 @@ class SessionUnseenService({
     );
   }
 
-  /// Runs [operation] after any in-flight unseen write completes (see
-  /// [_writeTail] for why ordering is global).
+  /// Runs [operation] after any in-flight unseen write completes.
   ///
   /// By default failures are caught and logged so fire-and-forget callers (the
   /// orchestrator's SSE path) never see an unhandled async error. User-initiated
@@ -363,21 +363,18 @@ class SessionUnseenService({
     Future<void> Function() operation, {
     bool rethrowErrors = false,
   }) {
-    // The chain must continue regardless of this op's outcome, so the tail used
-    // for ordering swallows errors; the returned future (for the caller) may
-    // rethrow when requested.
-    final result = _writeTail.then((_) => operation());
-    _writeTail = result.catchError((Object error, StackTrace stackTrace) {
+    final result = _writeLock.use(operation: operation);
+    if (rethrowErrors) return result;
+    return result.catchError((Object error, StackTrace stackTrace) {
       Log.w("unseen update failed for $contextId", error, stackTrace);
     });
-    return rethrowErrors ? result : _writeTail;
   }
 
   Future<void> dispose() async {
     await _viewStartsSubscription?.cancel();
-    // Let the in-flight write queue drain (the tail swallows errors) before
-    // closing the stream, so no operation runs against a closed controller.
-    await _writeTail.catchError((_) {});
+    // Let the in-flight write queue drain before closing the stream, so no
+    // operation runs against a closed controller.
+    await _writeLock.idle;
     await _changes.close();
   }
 }

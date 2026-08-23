@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show KeyedParallelLock;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -52,7 +53,7 @@ class SessionOptionsService({
 
   final Map<String, PluginSessionOptionsScope> _pluginScopes = Map<String, PluginSessionOptionsScope>.unmodifiable(pluginScopes);
   final Map<SessionOptionsCacheKey, _RefreshCoordinator> _refreshes = {};
-  final Map<SessionOptionsCacheKey, Future<void>> _invalidations = {};
+  final KeyedParallelLock<SessionOptionsCacheKey> _invalidationLock = KeyedParallelLock<SessionOptionsCacheKey>();
   final Map<SessionOptionsCacheKey, int> _invalidationEpochs = {};
 
   Future<SessionOptionsOutcome> loadDynamic({
@@ -175,28 +176,12 @@ class SessionOptionsService({
     if (resolved == null) return;
     final key = resolved.key;
     _invalidationEpochs[key] = _invalidationEpoch(key: key) + 1;
-    Future<void> delete() => _repository.delete(key: key);
-    final prior = _invalidations[key];
-    final invalidation = prior == null
-        ? Future<void>.sync(delete)
-        : prior.then((_) => delete(), onError: (Object _, StackTrace _) => delete());
-    _invalidations[key] = invalidation;
-    try {
-      await invalidation;
-    } finally {
-      // Identity-checked: a later rejection may already have chained its own
-      // delete onto this one and now owns the slot.
-      _invalidations.removeWhere((pending, entry) => pending == key && identical(entry, invalidation));
-    }
+    await _invalidationLock.use(key: key, operation: () => _repository.delete(key: key));
   }
 
   /// Holds a commit until every delete already issued for [key] has settled,
   /// so a snapshot captured after a rejection survives the delete that raced it.
-  Future<void> _awaitInvalidation({required SessionOptionsCacheKey key}) async {
-    final invalidation = _invalidations[key];
-    if (invalidation == null) return;
-    await invalidation.then<void>((_) {}, onError: (Object _, StackTrace _) {});
-  }
+  Future<void> _awaitInvalidation({required SessionOptionsCacheKey key}) => _invalidationLock.idleFor(key: key);
 
   int _invalidationEpoch({required SessionOptionsCacheKey key}) => _invalidationEpochs[key] ?? 0;
 
