@@ -1,3 +1,5 @@
+import "dart:math" as math;
+
 import "package:material_ui/material_ui.dart";
 
 import "../../module_prego.dart";
@@ -203,6 +205,8 @@ class const PregoBottomSheet({
   }
 }
 
+enum PregoBottomSheetBodySize() { natural, seventyPercent, full }
+
 /// Presents a [PregoBottomSheet] as a modal route and returns the value it is
 /// popped with.
 ///
@@ -226,6 +230,7 @@ Future<T?> showPregoBottomSheet<T>({
   ),
   bool handleBottomSafeArea = true,
   bool isDismissible = true,
+  PregoBottomSheetBodySize bodySize = PregoBottomSheetBodySize.natural,
 }) {
   // Capture the real status-bar inset here, from the presenting context: the
   // modal route strips the top padding from the sheet's own MediaQuery, so the
@@ -242,23 +247,35 @@ Future<T?> showPregoBottomSheet<T>({
     // Keep swipe-down consistent with the scrim: a non-dismissible sheet must
     // not be drag-dismissable either (enableDrag defaults to true otherwise).
     enableDrag: isDismissible,
-    builder: (sheetContext) => PregoBottomSheet(
-      title: title,
-      subtitle: subtitle,
-      alignment: alignment,
-      actions: actions,
-      onBack: onBack,
-      leading: leading,
-      surfaceColor: surfaceColor,
-      contentPadding: contentPadding,
-      handleBottomSafeArea: handleBottomSafeArea,
-      topInset: topInset,
-      // Pops the modal route this helper pushed (always dismissible). This
-      // design module has no go_router dependency, so it pops the sheet's own
-      // Navigator route directly.
-      // ignore: no_slop_linter/avoid_navigator_of, design module has no go_router dep; pops the modal route this helper pushed
-      onClose: () => Navigator.of(sheetContext).pop(),
-      child: builder(sheetContext),
-    ),
+    builder: (sheetContext) {
+      Widget body = builder(sheetContext);
+      if (bodySize != PregoBottomSheetBodySize.natural) {
+        final screenHeight = MediaQuery.heightOf(sheetContext);
+        final keyboard = MediaQuery.viewInsetsOf(sheetContext).bottom;
+        final maxBody = math.max(0.0, screenHeight - topInset - PregoBottomSheet.contentTopInset - keyboard);
+        final preferredHeight = switch (bodySize) {
+          PregoBottomSheetBodySize.natural => maxBody,
+          PregoBottomSheetBodySize.seventyPercent => math.min(screenHeight * 0.7 - keyboard, maxBody),
+          PregoBottomSheetBodySize.full => maxBody,
+        };
+        final height = math.min(math.max(preferredHeight, screenHeight * 0.3), maxBody);
+        body = SizedBox(height: height, child: body);
+      }
+      return PregoBottomSheet(
+        title: title,
+        subtitle: subtitle,
+        alignment: alignment,
+        actions: actions,
+        onBack: onBack,
+        leading: leading,
+        surfaceColor: surfaceColor,
+        contentPadding: contentPadding,
+        handleBottomSafeArea: handleBottomSafeArea,
+        topInset: topInset,
+        // ignore: no_slop_linter/avoid_navigator_of, design module has no go_router dep; pops the modal route this helper pushed
+        onClose: () => Navigator.of(sheetContext).pop(),
+        child: body,
+      );
+    },
   );
 }

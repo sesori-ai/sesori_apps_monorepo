@@ -4,7 +4,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
-import "../../../core/extensions/remote_failure_x.dart";
+import "../../../core/widgets/remote_failure_view.dart";
 
 /// A floating call-to-action pinned below the top bar when the session has a
 /// pending question or permission. Rendered as a semantic-tinted liquid-glass
@@ -77,30 +77,11 @@ class const SessionDetailErrorView({
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: context.prego.colors.fgErrorPrimary),
-            const SizedBox(height: 16),
-            Text(loc.sessionDetailErrorTitle, style: context.prego.textTheme.textMd.bold),
-            const SizedBox(height: 8),
-            Text(
-              reason.localizedMessage(loc),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: Text(loc.sessionDetailRetry),
-            ),
-          ],
-        ),
-      ),
+    return RemoteFailureView(
+      reason: reason,
+      title: loc.sessionDetailErrorTitle,
+      retryLabel: loc.sessionDetailRetry,
+      onRetry: onRetry,
     );
   }
 }

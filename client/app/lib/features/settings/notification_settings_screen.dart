@@ -124,14 +124,10 @@ class const _NotificationSettingsBody() extends StatelessWidget {
 class const _NotificationPreferencesUnavailable() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return PregoGroupedRows(
-      children: [
-        PregoGroupedRow(
-          icon: TablerRegular.info_circle,
-          title: Text(context.loc.notificationPreferencesUnavailableTitle),
-          subtitle: Text(context.loc.notificationPreferencesUnavailableDescription),
-        ),
-      ],
+    return PregoGroupedNoticeRow(
+      icon: TablerRegular.info_circle,
+      title: Text(context.loc.notificationPreferencesUnavailableTitle),
+      subtitle: Text(context.loc.notificationPreferencesUnavailableDescription),
     );
   }
 }
@@ -139,21 +135,17 @@ class const _NotificationPreferencesUnavailable() extends StatelessWidget {
 class const _NotificationPreferencesFailure() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return PregoGroupedRows(
-      children: [
-        PregoGroupedRow(
-          icon: TablerRegular.alert_triangle,
-          title: Text(context.loc.notificationPreferencesLoadFailedTitle),
-          subtitle: Text(context.loc.notificationPreferencesLoadFailedDescription),
-          trailing: PregoButtonsSolid(
+    return PregoGroupedNoticeRow(
+      icon: TablerRegular.alert_triangle,
+      title: Text(context.loc.notificationPreferencesLoadFailedTitle),
+      subtitle: Text(context.loc.notificationPreferencesLoadFailedDescription),
+      trailing: PregoButtonsSolid(
             key: const Key("notification_preferences_retry"),
             label: context.loc.notificationPreferencesRetry,
             hierarchy: PregoButtonsSolidHierarchy.tertiary,
             size: PregoButtonsSolidSize.sm,
             onPressed: context.read<NotificationPreferencesCubit>().retry,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

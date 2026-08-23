@@ -1,5 +1,3 @@
-import "dart:math" as math;
-
 import "package:flutter/foundation.dart" show kIsWeb;
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
@@ -26,31 +24,16 @@ class const PromptEditorSheet({
     required Action<PasteTextIntent> pasteAction,
     required EditableTextContextMenuBuilder contextMenuBuilder,
   }) {
-    // Status-bar inset, captured before presenting: the modal route strips
-    // the top inset from both `padding` and `viewPadding`, so inside the
-    // sheet it reads as 0.
-    final topInset = MediaQuery.paddingOf(context).top;
     return showPregoBottomSheet<void>(
       context: context,
       title: context.loc.sessionDetailEditorTitle,
-      builder: (sheetContext) {
-        // Fill the space between the status bar and the keyboard so the sheet
-        // always rises to full height; the field hosts its own scrolling, so
-        // it needs this bounded height (the sheet re-adds the keyboard inset
-        // below the body).
-        final screenHeight = MediaQuery.heightOf(sheetContext);
-        final keyboard = MediaQuery.viewInsetsOf(sheetContext).bottom;
-        final height = screenHeight - topInset - PregoBottomSheet.contentTopInset - keyboard;
-        return SizedBox(
-          height: math.max(height, screenHeight * 0.3),
-          child: PromptEditorSheet(
-            controller: controller,
-            placeholder: placeholder,
-            pasteAction: pasteAction,
-            contextMenuBuilder: contextMenuBuilder,
-          ),
-        );
-      },
+      bodySize: PregoBottomSheetBodySize.full,
+      builder: (_) => PromptEditorSheet(
+        controller: controller,
+        placeholder: placeholder,
+        pasteAction: pasteAction,
+        contextMenuBuilder: contextMenuBuilder,
+      ),
     );
   }
 

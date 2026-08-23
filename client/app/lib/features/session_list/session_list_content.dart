@@ -5,7 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
-import "../../core/extensions/remote_failure_x.dart";
+import "../../core/widgets/remote_failure_view.dart";
 import "session_archived_empty_state.dart";
 import "session_empty_state.dart";
 import "session_list_action_dispatcher.dart";
@@ -97,44 +97,13 @@ class const SessionListContent({
       ),
       SessionListFailed(:final reason) => SliverFillRemaining(
         hasScrollBody: false,
-        child: _ErrorView(
+        child: RemoteFailureView(
           reason: reason,
+          title: context.loc.sessionListErrorTitle,
+          retryLabel: context.loc.sessionListRetry,
           onRetry: () => context.read<SessionListCubit>().retryLoadSessions(),
         ),
       ),
     };
-  }
-}
-
-class const _ErrorView({required final RemoteFailureReason reason, required final VoidCallback onRetry})
-    extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.loc;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: context.prego.colors.fgErrorPrimary),
-            const SizedBox(height: 16),
-            Text(loc.sessionListErrorTitle, style: context.prego.textTheme.textMd.bold),
-            const SizedBox(height: 8),
-            Text(
-              reason.localizedMessage(loc),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: Text(loc.sessionListRetry),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

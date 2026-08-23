@@ -46,6 +46,9 @@ entirely along with its transcript and, optionally, its worktree.
   cleanup for success.
 - Clients present archiving as permanent, hide mutation affordances there, and
   list archived sessions.
+- Archive and delete confirmation sheets identify the action, default worktree
+  cleanup on only when a dedicated worktree exists, and keep deletion's confirm
+  action visually destructive. Cancelling performs neither operation.
 
 ## Regression Levels
 

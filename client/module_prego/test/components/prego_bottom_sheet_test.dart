@@ -174,5 +174,100 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text("Info"), findsNothing);
     });
+
+    testWidgets("sizes a bounded body from the presenting viewport", (tester) async {
+      Future<void> pumpSheet(PregoBottomSheetBodySize bodySize) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(extensions: [PregoDesignSystem.light]),
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => TextButton(
+                  onPressed: () => showPregoBottomSheet<void>(
+                    context: context,
+                    title: "Sized",
+                    bodySize: bodySize,
+                    builder: (_) => const ColoredBox(key: Key("body"), color: Colors.red),
+                  ),
+                  child: const Text("Open"),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text("Open"));
+        await tester.pumpAndSettle();
+      }
+
+      await pumpSheet(PregoBottomSheetBodySize.seventyPercent);
+      expect(tester.getSize(find.byKey(const Key("body"))).height, closeTo(420, 0.5));
+      await tester.tap(find.byIcon(TablerRegular.x));
+      await tester.pumpAndSettle();
+
+      await pumpSheet(PregoBottomSheetBodySize.full);
+      expect(
+        tester.getSize(find.byKey(const Key("body"))).height,
+        closeTo(600 - PregoBottomSheet.contentTopInset, 0.5),
+      );
+    });
+
+    testWidgets("bounded body never exceeds space left above the keyboard", (tester) async {
+      final devicePixelRatio = tester.view.devicePixelRatio;
+      tester.view.viewInsets = FakeViewPadding(bottom: 500 * devicePixelRatio);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showPregoBottomSheet<void>(
+                  context: context,
+                  title: "Sized",
+                  bodySize: PregoBottomSheetBodySize.full,
+                  builder: (_) => const ColoredBox(key: Key("body"), color: Colors.red),
+                ),
+                child: const Text("Open"),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getSize(find.byKey(const Key("body"))).height,
+        closeTo(600 - PregoBottomSheet.contentTopInset - 500, 0.5),
+      );
+    });
+
+    testWidgets("bounded body floors exhausted keyboard space at zero", (tester) async {
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showPregoBottomSheet<void>(
+                  context: context,
+                  title: "Sized",
+                  bodySize: PregoBottomSheetBodySize.full,
+                  builder: (_) => const ColoredBox(key: Key("body"), color: Colors.red),
+                ),
+                child: const Text("Open"),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pump();
+      tester.view.viewInsets = FakeViewPadding(bottom: 700 * tester.view.devicePixelRatio);
+      await tester.pump();
+
+      expect(tester.getSize(find.byKey(const Key("body"))).height, 0);
+    });
   });
 }

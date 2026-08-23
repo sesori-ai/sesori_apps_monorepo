@@ -12,7 +12,6 @@ import "package:theme_prego/module_prego.dart";
 import "../../core/bridge_install.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
-import "../../core/extensions/remote_failure_x.dart";
 import "../../core/extensions/text_style_x.dart";
 import "../../core/external_link.dart";
 import "../../core/routing/app_router.dart";
@@ -20,13 +19,13 @@ import "../../core/support_links.dart";
 import "../../core/utils/copy_text_to_clipboard.dart";
 import "../../core/widgets/connection_banner.dart";
 import "../../core/widgets/connection_graphic.dart";
+import "../../core/widgets/remote_failure_view.dart";
 import "add_project_dialog.dart";
 import "widgets/project_tile.dart";
 
 part "onboarding/onboarding_view.dart";
 part "onboarding/why_bridge_info_sheet.dart";
 part "widgets/bridge_offline_view.dart";
-part "widgets/error_view.dart";
 
 /// Enough placeholder rows to fill a phone screen while the first page loads.
 const int _skeletonRows = 6;
@@ -330,8 +329,10 @@ class _ProjectListBodyState() extends State<_ProjectListBody> {
       ProjectListFailed(:final reason) => [
         SliverFillRemaining(
           hasScrollBody: false,
-          child: _ErrorView(
+          child: RemoteFailureView(
             reason: reason,
+            title: context.loc.projectListErrorTitle,
+            retryLabel: context.loc.projectListRetry,
             onRetry: () => context.read<ProjectListCubit>().retryLoadProjects(),
           ),
         ),

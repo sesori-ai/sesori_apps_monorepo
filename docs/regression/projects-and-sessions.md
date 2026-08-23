@@ -83,6 +83,9 @@ child sessions with titles, activity, statuses, and unseen state.
 - Statuses report per-session idle/busy/retry plus unavailable plugins. A
   payload without plugin attribution means the historical OpenCode identity,
   never "the first enabled plugin".
+- Project and session rename sheets start from the current display name, reject
+  a blank trimmed value, prevent duplicate submission while saving, and show
+  success or failure feedback without losing the failed edit.
 
 ## Regression Levels
 

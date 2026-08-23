@@ -1,16 +1,11 @@
-import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
+import "../../core/widgets/rename_sheet.dart";
 
-/// Shows the Rename Session modal bottom sheet.
-///
-/// The [cubit] is passed explicitly so the dialog can call
-/// `renameSession` without relying on the widget tree's BlocProvider
-/// (which lives in the parent screen).
 Future<void> showRenameSessionDialog({
   required BuildContext context,
   required Session session,
@@ -19,100 +14,17 @@ Future<void> showRenameSessionDialog({
   return showPregoBottomSheet<void>(
     context: context,
     title: context.loc.renameSessionTitle,
-    builder: (_) => _RenameSessionDialog(session: session, cubit: cubit),
+    builder: (_) {
+      final loc = context.loc;
+      return RenameSheet(
+        initialValue: session.title ?? "",
+        hintText: loc.renameSessionHint,
+        saveLabel: loc.renameSave,
+        successMessage: loc.renameSessionSuccess,
+        failureMessage: loc.renameSessionFailed,
+        submitOnEnter: true,
+        onRename: (title) => cubit.renameSession(sessionId: session.id, title: title),
+      );
+    },
   );
-}
-
-class const _RenameSessionDialog({required final Session session, required final SessionListCubit cubit})
-    extends StatefulWidget {
-  @override
-  State<_RenameSessionDialog> createState() => _RenameSessionDialogState();
-}
-
-class _RenameSessionDialogState() extends State<_RenameSessionDialog> {
-  late final TextEditingController _controller;
-  bool _actionLoading = false;
-
-  void _dismissDialog() {
-    context.pop();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.session.title ?? "");
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _onSave() async {
-    final title = _controller.text.trim();
-    if (title.isEmpty) return;
-
-    final popupAlertPresenter = PregoPopupAlertPresenter.of(context);
-    final loc = context.loc;
-
-    setState(() => _actionLoading = true);
-
-    final success = await widget.cubit.renameSession(
-      sessionId: widget.session.id,
-      title: title,
-    );
-
-    if (!mounted) return;
-    setState(() => _actionLoading = false);
-
-    if (success) {
-      _dismissDialog();
-      popupAlertPresenter.show(
-        title: loc.renameSessionSuccess,
-        variant: PregoPopupAlertsNotificationsVariant.success,
-      );
-    } else {
-      popupAlertPresenter.show(
-        title: loc.renameSessionFailed,
-        variant: PregoPopupAlertsNotificationsVariant.error,
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.loc;
-
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(bottom: 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
-            controller: _controller,
-            autofocus: true,
-            decoration: InputDecoration(
-              hintText: loc.renameSessionHint,
-              border: const OutlineInputBorder(),
-            ),
-            onChanged: (_) => setState(() {}),
-            onSubmitted: (_) => _onSave(),
-          ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: _actionLoading || _controller.text.trim().isEmpty ? null : _onSave,
-            child: _actionLoading
-                ? SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: PregoActivityIndicator(color: context.prego.colors.textWhite),
-                  )
-                : Text(loc.renameSave),
-          ),
-        ],
-      ),
-    );
-  }
 }

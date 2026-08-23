@@ -47,6 +47,9 @@ reaches the backend so the turn continues.
   when no plugin is active; after restart, pending state is read from the newly
   active backend.
 - An archived session refuses replies with the archived read-only rejection.
+- Question choices preserve their distinct selected styling, per-question
+  decline semantics, and custom-answer focus/input behavior when their shared
+  tappable sheet chrome changes.
 
 ## Regression Levels
 

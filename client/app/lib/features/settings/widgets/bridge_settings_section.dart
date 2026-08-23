@@ -262,30 +262,23 @@ class _RefreshIntervalSheetState() extends State<_RefreshIntervalSheet> {
             style: context.prego.textTheme.textXs.regular.copyWith(color: context.prego.colors.textSecondary),
           ),
           const SizedBox(height: PregoSpacing.x2l),
-          Row(
-            children: [
-              Expanded(
-                child: PregoButtonsSolid(
+          PregoSheetActions(
+            secondary: PregoButtonsSolid(
                   key: const Key("pull_request_refresh_cancel"),
                   label: context.loc.settingsPullRequestRefreshCancel,
                   hierarchy: PregoButtonsSolidHierarchy.secondary,
                   size: PregoButtonsSolidSize.lg,
                   fullWidth: true,
                   onPressed: () => context.pop(),
-                ),
-              ),
-              const SizedBox(width: PregoSpacing.md),
-              Expanded(
-                child: PregoButtonsSolid(
+            ),
+            primary: PregoButtonsSolid(
                   key: const Key("pull_request_refresh_save"),
                   label: context.loc.settingsPullRequestRefreshSave,
                   hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
                   size: PregoButtonsSolidSize.lg,
                   fullWidth: true,
                   onPressed: _submit,
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
