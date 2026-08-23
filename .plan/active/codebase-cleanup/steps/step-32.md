@@ -75,6 +75,7 @@ cd client/module_core && dart test test/cubits/session_list test/cubits/project_
 cd shared/sesori_shared && dart test test/protocol/framing_test.dart                 # 5 passing
 cd shared/sesori_shared && dart analyze --fatal-infos                               # clean
 cd client/app && flutter test test/capabilities test/core/api                       # 77 passing
+cd client/app && flutter test test/features/session_list                            # 87 passing
 cd client/app && flutter analyze --fatal-infos                                      # clean
 cd client/module_desktop_core && dart analyze --fatal-infos                         # clean
 cd client/desktop && flutter analyze --fatal-infos                                  # clean
