@@ -263,6 +263,32 @@ void main() {
       expect(plugin.getActiveSessionsSummary(), isNotEmpty, reason: "an explicit prompt clears the stop fence");
     });
 
+    test("deletion settles vouched work state", () async {
+      await connect();
+      final session = await create("session-1");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": AcpMethods.sessionUpdate,
+        "params": {
+          "sessionId": session.id,
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "Background work"},
+          },
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+      events.clear();
+
+      await plugin.deleteSession(session.id);
+
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(await plugin.getSessionStatuses(), isNot(contains(session.id)));
+      expect(events.whereType<BridgeSseSessionIdle>(), hasLength(1));
+    });
+
     test("process reset emits idle for a vouched turn", () async {
       await connect();
       final session = await create("session-1");

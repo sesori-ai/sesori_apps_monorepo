@@ -201,11 +201,9 @@ class OmpPlugin._({
 
   @override
   Future<void> deleteSession(String sessionId) async {
-    _agentInitiatedTurnFences.remove(sessionId);
-    _forgetAgentInitiatedTurn(sessionId: sessionId);
+    _agentInitiatedTurnFences.add(sessionId);
+    _settleTrackedAgentInitiatedTurn(sessionId: sessionId);
     await super.deleteSession(sessionId);
-    // Active deletion calls the overridden abort path, which re-adds the
-    // fence while the session settles; a successful delete owns final cleanup.
     _agentInitiatedTurnFences.remove(sessionId);
     _ompSessionOptionsService.forgetSession(sessionId: sessionId);
   }
@@ -242,11 +240,15 @@ class OmpPlugin._({
 
   void _settleAgentInitiatedTurn({required String sessionId, required _OmpAgentInitiatedTurn expected}) {
     if (!identical(_agentInitiatedTurns[sessionId], expected)) return;
-    _agentInitiatedTurns.remove(sessionId);
-    expected.timer?.cancel();
+    _settleTrackedAgentInitiatedTurn(sessionId: sessionId);
+  }
+
+  void _settleTrackedAgentInitiatedTurn({required String sessionId}) {
+    final turn = _agentInitiatedTurns.remove(sessionId);
+    turn?.timer?.cancel();
     markAgentInitiatedTurnIdle(
       sessionId: sessionId,
-      lastObservedAt: expected.lastObservedAt > expected.firstObservedAt ? expected.lastObservedAt : null,
+      lastObservedAt: turn != null && turn.lastObservedAt > turn.firstObservedAt ? turn.lastObservedAt : null,
     );
   }
 
@@ -263,7 +265,7 @@ class OmpPlugin._({
   @override
   Future<void> abortSession({required String sessionId}) async {
     _agentInitiatedTurnFences.add(sessionId);
-    _forgetAgentInitiatedTurn(sessionId: sessionId);
+    _settleTrackedAgentInitiatedTurn(sessionId: sessionId);
     await super.abortSession(sessionId: sessionId);
   }
 
