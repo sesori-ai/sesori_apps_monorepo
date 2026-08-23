@@ -100,16 +100,16 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 
 ### Step 5/15
 
-- [x] `npm run check`: lint, typecheck, 67 tests, and build pass
+- [x] `npm run check`: lint, typecheck, 69 tests, and build pass
 - [x] `npm ls --depth=0`; exact direct dependency closure
 - [x] `npm audit --omit=dev`: 0 vulnerabilities
 - [x] Architecture implementation review passed after consolidating event projection
-- [x] Changed-line count: 1,365 of the 1,450-line target
+- [x] Changed-line count: 1,459, nine above the soft target and within the 1,500-line cap
 - [x] PR #4 opened; review fixes pushed; CI passing
 
 ### Step 6/15
 
-- [x] `npm run check`: lint, typecheck, 70 tests, and build pass
+- [x] `npm run check`: lint, typecheck, 72 tests, and build pass
 - [x] `npm ls --depth=0`; exact direct dependency closure
 - [x] `npm audit --omit=dev`: 0 vulnerabilities
 - [x] Architecture implementation review passed after making cold rename temporary
