@@ -276,12 +276,26 @@ committed import raises no list invalidation.
 | Route rescan actions and state through cubits | All three cubits gain a subscription, state, and intent methods; no widget holds the service stream. A dedicated fourth cubit was considered and rejected in the plan |
 | Do not enable Rescan for blocked harnesses | Enablement moved to `runtimeState.isRoutable`, and a targeted rejection is surfaced on the card. The silent `503` skip is now scoped to the fan-out only |
 
+### Second round on #1064
+
+`cubic-dev-ai` raised two more findings, both applied.
+
+| Finding | Correction applied |
+|---|---|
+| The N-harness counts reduction was never defined | Counts are summed across every succeeded harness; the carrier is a delta only when every succeeded harness reported one, otherwise summed totals. Applied in `8ed1dce81` with two step-4 tests |
+| The PR description still quoted the superseded changed-line total | Description updated to the recomputed figure with its per-file split |
+
+Two replies in the first codex round were posted to each other's threads. Both
+underlying fixes had landed correctly in the plan; only the routing was wrong.
+Corrected replies were posted on both threads, the fully-addressed one was
+resolved, and the partially-addressed one was re-opened.
+
 ## Verification Log
 
 - **Step 1 documentation validation:** `git diff --check` passed; step tokens
   and exact PR titles diffed clean between `PLAN.md` and `TRACKER.md`; plan
   files only in the diff
-- **Step 1 changed lines:** 1,156 documentation-only insertions, 0 deletions, from
+- **Step 1 changed lines:** 1,170 documentation-only insertions, 0 deletions, from
   `git diff --numstat <merge-base>...HEAD` (informational only; the figure counts
   these verification-log lines, so it cannot independently validate the target)
 - **Step 1 review:** `architecture-plan-review` rejected the first revision;
