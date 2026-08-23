@@ -521,30 +521,9 @@ class SessionListCubit({
     emit(const SessionListState.loading());
     await Future<void>.delayed(Duration.zero);
     if (isClosed) return;
-    await _reconnectIfNeeded();
+    await _connectionService.reconnectAndAwaitOutcome(timeout: const Duration(seconds: 15));
     if (isClosed) return;
     await _fetchSessions();
-  }
-
-  /// Attempts to reconnect the relay when it is not in the
-  /// [ConnectionConnected] state. Returns once the connection resolves
-  /// (connected, lost, or timed out).
-  Future<void> _reconnectIfNeeded() async {
-    if (_connectionService.currentStatus is ConnectionConnected) return;
-
-    if (_connectionService.currentStatus is! ConnectionReconnecting) {
-      _connectionService.reconnect();
-    }
-    if (_connectionService.currentStatus is! ConnectionReconnecting) return;
-
-    try {
-      await _connectionService.status
-          .where((s) => s is! ConnectionReconnecting)
-          .first
-          .timeout(const Duration(seconds: 15));
-    } on TimeoutException catch (_) {
-      // Fall through — fetch will fail gracefully with a user-visible error.
-    }
   }
 
   /// In-flight silent refresh, used for coalescing.

@@ -93,6 +93,9 @@ void main() {
       // Must be stubbed before any cubit is built — constructor subscribes immediately.
       when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
+      when(
+        () => mockConnectionService.reconnectAndAwaitOutcome(timeout: any(named: "timeout")),
+      ).thenAnswer((_) async {});
       when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => true);
       // Default: a fresh account with no registered bridge (setup onboarding).
       when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => false);
@@ -2196,24 +2199,12 @@ void main() {
         when(() => mockProjectRepository.listProjects()).thenAnswer(
           (_) async => ApiResponse.success(Projects(data: [testProjectSummary()])),
         );
-        const config = ServerConnectionConfig(
-          relayHost: "relay.example.com",
-          authToken: "test-token",
-        );
-        when(() => mockConnectionService.reconnect()).thenAnswer((_) {
-          when(() => mockConnectionService.currentStatus).thenReturn(
-            const ConnectionStatus.reconnecting(config: config),
-          );
-          statusController.add(const ConnectionStatus.reconnecting(config: config));
-        });
-        final retryFuture = cubit.retryLoadProjects();
-        await Future<void>.delayed(Duration.zero);
-        await Future<void>.delayed(Duration.zero);
-        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
-        statusController.add(
-          const ConnectionStatus.connected(config: config, health: health),
-        );
-        await retryFuture;
+        when(
+          () => mockConnectionService.reconnectAndAwaitOutcome(
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer((_) async {});
+        await cubit.retryLoadProjects();
       },
       skip: 1,
       expect: () => [
@@ -2225,7 +2216,11 @@ void main() {
         ),
       ],
       verify: (_) {
-        verify(() => mockConnectionService.reconnect()).called(1);
+        verify(
+          () => mockConnectionService.reconnectAndAwaitOutcome(
+            timeout: const Duration(seconds: 15),
+          ),
+        ).called(1);
       },
     );
 
@@ -2262,7 +2257,11 @@ void main() {
         ),
       ],
       verify: (_) {
-        verifyNever(() => mockConnectionService.reconnect());
+        verify(
+          () => mockConnectionService.reconnectAndAwaitOutcome(
+            timeout: const Duration(seconds: 15),
+          ),
+        ).called(1);
       },
     );
 

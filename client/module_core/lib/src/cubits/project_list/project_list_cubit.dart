@@ -214,33 +214,17 @@ class ProjectListCubit(
   void _onSessionActivityUpdated(Map<String, Map<String, SessionActivityInfo>> activityByProjectId) {
     if (isClosed) return;
     if (state case final ProjectListLoaded loaded) {
-      final ordered = _projectListService.orderProjects(
-        projects: loaded.projects,
-        activityByProjectId: activityByProjectId,
-        listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
-      );
-      emit(
-        loaded.copyWith(
-          projects: ordered,
-          unseenByProjectId: _unseenByProjectId(ordered),
-        ),
-      );
+      _emitOrdered(loaded: loaded, projects: loaded.projects, activityByProjectId: activityByProjectId);
     }
   }
 
   void _onSessionListStateUpdated() {
     if (isClosed) return;
     if (state case final ProjectListLoaded loaded) {
-      final ordered = _projectListService.orderProjects(
+      _emitOrdered(
+        loaded: loaded,
         projects: loaded.projects,
         activityByProjectId: _sseEventTracker.currentSessionActivity,
-        listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
-      );
-      emit(
-        loaded.copyWith(
-          projects: ordered,
-          unseenByProjectId: _unseenByProjectId(ordered),
-        ),
       );
     }
   }
@@ -255,17 +239,10 @@ class ProjectListCubit(
         );
         if (!merged.changed) return;
 
-        final ordered = _projectListService.orderProjects(
+        _emitOrdered(
+          loaded: loaded,
           projects: merged.projects,
           activityByProjectId: _sseEventTracker.currentSessionActivity,
-          listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
-        );
-
-        emit(
-          loaded.copyWith(
-            projects: ordered,
-            unseenByProjectId: _unseenByProjectId(ordered),
-          ),
         );
       }
     } catch (e, st) {
@@ -439,31 +416,9 @@ class ProjectListCubit(
     // when the relay is disconnected).
     await Future<void>.delayed(Duration.zero);
     if (isClosed) return;
-    await _reconnectIfNeeded();
+    await _connectionService.reconnectAndAwaitOutcome(timeout: const Duration(seconds: 15));
     if (isClosed) return;
     await _fetchProjects();
-  }
-
-  /// Attempts to reconnect the relay when it is not in the
-  /// [ConnectionConnected] state. Returns once the connection resolves
-  /// (connected, lost, or timed out).
-  Future<void> _reconnectIfNeeded() async {
-    if (_connectionService.currentStatus is ConnectionConnected) return;
-
-    if (_connectionService.currentStatus is! ConnectionReconnecting) {
-      _connectionService.reconnect();
-    }
-    // If reconnect is now in progress, wait for the outcome.
-    if (_connectionService.currentStatus is! ConnectionReconnecting) return;
-
-    try {
-      await _connectionService.status
-          .where((s) => s is! ConnectionReconnecting)
-          .first
-          .timeout(const Duration(seconds: 15));
-    } on TimeoutException catch (_) {
-      // Fall through — fetch will fail gracefully with a user-visible error.
-    }
   }
 
   /// True while [reconnectBridge] is re-establishing the connection. The
@@ -504,7 +459,7 @@ class ProjectListCubit(
         await _connectionService.connectWithFreshAuthToken();
       } else {
         // An existing config dropped (e.g. bridge offline) — reconnect it.
-        await _reconnectIfNeeded();
+        await _connectionService.reconnectAndAwaitOutcome(timeout: const Duration(seconds: 15));
       }
       if (isClosed) return;
       if (_isBridgeUnavailable) {
@@ -538,22 +493,34 @@ class ProjectListCubit(
       return false;
     }
     if (state case final ProjectListLoaded loaded) {
-      final remaining = _projectListService.orderProjects(
+      _emitOrdered(
+        loaded: loaded,
         projects: _projectListService.removeProject(
           projects: loaded.projects,
           projectId: projectId,
         ),
         activityByProjectId: _sseEventTracker.currentSessionActivity,
-        listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
-      );
-      emit(
-        loaded.copyWith(
-          projects: remaining,
-          unseenByProjectId: _unseenByProjectId(remaining),
-        ),
       );
     }
     return true;
+  }
+
+  void _emitOrdered({
+    required ProjectListLoaded loaded,
+    required List<ProjectSummary> projects,
+    required Map<String, Map<String, SessionActivityInfo>> activityByProjectId,
+  }) {
+    final ordered = _projectListService.orderProjects(
+      projects: projects,
+      activityByProjectId: activityByProjectId,
+      listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
+    );
+    emit(
+      loaded.copyWith(
+        projects: ordered,
+        unseenByProjectId: _unseenByProjectId(ordered),
+      ),
+    );
   }
 
   /// Creates a new project named [name] below [parentPath].

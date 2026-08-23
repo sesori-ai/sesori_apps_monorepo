@@ -1123,6 +1123,46 @@ void main() {
     );
 
     blocTest<SessionListCubit, SessionListState>(
+      "retryLoadSessions reconnects before loading",
+      build: () {
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        when(
+          () => mockConnectionService.reconnectAndAwaitOutcome(
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer((_) async {});
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
+        await cubit.retryLoadSessions();
+      },
+      skip: 1,
+      expect: () => [
+        isA<SessionListLoading>(),
+        isA<SessionListLoaded>().having((state) => state.sessions.length, "sessions count after retry", 1),
+      ],
+      verify: (_) {
+        verify(
+          () => mockConnectionService.reconnectAndAwaitOutcome(
+            timeout: const Duration(seconds: 15),
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
       "connection reconnect triggers silent refresh",
       build: () {
         when(

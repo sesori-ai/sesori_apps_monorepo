@@ -447,30 +447,24 @@ class RelayClient._({
   /// Declares to the bridge which session this phone is currently viewing
   /// ([sessionId] == null when viewing nothing). Fire-and-forget control
   /// message; no-op when not connected.
-  Future<void> sendSessionView({required String? sessionId}) async {
-    if (!isConnected || _sessionEncryptor == null) {
-      return;
-    }
-    try {
-      await _sendEncryptedMessage(RelayMessage.sessionView(sessionId: sessionId));
-    } catch (error, stackTrace) {
-      // Best-effort control message: a disconnect can race the connected check
-      // above. Swallow so callers' fire-and-forget `unawaited` paths never see
-      // an unhandled async error; the phone re-asserts its view on reconnect.
-      logw("sendSessionView failed (likely a disconnect race)", error, stackTrace);
-    }
-  }
+  Future<void> sendSessionView({required String? sessionId}) => _sendViewMessage(
+    message: RelayMessage.sessionView(sessionId: sessionId),
+    operation: "sendSessionView",
+  );
 
   /// Declares to the bridge which project this client is currently viewing.
   /// Best-effort control message; no-op when not connected.
-  Future<void> sendProjectView({required String? projectId}) async {
-    if (!isConnected || _sessionEncryptor == null) {
-      return;
-    }
+  Future<void> sendProjectView({required String? projectId}) => _sendViewMessage(
+    message: RelayMessage.projectView(projectId: projectId),
+    operation: "sendProjectView",
+  );
+
+  Future<void> _sendViewMessage({required RelayMessage message, required String operation}) async {
+    if (!isConnected || _sessionEncryptor == null) return;
     try {
-      await _sendEncryptedMessage(RelayMessage.projectView(projectId: projectId));
+      await _sendEncryptedMessage(message);
     } on Object catch (error, stackTrace) {
-      logw("sendProjectView failed: disconnect race", error, stackTrace);
+      logw("$operation failed: disconnect race", error, stackTrace);
     }
   }
 
@@ -619,16 +613,10 @@ class RelayClient._({
         maxPlaintextBytes: _maxPlaintextMessageBytes,
       );
     }
-    final encryptedBytes = await encryptor.encrypt(jsonBytes);
+    final payload = await frame(jsonBytes, encryptor: encryptor);
     if (_disposed || !identical(_channel, channel) || !identical(_sessionEncryptor, encryptor)) {
       throw StateError("RelayClient disconnected during message encryption");
     }
-    // Preallocate instead of spreading the ciphertext into a boxed List<int>:
-    // a max-size attachment would otherwise materialize tens of millions of
-    // boxed integers and exhaust mobile memory before the frame is sent.
-    final payload = Uint8List(encryptedBytes.length + 1);
-    payload[0] = _messageVersion;
-    payload.setRange(1, payload.length, encryptedBytes);
     return (channel: channel, encryptor: encryptor, payload: payload);
   }
 
@@ -669,10 +657,7 @@ class RelayClient._({
     }
 
     final jsonBytes = utf8.encode(jsonEncode(message.toJson()));
-    final encryptedBytes = await encryptor.encrypt(jsonBytes);
-    final payload = Uint8List(encryptedBytes.length + 1);
-    payload[0] = _messageVersion;
-    payload.setRange(1, payload.length, encryptedBytes);
+    final payload = await frame(jsonBytes, encryptor: encryptor);
     _pendingHandshakeFrame = payload;
     channel.sink.add(payload);
   }
@@ -683,14 +668,7 @@ class RelayClient._({
       throw const FormatException("Relay message is empty");
     }
 
-    final version = message.first;
-    if (version != _messageVersion) {
-      throw FormatException("Unsupported relay message version: $version");
-    }
-
-    final encryptedPayload = message.sublist(1);
-    final decryptedBytes = await encryptor.decrypt(encryptedPayload);
-
+    final decryptedBytes = await unframe(message, encryptor: encryptor);
     final decoded = jsonDecodeMap(utf8.decode(decryptedBytes));
     return RelayMessage.fromJson(decoded);
   }
@@ -742,28 +720,21 @@ class RelayClient._({
       return;
     }
 
+    await _closeController(controller: controller, context: "relay SSE stream");
+  }
+
+  Future<void> _closeBridgeStatusController() =>
+      _closeController(controller: _bridgeStatusController, context: "relay bridge status");
+
+  Future<void> _closeSocketClosedController() =>
+      _closeController(controller: _socketClosedController, context: "relay socket-closed");
+
+  Future<void> _closeController<T>({required StreamController<T> controller, required String context}) async {
+    if (controller.isClosed) return;
     try {
       await controller.close();
     } catch (error, stackTrace) {
-      loge("Failed to close relay SSE stream controller", error, stackTrace);
-    }
-  }
-
-  Future<void> _closeBridgeStatusController() async {
-    if (_bridgeStatusController.isClosed) return;
-    try {
-      await _bridgeStatusController.close();
-    } catch (error, stackTrace) {
-      loge("Failed to close relay bridge status controller", error, stackTrace);
-    }
-  }
-
-  Future<void> _closeSocketClosedController() async {
-    if (_socketClosedController.isClosed) return;
-    try {
-      await _socketClosedController.close();
-    } catch (error, stackTrace) {
-      loge("Failed to close relay socket-closed controller", error, stackTrace);
+      loge("Failed to close $context controller", error, stackTrace);
     }
   }
 
@@ -830,8 +801,8 @@ class RelayClient._({
 /// Internal signal that the relay reported the bridge offline during the
 /// initial handshake (no bridge in the account group yet). Distinct from a
 /// fatal connection error so [RelayClient.connect] resolves into
-/// [RelayConnectOutcome.bridgeAbsent] and keeps the socket open instead of
-/// tearing it down.
+/// [RelayClient.connect] returning with [RelayClient.isConnected] false and
+/// keeps the socket open instead of tearing it down.
 class const _BridgeOfflineDuringHandshake() implements Exception;
 
 /// A request frame was sent (or may have been sent) but its response can no
