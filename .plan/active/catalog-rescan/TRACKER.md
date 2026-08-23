@@ -225,7 +225,9 @@ independently verified in the tree before the correction was applied.
 - **Step 1 documentation validation:** `git diff --check` passed; step tokens
   and exact PR titles diffed clean between `PLAN.md` and `TRACKER.md`; plan
   files only in the diff
-- **Step 1 changed lines:** 950 documentation-only insertions, 0 deletions
+- **Step 1 changed lines:** 957 documentation-only insertions, 0 deletions, from
+  `git diff --numstat <merge-base>...HEAD` (informational only; the figure counts
+  these verification-log lines, so it cannot independently validate the target)
 - **Step 1 review:** `architecture-plan-review` rejected the first revision;
   all ten findings applied directly, recorded above
 - **Step 1 PR:** [#1064](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1064)
