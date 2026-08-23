@@ -1,7 +1,6 @@
 enum AnalyticsRuntimeDisabledReason() {
   debugOrProfile,
-  automatedTestEnvironment,
-  environmentDetectionFailed,
+  recentBuildUnauthenticated,
   unsupportedPlatform,
   analyticsSinkUnavailable,
 }

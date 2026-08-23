@@ -17,7 +17,6 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
     private var recorderPrewarmService: RecorderPrewarmService? = null
-    private var firebaseTestLabChannel: MethodChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -27,17 +26,6 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
                 RecorderPrewarmService.channelName,
             ),
         )
-        firebaseTestLabChannel = MethodChannel(
-            flutterEngine.dartExecutor.binaryMessenger,
-            FIREBASE_TEST_LAB_CHANNEL_NAME,
-        ).also { channel ->
-            channel.setMethodCallHandler { call, result ->
-                when (call.method) {
-                    "isRunning" -> result.success(isRunningInFirebaseTestLab())
-                    else -> result.notImplemented()
-                }
-            }
-        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,8 +46,6 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
     override fun onDestroy() {
         recorderPrewarmService?.dispose()
         recorderPrewarmService = null
-        firebaseTestLabChannel?.setMethodCallHandler(null)
-        firebaseTestLabChannel = null
         flutterEngine?.renderer?.removeIsDisplayingFlutterUiListener(this)
         super.onDestroy()
     }
@@ -111,22 +97,5 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
             return false
         }
         return getNavigationMode() == 2
-    }
-
-    // Firebase documents this flag as `Settings.System` holding the exact string
-    // "true", but that read returned false throughout a Play pre-launch report:
-    // GA4 recorded 154 single-session installs of an unreleased version, each
-    // reporting product events the runtime capability should have suppressed.
-    // Google's own guidance describes the flag under instrumented-test behavior,
-    // so a Robo crawl may set it elsewhere, differently, or not at all. Read every
-    // settings table and accept any value — no real device carries this setting.
-    private fun isRunningInFirebaseTestLab(): Boolean =
-        Settings.System.getString(contentResolver, FIREBASE_TEST_LAB_SETTING) != null ||
-            Settings.Global.getString(contentResolver, FIREBASE_TEST_LAB_SETTING) != null ||
-            Settings.Secure.getString(contentResolver, FIREBASE_TEST_LAB_SETTING) != null
-
-    private companion object {
-        const val FIREBASE_TEST_LAB_CHANNEL_NAME = "com.sesori.app/firebase-test-lab"
-        const val FIREBASE_TEST_LAB_SETTING = "firebase.test.lab"
     }
 }

@@ -14,10 +14,10 @@ import "package:sesori_shared/sesori_shared.dart";
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUp(() {
-    configureDependencies(
+  setUp(() async {
+    await configureDependencies(
       firebaseEnabled: false,
-      analyticsRuntimeCapability: const AnalyticsRuntimeCapability.disabled(
+      createAnalyticsRuntimeCapability: ({required authSession}) async => const AnalyticsRuntimeCapability.disabled(
         reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
       ),
     );
