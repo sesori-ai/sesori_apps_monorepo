@@ -17,11 +17,13 @@
 
 ## Diff
 
-Final diff: `15 files changed, 358 insertions, 165 deletions`. Reproduce with `git diff --shortstat e919de274be00e237d9a76dde69b97a517e0a425..HEAD`.
+Final diff: `15 files changed, 369 insertions, 166 deletions`. Reproduce with `git diff --shortstat e919de274be00e237d9a76dde69b97a517e0a425..HEAD`.
 
 ## Verification
 
-- `dart test` in `bridge/sesori_bridge_foundation`: pass, 77 tests.
+- `dart test` in `bridge/sesori_bridge_foundation`: pass, 78 runtime test
+  cases. The source contains 70 plain `test(` declarations after this step;
+  loop-defined cases account for the remaining eight runtime cases.
 - Planned app service/listener matrix: pass, 226 tests (209 activity,
   mutation, unseen, options, event-dispatch, chat-history, and plugin-listener
   tests plus 17 bridge-settings tests).
@@ -32,6 +34,8 @@ Final diff: `15 files changed, 358 insertions, 165 deletions`. Reproduce with `g
 
 ## Architecture implementation review
 
-The required review was invoked through a sub-agent, but the
-`architecture-implementation-review` skill was unavailable in the tool registry.
-No substitute architecture verdict is claimed.
+Gate status: blocked. The required review was invoked through a sub-agent, but
+the `architecture-implementation-review` skill was unavailable in the tool
+registry. The verification above is test/analyzer evidence only; no substitute
+architecture verdict or waiver is claimed, so human architecture review remains
+required before merge.

@@ -63,7 +63,7 @@ final class KeyedParallelLock<K>() {
 
   Future<void> idleFor({required K key}) => _entries[key]?.lock.idle ?? Future<void>.value();
 
-  Future<T> use<T>({required K key, required Future<T> Function() operation}) {
+  Future<T> use<T>({required K key, required FutureOr<T> Function() operation}) {
     final entry = _entries.putIfAbsent(key, _KeyedLockEntry.new);
     entry.users++;
     return entry.lock.use(operation: operation).whenComplete(() {

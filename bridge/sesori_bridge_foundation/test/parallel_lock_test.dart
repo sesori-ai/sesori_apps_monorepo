@@ -91,6 +91,12 @@ void main() {
     expect(started, ["a1", "b1", "a2"]);
   });
 
+  test("keyed lock accepts a synchronous callback", () async {
+    final lock = KeyedParallelLock<String>();
+
+    expect(await lock.use(key: "a", operation: () => 42), 42);
+  });
+
   test("keyed lock recovers after errors and idle has snapshot semantics", () async {
     final lock = KeyedParallelLock<String>();
     final first = Completer<void>();
