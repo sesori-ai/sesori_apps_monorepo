@@ -220,11 +220,18 @@ entry. It is not pinned, not a banner, not a toast, not a dialog.
 
 | State | Leading | Title | Subtitle | Trailing |
 |---|---|---|---|---|
+| Starting | indeterminate ring | `Rescanning harnesses` | none | cancel |
 | Running | indeterminate ring | `Rescanning harnesses` | harness currently enumerating plus its running session count | cancel |
 | Succeeded | check | `Rescan complete` | new-item summary | none; the service clears it after 4s |
 | Partly failed | warning | `Rescan finished` | `1 of 3 harnesses could not be rescanned` | dismiss |
 | Failed | warning | `Rescan failed` | `Check the bridge log for details` | dismiss |
+| Unsupported | warning | `Rescan needs a newer bridge` | `Update the bridge to rescan from here` | dismiss |
 | Cancelled | — | — | — | row removed immediately |
+
+`Starting` exists because a dispatched request is not yet an enumerating
+harness. Between dispatch and the first progress event there is no active
+harness name and no session count, so a single running state carrying both
+would have to invent them and claim enumeration the client cannot observe.
 
 **No failure text from the bridge is rendered.** `CatalogImportService._run`
 catches `Object` and sends `error.toString()` as `CatalogImportFailed.message`,
@@ -394,26 +401,41 @@ outcome and not worth a new result variant across two layers.
 ```text
 sealed CatalogRescanState
   CatalogRescanIdle()
+  CatalogRescanStarting({ Set<String> pluginIds })
   CatalogRescanRunning({ String activePluginName, int sessionsSeen,
                          Set<String> pluginIds })
   CatalogRescanSucceeded({ int harnessCount, CatalogRescanCounts counts })
   CatalogRescanPartlyFailed({ int succeededCount, int failedCount })
   CatalogRescanFailed({ int harnessCount })
+  CatalogRescanUnsupported()
 
 sealed CatalogRescanCounts
   CatalogRescanDelta({ int newProjects, int newSessions })
   CatalogRescanTotals({ int projects, int sessions })
+
+sealed CatalogRescanStartResult          // returned by start(pluginId)
+  CatalogRescanStartAccepted()
+  CatalogRescanStartNotImportable()
+  CatalogRescanStartUnsupported()
+  CatalogRescanStartFailed()
 ```
 
-Five variants rather than a single terminal state with nullable fields, so a
-mixed outcome across N harnesses is representable and a half-populated one is
-not. `CatalogRescanPartlyFailed` deliberately carries no counts: the row reports
-the failure, and a partial count would invite the reader to trust it as the
-whole result.
+Separate variants rather than a single state with nullable fields, so a mixed
+outcome across N harnesses is representable and a half-populated one is not.
+`CatalogRescanPartlyFailed` deliberately carries no counts: the row reports the
+failure, and a partial count would invite the reader to trust it as the whole
+result.
 
 Neither failure variant carries free text. `CatalogImportFailed.message` is the
 bridge's `error.toString()` and is not privacy-bounded, so it is never lifted
 into client state where a widget could render it.
+
+`CatalogRescanStartResult` exists so a **targeted** rescan can report back to the
+card that asked for it. `PluginManagementCubit` holds the latest result per
+plugin id, mirroring the `Map<String, PluginInstallProgress>` it already keeps
+for installs, so the rejection lands on the harness the user selected rather than
+in the shared aggregate row. The fan-out ignores the result and keeps its silent
+skip.
 
 ### Lifetimes owned by the service
 
@@ -438,6 +460,18 @@ The retained progress map is cleared whenever a rescan starts and whenever the
 state resets to idle. Without that, a second rescan would aggregate the previous
 run's terminal entries before the harnesses reported anything, and could publish
 a terminal state before the new run had begun.
+
+A rescan **seeded from recovery resolves to `CatalogRescanIdle`, never to a
+terminal summary.** After a reconnect the service knows only which harnesses
+were still enumerating; a harness that completed or failed while the connection
+was down appears in `latestStatuses` as a terminal status that is discarded, and
+the client cannot tell whether it belonged to this rescan, the previous one, or
+bridge-startup hydration, because `latestStatuses` carries no operation identity
+and no grouping. Publishing a success from that partial membership would
+understate the counts and could hide a failed harness behind an authoritative
+"Rescan complete". Recovery therefore shows progress and refreshes the lists when
+it settles, and claims no summary. Only a rescan this client observed from its
+start reports a terminal result.
 
 Terminal outcomes are adopted only from the SSE stream, and only for a rescan
 this service already knows is running. This is deliberately the whole lifetime
@@ -464,8 +498,19 @@ finished shows nothing rather than replaying a stale success.
 - A newer bridge talking to an older client is unaffected: the added key is
   ignored by the older decoder.
 - No new route, no route signature change, and no change to either existing
-  request body. Fanning out one request per harness keeps the client working
-  against every published bridge.
+  request body.
+- **`/plugin/import` does not exist on every supported bridge.** It shipped in
+  `v1.6.0` (PR #488), while the owner-approved compatibility baseline is
+  `>= v1.4.0`. A `v1.4.x` or `v1.5.x` bridge is a supported peer with no import
+  route at all, so the deep pull would otherwise perform its soft refresh and
+  silently do nothing.
+
+  When **every** harness in a fan-out answers `404`, the service publishes
+  `CatalogRescanUnsupported` and the row says the bridge needs updating. A
+  targeted start on such a bridge returns `CatalogRescanStartUnsupported` and the
+  card says the same. Sniffing the error body to tell a missing route from an
+  unknown plugin is deliberately avoided: both mean "this bridge cannot rescan",
+  and an all-`404` fan-out is the honest signal for it.
 - The `projectionVersion` bump writes new marker rows and leaves the
   `projectionVersion = 1` rows in place. No migration, no backfill, no schema
   change.
@@ -487,6 +532,8 @@ New in-memory mutable parts:
 | `bool _disposed` | `CatalogRescanService` | Module convention for `Disposable` services |
 | `bool _deepArmed` | `PregoSliverRefreshControl` | The refresh control reports pull distance continuously but fires `onRefresh` once; the threshold state at release must survive that one frame |
 | One subscription and one state field each | `ProjectListCubit`, `SessionListCubit`, `PluginManagementCubit` | The shell's Layer-4 boundary: widgets render cubit state rather than holding a service stream, and the two list cubits own their own post-success refresh |
+| `bool _recoverySeeded` | `CatalogRescanService` | Distinguishes a rescan this client started from one discovered already running, so only the former reports a terminal summary. Cleared on every start and every reset |
+| `Map<String, CatalogRescanStartResult>` | `PluginManagementCubit` | Per-card targeted-start results, mirroring the `Map<String, PluginInstallProgress>` the cubit already keeps |
 
 Two fan-outs are recorded rather than hidden: `startAll()` issues one `POST` per
 enabled harness, and `cancel()` issues one `DELETE` per running harness. Both
@@ -538,6 +585,7 @@ Deliberately **not** added:
 | A cancel `DELETE` races a harness that just completed | The bridge answers on the already-settled plugin and the SSE terminal event wins | Accepted; no client-side ordering guard |
 | A failure row names no cause | The user must open the bridge log to learn why a harness failed | Accepted. `CatalogImportFailed.message` is unbounded `error.toString()`; a vaguer row is the honest trade until a producer-side sanitization boundary exists |
 | A lost response for a start that never arrived | That harness stays in `pluginIds` with no progress until the connection resets | Accepted. Bounded and self-clearing; a third result type across two layers is not worth it |
+| A rescan interrupted by a disconnect reports no summary | The user sees progress resume and the lists refresh, but no "Rescan complete" line for that run | Accepted deliberately. The alternative is claiming a total the client cannot vouch for; the lists, which are what the user actually came for, are still correct |
 
 ## Cleanup Assessment
 
@@ -590,6 +638,8 @@ Required matrix:
 | Compatibility | One run against a bridge that omits `newItems` | Proves the totals fallback rather than a false `Nothing new` |
 | Recovery | One reconnect against a bridge holding terminal statuses | Proves the recovery read discards them instead of announcing a stale success |
 | Freshness | One rescan that genuinely imports a new session, observed in the list without a second manual refresh | The whole point of the feature; a committed import raises no list invalidation, so the post-success refresh is the only thing making the new row appear |
+| Compatibility | One run against a supported bridge older than `v1.6.0`, which has no `/plugin/import` at all | Proves the gesture reports an unsupported bridge instead of silently doing nothing |
+| Recovery | One disconnect mid-rescan, reconnect, and settle | Proves the recovered run refreshes the lists and claims no summary |
 | Setup state | One setup-blocked harness on Settings to Harnesses | Proves `Rescan` is not offered as a tappable no-op for a harness the bridge will reject |
 
 Any reduction to this matrix requires explicit user acceptance recorded here
@@ -736,7 +786,10 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
   table above; select harnesses by `runtimeState.isRoutable`; never lift
   `CatalogImportFailed.message` into state; and expose
   `ValueStream<CatalogRescanState>`, `startAll()`, `start(pluginId)`,
-  `cancel()`, and `dismiss()`.
+  `cancel()`, and `dismiss()`. `start(pluginId)` returns a typed
+  `CatalogRescanStartResult`; publish `CatalogRescanUnsupported` when every
+  harness in a fan-out answers `404`; and let a recovery-seeded rescan resolve
+  to `CatalogRescanIdle` rather than to a terminal summary.
 - Leave `sse_event.dart` and `sse_event_tracker.dart` untouched.
 - Tests: aggregation across two concurrent harnesses; all five states including
   a mixed success/failure fan-out; the older-bridge payload with `newItems`
@@ -749,7 +802,10 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
   sequential rescan** proving the previous run's terminal entries do not leak
   into the new aggregate; a failure state surviving well past 4s while a
   success clears; and a start whose response is lost still reaching a terminal
-  state from SSE.
+  state from SSE; a fan-out where every harness answers `404` publishing
+  `CatalogRescanUnsupported`; a dispatched start publishing `CatalogRescanStarting`
+  before any progress arrives; and a recovery-seeded rescan settling to idle with
+  no summary while still refreshing.
 
 ### Verification
 
@@ -797,7 +853,7 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
   `CatalogRescanPartlyFailed`, because a committed import raises no list
   invalidation of its own.
 - The aggregate rescan row widget in `client/app/lib/core/widgets/`, beside the
-  shell's other cross-feature widgets, with its five presentations. It renders
+  shell's other cross-feature widgets, with its seven presentations. It renders
   the state it is given, owns no timer, and renders no bridge-supplied text.
 - Project list, full-screen session list, and split-view pane: wire
   `onDeepRefresh` to the cubit's `startRescan()`, and render the row as the
@@ -806,13 +862,15 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
 - Settings to Harnesses: the per-harness `Rescan` action in
   `_HarnessControlCard`, calling `startRescanFor(pluginId)`, enabled only for a
   harness whose `runtimeState.isRoutable` is true and disabled while that
-  harness is already rescanning. A targeted `503` or `404` is surfaced on the
-  card rather than silently skipped.
+  harness is already rescanning. The typed `CatalogRescanStartResult` is held
+  per plugin id by `PluginManagementCubit` and rendered on that card, so a
+  targeted `503`, `404`, or unsupported-bridge answer lands on the harness the
+  user selected instead of the shared row.
 - New `app_en.arb` resources for both captions, the five row states, the delta
   and totals wordings, the `Nothing new` case, the partly-failed wording, the
   bounded failure line naming the bridge log, and the Settings action with its
   semantics label and its rejection message.
-- Widget and cubit tests: all five row states; the totals fallback; cancel;
+- Widget and cubit tests: all seven row states; the totals fallback; cancel;
   dismiss; the Settings action's enablement rules and its targeted rejection;
   that a terminal success triggers exactly one list refresh per list cubit; and
   that no test fixture's `CatalogImportFailed.message` reaches a rendered

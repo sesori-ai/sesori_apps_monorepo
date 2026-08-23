@@ -59,7 +59,7 @@
 | Progress presentation | One aggregate row | Fixed height; the top of the list never reflows as harnesses finish at different times |
 | Row placement | Ordinary sliver at index 0, scrolls with the list | Non-intrusive; a refresh already scrolls to the top, so it is visible when it matters |
 | Row home | `client/app/lib/core/widgets/` | Consumed by two features; must not live inside either |
-| Terminal state | Five sealed variants summarising the whole fan-out | One `pluginName` could not describe two harnesses finishing differently |
+| Terminal state | Sealed variants summarising the whole fan-out | One `pluginName` could not describe two harnesses finishing differently |
 | Terminal lifetime | Owned by `CatalogRescanService`, not the row | Two mounted hosts would otherwise run disagreeing 4s timers, and a revisit would replay a stale success |
 | Auto-clear scope | Success only; failures persist until dismissed | A diagnostic the user did not get to read is worse than a row that outstays its welcome |
 | Post-success refresh | Both list cubits run their existing silent refresh | A committed import raises no list invalidation, so the row would otherwise announce new sessions over a stale list |
@@ -68,6 +68,10 @@
 | Fan-out membership | Recorded on dispatch, not acknowledgement | `RelayResponseLostException` and timeouts can fire after the request landed |
 | Harness predicate | `runtimeState.isRoutable` | `isEnabled` is true for `blocked` and `failed`, which the bridge rejects with `503` |
 | Counts reduction | Summed across harnesses; delta only if every harness reported one | A delta missing a harness's contribution would understate the result while reading as authoritative |
+| Dispatched-but-silent phase | Its own `CatalogRescanStarting` variant | A single running state carrying `activePluginName` and `sessionsSeen` would have to invent both before the first progress event |
+| Older bridges | `CatalogRescanUnsupported` when every harness answers `404` | `/plugin/import` shipped in v1.6.0 but the baseline is `>= v1.4.0`, so supported peers exist with no route |
+| Recovered rescans | Resolve to idle, never to a terminal summary | `latestStatuses` has no operation identity, so a recovered run cannot honestly claim a total |
+| Targeted rejections | Typed `CatalogRescanStartResult` held per plugin id by `PluginManagementCubit` | The aggregate row cannot say which card was rejected |
 | Completion wording | New items, with a totals fallback | Reporting 193 totals after a no-op rescan would be actively misleading |
 | New-count transport | One nullable `CatalogImportNewItems` object | Two independent `int?` fields make `{5, null}` representable and meaningless |
 | Recovery read | Seed only from non-terminal statuses | `latestStatuses` retains terminal statuses forever |
@@ -86,7 +90,7 @@
 | Changing either SSE switch arm | Rejected | Both are correct; the service pattern-matches the event itself, as `PluginManagementService` already does |
 | Per-harness progress rows | Rejected | User chose the aggregate row |
 | Pinned progress row | Rejected | User chose the scrolling row |
-| Authorship tracking of who started a rescan | Rejected | The SSE event is global by design; cross-surface visibility is correct |
+| Authorship tracking of who started a rescan | Rejected | The SSE event is global by design; cross-surface visibility is correct. `_recoverySeeded` is not authorship: it records whether *this* client observed the run from its start, which is what licenses claiming a total |
 | Client polling of `GET /plugin/import` | Rejected | One filtered read on connect and reconnect is sufficient |
 | Generation or request-fence machinery | Rejected | Resetting to idle on disconnect removes the need |
 | A second `PluginRepository.getManagement()` read | Rejected | `PluginManagementService.snapshots` already maintains, refreshes, and invalidates that data |
@@ -97,6 +101,8 @@
 | A new bridge event for post-import list invalidation | Rejected | The list cubits already own a silent refresh and already see the global progress stream |
 | A client-side sanitizer for `CatalogImportFailed.message` | Rejected | Sanitizing at the consumer still carries the raw string over the wire; the field is simply not lifted into state |
 | A privacy-safe failure reason at the producer | Deferred | The right fix is a bounded reason in `CatalogImportService._run` with the original error kept in the bridge log; out of scope for this series |
+| Preserving discarded terminal statuses across a reconnect | Rejected | `latestStatuses` carries no operation identity or grouping, so "belonging to the recovered operation" is not determinable; recovered runs claim no summary instead |
+| Sniffing the error body to tell a missing route from an unknown plugin | Rejected | Both mean "this bridge cannot rescan"; an all-`404` fan-out is the honest signal |
 | Analytics for rescans | Rejected | Reliability repair for a reported defect, not a product adoption question |
 
 ## Open Questions
@@ -290,12 +296,26 @@ underlying fixes had landed correctly in the plan; only the routing was wrong.
 Corrected replies were posted on both threads, the fully-addressed one was
 resolved, and the partially-addressed one was re-opened.
 
+### Third round on #1064
+
+`chatgpt-codex-connector` raised four more findings; three applied in full, one
+in part. The one repeat on the still-open lost-response thread was the original
+comment resurfacing on an unresolved thread, not a follow-up, so it was not
+answered twice.
+
+| Finding | Correction applied |
+|---|---|
+| Represent the dispatched-before-progress phase | Added `CatalogRescanStarting({pluginIds})`. A single running state would have had to invent `activePluginName` and `sessionsSeen` before any progress arrived, and claim enumeration the client cannot observe |
+| Surface unsupported catalog-import routes | Verified: `/plugin/import` shipped in `v1.6.0` while the approved baseline is `>= v1.4.0`, so supported peers genuinely lack it. Added `CatalogRescanUnsupported`, published when every harness in a fan-out answers `404`, plus `CatalogRescanStartUnsupported` for a targeted start. Corrected the false "works against every published bridge" claim |
+| Model targeted rejections per harness | Added the typed `CatalogRescanStartResult`, held per plugin id by `PluginManagementCubit` exactly as it already holds `PluginInstallProgress`, so a rejection renders on the card the user selected |
+| Preserve missed terminal outcomes during recovery | **Partially applied.** Fixed the harmful half: a recovery-seeded rescan resolves to idle and never publishes a summary, so it can no longer report an authoritative success that hides a failed harness. Declined the proposed fix itself as not implementable — `latestStatuses` carries no operation identity or grouping, so a discarded terminal status cannot be attributed to the recovered run rather than the previous one or bridge-startup hydration. The residue, a run interrupted by a disconnect reporting no summary while its lists still refresh correctly, is recorded as an accepted risk |
+
 ## Verification Log
 
 - **Step 1 documentation validation:** `git diff --check` passed; step tokens
   and exact PR titles diffed clean between `PLAN.md` and `TRACKER.md`; plan
   files only in the diff
-- **Step 1 changed lines:** 1,170 documentation-only insertions, 0 deletions, from
+- **Step 1 changed lines:** 1,248 documentation-only insertions, 0 deletions, from
   `git diff --numstat <merge-base>...HEAD` (informational only; the figure counts
   these verification-log lines, so it cannot independently validate the target)
 - **Step 1 review:** `architecture-plan-review` rejected the first revision;
