@@ -25,7 +25,8 @@ those extra seams and the dead state and helpers identified beside them.
 - Deleted `SessionService`; the two cubits now use `SessionRepository`, which
   owns model and command normalization at the request boundary.
 - Deleted `BridgeSettingsService`; `BridgeSettingsCubit` calls the repository
-  directly and keeps its single-consumer input parsing locally.
+  directly and consumes a typed update plan parsed by the repository-domain
+  settings model.
 - Replaced the session/project view API and repository twins with
   `ViewDeclarationApi` and `ViewDeclarationRepository`, and regenerated DI.
 - Kept the cleanup rejection DTO private to the API boundary. The repository

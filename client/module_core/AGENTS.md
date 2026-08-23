@@ -14,7 +14,6 @@ lib/src/
 ├── capabilities/     Domain services
 │   ├── relay/        RelayClient, RoomKeyStorage, relay config
 │   ├── server_connection/  ConnectionService, SSE models, connection status
-│   ├── session/      SessionService
 │   └── voice/        VoiceApi (HTTP calls only — recording stays in Flutter)
 ├── cubits/           All state management (login, project_list, session_list, etc.)
 ├── di/               @InjectableInit for core DI registration
@@ -23,7 +22,9 @@ lib/src/
 ├── platform/         Abstract interfaces (UrlLauncher, DeepLinkSource, LifecycleSource,
 │                  RouteSource, NotificationCanceller, …); Flutter adapters live in
 │                  the product shell, mostly under app/lib/core/platform/
-└── routing/          AppRoute enum, AuthRedirectService
+├── repositories/     API mapping and domain-facing data operations
+├── routing/          AppRoute enum, AuthRedirectService
+└── services/         Cross-repository orchestration and lifecycle owners
 ```
 
 ## Conventions

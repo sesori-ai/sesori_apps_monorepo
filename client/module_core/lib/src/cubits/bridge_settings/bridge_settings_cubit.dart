@@ -27,9 +27,10 @@ class BridgeSettingsCubit({required final BridgeSettingsRepository _repository, 
   bool _refreshPending = false;
 
   PullRequestRefreshInputValidation validatePullRequestRefreshInput({required String input}) {
-    return _parsePullRequestRefreshInterval(input: input) == null
-        ? PullRequestRefreshInputValidation.invalid
-        : PullRequestRefreshInputValidation.valid;
+    return switch (_planPullRequestRefreshUpdate(input: input)) {
+      PullRequestRefreshSettingsUpdateInvalid() => PullRequestRefreshInputValidation.invalid,
+      PullRequestRefreshSettingsUpdateRequest() => PullRequestRefreshInputValidation.valid,
+    };
   }
 
   Future<void> refresh() async {
@@ -69,9 +70,8 @@ class BridgeSettingsCubit({required final BridgeSettingsRepository _repository, 
       return BridgeSettingsUpdateAcceptance.rejected;
     }
 
-    final intervalSeconds = _parsePullRequestRefreshInterval(input: input);
-    switch (intervalSeconds) {
-      case null:
+    switch (_planPullRequestRefreshUpdate(input: input)) {
+      case PullRequestRefreshSettingsUpdateInvalid():
         emit(
           _withPullRequestRefresh(
             state: current,
@@ -82,7 +82,7 @@ class BridgeSettingsCubit({required final BridgeSettingsRepository _repository, 
             ),
           ),
         );
-      case final intervalSeconds:
+      case PullRequestRefreshSettingsUpdateRequest(:final intervalSeconds):
         _operationInProgress = true;
         final operationEpoch = _connectionEpoch;
         emit(
@@ -263,15 +263,11 @@ class BridgeSettingsCubit({required final BridgeSettingsRepository _repository, 
     }
   }
 
-  int? _parsePullRequestRefreshInterval({required String input}) {
-    final intervalSeconds = int.tryParse(input.trim());
-    final bounds = _validationBoundsFor(state: state);
-    if (intervalSeconds == null ||
-        intervalSeconds <= 0 ||
-        (bounds != null && !bounds.includes(intervalSeconds: intervalSeconds))) {
-      return null;
-    }
-    return intervalSeconds;
+  PullRequestRefreshSettingsUpdatePlan _planPullRequestRefreshUpdate({required String input}) {
+    return PullRequestRefreshSettingsUpdatePlan.parse(
+      input: input,
+      bounds: _validationBoundsFor(state: state),
+    );
   }
 
   PullRequestRefreshSettingsBounds? _validationBoundsFor({required BridgeSettingsState state}) {

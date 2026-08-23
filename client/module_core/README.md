@@ -16,11 +16,16 @@ See the [root README](../README.md) for the full monorepo overview.
 | `SessionDetailCubit` | Manages live session state, messages, and SSE updates |
 | `ConnectionOverlayCubit` | Tracks relay connection status for the overlay widget |
 
-**Services**
+**Repositories**
 
-| Service | Purpose |
-|---------|---------|
-| `SessionService` | Session creation, listing, and message fetching |
+| Repository | Purpose |
+|------------|---------|
+| `SessionRepository` | Session creation, listing, mutation, and message fetching |
+
+**Services and capabilities**
+
+| Component | Purpose |
+|-----------|---------|
 | `ConnectionService` | Manages the relay WebSocket lifecycle |
 | `RelayClient` | Low-level relay WebSocket client with E2E encryption |
 | `SseEventTracker` | Tracks SSE events from the relay: project activity, session activity, and project timestamp updates |
