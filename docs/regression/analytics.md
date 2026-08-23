@@ -26,8 +26,9 @@ excluded, and the warehouse is external.
   outcomes, not taps, capture occurrence time at their seam, and deferred candidates emit at most once, dropping on
   disable, logout, or account switch. Results state SDK acceptance, not delivery.
 - Firebase Analytics collection defaults off at native startup and is enabled only after consent in a release process
-  outside Firebase Test Lab. Debug/profile runs and Play pre-launch crawlers emit neither automatic nor Sesori-defined
-  analytics events.
+  that exposes no `firebase.test.lab` flag in any Android settings table. Debug/profile runs emit neither automatic nor
+  Sesori-defined analytics events. Play pre-launch crawls are suppressed only when their devices expose that flag; a
+  crawl that withholds it is indistinguishable from a real install and is counted as one.
 
 ## Regression Levels
 

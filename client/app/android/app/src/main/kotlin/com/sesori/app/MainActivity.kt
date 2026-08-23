@@ -33,9 +33,7 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
         ).also { channel ->
             channel.setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "isRunning" -> result.success(
-                        Settings.System.getString(contentResolver, "firebase.test.lab") == "true",
-                    )
+                    "isRunning" -> result.success(isRunningInFirebaseTestLab())
                     else -> result.notImplemented()
                 }
             }
@@ -115,7 +113,20 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
         return getNavigationMode() == 2
     }
 
+    // Firebase documents this flag as `Settings.System` holding the exact string
+    // "true", but that read returned false throughout a Play pre-launch report:
+    // GA4 recorded 154 single-session installs of an unreleased version, each
+    // reporting product events the runtime capability should have suppressed.
+    // Google's own guidance describes the flag under instrumented-test behavior,
+    // so a Robo crawl may set it elsewhere, differently, or not at all. Read every
+    // settings table and accept any value — no real device carries this setting.
+    private fun isRunningInFirebaseTestLab(): Boolean =
+        Settings.System.getString(contentResolver, FIREBASE_TEST_LAB_SETTING) != null ||
+            Settings.Global.getString(contentResolver, FIREBASE_TEST_LAB_SETTING) != null ||
+            Settings.Secure.getString(contentResolver, FIREBASE_TEST_LAB_SETTING) != null
+
     private companion object {
         const val FIREBASE_TEST_LAB_CHANNEL_NAME = "com.sesori.app/firebase-test-lab"
+        const val FIREBASE_TEST_LAB_SETTING = "firebase.test.lab"
     }
 }
