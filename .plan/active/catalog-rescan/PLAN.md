@@ -222,9 +222,32 @@ entry. It is not pinned, not a banner, not a toast, not a dialog.
 |---|---|---|---|---|
 | Running | indeterminate ring | `Rescanning harnesses` | harness currently enumerating plus its running session count | cancel |
 | Succeeded | check | `Rescan complete` | new-item summary | none; the service clears it after 4s |
-| Partly failed | warning | `Rescan finished` | `1 of 3 harnesses failed` plus the sanitized message | dismiss |
-| Failed | warning | `Rescan failed` | sanitized `CatalogImportFailed.message` | dismiss |
+| Partly failed | warning | `Rescan finished` | `1 of 3 harnesses could not be rescanned` | dismiss |
+| Failed | warning | `Rescan failed` | `Check the bridge log for details` | dismiss |
 | Cancelled | — | — | — | row removed immediately |
+
+**No failure text from the bridge is rendered.** `CatalogImportService._run`
+catches `Object` and sends `error.toString()` as `CatalogImportFailed.message`,
+so that field can carry paths, identifiers, and other local context. It is a
+useful bridge log line and an unsafe phone string. The row therefore reports a
+bounded failure and points at the log, and `CatalogRescanFailed` carries no free
+text at all. Adding a sanitization boundary at the producer would let the row say
+more; that is recorded as a follow-up rather than smuggled into this series.
+
+### Refreshing the list after a rescan commits
+
+A committed import does **not** invalidate the client's lists today.
+`CatalogImportRepository.backendActivity` feeds only `ChatHistoryActivityListener`
+(`orchestrator.dart:524-527`); the `sessionsUpdated` producers are PR sync and
+the unseen service, neither of which the import touches. The stage-1 soft refresh
+runs on release, before the import commits, so without an explicit refresh the
+row would announce new sessions over a list that still lacks them.
+
+`ProjectListCubit` and `SessionListCubit` therefore refresh themselves when the
+rescan reaches `CatalogRescanSucceeded` or `CatalogRescanPartlyFailed`, reusing
+the existing silent refresh each already owns. This is a client-side refresh, not
+a new bridge event: the progress stream is global, so a rescan started from the
+CLI or from another surface refreshes these lists just the same.
 
 With several harnesses enabled the row stays a single row. Its subtitle names
 whichever harness is currently enumerating; it does not grow one row per
@@ -250,20 +273,26 @@ the pull gesture is invisible to screen readers and awkward with a mouse, and
 the reporter runs the bridge on a desktop. The user chose this placement over an
 app-bar menu item.
 
-The action is offered only for a harness whose `runtimeState.isEnabled` is true,
+The action is offered only for a harness whose `runtimeState.isRoutable` is true,
 and it is disabled while that harness already has a rescan in flight.
+`isEnabled` is deliberately **not** the predicate: it is true for
+`PluginRuntimeState.blocked` and `failed`, neither of which the bridge admits to
+`startAllowedPluginIds` (`plugin_runtime.dart:105-108`, which requires
+`accessGate == enabled && slot.startAllowed`). Offering a tappable `Rescan` on a
+setup-blocked harness would produce a `503` and, under the fan-out's silent-skip
+rule, no visible result at all.
+
+The silent `503` skip belongs to `startAll()` only. A **targeted** rescan — the
+Settings action, where the user named exactly one harness — surfaces the
+rejection on the card instead of skipping it.
 
 ## Ownership And Data Flow
 
 ```text
-pull past 1.6x   ->  ProjectListCubit / SessionListCubit
-Settings Rescan  ->  PluginManagementCubit
-                          |
-                          v
                   CatalogRescanService          (client/module_core/lib/src/services)
-                    |  startAll() / start(pluginId) / cancel()
+                    |  startAll() / start(pluginId) / cancel() / dismiss()
                     |
-                    +-- PluginManagementService.snapshots   (enabled set + display names)
+                    +-- PluginManagementService.snapshots   (routable set + display names)
                     |
                     +-- PluginRepository                    (client/module_core/lib/src/repositories)
                     |        v
@@ -275,10 +304,32 @@ Settings Rescan  ->  PluginManagementCubit
                           |
                           v
                   ValueStream<CatalogRescanState>
-                          v
-        rescan row in client/app/lib/core/widgets/, hosted by
-        the project list, the session list, and the split-view pane
+                          |
+        +-----------------+------------------+
+        v                 v                  v
+  ProjectListCubit  SessionListCubit  PluginManagementCubit
+        |                 |                  |
+        |  each exposes the rescan state in  |
+        |  its own state and refreshes its   |
+        |  list on a terminal success        |
+        v                 v                  v
+  project list      session list +      Settings > Harnesses
+                    split-view pane
+
+  Widgets watch their cubit and dispatch intents to it. No widget holds
+  the service stream, and no widget calls the service directly.
 ```
+
+No widget subscribes to `CatalogRescanService`. Each surface's existing cubit
+gains one subscription to its `ValueStream`, surfaces the rescan state through
+its own state, and exposes the intent methods the screen dispatches
+(`startRescan()`, `startRescanFor(pluginId)`, `cancelRescan()`,
+`dismissRescan()`). This keeps the shell's Layer-4 boundary intact and puts the
+post-success list refresh in the object that already owns refreshing.
+
+A dedicated `CatalogRescanCubit` was considered and rejected: the two list
+surfaces must refresh themselves on success, which only their own cubits can do,
+so a fourth cubit would add an object without removing any wiring.
 
 `CatalogRescanService` is a `@lazySingleton` in `module_core`, resolved with
 `getIt<CatalogRescanService>()` per the app shell's DI convention. Its declared
@@ -296,15 +347,38 @@ maintained, already refreshed on reconnect, and already invalidated by
 `client/module_core/lib/src/services/models/catalog_rescan_state.dart`.
 
 `startAll()` reads the current management snapshot, keeps every harness whose
-`runtimeState.isEnabled` is true, and issues one `POST /plugin/import` per
+`runtimeState.isRoutable` is true, and issues one `POST /plugin/import` per
 harness. A harness the bridge reports as unavailable answers `503` and a harness
-it does not know answers `404`; both are skipped silently, because a harness
-that cannot import is not an error the user asked about. Any other failure
-surfaces on the row.
+it does not know answers `404`; in the fan-out both are skipped silently, because
+a harness that cannot import is not an error the user asked about.
 
 `cancel()` issues one `DELETE /plugin/import` per id in
 `CatalogRescanRunning.pluginIds`, because the route cancels exactly one plugin
 per call.
+
+### A harness joins the rescan on dispatch, not on acknowledgement
+
+`RelayHttpApiClient` can complete a request with `TimeoutException` or
+`RelayResponseLostException` (`relay_client.dart:172, 491, 570`) **after** the
+POST or DELETE was already delivered. Membership is therefore recorded when the
+request is dispatched, not when it is acknowledged:
+
+| Outcome of the start request | Effect on `pluginIds` |
+|---|---|
+| Accepted | stays |
+| `404` or `503` | removed; the harness cannot import |
+| Any other explicit rejection | removed and counted as failed |
+| Timeout or lost response | **stays**; the import may well be running |
+
+A harness leaves the set on its own terminal SSE event. A start whose response
+was lost therefore still renders progress and still reaches a terminal state,
+instead of being written off as failed while the bridge imports.
+
+This is deliberately a membership rule rather than a third "uncertain" result
+type. The only case the rule does not settle is a lost response for a request
+that genuinely never arrived: that harness stays in `pluginIds` with no progress
+until the connection resets the state to idle, which is a bounded, self-clearing
+outcome and not worth a new result variant across two layers.
 
 ### State
 
@@ -314,9 +388,8 @@ sealed CatalogRescanState
   CatalogRescanRunning({ String activePluginName, int sessionsSeen,
                          Set<String> pluginIds })
   CatalogRescanSucceeded({ int harnessCount, CatalogRescanCounts counts })
-  CatalogRescanPartlyFailed({ int succeededCount, int failedCount,
-                              String message })
-  CatalogRescanFailed({ int harnessCount, String message })
+  CatalogRescanPartlyFailed({ int succeededCount, int failedCount })
+  CatalogRescanFailed({ int harnessCount })
 
 sealed CatalogRescanCounts
   CatalogRescanDelta({ int newProjects, int newSessions })
@@ -329,6 +402,10 @@ not. `CatalogRescanPartlyFailed` deliberately carries no counts: the row reports
 the failure, and a partial count would invite the reader to trust it as the
 whole result.
 
+Neither failure variant carries free text. `CatalogImportFailed.message` is the
+bridge's `error.toString()` and is not privacy-bounded, so it is never lifted
+into client state where a widget could render it.
+
 ### Lifetimes owned by the service
 
 The service owns every transition out of a terminal state. The row widget
@@ -336,11 +413,22 @@ renders whatever it is given and owns no timer.
 
 | Trigger | Transition |
 |---|---|
-| 4s after a terminal state | to `CatalogRescanIdle` |
-| Dismiss tapped on a failure | to `CatalogRescanIdle` |
+| 4s after `CatalogRescanSucceeded` | to `CatalogRescanIdle` |
+| Dismiss tapped on either failure state | to `CatalogRescanIdle` |
 | Cancel confirmed | to `CatalogRescanIdle` |
-| Connection lost, or the active bridge changes | to `CatalogRescanIdle` |
+| A new rescan starts | to `CatalogRescanRunning`, clearing the retained progress map first |
+| Connection lost, or the active bridge changes | to `CatalogRescanIdle`, clearing the retained progress map |
 | Connection established or restored | seed from `GET /plugin/import`, keeping only `CatalogImportEnumerating` and `CatalogImportCommitting`; discard every terminal status |
+
+The 4s clear applies to **success only**. `CatalogRescanPartlyFailed` and
+`CatalogRescanFailed` persist until the user dismisses them, a new rescan
+starts, or the connection resets: a diagnostic the user did not get to read is
+worse than a row that outstays its welcome.
+
+The retained progress map is cleared whenever a rescan starts and whenever the
+state resets to idle. Without that, a second rescan would aggregate the previous
+run's terminal entries before the harnesses reported anything, and could publish
+a terminal state before the new run had begun.
 
 Terminal outcomes are adopted only from the SSE stream, and only for a rescan
 this service already knows is running. This is deliberately the whole lifetime
@@ -383,12 +471,13 @@ New in-memory mutable parts:
 
 | Part | Owner | Why it must exist |
 |---|---|---|
-| `Map<String, CatalogImportProgress>` | `CatalogRescanService` | Aggregating several concurrent harness imports into one row requires the latest progress per harness |
+| `Map<String, CatalogImportProgress>` | `CatalogRescanService` | Aggregating several concurrent harness imports into one row requires the latest progress per harness. Cleared on every rescan start and on every reset to idle |
 | `BehaviorSubject<CatalogRescanState>` | `CatalogRescanService` | The published stream, seeded so a late subscriber renders correctly |
 | `CompositeSubscription` | `CatalogRescanService` | SSE plus connection-status subscriptions, matching `PluginManagementService` |
-| `Timer?` | `CatalogRescanService` | The 4s terminal-state clear. Owned here, not by the row, so two mounted hosts cannot run disagreeing timers |
+| `Timer?` | `CatalogRescanService` | The 4s success clear. Owned here, not by the row, so two mounted hosts cannot run disagreeing timers. Never armed for a failure state |
 | `bool _disposed` | `CatalogRescanService` | Module convention for `Disposable` services |
 | `bool _deepArmed` | `PregoSliverRefreshControl` | The refresh control reports pull distance continuously but fires `onRefresh` once; the threshold state at release must survive that one frame |
+| One subscription and one state field each | `ProjectListCubit`, `SessionListCubit`, `PluginManagementCubit` | The shell's Layer-4 boundary: widgets render cubit state rather than holding a service stream, and the two list cubits own their own post-success refresh |
 
 Two fan-outs are recorded rather than hidden: `startAll()` issues one `POST` per
 enabled harness, and `cancel()` issues one `DELETE` per running harness. Both
@@ -409,6 +498,17 @@ Deliberately **not** added:
   reconnects. There is no timer and no repeated read.
 - **No generation or fence machinery.** Resetting to idle on disconnect makes it
   unnecessary at this scale.
+- **No third "uncertain" mutation result.** A dispatch-based membership rule
+  closes the lost-response hole without a new result variant threaded through
+  the API and repository layers.
+- **No fourth `CatalogRescanCubit`.** The two list cubits must refresh
+  themselves on success, so a dedicated cubit would add an object without
+  removing any wiring.
+- **No client-side sanitizer for `CatalogImportFailed.message`.** The field is
+  simply never lifted into client state. Sanitizing at the consumer would still
+  have carried the raw string over the wire.
+- **No new bridge event for post-import list invalidation.** The two list cubits
+  already own a silent refresh and already see the global progress stream.
 - **No changes to the two SSE switch arms.** Both are correct as they stand;
   the service pattern-matches the event itself.
 - **No persisted last-rescan timestamp.** A `Last scanned 6 days ago - Rescan`
@@ -427,6 +527,8 @@ Deliberately **not** added:
 | A rescan in flight when the connection drops | The row disappears and does not return | Accepted. The bridge continues and commits the import; the next connect seeds only non-terminal statuses, so a rescan that finished meanwhile is simply not announced |
 | Two surfaces trigger a rescan for the same harness at once | The bridge coalesces it: `CatalogImportService.start` finds the active control and applies the trigger to it | No client-side guard needed; existing bridge behavior is correct |
 | A cancel `DELETE` races a harness that just completed | The bridge answers on the already-settled plugin and the SSE terminal event wins | Accepted; no client-side ordering guard |
+| A failure row names no cause | The user must open the bridge log to learn why a harness failed | Accepted. `CatalogImportFailed.message` is unbounded `error.toString()`; a vaguer row is the honest trade until a producer-side sanitization boundary exists |
+| A lost response for a start that never arrived | That harness stays in `pluginIds` with no progress until the connection resets | Accepted. Bounded and self-clearing; a third result type across two layers is not worth it |
 
 ## Cleanup Assessment
 
@@ -478,6 +580,8 @@ Required matrix:
 | Platform | One mobile platform plus the wide split-view layout | The pane hosts stage 2 through a different scroll owner than the two scaffold hosts |
 | Compatibility | One run against a bridge that omits `newItems` | Proves the totals fallback rather than a false `Nothing new` |
 | Recovery | One reconnect against a bridge holding terminal statuses | Proves the recovery read discards them instead of announcing a stale success |
+| Freshness | One rescan that genuinely imports a new session, observed in the list without a second manual refresh | The whole point of the feature; a committed import raises no list invalidation, so the post-success refresh is the only thing making the new row appear |
+| Setup state | One setup-blocked harness on Settings to Harnesses | Proves `Rescan` is not offered as a tappable no-op for a harness the bridge will reject |
 
 Any reduction to this matrix requires explicit user acceptance recorded here
 before the plan is retired.
@@ -493,6 +597,11 @@ before the plan is retired.
 - Analytics. This is a reliability repair for a reported defect, not a product
   adoption question.
 - Any change to `client/desktop`, which hosts no project or session list.
+- A privacy-safe mapping for `CatalogImportFailed.message`. The right fix is a
+  bounded failure reason at the producer in `CatalogImportService._run`, keeping
+  the original error and stack trace in the local bridge log. Until that exists
+  the row reports a bounded failure and names the log; this series does not
+  change the producer, and no client code renders the field.
 
 ## Delivery Rules
 
@@ -503,11 +612,11 @@ before the plan is retired.
   matrix.
 - `architecture-plan-review` reviewed this plan and rejected the first revision;
   all ten findings were applied directly and are recorded in `TRACKER.md`.
-- Run `architecture-implementation-review` on steps 3, 4, and 6, which are the
-  architecture-bearing ones. Steps 2, 7, and 8 do not qualify. Step 5 qualifies
-  only because it introduces a new shared `module_prego` component and changes
-  which owner drives the pane's scroll; review it if that component's API is not
-  a straight extraction.
+- Run `architecture-implementation-review` on steps 3, 4, 5, and 6. Step 5 is
+  included unconditionally: it adds a new shared production component and moves
+  which owner drives the split-view pane's scroll, which is an architecture
+  boundary regardless of how much of its API is a straight extraction. Steps 2,
+  7, and 8 do not qualify.
 - Step 8 moves `.plan/active/catalog-rescan/` to
   `.plan/completed/catalog-rescan/` only after the recorded L3 matrix passes.
 
@@ -515,12 +624,12 @@ before the plan is retired.
 
 | Step | Exact PR title | Changed-line target |
 |---|---|---:|
-| 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 850-1,000 |
+| 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 1,050-1,250 |
 | 2/8 | `🌱 [catalog-rescan] Re-hydrate stale plugin catalogs [step 2/8]` | 20-60 |
 | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 |
 | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 |
 | 5/8 | `⚙️ [catalog-rescan] Add a second stage to pull-to-refresh [step 5/8]` | 350-600 |
-| 6/8 | `⚙️ [catalog-rescan] Surface catalog rescan in the app [step 6/8]` | 700-1,100 |
+| 6/8 | `⚙️ [catalog-rescan] Surface catalog rescan in the app [step 6/8]` | 950-1,400 |
 | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 |
 | 8/8 | `🌱 [catalog-rescan] Verify and retire the catalog rescan plan [step 8/8]` | 60-140 |
 
@@ -612,16 +721,24 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
   exactly as `PluginManagementService._onSseEvent` does; read
   `GET /plugin/import` once on connect and reconnect, keeping only
   `CatalogImportEnumerating` and `CatalogImportCommitting`; reset to
-  `CatalogRescanIdle` on disconnect and on an active-bridge change; own the 4s
-  terminal clear; and expose `ValueStream<CatalogRescanState>`, `startAll()`,
-  `start(pluginId)`, `cancel()`, and `dismiss()`.
+  `CatalogRescanIdle` on disconnect and on an active-bridge change; clear the
+  retained progress map on every rescan start and every reset; arm the 4s clear
+  for `CatalogRescanSucceeded` only; record membership on dispatch per the
+  table above; select harnesses by `runtimeState.isRoutable`; never lift
+  `CatalogImportFailed.message` into state; and expose
+  `ValueStream<CatalogRescanState>`, `startAll()`, `start(pluginId)`,
+  `cancel()`, and `dismiss()`.
 - Leave `sse_event.dart` and `sse_event_tracker.dart` untouched.
 - Tests: aggregation across two concurrent harnesses; all five states including
   a mixed success/failure fan-out; the older-bridge payload with `newItems`
   omitted; a reconnect whose `GET` holds only terminal statuses producing no
   row; a reconnect whose `GET` holds an in-flight status producing a running
   row; a disconnect clearing an active rescan; a fan-out where one harness
-  answers `503`; and cancel issuing one `DELETE` per running harness.
+  answers `503`; cancel issuing one `DELETE` per running harness; a **second
+  sequential rescan** proving the previous run's terminal entries do not leak
+  into the new aggregate; a failure state surviving well past 4s while a
+  success clears; and a start whose response is lost still reaching a terminal
+  state from SSE.
 
 ### Verification
 
@@ -655,26 +772,40 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
 - `dart analyze --fatal-infos` from `client/module_prego` and `client/app`
 - `dart run tool/generate_manifest.dart --check` from `client/design_catalog`
   if a scenario was added
+- architecture implementation review
 
 ## Step 6/8 - Surface Catalog Rescan In The App
 
 ### Scope
 
+- `ProjectListCubit`, `SessionListCubit`, and `PluginManagementCubit` each
+  subscribe to `CatalogRescanService`, surface the rescan state through their
+  own state, and expose `startRescan()`, `startRescanFor(pluginId)`,
+  `cancelRescan()`, and `dismissRescan()`. The two list cubits additionally run
+  their existing silent refresh on `CatalogRescanSucceeded` and
+  `CatalogRescanPartlyFailed`, because a committed import raises no list
+  invalidation of its own.
 - The aggregate rescan row widget in `client/app/lib/core/widgets/`, beside the
   shell's other cross-feature widgets, with its five presentations. It renders
-  the state it is given and owns no timer.
+  the state it is given, owns no timer, and renders no bridge-supplied text.
 - Project list, full-screen session list, and split-view pane: wire
-  `onDeepRefresh` to `CatalogRescanService.startAll()`, and render the row as
-  the sliver at index 0 in place of the soft-refresh indicator while a rescan is
+  `onDeepRefresh` to the cubit's `startRescan()`, and render the row as the
+  sliver at index 0 in place of the soft-refresh indicator while a rescan is
   running.
 - Settings to Harnesses: the per-harness `Rescan` action in
-  `_HarnessControlCard`, calling `start(pluginId)`, enabled only for an enabled
-  harness and disabled while that harness is already rescanning.
+  `_HarnessControlCard`, calling `startRescanFor(pluginId)`, enabled only for a
+  harness whose `runtimeState.isRoutable` is true and disabled while that
+  harness is already rescanning. A targeted `503` or `404` is surfaced on the
+  card rather than silently skipped.
 - New `app_en.arb` resources for both captions, the five row states, the delta
-  and totals wordings, the `Nothing new` case, the partly-failed wording, and
-  the Settings action with its semantics label.
-- Widget tests: all five row states; the totals fallback; cancel; dismiss; and
-  the Settings action's enablement rules.
+  and totals wordings, the `Nothing new` case, the partly-failed wording, the
+  bounded failure line naming the bridge log, and the Settings action with its
+  semantics label and its rejection message.
+- Widget and cubit tests: all five row states; the totals fallback; cancel;
+  dismiss; the Settings action's enablement rules and its targeted rejection;
+  that a terminal success triggers exactly one list refresh per list cubit; and
+  that no test fixture's `CatalogImportFailed.message` reaches a rendered
+  string.
 
 ### Verification
 
@@ -689,12 +820,13 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
 
 - `docs/regression/projects-and-sessions.md`: record the client-triggered
   rescan, the two-stage pull across all three hosts, the aggregate progress row
-  and its terminal states, cancellation, new-item reporting with its
+  and its terminal states, the post-success list refresh, failure rows
+  persisting until dismissal, cancellation, new-item reporting with its
   older-bridge fallback, and the recovery read discarding terminal statuses.
 - `docs/regression/plugin-setup-and-lifecycle.md`: record the per-harness
-  `Rescan` action and its enablement rules.
-- Record the required plugin, platform, compatibility, and recovery matrix in
-  both.
+  `Rescan` action, its `isRoutable` enablement rule, and its targeted rejection.
+- Record the required plugin, platform, compatibility, recovery, freshness, and
+  setup-state matrix in both.
 
 ### Verification
 
@@ -707,8 +839,8 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
 ### Scope
 
 - Run the recorded L3 matrix, including both ownership branches, the two-harness
-  mixed-outcome run, the older-bridge compatibility run, and the reconnect
-  recovery run.
+  mixed-outcome run, the older-bridge compatibility run, the reconnect recovery
+  run, the freshness run, and the setup-blocked harness run.
 - Record the result, and any explicitly accepted reduction, in `TRACKER.md`.
 - Move `.plan/active/catalog-rescan/` to `.plan/completed/catalog-rescan/` once
   that coverage passes.

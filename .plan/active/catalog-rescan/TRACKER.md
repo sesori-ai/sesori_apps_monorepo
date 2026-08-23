@@ -61,12 +61,18 @@
 | Row home | `client/app/lib/core/widgets/` | Consumed by two features; must not live inside either |
 | Terminal state | Five sealed variants summarising the whole fan-out | One `pluginName` could not describe two harnesses finishing differently |
 | Terminal lifetime | Owned by `CatalogRescanService`, not the row | Two mounted hosts would otherwise run disagreeing 4s timers, and a revisit would replay a stale success |
+| Auto-clear scope | Success only; failures persist until dismissed | A diagnostic the user did not get to read is worse than a row that outstays its welcome |
+| Post-success refresh | Both list cubits run their existing silent refresh | A committed import raises no list invalidation, so the row would otherwise announce new sessions over a stale list |
+| Failure text | Never lifted into client state | `CatalogImportFailed.message` is the bridge's unbounded `error.toString()` |
+| State routing | Through `ProjectListCubit`, `SessionListCubit`, `PluginManagementCubit` | Keeps the shell's Layer-4 boundary and puts the refresh in the object that already owns refreshing |
+| Fan-out membership | Recorded on dispatch, not acknowledgement | `RelayResponseLostException` and timeouts can fire after the request landed |
+| Harness predicate | `runtimeState.isRoutable` | `isEnabled` is true for `blocked` and `failed`, which the bridge rejects with `503` |
 | Completion wording | New items, with a totals fallback | Reporting 193 totals after a no-op rescan would be actively misleading |
 | New-count transport | One nullable `CatalogImportNewItems` object | Two independent `int?` fields make `{5, null}` representable and meaningless |
 | Recovery read | Seed only from non-terminal statuses | `latestStatuses` retains terminal statuses forever |
 | Connection lifetime | Reset to idle on disconnect and bridge change | Makes generation and fence machinery unnecessary at this scale |
 | Non-gesture twin | Per-harness action on Settings to Harnesses | Required for screen readers and desktop; user chose it over an app-bar item |
-| Fan-out | One `POST` per enabled harness, one `DELETE` per running harness | Both routes address exactly one plugin per call; no wire change |
+| Fan-out | One `POST` per routable harness, one `DELETE` per running harness | Both routes address exactly one plugin per call; no wire change |
 | Stale markers | Bump `projectionVersion` to `2` | The mechanism already exists for exactly this; ships first, independently |
 
 ## Rejected And Deferred
@@ -85,6 +91,11 @@
 | A second `PluginRepository.getManagement()` read | Rejected | `PluginManagementService.snapshots` already maintains, refreshes, and invalidates that data |
 | Persisted last-rescan timestamp and a staleness nudge | Deferred | Plausible follow-up; needs a new persisted field and list affordance to serve a problem the deliberate rescan already solves |
 | Removing the hydration marker table, DAO, `CatalogEmptyHydrationPolicy`, and `projectionVersion` | Deferred | They all die together only if a future plan moves automatic import off the marker; removing them now would break first-install hydration |
+| A third "uncertain" mutation result | Rejected | A dispatch-based membership rule closes the lost-response hole without threading a variant through two layers |
+| A dedicated `CatalogRescanCubit` | Rejected | The two list cubits must refresh themselves on success, so a fourth cubit adds an object without removing wiring |
+| A new bridge event for post-import list invalidation | Rejected | The list cubits already own a silent refresh and already see the global progress stream |
+| A client-side sanitizer for `CatalogImportFailed.message` | Rejected | Sanitizing at the consumer still carries the raw string over the wire; the field is simply not lifted into state |
+| A privacy-safe failure reason at the producer | Deferred | The right fix is a bounded reason in `CatalogImportService._run` with the original error kept in the bridge log; out of scope for this series |
 | Analytics for rescans | Rejected | Reliability repair for a reported defect, not a product adoption question |
 
 ## Open Questions
@@ -96,12 +107,12 @@
 
 | Done | Step | Exact PR title | Changed-line target | State |
 |---|---|---|---:|---|
-| [ ] | 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 850-1,000 | In preparation |
+| [ ] | 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 1,050-1,250 | In preparation |
 | [ ] | 2/8 | `🌱 [catalog-rescan] Re-hydrate stale plugin catalogs [step 2/8]` | 20-60 | Not started |
 | [ ] | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 | Not started |
 | [ ] | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 | Not started |
 | [ ] | 5/8 | `⚙️ [catalog-rescan] Add a second stage to pull-to-refresh [step 5/8]` | 350-600 | Not started |
-| [ ] | 6/8 | `⚙️ [catalog-rescan] Surface catalog rescan in the app [step 6/8]` | 700-1,100 | Not started |
+| [ ] | 6/8 | `⚙️ [catalog-rescan] Surface catalog rescan in the app [step 6/8]` | 950-1,400 | Not started |
 | [ ] | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 | Not started |
 | [ ] | 8/8 | `🌱 [catalog-rescan] Verify and retire the catalog rescan plan [step 8/8]` | 60-140 | Not started |
 
@@ -152,10 +163,17 @@
 - [ ] Filter the recovery read to non-terminal statuses only.
 - [ ] Reset to idle on disconnect and on active-bridge change; add no
   generation or fence state.
-- [ ] Own the 4s terminal clear in the service.
+- [ ] Clear the retained progress map on every rescan start and every reset.
+- [ ] Arm the 4s clear for `CatalogRescanSucceeded` only.
+- [ ] Record membership on dispatch; keep a harness on timeout or lost response.
+- [ ] Select harnesses by `runtimeState.isRoutable`.
+- [ ] Never lift `CatalogImportFailed.message` into client state.
 - [ ] Prove aggregation across two harnesses, all five states including a mixed
   outcome, the older-bridge payload, both reconnect cases, a disconnect, a
-  `503` in the fan-out, and cancel fanning out one `DELETE` per running id.
+  `503` in the fan-out, cancel fanning out one `DELETE` per running id, a
+  second sequential rescan not inheriting the previous aggregate, a failure
+  surviving past 4s while a success clears, and a lost start response still
+  reaching a terminal state from SSE.
 - [ ] Run `architecture-implementation-review`.
 
 ## Step 5 Checklist
@@ -167,16 +185,23 @@
 - [ ] Leave an ordinary pull visually unchanged.
 - [ ] Prove short pull, long pull, and abandoned long pull, in both the scaffold
   and the pane.
+- [ ] Run `architecture-implementation-review`.
 
 ## Step 6 Checklist
 
+- [ ] Give all three cubits a rescan subscription, state, and intent methods.
+- [ ] Refresh both lists on `CatalogRescanSucceeded` and
+  `CatalogRescanPartlyFailed`.
 - [ ] Build the rescan row in `client/app/lib/core/widgets/` with all five
-  presentations and no timer.
-- [ ] Wire all three hosts.
-- [ ] Add the per-harness Settings action with its enablement rules.
+  presentations, no timer, and no bridge-supplied text.
+- [ ] Wire all three hosts through their cubits; no widget touches the service.
+- [ ] Add the per-harness Settings action with `isRoutable` enablement and a
+  surfaced targeted rejection.
 - [ ] Add every `app_en.arb` resource and commit the generated l10n.
-- [ ] Prove the five row states, the totals fallback, cancel, dismiss, and the
-  Settings action's enablement.
+- [ ] Prove the five row states, the totals fallback, cancel, dismiss, the
+  Settings action's enablement and rejection, exactly one list refresh per
+  cubit on terminal success, and that no fixture message reaches a rendered
+  string.
 - [ ] Run `architecture-implementation-review`.
 
 ## Step 7 Checklist
@@ -220,12 +245,42 @@
 Three findings rested on facts that contradicted the plan's text; each was
 independently verified in the tree before the correction was applied.
 
+## PR Review
+
+### cubic-dev-ai on #1064
+
+One P3 finding on the recorded step-1 changed-line count. Valid: the figure was
+captured before the verification-log commit added its own lines. Recomputed from
+the merge-base and marked informational, since it counts itself. Applied in
+`006ae510a`; thread resolved.
+
+### chatgpt-codex-connector on #1064
+
+Eight findings, all assessed valid and applied. Three rested on facts verified
+in the tree first: `startAllowedPluginIds` requires
+`accessGate == enabled && slot.startAllowed` (`plugin_runtime.dart:105-108`);
+`RelayResponseLostException` is real and fires after dispatch
+(`relay_client.dart:172, 491, 570`); and `catalogImportRepository.backendActivity`
+feeds only `ChatHistoryActivityListener` (`orchestrator.dart:524-527`), so a
+committed import raises no list invalidation.
+
+| Finding | Correction applied |
+|---|---|
+| Refresh catalogs after a rescan commits | Both list cubits run their existing silent refresh on a terminal success. Without it the row announced new sessions over a stale list — the feature's whole purpose |
+| Sanitize import failures before rendering them | Neither failure variant carries free text; the row reports a bounded failure and names the bridge log. A producer-side sanitization boundary is recorded as a named follow-up |
+| Keep failure states visible until dismissal | The 4s clear now applies to `CatalogRescanSucceeded` only; this also removed a contradiction between the plan's own presentation and lifetime tables |
+| Clear retained progress between rescans | The progress map is cleared on every rescan start and every reset to idle; sequential-rescan coverage added |
+| Require architecture review for Step 5 | Step 5 now listed unconditionally alongside 3, 4, and 6 |
+| Model lost mutation responses as uncertain | **Partially applied.** Membership is recorded on dispatch and a harness survives a timeout or lost response, which closes the hole. The proposed third "uncertain" result type was declined as machinery across two layers for a bounded, self-clearing case; the residue is recorded as an accepted risk |
+| Route rescan actions and state through cubits | All three cubits gain a subscription, state, and intent methods; no widget holds the service stream. A dedicated fourth cubit was considered and rejected in the plan |
+| Do not enable Rescan for blocked harnesses | Enablement moved to `runtimeState.isRoutable`, and a targeted rejection is surfaced on the card. The silent `503` skip is now scoped to the fan-out only |
+
 ## Verification Log
 
 - **Step 1 documentation validation:** `git diff --check` passed; step tokens
   and exact PR titles diffed clean between `PLAN.md` and `TRACKER.md`; plan
   files only in the diff
-- **Step 1 changed lines:** 957 documentation-only insertions, 0 deletions, from
+- **Step 1 changed lines:** 1,144 documentation-only insertions, 0 deletions, from
   `git diff --numstat <merge-base>...HEAD` (informational only; the figure counts
   these verification-log lines, so it cannot independently validate the target)
 - **Step 1 review:** `architecture-plan-review` rejected the first revision;
