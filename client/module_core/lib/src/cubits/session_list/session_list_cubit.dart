@@ -3,18 +3,18 @@ import "dart:async";
 import "package:bloc/bloc.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
-import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_shared/sesori_shared.dart" hide SessionCleanupRejection;
 
-import "../../api/session_api.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
-import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
 import "../../repositories/models/repo_provider.dart";
+import "../../repositories/models/session_cleanup_rejection.dart";
 import "../../repositories/project_repository.dart";
+import "../../repositories/session_repository.dart";
 import "../../routing/app_routes.dart";
 import "../../services/models/session_activity_info.dart";
 import "../../services/models/session_list_item_state.dart";
@@ -25,7 +25,7 @@ import "../../services/sse_event_tracker.dart";
 import "session_list_state.dart";
 
 class SessionListCubit({
-  required final SessionService _sessionService,
+  required final SessionRepository _sessionRepository,
   required final SessionListService _sessionListService,
   required final ProjectRepository _projectRepository,
   required final ConnectionService _connectionService,
@@ -203,7 +203,7 @@ class SessionListCubit({
     );
     _onUnseenUpdated();
     try {
-      final response = await _sessionService.markSessionSeen(sessionId: sessionId, read: read);
+      final response = await _sessionRepository.markSessionSeen(sessionId: sessionId, read: read);
       if (response case ErrorResponse(:final error)) {
         loge("Failed to mark session ${read ? "read" : "unread"}", error);
         if (!isClosed) await _fetchSessions(silent: true);
@@ -315,7 +315,7 @@ class SessionListCubit({
           unawaited(refreshSessions());
         case SessionListFailed():
           unawaited(loadSessions());
-        case SessionListLoading() || SessionListStaleProject():
+        case SessionListLoading():
           break;
       }
     }
@@ -373,7 +373,7 @@ class SessionListCubit({
 
     final ApiResponse<Session> response;
     try {
-      response = await _sessionService.archiveSession(
+      response = await _sessionRepository.archiveSession(
         sessionId: sessionId,
         deleteWorktree: deleteWorktree,
         force: force,
@@ -400,7 +400,7 @@ class SessionListCubit({
   /// Renames a session. Returns `true` on success so the screen can show
   /// a confirmation message.
   Future<bool> renameSession({required String sessionId, required String title}) async {
-    final response = await _sessionService.renameSession(sessionId: sessionId, title: title);
+    final response = await _sessionRepository.renameSession(sessionId: sessionId, title: title);
     if (isClosed) return false;
 
     switch (response) {
@@ -436,7 +436,7 @@ class SessionListCubit({
 
     final ApiResponse<void> response;
     try {
-      response = await _sessionService.deleteSession(
+      response = await _sessionRepository.deleteSession(
         sessionId: sessionId,
         deleteWorktree: deleteWorktree,
         force: force,

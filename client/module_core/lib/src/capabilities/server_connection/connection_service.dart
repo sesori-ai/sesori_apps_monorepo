@@ -207,15 +207,7 @@ class ConnectionService(
     ConnectionDisconnected() => null,
   };
 
-  /// The current project directory. Set when the user enters a
-  /// project context and used by feature cubits/services as request context.
-  String? _activeDirectory;
-  String? get activeDirectory => _activeDirectory;
   RelayClient? get relayClient => _relayClient;
-
-  void setActiveDirectory(String directory) {
-    _activeDirectory = directory;
-  }
 
   /// Stateless transport primitive: declares to the bridge which session this
   /// phone is currently viewing ([sessionId] == null when viewing nothing).

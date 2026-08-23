@@ -163,7 +163,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
       when(
@@ -192,7 +191,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
       when(() => mockConnectionService.sessionEvents(_sessionId)).thenAnswer((_) => sessionEvents.stream);

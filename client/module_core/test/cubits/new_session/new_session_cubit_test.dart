@@ -29,7 +29,7 @@ import "../../helpers/test_helpers.dart";
 
 void main() {
   group("NewSessionCubit", () {
-    late MockSessionService mockSessionService;
+    late MockSessionRepository mockSessionService;
     late MockSessionRepository mockSessionRepository;
     late MockPluginRepository mockPluginRepository;
     late MockPluginPreferenceRepository mockPluginPreferenceRepository;
@@ -50,14 +50,14 @@ void main() {
     setUpAll(registerAllFallbackValues);
 
     setUp(() {
-      mockSessionService = MockSessionService();
+      mockSessionService = MockSessionRepository();
       mockSessionRepository = MockSessionRepository();
       mockPluginRepository = MockPluginRepository();
       mockPluginPreferenceRepository = MockPluginPreferenceRepository();
       mockConnectionService = MockConnectionService();
       connectionStatus = BehaviorSubject.seeded(
         const ConnectionStatus.connected(
-          config: ServerConnectionConfig(relayHost: "relay.example.com"),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
           health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
         ),
       );
@@ -106,9 +106,9 @@ void main() {
           const ProviderListResponse(items: [], connectedOnly: false),
         ),
       );
-      delegateSessionOptionsRepositoryToService(
+      delegateSessionOptionsRepository(
         repository: mockSessionRepository,
-        service: mockSessionService,
+        source: mockSessionService,
       );
       when(
         () => mockSessionService.listCommands(
@@ -137,7 +137,7 @@ void main() {
 
     NewSessionCubit buildCubit({ComposerDraftRepository? composerDraftRepository}) => NewSessionCubit(
       connectionService: mockConnectionService,
-      sessionService: mockSessionService,
+      sessionRepository: mockSessionService,
       newSessionPluginService: NewSessionPluginService(
         pluginRepository: mockPluginRepository,
         pluginPreferenceRepository: mockPluginPreferenceRepository,
@@ -223,8 +223,7 @@ void main() {
           text: any(named: "text"),
           attachments: any(named: "attachments"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -328,8 +327,7 @@ void main() {
             text: any(named: "text"),
             attachments: any(named: "attachments"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -367,8 +365,7 @@ void main() {
             text: any(named: "text"),
             attachments: any(named: "attachments"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -394,8 +391,7 @@ void main() {
             text: "look at this",
             attachments: any(named: "attachments", that: hasLength(1)),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: null,
             dedicatedWorktree: false,
@@ -428,8 +424,7 @@ void main() {
             text: any(named: "text"),
             attachments: any(named: "attachments"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -449,8 +444,7 @@ void main() {
             pluginId: any(named: "pluginId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -480,8 +474,7 @@ void main() {
             pluginId: "plugin-1",
             text: "hello",
             agent: null,
-            providerID: null,
-            modelID: null,
+            model: null,
             variant: null,
             command: null,
             dedicatedWorktree: false,
@@ -510,8 +503,7 @@ void main() {
             pluginId: any(named: "pluginId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -519,7 +511,7 @@ void main() {
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-command")));
         return NewSessionCubit(
           connectionService: mockConnectionService,
-          sessionService: mockSessionService,
+          sessionRepository: mockSessionService,
           newSessionPluginService: NewSessionPluginService(
             pluginRepository: mockPluginRepository,
             pluginPreferenceRepository: mockPluginPreferenceRepository,
@@ -557,8 +549,7 @@ void main() {
             pluginId: "plugin-1",
             text: "",
             agent: null,
-            providerID: null,
-            modelID: null,
+            model: null,
             variant: null,
             command: "review",
             dedicatedWorktree: true,
@@ -575,8 +566,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -616,8 +606,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -693,8 +682,7 @@ void main() {
           text: any(named: "text"),
           attachments: any(named: "attachments"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -750,8 +738,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -807,8 +794,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -855,8 +841,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -884,7 +869,7 @@ void main() {
         ..add(const ConnectionStatus.disconnected())
         ..add(
           const ConnectionStatus.connected(
-            config: ServerConnectionConfig(relayHost: "relay.example.com"),
+            config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
             health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
           ),
         );
@@ -930,8 +915,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -986,8 +970,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: "",
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: command.name,
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1000,8 +983,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: "retry",
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: command.name,
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1030,8 +1012,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1059,8 +1040,7 @@ void main() {
           pluginId: "plugin-1",
           text: "hello",
           agent: null,
-          providerID: null,
-          modelID: null,
+          model: null,
           variant: null,
           command: null,
           dedicatedWorktree: false,
@@ -1104,8 +1084,7 @@ void main() {
             pluginId: any(named: "pluginId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1149,8 +1128,7 @@ void main() {
             pluginId: "plugin-1",
             text: "hello",
             agent: "build",
-            providerID: "openai",
-            modelID: "gpt-4",
+            model: const PromptModel(providerID: "openai", modelID: "gpt-4"),
             variant: const SessionVariant(id: "xhigh"),
             command: null,
             dedicatedWorktree: true,
@@ -2045,8 +2023,7 @@ void main() {
             pluginId: any(named: "pluginId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -2085,8 +2062,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -2120,8 +2096,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -2181,8 +2156,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),

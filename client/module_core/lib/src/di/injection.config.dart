@@ -30,21 +30,18 @@ import 'package:sesori_dart_core/src/api/plugin_preference_api.dart' as _i957;
 import 'package:sesori_dart_core/src/api/product_analytics_preference_api.dart'
     as _i560;
 import 'package:sesori_dart_core/src/api/project_api.dart' as _i733;
-import 'package:sesori_dart_core/src/api/project_view_api.dart' as _i210;
 import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
-import 'package:sesori_dart_core/src/api/session_view_api.dart' as _i157;
 import 'package:sesori_dart_core/src/api/storage/composer_draft_storage.dart'
     as _i64;
 import 'package:sesori_dart_core/src/api/storage/notification_preferences_device_id_storage.dart'
     as _i407;
 import 'package:sesori_dart_core/src/api/storage/product_analytics_preference_storage.dart'
     as _i197;
+import 'package:sesori_dart_core/src/api/view_declaration_api.dart' as _i37;
 import 'package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart'
     as _i896;
 import 'package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart'
     as _i369;
-import 'package:sesori_dart_core/src/capabilities/session/session_service.dart'
-    as _i12;
 import 'package:sesori_dart_core/src/capabilities/voice/voice_api.dart'
     as _i176;
 import 'package:sesori_dart_core/src/foundation/models/product_analytics/analytics_runtime_capability.dart'
@@ -90,20 +87,16 @@ import 'package:sesori_dart_core/src/repositories/product_analytics_preference_r
     as _i804;
 import 'package:sesori_dart_core/src/repositories/project_repository.dart'
     as _i80;
-import 'package:sesori_dart_core/src/repositories/project_view_repository.dart'
-    as _i271;
 import 'package:sesori_dart_core/src/repositories/registered_bridges_store.dart'
     as _i217;
 import 'package:sesori_dart_core/src/repositories/session_repository.dart'
     as _i7;
-import 'package:sesori_dart_core/src/repositories/session_view_repository.dart'
-    as _i150;
+import 'package:sesori_dart_core/src/repositories/view_declaration_repository.dart'
+    as _i143;
 import 'package:sesori_dart_core/src/routing/analytics_route_listener.dart'
     as _i888;
 import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
     as _i516;
-import 'package:sesori_dart_core/src/services/bridge_settings_service.dart'
-    as _i1033;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
@@ -352,13 +345,8 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i210.ProjectViewApi>(
-      () => _i210.ProjectViewApi(
-        connectionService: gh<_i369.ConnectionService>(),
-      ),
-    );
-    gh.lazySingleton<_i157.SessionViewApi>(
-      () => _i157.SessionViewApi(
+    gh.lazySingleton<_i37.ViewDeclarationApi>(
+      () => _i37.ViewDeclarationApi(
         connectionService: gh<_i369.ConnectionService>(),
       ),
     );
@@ -367,9 +355,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i369.ConnectionService>(),
         failureReporter: gh<_i553.FailureReporter>(),
       ),
-    );
-    gh.lazySingleton<_i271.ProjectViewRepository>(
-      () => _i271.ProjectViewRepository(api: gh<_i210.ProjectViewApi>()),
     );
     gh.lazySingleton<_i857.RelayHttpApiClient>(
       () => _i857.RelayHttpApiClient(gh<_i369.ConnectionService>()),
@@ -392,36 +377,33 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i603.SessionApi>(
       () => _i603.SessionApi(client: gh<_i857.RelayHttpApiClient>()),
     );
-    gh.lazySingleton<_i150.SessionViewRepository>(
-      () => _i150.SessionViewRepository(api: gh<_i157.SessionViewApi>()),
-    );
-    gh.lazySingleton<_i413.ProjectViewingService>(
-      () => _i413.ProjectViewingService(
-        viewRepository: gh<_i271.ProjectViewRepository>(),
-        lifecycleSource: gh<_i903.LifecycleSource>(),
-        connectionService: gh<_i369.ConnectionService>(),
-        routeSource: gh<_i366.RouteSource>(),
-      ),
+    gh.lazySingleton<_i143.ViewDeclarationRepository>(
+      () => _i143.ViewDeclarationRepository(api: gh<_i37.ViewDeclarationApi>()),
     );
     gh.lazySingleton<_i7.SessionRepository>(
       () => _i7.SessionRepository(api: gh<_i603.SessionApi>()),
     );
-    gh.lazySingleton<_i18.SessionViewingService>(
-      () => _i18.SessionViewingService(
-        viewRepository: gh<_i150.SessionViewRepository>(),
-        lifecycleSource: gh<_i903.LifecycleSource>(),
-      ),
-    );
     gh.lazySingleton<_i337.PluginRepository>(
       () => _i337.PluginRepository(api: gh<_i546.PluginApi>()),
+    );
+    gh.lazySingleton<_i413.ProjectViewingService>(
+      () => _i413.ProjectViewingService(
+        viewRepository: gh<_i143.ViewDeclarationRepository>(),
+        lifecycleSource: gh<_i903.LifecycleSource>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        routeSource: gh<_i366.RouteSource>(),
+      ),
     );
     gh.lazySingleton<_i102.BridgeSettingsRepository>(
       () => _i102.BridgeSettingsRepository(
         bridgeSettingsApi: gh<_i415.BridgeSettingsApi>(),
       ),
     );
-    gh.lazySingleton<_i12.SessionService>(
-      () => _i12.SessionService(repository: gh<_i7.SessionRepository>()),
+    gh.lazySingleton<_i18.SessionViewingService>(
+      () => _i18.SessionViewingService(
+        viewRepository: gh<_i143.ViewDeclarationRepository>(),
+        lifecycleSource: gh<_i903.LifecycleSource>(),
+      ),
     );
     gh.lazySingleton<_i531.MessageImageRepository>(
       () => _i531.MessageImageRepository(
@@ -470,11 +452,6 @@ extension GetItInjectableX on _i174.GetIt {
         pluginRepository: gh<_i337.PluginRepository>(),
         connectionService: gh<_i369.ConnectionService>(),
         productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
-      ),
-    );
-    gh.lazySingleton<_i1033.BridgeSettingsService>(
-      () => _i1033.BridgeSettingsService(
-        repository: gh<_i102.BridgeSettingsRepository>(),
       ),
     );
     gh.lazySingleton<_i709.SessionDetailLoadService>(

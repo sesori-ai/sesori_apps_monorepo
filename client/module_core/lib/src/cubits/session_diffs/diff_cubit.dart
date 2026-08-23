@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:bloc/bloc.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -21,8 +22,7 @@ class DiffCubit({
     required final String sessionId,
     required final Duration staleRetryDelay,
   }) extends Cubit<DiffState> {
-  late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
-  late final StreamSubscription<bool> _analyticsStateSubscription;
+  final CompositeSubscription _subscriptions = CompositeSubscription();
   Future<void>? _activeRefresh;
   Timer? _staleRetryTimer;
   bool _refreshQueued = false;
@@ -32,12 +32,15 @@ class DiffCubit({
   _DiffAnalyticsGuard _nonEmptyDiffAnalytics = _DiffAnalyticsGuard.ready;
 
   this : super(const DiffState.loading()) {
-    _eventSubscription = _connectionService.sessionEvents(sessionId).listen(_handleEvent);
-    _analyticsStateSubscription = _productAnalyticsService.stateStream
-        .map((state) => state.isActive)
-        .distinct()
-        .where((isActive) => isActive)
-        .listen((_) => _retryCurrentDiffAnalytics());
+    _subscriptions
+      ..add(_connectionService.sessionEvents(sessionId).listen(_handleEvent))
+      ..add(
+        _productAnalyticsService.stateStream
+            .map((state) => state.isActive)
+            .distinct()
+            .where((isActive) => isActive)
+            .listen((_) => _retryCurrentDiffAnalytics()),
+      );
     unawaited(_refresh(showLoading: false));
   }
 
@@ -181,10 +184,7 @@ class DiffCubit({
   @override
   Future<void> close() async {
     _staleRetryTimer?.cancel();
-    await Future.wait([
-      _eventSubscription.cancel(),
-      _analyticsStateSubscription.cancel(),
-    ]);
+    await _subscriptions.dispose();
     return await super.close();
   }
 }

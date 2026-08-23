@@ -1304,30 +1304,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // Test 5: setActiveProject — calls connectionService.setActiveDirectory
-    // -------------------------------------------------------------------------
-
-    blocTest<ProjectListCubit, ProjectListState>(
-      "setActiveProject: calls connectionService.setActiveDirectory with project id",
-      build: () {
-        when(
-          () => mockProjectRepository.listProjects(),
-        ).thenAnswer((_) async => ApiResponse.success(const Projects(data: <ProjectSummary>[])));
-        return buildCubit();
-      },
-      act: (cubit) => cubit.setActiveProject(testProjectSummary()),
-      expect: () => [
-        isA<ProjectListLoaded>(),
-      ],
-      verify: (cubit) {
-        verify(
-          () => mockConnectionService.setActiveDirectory(testProjectSummary().id),
-        ).called(1);
-      },
-    );
-
-    // -------------------------------------------------------------------------
-    // Test 6: explicit loadProjects call — re-fetches and re-emits
+    // Test 5: explicit loadProjects call — re-fetches and re-emits
     // -------------------------------------------------------------------------
 
     blocTest<ProjectListCubit, ProjectListState>(

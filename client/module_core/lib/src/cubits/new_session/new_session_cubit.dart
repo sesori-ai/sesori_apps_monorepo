@@ -7,7 +7,6 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
-import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/composer_draft.dart";
@@ -16,6 +15,7 @@ import "../../logging/logging.dart";
 import "../../repositories/composer_draft_repository.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
+import "../../repositories/session_repository.dart";
 import "../../services/models/new_session_backend_scope.dart";
 import "../../services/models/new_session_options_source.dart";
 import "../../services/models/new_session_selection_intent.dart";
@@ -28,7 +28,7 @@ import "new_session_submission_snapshot.dart";
 
 class NewSessionCubit({
   required final ConnectionService _connectionService,
-  required final SessionService _sessionService,
+  required final SessionRepository _sessionRepository,
   required final NewSessionPluginService _newSessionPluginService,
   required final NewSessionOptionsService _newSessionOptionsService,
   required final ProjectRepository _projectRepository,
@@ -372,9 +372,7 @@ class NewSessionCubit({
     // or options the user has since edited — would leave this refresh running
     // forever, so start a fresh one instead.
     final pending = _silentRefresh;
-    if (pending != null &&
-        pending.generation == _loadGeneration &&
-        identical(pending.startedFrom, previousOptions)) {
+    if (pending != null && pending.generation == _loadGeneration && identical(pending.startedFrom, previousOptions)) {
       _emitStateUpdate(
         options: _loadingState(previousOptions: previousOptions, source: source),
         backendScope: null,
@@ -839,7 +837,7 @@ class NewSessionCubit({
       ),
     );
     final selectedVariant = selectedAgentModel?.variant;
-    final response = await _sessionService.createSessionWithMessage(
+    final response = await _sessionRepository.createSessionWithMessage(
       projectId: _projectId,
       pluginId: pluginId,
       text: draft.text,
@@ -848,8 +846,9 @@ class NewSessionCubit({
         NewSessionCommandSubmissionSnapshot() => const [],
       },
       agent: options?.selectedAgent,
-      providerID: selectedAgentModel?.providerID,
-      modelID: selectedAgentModel?.modelID,
+      model: selectedAgentModel == null
+          ? null
+          : PromptModel(providerID: selectedAgentModel.providerID, modelID: selectedAgentModel.modelID),
       variant: selectedVariant == null ? null : SessionVariant(id: selectedVariant),
       command: switch (submission) {
         NewSessionTextSubmissionSnapshot() => null,

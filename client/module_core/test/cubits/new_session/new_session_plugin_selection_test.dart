@@ -38,7 +38,7 @@ const pluginB = PluginMetadata(
   actionHint: null,
 );
 const connectedStatus = ConnectionStatus.connected(
-  config: ServerConnectionConfig(relayHost: "relay.example.com"),
+  config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
   health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
 );
 
@@ -81,7 +81,7 @@ final class _AggregateTestOptionsService({required MockSessionRepository session
 
 void main() {
   group("NewSessionCubit plugin selection", () {
-    late MockSessionService sessionService;
+    late MockSessionRepository sessionService;
     late MockSessionRepository sessionRepository;
     late MockPluginRepository pluginRepository;
     late MockPluginPreferenceRepository pluginPreferenceRepository;
@@ -93,7 +93,7 @@ void main() {
     setUpAll(registerAllFallbackValues);
 
     setUp(() {
-      sessionService = MockSessionService();
+      sessionService = MockSessionRepository();
       sessionRepository = MockSessionRepository();
       pluginRepository = MockPluginRepository();
       pluginPreferenceRepository = MockPluginPreferenceRepository();
@@ -126,9 +126,9 @@ void main() {
         ),
       );
       _stubEmptyResources(sessionService);
-      delegateSessionOptionsRepositoryToService(
+      delegateSessionOptionsRepository(
         repository: sessionRepository,
-        service: sessionService,
+        source: sessionService,
       );
     });
 
@@ -136,7 +136,7 @@ void main() {
 
     NewSessionCubit buildCubit({NewSessionOptionsService? optionsService}) => NewSessionCubit(
       connectionService: connectionService,
-      sessionService: sessionService,
+      sessionRepository: sessionService,
       newSessionPluginService: NewSessionPluginService(
         pluginRepository: pluginRepository,
         pluginPreferenceRepository: pluginPreferenceRepository,
@@ -1367,8 +1367,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1395,8 +1394,7 @@ void main() {
           pluginId: "degraded",
           text: "hello",
           agent: null,
-          providerID: null,
-          modelID: null,
+          model: null,
           variant: null,
           command: null,
           dedicatedWorktree: true,
@@ -1448,8 +1446,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1614,8 +1611,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1647,8 +1643,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1765,8 +1760,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1812,8 +1806,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1863,8 +1856,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1883,8 +1875,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1911,7 +1902,7 @@ void main() {
   });
 }
 
-void _stubEmptyResources(MockSessionService sessionService) {
+void _stubEmptyResources(MockSessionRepository sessionService) {
   when(
     () => sessionService.listAgents(
       projectId: any(named: "projectId"),
@@ -1934,7 +1925,7 @@ void _stubEmptyResources(MockSessionService sessionService) {
   ).thenAnswer((_) async => ApiResponse.success(const CommandListResponse(items: [])));
 }
 
-void _verifyNoComposerCalls(MockSessionService sessionService) {
+void _verifyNoComposerCalls(MockSessionRepository sessionService) {
   verifyNever(
     () => sessionService.listAgents(
       projectId: any(named: "projectId"),

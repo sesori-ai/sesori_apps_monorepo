@@ -30,7 +30,7 @@ void main() {
   });
 
   test("disconnected startup reaches loaded automatically once connection becomes available", () async {
-    final mockSessionService = MockSessionService();
+    final mockSessionService = MockSessionRepository();
     final mockSessionRepository = MockSessionRepository();
     final mockProjectRepository = MockProjectRepository();
     final mockConnectionService = MockConnectionService();
@@ -67,7 +67,7 @@ void main() {
         reply: any(named: "reply"),
       ),
     ).thenAnswer((_) async => ApiResponse.success(null));
-    delegateSessionRepositoryToService(repository: mockSessionRepository, service: mockSessionService);
+    delegateSessionRepository(repository: mockSessionRepository, source: mockSessionService);
     stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: _sessionId);
     when(() => mockProjectRepository.findSessionContext(sessionId: _sessionId)).thenAnswer(
       (_) async => const ProjectSessionContext(
@@ -175,7 +175,6 @@ void main() {
           isRootSession: true,
           isArchived: false,
         ),
-        isBridgeConnected: true,
       ),
     );
 
@@ -257,7 +256,6 @@ void main() {
         isRootSession: true,
         isArchived: false,
       ),
-      isBridgeConnected: true,
     );
 
     when(
@@ -318,7 +316,7 @@ void main() {
   });
 }
 
-void _stubLoadApis(MockSessionService service) {
+void _stubLoadApis(MockSessionRepository service) {
   when(
     () => service.getMessages(
       sessionId: _sessionId,

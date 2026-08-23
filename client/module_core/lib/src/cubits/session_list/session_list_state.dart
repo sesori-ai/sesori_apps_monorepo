@@ -40,12 +40,5 @@ sealed class SessionListState with _$SessionListState {
     @Default(RepoProvider.other) RepoProvider repoProvider,
   }) = SessionListLoaded;
 
-  /// The requested project ID no longer resolves to the expected project on
-  /// the server.
-  const factory staleProject({
-    /// The project ID the server actually resolved.
-    required String resolvedProjectId,
-  }) = SessionListStaleProject;
-
   const factory failed({required RemoteFailureReason reason}) = SessionListFailed;
 }

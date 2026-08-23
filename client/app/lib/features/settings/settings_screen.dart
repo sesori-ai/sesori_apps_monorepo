@@ -43,7 +43,7 @@ class const SettingsScreen({super.key}) extends StatelessWidget {
         ),
         BlocProvider(
           create: (_) => BridgeSettingsCubit(
-            service: getIt<BridgeSettingsService>(),
+            repository: getIt<BridgeSettingsRepository>(),
             connectionService: getIt<ConnectionService>(),
           ),
         ),

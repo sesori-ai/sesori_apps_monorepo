@@ -236,7 +236,7 @@ Future<void> enterTextAndSend({required WidgetTester tester, required String tex
 }
 
 void main() {
-  late MockSessionService sessionService;
+  late MockSessionRepository sessionService;
   late MockSessionRepository sessionRepository;
   late MockPluginRepository pluginRepository;
   late MockPluginPreferenceRepository pluginPreferenceRepository;
@@ -256,14 +256,14 @@ void main() {
   setUp(() async {
     KeyboardVisibilityTesting.setVisibilityForTesting(false);
     await GetIt.instance.reset();
-    sessionService = MockSessionService();
+    sessionService = MockSessionRepository();
     sessionRepository = MockSessionRepository();
     pluginRepository = MockPluginRepository();
     pluginPreferenceRepository = MockPluginPreferenceRepository();
     connectionService = MockConnectionService();
     connectionStatus = BehaviorSubject.seeded(
       const ConnectionStatus.connected(
-        config: ServerConnectionConfig(relayHost: "relay.example.com"),
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
         health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
       ),
     );
@@ -429,7 +429,7 @@ void main() {
       ),
     ).thenAnswer((_) async {});
 
-    GetIt.instance.registerSingleton<SessionService>(sessionService);
+    GetIt.instance.registerSingleton<SessionRepository>(sessionService);
     GetIt.instance.registerSingleton<PluginRepository>(pluginRepository);
     GetIt.instance.registerSingleton<NewSessionPluginService>(
       NewSessionPluginService(
@@ -623,8 +623,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -647,8 +646,7 @@ void main() {
         pluginId: "plugin-1",
         text: "use backend defaults",
         agent: null,
-        providerID: null,
-        modelID: null,
+        model: null,
         variant: null,
         command: null,
         dedicatedWorktree: true,
@@ -1206,8 +1204,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1256,7 +1253,7 @@ void main() {
       ..add(const ConnectionStatus.disconnected())
       ..add(
         const ConnectionStatus.connected(
-          config: ServerConnectionConfig(relayHost: "relay.example.com"),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
           health: HealthResponse(
             healthy: true,
             version: "test",
@@ -1336,7 +1333,7 @@ void main() {
       ..add(const ConnectionStatus.disconnected())
       ..add(
         const ConnectionStatus.connected(
-          config: ServerConnectionConfig(relayHost: "relay.example.com"),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
           health: HealthResponse(
             healthy: true,
             version: "test",
@@ -1404,8 +1401,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1468,7 +1464,7 @@ void main() {
       ..add(const ConnectionStatus.disconnected())
       ..add(
         const ConnectionStatus.connected(
-          config: ServerConnectionConfig(relayHost: "relay.example.com"),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
           health: HealthResponse(
             healthy: true,
             version: "test",
@@ -1659,8 +1655,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1696,8 +1691,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1722,8 +1716,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1740,8 +1733,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1784,8 +1776,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1833,8 +1824,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1871,8 +1861,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1932,8 +1921,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1992,8 +1980,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),

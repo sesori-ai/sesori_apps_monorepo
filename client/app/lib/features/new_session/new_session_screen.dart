@@ -30,7 +30,7 @@ class const NewSessionScreen({
     return BlocProvider(
       create: (_) => NewSessionCubit(
         connectionService: getIt<ConnectionService>(),
-        sessionService: getIt<SessionService>(),
+        sessionRepository: getIt<SessionRepository>(),
         newSessionPluginService: getIt<NewSessionPluginService>(),
         newSessionOptionsService: getIt<NewSessionOptionsService>(),
         projectRepository: getIt<ProjectRepository>(),

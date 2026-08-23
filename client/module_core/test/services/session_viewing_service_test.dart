@@ -2,19 +2,20 @@ import "dart:async";
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/src/repositories/session_view_repository.dart";
+import "package:sesori_dart_core/src/repositories/view_declaration_repository.dart";
 import "package:test/test.dart";
+
 import "../helpers/test_helpers.dart";
 
-class MockSessionViewRepository() extends Mock implements SessionViewRepository;
+class MockViewDeclarationRepository() extends Mock implements ViewDeclarationRepository;
 
 void main() {
   group("SessionViewingService", () {
-    late MockSessionViewRepository viewRepository;
+    late MockViewDeclarationRepository viewRepository;
     late FakeLifecycleSource lifecycle;
 
     setUp(() {
-      viewRepository = MockSessionViewRepository();
+      viewRepository = MockViewDeclarationRepository();
       lifecycle = FakeLifecycleSource();
       when(() => viewRepository.sendSessionView(sessionId: any(named: "sessionId"))).thenAnswer((_) async {});
     });

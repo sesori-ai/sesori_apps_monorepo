@@ -33,7 +33,7 @@ void main() {
   });
 
   group("SessionDetailCubit permission handling", () {
-    late MockSessionService mockSessionService;
+    late MockSessionRepository mockSessionService;
     late MockSessionRepository mockSessionRepository;
     late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
@@ -47,7 +47,7 @@ void main() {
     late BehaviorSubject<ConnectionStatus> connectionStatus;
 
     setUp(() {
-      mockSessionService = MockSessionService();
+      mockSessionService = MockSessionRepository();
       mockSessionRepository = MockSessionRepository();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
@@ -69,7 +69,7 @@ void main() {
       when(() => mockConnectionService.events).thenAnswer((_) => globalEvents.stream);
       when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus);
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
-      delegateSessionRepositoryToService(repository: mockSessionRepository, service: mockSessionService);
+      delegateSessionRepository(repository: mockSessionRepository, source: mockSessionService);
       when(
         () => mockNotificationCanceller.cancelForSession(
           sessionId: any(named: "sessionId"),
@@ -796,7 +796,7 @@ SessionDetailCubit _buildCubit({
   );
 }
 
-void _stubLoadApis(MockSessionService service, {required String sessionId}) {
+void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
   when(
     () => service.getMessages(
       sessionId: any(named: "sessionId"),

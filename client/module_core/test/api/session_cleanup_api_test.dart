@@ -5,7 +5,8 @@ import "package:sesori_auth/sesori_auth.dart" show ApiError, ApiResponse;
 import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
-import "../../helpers/test_helpers.dart";
+
+import "../helpers/test_helpers.dart";
 
 void main() {
   group("SessionApi", () {
@@ -90,7 +91,7 @@ void main() {
       ).called(1);
     });
 
-    test("deleteSession throws SessionCleanupRejectedException on 409", () async {
+    test("deleteSession throws SessionCleanupApiRejectedException on 409", () async {
       const rejection = SessionCleanupRejection(
         issues: [CleanupIssue.unstagedChanges()],
       );
@@ -117,7 +118,7 @@ void main() {
           force: false,
         ),
         throwsA(
-          isA<SessionCleanupRejectedException>().having(
+          isA<SessionCleanupApiRejectedException>().having(
             (error) => error.rejection,
             "rejection",
             rejection,

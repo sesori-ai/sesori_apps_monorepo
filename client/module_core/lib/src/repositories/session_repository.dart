@@ -1,10 +1,11 @@
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
-import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_shared/sesori_shared.dart" hide SessionCleanupRejection;
 
 import "../api/session_api.dart";
 import "../foundation/models/composer/composer_attachment.dart";
 import "../foundation/models/session_options/session_options_request_mode.dart";
+import "models/session_cleanup_rejection.dart";
 import "models/session_options_repository_result.dart";
 
 @lazySingleton
@@ -15,12 +16,22 @@ class SessionRepository({
     required String sessionId,
     required bool deleteWorktree,
     required bool force,
-  }) {
-    return _api.archiveSession(
-      sessionId: sessionId,
-      deleteWorktree: deleteWorktree,
-      force: force,
-    );
+  }) async {
+    try {
+      return await _api.archiveSession(
+        sessionId: sessionId,
+        deleteWorktree: deleteWorktree,
+        force: force,
+      );
+    } on SessionCleanupApiRejectedException catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        SessionCleanupRejectedException(
+          rejection: SessionCleanupRejection(issues: error.rejection.issues),
+          innerError: error,
+        ),
+        stackTrace,
+      );
+    }
   }
 
   Future<ApiResponse<Session>> renameSession({required String sessionId, required String title}) {
@@ -31,12 +42,22 @@ class SessionRepository({
     required String sessionId,
     required bool deleteWorktree,
     required bool force,
-  }) {
-    return _api.deleteSession(
-      sessionId: sessionId,
-      deleteWorktree: deleteWorktree,
-      force: force,
-    );
+  }) async {
+    try {
+      return await _api.deleteSession(
+        sessionId: sessionId,
+        deleteWorktree: deleteWorktree,
+        force: force,
+      );
+    } on SessionCleanupApiRejectedException catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        SessionCleanupRejectedException(
+          rejection: SessionCleanupRejection(issues: error.rejection.issues),
+          innerError: error,
+        ),
+        stackTrace,
+      );
+    }
   }
 
   Future<ApiResponse<void>> abortSession({required String sessionId}) {
@@ -218,9 +239,9 @@ class SessionRepository({
       text: text,
       attachments: attachments,
       agent: agent,
-      model: model,
+      model: _normalizeModel(model: model),
       variant: variant,
-      command: command,
+      command: command?.normalize(),
       dedicatedWorktree: dedicatedWorktree,
     );
   }
@@ -241,10 +262,17 @@ class SessionRepository({
       text: text,
       attachments: attachments,
       agent: agent,
-      model: model,
+      model: _normalizeModel(model: model),
       variant: variant,
-      command: command,
+      command: command?.normalize(),
     );
+  }
+
+  PromptModel? _normalizeModel({required PromptModel? model}) {
+    final normalizedProviderID = model?.providerID.normalize();
+    final normalizedModelID = model?.modelID.normalize();
+    if (normalizedProviderID == null || normalizedModelID == null) return null;
+    return PromptModel(providerID: normalizedProviderID, modelID: normalizedModelID);
   }
 
   static bool isStalePromptOptionsError({required ApiError error}) {

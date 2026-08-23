@@ -10,7 +10,7 @@ import "../logging/logging.dart";
 import "../utils/bounded_json_encoder.dart";
 import "client/relay_http_client.dart";
 
-class const SessionCleanupRejectedException({required final SessionCleanupRejection rejection}) implements Exception;
+class const SessionCleanupApiRejectedException({required final SessionCleanupRejection rejection}) implements Exception;
 
 @lazySingleton
 class SessionApi({required final RelayHttpApiClient _client}) {
@@ -255,8 +255,8 @@ class SessionApi({required final RelayHttpApiClient _client}) {
           throw const FormatException("invalid cleanup rejection json");
         }
         final rejection = SessionCleanupRejection.fromJson(jsonDecodeMap(rawBody));
-        throw SessionCleanupRejectedException(rejection: rejection);
-      } on SessionCleanupRejectedException {
+        throw SessionCleanupApiRejectedException(rejection: rejection);
+      } on SessionCleanupApiRejectedException {
         rethrow;
       } on Object catch (e) {
         logw("Failed to parse 409 cleanup rejection body: ${e.toString()}");

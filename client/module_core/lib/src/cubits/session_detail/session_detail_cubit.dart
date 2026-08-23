@@ -3,6 +3,7 @@ import "dart:math";
 
 import "package:bloc/bloc.dart";
 import "package:collection/collection.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -88,11 +89,7 @@ class SessionDetailCubit(
   final Set<({String messageId, String? promptId})> _accountedUserMessages = {};
   final DeferredPartEventBuffer _deferredPartEvents = DeferredPartEventBuffer();
 
-  late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
-  late final StreamSubscription<SseEvent> _globalEventSubscription;
-  late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
-  late final StreamSubscription<void> _staleSubscription;
-  late final StreamSubscription<LifecycleState> _lifecycleSubscription;
+  final CompositeSubscription _subscriptions = CompositeSubscription();
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
   int _commandCatalogGeneration = 0;
@@ -148,13 +145,16 @@ class SessionDetailCubit(
     // Seed the connection state so the BehaviorSubject's immediate replay isn't
     // treated as a reconnect transition.
     _wasConnected = _connectionService.currentStatus is ConnectionConnected;
-    _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
-    _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
-    _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
-    _staleSubscription = _connectionService.dataMayBeStale.listen(
-      (_) => _onDataMayBeStale(trigger: _SessionRefreshTrigger.dataMayBeStale),
-    );
-    _lifecycleSubscription = _lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged);
+    _subscriptions
+      ..add(_connectionService.sessionEvents(_sessionId).listen(_handleEvent))
+      ..add(_connectionService.events.listen(_handleGlobalEvent))
+      ..add(_connectionService.status.listen(_onConnectionStatusChanged))
+      ..add(
+        _connectionService.dataMayBeStale.listen(
+          (_) => _onDataMayBeStale(trigger: _SessionRefreshTrigger.dataMayBeStale),
+        ),
+      )
+      ..add(_lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged));
     _loadMessages(isReload: false);
   }
 
@@ -2435,11 +2435,7 @@ class SessionDetailCubit(
     _pendingSessionEvents.clear();
     _pendingGlobalEvents.clear();
     _deferredPartEvents.clear();
-    _eventSubscription.cancel();
-    _globalEventSubscription.cancel();
-    _connectionStatusSubscription.cancel();
-    _staleSubscription.cancel();
-    _lifecycleSubscription.cancel();
+    _subscriptions.dispose();
     _eventRefreshCooldown?.cancel();
     _streamingBuffer.dispose();
     _questionStream.close();

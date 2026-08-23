@@ -49,7 +49,6 @@ export "src/capabilities/relay/room_key_storage.dart";
 export "src/capabilities/server_connection/connection_service.dart";
 export "src/capabilities/server_connection/models/connection_status.dart";
 export "src/capabilities/server_connection/server_connection_config.dart";
-export "src/capabilities/session/session_service.dart";
 // Capabilities
 export "src/capabilities/voice/voice_api.dart";
 // Consumers
@@ -138,6 +137,7 @@ export "src/repositories/message_image_repository.dart";
 export "src/repositories/models/bridge_settings_result.dart";
 export "src/repositories/models/plugin_management_result.dart";
 export "src/repositories/models/repo_provider.dart";
+export "src/repositories/models/session_cleanup_rejection.dart";
 export "src/repositories/notification_preferences_repository.dart";
 export "src/repositories/notification_repository.dart";
 export "src/repositories/permission_repository.dart";
@@ -151,7 +151,6 @@ export "src/routing/analytics_route_listener.dart";
 export "src/routing/app_routes.dart";
 export "src/routing/notification_open_dispatcher.dart";
 // Services
-export "src/services/bridge_settings_service.dart";
 export "src/services/composer_draft_calculator.dart";
 export "src/services/foreground_notification_dispatcher.dart";
 export "src/services/installation_analytics_service.dart";

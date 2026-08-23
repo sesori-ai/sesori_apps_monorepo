@@ -188,7 +188,6 @@ class AdaptiveSessionRouterTestHarness() {
           sessionsByProject: sessionsByProject,
           childSessionsBySession: childSessionsBySession,
         ),
-        isBridgeConnected: true,
       );
     }
 
@@ -248,7 +247,6 @@ class AdaptiveSessionRouterTestHarness() {
     );
     getIt.registerSingleton<BridgeRepository>(bridgeRepository);
     getIt.registerSingleton<RegisteredBridgesService>(registeredBridgesService);
-    getIt.registerSingleton<SessionService>(SessionService(repository: sessionRepository));
     getIt.registerSingleton<SessionRepository>(sessionRepository);
     getIt.registerSingleton<NewSessionOptionsService>(
       NewSessionOptionsService(
@@ -319,7 +317,7 @@ class AdaptiveSessionRouterTestHarness() {
   }
 
   static const ConnectionStatus _connectedStatus = ConnectionStatus.connected(
-    config: ServerConnectionConfig(relayHost: "relay.example.com"),
+    config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
     health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
   );
 }

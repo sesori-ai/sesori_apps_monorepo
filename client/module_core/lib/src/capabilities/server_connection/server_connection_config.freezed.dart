@@ -79,7 +79,7 @@ as String?,
 
 
 class _ServerConnectionConfig implements ServerConnectionConfig {
-  const _ServerConnectionConfig({required this.relayHost, this.authToken});
+  const _ServerConnectionConfig({required this.relayHost, required this.authToken});
   
 
 @override final  String relayHost;

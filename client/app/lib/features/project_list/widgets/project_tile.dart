@@ -291,7 +291,6 @@ class const ProjectTile({
   }
 
   void _open({required BuildContext context, required String displayName}) {
-    context.read<ProjectListCubit>().setActiveProject(project);
     context.pushRoute(
       AppRoute.sessions(
         projectId: project.id,

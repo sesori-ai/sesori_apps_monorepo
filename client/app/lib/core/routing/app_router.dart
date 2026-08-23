@@ -242,16 +242,6 @@ extension BuildContextNavigation on BuildContext {
   }
 }
 
-extension GoRouterNavigation on GoRouter {
-  void goRoute(AppRoute route) {
-    go(route.buildPath());
-  }
-
-  void replaceRoute(AppRoute route) {
-    replace<void>(route.buildPath());
-  }
-}
-
 List<RouteBase> buildAppRoutes() {
   return _buildAppRoutes(rootNavigatorKey: _rootNavigatorKey, sessionShellNavigatorKey: _sessionShellNavigatorKey);
 }

@@ -59,7 +59,6 @@ void main() {
     ).thenAnswer(
       (_) async => SessionDetailLoadResult.loaded(
         snapshot: _snapshot(messages: messages, olderMessagesCursor: olderMessagesCursor),
-        isBridgeConnected: true,
       ),
     );
     when(
@@ -70,7 +69,6 @@ void main() {
     ).thenAnswer(
       (_) async => SessionDetailLoadResult.loaded(
         snapshot: _snapshot(messages: messages, olderMessagesCursor: olderMessagesCursor),
-        isBridgeConnected: true,
       ),
     );
 

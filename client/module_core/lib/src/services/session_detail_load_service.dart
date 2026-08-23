@@ -194,7 +194,6 @@ class SessionDetailLoadService({
           isRootSession: session != null ? session.parentID == null : null,
           isArchived: isArchived,
         ),
-        isBridgeConnected: _connectionService.currentStatus is ConnectionConnected,
       );
     } on Object catch (error, stackTrace) {
       return SessionDetailLoadResult.failed(error: error, stackTrace: stackTrace);
@@ -396,7 +395,6 @@ final class _LegacySessionOptionsLoadError({required List<LegacySessionOptionErr
 sealed class const SessionDetailLoadResult() {
   const factory loaded({
     required SessionDetailSnapshot snapshot,
-    required bool isBridgeConnected,
   }) = SessionDetailLoadResultLoaded;
 
   const factory waitingForConnection() = SessionDetailLoadResultWaitingForConnection;
@@ -410,7 +408,6 @@ sealed class const SessionDetailLoadResult() {
 
 final class const SessionDetailLoadResultLoaded({
   required final SessionDetailSnapshot snapshot,
-  required final bool isBridgeConnected,
 }) extends SessionDetailLoadResult;
 
 final class const SessionDetailLoadResultWaitingForConnection() extends SessionDetailLoadResult;

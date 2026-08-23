@@ -131,10 +131,6 @@ class ProjectListCubit(
     );
   }
 
-  void setActiveProject(ProjectSummary project) {
-    _connectionService.setActiveDirectory(project.id);
-  }
-
   void reportNeedHelpMenuOpened({required OnboardingSurface surface}) {
     _reportProductEvent(event: ProductAnalyticsEvent.needHelpMenuOpened(surface: surface));
   }

@@ -10,7 +10,7 @@ import "../capabilities/server_connection/models/connection_status.dart";
 import "../logging/logging.dart";
 import "../platform/lifecycle_source.dart";
 import "../platform/route_source.dart";
-import "../repositories/project_view_repository.dart";
+import "../repositories/view_declaration_repository.dart";
 import "../routing/app_routes.dart";
 
 /// Opaque generation owner for one list or detail project claim.
@@ -36,7 +36,7 @@ class ProjectViewPaneClaim();
 /// session-view declarations, whose mark-seen side effect has different rules.
 @lazySingleton
 class ProjectViewingService({
-  required final ProjectViewRepository _viewRepository,
+  required final ViewDeclarationRepository _viewRepository,
   required LifecycleSource lifecycleSource,
   required ConnectionService connectionService,
   required RouteSource routeSource,
@@ -111,51 +111,65 @@ class ProjectViewingService({
   void markClaimReady({required ProjectViewClaim claim, required String projectId}) {
     if (_disposed) return;
     _validateProjectId(projectId: projectId);
-    final listClaim = _listClaim;
-    if (listClaim != null && identical(listClaim.claim, claim)) {
-      _listClaim = _ProjectViewClaimReady(claim: claim, projectId: projectId);
-      _recomputeDeclaration();
-      return;
-    }
-
-    final detailClaim = _detailClaim;
-    if (detailClaim != null && identical(detailClaim.claim, claim)) {
-      _detailClaim = _ProjectViewClaimReady(claim: claim, projectId: projectId);
-      _detailTransitionProjectId = null;
-      _recomputeDeclaration();
-    }
+    _withOwnedClaim(
+      claim: claim,
+      update: ({required ownedClaim, required isDetail}) {
+        final ready = _ProjectViewClaimReady(claim: claim, projectId: projectId);
+        if (isDetail) {
+          _detailClaim = ready;
+          _detailTransitionProjectId = null;
+        } else {
+          _listClaim = ready;
+        }
+      },
+    );
   }
 
   void markClaimFailed({required ProjectViewClaim claim}) {
     if (_disposed) return;
-    final listClaim = _listClaim;
-    if (listClaim != null && identical(listClaim.claim, claim)) {
-      _listClaim = _ProjectViewClaimFailed(claim: claim, projectId: listClaim.projectId);
-      _recomputeDeclaration();
-      return;
-    }
-
-    final detailClaim = _detailClaim;
-    if (detailClaim != null && identical(detailClaim.claim, claim)) {
-      _detailClaim = _ProjectViewClaimFailed(claim: claim, projectId: detailClaim.projectId);
-      _detailTransitionProjectId = null;
-      _recomputeDeclaration();
-    }
+    _withOwnedClaim(
+      claim: claim,
+      update: ({required ownedClaim, required isDetail}) {
+        final failed = _ProjectViewClaimFailed(claim: claim, projectId: ownedClaim.projectId);
+        if (isDetail) {
+          _detailClaim = failed;
+          _detailTransitionProjectId = null;
+        } else {
+          _listClaim = failed;
+        }
+      },
+    );
   }
 
   void releaseClaim({required ProjectViewClaim claim}) {
     if (_disposed) return;
+    _withOwnedClaim(
+      claim: claim,
+      update: ({required ownedClaim, required isDetail}) {
+        if (isDetail) {
+          _detailClaim = null;
+          _detailTransitionProjectId = null;
+        } else {
+          _listClaim = null;
+        }
+      },
+    );
+  }
+
+  void _withOwnedClaim({
+    required ProjectViewClaim claim,
+    required void Function({required _ProjectViewClaimState ownedClaim, required bool isDetail}) update,
+  }) {
     final listClaim = _listClaim;
     if (listClaim != null && identical(listClaim.claim, claim)) {
-      _listClaim = null;
+      update(ownedClaim: listClaim, isDetail: false);
       _recomputeDeclaration();
       return;
     }
 
     final detailClaim = _detailClaim;
     if (detailClaim != null && identical(detailClaim.claim, claim)) {
-      _detailClaim = null;
-      _detailTransitionProjectId = null;
+      update(ownedClaim: detailClaim, isDetail: true);
       _recomputeDeclaration();
     }
   }
