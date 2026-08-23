@@ -31,9 +31,9 @@ class PatchBridgeSettingsHandler({
           );
         } on PullRequestRefreshIntervalOutOfRangeException catch (error) {
           throw buildJsonErrorResponse(
-            request,
-            400,
-            BridgeSettingUpdateRejection.pullRequestRefreshIntervalOutOfRange(
+            request: request,
+            status: 400,
+            body: BridgeSettingUpdateRejection.pullRequestRefreshIntervalOutOfRange(
               minimumIntervalSeconds: error.minimumIntervalSeconds,
               maximumIntervalSeconds: error.maximumIntervalSeconds,
             ).toJson(),
@@ -43,7 +43,11 @@ class PatchBridgeSettingsHandler({
         final committed = await _yoloSettingsService.update(enabled: enabled);
         return BridgeSettingUpdate.yolo(enabled: committed.enabled);
       case UnknownBridgeSettingUpdate():
-        throw buildJsonErrorResponse(request, 400, const BridgeSettingUpdateRejection.unknown().toJson());
+        throw buildJsonErrorResponse(
+          request: request,
+          status: 400,
+          body: const BridgeSettingUpdateRejection.unknown().toJson(),
+        );
     }
   }
 }

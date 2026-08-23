@@ -19,7 +19,7 @@ class SendPromptHandler({required final SessionPromptService _sessionPromptServi
     required SendPromptRequest body,
   }) async {
     final sessionId = body.sessionId;
-    requireNonEmpty(request, sessionId, "session id");
+    requireNonEmpty(request: request, value: sessionId, label: "session id");
 
     await _sessionPromptService.sendPrompt(
       sessionId: sessionId,

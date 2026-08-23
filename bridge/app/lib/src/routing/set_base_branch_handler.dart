@@ -22,9 +22,9 @@ class SetBaseBranchHandler({required final ProjectRepository _projectRepository}
     required SetBaseBranchRequest body,
   }) async {
     final projectId = body.projectId;
-    requireNonEmpty(request, projectId, "project id");
+    requireNonEmpty(request: request, value: projectId, label: "project id");
     final baseBranch = body.baseBranch;
-    requireNonEmpty(request, baseBranch, "base branch");
+    requireNonEmpty(request: request, value: baseBranch, label: "base branch");
 
     await _projectRepository.setBaseBranch(
       projectId: projectId,

@@ -23,7 +23,7 @@ class RejectQuestionHandler({required final PendingInteractionService _pendingIn
     required RejectQuestionRequest body,
   }) async {
     final requestId = body.requestId;
-    requireNonEmpty(request, requestId, "request id");
+    requireNonEmpty(request: request, value: requestId, label: "request id");
 
     await _pendingInteractionService.rejectQuestion(
       questionId: requestId,

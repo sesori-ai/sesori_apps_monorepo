@@ -23,7 +23,7 @@ class HideProjectHandler({required final ProjectMutationService _projectMutation
     required ProjectIdRequest body,
   }) async {
     final projectId = body.projectId;
-    requireNonEmpty(request, projectId, "project id");
+    requireNonEmpty(request: request, value: projectId, label: "project id");
 
     await _projectMutationService.hideProject(projectId: projectId);
 

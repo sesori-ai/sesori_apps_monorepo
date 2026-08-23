@@ -15,7 +15,7 @@ class MarkSessionSeenHandler({required final SessionUnseenService _sessionUnseen
     RelayRequest request, {
     required MarkSessionSeenRequest body,
   }) async {
-    requireNonEmpty(request, body.sessionId, "session id");
+    requireNonEmpty(request: request, value: body.sessionId, label: "session id");
     if (body.read) {
       await _sessionUnseenService.markRead(sessionId: body.sessionId);
     } else {

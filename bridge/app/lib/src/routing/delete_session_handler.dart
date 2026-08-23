@@ -20,7 +20,7 @@ class DeleteSessionHandler({required final SessionDeletionService _sessionDeleti
     required DeleteSessionRequest body,
   }) async {
     final sessionId = body.sessionId;
-    requireNonEmpty(request, sessionId, "session id");
+    requireNonEmpty(request: request, value: sessionId, label: "session id");
 
     // COMPATIBILITY 2026-08-13 (v1.7.1): Published clients can request branch
     // deletion. Reject it explicitly so they do not report unperformed cleanup
@@ -36,7 +36,7 @@ class DeleteSessionHandler({required final SessionDeletionService _sessionDeleti
     if (cleanupResult case CleanupRejected(:final rejection)) {
       // IMPORTANT: Do not change this response structure — the mobile app
       // parses the 409 body as SessionCleanupRejection JSON.
-      throw buildJsonErrorResponse(request, 409, rejection.toJson());
+      throw buildJsonErrorResponse(request: request, status: 409, body: rejection.toJson());
     }
 
     return const SuccessEmptyResponse();

@@ -19,7 +19,7 @@ class GetChildSessionsHandler({required final SessionRepository _sessionReposito
     required SessionIdRequest body,
   }) async {
     final sessionId = body.sessionId;
-    requireNonEmpty(request, sessionId, "session id");
+    requireNonEmpty(request: request, value: sessionId, label: "session id");
 
     final sessions = await _sessionRepository.getChildSessions(sessionId: sessionId);
     return SessionListResponse(items: sessions);

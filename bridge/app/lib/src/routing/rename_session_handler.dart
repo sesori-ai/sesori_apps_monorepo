@@ -13,7 +13,7 @@ class RenameSessionHandler({required final SessionMutationDispatcher _sessionMut
     RelayRequest request, {
     required RenameSessionRequest body,
   }) async {
-    requireNonEmpty(request, body.sessionId, "session id");
+    requireNonEmpty(request: request, value: body.sessionId, label: "session id");
     return await _sessionMutationDispatcher.renameSession(sessionId: body.sessionId, title: body.title);
   }
 }

@@ -19,8 +19,8 @@ class CancelQueuedPromptHandler({required final SessionPromptService _sessionPro
     RelayRequest request, {
     required CancelQueuedPromptRequest body,
   }) async {
-    requireNonEmpty(request, body.sessionId, "session or prompt id");
-    requireNonEmpty(request, body.promptId, "session or prompt id");
+    requireNonEmpty(request: request, value: body.sessionId, label: "session or prompt id");
+    requireNonEmpty(request: request, value: body.promptId, label: "session or prompt id");
 
     final removed = await _sessionPromptService.cancelQueuedPrompt(
       sessionId: body.sessionId,

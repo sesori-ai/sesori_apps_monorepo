@@ -27,7 +27,7 @@ class GetSessionsHandler({
     RelayRequest request, {
     required SessionListRequest body,
   }) async {
-    final projectId = requireNonEmpty(request, body.projectId, "project id");
+    final projectId = requireNonEmpty(request: request, value: body.projectId, label: "project id");
 
     final start = body.start;
     final limit = body.limit;

@@ -26,7 +26,7 @@ abstract class GetRequestHandler<RES extends Object>(
     required RequestTargetParams targetParams,
   }) async {
     final result = await handle(request);
-    return buildOkJsonResponse(request, result);
+    return buildOkJsonResponse(request: request, body: result);
   }
 }
 
@@ -57,7 +57,7 @@ abstract class _BodyRequestHandlerBase<REQ, RES extends Object>(
       return buildErrorResponse(request, 400, "Bad Request: invalid JSON body: $err");
     }
     final result = await handleParsed(request, body: bodyParsed, targetParams: targetParams);
-    return buildOkJsonResponse(request, result);
+    return buildOkJsonResponse(request: request, body: result);
   }
 
   Future<RES> handleParsed(
@@ -173,8 +173,8 @@ abstract class const RequestHandlerBase(
     required RelayRequest request,
     required RequestTargetParams targetParams,
   }) => _guard(
-    request,
-    () => handleRouteInternal(request: request, targetParams: targetParams),
+    request: request,
+    operation: () => handleRouteInternal(request: request, targetParams: targetParams),
   );
 
   Future<RoutedRequestOutcome> handleRouteInternal({
@@ -184,24 +184,29 @@ abstract class const RequestHandlerBase(
     response: await handleInternal(request, targetParams: targetParams),
   );
 
-  Future<RoutedRequestOutcome> _guard(
-    RelayRequest request,
-    Future<RoutedRequestOutcome> Function() operation,
-  ) async {
+  Future<RoutedRequestOutcome> _guard({
+    required RelayRequest request,
+    required Future<RoutedRequestOutcome> Function() operation,
+  }) async {
     try {
       return await operation();
     } on ProjectNotFoundException {
       return ResponseOnly(response: buildErrorResponse(request, 404, "project not found"));
     } on SessionArchivedReadOnlyException catch (error) {
-      return ResponseOnly(response: buildArchivedRejectionResponse(request, error.rejection));
+      return ResponseOnly(
+        response: buildArchivedRejectionResponse(request: request, rejection: error.rejection),
+      );
     } on StaleSessionPromptOptionsException catch (error) {
       Log.w("${request.method} ${request.path}: stale session options", error.cause, error.causeStackTrace);
-      return ResponseOnly(response: buildStaleOptionsRejectionResponse(request, error.message));
+      return ResponseOnly(
+        response: buildStaleOptionsRejectionResponse(request: request, message: error.message),
+      );
     } on PluginOperationException catch (error, stackTrace) {
       Log.w("${request.method} ${request.path}: upstream failure", error, stackTrace);
       return ResponseOnly(response: buildErrorResponse(request, error.statusCode ?? 502, error.toString()));
-    } on RelayResponse catch (error) {
+    } on RelayResponse catch (error, stackTrace) {
       if (error.status < 200 || error.status >= 300) return ResponseOnly(response: error);
+      Log.w("${request.method} ${request.path}: handler threw success response", error, stackTrace);
       return ResponseOnly(
         response: buildErrorResponse(request, 500, "Internal Server Error: threw success response"),
       );
@@ -222,36 +227,38 @@ abstract class const RequestHandlerBase(
   }
 
   /// Builds a 200 JSON response.
-  RelayResponse buildOkJsonResponse(RelayRequest request, Object body) => RelayResponse(
+  RelayResponse buildOkJsonResponse({required RelayRequest request, required Object body}) => RelayResponse(
     id: request.id,
     status: 200,
     headers: {"content-type": "application/json"},
     body: jsonEncode(body),
   );
 
-  RelayResponse buildJsonErrorResponse(RelayRequest request, int status, Object body) => RelayResponse(
-    id: request.id,
-    status: status,
-    headers: {"content-type": "application/json"},
-    body: jsonEncode(body),
-  );
+  RelayResponse buildJsonErrorResponse({required RelayRequest request, required int status, required Object body}) =>
+      RelayResponse(
+        id: request.id,
+        status: status,
+        headers: {"content-type": "application/json"},
+        body: jsonEncode(body),
+      );
 
   /// Builds the 409 response every archived-session refusal shares.
-  RelayResponse buildArchivedRejectionResponse(
-    RelayRequest request,
-    SessionArchivedRejection rejection,
-  ) => buildJsonErrorResponse(request, 409, rejection.toJson());
+  RelayResponse buildArchivedRejectionResponse({
+    required RelayRequest request,
+    required SessionArchivedRejection rejection,
+  }) => buildJsonErrorResponse(request: request, status: 409, body: rejection.toJson());
 
   /// Builds the 409 response telling the client its session options selection
   /// (agent, model, or variant) is no longer offered and must be refreshed
   /// before resending.
-  RelayResponse buildStaleOptionsRejectionResponse(RelayRequest request, String? message) => buildJsonErrorResponse(
-    request,
-    409,
-    SendPromptErrorResponse(code: SendPromptErrorCode.staleSessionOptions, message: message).toJson(),
-  );
+  RelayResponse buildStaleOptionsRejectionResponse({required RelayRequest request, required String? message}) =>
+      buildJsonErrorResponse(
+        request: request,
+        status: 409,
+        body: SendPromptErrorResponse(code: SendPromptErrorCode.staleSessionOptions, message: message).toJson(),
+      );
 
-  String requireNonEmpty(RelayRequest request, String value, String label) {
+  String requireNonEmpty({required RelayRequest request, required String value, required String label}) {
     if (value.isEmpty) throw buildErrorResponse(request, 400, "empty $label");
     return value;
   }

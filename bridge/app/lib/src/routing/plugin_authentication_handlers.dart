@@ -16,11 +16,14 @@ class PostPluginAuthenticationHandler({required final PluginLifecycleService _li
     try {
       final pluginId = targetParams.pathParams["id"];
       if (pluginId == null) return buildErrorResponse(request, 400, "plugin id is required");
-      return buildOkJsonResponse(request, await _lifecycleService.authenticate(pluginId: pluginId));
+      return buildOkJsonResponse(
+        request: request,
+        body: await _lifecycleService.authenticate(pluginId: pluginId),
+      );
     } on PluginManagementPluginNotFoundException {
       return buildErrorResponse(request, 404, "plugin not found");
     } on PluginAuthenticationConflictException catch (error) {
-      return buildJsonErrorResponse(request, 409, error.conflict.toJson());
+      return buildJsonErrorResponse(request: request, status: 409, body: error.conflict.toJson());
     } on PluginAuthenticationChallengeUnavailableException {
       return buildErrorResponse(request, 500, "plugin authentication did not provide a challenge");
     } on Object catch (error, stackTrace) {
@@ -42,11 +45,14 @@ class DeletePluginAuthenticationHandler({required final PluginLifecycleService _
     try {
       final pluginId = targetParams.pathParams["id"];
       if (pluginId == null) return buildErrorResponse(request, 400, "plugin id is required");
-      return buildOkJsonResponse(request, await _lifecycleService.cancelAuthentication(pluginId: pluginId));
+      return buildOkJsonResponse(
+        request: request,
+        body: await _lifecycleService.cancelAuthentication(pluginId: pluginId),
+      );
     } on PluginManagementPluginNotFoundException {
       return buildErrorResponse(request, 404, "plugin not found");
     } on PluginAuthenticationConflictException catch (error) {
-      return buildJsonErrorResponse(request, 409, error.conflict.toJson());
+      return buildJsonErrorResponse(request: request, status: 409, body: error.conflict.toJson());
     } on Object catch (error, stackTrace) {
       Log.w("DELETE ${request.path}: plugin authentication cancellation failed", error, stackTrace);
       return buildErrorResponse(request, 500, "plugin authentication cancellation failed");

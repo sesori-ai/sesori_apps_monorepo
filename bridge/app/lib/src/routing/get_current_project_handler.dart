@@ -19,7 +19,7 @@ class GetCurrentProjectHandler({required final ProjectRepository _projectReposit
     required ProjectIdRequest body,
   }) async {
     final projectId = body.projectId;
-    requireNonEmpty(request, projectId, "project id");
+    requireNonEmpty(request: request, value: projectId, label: "project id");
 
     return await _projectRepository.getProject(projectId: projectId);
   }

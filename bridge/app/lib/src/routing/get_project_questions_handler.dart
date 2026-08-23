@@ -19,7 +19,7 @@ class GetProjectQuestionsHandler({required final QuestionRepository _questionRep
     required ProjectIdRequest body,
   }) async {
     final projectId = body.projectId;
-    requireNonEmpty(request, projectId, "project id");
+    requireNonEmpty(request: request, value: projectId, label: "project id");
 
     final questions = await _questionRepository.getProjectQuestions(projectId: projectId);
     return PendingQuestionResponse(data: questions);

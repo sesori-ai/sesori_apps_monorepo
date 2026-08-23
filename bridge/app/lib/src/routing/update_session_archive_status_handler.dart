@@ -24,7 +24,7 @@ class UpdateSessionArchiveStatusHandler({
     required UpdateSessionArchiveRequest body,
   }) async {
     final sessionId = body.sessionId;
-    requireNonEmpty(request, sessionId, "session id");
+    requireNonEmpty(request: request, value: sessionId, label: "session id");
     // COMPATIBILITY 2026-08-13 (v1.7.1): Published clients can request branch
     // deletion. Reject it explicitly so they do not report unperformed cleanup
     // as success; remove the field when v1.7.1 clients are unsupported.
@@ -55,7 +55,7 @@ class UpdateSessionArchiveStatusHandler({
       }
       return session;
     } on SessionArchiveConflictException catch (e) {
-      throw buildJsonErrorResponse(request, 409, e.rejection.toJson());
+      throw buildJsonErrorResponse(request: request, status: 409, body: e.rejection.toJson());
     } on SessionNotFoundException {
       throw buildErrorResponse(request, 404, "session not found");
     }

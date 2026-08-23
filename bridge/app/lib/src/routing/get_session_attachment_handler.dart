@@ -20,8 +20,8 @@ class GetSessionAttachmentHandler({required final ChatHistoryService _chatHistor
     RelayRequest request, {
     required SessionAttachmentRequest body,
   }) async {
-    requireNonEmpty(request, body.sessionId, "session id");
-    requireNonEmpty(request, body.attachmentId, "attachment id");
+    requireNonEmpty(request: request, value: body.sessionId, label: "session id");
+    requireNonEmpty(request: request, value: body.attachmentId, label: "attachment id");
 
     final SessionAttachmentResult result;
     try {

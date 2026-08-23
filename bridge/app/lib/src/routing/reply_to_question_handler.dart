@@ -19,9 +19,9 @@ class ReplyToQuestionHandler({required final PendingInteractionService _pendingI
     required ReplyToQuestionRequest body,
   }) async {
     final requestId = body.requestId;
-    requireNonEmpty(request, requestId, "request id");
+    requireNonEmpty(request: request, value: requestId, label: "request id");
     final sessionId = body.sessionId;
-    requireNonEmpty(request, sessionId, "session id");
+    requireNonEmpty(request: request, value: sessionId, label: "session id");
 
     await _pendingInteractionService.replyToQuestion(
       questionId: requestId,

@@ -28,7 +28,7 @@ class GetSessionPermissionsHandler({
     required SessionIdRequest body,
   }) async {
     final sessionId = body.sessionId;
-    requireNonEmpty(request, sessionId, "session id");
+    requireNonEmpty(request: request, value: sessionId, label: "session id");
 
     final permissions = await _permissionRepository.getPendingPermissions(sessionId: sessionId);
     return PendingPermissionResponse(

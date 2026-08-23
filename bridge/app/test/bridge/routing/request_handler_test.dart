@@ -170,6 +170,18 @@ void main() {
       expect(response.status, 502);
     });
 
+    test("thrown success responses map to 500", () async {
+      final response = await respond(
+        const RelayResponse(id: "response-id", status: 200, headers: {}, body: null),
+      );
+      expect(response.status, 500);
+    });
+
+    test("thrown error responses return directly", () async {
+      const thrown = RelayResponse(id: "response-id", status: 409, headers: {}, body: "conflict");
+      expect(await respond(thrown), same(thrown));
+    });
+
     test("unknown errors still map to 500", () async {
       final response = await respond(StateError("boom"));
       expect(response.status, 500);

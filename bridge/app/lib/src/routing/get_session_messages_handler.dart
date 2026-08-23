@@ -20,7 +20,7 @@ class GetSessionMessagesHandler({required final ChatHistoryService _chatHistoryS
     required SessionMessagesRequest body,
   }) async {
     final sessionId = body.sessionId;
-    requireNonEmpty(request, sessionId, "session id");
+    requireNonEmpty(request: request, value: sessionId, label: "session id");
     // A non-positive limit has no honest answer: it is neither "the whole
     // transcript" (null) nor a page anyone can page onward from, so refuse it
     // rather than returning an empty page that never terminates.

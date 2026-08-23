@@ -25,7 +25,7 @@ class PostPluginLifecycleCommandHandler({required final PluginLifecycleService _
     } on PluginManagementPluginNotFoundException {
       throw buildErrorResponse(request, 404, "plugin not found");
     } on PluginManagementConflictException catch (error) {
-      throw buildJsonErrorResponse(request, 409, error.conflict.toJson());
+      throw buildJsonErrorResponse(request: request, status: 409, body: error.conflict.toJson());
     } on PluginManagementMutationOutcomeUncertainException {
       throw buildErrorResponse(request, 503, "plugin mutation outcome is uncertain");
     } on PluginManagementCommandFailedException {

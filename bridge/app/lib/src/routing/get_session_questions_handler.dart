@@ -21,7 +21,7 @@ class GetSessionQuestionsHandler({required final QuestionRepository _questionRep
     required SessionIdRequest body,
   }) async {
     final sessionId = body.sessionId;
-    requireNonEmpty(request, sessionId, "session id");
+    requireNonEmpty(request: request, value: sessionId, label: "session id");
 
     final questions = await _questionRepository.getPendingQuestions(sessionId: sessionId);
     return PendingQuestionResponse(data: questions);
