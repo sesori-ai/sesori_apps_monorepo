@@ -117,8 +117,8 @@
 - [x] Fix the eight-step series with exact titles and complexity emoji.
 - [x] Run `architecture-plan-review` through a sub-agent and apply valid
   findings directly.
-- [ ] Run `git diff --check` and plan/tracker consistency validation.
-- [ ] Commit, push, open the Step 1 PR, and record its URL and change count.
+- [x] Run `git diff --check` and plan/tracker consistency validation.
+- [x] Commit, push, open the Step 1 PR, and record its URL and change count.
 
 ## Step 2 Checklist
 
@@ -222,7 +222,12 @@ independently verified in the tree before the correction was applied.
 
 ## Verification Log
 
-- **Step 1 documentation validation:** pending
-- **Step 1 changed lines:** pending
-- **Step 1 PR:** pending
+- **Step 1 documentation validation:** `git diff --check` passed; step tokens
+  and exact PR titles diffed clean between `PLAN.md` and `TRACKER.md`; plan
+  files only in the diff
+- **Step 1 changed lines:** 950 documentation-only insertions, 0 deletions
+- **Step 1 review:** `architecture-plan-review` rejected the first revision;
+  all ten findings applied directly, recorded above
+- **Step 1 PR:** [#1064](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1064)
+  open
 - **Final disposition:** pending
