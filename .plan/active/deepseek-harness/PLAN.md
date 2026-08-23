@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `deepseek-harness`
-- **Status:** Step 1/15, planning PR
+- **Status:** Step 4/15 merged; Step 5/15 ready for review
 - **Plan date:** 2026-08-22
 - **Implementation base:** `origin/main` at
   `ebcc09bf255e1410720be616b883fa40af95d4a4`
@@ -320,8 +320,14 @@ returns standard ACP `session/update` parameter objects. The Dart history
 repository feeds those objects through `AcpReplayCollector`; it does not add a
 second mapper or parse DeepSeek records.
 
-The adapter puts stable DeepSeek message ids on every text/reasoning update and
-stable call ids on every tool update. For user-authored prompts:
+The adapter puts stable message ids on every text/reasoning update and stable
+call ids on every tool update. User-authored prompts preserve the exact
+caller/DeepSeek id. Assistant updates use one deterministic adapter projection
+id derived from the durable DeepSeek turn/step identity, because the pinned
+runtime creates its random assistant message id only after token chunks have
+already streamed. Live chunks and replay derive the same id without a sidecar,
+which preserves token-live output and replay identity together. For
+user-authored prompts:
 
 1. the ACP base asks the concrete mapper for one outbound ACP message id;
 2. the DeepSeek plugin adds that id under the namespaced prompt `_meta` field;

@@ -2,14 +2,14 @@
 
 ## Status And Sources
 
-- **State:** researched from official source, published package metadata, and
-  current Sesori ACP/runtime code; implementation has not started.
+- **State:** runtime protocol implemented through Step 5; catalog, command, and
+  rename handlers remain scheduled for Step 6.
 - **Observed:** 2026-08-22.
 - **DeepSeek baseline:** `0.1.1-rc.2`, tag `dsh-v0.1.1-rc.2`, commit
   `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`.
 - **ACP SDK baseline:** `@agentclientprotocol/sdk@0.25.1`, protocol version 1.
 - **Repository:** <https://github.com/deepseek-ai/deepseek-harness>.
-- **Runtime repository:** planned `sesori-ai/sesori-deepseek-acp`.
+- **Runtime repository:** `sesori-ai/sesori-deepseek-acp`.
 - **Primary upstream source:**
   `packages/acp/acp/src/index.ts`, `packages/examples/acp-demo/`,
   `packages/bundle/base/cordis.patch.yml`, `packages/core/session/`,
@@ -293,6 +293,13 @@ Sesori and DeepSeek must persist one user identity:
 4. The `user/message` event persists that id. Load/history emits it as ACP
    update `messageId`. Existing Dart live/replay mapping then produces the same
    plugin message and part ids.
+
+Assistant token chunks arrive before the pinned DeepSeek loop creates its random
+durable assistant message id. To keep token-live streaming without a correlation
+sidecar, the adapter derives the ACP assistant `messageId` deterministically from
+the session's durable turn/step identity. Every live chunk and the assembled
+assistant replay event use that same projection id. DeepSeek's own random
+message id remains unchanged in its log and model-facing state.
 
 An absent metadata id is valid for non-Sesori ACP clients and makes the adapter
 mint its normal DeepSeek id. Invalid metadata fails prompt admission before any
