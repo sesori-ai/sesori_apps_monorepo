@@ -45,7 +45,6 @@ class PiBackendCatalogRepository({
   Future<PiCatalogProbeSnapshot> probe({
     required String projectId,
     required Duration totalTimeout,
-    required int maxModels,
   }) async {
     final stopwatch = Stopwatch()..start();
     final normalizedProject = normalizeProjectDirectory(directory: projectId);
@@ -92,11 +91,12 @@ class PiBackendCatalogRepository({
       final initialIndex = deduped.indexWhere((model) => _sameModel(model, initialModel));
       if (initialIndex < 0) throw StateError("Pi selected model is absent from the catalog");
       if (initialIndex > 0) deduped.insert(0, deduped.removeAt(initialIndex));
-      final bounded = deduped.take(maxModels).toList();
 
-      var partial = deduped.length > bounded.length;
+      var partial = false;
       final thinkingByModel = <String, List<String>>{};
-      for (final model in bounded.where((model) => model.reasoning)) {
+      // The total deadline bounds this sweep. A count cap would make every larger
+      // healthy catalog partial, so it could never replace an older complete cache.
+      for (final model in deduped.where((model) => model.reasoning)) {
         try {
           await _send(
             client: client,
@@ -157,7 +157,7 @@ class PiBackendCatalogRepository({
         ],
         providers: PluginProvidersResult(
           providers: _providers(
-            models: bounded,
+            models: deduped,
             initial: initialModel,
             thinkingByModel: thinkingByModel,
           ),

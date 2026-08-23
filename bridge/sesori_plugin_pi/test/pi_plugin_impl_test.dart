@@ -392,7 +392,6 @@ final class _Harness({bool stdinCloseCompletes = true}) {
       healthTimeout: const Duration(seconds: 1),
       idleTimeout: const Duration(minutes: 5),
       editorTimeout: const Duration(minutes: 1),
-      maxCatalogModels: 10,
     );
   }
 

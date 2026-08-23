@@ -115,6 +115,9 @@ variant, and worktree mode, and creating the session with its first input.
   Model values remain exact even when the model ID contains slashes, and the configured
   pre-sweep model remains the default. A rejected or partially applied selection fails
   before prompting.
+- Pi likewise discovers every advertised model and its available thinking levels within
+  the existing total probe deadline, so catalog size alone never makes a healthy refresh
+  partial or leaves an older complete cache in place.
 
 ## Regression Levels
 

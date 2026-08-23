@@ -26,7 +26,6 @@ typedef PiPluginFactory = PiPlugin Function({
   required Duration healthTimeout,
   required Duration idleTimeout,
   required Duration editorTimeout,
-  required int maxCatalogModels,
 });
 
 PiPlugin _buildPiPlugin({
@@ -43,7 +42,6 @@ PiPlugin _buildPiPlugin({
   required Duration healthTimeout,
   required Duration idleTimeout,
   required Duration editorTimeout,
-  required int maxCatalogModels,
 }) => PiPlugin(
   binaryPath: binaryPath,
   storageEnvironment: storageEnvironment,
@@ -58,7 +56,6 @@ PiPlugin _buildPiPlugin({
   healthTimeout: healthTimeout,
   idleTimeout: idleTimeout,
   editorTimeout: editorTimeout,
-  maxCatalogModels: maxCatalogModels,
 );
 
 /// Descriptor and lifecycle composition root for the local Pi CLI plugin.
@@ -298,7 +295,6 @@ final class const PiPluginDescriptor({
         healthTimeout: const Duration(seconds: 10),
         idleTimeout: const Duration(minutes: 5),
         editorTimeout: const Duration(minutes: 30),
-        maxCatalogModels: 100,
       );
     } on Object {
       await processFactory.dispose();
