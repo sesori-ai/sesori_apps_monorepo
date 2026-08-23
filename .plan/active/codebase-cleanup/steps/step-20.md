@@ -3,7 +3,7 @@
 ## Context
 
 - Branch: `codebase-cleanup/step-20-session-repositories`
-- Parent commit: `f5fc700ba`
+- Merged Step 19 parent: `0491271256e8714d0e0c58a18742fa20830555be`
 - All committed Step 19 review fixes are preserved.
 
 ## Implementation decisions
@@ -30,10 +30,10 @@ across direct DAO callers.
 
 ## Verification
 
-- Focused Step 20 repository, runtime, routing, activity, PR-selection, and DAO
-  matrix: PASS, 330 tests.
-- Direct message/delete routing coverage for the final plugin-use consolidation:
-  PASS, 25 tests.
+- Combined Step 20 repository, runtime, routing, activity, PR-selection, DAO,
+  message, and delete matrix: PASS, 355 tests.
+- The combined matrix and analyzer were rerun after merging the final Step 19
+  parent.
 - `dart analyze --fatal-infos` from `bridge/app`: PASS, no issues.
 - Supported touched Dart files formatted. `session_repository.dart` and `orchestrator.dart` remain excluded because pinned `dart_style` crashes on existing enhanced-enum syntax; analyzer parses both successfully.
 - `git diff --check`: PASS.
