@@ -40,7 +40,10 @@ class const PregoGroupedRows({
         children: [
           for (var index = 0; index < children.length; index++)
             _GroupedRowPosition(
-              key: children[index].key == null ? null : ValueKey<Key>(children[index].key!),
+              key: switch (children[index].key) {
+                final key? => ValueKey<Key>(key),
+                null => null,
+              },
               isLast: index == children.length - 1,
               child: children[index],
             ),
