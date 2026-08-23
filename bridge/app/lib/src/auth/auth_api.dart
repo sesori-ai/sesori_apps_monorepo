@@ -33,14 +33,14 @@ class BridgeRegistrationException({required final int statusCode, required Strin
 }
 
 class AuthApi({
-  required final String authBackendUrl,
+  required final String _authBackendUrl,
   required final http.Client _client,
   required final Duration _requestDeadline,
   required final AuthRequestSender _sendRequest,
 }) {
   static const Duration defaultRequestDeadline = Duration(seconds: 35);
 
-  Uri _uri(String path) => Uri.parse("$authBackendUrl/$path");
+  Uri _uri(String path) => Uri.parse("$_authBackendUrl/$path");
 
   Future<AuthInitResponse> initOAuthSession({
     required OAuthProvider provider,

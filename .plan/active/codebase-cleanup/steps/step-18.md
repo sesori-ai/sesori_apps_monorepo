@@ -75,6 +75,8 @@ startup coverage with a `MockClient` instead of an unused local HTTP server.
 A later pull-request review correctly identified that the resulting auth imports
 of core foundation violated the subsystem boundary. Runtime composition now
 injects bounded-request and restricted-write capabilities, and URL normalization
-happens before construction; production `auth/` has no core-layer imports.
+happens before construction; production `auth/` and `push/` have no
+core-layer imports (`PushNotificationClient` relies on the same boundary
+normalization instead of importing the helper).
 The architecture implementation reviewer approved this final boundary fix with
 no findings.
