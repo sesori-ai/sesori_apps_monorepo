@@ -68,3 +68,8 @@ generic auth callback, hint table, or install factory was added.
   its Cursor exact-version suggestion was rejected because existing Cursor
   setup intentionally uses the minimum policy.
 - `git diff --check`: passed.
+- Size excluding the plan and this evidence file: **`+833 / -1,030` = 1,863
+  changed lines**. This exceeds the 1,500-line soft cap by 363 lines because the
+  cohesive migration deletes the 260-line Codex selector and its 286-line
+  duplicate test while replacing five descriptor probe implementations;
+  production and test code together are net 197 lines smaller.
