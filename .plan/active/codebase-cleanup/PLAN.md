@@ -1317,8 +1317,10 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   pinnedLayout); cancelling}` (keep the two `ValueNotifier`s). The sealed state
   stays widget-local: it is ephemeral gesture/layout state, so no app-level
   controller class is introduced (business orchestration remains in cubits and
-  the shell stays thin). User-visible voice UX; lands only after Step 39 and
-  after #918 merges; updates `voice-input.md` in the same PR.
+  the shell stays thin). User-visible voice UX; lands after Step 39 and before
+  the replacement for #918, which will adapt realtime preview transitions to
+  this sealed state per the owner's 2026-08-24 sequencing decision; updates
+  `voice-input.md` in the same PR.
 - Verify: `flutter test test/features/session_detail`; manual hold-to-talk,
   cancel-drag, max-duration, and minimum-duration flows on the release-target phone.
 
