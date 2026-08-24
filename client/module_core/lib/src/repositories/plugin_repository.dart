@@ -63,6 +63,14 @@ class PluginRepository({required final PluginApi _api}) {
       SuccessResponse() => const CatalogImportMutationResult.accepted(),
       ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => const CatalogImportMutationResult.notFound(),
       ErrorResponse(error: NonSuccessCodeError(errorCode: 503)) => const CatalogImportMutationResult.unavailable(),
+      // A dispatched request whose outcome cannot be proven may well have
+      // landed, so it is never reported as an ordinary failure.
+      ErrorResponse(
+        error: final error && (JsonParsingError() ||
+            EmptyResponseError() ||
+            DartHttpClientError(innerError: TimeoutException() || RelayResponseLostException())),
+      ) =>
+        CatalogImportMutationResult.uncertain(error: error),
       ErrorResponse(:final error) => CatalogImportMutationResult.failure(error: error),
     };
   }

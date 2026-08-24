@@ -3,7 +3,6 @@ import "dart:async";
 import "package:get_it/get_it.dart";
 import "package:injectable/injectable.dart";
 import "package:rxdart/rxdart.dart";
-import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../capabilities/server_connection/connection_service.dart";
@@ -94,7 +93,7 @@ class CatalogRescanService({
             if (plugin.runtimeState.isRoutable) plugin.setup.id,
         ];
         if (pluginIds.isEmpty) return;
-        await _start(pluginIds: pluginIds);
+        await _start(pluginIds: pluginIds, coversEveryHarness: true);
       case PluginManagementLoadResultLoading() || PluginManagementLoadResultFailure() || null:
         return;
     }
@@ -112,7 +111,7 @@ class CatalogRescanService({
       if (_members.isEmpty) _publish(const CatalogRescanState.unsupported());
       return const CatalogRescanStartResult.unsupported();
     }
-    final results = await _start(pluginIds: [pluginId]);
+    final results = await _start(pluginIds: [pluginId], coversEveryHarness: false);
     return results[pluginId] ?? const CatalogRescanStartResult.notImportable();
   }
 
@@ -145,7 +144,10 @@ class CatalogRescanService({
     await _settled.close();
   }
 
-  Future<Map<String, CatalogRescanStartResult>> _start({required List<String> pluginIds}) async {
+  Future<Map<String, CatalogRescanStartResult>> _start({
+    required List<String> pluginIds,
+    required bool coversEveryHarness,
+  }) async {
     _openOrJoin(pluginIds: pluginIds, observed: false);
     final results = <String, CatalogRescanStartResult>{};
     await Future.wait([
@@ -155,16 +157,22 @@ class CatalogRescanService({
         }),
     ]);
     if (_disposed) return results;
-    // Both branches below require an empty operation. A `404` or `503` already
-    // removed its harness in _applyStartOutcome, so a non-empty _members means
-    // something is still running — including a harness this dispatch never
-    // sent, which a joining start must not tear down.
-    if (_members.isEmpty) {
-      // Every harness answering 404 at once is how a bridge with no import
-      // route presents itself. One harness answering 404 only means that
-      // harness is unknown, so this deliberately requires all of them.
-      final unsupported =
-          results.isNotEmpty && results.values.every((r) => r is CatalogRescanStartUnsupported);
+    // Two conditions, not one. `_members.isEmpty` alone is also true when the
+    // operation closed while this dispatch was awaiting — settled from SSE,
+    // cancelled, or reset by a disconnect — and closing it again would erase a
+    // failure row that must persist and fire a second refresh. `isLive` is the
+    // cheap way to tell those apart, because _openOrJoin always publishes a
+    // live state before dispatch and an unsupported answer is never published
+    // over a live operation.
+    if (_members.isEmpty && _state.value.isLive) {
+      // "No import route" is a claim about the whole bridge, so only a fan-out
+      // that covered every harness may make it. A targeted start reports its
+      // own rejection through the returned result instead; the bridge answers
+      // 404 for an unknown *and* for a deselected plugin, so one 404 says
+      // nothing about the route.
+      final unsupported = coversEveryHarness &&
+          results.isNotEmpty &&
+          results.values.every((r) => r is CatalogRescanStartUnsupported);
       _closeOperation(
         unsupported ? const CatalogRescanState.unsupported() : const CatalogRescanState.idle(),
       );
@@ -193,21 +201,20 @@ class CatalogRescanService({
       case CatalogImportMutationUnavailable():
         _members.remove(pluginId);
         return const CatalogRescanStartResult.notImportable();
+      case CatalogImportMutationUncertain(:final error):
+        // The request may well have landed, so the harness stays a member and
+        // settles from its own progress event rather than being written off.
+        logw("Catalog rescan start could not be confirmed for a harness", error);
+        return CatalogRescanStartResult.failed(cause: error);
       case CatalogImportMutationFailure(:final error):
-        // Retained locally because a transport or decoding failure may never
-        // have reached the bridge, so the bridge log cannot explain it.
+        // The bridge answered and refused, so this harness is settled and
+        // counts against the run. Retained locally because the failure may
+        // never have reached the bridge's own log.
         logw("Catalog rescan could not be started for a harness", error);
-        if (error is NonSuccessCodeError) {
-          // The bridge answered and refused, so this harness is settled and
-          // counts against the run.
-          _progressByPluginId[pluginId] = CatalogImportProgress.failed(
-            pluginId: pluginId,
-            message: "start rejected",
-          );
-        }
-        // Otherwise the request may well have landed — a relay timeout or lost
-        // response fires after delivery just as readily as before it — so the
-        // harness stays a member and settles from its own progress event.
+        _progressByPluginId[pluginId] = CatalogImportProgress.failed(
+          pluginId: pluginId,
+          message: "start rejected",
+        );
         return CatalogRescanStartResult.failed(cause: error);
     }
   }
@@ -386,7 +393,13 @@ class CatalogRescanService({
       for (final plugin in snapshot.response.plugins) plugin.setup.id: plugin.setup.displayName,
     };
     final bridgeId = snapshot.response.bridgeId;
-    if (_activeBridgeId != null && _activeBridgeId != bridgeId) _reset();
+    if (_activeBridgeId != null && _activeBridgeId != bridgeId) {
+      // Same rule as a disconnect: every close of a live operation announces
+      // itself, so the two triggers the plan lists together behave alike.
+      final wasLive = _members.isNotEmpty;
+      _reset();
+      if (wasLive && !_settled.isClosed) _settled.add(null);
+    }
     _activeBridgeId = bridgeId;
   }
 

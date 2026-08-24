@@ -15,6 +15,8 @@ sealed class const CatalogImportMutationResult() {
 
   const factory unavailable() = CatalogImportMutationUnavailable;
 
+  const factory uncertain({required ApiError error}) = CatalogImportMutationUncertain;
+
   const factory failure({required ApiError error}) = CatalogImportMutationFailure;
 }
 
@@ -27,9 +29,14 @@ final class const CatalogImportMutationNotFound() extends CatalogImportMutationR
 /// The bridge answered `503`: it knows the plugin but cannot import from it.
 final class const CatalogImportMutationUnavailable() extends CatalogImportMutationResult;
 
-/// Anything else, including a request that may never have reached the bridge.
-/// [error] is retained so the caller can log it; a transport or decoding
-/// failure cannot be explained by the bridge's own log.
+/// The request may or may not have reached the bridge: a timed-out or lost
+/// relay response fires after delivery as readily as before it. A caller must
+/// not write the harness off.
+final class const CatalogImportMutationUncertain({required final ApiError error})
+    extends CatalogImportMutationResult;
+
+/// The bridge answered and refused, or the answer was unusable for a reason
+/// that is not a lost response. [error] is retained so the caller can log it.
 final class const CatalogImportMutationFailure({required final ApiError error})
     extends CatalogImportMutationResult;
 

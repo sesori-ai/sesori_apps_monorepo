@@ -370,7 +370,22 @@ the three declared collaborators, the Layer-3 composition with
 | The all-`404` close acted on dispatch-scoped results and could tear down members it never dispatched | Both terminal branches now require `_members.isEmpty`. A `404` or `503` already removes its own harness, so an empty member set is exactly "nothing else is live"; a joining start that is rejected returns its result and leaves the run alone |
 | Both unsupported-snapshot paths published over a live operation, leaving a non-live state while members were still tracked — so `dismiss()` cleared them without announcing the close and the lists never refreshed | Those publishes are gated on an empty operation, and liveness now reads `_members`, not the published state. Reachable on a v1.6.x bridge, which has `/plugin/import` but not `/plugin/management` |
 
-The reviewer also noted two quality points outside its verdict. The row keeping
+A second pass also rejected, with two further A2 findings — both in `_start`'s
+post-`await` continuation, both applied with regression coverage:
+
+| Finding | Correction applied |
+|---|---|
+| `_members.isEmpty` alone is also true when the operation closed *during* the await, so a start whose response resolved late could erase a failure row that must persist and fire a duplicate refresh. Reachable by a relay timeout, or by tapping cancel before the POST returns | The guard is now `_members.isEmpty && _state.value.isLive`; `_openOrJoin` always publishes a live state before dispatch and an unsupported answer is never published over a live operation, so this is true exactly when the dispatch's own operation is still open |
+| The bridge-wide `CatalogRescanUnsupported` claim was inferred from a dispatch that need not cover every harness, so one targeted `404` — which the bridge also returns for a *deselected* plugin — told every surface the bridge cannot rescan at all | `_start` takes `coversEveryHarness`, true only from `startAll()`. A targeted rejection is reported solely through its returned result, per `PLAN.md` |
+
+Both of its non-blocking observations were applied too: an active-bridge change
+now announces its close like a disconnect does, and the `NonSuccessCodeError`
+sniff moved out of the service into a `CatalogImportMutationUncertain` variant,
+matching the two sibling mappers that already own transport classification in
+the repository. The exhaustive-switch error that fix produced is what proved the
+service had been reasoning about transport shapes at all.
+
+The first reviewer also noted two quality points outside its verdict. The row keeping
 the name of a harness that had just finished was a real wrong label and is
 fixed. The missing value equality on state variants is left alone: `Set<String>`
 has no value equality either, so honest `==` would mean a set comparator for a

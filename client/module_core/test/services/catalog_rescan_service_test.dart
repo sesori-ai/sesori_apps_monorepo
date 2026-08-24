@@ -241,7 +241,7 @@ void main() {
     });
 
     test("keeps a harness whose response was lost, so SSE still settles it", () async {
-      repository.resultFor["claude"] = CatalogImportMutationResult.failure(
+      repository.resultFor["claude"] = CatalogImportMutationResult.uncertain(
         error: ApiError.dartHttpClient(TimeoutException("relay response lost")),
       );
 
@@ -349,6 +349,44 @@ void main() {
         isA<CatalogRescanStarting>(),
         reason: "codex has reported nothing yet, so no harness can be named",
       );
+    });
+
+    test("a targeted 404 does not claim the whole bridge cannot rescan", () async {
+      // The bridge answers 404 for an unknown plugin and for a deselected one
+      // alike, so one 404 says nothing about whether the route exists.
+      repository.resultFor["codex"] = const CatalogImportMutationResult.notFound();
+
+      final result = await service.start(pluginId: "codex");
+
+      expect(result, isA<CatalogRescanStartUnsupported>(), reason: "the caller is told");
+      expect(
+        service.state.value,
+        isA<CatalogRescanIdle>(),
+        reason: "but no bridge-wide claim reaches the other surfaces",
+      );
+    });
+
+    test("a start resolving after its run already settled leaves the row alone", () async {
+      final settled = <void>[];
+      service.settled.listen(settled.add);
+      final release = Completer<CatalogImportMutationResult>();
+      repository.pendingFor["claude"] = release.future;
+
+      final pending = service.startAll();
+      // Both harnesses fail over SSE while claude's response is still in flight.
+      connection.emitProgress(const CatalogImportProgress.failed(pluginId: "codex", message: "x"));
+      connection.emitProgress(const CatalogImportProgress.failed(pluginId: "claude", message: "y"));
+      expect(service.state.value, isA<CatalogRescanFailed>());
+
+      release.complete(const CatalogImportMutationResult.accepted());
+      await pending;
+
+      expect(
+        service.state.value,
+        isA<CatalogRescanFailed>(),
+        reason: "a diagnostic the user has not read must not erase itself",
+      );
+      expect(settled, hasLength(1), reason: "and the lists must not refresh twice");
     });
 
     test("reports an unsupported bridge from an unsupported snapshot, issuing no request", () async {
@@ -532,6 +570,7 @@ PluginManagementLoadResult _snapshot({
 
 class _FakePluginRepository() implements PluginRepository {
   final Map<String, CatalogImportMutationResult> resultFor = {};
+  final Map<String, Future<CatalogImportMutationResult>> pendingFor = {};
   final List<String> startedPluginIds = [];
   final List<String> cancelledPluginIds = [];
   CatalogImportStatusesResult statuses = const CatalogImportStatusesResult.supported(statuses: []);
@@ -539,6 +578,7 @@ class _FakePluginRepository() implements PluginRepository {
   @override
   Future<CatalogImportMutationResult> startCatalogImport({required String pluginId}) async {
     startedPluginIds.add(pluginId);
+    if (pendingFor.remove(pluginId) case final pending?) return await pending;
     return resultFor[pluginId] ?? const CatalogImportMutationResult.accepted();
   }
 
