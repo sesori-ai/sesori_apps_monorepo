@@ -70,7 +70,7 @@ void main() {
     test("filters tasklist by image name and parses process ids", () async {
       final runner = RecordingProcessRunner(
         stdout:
-            '"sesori-bridge.exe","321","Console","1","12,345 K"\r\n'
+            '"sesori-""bridge.exe","321","Console","1","12,345 K"\r\n'
             '"sesori-bridge.exe","654","Console","1","98,765 K"\r\n',
       );
       final api = ProcessIdLookupApi.forPlatform(

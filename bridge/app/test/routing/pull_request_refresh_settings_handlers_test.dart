@@ -22,7 +22,7 @@ void main() {
 
     setUp(() async {
       api = InMemoryBridgeSettingsApi(config: '{"pullRequestRefreshIntervalSeconds":30}');
-      repository = BridgeSettingsRepository(api: api);
+      repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
       await repository.loadSettings();
       service = PullRequestRefreshSettingsService(bridgeSettingsRepository: repository);
       yoloService = YoloSettingsService(

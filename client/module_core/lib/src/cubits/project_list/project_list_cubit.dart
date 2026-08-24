@@ -15,7 +15,9 @@ import "../../platform/route_source.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
 import "../../routing/app_routes.dart";
+import "../../services/catalog_rescan_service.dart";
 import "../../services/loaded_state_analytics_reporter.dart";
+import "../../services/models/catalog_rescan_state.dart";
 import "../../services/models/session_activity_info.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/project_list_service.dart";
@@ -44,6 +46,7 @@ class ProjectListCubit(
   required final ProductAnalyticsService _productAnalyticsService,
   required final LoadedStateAnalyticsReporter _loadedStateAnalyticsReporter,
   required final FailureReporter _failureReporter,
+  required final CatalogRescanService _catalogRescanService,
 }) extends Cubit<ProjectListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
@@ -63,6 +66,14 @@ class ProjectListCubit(
     _subscriptions.add(
       _sseEventTracker.projectTimestampUpdates.listen(_onProjectTimestampUpdated),
     );
+
+    // 1a2. The catalog scan, which any surface can start. Its state is only
+    //     projected onto the list; the operation itself is the service's.
+    _subscriptions.add(_catalogRescanService.state.listen(_onCatalogScanState));
+    // A committed import raises no list invalidation of its own, so the list
+    // refreshes when the scan leaves a live operation — however it ended,
+    // because a run this client only observed publishes no terminal state.
+    _subscriptions.add(_catalogRescanService.settled.listen((_) => unawaited(_refreshAfterScan())));
 
     // 1b. Immediate unseen (bold) updates (no API call).
     _subscriptions.add(
@@ -475,6 +486,9 @@ class ProjectListCubit(
   /// In-flight silent refresh, used for coalescing.
   Future<bool>? _activeRefresh;
 
+  /// The most recent list read of any kind.
+  Future<bool>? _activeFetch;
+
   /// Re-fetches projects without showing the full-screen loading indicator.
   /// Concurrent calls are coalesced: if a refresh is already in-flight, the
   /// existing Future is returned instead of starting a second network request.
@@ -650,7 +664,21 @@ class ProjectListCubit(
     return error is NonSuccessCodeError && error.errorCode == 403;
   }
 
-  Future<bool> _fetchProjects({bool silent = false}) async {
+  /// Registers every list read, silent or not, so an ordering-sensitive caller
+  /// can wait for whatever is already in flight. [_activeRefresh] tracks only
+  /// the coalescing silent path, so an initial or retry load is invisible to it.
+  Future<bool> _fetchProjects({bool silent = false}) {
+    final fetch = _runFetchProjects(silent: silent);
+    _activeFetch = fetch;
+    unawaited(
+      fetch.whenComplete(() {
+        if (identical(_activeFetch, fetch)) _activeFetch = null;
+      }).catchError((Object _) => false),
+    );
+    return fetch;
+  }
+
+  Future<bool> _runFetchProjects({bool silent = false}) async {
     // Captured BEFORE the fetch so the seed can't overwrite a live update that
     // arrives while the request is in flight.
     final unseenTick = _sessionUnseenTracker.tick;
@@ -682,6 +710,10 @@ class ProjectListCubit(
             projects: sortedProjects,
             activityById: _sseEventTracker.currentProjectActivity,
             unseenByProjectId: _unseenByProjectId(sortedProjects),
+            // Re-derived from its owner, like the two fields above it. This
+            // emit is what the scan's own settled listener triggers, so
+            // omitting it would erase the terminal row it was fired for.
+            catalogScan: _catalogRescanService.state.value,
           ),
         );
         _loadedStateAnalyticsReporter.reportLoaded(
@@ -703,6 +735,42 @@ class ProjectListCubit(
           emit(ProjectListState.failed(reason: error.remoteFailureReason));
         }
         return false;
+    }
+  }
+
+  /// Reads the catalog strictly after the scan committed.
+  ///
+  /// [refreshProjects] coalesces onto a refresh already in flight, and that one
+  /// may have started before the import committed. Waiting it out first means
+  /// the read that follows is guaranteed to see the imported rows, which is the
+  /// whole point of refreshing here — the import raises no other invalidation.
+  Future<void> _refreshAfterScan() async {
+    // Every read, not just the coalescing silent one: a full load in flight
+    // would otherwise race this fetch and, landing last, overwrite what the
+    // scan just imported. A failing read reports itself, so it is not
+    // re-reported here.
+    try {
+      await _activeFetch;
+    } on Object catch (_) {
+      // Ignored: the read that failed owns its own reporting.
+    }
+    if (isClosed) return;
+    await refreshProjects();
+  }
+
+  /// Starts a catalog scan across every harness this bridge can import from.
+  void startCatalogScan() => unawaited(_catalogRescanService.startAll());
+
+  /// Stops the scan in flight.
+  void cancelCatalogScan() => unawaited(_catalogRescanService.cancel());
+
+  /// Clears a finished scan the user has read.
+  void dismissCatalogScan() => _catalogRescanService.dismiss();
+
+  void _onCatalogScanState(CatalogRescanState scan) {
+    if (isClosed) return;
+    if (state case final ProjectListLoaded loaded) {
+      emit(loaded.copyWith(catalogScan: scan));
     }
   }
 

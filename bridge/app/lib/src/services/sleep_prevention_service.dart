@@ -1,20 +1,15 @@
-import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
-
 import '../foundation/device_type_detector.dart';
+import '../foundation/warning_logger.dart';
 import '../repositories/bridge_settings.dart';
 import '../repositories/bridge_settings_repository.dart';
 import '../repositories/wake_lock_repository.dart';
-
-typedef WarningLogger = void Function(String message);
 
 class SleepPreventionService({
   required final BridgeSettingsRepository _bridgeSettingsRepository,
   required final WakeLockRepository _wakeLockRepository,
   required final DeviceTypeDetector _deviceTypeDetector,
-  WarningLogger? warningLogger,
+  required final WarningLogger _warningLogger,
 }) {
-  final WarningLogger _warningLogger = warningLogger ?? Log.w;
-
   Future<SleepPreventionMode> applyConfiguredMode() async {
     final settings = await _bridgeSettingsRepository.loadSettings();
 
@@ -22,21 +17,15 @@ class SleepPreventionService({
       case SleepPreventionMode.always:
         try {
           await _wakeLockRepository.enable();
-          await _warnIfLidCloseSleepNotPrevented().catchError((error) {
-            _warningLogger("[SleepPreventionService] Failed to determine device type and lid close behavior");
-          });
-        } on Object catch (error) {
-          _warningLogger(
-            '[SleepPreventionService] failed to enable wake lock: $error',
-          );
+          await _warnIfLidCloseSleepNotPrevented();
+        } on Object catch (error, stackTrace) {
+          _warningLogger('[SleepPreventionService] failed to enable wake lock', error, stackTrace);
         }
       case SleepPreventionMode.off:
         try {
           await _wakeLockRepository.disable();
-        } on Object catch (error) {
-          _warningLogger(
-            '[SleepPreventionService] failed to disable wake lock: $error',
-          );
+        } on Object catch (error, stackTrace) {
+          _warningLogger('[SleepPreventionService] failed to disable wake lock', error, stackTrace);
         }
     }
 
@@ -51,10 +40,8 @@ class SleepPreventionService({
     final bool isLaptop;
     try {
       isLaptop = await _deviceTypeDetector.isLaptop();
-    } on Object catch (error) {
-      _warningLogger(
-        '[SleepPreventionService] failed to detect device type: $error',
-      );
+    } on Object catch (error, stackTrace) {
+      _warningLogger('[SleepPreventionService] failed to detect device type', error, stackTrace);
       return;
     }
 
@@ -71,11 +58,8 @@ class SleepPreventionService({
   Future<void> dispose() async {
     try {
       await _wakeLockRepository.disable();
-    } on Object catch (error) {
-      _warningLogger(
-        '[SleepPreventionService] failed to disable wake lock during dispose: '
-        '$error',
-      );
+    } on Object catch (error, stackTrace) {
+      _warningLogger('[SleepPreventionService] failed to disable wake lock during dispose', error, stackTrace);
     }
   }
 }

@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:sesori_bridge/src/updater/api/checksum_manifest_api.dart';
 import 'package:sesori_bridge/src/updater/models/checksum_manifest.dart';
 import 'package:sesori_bridge/src/updater/models/release_info.dart';
-import 'package:sesori_bridge/src/updater/models/update_result.dart';
 import 'package:sesori_bridge/src/updater/repositories/update_artifact_repository.dart';
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:test/test.dart';
@@ -214,7 +213,7 @@ void main() {
         await controller.close();
         await subscription.cancel();
 
-        expect(result, UpdateResult.success);
+        expect(result, isNull);
         expect(progress, isNotEmpty);
         expect(progress.last.receivedBytes, payload.length);
         expect(progress.last.totalBytes, payload.length);

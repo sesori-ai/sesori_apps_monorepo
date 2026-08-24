@@ -138,6 +138,8 @@ void _registerDependencies({
   final getIt = GetIt.instance;
 
   getIt.registerSingleton<ConnectionService>(connectionService);
+
+  getIt.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
   getIt.registerSingleton<SessionDetailLoadService>(loadService);
   getIt.registerSingleton<SessionRepository>(promptDispatcher);
   getIt.registerSingleton<PermissionRepository>(permissionRepository);

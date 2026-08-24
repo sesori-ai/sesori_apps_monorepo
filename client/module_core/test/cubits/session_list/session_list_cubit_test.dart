@@ -14,6 +14,7 @@ import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart
 import "package:sesori_dart_core/src/repositories/models/repo_provider.dart";
 import "package:sesori_dart_core/src/repositories/models/session_cleanup_rejection.dart" as domain;
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
+import "package:sesori_dart_core/src/services/models/catalog_rescan_state.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_dart_core/src/services/session_list_service.dart";
@@ -27,6 +28,7 @@ void main() {
 
   group("SessionListCubit", () {
     late MockSessionRepository mockSessionService;
+    late FakeCatalogRescanService fakeCatalogRescanService;
     late MockProjectRepository mockProjectRepository;
     late SessionListService sessionListService;
     late MockConnectionService mockConnectionService;
@@ -41,6 +43,7 @@ void main() {
     const projectId = "project-1";
 
     setUp(() {
+      fakeCatalogRescanService = FakeCatalogRescanService();
       mockSessionService = MockSessionRepository();
       mockProjectRepository = MockProjectRepository();
       sessionListService = SessionListService(
@@ -95,6 +98,7 @@ void main() {
       routeSource: mockRouteSource,
       projectId: projectId,
       failureReporter: mockFailureReporter,
+      catalogRescanService: fakeCatalogRescanService,
     );
 
     test("successful list render readies its project claim and close releases it", () async {
@@ -1538,6 +1542,7 @@ void main() {
           routeSource: mockRouteSource,
           projectId: "global",
           failureReporter: mockFailureReporter,
+          catalogRescanService: fakeCatalogRescanService,
         );
       },
       expect: () => [
@@ -2185,6 +2190,101 @@ void main() {
       expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"]?.unseen, isTrue);
       expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isTrue);
     });
+
+    group("catalog scan", () {
+      void stubSessions() {
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
+      }
+
+      test("projects the scan onto the loaded state", () async {
+        stubSessions();
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+        fakeCatalogRescanService.emit(
+          const CatalogRescanState.running(
+            activePluginName: "Codex",
+            sessionsSeen: 148,
+            pluginIds: {"codex"},
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          (cubit.state as SessionListLoaded).catalogScan,
+          isA<CatalogRescanRunning>().having((s) => s.activePluginName, "activePluginName", "Codex"),
+        );
+      });
+
+      test("refreshes when a scan leaves a live operation", () async {
+        stubSessions();
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+        clearInteractions(mockProjectRepository);
+        stubSessions();
+
+        // A committed import raises no list invalidation of its own, so this
+        // refresh is the only thing that surfaces what the scan imported.
+        fakeCatalogRescanService.emitSettled();
+        await Future<void>.delayed(Duration.zero);
+
+        verify(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).called(1);
+      });
+
+      test("keeps a terminal scan through an unrelated list rebuild", () async {
+        stubSessions();
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+        fakeCatalogRescanService.emit(
+          const CatalogRescanState.failed(harnessCount: 2),
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect((cubit.state as SessionListLoaded).catalogScan, isA<CatalogRescanFailed>());
+
+        // Any list rebuild — a session event, a toggle, the refresh the scan
+        // itself triggers — must not reset a row that persists until dismissed.
+        cubit.toggleArchived();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          (cubit.state as SessionListLoaded).catalogScan,
+          isA<CatalogRescanFailed>(),
+          reason: "a failure the user has not read must survive a rebuild",
+        );
+      });
+
+      test("forwards the scan intents to the service", () async {
+        stubSessions();
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+        cubit
+          ..startCatalogScan()
+          ..cancelCatalogScan()
+          ..dismissCatalogScan();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(fakeCatalogRescanService.startAllCalls, 1);
+        expect(fakeCatalogRescanService.cancelCalls, 1);
+        expect(fakeCatalogRescanService.dismissCalls, 1);
+      });
+    });
+
   });
 }
 

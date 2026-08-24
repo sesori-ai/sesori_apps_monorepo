@@ -30,8 +30,7 @@ UpdateResolution _resolution({
 }) => UpdateResolution(
   currentVersion: SemanticVersion.parse(value: current),
   currentEligible: currentEligible,
-  latestEligible: latest == null ? null : _release(latest),
-  latestVersion: latest == null ? null : SemanticVersion.parse(value: latest),
+  latest: latest == null ? null : (release: _release(latest), version: SemanticVersion.parse(value: latest)),
 );
 
 class _FakeReleaseRepository() implements ReleaseRepository {
@@ -54,7 +53,7 @@ class _FakeReleaseRepository() implements ReleaseRepository {
 }
 
 class _FakeInstallService() implements UpdateInstallService {
-  UpdateInstallResult result = const UpdateInstallResult.staged(stagingPath: '/tmp/staging');
+  UpdateInstallResult result = const UpdateInstallStaged(stagingPath: '/tmp/staging');
   int stageCount = 0;
 
   @override
@@ -247,7 +246,7 @@ void main() {
 
     test('a stage failure is surfaced with a reason', () async {
       release.onResolve = () => _resolution(current: '1.0.0', currentEligible: true, latest: '2.0.0');
-      install.result = const UpdateInstallResult.failed(result: UpdateResult.checksumFailed);
+      install.result = const UpdateInstallStageFailed(result: UpdateResult.checksumFailed);
 
       final outcome = await buildService().runUpdate(force: false);
 

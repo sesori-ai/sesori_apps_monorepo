@@ -27,4 +27,12 @@ class const FilesystemPermissionValidator() {
         message.contains("operation not permitted") ||
         message.contains("access is denied");
   }
+
+  bool isFileMissing(FileSystemException error) {
+    if (error.osError?.errorCode == 2) {
+      return true;
+    }
+    final message = "${error.osError?.message ?? ''} ${error.message}".toLowerCase();
+    return message.contains("no such file") || message.contains("cannot find the file");
+  }
 }

@@ -30,6 +30,15 @@ variant, and worktree mode, and creating the session with its first input.
   Hermes values accepted by `session/set_model`, including named custom
   providers, and a selected model is applied before the turn. Hermes also
   advertises image prompt capability so inline attachments are accepted.
+- DeepSeek exposes one primary agent plus provider-grouped models, exact
+  reasoning variants, and commands from `deepseek/catalog`. Model identifiers
+  remain opaque even when upstream provider/model names contain slashes or
+  Unicode. Sound providers survive bounded peer failures as a partial result;
+  total provider failure is explicit so bridge-owned cache retention applies.
+  The plugin writes `deepseek.model` and then `deepseek.reasoning_effort`
+  before prompt dispatch, fails closed on either rejection, and records the
+  selected identity only after every requested write succeeds. Adapter rename
+  normalization remains authoritative.
 - Read intents stay distinct: a normal load may serve a valid cache or discover,
   a cache-only read never discovers and reports cache-unavailable, and an
   explicit refresh forces fresh discovery.
@@ -156,6 +165,9 @@ reconnect or option refresh while restoration is pending.
 - A dedicated workspace name comes from generated metadata, is not lowercase
   `color-animal` form, or collides with an existing branch or path.
 - Bridge-owned context renders as the user's own message or command arguments.
+- A DeepSeek catalog loses sound providers because one provider failed, parses
+  an opaque model ID, dispatches before both requested config writes settle, or
+  records a partially applied selection as successful.
 - Creation succeeds for a non-routable plugin or unknown project.
 - Metadata completion delays the create response, creates an unqueryable session,
   overwrites a user title, resurrects a deletion, or loses the local title when
@@ -182,6 +194,8 @@ reconnect or option refresh while restoration is pending.
   `bridge/app/lib/src/services/` (session creation, mutation, events,
   options, worktree), the create-session and options handlers, and their tests
 - OMP: `bridge/sesori_plugin_omp/lib/src/services/` and package tests
+- DeepSeek: `bridge/sesori_plugin_deepseek/lib/src/repositories/`,
+  `lib/src/services/`, and package tests
 - Contract:
   `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin_descriptor.dart`
 - Client: `client/module_core/lib/src/services/new_session_options_service.dart`

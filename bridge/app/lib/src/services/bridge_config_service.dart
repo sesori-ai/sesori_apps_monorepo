@@ -1,5 +1,4 @@
 import '../repositories/bridge_settings_repository.dart';
-import '../repositories/default_editor_repository.dart';
 
 typedef PluginConfigEntry = ({String pluginId, bool enabled});
 
@@ -10,12 +9,11 @@ typedef PluginConfigSnapshot = ({
 
 class BridgeConfigService({
   required final BridgeSettingsRepository _bridgeSettingsRepository,
-  required final DefaultEditorRepository _defaultEditorRepository,
 }) {
   Future<String> openConfigFile() async {
     await _bridgeSettingsRepository.ensureConfigExists();
     final configFilePath = _bridgeSettingsRepository.configFilePath;
-    await _defaultEditorRepository.openFile(configFilePath);
+    await _bridgeSettingsRepository.openInDefaultEditor();
     return configFilePath;
   }
 

@@ -56,6 +56,7 @@ import "../foundation/app_connection_wait_indicator.dart";
 import "../foundation/app_onboarding_formatter.dart";
 import "../foundation/control_channel_client.dart";
 import "../foundation/data_directory_hardening.dart";
+import "../foundation/filesystem_cleaner.dart";
 import "../foundation/log_failure_reporter.dart";
 import "../foundation/process_runner.dart";
 import "../foundation/process_runner_command_executor.dart";
@@ -100,7 +101,6 @@ import "../updater/api/update_cache_api.dart";
 import "../updater/api/update_log_api.dart";
 import "../updater/formatters/update_message_formatter.dart";
 import "../updater/formatters/update_output_formatter.dart";
-import "../updater/foundation/filesystem_cleaner.dart";
 import "../updater/foundation/release_track.dart";
 import "../updater/foundation/update_lock.dart";
 import "../updater/foundation/update_policy.dart";
@@ -463,7 +463,7 @@ class const BridgeRuntimeRunner._() {
       final BridgeSettingsRepository bridgeSettingsRepository;
       final BridgeSettings bridgeSettings;
       try {
-        bridgeSettingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
+        bridgeSettingsRepository = BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi());
         shutdownCoordinator.add(disposable: bridgeSettingsRepository.dispose);
         bridgeSettings = await bridgeSettingsRepository.loadSettings();
       } on Object catch (error, stackTrace) {

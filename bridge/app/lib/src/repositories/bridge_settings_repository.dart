@@ -7,10 +7,14 @@ import 'package:sesori_shared/sesori_shared.dart'
     show BridgeSettingsResponse, PullRequestRefreshSettingsResponse, YoloSettingsResponse, jsonDecodeMap;
 
 import '../api/bridge_settings_api.dart';
+import '../api/default_editor_api.dart';
 import '../updater/foundation/release_track.dart';
 import 'bridge_settings.dart';
 
-class BridgeSettingsRepository({required final BridgeSettingsApi _api}) {
+class BridgeSettingsRepository({
+  required final BridgeSettingsApi _api,
+  required final DefaultEditorApi? _defaultEditorApi,
+}) {
   static const JsonEncoder _jsonEncoder = JsonEncoder.withIndent('  ');
 
   final StreamController<BridgeSettingsChange> _settingsChanges = StreamController<BridgeSettingsChange>.broadcast(
@@ -50,6 +54,12 @@ class BridgeSettingsRepository({required final BridgeSettingsApi _api}) {
     if (await _api.readConfig() == null) {
       await _api.writeConfig(_jsonEncoder.convert(const BridgeSettings().toJson()));
     }
+  }
+
+  Future<void> openInDefaultEditor() {
+    final defaultEditorApi = _defaultEditorApi;
+    if (defaultEditorApi == null) throw StateError('Default editor is unavailable.');
+    return defaultEditorApi.openFile(configFilePath);
   }
 
   Future<BridgeSettings> loadSettings() async {

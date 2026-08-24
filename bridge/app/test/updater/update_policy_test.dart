@@ -1,7 +1,21 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:http/http.dart';
 import 'package:sesori_bridge/src/updater/foundation/update_policy.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('classifies transient network errors only', () {
+    expect(isTransientNetworkError(const SocketException('offline')), isTrue);
+    expect(isTransientNetworkError(TimeoutException('slow')), isTrue);
+    expect(isTransientNetworkError(const HttpException('bad response')), isTrue);
+    expect(isTransientNetworkError(ClientException('closed')), isTrue);
+    expect(isTransientNetworkError(const HandshakeException('TLS interrupted')), isTrue);
+    expect(isTransientNetworkError(const FileSystemException('disk')), isFalse);
+    expect(isTransientNetworkError(StateError('bad state')), isFalse);
+  });
+
   group('unsupportedPackageRuntimeMessage', () {
     test('returns null for managed executable path', () {
       expect(

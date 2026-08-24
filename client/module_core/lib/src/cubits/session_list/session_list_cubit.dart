@@ -16,6 +16,8 @@ import "../../repositories/models/session_cleanup_rejection.dart";
 import "../../repositories/project_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../routing/app_routes.dart";
+import "../../services/catalog_rescan_service.dart";
+import "../../services/models/catalog_rescan_state.dart";
 import "../../services/models/session_activity_info.dart";
 import "../../services/models/session_list_item_state.dart";
 import "../../services/project_viewing_service.dart";
@@ -35,6 +37,7 @@ class SessionListCubit({
   required final RouteSource _routeSource,
   required final String _projectId,
   required final FailureReporter _failureReporter,
+  required final CatalogRescanService _catalogRescanService,
 }) extends Cubit<SessionListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
@@ -48,6 +51,15 @@ class SessionListCubit({
 
   this : super(const SessionListState.loading()) {
     loadSessions();
+    // The catalog scan, which any surface can start. Its state is only
+    // projected onto this list; the operation itself is the service's.
+    _subscriptions.add(_catalogRescanService.state.listen(_onCatalogScanState));
+    // A committed import raises no list invalidation of its own, so the list
+    // refreshes when the scan leaves a live operation — however it ended,
+    // because a run this client only observed publishes no terminal state.
+    _subscriptions.add(
+      _catalogRescanService.settled.listen((_) => unawaited(_refreshAfterScan())),
+    );
     _subscriptions.add(_connectionService.events.listen(_handleEvent));
     // 1. Navigate-back refresh: one immediate fetch when the user returns to
     //    the sessions page. pairwise() ensures this doesn't fire on the
@@ -499,6 +511,11 @@ class SessionListCubit({
         activeSessionIds: projectActivity,
         unseenBySessionId: _unseenBySessionId(visible),
         isRefreshing: isRefreshing,
+        // Re-derived from its owner, like the two fields above it. Threading
+        // the previous loaded state forward would not do: the refresh this
+        // scan itself triggers rebuilds from a state that may not exist yet,
+        // and the terminal row it was fired for would be erased.
+        catalogScan: _catalogRescanService.state.value,
         baseBranch: _gitContext?.baseBranch,
         repoSlug: _gitContext?.repoSlug,
         repoProvider: _gitContext?.repoProvider ?? RepoProvider.other,
@@ -529,6 +546,9 @@ class SessionListCubit({
   /// In-flight silent refresh, used for coalescing.
   Future<bool>? _activeRefresh;
 
+  /// The most recent list read of any kind.
+  Future<bool>? _activeFetch;
+
   /// Re-fetches sessions without showing the full-screen loading indicator.
   /// Concurrent calls are coalesced: if a refresh is already in-flight, the
   /// existing Future is returned instead of starting a second network request.
@@ -544,7 +564,21 @@ class SessionListCubit({
     ).whenComplete(() => _activeRefresh = null);
   }
 
-  Future<bool> _fetchSessions({bool silent = false, bool waitForPrData = false}) async {
+  /// Registers every list read, silent or not, so an ordering-sensitive caller
+  /// can wait for whatever is already in flight. [_activeRefresh] tracks only
+  /// the coalescing silent path, so an initial or retry load is invisible to it.
+  Future<bool> _fetchSessions({bool silent = false, bool waitForPrData = false}) {
+    final fetch = _runFetchSessions(silent: silent, waitForPrData: waitForPrData);
+    _activeFetch = fetch;
+    unawaited(
+      fetch.whenComplete(() {
+        if (identical(_activeFetch, fetch)) _activeFetch = null;
+      }).catchError((Object _) => false),
+    );
+    return fetch;
+  }
+
+  Future<bool> _runFetchSessions({bool silent = false, bool waitForPrData = false}) async {
     // Captured BEFORE the fetch so the seed can't overwrite a live update that
     // arrives while the (possibly PR-data-delayed) request is in flight.
     final unseenTick = _sessionUnseenTracker.tick;
@@ -593,6 +627,42 @@ class SessionListCubit({
           emit(SessionListState.failed(reason: error.remoteFailureReason));
         }
         return false;
+    }
+  }
+
+  /// Reads the catalog strictly after the scan committed.
+  ///
+  /// [refreshSessions] coalesces onto a refresh already in flight, and that one
+  /// may have started before the import committed. Waiting it out first means
+  /// the read that follows is guaranteed to see the imported rows, which is the
+  /// whole point of refreshing here — the import raises no other invalidation.
+  Future<void> _refreshAfterScan() async {
+    // Every read, not just the coalescing silent one: a full load in flight
+    // would otherwise race this fetch and, landing last, overwrite what the
+    // scan just imported. A failing read reports itself, so it is not
+    // re-reported here.
+    try {
+      await _activeFetch;
+    } on Object catch (_) {
+      // Ignored: the read that failed owns its own reporting.
+    }
+    if (isClosed) return;
+    await refreshSessions();
+  }
+
+  /// Starts a catalog scan across every harness this bridge can import from.
+  void startCatalogScan() => unawaited(_catalogRescanService.startAll());
+
+  /// Stops the scan in flight.
+  void cancelCatalogScan() => unawaited(_catalogRescanService.cancel());
+
+  /// Clears a finished scan the user has read.
+  void dismissCatalogScan() => _catalogRescanService.dismiss();
+
+  void _onCatalogScanState(CatalogRescanState scan) {
+    if (isClosed) return;
+    if (state case final SessionListLoaded loaded) {
+      emit(loaded.copyWith(catalogScan: scan));
     }
   }
 

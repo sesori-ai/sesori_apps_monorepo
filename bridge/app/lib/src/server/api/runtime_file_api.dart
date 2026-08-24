@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart' show KeyedParallelLock;
 
+import '../../foundation/filesystem_permission_validator.dart';
+
 /// Raw file persistence inside [runtimeDirectory].
 ///
 /// Keep a single instance per directory per process: [updateFile]'s mutual
@@ -34,7 +36,7 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
     try {
       return await file.readAsString();
     } on FileSystemException catch (error) {
-      if (_isFileMissing(error: error) || !file.existsSync()) {
+      if (const FilesystemPermissionValidator().isFileMissing(error) || !file.existsSync()) {
         return null;
       }
       rethrow;
@@ -67,7 +69,7 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
     try {
       await file.delete();
     } on FileSystemException catch (error) {
-      if (_isFileMissing(error: error) || !file.existsSync()) {
+      if (const FilesystemPermissionValidator().isFileMissing(error) || !file.existsSync()) {
         return;
       }
       rethrow;
@@ -160,7 +162,7 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
     try {
       await lockFile.delete();
     } on FileSystemException catch (error) {
-      if (_isFileMissing(error: error) || !lockFile.existsSync()) {
+      if (const FilesystemPermissionValidator().isFileMissing(error) || !lockFile.existsSync()) {
         return;
       }
       rethrow;
@@ -176,7 +178,7 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
     try {
       return await lockFile.readAsString();
     } on FileSystemException catch (error) {
-      if (_isFileMissing(error: error) || !lockFile.existsSync()) {
+      if (const FilesystemPermissionValidator().isFileMissing(error) || !lockFile.existsSync()) {
         return null;
       }
       rethrow;
@@ -190,15 +192,5 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
     }
 
     await directory.create(recursive: true);
-  }
-
-  static bool _isFileMissing({required FileSystemException error}) {
-    final int? code = error.osError?.errorCode;
-    if (code == 2) {
-      return true;
-    }
-
-    final String message = '${error.osError?.message ?? ''} ${error.message}'.toLowerCase();
-    return message.contains('no such file') || message.contains('cannot find the file');
   }
 }

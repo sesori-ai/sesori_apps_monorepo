@@ -15,6 +15,7 @@ import "package:sesori_dart_core/src/foundation/models/product_analytics/product
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_preference.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/services/loaded_state_analytics_reporter.dart";
+import "package:sesori_dart_core/src/services/models/catalog_rescan_state.dart";
 import "package:sesori_dart_core/src/services/models/product_analytics_state.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
@@ -61,6 +62,7 @@ void main() {
 
   group("ProjectListCubit", () {
     late MockProjectRepository mockProjectRepository;
+    late FakeCatalogRescanService fakeCatalogRescanService;
     late ProjectListService projectListService;
     late MockConnectionService mockConnectionService;
     late MockSseEventTracker mockSseEventTracker;
@@ -74,6 +76,7 @@ void main() {
     late Completer<ApiResponse<Projects>> projectFetchCompleter;
 
     setUp(() {
+      fakeCatalogRescanService = FakeCatalogRescanService();
       mockProjectRepository = MockProjectRepository();
       projectListService = ProjectListService(
         repository: mockProjectRepository,
@@ -141,6 +144,7 @@ void main() {
         productAnalyticsService: mockProductAnalyticsService,
       ),
       failureReporter: mockFailureReporter,
+      catalogRescanService: fakeCatalogRescanService,
     );
 
     test("onboarding outcome intents report the seven bounded events", () async {
@@ -2376,5 +2380,140 @@ void main() {
         },
       );
     });
+
+    group("catalog scan", () {
+      void stubProjects() {
+        when(
+          () => mockProjectRepository.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(const Projects(data: <ProjectSummary>[])));
+      }
+
+      test("projects the scan onto the loaded state", () async {
+        stubProjects();
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await Future<void>.delayed(Duration.zero);
+
+        fakeCatalogRescanService.emit(
+          const CatalogRescanState.running(
+            activePluginName: "Codex",
+            sessionsSeen: 148,
+            pluginIds: {"codex"},
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          (cubit.state as ProjectListLoaded).catalogScan,
+          isA<CatalogRescanRunning>().having((s) => s.sessionsSeen, "sessionsSeen", 148),
+        );
+      });
+
+      test("refreshes when a scan leaves a live operation", () async {
+        stubProjects();
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await Future<void>.delayed(Duration.zero);
+        clearInteractions(mockProjectRepository);
+        stubProjects();
+
+        // A committed import raises no list invalidation of its own, so this
+        // refresh is the only thing that surfaces what the scan imported.
+        fakeCatalogRescanService.emitSettled();
+        await Future<void>.delayed(Duration.zero);
+
+        verify(() => mockProjectRepository.listProjects()).called(1);
+      });
+
+      test("keeps a terminal scan through the refresh it triggers", () async {
+        stubProjects();
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await Future<void>.delayed(Duration.zero);
+        stubProjects();
+
+        // The service publishes its terminal state and then announces the
+        // close, which starts the refresh. That refresh must not erase the row
+        // it was fired for.
+        fakeCatalogRescanService.emit(
+          const CatalogRescanState.succeeded(
+            harnessCount: 1,
+            counts: CatalogRescanCounts.delta(newProjects: 2, newSessions: 5),
+          ),
+        );
+        fakeCatalogRescanService.emitSettled();
+        await Future<void>.delayed(Duration.zero);
+
+        expect((cubit.state as ProjectListLoaded).catalogScan, isA<CatalogRescanSucceeded>());
+      });
+
+      test("reads again after an in-flight refresh rather than coalescing onto it", () async {
+        stubProjects();
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await Future<void>.delayed(Duration.zero);
+
+        // A refresh that started before the import committed.
+        final inFlight = Completer<ApiResponse<Projects>>();
+        when(() => mockProjectRepository.listProjects()).thenAnswer((_) => inFlight.future);
+        unawaited(cubit.refreshProjects());
+        await Future<void>.delayed(Duration.zero);
+        clearInteractions(mockProjectRepository);
+
+        fakeCatalogRescanService.emitSettled();
+        await Future<void>.delayed(Duration.zero);
+        verifyNever(() => mockProjectRepository.listProjects());
+
+        // Releasing the old request must be followed by a fresh read, or the
+        // imported rows are never seen: the import raises no other signal.
+        stubProjects();
+        inFlight.complete(ApiResponse.success(const Projects(data: <ProjectSummary>[])));
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+
+        verify(() => mockProjectRepository.listProjects()).called(1);
+      });
+
+      test("waits for a full load too, not only a silent refresh", () async {
+        // Only the silent path is coalesced, so an initial or retry load is
+        // invisible to it. Landing last, it would overwrite what the scan
+        // imported.
+        final initial = Completer<ApiResponse<Projects>>();
+        when(() => mockProjectRepository.listProjects()).thenAnswer((_) => initial.future);
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await Future<void>.delayed(Duration.zero);
+        clearInteractions(mockProjectRepository);
+
+        fakeCatalogRescanService.emitSettled();
+        await Future<void>.delayed(Duration.zero);
+        verifyNever(() => mockProjectRepository.listProjects());
+
+        stubProjects();
+        initial.complete(ApiResponse.success(const Projects(data: <ProjectSummary>[])));
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+
+        verify(() => mockProjectRepository.listProjects()).called(1);
+      });
+
+      test("forwards the scan intents to the service", () async {
+        stubProjects();
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await Future<void>.delayed(Duration.zero);
+
+        cubit
+          ..startCatalogScan()
+          ..cancelCatalogScan()
+          ..dismissCatalogScan();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(fakeCatalogRescanService.startAllCalls, 1);
+        expect(fakeCatalogRescanService.cancelCalls, 1);
+        expect(fakeCatalogRescanService.dismissCalls, 1);
+      });
+    });
+
   });
 }

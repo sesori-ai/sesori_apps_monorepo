@@ -121,6 +121,13 @@ void _registerListServices({
     ),
   );
   getIt.registerSingleton<ProductAnalyticsService>(analyticsService);
+  // The list cubits project the catalog scan onto their state, so every test
+  // that renders a list needs one. Registered here rather than per test file
+  // because it is a dependency of the lists themselves, not of any one screen.
+  if (getIt.isRegistered<CatalogRescanService>()) {
+    getIt.unregister<CatalogRescanService>();
+  }
+  getIt.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
 }
 
 class MockFirebaseCrashlytics() extends Mock implements FirebaseCrashlytics;

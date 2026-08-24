@@ -34,6 +34,8 @@ import "../repositories/project_repository.dart";
 import "../repositories/registered_bridges_store.dart";
 import "../repositories/session_repository.dart";
 import "../routing/app_routes.dart";
+import "../services/catalog_rescan_service.dart";
+import "../services/models/catalog_rescan_state.dart";
 import "../services/models/session_activity_info.dart";
 import "../services/models/session_list_item_state.dart";
 import "../services/product_analytics_service.dart";
@@ -842,4 +844,70 @@ class FakeAuthSession({required AuthState initialState}) implements AuthSession 
   Future<AuthUser> loginWithApple({required String idToken, required String nonce}) async {
     throw UnimplementedError();
   }
+}
+
+/// A [CatalogRescanService] a test drives directly.
+///
+/// The real service owns a whole operation lifecycle; a consumer only cares
+/// that it publishes state, announces when a run closes, and accepts intents,
+/// so this exposes exactly those.
+class FakeCatalogRescanService() implements CatalogRescanService {
+  final BehaviorSubject<CatalogRescanState> _state = BehaviorSubject.seeded(
+    const CatalogRescanState.idle(),
+  );
+  final StreamController<void> _settled = StreamController<void>.broadcast(sync: true);
+
+  final List<void> _startAlls = [];
+  final List<void> _cancels = [];
+  final List<void> _dismisses = [];
+
+  int get startAllCalls => _startAlls.length;
+  int get cancelCalls => _cancels.length;
+  int get dismissCalls => _dismisses.length;
+
+  @override
+  ValueStream<CatalogRescanState> get state => _state.stream;
+
+  @override
+  Stream<void> get settled => _settled.stream;
+
+  /// Plugin ids passed to [start], in call order.
+  final List<String> startedPluginIds = [];
+
+  CatalogRescanStartResult _startResult = const CatalogRescanStartResult.accepted();
+
+  /// Sets what [start] answers, so a test can drive a rejection.
+  void stubStartResult(CatalogRescanStartResult result) => _startResult = result;
+
+  @override
+  Future<void> startAll() async => _startAlls.add(null);
+
+  @override
+  Future<CatalogRescanStartResult> start({required String pluginId}) async {
+    startedPluginIds.add(pluginId);
+    return _startResult;
+  }
+
+  @override
+  Future<void> cancel() async => _cancels.add(null);
+
+  @override
+  void dismiss() => _dismisses.add(null);
+
+  /// Publishes [next] as the current scan state.
+  void emit(CatalogRescanState next) => _state.add(next);
+
+  /// Announces that a live operation closed, whatever it settled as.
+  void emitSettled() => _settled.add(null);
+
+  /// Closes both streams. Named to match `Disposable`, because `get_it` calls
+  /// it on reset and every widget test that registers this fake goes through
+  /// that path.
+  @override
+  Future<void> onDispose() async {
+    if (_state.isClosed) return;
+    await _state.close();
+    await _settled.close();
+  }
+
 }

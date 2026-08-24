@@ -21,11 +21,11 @@ import 'package:sesori_bridge/src/foundation/abortable_request.dart';
 import 'package:sesori_bridge/src/foundation/bridge_startup_banner_formatter.dart';
 import 'package:sesori_bridge/src/foundation/data_directory_hardening.dart';
 import 'package:sesori_bridge/src/foundation/device_type_detector.dart';
+import 'package:sesori_bridge/src/foundation/filesystem_cleaner.dart';
 import 'package:sesori_bridge/src/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/foundation/process_runner_command_executor.dart';
 import 'package:sesori_bridge/src/repositories/app_onboarding_state_repository.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
-import 'package:sesori_bridge/src/repositories/default_editor_repository.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
 import 'package:sesori_bridge/src/runtime/bridge_cli_dispatch.dart';
 import 'package:sesori_bridge/src/runtime/bridge_cli_options.dart';
@@ -52,7 +52,6 @@ import 'package:sesori_bridge/src/updater/api/update_log_api.dart';
 import 'package:sesori_bridge/src/updater/formatters/terminal_download_progress_listener.dart';
 import 'package:sesori_bridge/src/updater/formatters/update_command_formatter.dart';
 import 'package:sesori_bridge/src/updater/formatters/update_output_formatter.dart';
-import 'package:sesori_bridge/src/updater/foundation/filesystem_cleaner.dart';
 import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:sesori_bridge/src/updater/foundation/update_lock.dart';
 import 'package:sesori_bridge/src/updater/models/distribution_target.dart';
@@ -70,6 +69,7 @@ import 'package:sesori_bridge/src/version.dart';
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
     show Console, Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
+import 'package:win32/win32.dart' show SetThreadExecutionState;
 
 const String _defaultRelayURL = 'wss://relay.sesori.com';
 const String _defaultAuthURL = 'https://api.sesori.com';
@@ -179,16 +179,22 @@ class RunCommand() extends cli.Command<void> {
       if (banner != null) Console.message(banner);
     }
 
-    final settingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
+    final settingsRepository = BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi());
     final sleepPreventionService = SleepPreventionService(
       bridgeSettingsRepository: settingsRepository,
       wakeLockRepository: WakeLockRepository(
-        client: WakeLockClient.forPlatform(),
+        client: WakeLockClient.forPlatform(
+          platform: PlatformTarget.current().os,
+          processStarter: Process.start,
+          executionStateSetter: SetThreadExecutionState,
+          warningLogger: Log.w,
+        ),
       ),
       deviceTypeDetector: DeviceTypeDetector(
         processRunner: ProcessRunner(),
         platformChecker: DefaultPlatformChecker(),
       ),
+      warningLogger: Log.w,
     );
 
     try {
@@ -426,17 +432,14 @@ class ConfigEditCommand() extends cli.Command<void> {
 
   @override
   Future<void> run() async {
-    final api = BridgeSettingsApi();
-    final settingsRepository = BridgeSettingsRepository(api: api);
-    final editorRepository = DefaultEditorRepository(
-      api: DefaultEditorApi.forPlatform(
+    final settingsRepository = BridgeSettingsRepository(
+      api: BridgeSettingsApi(),
+      defaultEditorApi: DefaultEditorApi.forPlatform(
+        platform: PlatformTarget.current().os,
         processRunner: ProcessRunner(),
       ),
     );
-    final configService = BridgeConfigService(
-      bridgeSettingsRepository: settingsRepository,
-      defaultEditorRepository: editorRepository,
-    );
+    final configService = BridgeConfigService(bridgeSettingsRepository: settingsRepository);
 
     final configFilePath = await configService.openConfigFile();
     Console.message('Opening config file at $configFilePath');
@@ -462,10 +465,7 @@ class ConfigPluginsCommand() extends cli.Command<void> {
       });
     final knownIds = {for (final descriptor in descriptors) descriptor.id};
     final configService = BridgeConfigService(
-      bridgeSettingsRepository: BridgeSettingsRepository(api: BridgeSettingsApi()),
-      defaultEditorRepository: DefaultEditorRepository(
-        api: DefaultEditorApi.forPlatform(processRunner: ProcessRunner()),
-      ),
+      bridgeSettingsRepository: BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi()),
     );
 
     if (rest.isEmpty) {
@@ -516,7 +516,7 @@ class ConfigTrackCommand() extends cli.Command<void> {
       usageException('Unable to read command arguments.');
     }
     final rest = results.rest;
-    final repository = BridgeSettingsRepository(api: BridgeSettingsApi());
+    final repository = BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi());
 
     if (rest.isEmpty) {
       final settings = await repository.loadSettings();
@@ -566,7 +566,7 @@ class ConfigYoloCommand() extends cli.Command<void> {
       usageException('Unable to read command arguments.');
     }
     final rest = results.rest;
-    final repository = BridgeSettingsRepository(api: BridgeSettingsApi());
+    final repository = BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi());
 
     if (rest.isEmpty) {
       final settings = await repository.loadSettings();
@@ -733,7 +733,7 @@ class UpdateCommand() extends cli.Command<void> {
 
   Future<ReleaseTrack> _resolveReleaseTrack() async {
     try {
-      final settings = await BridgeSettingsRepository(api: BridgeSettingsApi()).loadSettings();
+      final settings = await BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi()).loadSettings();
       return settings.releaseTrack;
     } on Object catch (error) {
       Log.w('Failed to resolve release track; defaulting to stable: $error');

@@ -33,6 +33,7 @@ void main() {
       permissionRepository = _PermissionRepository();
       questionRepository = _QuestionRepository();
       settingsRepository = BridgeSettingsRepository(
+        defaultEditorApi: null,
         api: InMemoryBridgeSettingsApi(config: '{"yolo":true,"pullRequestRefreshIntervalSeconds":30}'),
       );
       await settingsRepository.loadSettings();

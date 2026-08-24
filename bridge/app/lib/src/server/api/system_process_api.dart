@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../../foundation/csv_parser.dart";
 import "../../foundation/process_runner.dart";
 
 class SystemProcessApi({
@@ -178,7 +179,7 @@ class SystemProcessApi({
         continue;
       }
 
-      final row = _parseCsvLine(line: trimmed);
+      final row = CsvParser.parseLine(line: trimmed);
       if (row.length < 2) {
         continue;
       }
@@ -221,35 +222,5 @@ class SystemProcessApi({
       return trimmed;
     }
     return trimmed.substring(0, spaceIndex);
-  }
-
-  static List<String> _parseCsvLine({required String line}) {
-    final values = <String>[];
-    final buffer = StringBuffer();
-    var inQuotes = false;
-
-    for (var index = 0; index < line.length; index += 1) {
-      final character = line[index];
-      if (character == '"') {
-        if (inQuotes && index + 1 < line.length && line[index + 1] == '"') {
-          buffer.write('"');
-          index += 1;
-        } else {
-          inQuotes = !inQuotes;
-        }
-        continue;
-      }
-
-      if (character == "," && !inQuotes) {
-        values.add(buffer.toString());
-        buffer.clear();
-        continue;
-      }
-
-      buffer.write(character);
-    }
-
-    values.add(buffer.toString());
-    return values;
   }
 }

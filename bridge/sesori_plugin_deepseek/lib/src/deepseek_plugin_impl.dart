@@ -5,6 +5,8 @@ import "api/deepseek_acp_api.dart";
 import "deepseek_approval_registry.dart";
 import "deepseek_event_mapper.dart";
 import "repositories/deepseek_history_repository.dart";
+import "services/deepseek_session_options_service.dart";
+import "services/deepseek_session_service.dart";
 
 class DeepSeekPlugin({
   required super.launchSpec,
@@ -12,6 +14,8 @@ class DeepSeekPlugin({
   required DeepSeekEventMapper mapper,
   required final DeepSeekAcpApi api,
   required final DeepSeekHistoryRepository historyRepository,
+  required final DeepSeekSessionService deepSeekSessionService,
+  required final DeepSeekSessionOptionsService deepSeekSessionOptionsService,
   required super.commandTracker,
   required super.sessionOptionsService,
   required super.processFactory,
@@ -31,6 +35,69 @@ class DeepSeekPlugin({
     activeSessionResolver: () => activeTurnSessionId,
     api: api,
   );
+
+  @override
+  void validateInitializeResult(AcpInitializeResult result) {
+    final metadata = result.raw["_meta"];
+    final deepSeekMetadata = metadata is Map ? metadata[DeepSeekAcpApi.initializeMetadataKey] : null;
+    if (deepSeekMetadata is! Map) throw const FormatException("DeepSeek initialize metadata is missing");
+    api.parseInitializeMetadata(deepSeekMetadata.cast<String, dynamic>());
+  }
+
+  @override
+  void captureSessionConfig(
+    AcpNewSessionResult result, {
+    required String? sessionId,
+    required bool fromNewSession,
+  }) => deepSeekSessionOptionsService.captureSessionConfig(
+    result,
+    sessionId: sessionId,
+    fromNewSession: fromNewSession,
+  );
+
+  @override
+  Future<void> applyTurnSelection({
+    required AcpSessionConfigRepository configRepository,
+    required String sessionId,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+    required String? agent,
+  }) => deepSeekSessionOptionsService.applyTurnSelection(
+    configRepository: configRepository,
+    sessionId: sessionId,
+    model: model,
+    variant: variant,
+  );
+
+  @override
+  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+    required String projectId,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) async => await deepSeekSessionOptionsService.getSessionOptions(
+    client: await requireConnectedClient(),
+    cwd: projectId,
+  );
+
+  @override
+  Future<List<PluginAgent>> getAgents({required String projectId}) async =>
+      await deepSeekSessionOptionsService.listAgents(
+        client: await requireConnectedClient(),
+        cwd: projectId,
+      );
+
+  @override
+  Future<PluginProvidersResult> getProviders({required String projectId}) async =>
+      await deepSeekSessionOptionsService.listProviders(
+        client: await requireConnectedClient(),
+        cwd: projectId,
+      );
+
+  @override
+  Future<List<PluginCommand>> getCommands({required String? projectId}) async =>
+      await deepSeekSessionOptionsService.listCommands(
+        client: await requireConnectedClient(),
+        cwd: projectId ?? launchDirectory,
+      );
 
   Map<String, dynamic>? _sessionMetadata(AcpSessionInfo info) {
     final value = info.metadata?[DeepSeekAcpApi.initializeMetadataKey];
@@ -72,4 +139,13 @@ class DeepSeekPlugin({
     final client = await requireConnectedClient();
     return await historyRepository.getMessages(client: client, sessionId: sessionId);
   }
+
+  @override
+  Future<PluginSession> renameSession({required String sessionId, required String title}) async =>
+      await deepSeekSessionService.rename(
+        client: await requireConnectedClient(),
+        sessionId: sessionId,
+        title: title,
+        directory: directoryForSession(sessionId: sessionId),
+      );
 }

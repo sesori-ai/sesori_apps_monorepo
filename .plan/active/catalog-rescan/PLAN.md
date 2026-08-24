@@ -373,8 +373,8 @@ rejection on the card instead of skipping it.
 No widget subscribes to `CatalogRescanService`. Each surface's existing cubit
 gains one subscription to its `ValueStream`, surfaces the rescan state through
 its own state, and exposes the intent methods the screen dispatches
-(`startRescan()`, `startRescanFor(pluginId)`, `cancelRescan()`,
-`dismissRescan()`). This keeps the shell's Layer-4 boundary intact and puts the
+(`startCatalogScan()`, `cancelCatalogScan()`, `dismissCatalogScan()` on the two
+list cubits; `startCatalogScanFor(pluginId)` on `PluginManagementCubit`). This keeps the shell's Layer-4 boundary intact and puts the
 post-success list refresh in the object that already owns refreshing.
 
 A dedicated `CatalogRescanCubit` was considered and rejected: the two list
@@ -651,6 +651,7 @@ Deliberately **not** added:
 | An older bridge omits `newItems` | Success row shows totals instead of a delta | Accepted. Honest degradation, and the absent group makes the difference explicit rather than silently wrong |
 | A rescan in flight when the connection drops | The row disappears and does not return | Accepted. The bridge continues and commits the import; the next connect seeds only non-terminal statuses, so a rescan that finished meanwhile is simply not announced |
 | Two surfaces trigger a rescan for the same harness at once | The bridge coalesces it: `CatalogImportService.start` finds the active control and applies the trigger to it | No client-side guard needed; existing bridge behavior is correct |
+| A concurrent list read overwrites what a scan imported, or the post-scan read fails | The imported rows stay unseen until the next refresh | Accepted. The list cubits' read path has no ordering or retry guarantee today, independent of this feature — eight call sites, only the silent one coalescing. The post-scan read waits for the newest in-flight read and then starts fresh, which covers the ordinary cases; making it airtight needs a monotonic read guard across both cubits' core paths, which is a separate refactor. Recovery already exists: the project list re-reads on a 30s throttle while visible, both cubits re-read on `dataMayBeStale` and on reconnect, and a pull re-reads on demand. Owner decision 2026-08-24 |
 | A cancel `DELETE` races a harness that just completed | The bridge answers on the already-settled plugin and the SSE terminal event wins | Accepted; no client-side ordering guard |
 | A failure row names no cause | The user must open the bridge log to learn why a harness failed | Accepted. `CatalogImportFailed.message` is unbounded `error.toString()`; a vaguer row is the honest trade until a producer-side sanitization boundary exists |
 | A lost response for a start that never arrived | That harness stays in `pluginIds` with no progress until the connection resets | Accepted. Bounded and self-clearing; a third result type across two layers is not worth it |
@@ -757,12 +758,26 @@ before the plan is retired.
 | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 |
 | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 |
 | 5/8 | `⚙️ [catalog-rescan] Add a second stage to pull-to-refresh [step 5/8]` | 350-600 |
-| 6/8 | `⚙️ [catalog-rescan] Surface catalog rescan in the app [step 6/8]` | 950-1,400 |
+| 6a/8 | `⚙️ [catalog-rescan] Route scan state through the list cubits [step 6a/8]` | 450-750 |
+| 6b/8 | `⚙️ [catalog-rescan] Show the catalog scan in the lists [step 6b/8]` | 500-800 |
+| 6c/8 | `🌿 [catalog-rescan] Scan one harness from Settings [step 6c/8]` | 350-600 |
 | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 |
 | 8/8 | `🌱 [catalog-rescan] Verify and retire the catalog rescan plan [step 8/8]` | 60-140 |
 
 Step 5 is `⚙️` rather than `🌿` because it extracts a new shared component and
 moves the split-view pane onto it, rather than adding a parameter to one widget.
+
+Step 6 is delivered as three sub-steps rather than one PR, split by layer and
+surface so none exceeds the size cap. The denominator stays 8: these are one
+step's worth of scope, not three new steps.
+
+- **6a** is `module_core` only — the two list cubits gain the scan state, the
+  intent methods, and the refresh on leaving a live operation. Nothing renders,
+  so it is reviewable as pure state.
+- **6b** is the row widget and the three list hosts, which is where the feature
+  first becomes visible.
+- **6c** is the Settings action, whose per-harness result and enablement rules
+  are independent of the aggregate row.
 
 Step 1's target is measured against `PLAN.md` alone. Both files are new, so the
 combined numstat counts every line of `TRACKER.md` too — including its review
@@ -934,12 +949,26 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
 
 ## Step 6/8 - Surface Catalog Rescan In The App
 
+Delivered as 6a, 6b, and 6c. The scope and verification below are the
+**aggregate** of all three; the sub-step that owns each part is marked, so a
+reviewer of one PR can see what belongs to it.
+
+- **6a** owns the two list cubits' subscription, intents, and post-scan
+  refresh, plus its module_core verification.
+- **6b** owns the row widget, the three list hosts, and their `app_en.arb`
+  resources, plus the widget tests for the row states.
+- **6c** owns `PluginManagementCubit`'s subscription and
+  `startCatalogScanFor(pluginId)`, the Settings action, its enablement and
+  rejection, and its resources.
+
 ### Scope
 
 - `ProjectListCubit`, `SessionListCubit`, and `PluginManagementCubit` each
   subscribe to `CatalogRescanService`, surface the rescan state through their
-  own state, and expose `startRescan()`, `startRescanFor(pluginId)`,
-  `cancelRescan()`, and `dismissRescan()`. The two list cubits additionally run
+  own state. The two list cubits expose `startCatalogScan()`,
+  `cancelCatalogScan()` and `dismissCatalogScan()`; `PluginManagementCubit`
+  exposes `startCatalogScanFor(pluginId)`, which is 6c's, because only a
+  targeted start needs a per-harness result. The two list cubits additionally run
   their existing silent refresh whenever the service **leaves a live operation**
   — settled with a summary, settled as observed, or cancelled — because a
   committed import raises no list invalidation of its own. Keying the refresh on
@@ -950,11 +979,11 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
   shell's other cross-feature widgets, with its seven presentations. It renders
   the state it is given, owns no timer, and renders no bridge-supplied text.
 - Project list, full-screen session list, and split-view pane: supply
-  `deepRefresh` from the cubit's `startRescan()`, and render the row as the
+  `deepRefresh` from the cubit's `startCatalogScan()`, and render the row as the
   sliver at index 0 in place of the soft-refresh indicator while a rescan is
   running.
 - Settings to Harnesses: the per-harness `Rescan` action in
-  `_HarnessControlCard`, calling `startRescanFor(pluginId)`, enabled only for a
+  `_HarnessControlCard`, calling `startCatalogScanFor(pluginId)`, enabled only for a
   harness whose `runtimeState.isRoutable` is true and disabled while that
   harness is itself a member of the live operation; a targeted start joins that
   operation rather than replacing it, so no cross-harness disabling is needed.
