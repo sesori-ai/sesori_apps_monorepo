@@ -12,6 +12,10 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
   never starts a stopped backend. Only a first backfill or a re-read after the
   backend advanced may reach it; backfill is lazy and per session, and a session
   advanced outside Sesori is detected as stale, re-read, and re-cached.
+- Messages visible live but absent from the backend's replay remain visible
+  after a stale re-read. They rejoin at their recorded creation time while
+  preserving relative order, so a catalog re-import cannot move old rows to the
+  newest edge.
 - Live streamed messages and parts become queryable immediately after they
   finalize, with the same visibility filtering and tool-output bound a backend
   fetch returns. Reasoning finalizes when the stream advances to assistant or
@@ -58,7 +62,7 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a previously synced session's transcript is served with every backend stopped. |
-| L2 Routine | Live plugin, representative: first backfill, live capture that becomes immediately queryable, and paging older messages on a transcript longer than one page. Automated Pi coverage: active branches, v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, cumulative tool updates, and live/replay final parity. |
+| L2 Routine | Live plugin, representative: first backfill, live capture that becomes immediately queryable, stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated Pi coverage: active branches, v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, cumulative tool updates, and live/replay final parity. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: open a long session, page back, continue a live turn, reopen cold, and confirm live and replayed content converge including tool and image parts. |
 | L4 Extended | Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. |
 | L5 Full | Automated and headless bridge for unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |
@@ -82,6 +86,7 @@ image parts converge by their own rules.
   reattachment, or triggers repeated requests while one page is in flight.
 - A session advanced outside Sesori keeps serving the old transcript, or stored
   transcripts are marked complete after a gap without a full re-sync.
+- A stale re-read moves an older retained message to the newest edge.
 - Pi falls back after an arbitrary RPC failure, shows an abandoned branch or
   summary payload, or exposes a private path, raw backend error, or hidden prompt
   prefix in mapped history.

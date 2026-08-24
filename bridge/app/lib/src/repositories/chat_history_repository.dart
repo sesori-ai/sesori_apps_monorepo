@@ -346,9 +346,10 @@ class ChatHistoryRepository({
   /// Replaces the session's transcript with [messages], numbering them in
   /// transcript order.
   ///
-  /// Rows the transcript does not contain — live events newer than the fetch —
-  /// are kept above the imported maximum, preserving their relative order, so
-  /// no captured message is lost to a backfill that raced it.
+  /// Rows the transcript does not contain are retained. Their recorded message
+  /// time determines where they rejoin the imported transcript while their
+  /// relative order stays stable. Thus an older backend-only row cannot jump to
+  /// the newest edge on re-import, while a genuinely newer live row stays there.
   Future<void> replaceSessionMessages({
     required String sessionId,
     required AttachmentStorageScope storageScope,
@@ -364,12 +365,12 @@ class ChatHistoryRepository({
         if (!importedIds.contains(row.messageId)) row,
     ];
 
-    final messageRows = <HistoryMessagesTableData>[];
+    final importedMessageRows = <HistoryMessagesTableData>[];
     final partRows = <HistoryPartsTableData>[];
     var seq = 0;
     for (final message in messages) {
       seq++;
-      messageRows.add(
+      importedMessageRows.add(
         HistoryMessagesTableData(
           sessionId: sessionId,
           messageId: message.info.id,
@@ -392,9 +393,38 @@ class ChatHistoryRepository({
         );
       }
     }
-    for (final row in retained..sort((left, right) => left.seq.compareTo(right.seq))) {
-      seq++;
-      messageRows.add(row.copyWith(seq: seq));
+    final retainedCreatedAt = [
+      for (final row in retained) Message.fromJson(jsonDecodeMap(row.infoJson)).time?.created,
+    ];
+    int? nextRetainedCreatedAt;
+    for (var index = retainedCreatedAt.length - 1; index >= 0; index--) {
+      nextRetainedCreatedAt = retainedCreatedAt[index] ?? nextRetainedCreatedAt;
+      retainedCreatedAt[index] = nextRetainedCreatedAt;
+    }
+    int? previousRetainedCreatedAt;
+    for (var index = 0; index < retainedCreatedAt.length; index++) {
+      final createdAt = retainedCreatedAt[index] ?? previousRetainedCreatedAt;
+      if (createdAt == null) continue;
+      final orderedCreatedAt = previousRetainedCreatedAt == null || createdAt >= previousRetainedCreatedAt
+          ? createdAt
+          : previousRetainedCreatedAt;
+      retainedCreatedAt[index] = orderedCreatedAt;
+      previousRetainedCreatedAt = orderedCreatedAt;
+    }
+
+    final messageRows = <HistoryMessagesTableData>[];
+    var importedIndex = 0;
+    var retainedIndex = 0;
+    while (importedIndex < importedMessageRows.length || retainedIndex < retained.length) {
+      final useRetained =
+          importedIndex == importedMessageRows.length ||
+          (retainedIndex < retained.length &&
+              retainedCreatedAt[retainedIndex] != null &&
+              messages[importedIndex].info.time?.created != null &&
+              retainedCreatedAt[retainedIndex]! < messages[importedIndex].info.time!.created);
+      final row = useRetained ? retained[retainedIndex++] : importedMessageRows[importedIndex++];
+      final orderedSeq = messageRows.length + 1;
+      messageRows.add(row.seq == orderedSeq ? row : row.copyWith(seq: orderedSeq));
     }
 
     await _chatHistoryDao.replaceSessionRows(
