@@ -25,6 +25,15 @@ void main() {
       mapper: mapper,
       api: api,
       historyRepository: DeepSeekHistoryRepository(api: api, eventMapper: mapper, pluginId: DeepSeekIdentity.id),
+      deepSeekSessionService: const DeepSeekSessionService(
+        repository: DeepSeekSessionRepository(api: api),
+      ),
+      deepSeekSessionOptionsService: DeepSeekSessionOptionsService(
+        repository: const DeepSeekCatalogRepository(api: api, mapper: DeepSeekCatalogMapper()),
+        configurationTracker: configurationTracker,
+        pluginId: DeepSeekIdentity.id,
+        discoveryTimeout: const Duration(seconds: 30),
+      ),
       commandTracker: commandTracker,
       sessionOptionsService: AcpSessionOptionsService(
         configurationTracker: configurationTracker,
@@ -102,6 +111,14 @@ void main() {
             "sessionCapabilities": {"list": <String, dynamic>{}},
           },
           "authMethods": <Object?>[],
+          "_meta": {
+            "sesori.ai/deepseek": {
+              "extensionProtocolVersion": 1,
+              "adapterVersion": DeepSeekPluginDescriptor.targetVersion,
+              "harnessVersion": "0.1.1-rc.2",
+              "persistenceOwner": "sesori",
+            },
+          },
         },
       });
       expect(await connecting, isTrue);

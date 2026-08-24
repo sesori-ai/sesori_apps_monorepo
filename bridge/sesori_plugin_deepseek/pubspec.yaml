@@ -11,6 +11,8 @@ dependencies:
   acp_plugin:
     path: ../sesori_plugin_acp
   json_annotation: ^4.12.0
+  sesori_bridge_foundation:
+    path: ../sesori_bridge_foundation
   sesori_plugin_interface:
     path: ../sesori_plugin_interface
 

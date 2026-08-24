@@ -3,11 +3,11 @@
 ## Current State
 
 - **Plan slug:** `deepseek-harness`
-- **Plan status:** Steps 1-10 merged; Step 11/16 in progress locally
+- **Plan status:** Steps 1-10 merged; Step 11/16 verified locally
 - **Current repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current branch:** `deepseek-harness/step-11-options-lifecycle`
 - **Current open PR:** none; Step 10 merged as [PR #1097](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1097)
-- **Next action:** implement and verify Step 11
+- **Next action:** publish and monitor the Step 11 PR
 - **Implementation started:** yes
 - **Retirement:** blocked until every required row in `PLAN.md` passes
 
@@ -25,7 +25,7 @@
 | [x] | 8/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): scaffold the DeepSeek bridge plugin [step 8/16]` | Moderate new package and narrow ACP hooks | 1,450 | [PR #1088](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1088) merged |
 | [x] | 9/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek sessions and history [step 9/16]` | Complex replay and identity flow | 1,450 | [PR #1094](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1094) merged |
 | [x] | 10/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek turns and interactions [step 10/16]` | Complex events, questions, and permissions | 1,450 | [PR #1097](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1097) merged |
-| [ ] | 11/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): expose options and lifecycle [step 11/16]` | Moderate plugin API and lifecycle composition | 1,350 | Local implementation in progress |
+| [ ] | 11/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): expose options and lifecycle [step 11/16]` | Moderate plugin API and lifecycle composition | 1,350 | Local implementation verified; PR pending |
 | [ ] | 12/16 | deepseek adapter | `🚧 [deepseek-harness] build(runtime): release the managed DeepSeek adapter [step 12/16]` | Complex supply chain and six-platform release | 1,300 | Pending Step 11 |
 | [ ] | 13/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): install the managed DeepSeek runtime [step 13/16]` | Moderate managed-runtime integration | 1,250 | Pending Step 12 |
 | [ ] | 14/16 | apps monorepo | `⚙️ [deepseek-harness] feat(app): activate DeepSeek Harness [step 14/16]` | Moderate registry/client activation | 1,000 | Pending Step 13 |
@@ -85,6 +85,7 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 | 2026-08-23 | Step 6 architecture implementation review | Rejected first pass; passed second pass | Changed cold rename from retained ACP ownership to one coordinated resume/rename/flush/notify/dispose transition. |
 | 2026-08-24 | Step 8 architecture implementation review | Pass on both scoped reviews | Kept generic prompt metadata/client hooks in ACP while sealed generated extension variants and backend behavior remain DeepSeek-owned. |
 | 2026-08-24 | Step 10 architecture implementation review | Pass on both scoped reviews | Kept common turn projection in ACP while DeepSeek owns question composition, replay identity override, metadata normalization, and representable status mapping. |
+| 2026-08-24 | Step 11 architecture implementation review | Rejected first pass; passed second pass | Moved rename transport and DTO mapping behind the DeepSeek repository/service boundary so the plugin remains a consumer. |
 
 ## Verification Log
 
@@ -169,6 +170,18 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] Late Step 9 review feedback carried forward with blank parent IDs rejected and replay identity override narrowed to user messages
 - [x] Final changed-line count: 480, below soft and hard caps
 - [x] Architecture implementation review passed twice
+
+### Step 11/16
+
+- [x] DeepSeek and ACP `dart analyze --fatal-infos`
+- [x] DeepSeek `dart test`: 31 tests pass
+- [x] Full ACP `dart test`: 261 tests pass
+- [x] Explicit/PATH setup probes, catalog mapping and ordered writes, adapter
+  rename, extension refusal, crash recovery, and clean shutdown covered
+- [x] `git diff --check`
+- [x] Changed-line count: 1,329, below soft and hard caps
+- [x] Architecture implementation review passed after moving rename behind its
+  repository/service boundary
 
 Later implementation and live evidence is appended here by step. Never mark a
 regression row passed without the boundary and matrix required by `PLAN.md`.

@@ -431,10 +431,12 @@ enter it.
 | `DeepSeekCatalogMapper` | Repository-owned pure mapper; identity only | Maps catalog DTOs to `PluginAgent`, `PluginProvider`, `PluginModel`, variants, and commands; no state | Injected into `DeepSeekCatalogRepository` by `DeepSeekBridgePlugin` |
 | `DeepSeekCatalogRepository` | Repository; API + catalog mapper | One catalog request and DTO-to-domain mapping; no cache, subscription, or disposal | Injected into `DeepSeekSessionOptionsService` |
 | `DeepSeekHistoryRepository` | Repository; API + DeepSeek event mapper/identity needed by `AcpReplayCollector` | Owns bounded cursor pagination and reconstructs `PluginMessageWithParts`; no process/client ownership or cache | Injected directly into `DeepSeekPlugin`; receives a borrowed live client per history operation |
+| `DeepSeekSessionRepository` | Repository; API only | Owns rename transport and extracts the validated normalized title; no process/client ownership or cache | Injected into `DeepSeekSessionService` |
 | `DeepSeekSessionOptionsService` | Service; catalog repository + identity/config ids | Owns coherent options/agent/provider/command discovery and the business rule that every requested model/reasoning write succeeds before prompt dispatch; no cache | Injected into `DeepSeekPlugin`; receives `AcpSessionConfigRepository` per turn from the base hook |
+| `DeepSeekSessionService` | Service; session repository only | Maps a successful normalized rename into the backend-neutral session result; no state or lifecycle | Injected into `DeepSeekPlugin`; receives the borrowed client and attributed directory per rename |
 | `DeepSeekEventMapper` | Transport mapper; extends `AcpEventMapper` and stores only inherited mapping trackers | Maps standard/status notifications, stable ids, and live turn finalization; base/plugin disposal clears inherited session state | Constructed by `DeepSeekBridgePlugin` and injected into both `AcpPlugin` and history repository |
 | `DeepSeekApprovalRegistry` | Request registry; extends `AcpApprovalRegistry` | Uses the one inherited subscription and pending map for standard permissions plus DeepSeek questions; adds parsing only, no second state | Built by the `DeepSeekPlugin.buildApprovalRegistry` hook for each live connection; base `AcpPlugin` attaches/cancels/disposes it |
-| `DeepSeekPlugin` | Consumer/composition recipient; event mapper, history repository, options service, and normal ACP base dependencies | Owns no child construction; delegates live connection/turn/session lifecycle to `AcpPlugin` and backend operations to injected peers | Constructed only by `DeepSeekBridgePlugin` |
+| `DeepSeekPlugin` | Consumer/composition recipient; event mapper, history/session repositories and services, options service, and normal ACP base dependencies | Owns no child construction; delegates live connection/turn/session lifecycle to `AcpPlugin` and backend operations to injected peers | Constructed only by `DeepSeekBridgePlugin` |
 | `DeepSeekRuntimeManifest` | Runtime foundation; no mutable collaborators | Pure version/target/archive/checksum data | Injected into descriptor provisioning services by app composition |
 | `DeepSeekPluginDescriptor` | Runtime consumer; manifest, command executor, managed provision/install services, and binary builder | Setup inspection, runtime precedence, install/ensure/start policy; no live ACP child | Constructed in bridge app registry composition and creates `DeepSeekBridgePlugin` only from resolved host capabilities |
 | `DeepSeekBridgePlugin` | Lifecycle/composition root; host process service, resolved binary/state, and immutable descriptor inputs | Constructs all peer collaborators once, injects them into `DeepSeekPlugin`, and delegates start/exit/reset/dispose to `AcpBridgePlugin` | Returned only by `DeepSeekPluginDescriptor.start` |
@@ -459,6 +461,10 @@ the start of catalog/history operations and passes that client down as a method
 argument; repositories/APIs never cache it. Existing prompt operations retain
 the base's private lifecycle path, and Cursor/Hermes/OMP tests prove unchanged
 respawn, history, and disposal behavior.
+
+Step 11 also adds a backend-neutral initialize-result validation hook after
+standard ACP parsing. DeepSeek uses it to require its versioned extension and
+persistence metadata before the connection becomes available.
 
 ### Pending Interaction Ownership
 
