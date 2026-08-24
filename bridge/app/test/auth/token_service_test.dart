@@ -311,7 +311,10 @@ void main() {
         saveTokens: (_) async {},
       );
 
-      expect(manager.getAccessToken(), throwsA(isA<TokenRefreshException>()));
+      await expectLater(
+        manager.getAccessToken(),
+        throwsA(isA<TokenRefreshException>().having((error) => error.statusCode, "statusCode", 401)),
+      );
     });
 
     test("network error during refresh throws", () async {

@@ -14,7 +14,9 @@ participates.
 - Startup routing uses local session state only, with no network work at splash.
 - Tokens live in secure storage with one writer, refresh before expiry, and are
   cleared on logout; the connection follows logout. Startup reads stored tokens
-  once before deciding whether validation or a fresh login is needed.
+  once before deciding whether validation or a fresh login is needed. Standalone
+  bridge logout remains clean and idempotent when tokens are already absent or
+  the saved authentication session has expired.
 - Auth-server URLs behave identically with or without trailing slashes, and
   deadline expiry actively aborts registration and token-refresh transport,
   including response-body consumption.
