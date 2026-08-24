@@ -977,11 +977,22 @@ reviewer of one PR can see what belongs to it.
   sessions.
 - The aggregate rescan row widget in `client/app/lib/core/widgets/`, beside the
   shell's other cross-feature widgets, with its seven presentations. It renders
-  the state it is given, owns no timer, and renders no bridge-supplied text.
+  the state it is given, owns no timer, and renders no bridge-supplied text. It
+  is a mapping onto the design system's `PregoInlineAlertsNotifications` rather
+  than a bespoke card, so the tinted treatment, the spinner, and the action
+  button come from the component the connection banner already uses. Both the
+  live row's cancel and the terminal rows' dismiss are that component's labelled
+  secondary action rather than its close button, which is an unlabelled icon and
+  so is not reachable by name from a screen reader.
 - Project list, full-screen session list, and split-view pane: supply
   `deepRefresh` from the cubit's `startCatalogScan()`, and render the row as the
-  sliver at index 0 in place of the soft-refresh indicator while a rescan is
-  running.
+  content sliver at index 0. The row is mounted unconditionally and takes no
+  space at all while idle, so a host needs no visibility condition of its own.
+  Delivered without the planned suppression of the soft-refresh indicator: on
+  both lists `isRefreshing` is raised only by the stale-reconnect path, never by
+  a pull or by the scan's own post-settle refresh, so the two surfaces overlap
+  only when a reconnect happens to land mid-scan, and the damage is one
+  redundant progress bar.
 - Settings to Harnesses: the per-harness `Rescan` action in
   `_HarnessControlCard`, calling `startCatalogScanFor(pluginId)`, enabled only for a
   harness whose `runtimeState.isRoutable` is true and disabled while that
