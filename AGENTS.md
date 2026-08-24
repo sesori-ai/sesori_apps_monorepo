@@ -70,6 +70,12 @@ eagerly "just in case."
   modern state when one valid meaning exists. Add a dated compatibility comment
   with the legacy rationale and exact cleanup:
   `// COMPATIBILITY YYYY-MM-DD (vX.Y.Z): ...`
+- Attach that marker to the smallest thing it explains. A field, parameter,
+  enum value, or branch that exists for compatibility carries the marker
+  directly above itself, inside the enclosing declaration, not above the
+  enclosing function, factory, constructor, class, or its doc comment. Mark the
+  enclosing declaration only when that whole declaration is what compatibility
+  retains.
 - For database fields that should always contain data after migration, prefer
   an honest backfill and a non-null column. Keep the field nullable when absence
   is genuinely meaningful or no valid backfill exists.
