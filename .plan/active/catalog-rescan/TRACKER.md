@@ -164,7 +164,7 @@
 - [x] Print the delta in `catalog_import_console_listener.dart` when present.
 - [x] Prove a first import, a no-op re-import, a partial re-import, both
   ownership branches, and a decode with the key omitted.
-- [ ] Run `architecture-implementation-review`.
+- [x] Run `architecture-implementation-review`.
 
 ## Step 4 Checklist
 
@@ -388,6 +388,13 @@ refresh gap as consequences of one definition.
   `catalog_import_console_listener_test.dart` 4,
   `catalog_import_handlers_test.dart` 3, `catalog_queries_test.dart` 3,
   `catalog_import_startup_test.dart` 2)
-- **Step 3 review:** pending
+- **Step 3 review:** `architecture-implementation-review` **approved** with zero
+  findings. It independently confirmed the counting is correct in both
+  `PluginProjectOwnership` branches (they converge on one publication loop, so
+  neither bypasses the counters), that both counters are bounded by their totals,
+  that tombstoned sessions cannot inflate the delta, and that the wire contract
+  degrades correctly in both directions. It noted separately, outside review
+  scope, that `docs/regression/projects-and-sessions.md` is untouched — that is
+  step 7's job and is deliberate, since nothing here is client-visible yet
 - **Step 3 PR:** pending
 - **Final disposition:** pending
