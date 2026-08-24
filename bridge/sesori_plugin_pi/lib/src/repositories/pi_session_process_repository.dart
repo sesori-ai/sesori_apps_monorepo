@@ -62,6 +62,10 @@ final class const PiSessionConnection({
 
 final class const PiPromptPayload({required final String message, required final List<Map<String, Object?>> images});
 
+enum _PiPromptStreamingBehavior(final String wireValue) {
+  steer("steer");
+}
+
 final class const PiAgentState({required final bool streaming, required final int pendingMessageCount});
 
 final class const PiUnsupportedPromptAttachmentException({required final String variant}) implements Exception {
@@ -360,7 +364,11 @@ final class PiSessionProcessRepository({
     final resident = _requiredResident(connection);
     await resident.client.send(
       command: PiRpcCommand.prompt,
-      arguments: {"message": payload.message, "images": payload.images},
+      arguments: {
+        "message": payload.message,
+        "images": payload.images,
+        "streamingBehavior": _PiPromptStreamingBehavior.steer.wireValue,
+      },
       timeout: _historyRpcTimeout,
     );
   }

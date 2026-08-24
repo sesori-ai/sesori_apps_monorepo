@@ -680,12 +680,14 @@ void main() {
     await _waitForIdle(service: service, sessionId: "session");
   });
 
-  test("prompt admission is immediate, same-session FIFO, and sessions run concurrently", () async {
+  test("prompt admission is immediate, busy follow-ups steer in FIFO, and sessions run concurrently", () async {
     final first = FakePiProcess();
     final other = FakePiProcess();
     final fixture = _Fixture(processes: [first, other]);
     addTearDown(fixture.dispose);
     final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
 
     await service.sendPrompt(
       sessionId: "one",
@@ -719,13 +721,107 @@ void main() {
     final firstPrompt = await waitForCommand(process: first, type: "prompt");
     final otherPrompt = await waitForCommand(process: other, type: "prompt");
     expect(firstPrompt["message"], "first");
+    expect(firstPrompt["streamingBehavior"], "steer");
     expect(otherPrompt["message"], "other");
+    expect(otherPrompt["streamingBehavior"], "steer");
     expect(first.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
 
+    first.emit(frame: {"type": "agent_start"});
+    first.emit(
+      frame: {
+        "type": "message_end",
+        "message": {
+          "role": "user",
+          "content": [
+            {"type": "text", "text": "first"},
+          ],
+          "timestamp": 1,
+        },
+      },
+    );
     first.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
-    first.emit(frame: {"type": "agent_settled"});
     final secondPrompt = await _waitForNthCommand(process: first, type: "prompt", count: 2);
     expect(secondPrompt["message"], "second");
+    expect(secondPrompt["streamingBehavior"], "steer");
+    expect(
+      service.sessionStatuses["one"],
+      const PluginSessionStatus.busy(),
+      reason: "the follow-up must dispatch before the active run settles",
+    );
+
+    first.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+    first.emit(
+      frame: {
+        "type": "message_end",
+        "message": {
+          "role": "user",
+          "content": [
+            {"type": "text", "text": "second"},
+          ],
+          "timestamp": 2,
+        },
+      },
+    );
+    first.emit(frame: {"type": "agent_settled"});
+    other.emitResponse(id: otherPrompt["id"]! as String, command: "prompt");
+    other.emit(frame: {"type": "agent_settled"});
+    await Future.wait([
+      _waitForIdle(service: service, sessionId: "one"),
+      _waitForIdle(service: service, sessionId: "two"),
+    ]);
+    expect(
+      events
+          .whereType<BridgeSseMessageUpdated>()
+          .map((event) => event.info["promptId"])
+          .where((promptId) => promptId == "prompt-8" || promptId == "prompt-9"),
+      ["prompt-8", "prompt-9"],
+    );
+  });
+
+  test("a selection-changing follow-up waits for the active Pi run boundary", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "selection-first",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: null,
+      model: (providerID: "provider", modelID: "first-model"),
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "selection-second",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "second")],
+      userVisibleText: "second",
+      variant: null,
+      model: (providerID: "provider", modelID: "second-model"),
+    );
+
+    await _answerEntries(process);
+    final firstModel = await waitForCommand(process: process, type: "set_model");
+    process.emitResponse(id: firstModel["id"]! as String, command: "set_model");
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    await pump();
+
+    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
+    expect(process.written.where((frame) => frame["type"] == "set_model"), hasLength(1));
+
+    process.emit(frame: {"type": "agent_settled"});
+    final secondModel = await _waitForNthCommand(process: process, type: "set_model", count: 2);
+    expect(secondModel["modelId"], "second-model");
+    process.emitResponse(id: secondModel["id"]! as String, command: "set_model");
+    final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
   });
 
   test("a retried prompt id is an idempotent no-op instead of a duplicate turn", () async {
@@ -1297,13 +1393,17 @@ void main() {
     final prompt = await waitForCommand(process: process, type: "prompt");
     process.emitResponse(id: prompt["id"]! as String, command: "prompt");
     process.emit(frame: {"type": "agent_start"});
+    final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    expect(steeringPrompt["message"], "queued");
+    expect(steeringPrompt["streamingBehavior"], "steer");
+    process.emitResponse(id: steeringPrompt["id"]! as String, command: "prompt");
     final abort = service.abort(sessionId: "session");
     final abortCommand = await waitForCommand(process: process, type: "abort");
     process.emitResponse(id: abortCommand["id"]! as String, command: "abort");
     await abort;
 
     expect(process.killed, isTrue);
-    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
+    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(2));
     expect(fixture.repository.residentSessionIds, isEmpty);
   });
 

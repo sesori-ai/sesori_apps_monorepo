@@ -54,14 +54,18 @@ defaults and queued client sends coherent.
   instead of changing the active turn.
 - Pi keeps at most one lazy resident RPC process per active session and allows
   different sessions to run concurrently. Startup replays and hydrates message
-  identity before live frames attach or a turn dispatches; same-session prompts
-  remain FIFO. An accepted prompt remains bridge-queued through startup and
-  selection until Pi echoes its correlated user message, including an
-  attachment-only echo; it can be cancelled before dispatch, and its
-  undispatched prompt id remains immediately retryable while cancellation
-  settles. If a successful turn omits that echo, Pi maps the stored payload
-  through the same user-message path before clearing the queue. Process exit
-  settles current work before queued work reconnects.
+  identity before live frames attach or a turn dispatches. Same-session prompts
+  remain FIFO, and same-selection ordinary follow-ups dispatch with Pi's
+  `steer` streaming behavior as soon as the preceding prompt is accepted, so Pi
+  injects them at the next tool boundary instead of waiting for the run to
+  settle. A model or thinking-level change remains bridge-queued until the
+  current run settles. An accepted prompt remains bridge-queued through startup
+  and selection until Pi echoes
+  its correlated user message, including an attachment-only echo; it can be
+  cancelled before dispatch, and its undispatched prompt id remains immediately
+  retryable while cancellation settles. If a successful run omits an echo, Pi
+  maps each stored payload through the same user-message path before clearing
+  the queue. Process exit settles dispatched work before queued work reconnects.
 - Pi slash commands are accepted by their correlated response or a matching
   extension dialog and remain in the request's sending state until then rather
   than exposing a cancellable bridge-queue entry. Commands reject while that
