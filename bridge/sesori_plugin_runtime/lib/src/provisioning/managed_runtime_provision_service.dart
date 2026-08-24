@@ -47,9 +47,8 @@ class ManagedRuntimeProvisionService({
       :final binaryPath,
       :final source,
       :final version,
-      :final rejectedPathVersion,
     )) {
-      if (source == ManagedRuntimeSource.managed && rejectedPathVersion != null) {
+      if (selection case ManagedRuntimeManagedSelected(:final rejectedPathVersion) when rejectedPathVersion != null) {
         yield ProvisionNotice(
           message:
               "Installed $name ${rejectedPathVersion.toString()} is older than the minimum supported ${minimum.toString()}; "

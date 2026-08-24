@@ -178,7 +178,10 @@ class const CursorPluginDescriptor({
       manifest: manifest,
       selectionService: ManagedRuntimeSelectionService(
         manifest: manifest,
-        versionValidator: _versionValidatorFor(processes: host.processes),
+        versionValidator: _versionValidatorFor(
+          processes: host.processes,
+          maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+        ),
       ),
       // Cursor has no desktop-app-bundled CLI to fall back to.
       fallbackExecutableCandidates: const [],
@@ -203,7 +206,10 @@ class const CursorPluginDescriptor({
     try {
       final installService = ManagedRuntimeInstallService(
         manifest: manifest,
-        versionValidator: _versionValidatorFor(processes: processes),
+        versionValidator: _versionValidatorFor(
+          processes: processes,
+          maxCapturedOutputCharactersPerStream: null,
+        ),
         installService: RuntimeInstallService(
           downloadClient: BinaryDownloadClient(httpClient: httpClient),
           checksumValidator: ChecksumValidator(),
@@ -226,12 +232,15 @@ class const CursorPluginDescriptor({
 
   /// Version probing for the Cursor CLI. Its `--version` prints a bare calendar
   /// build (`2026.08.11-e8db854`), which the shared validator parses.
-  RuntimeVersionValidator _versionValidatorFor({required HostProcessService processes}) {
+  RuntimeVersionValidator _versionValidatorFor({
+    required HostProcessService processes,
+    required int? maxCapturedOutputCharactersPerStream,
+  }) {
     return RuntimeVersionValidator(
       commandExecutor: HostProcessCommandExecutor(
         processes: processes,
         runInShell: io.Platform.isWindows,
-        maxCapturedOutputCharactersPerStream: null,
+        maxCapturedOutputCharactersPerStream: maxCapturedOutputCharactersPerStream,
       ),
       manifest: const CursorRuntimeManifest(),
       probeTimeout: _versionProbeTimeout,
@@ -248,7 +257,10 @@ class const CursorPluginDescriptor({
     final explicitBin = _explicitBin(config);
     final selection = await ManagedRuntimeSelectionService(
       manifest: const CursorRuntimeManifest(),
-      versionValidator: _versionValidatorFor(processes: processes),
+      versionValidator: _versionValidatorFor(
+        processes: processes,
+        maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+      ),
     ).select(
       explicitExecutablePath: explicitBin,
       fallbackExecutableCandidates: const [],

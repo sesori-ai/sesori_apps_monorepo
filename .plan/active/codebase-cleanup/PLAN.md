@@ -949,8 +949,9 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   libc-aware capability rule. Keep install composition local so each descriptor
   visibly owns asset resolution, output policy, and HTTP client disposal. Add
   foundation `stripAnsi()` using the existing CSI+OSC behavior and migrate the
-  Cursor, Codex, Hermes, and Claude copies. Hermes remains custom because it
-  probes `hermes acp --version` and interprets backend-specific non-zero output;
+  Cursor, Codex, Hermes, and Claude ANSI-stripping copies. Version-probe logic
+  remains descriptor-local where it differs: Hermes probes
+  `hermes acp --version` and interprets backend-specific non-zero output, while
   Claude and DeepSeek remain custom/no-manifest probes. No generic
   `inspectSetup`, auth callback, hint table, install factory, executor factory,
   or shared output-limit constant is introduced.

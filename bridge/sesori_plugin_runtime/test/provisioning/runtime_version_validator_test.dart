@@ -214,5 +214,37 @@ void main() {
         isA<RuntimeProbeFailed>(),
       );
     });
+
+    test("includes the attempted executable in unexpected failure logs", () async {
+      final stderrLines = <String>[];
+      final originalLevel = Log.level;
+      Log.level = LogLevel.warning;
+      try {
+        await IOOverrides.runZoned(
+          () => probe(_FakeCommandExecutor(error: StateError("failed"))),
+          stderr: () => CapturingStdout(lines: stderrLines),
+        );
+      } finally {
+        Log.level = originalLevel;
+      }
+
+      expect(stderrLines.join("\n"), contains("opencode --version"));
+    });
+
+    test("logs a recovered timeout with the attempted executable", () async {
+      final stderrLines = <String>[];
+      final originalLevel = Log.level;
+      Log.level = LogLevel.warning;
+      try {
+        await IOOverrides.runZoned(
+          () => probe(_FakeCommandExecutor(error: TimeoutException("timed out"))),
+          stderr: () => CapturingStdout(lines: stderrLines),
+        );
+      } finally {
+        Log.level = originalLevel;
+      }
+
+      expect(stderrLines.join("\n"), contains("opencode --version"));
+    });
   });
 }

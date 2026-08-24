@@ -53,9 +53,10 @@ class RuntimeVersionValidator({
     } on ProcessException catch (error, stackTrace) {
       return RuntimeProbeMissing(innerError: error, stackTrace: stackTrace);
     } on TimeoutException catch (error, stackTrace) {
+      Log.w("[${_manifest.runtimeId}] runtime version probe timed out for '$executable --version'", error, stackTrace);
       return RuntimeProbeTimedOut(innerError: error, stackTrace: stackTrace);
     } on Object catch (error, stackTrace) {
-      Log.w("[${_manifest.runtimeId}] runtime version probe failed", error, stackTrace);
+      Log.w("[${_manifest.runtimeId}] runtime version probe failed for '$executable --version'", error, stackTrace);
       return RuntimeProbeFailed(innerError: error, stackTrace: stackTrace);
     }
 

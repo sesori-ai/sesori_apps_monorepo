@@ -116,8 +116,8 @@ void main() {
     );
 
     expect(result, isA<ManagedRuntimeSelected>());
-    expect((result as ManagedRuntimeSelected).source, ManagedRuntimeSource.explicit);
-    expect(result.binaryPath, "/custom/runtime");
+    expect(result, isA<ManagedRuntimeExplicitSelected>());
+    expect((result as ManagedRuntimeSelected).binaryPath, "/custom/runtime");
     expect(validator.probes, ["/custom/runtime"]);
   });
 
@@ -140,9 +140,9 @@ void main() {
 
     expect(result, isA<ManagedRuntimeSelected>());
     final selected = result as ManagedRuntimeSelected;
-    expect(selected.source, ManagedRuntimeSource.fallback);
+    expect(selected, isA<ManagedRuntimeFallbackSelected>());
     expect(selected.binaryPath, "/desktop/runtime");
-    expect(selected.rejectedPathVersion?.raw, "0.9.0");
+    expect((selected as ManagedRuntimeFallbackSelected).rejectedPathVersion?.raw, "0.9.0");
     expect(validator.probes, ["runtime", "/old/runtime", "/desktop/runtime"]);
   });
 
@@ -163,8 +163,9 @@ void main() {
       abortSignal: StartAbortSignal.never,
     );
     expect(minimum, isA<ManagedRuntimeSelected>());
-    expect((minimum as ManagedRuntimeSelected).source, ManagedRuntimeSource.managed);
-    expect(minimum.version.raw, "2.1.0");
+    expect(minimum, isA<ManagedRuntimeManagedSelected>());
+    final selected = minimum as ManagedRuntimeSelected;
+    expect(selected.version.raw, "2.1.0");
   });
 
   test("preserves PATH and managed rejection details", () async {
@@ -183,7 +184,30 @@ void main() {
 
     final notSelected = result as ManagedRuntimeNotSelected;
     expect((notSelected.primaryRejection as ManagedRuntimeProbeRejected).outcome, same(pathFailure));
-    expect((notSelected.managedRejection! as ManagedRuntimeProbeRejected).outcome, same(managedFailure));
+    final automatic = notSelected as ManagedRuntimeAutomaticNotSelected;
+    expect((automatic.managedRejection as ManagedRuntimeProbeRejected).outcome, same(managedFailure));
+  });
+
+  test("uses a failed fallback probe as the primary rejection", () async {
+    final pathFailure = RuntimeProbeMissing(
+      innerError: const ProcessException("runtime", ["--version"]),
+      stackTrace: StackTrace.empty,
+    );
+    const fallbackFailure = RuntimeProbeNonZeroExit(exitCode: 7);
+    final result = await select(
+      validator: _Validator(
+        outcomes: {
+          "runtime": pathFailure,
+          "/desktop/runtime": fallbackFailure,
+        },
+        onProbe: null,
+      ),
+      fallbackExecutableCandidates: const ["/desktop/runtime"],
+      abortSignal: StartAbortSignal.never,
+    );
+
+    final notSelected = result as ManagedRuntimeNotSelected;
+    expect((notSelected.primaryRejection as ManagedRuntimeProbeRejected).outcome, same(fallbackFailure));
   });
 
   test("throws before probing when already aborted", () async {

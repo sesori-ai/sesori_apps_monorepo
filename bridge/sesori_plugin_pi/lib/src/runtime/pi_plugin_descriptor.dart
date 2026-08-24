@@ -217,8 +217,9 @@ final class const PiPluginDescriptor({
         ),
       };
     }
-    if (_isUnknownRejection(notSelected.primaryRejection) ||
-        _isUnknownRejection(notSelected.managedRejection)) {
+    final automatic = notSelected as ManagedRuntimeAutomaticNotSelected;
+    if (_isUnknownRejection(automatic.primaryRejection) ||
+        _isUnknownRejection(automatic.managedRejection)) {
       return const PluginSetupUnknown(
         actionHint: "Pi setup could not be determined. Verify the local CLI and retry.",
       );
@@ -230,9 +231,9 @@ final class const PiPluginDescriptor({
     );
   }
 
-  bool _isUnknownRejection(ManagedRuntimeRejection? rejection) {
+  bool _isUnknownRejection(ManagedRuntimeRejection rejection) {
     return switch (rejection) {
-      ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) || ManagedRuntimeVersionRejected() || null => false,
+      ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) || ManagedRuntimeVersionRejected() => false,
       ManagedRuntimeProbeRejected() => true,
     };
   }

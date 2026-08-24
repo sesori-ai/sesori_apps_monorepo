@@ -18,17 +18,58 @@ final class const ManagedRuntimeVersionRejected({required final RuntimeVersion v
 
 sealed class const ManagedRuntimeSelection();
 
-final class const ManagedRuntimeSelected({
-  required final String binaryPath,
-  required final ManagedRuntimeSource source,
-  required final RuntimeVersion version,
-  required final RuntimeVersion? rejectedPathVersion,
-}) extends ManagedRuntimeSelection;
+sealed class const ManagedRuntimeSelected() extends ManagedRuntimeSelection {
+  String get binaryPath;
+  ManagedRuntimeSource get source;
+  RuntimeVersion get version;
+}
 
-final class const ManagedRuntimeNotSelected({
-  required final ManagedRuntimeRejection primaryRejection,
-  required final ManagedRuntimeRejection? managedRejection,
-}) extends ManagedRuntimeSelection;
+final class const ManagedRuntimeExplicitSelected({
+  @override required final String binaryPath,
+  @override required final RuntimeVersion version,
+}) extends ManagedRuntimeSelected {
+  @override
+  ManagedRuntimeSource get source => ManagedRuntimeSource.explicit;
+}
+
+final class const ManagedRuntimePathSelected({
+  @override required final String binaryPath,
+  @override required final RuntimeVersion version,
+}) extends ManagedRuntimeSelected {
+  @override
+  ManagedRuntimeSource get source => ManagedRuntimeSource.path;
+}
+
+final class const ManagedRuntimeFallbackSelected({
+  @override required final String binaryPath,
+  @override required final RuntimeVersion version,
+  required final RuntimeVersion? rejectedPathVersion,
+}) extends ManagedRuntimeSelected {
+  @override
+  ManagedRuntimeSource get source => ManagedRuntimeSource.fallback;
+}
+
+final class const ManagedRuntimeManagedSelected({
+  @override required final String binaryPath,
+  @override required final RuntimeVersion version,
+  required final RuntimeVersion? rejectedPathVersion,
+}) extends ManagedRuntimeSelected {
+  @override
+  ManagedRuntimeSource get source => ManagedRuntimeSource.managed;
+}
+
+sealed class const ManagedRuntimeNotSelected() extends ManagedRuntimeSelection {
+  ManagedRuntimeRejection get primaryRejection;
+}
+
+final class const ManagedRuntimeExplicitNotSelected({
+  @override required final ManagedRuntimeRejection primaryRejection,
+}) extends ManagedRuntimeNotSelected;
+
+final class const ManagedRuntimeAutomaticNotSelected({
+  @override required final ManagedRuntimeRejection primaryRejection,
+  required final ManagedRuntimeRejection managedRejection,
+}) extends ManagedRuntimeNotSelected;
 
 /// Selects an existing runtime without installing or mutating runtime files.
 class ManagedRuntimeSelectionService({
@@ -52,19 +93,15 @@ class ManagedRuntimeSelectionService({
       );
       return switch (probe) {
         RuntimeProbeReady(:final version) when version.compareTo(_manifest.minPathVersion) >= 0 =>
-          ManagedRuntimeSelected(
+          ManagedRuntimeExplicitSelected(
             binaryPath: explicitExecutablePath,
-            source: ManagedRuntimeSource.explicit,
             version: version,
-            rejectedPathVersion: null,
           ),
-        RuntimeProbeReady(:final version) => ManagedRuntimeNotSelected(
+        RuntimeProbeReady(:final version) => ManagedRuntimeExplicitNotSelected(
           primaryRejection: ManagedRuntimeVersionRejected(version: version),
-          managedRejection: null,
         ),
-        RuntimeProbeFailure() => ManagedRuntimeNotSelected(
+        RuntimeProbeFailure() => ManagedRuntimeExplicitNotSelected(
           primaryRejection: ManagedRuntimeProbeRejected(outcome: probe),
-          managedRejection: null,
         ),
       };
     }
@@ -79,14 +116,13 @@ class ManagedRuntimeSelectionService({
       RuntimeProbeFailure() => null,
     };
     if (pathVersion != null && pathVersion.compareTo(_manifest.minPathVersion) >= 0) {
-      return ManagedRuntimeSelected(
+      return ManagedRuntimePathSelected(
         binaryPath: _manifest.pathExecutableName,
-        source: ManagedRuntimeSource.path,
         version: pathVersion,
-        rejectedPathVersion: null,
       );
     }
 
+    ManagedRuntimeRejection? fallbackRejection;
     for (final candidate in fallbackExecutableCandidates) {
       final probe = await _probe(
         executable: candidate,
@@ -94,12 +130,15 @@ class ManagedRuntimeSelectionService({
         abortSignal: abortSignal,
       );
       if (probe case RuntimeProbeReady(:final version) when version.compareTo(_manifest.minPathVersion) >= 0) {
-        return ManagedRuntimeSelected(
+        return ManagedRuntimeFallbackSelected(
           binaryPath: candidate,
-          source: ManagedRuntimeSource.fallback,
           version: version,
           rejectedPathVersion: pathVersion,
         );
+      }
+      final rejection = _rejectionFor(probe: probe);
+      if (fallbackRejection == null || _isMissingRejection(rejection: fallbackRejection)) {
+        fallbackRejection = rejection;
       }
     }
 
@@ -113,16 +152,15 @@ class ManagedRuntimeSelectionService({
       version: version,
       policy: managedVersionPolicy,
     )) {
-      return ManagedRuntimeSelected(
+      return ManagedRuntimeManagedSelected(
         binaryPath: managedPath,
-        source: ManagedRuntimeSource.managed,
         version: version,
         rejectedPathVersion: pathVersion,
       );
     }
 
-    return ManagedRuntimeNotSelected(
-      primaryRejection: _rejectionFor(probe: pathProbe),
+    return ManagedRuntimeAutomaticNotSelected(
+      primaryRejection: fallbackRejection ?? _rejectionFor(probe: pathProbe),
       managedRejection: _rejectionFor(probe: managedProbe),
     );
   }
@@ -143,6 +181,9 @@ class ManagedRuntimeSelectionService({
       RuntimeProbeFailure() => ManagedRuntimeProbeRejected(outcome: probe),
     };
   }
+
+  bool _isMissingRejection({required ManagedRuntimeRejection rejection}) =>
+      rejection is ManagedRuntimeProbeRejected && rejection.outcome is RuntimeProbeMissing;
 
   bool _acceptsManagedVersion({required RuntimeVersion version, required ManagedRuntimeVersionPolicy policy}) {
     return switch (policy) {
