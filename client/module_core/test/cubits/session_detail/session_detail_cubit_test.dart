@@ -2504,7 +2504,7 @@ void main() {
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connected(
             config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
-            health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: null),
+            health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: false),
           ),
         );
         connectionStatus.add(
@@ -2524,7 +2524,7 @@ void main() {
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connected(
             config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
-            health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: null),
+            health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: false),
           ),
         );
         final cubit = SessionDetailCubit(

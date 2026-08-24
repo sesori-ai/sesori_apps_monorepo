@@ -27,7 +27,6 @@ AgentRepository singlePluginAgentRepository({
   return AgentRepository(
     runtime: createTestPluginRuntime(plugins: [plugin]),
     projectsDao: projectsDao,
-    legacyPluginId: plugin.id,
   );
 }
 

@@ -6,6 +6,7 @@ import "package:opencode_plugin/opencode_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+enum _OptionDiscoveryRequest() { agents, providers }
 
 /// Waits until [count] events of type [T] have been delivered, or fails.
 ///
@@ -224,6 +225,8 @@ void main() {
       expect(options.completeness, PluginSessionOptionsCompleteness.complete);
       expect(options.agents, isNotEmpty);
       expect(options.providers.providers, isNotEmpty);
+      expect(server.lastAgentDirectoryHeader, "project-1");
+      expect(server.lastProvidersDirectoryHeader, "project-1");
       expect(
         options.commands.map((command) => command.name),
         contains(OpenCodeService.compactionCommandName),
@@ -443,6 +446,135 @@ void main() {
       );
 
       expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
+    final staleSelectionCases =
+        <
+          ({
+            String name,
+            String? agent,
+            PluginSessionVariant? variant,
+            ({String providerID, String modelID})? model,
+            String expectedMessage,
+            _OptionDiscoveryRequest discoveryRequest,
+          })
+        >[
+          (
+            name: "agent",
+            agent: "removed-agent",
+            variant: null,
+            model: null,
+            expectedMessage: "OpenCode no longer offers the selected agent.",
+            discoveryRequest: _OptionDiscoveryRequest.agents,
+          ),
+          (
+            name: "model",
+            agent: null,
+            variant: null,
+            model: (providerID: "anthropic", modelID: "removed-model"),
+            expectedMessage: "OpenCode no longer offers the selected model.",
+            discoveryRequest: _OptionDiscoveryRequest.providers,
+          ),
+          (
+            name: "variant",
+            agent: null,
+            variant: const PluginSessionVariant(id: "medium"),
+            model: (providerID: "anthropic", modelID: "claude-3-opus"),
+            expectedMessage: "OpenCode no longer offers the selected variant.",
+            discoveryRequest: _OptionDiscoveryRequest.providers,
+          ),
+        ];
+
+    for (final testCase in staleSelectionCases) {
+      test("classifies a removed ${testCase.name} after a generic reservation failure", () async {
+        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+        addTearDown(plugin.dispose);
+        await server.waitForSseConnection();
+        server
+          ..failNoReplyMessageNumber = 1
+          ..noReplyMessageFailureStatusCode = HttpStatus.internalServerError;
+        server.requestLog.clear();
+
+        await expectLater(
+          plugin.sendPrompt(
+            promptId: "prompt-stale-${testCase.name}",
+            sessionId: "s-root",
+            parts: const [PluginPromptPart.text(text: "Continue")],
+            agent: testCase.agent,
+            variant: testCase.variant,
+            model: testCase.model,
+          ),
+          throwsA(
+            isA<PluginStaleOptionsException>()
+                .having((error) => error.operation, "operation", "sendPrompt")
+                .having((error) => error.message, "message", testCase.expectedMessage)
+                .having(
+                  (error) => error.cause,
+                  "cause",
+                  isA<PluginApiException>().having(
+                    (error) => error.statusCode,
+                    "statusCode",
+                    HttpStatus.internalServerError,
+                  ),
+                ),
+          ),
+        );
+
+        expect(
+          server.requestLog,
+          equals([
+            "POST /session/s-root/message",
+            switch (testCase.discoveryRequest) {
+              _OptionDiscoveryRequest.agents => "GET /agent",
+              _OptionDiscoveryRequest.providers => "GET /config/providers",
+            },
+          ]),
+        );
+        expect(server.requestLog, isNot(contains("POST /session/s-root/prompt_async")));
+        switch (testCase.discoveryRequest) {
+          case _OptionDiscoveryRequest.agents:
+            expect(server.lastAgentDirectoryHeader, "/repo");
+          case _OptionDiscoveryRequest.providers:
+            expect(server.lastProvidersDirectoryHeader, "/repo");
+        }
+      });
+    }
+
+    test("preserves a generic reservation failure when the selected agent remains available", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      addTearDown(plugin.dispose);
+      await server.waitForSseConnection();
+      server
+        ..failNoReplyMessageNumber = 1
+        ..noReplyMessageFailureStatusCode = HttpStatus.internalServerError;
+      server.requestLog.clear();
+
+      await expectLater(
+        plugin.sendPrompt(
+          promptId: "prompt-backend-failure",
+          sessionId: "s-root",
+          parts: const [PluginPromptPart.text(text: "Continue")],
+          agent: "build",
+          variant: null,
+          model: null,
+        ),
+        throwsA(
+          isA<PluginApiException>().having(
+            (error) => error.statusCode,
+            "statusCode",
+            HttpStatus.internalServerError,
+          ),
+        ),
+      );
+
+      expect(
+        server.requestLog,
+        equals([
+          "POST /session/s-root/message",
+          "GET /agent",
+        ]),
+      );
+      expect(server.lastAgentDirectoryHeader, "/repo");
     });
 
     test("sendCommand detaches with the tracked directory and marks the turn busy", () async {
@@ -1334,12 +1466,15 @@ class _FakeOpenCodeServer() {
   final List<String> deletedMessageIds = [];
   Map<String, dynamic>? lastCommandBody;
   String? lastCommandDirectoryHeader;
+  String? lastAgentDirectoryHeader;
+  String? lastProvidersDirectoryHeader;
   String? lastCreatedSessionParentId;
   Completer<void>? holdCommand;
   int promptStatusCode = HttpStatus.ok;
   int commandStatusCode = HttpStatus.ok;
   int messagePartStatusCode = HttpStatus.ok;
   int? failNoReplyMessageNumber;
+  int noReplyMessageFailureStatusCode = HttpStatus.badRequest;
   int _nextMessageNumber = 1;
   bool acceptSseConnections = true;
   final List<String> abortedSessionIds = [];
@@ -1492,7 +1627,7 @@ class _FakeOpenCodeServer() {
       }
 
       if (request.method == "GET" && path == "/agent") {
-        expect(request.headers.value("x-opencode-directory"), equals("project-1"));
+        lastAgentDirectoryHeader = request.headers.value("x-opencode-directory");
         await _sendJson(request.response, [
           {
             "name": "build",
@@ -1560,7 +1695,7 @@ class _FakeOpenCodeServer() {
         final body = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
         noReplyMessageBodies.add(body);
         if (noReplyMessageBodies.length == failNoReplyMessageNumber) {
-          request.response.statusCode = HttpStatus.badRequest;
+          request.response.statusCode = noReplyMessageFailureStatusCode;
           request.response.write("message failed");
           await request.response.close();
           return;
@@ -1703,7 +1838,7 @@ class _FakeOpenCodeServer() {
       }
 
       if (request.method == "GET" && path == "/config/providers") {
-        expect(request.headers.value("x-opencode-directory"), equals("project-1"));
+        lastProvidersDirectoryHeader = request.headers.value("x-opencode-directory");
         await _sendJson(request.response, {
           "providers": [
             {

@@ -34,7 +34,7 @@ five open PRs). Steps sharing a package stay serialized: 4 after 3 (both
   migration consequence (stale `≤ v1.3.x` installs re-register) is accepted
 - [x] **D2** flatten `bridge/app/lib/src/bridge/*` into `src/*` — **approved**
   by the owner on 2026-08-22; Step 7 performs the move
-- [ ] **D3** `flutter_chat_ui` replacement — default spike, land only on parity
+- [x] **D3** `flutter_chat_ui` replacement — plain reversed list reached widget-test parity in Step 41
 - [ ] **D4** `cryptography_flutter` — default remove as unused (never enabled)
 - [ ] **D5** Material→Prego dialog breadth — default only what the footer and
   confirm-sheet consolidation naturally covers
@@ -44,8 +44,9 @@ five open PRs). Steps sharing a package stay serialized: 4 after 3 (both
 ## Locked Principles
 
 - [x] Behavior-preserving by default; Steps 19, 21, 38, 40, 41, 42 (and the
-  installer delta in 43) name their intentional changes and update the affected
-  regression document in the same PR; Step 44 is the final consistency pass.
+  installer delta in 43) name their intentional changes. Regression documents
+  change only for supported behavior or executable coverage, never to retain a
+  tombstone for deleted behavior; Step 44 is the final consistency pass.
 - [x] Nothing is extracted unless it replaces at least two copies and owns
   state, a lifecycle, or an invariant.
 - [x] Every step re-verifies its evidence against current `main` before editing
@@ -56,7 +57,7 @@ five open PRs). Steps sharing a package stay serialized: 4 after 3 (both
 - [x] Session-detail refresh coordination, dispatcher merging, orchestrator
   splitting, and `ConnectionService`/`RelayClient` lifecycle redesign are out.
 - [x] Architecture-implementation review only for Steps 4, 7, 15, 17, 18, 20,
-  21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37.
+  21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 42.
 - [x] 1,500 changed-line soft cap; deletion- or generated-heavy overages are
   recorded with the reason.
 
@@ -179,6 +180,34 @@ Fixed titles and order. Status is GitHub's; evidence is in `steps/step-NN.md`.
 | Installer drift (`install.ps1` vs `install.sh`), no codegen freshness check, `no_slop_linter` absent from bridge | Parity + fixture tests; offline freshness job; enable linter for small packages (D6) | 43 |
 | Mandatory repositories, `StoredSession`, dispatchers, plugin-boundary mapping, SSE ignore arms, archives | Keep | — |
 | PR #1017 `RelayConnectionCoordinator`/`PluginEventProcessingDispatcher` extractions, `_MessageListSynchronizer`, app-level voice/attachment controllers | Not adopted (see PLAN "Relationship To PR #1017"); separate evidence-backed follow-up if wanted | — |
+
+## Step 42 Peer Verification
+
+- Missing agent-discovery `pluginId`: keep the OpenCode wire default because
+  public v1.4.0 request bodies omit it.
+- Question rejection owner: public v1.4.0 clients always send `sessionId`; make
+  it required and remove owner discovery plus its dispatcher admission lanes.
+- Child interaction display owner: public v1.4.0 bridges send
+  `displaySessionId`; remove the client fallback from `displaySessionId` to the
+  backend session ID while preserving honest nullability for direct requests.
+- Health filesystem state: public v1.4.0 bridges send
+  `filesystemAccessDegraded` (introduced in v1.2.0); make it required and reject
+  missing or malformed health bodies.
+- `SESORI_POST_UPDATE_RESTART`: its writer was removed by the v1.1.2 updater;
+  public v1.4.0 has no writer. Remove the marker and its auth, terminal, and
+  explicit-restart consumers.
+- Legacy bridge ID migration: public v1.4.0 already persists `bridge_id`
+  separately. Remove `BridgeIdMigrationService`, `readLegacyBridgeId`, and both
+  invocations. Accepted consequence: a direct <=v1.3.x-to-current upgrade can
+  mint a new bridge registration and orphan the old server registration; token
+  authentication remains usable.
+- Codex config fallback: keep because current live notifications and durable
+  rollout data can omit model metadata; top-level Codex config remains a live
+  backend-owned source rather than released Sesori-era storage.
+- Pull-request refresh settings: current clients already read aggregate
+  `GET /settings` first and fall back to `GET /settings/pull-request-refresh`
+  for supported older bridges. Keep the client fallback and bridge route until
+  the minimum supported public client and bridge are both greater than v1.8.0.
 
 ## Plan Review
 

@@ -29,9 +29,17 @@ class CatalogImportConsoleListener({required final Stream<CatalogImportProgress>
         if (_lastPhase != CatalogImportCommitting) {
           Console.message("Publishing $pluginId catalog...");
         }
-      case CatalogImportCompleted(:final pluginId, :final projectsImported, :final sessionsImported):
+      case CatalogImportCompleted(
+        :final pluginId,
+        :final projectsImported,
+        :final sessionsImported,
+        :final newItems,
+      ):
         Console.message(
-          "Imported $pluginId catalog: $projectsImported project(s), $sessionsImported session(s).",
+          [
+            "Imported $pluginId catalog: $projectsImported project(s), $sessionsImported session(s).",
+            ?_newItemsSentence(newItems),
+          ].join(" "),
         );
         _lastPhase = null;
         return;
@@ -45,5 +53,19 @@ class CatalogImportConsoleListener({required final Stream<CatalogImportProgress>
         return;
     }
     _lastPhase = progress.runtimeType;
+  }
+
+  /// The delta sentence that follows a completion line, or null when the delta
+  /// is absent.
+  ///
+  /// Null rather than an empty string so the caller's `join` owns the spacing:
+  /// a sentence carrying its own leading space would silently drop or double it
+  /// if either side changed. Absent means the counts came from a bridge that
+  /// does not report them, so the totals stand alone rather than implying
+  /// nothing changed.
+  String? _newItemsSentence(CatalogImportNewItems? newItems) {
+    if (newItems == null) return null;
+    if (newItems.projects == 0 && newItems.sessions == 0) return "Nothing new.";
+    return "${newItems.projects} new project(s), ${newItems.sessions} new session(s).";
   }
 }

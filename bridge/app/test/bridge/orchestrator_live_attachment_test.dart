@@ -315,7 +315,6 @@ class _LiveAttachmentHarness({
         accessTokenProvider: FakeAccessTokenProvider(),
         bridgeIdProvider: FakeBridgeIdProvider(),
       ),
-      legacyMissingPluginId: "opencode",
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),

@@ -1069,11 +1069,8 @@ class SessionDetailCubit(
   /// this (parent) session. Own-session events arrive via the session-scoped
   /// stream and are handled in [_processSessionEvent]; this gates the global
   /// stream to descendant requests whose display (root) session is this session.
-  /// Falls back to [sessionID] when the bridge did not provide a display session
-  /// (older bridge), which collapses to today's own-session-only behaviour.
-  // COMPATIBILITY 2026-06-20 (v1.1.1): Old bridges omit displaySessionId. Remove the sessionID fallback once those bridges are unsupported.
   bool _surfacesChildRequestHere({required String sessionID, required String? displaySessionId}) {
-    return sessionID != _sessionId && (displaySessionId ?? sessionID) == _sessionId;
+    return sessionID != _sessionId && displaySessionId == _sessionId;
   }
 
   void _onMessageUpdated(Message message) {

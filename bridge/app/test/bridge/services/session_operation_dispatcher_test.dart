@@ -3,7 +3,6 @@ import "dart:async";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginOperationException;
 import "package:test/test.dart";
 
 void main() {
@@ -100,106 +99,6 @@ void main() {
       await expectLater(first, throwsStateError);
       await Future.wait([same, otherFamily, otherPlugin]);
       expect(sameStarted.isCompleted, isTrue);
-      expect(dispatcher.activeLaneCount, isZero);
-    });
-
-    test("legacy owner resolution blocks only later admissions for its plugin", () async {
-      final repository = _FamilyRepository({
-        "earlier": (rootSessionId: "earlier", pluginId: "legacy"),
-        "legacy-owner": (rootSessionId: "legacy-owner", pluginId: "legacy"),
-        "other-plugin": (rootSessionId: "other-plugin", pluginId: "other"),
-      });
-      final dispatcher = SessionOperationDispatcher(sessionRepository: repository);
-      addTearDown(dispatcher.dispose);
-      final earlierGate = Completer<void>();
-      final earlierStarted = Completer<void>();
-      final ownerLookupStarted = Completer<void>();
-      final ownerGate = Completer<void>();
-      final legacyBodyStarted = Completer<void>();
-      final legacyBodyGate = Completer<void>();
-      final laterStarted = Completer<void>();
-      final otherPluginStarted = Completer<void>();
-
-      final earlier = dispatcher.dispatch<void>(
-        sessionId: "earlier",
-        operation: SessionOperation.replyToQuestion,
-        body: () async {
-          earlierStarted.complete();
-          await earlierGate.future;
-        },
-      );
-      await earlierStarted.future;
-      final legacy = dispatcher.dispatchLegacyQuestion<void>(
-        pluginId: "legacy",
-        questionId: "question",
-        operation: SessionOperation.rejectQuestion,
-        resolveOwnerSessionId: () async {
-          ownerLookupStarted.complete();
-          await ownerGate.future;
-          return "legacy-owner";
-        },
-        body: ({required String ownerSessionId}) async {
-          legacyBodyStarted.complete();
-          await legacyBodyGate.future;
-        },
-      );
-      final later = dispatcher.dispatch<void>(
-        sessionId: "legacy-owner",
-        operation: SessionOperation.abortSession,
-        body: () async => laterStarted.complete(),
-      );
-      final otherPlugin = dispatcher.dispatch<void>(
-        sessionId: "other-plugin",
-        operation: SessionOperation.abortSession,
-        body: () async => otherPluginStarted.complete(),
-      );
-
-      await otherPluginStarted.future;
-      expect(ownerLookupStarted.isCompleted, isFalse);
-      expect(laterStarted.isCompleted, isFalse);
-      earlierGate.complete();
-      await ownerLookupStarted.future;
-      ownerGate.complete();
-      await legacyBodyStarted.future;
-      expect(laterStarted.isCompleted, isFalse);
-      legacyBodyGate.complete();
-      await Future.wait([earlier, legacy, later, otherPlugin]);
-      expect(laterStarted.isCompleted, isTrue);
-      expect(dispatcher.activeLaneCount, isZero);
-    });
-
-    test("legacy owner plugin mismatch releases later plugin admission", () async {
-      final repository = _FamilyRepository({
-        "wrong-owner": (rootSessionId: "wrong-owner", pluginId: "other"),
-        "later": (rootSessionId: "later", pluginId: "legacy"),
-      });
-      final dispatcher = SessionOperationDispatcher(sessionRepository: repository);
-      addTearDown(dispatcher.dispose);
-      var legacyBodyCalled = false;
-
-      final legacy = dispatcher.dispatchLegacyQuestion<void>(
-        pluginId: "legacy",
-        questionId: "question",
-        operation: SessionOperation.rejectQuestion,
-        resolveOwnerSessionId: () async => "wrong-owner",
-        body: ({required String ownerSessionId}) async {
-          legacyBodyCalled = true;
-        },
-      );
-      final later = dispatcher.dispatch<void>(
-        sessionId: "later",
-        operation: SessionOperation.abortSession,
-        body: () async {},
-      );
-
-      await expectLater(
-        legacy,
-        throwsA(
-          isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 409),
-        ),
-      );
-      await later;
-      expect(legacyBodyCalled, isFalse);
       expect(dispatcher.activeLaneCount, isZero);
     });
 

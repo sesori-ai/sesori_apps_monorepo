@@ -1285,7 +1285,7 @@ PR-level implementation plan:
    `validateConfig` in selected order, and validate every `--import-plugin`
    against the complete selected set before sleep-prevention work,
    authentication, availability I/O, predecessor waiting, or startup-lock/
-   takeover work. Emit deprecation notices only after every config is valid.
+   takeover work.
    Carry the ordered ids/configs through `BridgeCliOptions`, `runBridgeApp`, and
    `BridgeRuntimeRunner.run`; update `BridgeSettings.enabledPlugins` comments
    without changing its persisted JSON shape.
@@ -1293,8 +1293,7 @@ PR-level implementation plan:
    `defaultEnabledPluginId` and mark it `PluginMetadata.isDefault` for
    new-client discovery, but
    `legacyMissingPluginId` remains the OpenCode compatibility value decoded by
-   `CreateSessionRequest`, `PluginProjectIdRequest`, and `Session`. Deprecated
-   `GET /agent` also uses that OpenCode value. An omitted legacy id therefore
+   `CreateSessionRequest`, `PluginProjectIdRequest`, and `Session`. An omitted legacy id therefore
    returns 503 when OpenCode is not operational; it is never rewritten to
    `enabledPluginIds.first`. New clients remain responsible for sending the id
    selected from `GET /plugin` in Stage 8.
@@ -1387,7 +1386,7 @@ PR-level implementation plan:
    shared `<cacheDirectory>/runtime` root, while isolated plugins use
    `<installRoot>/plugins/<id>`. Reuse one `RuntimeFileApi` and
    `BridgeHostJsonStore` for descriptors that resolve to the same root; managed
-   runtime subdirectories and ownership/intent filenames remain plugin-specific.
+   runtime subdirectories and ownership filenames remain plugin-specific.
    Lifecycle receives no host/process/store input.
 9. Under that one mutex, call `_ensurePluginRuntime` sequentially in configured
    order. Immediately after one descriptor's provisioning settles, the runner

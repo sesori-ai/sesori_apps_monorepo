@@ -40,7 +40,7 @@ const _connectionConfig = ServerConnectionConfig(
   relayHost: "relay.example.com",
   authToken: "test-token",
 );
-const _connectionHealth = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+const _connectionHealth = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
 const _connectedStatus = ConnectionStatus.connected(
   config: _connectionConfig,
   health: _connectionHealth,
@@ -2054,7 +2054,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -2084,7 +2084,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -2124,7 +2124,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         const connected = ConnectionStatus.connected(config: config, health: health);
 
         // Fire two rapid ConnectionConnected events.
@@ -2158,7 +2158,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -2234,7 +2234,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -2351,7 +2351,7 @@ void main() {
             relayHost: "relay.example.com",
             authToken: "test-token",
           );
-          const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+          const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
           statusController.add(
             const ConnectionStatus.connected(config: config, health: health),
           );

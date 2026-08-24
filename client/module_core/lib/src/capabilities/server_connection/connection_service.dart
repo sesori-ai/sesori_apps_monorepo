@@ -277,7 +277,7 @@ class ConnectionService(
       // state to connected with no session encryptor, whereas a disposed/early
       // return leaves it in `connecting` — only the former should park here.
       if (relayClient.connectionState == RelayClientConnectionState.connected && !relayClient.isConnected) {
-        const bridgeOfflineHealth = HealthResponse(healthy: true, version: "", filesystemAccessDegraded: null);
+        const bridgeOfflineHealth = HealthResponse(healthy: true, version: "", filesystemAccessDegraded: false);
         _clearConnectingRelayClient(relayClient);
         _relayClient = relayClient;
         _authRetryCount = 0;
@@ -310,12 +310,9 @@ class ConnectionService(
       // reported degraded-filesystem warning stays stable across reconnects
       // (the bridge's access hasn't changed and we don't re-probe).
       //
-      // On a FRESH connect we parse the body (when present) so the bridge can
-      // report a degraded filesystem-access warning. A new bridge identity is
-      // being probed here, so an unparseable/legacy body must fall back to the
-      // plain-healthy default — NOT a cached flag from a previous bridge, which
-      // would otherwise leak a stale degraded warning onto a different bridge.
-      const defaultHealth = HealthResponse(healthy: true, version: "", filesystemAccessDegraded: null);
+      // On a FRESH connect we parse the body so the bridge can report degraded
+      // filesystem access. A malformed health response fails the connection.
+      const defaultHealth = HealthResponse(healthy: true, version: "", filesystemAccessDegraded: false);
       HealthResponse health;
       if (relayClient.didResume) {
         health = _lastHealth ?? defaultHealth;
@@ -330,22 +327,23 @@ class ConnectionService(
           ),
           timeout: const Duration(seconds: 30),
         );
+        final responseBody = response.body;
 
-        if (response.status < 200 || response.status >= 300 || response.body == null) {
+        if (response.status < 200 || response.status >= 300 || responseBody == null) {
           _clearConnectingRelayClient(relayClient);
           await relayClient.disconnect();
           return (
             response: ApiResponse<HealthResponse>.error(
-              ApiError.nonSuccessCode(
-                errorCode: response.status,
-                rawErrorString: response.body,
+                ApiError.nonSuccessCode(
+                  errorCode: response.status,
+                  rawErrorString: responseBody,
               ),
             ),
             closeCode: relayClient.lastCloseCode,
           );
         }
 
-        health = _parseHealthResponse(response.body) ?? defaultHealth;
+        health = HealthResponse.fromJson(jsonDecodeMap(responseBody));
       }
 
       // The handshake spanned several awaits; if a newer attempt or a disconnect
@@ -399,24 +397,6 @@ class ConnectionService(
   void _clearConnectingRelayClient(RelayClient relayClient) {
     if (identical(_connectingRelayClient, relayClient)) {
       _connectingRelayClient = null;
-    }
-  }
-
-  /// Parses the `/global/health` response body into a [HealthResponse].
-  ///
-  /// Returns `null` when the body is absent or malformed (e.g. an older bridge
-  /// that returns an empty `{}` body), so the caller keeps its healthy
-  /// fallback rather than failing the connection.
-  // COMPATIBILITY 2026-06-27 (v1.2.0): Old bridges may return an empty health body. Fail malformed health responses once those bridges are unsupported.
-  HealthResponse? _parseHealthResponse(String? body) {
-    if (body == null) return null;
-    try {
-      return HealthResponse.fromJson(jsonDecodeMap(body));
-    } on Object catch (error, stackTrace) {
-      // An older bridge returns an empty `{}` body here, which is expected and
-      // benign — keep the healthy fallback rather than treating it as failure.
-      logd("Health response body not parseable; assuming healthy", error, stackTrace);
-      return null;
     }
   }
 

@@ -44,7 +44,12 @@ defaults and queued client sends coherent.
 - Codex user prompts use the same visible content live and after rollout replay:
   the bridge worktree context envelope is hidden, authored text remains, and
   bounded inline images render as file parts. An attachment-only initial prompt
-  therefore remains visible without exposing the generated context.
+  therefore remains visible without exposing the generated context. A plain
+  follow-up is sent immediately through `turn/start`; Codex's app server starts
+  a turn while idle and steers the active turn while busy, preserving the
+  client user-message id in either case. The bridge keeps the authoritative
+  active turn until its terminal event even when an older app server returns a
+  separate submission id for the steering request.
 - A plain Claude prompt sent while its resident process is working is written
   immediately with `priority: next`. Claude absorbs it at the next tool
   boundary when possible, within the active agent turn; otherwise Claude keeps
@@ -54,14 +59,18 @@ defaults and queued client sends coherent.
   instead of changing the active turn.
 - Pi keeps at most one lazy resident RPC process per active session and allows
   different sessions to run concurrently. Startup replays and hydrates message
-  identity before live frames attach or a turn dispatches; same-session prompts
-  remain FIFO. An accepted prompt remains bridge-queued through startup and
-  selection until Pi echoes its correlated user message, including an
-  attachment-only echo; it can be cancelled before dispatch, and its
-  undispatched prompt id remains immediately retryable while cancellation
-  settles. If a successful turn omits that echo, Pi maps the stored payload
-  through the same user-message path before clearing the queue. Process exit
-  settles current work before queued work reconnects.
+  identity before live frames attach or a turn dispatches. Same-session prompts
+  remain FIFO, and same-selection ordinary follow-ups dispatch with Pi's
+  `steer` streaming behavior as soon as the preceding prompt is accepted, so Pi
+  injects them at the next tool boundary instead of waiting for the run to
+  settle. A model or thinking-level change remains bridge-queued until the
+  current run settles. An accepted prompt remains bridge-queued through startup
+  and selection until Pi echoes
+  its correlated user message, including an attachment-only echo; it can be
+  cancelled before dispatch, and its undispatched prompt id remains immediately
+  retryable while cancellation settles. If a successful run omits an echo, Pi
+  maps each stored payload through the same user-message path before clearing
+  the queue. Process exit settles dispatched work before queued work reconnects.
 - Pi slash commands are accepted by their correlated response or a matching
   extension dialog and remain in the request's sending state until then rather
   than exposing a cancellable bridge-queue entry. Commands reject while that
@@ -84,25 +93,30 @@ defaults and queued client sends coherent.
 - Hermes runs turns through ACP v1 over `hermes acp`: initialization uses the
   first non-terminal provider authentication method, image prompt parts remain
   available, streamed updates use the shared ACP normalization, and abort uses
-  session cancellation. Available models come from Hermes's ACP session model
-  state, and the selected exact model ID is applied through Hermes's
-  `session/set_model` extension before each changed-model turn. A rejected model
-  fails before prompting. Completed assistant text is finalized at each tool
-  boundary, so earlier prose in a multi-tool turn does not depend on the final
-  turn snapshot. Sesori does not call form-elicitation or unadvertised
-  session-close methods to complete an ordinary turn.
+  session cancellation. A follow-up accepted during an active turn uses that
+  same cancellation path, then dispatches after the interrupted turn settles.
+  Available models come from Hermes's ACP session model state, and the selected
+  exact model ID is applied through Hermes's `session/set_model` extension before
+  each changed-model turn. A rejected model fails before prompting. Completed
+  assistant text is finalized at each tool boundary, so earlier prose in a
+  multi-tool turn does not depend on the final turn snapshot. Sesori does not
+  call form-elicitation or unadvertised session-close methods to complete an
+  ordinary turn.
 - Existing-session ACP prompts remain bridge-queued while an earlier same-session
   turn, declared process-wide lane, resume, or selection blocks their
-  `session/prompt` frame. Their synthetic user transcript message is published
-  only after that frame flushes successfully to the agent's stdin. Follow-up and
-  replayed user messages preserve ordered text and bounded data-backed image
-  parts, including attachment-only prompts. Initial projection contains only
-  normalized user-visible text plus those images; injected context, local paths,
-  and URLs remain absent. OMP runs different sessions concurrently because its
-  permission and form requests carry explicit session IDs. Within one OMP
-  session, it preserves active-prompt replacement by cancelling the active turn
-  immediately, then dispatching the newly queued input after cancellation
-  settles; Cursor and Hermes retain ordinary FIFO turn boundaries.
+  `session/prompt` frame. ACP v1 has no standard steering operation, so Sesori
+  never sends overlapping prompt requests. It does define `session/cancel`:
+  Cursor and Hermes therefore implement active-turn follow-ups as stop-and-send,
+  immediately cancelling the active turn and dispatching the queued input after
+  cancellation settles. Further already-queued inputs retain FIFO order. Their
+  synthetic user transcript message is published only after its frame flushes
+  successfully to the agent's stdin. Follow-up and replayed user messages
+  preserve ordered text and bounded data-backed image parts, including
+  attachment-only prompts. Initial projection contains only normalized
+  user-visible text plus those images; injected context, local paths, and URLs
+  remain absent. OMP runs different sessions concurrently because its permission
+  and form requests carry explicit session IDs. OMP uses the same stop-and-send
+  sequence for its ACP server's replacement semantics.
 - Normalized user-message events feed the durable user-side activity marker used
   to order running roots. Known event times are applied monotonically. Backend
   input represented as a user message, including automatic compaction or other
@@ -139,11 +153,14 @@ defaults and queued client sends coherent.
   the same prompt id so retries stay idempotent.
 - When a plugin rejects a send before acceptance because its agent, model, or
   variant is no longer offered, the bridge deletes that options-cache row and
-  returns the typed `staleSessionOptions` rejection. The client force-refreshes
-  the options, replaces only unsupported queued selections without changing
-  FIFO order or prompt ids, warns the user, and retries once. A failed refresh
-  or second stale rejection leaves the prompt visible and queued instead of
-  disappearing or entering a retry loop.
+  returns the typed `staleSessionOptions` rejection. OpenCode keeps the requested
+  selection on its synchronous message reservation; when that endpoint collapses
+  a rejection into a generic 500, the plugin checks fresh project options and
+  classifies the failure as stale only when the requested selection is absent or unavailable.
+  The client force-refreshes the options, replaces only unsupported queued
+  selections without changing FIFO order or prompt ids, warns the user, and
+  retries once. A failed refresh or second stale rejection leaves the prompt
+  visible and queued instead of disappearing or entering a retry loop.
 - Each plugin stamps that prompt id onto the user-message echo of its own
   dispatch, using the link its backend exposes — Claude's queue entry, ACP's
   accepted send, Pi's dispatcher, Codex's client-supplied identifier, and
@@ -168,6 +185,10 @@ defaults and queued client sends coherent.
 - Transcript content scrolling behind the top navigation or floating composer
   dissolves into a strong surface-colour fade, keeping the title and controls
   visually separate and screenshot-readable without text collisions.
+- Transcript rows render in a plain reversed list with newest content at the
+  bottom. Following stays pinned through appends and streaming growth; scrolling
+  away freezes live row content until reattachment. Sending, queued, retry,
+  streaming, working, and settled rows keep stable identities and transitions.
 - A leftward touch, stylus, or trackpad drag across the transcript reveals all
   message timestamps together without changing vertical scroll or follow state,
   then settles closed on release. System-back edges remain reserved on iOS and
@@ -188,11 +209,11 @@ defaults and queued client sends coherent.
 
 Vary prompt shape, prompt versus slash command, explicit versus default
 agent/model, aborting early versus late, sending while busy to steer at a tool
-boundary, sending a command or selection change that must wait, cancelling before
-dispatch, leaving and reopening while an entry is visible, turn length, and
-client count. For Hermes, include text and image prompts,
-tool updates, a permission decision, cold history replay, and abort after output
-has started.
+boundary where supported or stop-and-send over ACP, sending a command or
+selection change that must wait, cancelling before dispatch, leaving and
+reopening while an entry is visible, turn length, and client count. For Hermes,
+include text and image prompts, tool updates, a permission decision, cold history
+replay, and abort after output has started.
 
 ## Failure Signals
 
@@ -229,7 +250,8 @@ has started.
   without a bound, or leaves a corrected selection on a variant the picker does
   not display.
 - An abort, permission reply, or question reply stalls behind a send to a
-  busy session on the same session lane.
+  busy session on the same session lane, or a Cursor/Hermes follow-up waits for
+  the active turn to finish naturally instead of cancelling it before dispatch.
 - Recovery or interruption artifacts from an aborted turn appear in the next
   user turn.
 - A normalized user message fails to advance the existing activity marker, or
@@ -237,6 +259,9 @@ has started.
   running session as if they were user activity.
 - Scrolled transcript text remains clearly visible through the fade and collides
   with the navigation title or floating composer controls.
+- A live append or streaming update moves a detached viewport, an outgoing
+  prompt blanks or duplicates during its sending-to-sent transition, or keyboard
+  and composer insets obscure newest content.
 - A timestamp peek responds from a reserved system-back edge, detaches or
   vertically scrolls the transcript, captures a mouse selection drag, or moves
   while a fenced code block is handling the horizontal drag.

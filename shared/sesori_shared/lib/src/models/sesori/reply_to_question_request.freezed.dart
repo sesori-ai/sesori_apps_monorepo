@@ -162,7 +162,7 @@ as List<ReplyAnswer>,
 /// @nodoc
 mixin _$RejectQuestionRequest {
 
- String get requestId; String? get sessionId;
+ String get requestId; String get sessionId;
 /// Create a copy of RejectQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -195,7 +195,7 @@ abstract mixin class $RejectQuestionRequestCopyWith<$Res>  {
   factory $RejectQuestionRequestCopyWith(RejectQuestionRequest value, $Res Function(RejectQuestionRequest) _then) = _$RejectQuestionRequestCopyWithImpl;
 @useResult
 $Res call({
- String requestId, String? sessionId
+ String requestId, String sessionId
 });
 
 
@@ -212,11 +212,11 @@ class _$RejectQuestionRequestCopyWithImpl<$Res>
 
 /// Create a copy of RejectQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? requestId = null,Object? sessionId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? requestId = null,Object? sessionId = null,}) {
   return _then(RejectQuestionRequest(
 requestId: null == requestId ? _self.requestId : requestId // ignore: cast_nullable_to_non_nullable
-as String,sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
-as String?,
+as String,sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
@@ -232,7 +232,7 @@ class _RejectQuestionRequest implements RejectQuestionRequest {
   factory _RejectQuestionRequest.fromJson(Map<String, dynamic> json) => _$RejectQuestionRequestFromJson(json);
 
 @override final  String requestId;
-@override final  String? sessionId;
+@override final  String sessionId;
 
 /// Create a copy of RejectQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -267,7 +267,7 @@ abstract mixin class _$RejectQuestionRequestCopyWith<$Res> implements $RejectQue
   factory _$RejectQuestionRequestCopyWith(_RejectQuestionRequest value, $Res Function(_RejectQuestionRequest) _then) = __$RejectQuestionRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String requestId, String? sessionId
+ String requestId, String sessionId
 });
 
 
@@ -284,11 +284,11 @@ class __$RejectQuestionRequestCopyWithImpl<$Res>
 
 /// Create a copy of RejectQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? requestId = null,Object? sessionId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? requestId = null,Object? sessionId = null,}) {
   return _then(_RejectQuestionRequest(
 requestId: null == requestId ? _self.requestId : requestId // ignore: cast_nullable_to_non_nullable
-as String,sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
-as String?,
+as String,sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

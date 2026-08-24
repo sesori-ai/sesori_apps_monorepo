@@ -6,8 +6,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
-import "support/in_memory_host_json_store.dart";
-
 const _gracefulShutdownWait = Duration(seconds: 5);
 // Five 500ms-spaced probes, expressed as the deadline pacing the supervisor
 // now always uses. Most tests here run on a clock that never advances, so the
@@ -749,7 +747,6 @@ class _Fakes({_RecordingClock? clock}) {
   final _SpawnPlan spawn = _SpawnPlan();
   final _ProbePlan probe = _ProbePlan();
   final _BindablePlan bindable = _BindablePlan();
-  final InMemoryHostJsonStore intentFiles = InMemoryHostJsonStore();
 
   ManagedProcessService<_TestRecord> service() {
     return ManagedProcessService<_TestRecord>(
@@ -760,7 +757,6 @@ class _Fakes({_RecordingClock? clock}) {
       clock: clock,
       runtimeId: "OPENCODE",
       gracefulShutdownWait: _gracefulShutdownWait,
-      intentStore: RuntimeStartIntentStore(store: intentFiles, fileName: "opencode-start-intent.json"),
     );
   }
 

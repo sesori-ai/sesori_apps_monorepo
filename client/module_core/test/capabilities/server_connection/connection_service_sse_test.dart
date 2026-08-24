@@ -63,7 +63,7 @@ void main() {
       relayHost: "relay.example.com",
       authToken: "token",
     );
-    const health = HealthResponse(healthy: true, version: "1.0.0", filesystemAccessDegraded: null);
+    const health = HealthResponse(healthy: true, version: "1.0.0", filesystemAccessDegraded: false);
 
     setUp(() {
       lifecycleController = BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed);

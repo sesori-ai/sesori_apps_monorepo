@@ -82,8 +82,6 @@ dependencies:
   sign_in_with_apple: ^8.1.0
   crypto: ^3.0.7
   vector_graphics: ^1.2.3
-  flutter_chat_ui: ^2.11.1
-  flutter_chat_core: ^2.9.0
   image_picker: ^1.2.3
   flutter_keyboard_visibility:
     git:

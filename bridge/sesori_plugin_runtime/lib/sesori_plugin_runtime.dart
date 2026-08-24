@@ -13,4 +13,3 @@ export "src/provisioning/runtime_version_validator.dart";
 export "src/runtime_ownership_repository.dart";
 export "src/runtime_record_mapper.dart";
 export "src/runtime_restart_policy.dart";
-export "src/runtime_start_intent.dart";

@@ -19,16 +19,6 @@ void main() {
       expect(results["opencode-bin"], "opencode");
     });
 
-    test("also registers the deprecated aliases under their legacy names", () {
-      final parser = ArgParser();
-      mapper.register(parser: parser, options: _options);
-
-      // The legacy spellings still parse (hidden), defaulting to absent/false.
-      final results = parser.parse(const ["--port", "4096", "--no-auto-start"]);
-      expect(results["port"], "4096");
-      expect(results["no-auto-start"], isTrue);
-    });
-
     test("keeps flags negatable when declared negatable", () {
       final parser = ArgParser();
       mapper.register(parser: parser, options: _options);
@@ -37,7 +27,7 @@ void main() {
       expect(results["opencode-no-auto-start"], isFalse);
     });
 
-    test("rejects values outside allowedValues at parse time, including via the alias", () {
+    test("rejects values outside allowedValues at parse time", () {
       final parser = ArgParser();
       mapper.register(
         parser: parser,
@@ -49,14 +39,11 @@ void main() {
             allowedValues: ["fast", "safe"],
             valueHelp: null,
             validate: null,
-            deprecatedAliases: ["mode"],
           ),
         ],
       );
 
       expect(() => parser.parse(const ["--opencode-mode", "slow"]), throwsA(isA<ArgParserException>()));
-      // The legacy alias enforces the same allowed-value set.
-      expect(() => parser.parse(const ["--mode", "slow"]), throwsA(isA<ArgParserException>()));
     });
   });
 
@@ -66,12 +53,11 @@ void main() {
       mapper.register(parser: parser, options: _options);
       final results = parser.parse(const ["--opencode-port", "4096", "--opencode-no-auto-start"]);
 
-      final parsed = mapper.parse(results: results, options: _options);
-      expect(parsed.config.intValue("port"), 4096);
-      expect(parsed.config.flag("no-auto-start"), isTrue);
-      expect(parsed.config.value("password"), "");
-      expect(parsed.config.value("bin"), "opencode");
-      expect(parsed.deprecations, isEmpty);
+      final config = mapper.parse(results: results, options: _options);
+      expect(config.intValue("port"), 4096);
+      expect(config.flag("no-auto-start"), isTrue);
+      expect(config.value("password"), "");
+      expect(config.value("bin"), "opencode");
     });
 
     test("runs validate hooks on present, non-empty values naming the canonical flag", () {
@@ -92,43 +78,10 @@ void main() {
       mapper.register(parser: parser, options: _options);
 
       final absent = mapper.parse(results: parser.parse(const []), options: _options);
-      expect(absent.config.intValue("port"), isNull);
+      expect(absent.intValue("port"), isNull);
 
       final empty = mapper.parse(results: parser.parse(const ["--opencode-port", ""]), options: _options);
-      expect(empty.config.intValue("port"), isNull);
-    });
-
-    test("resolves a legacy alias and reports it as deprecated", () {
-      final parser = ArgParser();
-      mapper.register(parser: parser, options: _options);
-      final results = parser.parse(const ["--port", "4096"]);
-
-      final parsed = mapper.parse(results: results, options: _options);
-      expect(parsed.config.intValue("port"), 4096);
-      expect(parsed.deprecations, equals(["--port is deprecated; use --opencode-port instead."]));
-    });
-
-    test("prefers the canonical value when both canonical and alias are passed, still warning", () {
-      final parser = ArgParser();
-      mapper.register(parser: parser, options: _options);
-      final results = parser.parse(const ["--opencode-port", "5000", "--port", "4096"]);
-
-      final parsed = mapper.parse(results: results, options: _options);
-      expect(parsed.config.intValue("port"), 5000);
-      expect(parsed.deprecations, equals(["--port is deprecated; use --opencode-port instead."]));
-    });
-
-    test("validates a value supplied through the legacy alias, naming the legacy flag", () {
-      final parser = ArgParser();
-      mapper.register(parser: parser, options: _options);
-      final results = parser.parse(const ["--port", "nope"]);
-
-      expect(
-        () => mapper.parse(results: results, options: _options),
-        throwsA(
-          isA<PluginConfigException>().having((e) => e.message, "message", contains("--port ")),
-        ),
-      );
+      expect(empty.intValue("port"), isNull);
     });
   });
 }
@@ -139,14 +92,12 @@ const List<PluginOption> _options = [
     help: "Port for opencode server to listen on",
     defaultsTo: null,
     valueHelp: null,
-    deprecatedAliases: ["port"],
   ),
   PluginFlagOption(
     name: "no-auto-start",
     help: "Skip auto-starting opencode server (use existing server)",
     defaultsTo: false,
     negatable: true,
-    deprecatedAliases: ["no-auto-start"],
   ),
   PluginValueOption(
     name: "password",

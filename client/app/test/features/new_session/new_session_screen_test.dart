@@ -264,7 +264,7 @@ void main() {
     connectionStatus = BehaviorSubject.seeded(
       const ConnectionStatus.connected(
         config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
-        health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
+        health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false),
       ),
     );
     projectRepository = MockProjectRepository();
@@ -1257,7 +1257,7 @@ void main() {
           health: HealthResponse(
             healthy: true,
             version: "test",
-            filesystemAccessDegraded: null,
+            filesystemAccessDegraded: false,
           ),
         ),
       );
@@ -1337,7 +1337,7 @@ void main() {
           health: HealthResponse(
             healthy: true,
             version: "test",
-            filesystemAccessDegraded: null,
+            filesystemAccessDegraded: false,
           ),
         ),
       );
@@ -1468,7 +1468,7 @@ void main() {
           health: HealthResponse(
             healthy: true,
             version: "test",
-            filesystemAccessDegraded: null,
+            filesystemAccessDegraded: false,
           ),
         ),
       );

@@ -154,11 +154,14 @@ Rules:
 ```
 
 When Pi itself is already streaming, `prompt` requires
-`streamingBehavior: "steer" | "followUp"`. The planned plugin serializes its
-own exact per-turn selection and normally dispatches only while idle.
+`streamingBehavior: "steer" | "followUp"`. Sesori sends ordinary prompts with
+`streamingBehavior: "steer"`; Pi ignores that option while idle and injects a
+same-selection busy-session follow-up at the next tool boundary. Selection
+changes retain a run boundary. Sesori still serializes prompt acceptance in FIFO
+order and rejects slash commands while the session is busy.
 
-Pi also exposes `steer` and `follow_up`, but Sesori has no separate steering UI
-in this series.
+Pi also exposes separate `steer` and `follow_up` commands, but Sesori uses the
+streaming-aware `prompt` path so extension commands retain their normal handling.
 
 `abort` aborts retry/current agent work and waits for idle. It does not call
 Pi's `clearQueue()`, so hidden steering/follow-up queues survive. Sesori tears

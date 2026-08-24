@@ -240,10 +240,10 @@ class const DeepSeekQuestionAnswerDto._({
   required final List<String> selectedLabels,
   final String? customAnswer,
 }) {
-  factory DeepSeekQuestionAnswerDto.custom({required String questionId, required String customAnswer}) =>
+  factory custom({required String questionId, required String customAnswer}) =>
       DeepSeekQuestionAnswerDto._(questionId: questionId, selectedLabels: const [], customAnswer: customAnswer);
 
-  factory DeepSeekQuestionAnswerDto.selected({
+  factory selected({
     required String questionId,
     required List<String> selectedLabels,
     String? customAnswer,
@@ -256,7 +256,7 @@ class const DeepSeekQuestionAnswerDto._({
     );
   }
 
-  factory DeepSeekQuestionAnswerDto.fromJson(Map<String, dynamic> json) {
+  factory fromJson(Map<String, dynamic> json) {
     final labels = json["selectedLabels"];
     if (labels is! List || labels.isEmpty && !json.containsKey("customAnswer")) {
       throw const FormatException("Invalid DeepSeek question answer");

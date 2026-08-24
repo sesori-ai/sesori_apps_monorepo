@@ -71,19 +71,20 @@ class TokenService({
   Future<String> _doRefresh() async {
     final tokens = await _loadTokens();
     if (tokens == null) {
-      throw const TokenRefreshException("No tokens available for refresh");
+      throw const TokenRefreshException(reason: "No tokens available for refresh");
     }
 
     final refreshToken = tokens.refreshToken;
     if (refreshToken.isEmpty) {
-      throw const TokenRefreshException("Refresh token is empty");
+      throw const TokenRefreshException(reason: "Refresh token is empty");
     }
 
     final refresh = await _authRepository.refreshToken(refreshToken: refreshToken);
     final authResponse = switch (refresh) {
       AuthTokenRefreshed(:final response) => response,
       AuthTokenRefreshRejected(:final statusCode) => throw TokenRefreshException(
-        "Token refresh failed with status $statusCode",
+        reason: "Token refresh failed with status $statusCode",
+        statusCode: statusCode,
       ),
     };
 
@@ -99,7 +100,7 @@ class TokenService({
     try {
       final reloaded = await _loadTokens();
       if (reloaded == null) {
-        throw const TokenRefreshException("Token file cleared during refresh");
+        throw const TokenRefreshException(reason: "Token file cleared during refresh");
       }
       latestTokens = reloaded;
     } on FormatException {

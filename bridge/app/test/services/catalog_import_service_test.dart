@@ -338,6 +338,7 @@ class _FakeCatalogImportRepository({
       pluginId: "selected",
       projectsImported: 1,
       sessionsImported: 2,
+      newItems: CatalogImportNewItems(projects: 1, sessions: 2),
       completedAt: 200,
     );
   }

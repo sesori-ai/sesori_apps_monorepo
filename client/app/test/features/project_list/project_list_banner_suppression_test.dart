@@ -20,7 +20,7 @@ import "../../helpers/test_helpers.dart";
 /// other recovery surface). In those cases the banner is the only recovery.
 void main() {
   const config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token");
-  const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+  const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
   const connected = ConnectionStatus.connected(config: config, health: health);
   const bridgeOffline = ConnectionStatus.bridgeOffline(config: config, health: health);
   const connectionLost = ConnectionStatus.connectionLost(config: config);

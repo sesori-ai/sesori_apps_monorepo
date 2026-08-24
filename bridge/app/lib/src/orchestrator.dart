@@ -83,7 +83,6 @@ import "routing/create_project_handler.dart";
 import "routing/create_session_handler.dart";
 import "routing/delete_session_handler.dart";
 import "routing/filesystem_suggestions_handler.dart";
-import "routing/get_agents_handler.dart";
 import "routing/get_base_branch_handler.dart";
 import "routing/get_bridge_settings_handler.dart";
 import "routing/get_catalog_import_statuses_handler.dart";
@@ -184,7 +183,6 @@ typedef OrchestratorComposition = ({
 class Orchestrator({
     required final BridgeConfig config,
     required final RelayClient _client,
-    required final String _legacyMissingPluginId,
     required final PluginLifecycleService _pluginLifecycleService,
     required final PluginRuntime _pluginRuntime,
     required final BridgeSettingsRepository _bridgeSettingsRepository,
@@ -360,7 +358,6 @@ class Orchestrator({
     final agentRepository = AgentRepository(
       runtime: _pluginRuntime,
       projectsDao: _database.projectsDao,
-      legacyPluginId: _legacyMissingPluginId,
     );
     final questionRepository = QuestionRepository(
       runtime: _pluginRuntime,
@@ -374,7 +371,6 @@ class Orchestrator({
       questionRepository: questionRepository,
       dispatcher: sessionOperationDispatcher,
       archivedSessionValidator: archivedSessionValidator,
-      legacyMissingPluginId: _legacyMissingPluginId,
     );
     final sessionCreationService = SessionCreationService(
       sessionMetadataRepository: SessionMetadataRepository(
@@ -576,7 +572,6 @@ class Orchestrator({
         CancelQueuedPromptHandler(sessionPromptService: sessionPromptService),
         AbortSessionHandler(sessionAbortService: sessionAbortService),
         GetProvidersHandler(providerRepository),
-        GetAgentsHandler(agentRepository),
         PostAgentsHandler(agentRepository),
         GetSessionQuestionsHandler(questionRepository: questionRepository),
         GetProjectQuestionsHandler(questionRepository: questionRepository),

@@ -23,7 +23,7 @@ import "../../helpers/test_helpers.dart";
 /// raises a [PregoBottomSheet].
 void main() {
   const config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token");
-  const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+  const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
   const connected = ConnectionStatus.connected(config: config, health: health);
 
   late BehaviorSubject<ConnectionStatus> statusController;

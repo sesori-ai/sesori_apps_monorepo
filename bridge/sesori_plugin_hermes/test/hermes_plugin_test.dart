@@ -116,12 +116,12 @@ void main() {
       expect(spec.args, ["acp"]);
     });
 
-    test("keeps the stock ACP policies of a v1 server", () {
+    test("uses the stock ACP policies plus stop-and-send follow-ups", () {
       expect(plugin.authMethodId, isNull, reason: "Hermes provider ids are dynamic");
       expect(plugin.initializeCapabilityMeta, isNull);
       expect(plugin.supportsFormElicitation, isFalse, reason: "no elicitation/create on Hermes");
       expect(plugin.serializesPromptsProcessWide, isFalse);
-      expect(plugin.cancelsActiveTurnForQueuedInput, isFalse);
+      expect(plugin.cancelsActiveTurnForQueuedInput, isTrue);
       expect(plugin.failsTurnOnSelectionError, isTrue);
       expect(plugin.sessionCloseSettlementTimeout, const Duration(seconds: 5));
     });
@@ -206,6 +206,71 @@ void main() {
       await pump();
 
       expect(events.whereType<BridgeSseMessagePartDelta>().single.delta, "Hello");
+    });
+
+    test("a busy follow-up cancels the active turn before replacement dispatch", () async {
+      await connect();
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      final creating = plugin.createSession(
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await respond(method: "session/new", result: const {"sessionId": "s-follow-up"});
+      final session = await creating;
+
+      await plugin.sendPrompt(
+        promptId: "prompt-1",
+        sessionId: session.id,
+        parts: const [PluginPromptPart.text(text: "first")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final firstPrompt = await waitForFrame(method: "session/prompt");
+
+      await plugin.sendPrompt(
+        promptId: "prompt-2",
+        sessionId: session.id,
+        parts: const [PluginPromptPart.text(text: "replace it")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final cancel = await waitForFrame(method: "session/cancel");
+      expect(cancel["params"], {"sessionId": session.id});
+      expect(fake.written.where((frame) => frame["method"] == "session/prompt"), hasLength(1));
+      expect((await plugin.getQueuedPrompts(sessionId: session.id)).single.id, "prompt-2");
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": firstPrompt["id"],
+        "result": {"stopReason": "cancelled"},
+      });
+      final replacement = await waitForFrame(method: "session/prompt");
+      final replacementParams = (replacement["params"] as Map).cast<String, dynamic>();
+      expect(replacementParams["sessionId"], session.id);
+      expect(((replacementParams["prompt"] as List).single as Map)["text"], "replace it");
+      expect(await plugin.getQueuedPrompts(sessionId: session.id), isEmpty);
+      expect(events.whereType<BridgeSseSessionIdle>(), isEmpty);
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": replacement["id"],
+        "result": {"stopReason": "end_turn"},
+      });
+      for (var i = 0; i < 10 && events.whereType<BridgeSseSessionIdle>().isEmpty; i++) {
+        await pump();
+      }
+      expect(events.whereType<BridgeSseSessionIdle>(), hasLength(1));
+      expect(events.whereType<BridgeSseSessionError>(), isEmpty);
     });
 
     test("deleteSession never calls session/close when closeSession is not advertised", () async {

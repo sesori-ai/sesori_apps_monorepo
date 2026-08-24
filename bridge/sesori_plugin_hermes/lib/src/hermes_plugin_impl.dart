@@ -6,12 +6,12 @@ import "services/hermes_session_options_service.dart";
 
 /// Hermes Agent backend over ACP.
 ///
-/// Hermes is a stock ACP v1 server: `hermes acp` advertises load/list/resume/
+/// Hermes is an ACP v1 server: `hermes acp` advertises load/list/resume/
 /// fork/prompt capabilities and streams turns via `session/update`
-/// notifications, so the base [AcpPlugin] machinery — including every stock
-/// protocol policy (per-session turn serialization, no form elicitation, no
-/// capability meta, first non-terminal auth method, fail-closed selection) —
-/// applies unchanged. Only Hermes model discovery and its unstable
+/// notifications. It uses standard ACP cancellation for stop-and-send
+/// follow-ups; the remaining stock policies include per-session serialization,
+/// no form elicitation or capability meta, first non-terminal authentication,
+/// and fail-closed selection. Only Hermes model discovery and its unstable
 /// `session/set_model` extension are layered on here, isolated in this package.
 /// It has no managed runtime (Hermes installs itself; the bridge resolves it on
 /// PATH).
@@ -29,6 +29,9 @@ class HermesPlugin({
         id: HermesPluginIdentity.id,
         agentDisplayName: HermesPluginIdentity.displayName,
       );
+
+  @override
+  bool get cancelsActiveTurnForQueuedInput => true;
 
   @override
   void captureSessionConfig(

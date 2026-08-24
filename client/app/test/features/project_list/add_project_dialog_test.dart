@@ -191,14 +191,14 @@ void main() {
     connectionStatusController = BehaviorSubject<ConnectionStatus>.seeded(
       const ConnectionStatus.connected(
         config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
-        health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
+        health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
       ),
     );
     // Default: connected with no degraded filesystem access.
     stubConnectionStatus(
       const ConnectionStatus.connected(
         config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
-        health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
+        health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
       ),
     );
 
@@ -286,7 +286,7 @@ void main() {
     });
 
     testWidgets("hides the warning when filesystem access is not degraded", (tester) async {
-      // Default stubbed status has filesystemAccessDegraded: null.
+      // Default stubbed status has filesystemAccessDegraded: false.
       _stubSuggestionsWithEntries(mockCubit, entries: _homeDirEntries);
 
       await tester.pumpWidget(

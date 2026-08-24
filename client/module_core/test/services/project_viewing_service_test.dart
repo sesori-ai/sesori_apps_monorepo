@@ -34,7 +34,7 @@ class _FakeRouteSource({required AppRouteDef? initialRoute}) implements RouteSou
 }
 
 const _config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token");
-const _health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+const _health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
 const _connected = ConnectionStatus.connected(config: _config, health: _health);
 
 void main() {

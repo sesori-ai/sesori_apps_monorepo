@@ -59,7 +59,7 @@ void main() {
       connectionStatus = BehaviorSubject.seeded(
         const ConnectionStatus.connected(
           config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
-          health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
+          health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false),
         ),
       );
       mockProjectRepository = MockProjectRepository();
@@ -885,7 +885,7 @@ void main() {
         ..add(
           const ConnectionStatus.connected(
             config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
-            health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
+            health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false),
           ),
         );
       while (discoveryCalls < 2 || (cubit.state.agentModelData?.isLoading ?? true)) {

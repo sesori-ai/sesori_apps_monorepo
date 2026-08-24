@@ -66,7 +66,6 @@ void main() {
         accessTokenProvider: FakeAccessTokenProvider(),
         bridgeIdProvider: FakeBridgeIdProvider(),
       ),
-      legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),

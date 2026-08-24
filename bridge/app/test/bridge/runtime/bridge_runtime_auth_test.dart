@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:sesori_bridge/src/auth/auth_api.dart';
@@ -9,7 +7,6 @@ import 'package:sesori_bridge/src/auth/login_email_repository.dart';
 import 'package:sesori_bridge/src/auth/login_oauth_service.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
 import 'package:sesori_bridge/src/foundation/abortable_request.dart';
-import 'package:sesori_bridge/src/foundation/legacy_post_update_relaunch.dart';
 import 'package:sesori_bridge/src/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/runtime/bridge_runtime_auth.dart';
 import 'package:sesori_shared/sesori_shared.dart';
@@ -17,29 +14,6 @@ import 'package:test/test.dart';
 
 void main() {
   group('BridgeRuntimeAuthService', () {
-    test('promptForProvider throws clear guidance when relaunched non-interactively by a legacy auto-update', () async {
-      final service = BridgeRuntimeAuthService(
-        loginEmailRepository: _FakeLoginEmailRepository(),
-        loginOAuthService: _FakeLoginOAuthService(),
-        authRepository: _expiredTokensAuthRepository(),
-        environment: const <String, String>{sesoriPostUpdateRestartEnvVar: '1'},
-        loadTokens: () async => throw const FileSystemException('missing', 'token.json', OSError('missing', 2)),
-        saveTokens: (_) async {},
-        clearTokens: () async {},
-      );
-
-      await expectLater(
-        service.promptForProvider(),
-        throwsA(
-          isA<Exception>().having(
-            (error) => error.toString(),
-            'message',
-            contains('relaunched non-interactively after an auto-update'),
-          ),
-        ),
-      );
-    });
-
     test('OAuth login ACK is sent only after tokens are persisted', () async {
       final storedTokens = TokenData(
         accessToken: 'expired-access-token',
@@ -65,7 +39,6 @@ void main() {
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: oauthService,
         authRepository: _expiredTokensAuthRepository(),
-        environment: const <String, String>{},
         loadTokens: () async {
           loadCount++;
           return storedTokens;
@@ -112,7 +85,6 @@ void main() {
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: _FakeLoginOAuthService(),
         authRepository: repository,
-        environment: const <String, String>{},
         loadTokens: () async {
           loadCount++;
           return storedTokens;
@@ -143,7 +115,6 @@ void main() {
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: oauthService,
         authRepository: _expiredTokensAuthRepository(),
-        environment: const <String, String>{},
         loadTokens: () async => storedTokens,
         saveTokens: (_) async {},
         clearTokens: () async {},
@@ -177,7 +148,6 @@ void main() {
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: oauthService,
         authRepository: _expiredTokensAuthRepository(),
-        environment: const <String, String>{},
         loadTokens: () async => storedTokens,
         saveTokens: (tokens) async {
           savedTokens = tokens;

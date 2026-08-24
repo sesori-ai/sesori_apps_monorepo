@@ -21,6 +21,11 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
   before or after its stream block-stop event. Clients request the latest page
   and page older messages on demand; a client predating pagination gets the full
   transcript.
+- Client history uses a reversed list. Nearing its oldest edge prefetches the
+  next page, one request at a time, so paging back through history rarely stops
+  dead at the edge; prepended rows become visible without shifting the detached
+  reading position or admitting messages and streaming changes that arrived at
+  the newest edge while detached.
 - After a reconnect inside the replay window, buffered events are delivered;
   after a longer gap, a refresh reconciles without losing finalized content.
   After a backend event-stream gap, that plugin's stored transcripts stay marked
@@ -73,6 +78,8 @@ image parts converge by their own rules.
 - Reasoning still says `Thinking...` after answer or tool output has started, or
   disappears after reopening because only its empty start snapshot was retained.
 - A page boundary duplicates, drops, or reorders messages, or history ends early.
+- Loading an older page shifts the reader's viewport, remains hidden until
+  reattachment, or triggers repeated requests while one page is in flight.
 - A session advanced outside Sesori keeps serving the old transcript, or stored
   transcripts are marked complete after a gap without a full re-sync.
 - Pi falls back after an arbitrary RPC failure, shows an abandoned branch or

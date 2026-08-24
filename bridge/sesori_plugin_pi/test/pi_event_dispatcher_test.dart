@@ -90,6 +90,81 @@ void main() {
     expect(finalEvents.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part), replay.parts);
   });
 
+  test("registering a steering prompt preserves the active assistant stream and prompt order", () {
+    dispatcher.registerPrompt(
+      sessionId: sessionId,
+      promptId: "prompt-1",
+      executionText: "private first",
+      userVisibleText: "first",
+    );
+    final firstUser = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_end", {
+        "message": {
+          "role": "user",
+          "content": [
+            {"type": "text", "text": "private first"},
+          ],
+          "timestamp": 90,
+        },
+      }),
+    );
+    dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_start", {"message": _assistant(content: const [], timestamp: 100)}),
+    );
+    final beforeSteer = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_update", {
+        "assistantMessageEvent": {"type": "text_delta", "contentIndex": 0, "delta": "before "},
+      }),
+    );
+
+    dispatcher.registerPrompt(
+      sessionId: sessionId,
+      promptId: "prompt-2",
+      executionText: "private second",
+      userVisibleText: "second",
+    );
+    final afterSteer = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_update", {
+        "assistantMessageEvent": {"type": "text_delta", "contentIndex": 0, "delta": "after"},
+      }),
+    );
+    dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_end", {
+        "message": _assistant(
+          content: [
+            {"type": "text", "text": "before after"},
+          ],
+          timestamp: 100,
+          stopReason: "stop",
+        ),
+      }),
+    );
+    final steeringUser = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_end", {
+        "message": {
+          "role": "user",
+          "content": [
+            {"type": "text", "text": "private second"},
+          ],
+          "timestamp": 110,
+        },
+      }),
+    );
+
+    expect((firstUser.first as BridgeSseMessageUpdated).info["promptId"], "prompt-1");
+    expect(firstUser.whereType<BridgeSseMessagePartUpdated>().single.part.text, "first");
+    expect(beforeSteer.whereType<BridgeSseMessagePartDelta>().single.messageID, "pi:session:assistant:100:1");
+    expect(afterSteer.whereType<BridgeSseMessagePartDelta>().single.messageID, "pi:session:assistant:100:1");
+    expect((steeringUser.first as BridgeSseMessageUpdated).info["promptId"], "prompt-2");
+    expect(steeringUser.whereType<BridgeSseMessagePartUpdated>().single.part.text, "second");
+  });
+
   test("user message finals equal cold replay", () {
     final raw = {
       "role": "user",

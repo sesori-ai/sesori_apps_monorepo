@@ -620,7 +620,7 @@ Session testSession({
 }
 
 HealthResponse testHealthResponse() {
-  return const HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+  return const HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
 }
 
 BridgeSummary testBridgeSummary({

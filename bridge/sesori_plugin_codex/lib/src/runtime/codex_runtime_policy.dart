@@ -168,9 +168,8 @@ CodexOwnershipRecord buildCodexOwnershipRecord(RuntimeRecordDraft draft) {
 }
 
 /// Assembles the [ManagedRuntimeSpec] for `codex app-server` with the hardened
-/// policy knobs active: deadline-paced health confirmation, the start intent
-/// recorded to a bridge-private side file before spawn, and a child exit before
-/// the first healthy probe treated as authoritative failure.
+/// policy knobs active: deadline-paced health confirmation and a child exit
+/// before the first healthy probe treated as authoritative failure.
 ManagedRuntimeSpec<CodexOwnershipRecord> buildCodexManagedRuntimeSpec({
   required PluginHost host,
   required String executablePath,

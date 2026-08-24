@@ -25,8 +25,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         ProcessUser,
         ServerClock,
         StartAbortController;
-import "package:sesori_shared/sesori_shared.dart"
-    show AuthClientType, AuthDeviceInfoBuilder, DeviceInfo, legacyMissingPluginId;
+import "package:sesori_shared/sesori_shared.dart" show AuthClientType, AuthDeviceInfoBuilder, DeviceInfo;
 
 import "../api/app_onboarding_state_storage.dart";
 import "../api/archived_session_storage.dart";
@@ -39,7 +38,6 @@ import "../api/sesori_server_api.dart";
 import "../auth/access_token_provider.dart";
 import "../auth/auth_api.dart";
 import "../auth/auth_repository.dart";
-import "../auth/bridge_id_migration_service.dart";
 import "../auth/bridge_id_storage.dart";
 import "../auth/bridge_registration_repository.dart";
 import "../auth/bridge_registration_service.dart";
@@ -308,7 +306,6 @@ class const BridgeRuntimeRunner._() {
     final terminalPromptApi = TerminalPromptApi(
       stdin: io.stdin,
       stdout: io.stdout,
-      environment: environment,
     );
     final terminalPromptRepository = TerminalPromptRepository(
       api: terminalPromptApi,
@@ -344,7 +341,6 @@ class const BridgeRuntimeRunner._() {
         browserLauncher: openOAuthBrowser,
         browserOpenability: detectBrowserOpenability,
       ),
-      environment: environment,
       loadTokens: () => loadTokens(dataDirectory: options.dataDirectory),
       saveTokens: (data) => saveTokens(
         data: data,
@@ -354,31 +350,13 @@ class const BridgeRuntimeRunner._() {
       clearTokens: () => clearTokens(dataDirectory: options.dataDirectory),
     );
 
-    // Persisted bridge-id storage (its own file, not token.json). Constructed
-    // here so the supervised registration service below can share it; the
-    // legacy-id migration that populates it still runs at its normal point
-    // before authentication.
+    // Persisted bridge-id storage shared by registration and supervised control.
     final bridgeIdStorage = BridgeIdStorage(
       filePath: bridgeIdPath(dataDirectory: options.dataDirectory),
       writeRestrictedFile: writeRestrictedFile,
     );
 
     try {
-      // Copy a legacy bridge id out of token.json into its own storage before
-      // anything ID-dependent runs — in particular before the supervised control
-      // channel + dispatcher come up, so a GUI `unregister_and_exit` that arrives
-      // during early startup unregisters the migrated id instead of reading an
-      // empty store and leaking the server-side registration. The first token
-      // save no longer serializes bridgeId, so skipping this would erase the only
-      // copy. A failure here aborts startup so the next run retries the copy with
-      // the legacy source still intact.
-      await BridgeIdMigrationService(
-        bridgeIdStorage: bridgeIdStorage,
-        readLegacyBridgeId: () => readLegacyBridgeId(
-          dataDirectory: options.dataDirectory,
-        ),
-      ).migrate();
-
       // Supervised mode (desktop GUI): bring up the loopback control channel
       // before anything else so the GUI sees the helper connect promptly. Every
       // step here is gated by `--control-url`; standalone startup is unchanged.
@@ -837,7 +815,6 @@ class const BridgeRuntimeRunner._() {
           yolo: bridgeSettings.yolo,
         ),
         client: relayClient,
-        legacyMissingPluginId: legacyMissingPluginId,
         pluginLifecycleService: activePluginLifecycleService,
         pluginRuntime: activePluginRuntime,
         bridgeSettingsRepository: bridgeSettingsRepository,

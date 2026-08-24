@@ -610,6 +610,101 @@ void main() {
       expect((await database.projectsDao.getProject(projectId: "persisted"))?.updatedAt, 200);
     });
 
+    test("native import reports every published row as new on a first import", () async {
+      final projectPath = "${directory.path}/first-run";
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "project", directory: projectPath)],
+        rootsByProject: {
+          projectPath: [
+            _pluginSession(id: "root-a", directory: projectPath),
+            _pluginSession(id: "root-b", directory: projectPath),
+          ],
+        },
+        childrenByParent: const {},
+      );
+
+      final completed = await _importCompletion(database: database, plugin: plugin);
+
+      expect(completed.projectsImported, 1);
+      expect(completed.sessionsImported, 2);
+      expect(completed.newItems, const CatalogImportNewItems(projects: 1, sessions: 2));
+    });
+
+    test("native re-import of an unchanged catalog reports nothing new", () async {
+      final projectPath = "${directory.path}/unchanged";
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "project", directory: projectPath)],
+        rootsByProject: {
+          projectPath: [_pluginSession(id: "root", directory: projectPath)],
+        },
+        childrenByParent: const {},
+      );
+
+      await _importCompletion(database: database, plugin: plugin);
+      final second = await _importCompletion(database: database, plugin: plugin);
+
+      // The totals stay at the full catalog size; only the delta goes to zero.
+      expect(second.projectsImported, 1);
+      expect(second.sessionsImported, 1);
+      expect(second.newItems, const CatalogImportNewItems(projects: 0, sessions: 0));
+    });
+
+    test("native re-import counts only the rows the catalog did not already hold", () async {
+      final firstPath = "${directory.path}/kept";
+      final secondPath = "${directory.path}/added";
+      final before = _NativeImportPlugin(
+        projects: [PluginProject(id: "kept", directory: firstPath)],
+        rootsByProject: {
+          firstPath: [_pluginSession(id: "kept-root", directory: firstPath)],
+        },
+        childrenByParent: const {},
+      );
+      await _importCompletion(database: database, plugin: before);
+
+      final after = _NativeImportPlugin(
+        projects: [
+          PluginProject(id: "kept", directory: firstPath),
+          PluginProject(id: "added", directory: secondPath),
+        ],
+        rootsByProject: {
+          firstPath: [_pluginSession(id: "kept-root", directory: firstPath)],
+          secondPath: [_pluginSession(id: "added-root", directory: secondPath)],
+        },
+        childrenByParent: const {},
+      );
+      final completed = await _importCompletion(database: database, plugin: after);
+
+      expect(completed.projectsImported, 2);
+      expect(completed.sessionsImported, 2);
+      expect(completed.newItems, const CatalogImportNewItems(projects: 1, sessions: 1));
+    });
+
+    test("derived import counts new rows across its own ownership branch", () async {
+      final launchDirectory = "${directory.path}/derived";
+      final before = _DerivedImportPlugin(
+        launchDirectory: launchDirectory,
+        sessions: [_pluginSession(id: "existing", directory: launchDirectory)],
+      );
+      final first = await _importCompletion(database: database, plugin: before);
+      expect(first.newItems?.sessions, 1);
+
+      // A second directory arrives, so the bridge derives one more project.
+      // Derived ownership builds its projects from session directories rather
+      // than from a plugin-supplied list, which is why it needs its own case.
+      final addedDirectory = "${directory.path}/derived-added";
+      final after = _DerivedImportPlugin(
+        launchDirectory: launchDirectory,
+        sessions: [
+          _pluginSession(id: "existing", directory: launchDirectory),
+          _pluginSession(id: "arrived", directory: addedDirectory),
+        ],
+      );
+      final second = await _importCompletion(database: database, plugin: after);
+
+      expect(second.sessionsImported, 2);
+      expect(second.newItems, const CatalogImportNewItems(projects: 1, sessions: 1));
+    });
+
     test("root-only import filters tombstones", () async {
       final projectPath = "${directory.path}/root-only";
       await database.sessionDao.insertSessionTombstone(
@@ -919,6 +1014,23 @@ class _TrackingProjectCatalogIdentityCalculator({required final String firstProj
       observedPath: observedPath,
     );
   }
+}
+
+/// Runs one explicit import and returns its completion status.
+Future<CatalogImportCompleted> _importCompletion({
+  required AppDatabase database,
+  required BridgePluginApi plugin,
+}) async {
+  final statuses = await _repository(database: database, plugin: plugin)
+      .importCatalog(
+        pluginId: plugin.id,
+        control: CatalogImportControl(
+          explicitImportRequested: true,
+          hydrationMarkerRequested: false,
+        ),
+      )
+      .toList();
+  return statuses.whereType<CatalogImportCompleted>().single;
 }
 
 CatalogImportRepository _repository({required AppDatabase database, required BridgePluginApi plugin}) {
