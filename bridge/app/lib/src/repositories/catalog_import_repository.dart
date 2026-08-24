@@ -31,7 +31,16 @@ class CatalogImportRepository({
     required final CatalogHydrationsDao _catalogHydrationsDao,
     required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
   }) {
-  static const int projectionVersion = 1;
+  /// Invalidates every durable hydration marker written by an earlier version.
+  ///
+  /// The marker at a given version means "this plugin's catalog was fully
+  /// hydrated once", and an automatic import short-circuits whenever one
+  /// exists. Bumped to 2 for issue #961: markers written before v1.8.0 can
+  /// describe a catalog produced by superseded discovery, and the marker was
+  /// the only thing preventing a corrected import from ever running. Bumping
+  /// re-hydrates each plugin exactly once; the merge is non-destructive and
+  /// tombstoned sessions stay deleted.
+  static const int projectionVersion = 2;
   static const int _responsivenessBatchSize = 512;
   static final Random _secureRandom = Random.secure();
 
