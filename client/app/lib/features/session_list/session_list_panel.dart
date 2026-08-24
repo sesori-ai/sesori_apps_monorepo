@@ -137,6 +137,8 @@ class const SessionListPanel({
           PregoSliverRefreshControl(
             onRefresh: () => refreshSessionList(context),
             deepRefresh: deepRefresh,
+            decorate: null,
+            onPulledExtentChanged: null,
           ),
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
         SessionListContent(

@@ -29,6 +29,8 @@ void main() {
             slivers: [
               PregoSliverRefreshControl(
                 onRefresh: () async => softRefreshes++,
+                decorate: null,
+                onPulledExtentChanged: null,
                 deepRefresh: withDeepRefresh
                     ? PregoDeepRefresh(
                         onDeepRefresh: () => deepRefreshes++,
@@ -174,6 +176,8 @@ void main() {
               slivers: [
                 PregoSliverRefreshControl(
                   onRefresh: () => completer.future,
+                  decorate: null,
+                  onPulledExtentChanged: null,
                   deepRefresh: PregoDeepRefresh(
                     onDeepRefresh: () => deepRefreshes++,
                     pullCaption: "Keep pulling to scan all harnesses",
@@ -232,9 +236,10 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets("the fired report survives the finger lifting", (tester) async {
-      // The second stage has already run by this point, so the report is not
-      // an invitation that should retract with the pull.
+    testWidgets("the fired report gives way as the pull collapses", (tester) async {
+      // Once the finger lifts, the control holds an extent far shorter than the
+      // trigger; a caption pinned inside it would sit on top of the spinner.
+      // The host's progress surface reports the rest of the run.
       final completer = Completer<void>();
       await tester.pumpWidget(
         MaterialApp(
@@ -245,6 +250,8 @@ void main() {
               slivers: [
                 PregoSliverRefreshControl(
                   onRefresh: () => completer.future,
+                  decorate: null,
+                  onPulledExtentChanged: null,
                   deepRefresh: PregoDeepRefresh(
                     onDeepRefresh: () => deepRefreshes++,
                     pullCaption: "Keep pulling to scan all harnesses",
@@ -267,12 +274,17 @@ void main() {
       }
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text("Scanning for new sessions"), findsOneWidget);
+      expect(deepRefreshes, 1);
 
       await gesture.up();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      expect(find.text("Scanning for new sessions"), findsOneWidget);
+      expect(
+        find.text("Scanning for new sessions"),
+        findsNothing,
+        reason: "the held extent cannot hold a caption without covering the spinner",
+      );
 
       completer.complete();
       await tester.pumpAndSettle();
@@ -292,6 +304,8 @@ void main() {
                 slivers: [
                   PregoSliverRefreshControl(
                     onRefresh: () async => softRefreshes++,
+                    decorate: null,
+                    onPulledExtentChanged: null,
                     deepRefresh: PregoDeepRefresh(
                       onDeepRefresh: () => deepRefreshes++,
                       pullCaption: "Keep pulling to scan every harness for sessions you have not seen",

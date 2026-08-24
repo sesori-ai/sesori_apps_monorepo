@@ -12,19 +12,23 @@ const double _deepPullFactor = 1.6;
 /// A second stage for a pull-to-refresh, opted into with its captions.
 ///
 /// One value rather than a callback plus two loose strings, so a host cannot
-/// arm the deep pull without telling the user what releasing will do.
+/// open the deep pull without telling the user what crossing it will do.
 class const PregoDeepRefresh({
-  /// Runs in addition to the ordinary refresh, the moment the pull passes the
-  /// deep threshold. Never awaited: the refresh control settles on the ordinary
-  /// refresh alone, so a long-running second stage cannot hold the spinner.
+  /// Runs in addition to the ordinary refresh, **the moment the pull passes
+  /// the deep threshold** — not on release. There is no release-gated commit to
+  /// hang it on, so once the threshold is crossed the action has started and the
+  /// host must offer its own way to cancel. Never awaited: the refresh control
+  /// settles on the ordinary refresh alone, so a long-running second stage
+  /// cannot hold the spinner.
   required final void Function() onDeepRefresh,
 
   /// Shown once the pull passes the ordinary trigger, inviting the user to
   /// keep going.
   required final String pullCaption,
 
-  /// Shown once [onDeepRefresh] has fired, so the caption reports what
-  /// happened rather than what releasing would do.
+  /// Shown once [onDeepRefresh] has fired, so the caption reports what has
+  /// already started rather than what releasing would do. It gives way to the
+  /// host's own progress surface as the pull retracts.
   required final String deepCaption,
 });
 
@@ -47,17 +51,17 @@ class const PregoSliverRefreshControl({
   super.key,
   required final Future<void> Function() _onRefresh,
 
-  /// The optional second stage. Absent leaves the control behaving exactly as
-  /// a bare [CupertinoSliverRefreshControl].
-  final PregoDeepRefresh? _deepRefresh,
+  /// The second stage. `null` leaves the control behaving exactly as a bare
+  /// [CupertinoSliverRefreshControl].
+  required final PregoDeepRefresh? _deepRefresh,
 
   /// Wraps the built indicator so a host can position it without owning any
-  /// gesture logic.
-  final Widget Function(BuildContext context, Widget indicator)? _decorate,
+  /// gesture logic. `null` paints it where the control puts it.
+  required final Widget Function(BuildContext context, Widget indicator)? _decorate,
 
   /// Reports the space the control currently holds open, for hosts that lay
   /// out against it. Zero whenever the control is inactive.
-  final void Function(double extent)? _onPulledExtentChanged,
+  required final void Function(double extent)? _onPulledExtentChanged,
 }) extends StatefulWidget {
   @override
   State<PregoSliverRefreshControl> createState() => _PregoSliverRefreshControlState();
@@ -112,13 +116,13 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
           triggerDistance,
           indicatorExtent,
         );
-        // An unfired invitation follows the *live* extent, not the furthest
-        // reached: once the finger lifts, the control holds a shorter indicator
-        // extent while the refresh runs, and a caption keyed on the maximum
-        // would sit under the spinner for the whole of an ordinary refresh.
-        // A fired label ignores the extent entirely — the second stage has
-        // already run, so the report stays until the gesture ends.
-        final caption = deepRefresh == null || (!_deepFired && pulledExtent <= triggerDistance)
+        // Both phases follow the *live* extent, because the extent is what
+        // decides whether there is room. Once the finger lifts the control
+        // collapses to a held indicator extent far shorter than the trigger,
+        // and a caption pinned inside it would sit on top of the spinner.
+        // Retracting loses nothing: the host's progress surface takes over as
+        // the pull collapses, which is where the rest of the run is reported.
+        final caption = deepRefresh == null || pulledExtent <= triggerDistance
             ? null
             : _deepFired
             ? deepRefresh.deepCaption

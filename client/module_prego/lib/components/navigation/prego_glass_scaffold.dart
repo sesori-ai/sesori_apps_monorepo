@@ -138,8 +138,10 @@ class const PregoGlassScaffold({
     /// When set, an in-scroll refresh control opens below the top bar and pushes
   /// the caller-provided content down while it is pulled.
   final Future<void> Function()? onRefresh,
-    /// An optional second stage for [onRefresh]: pulling past the ordinary
-  /// trigger arms it, and the caption tells the user what releasing will do.
+    /// An optional second stage for [onRefresh]. Pulling past a deeper
+  /// threshold runs it **immediately**, not on release: the underlying refresh
+  /// control has no release-gated commit, so a crossed pull cannot be taken
+  /// back and the surface must offer its own cancel.
   final PregoDeepRefresh? deepRefresh,
     /// Page background painted behind the glass. Defaults to `bgSurface1`.
   final Color? backgroundColor,
