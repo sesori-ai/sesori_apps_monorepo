@@ -120,7 +120,7 @@
 
 | Done | Step | Exact PR title | Changed-line target | State |
 |---|---|---|---:|---|
-| [ ] | 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 1,300-1,450 | In preparation |
+| [ ] | 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 950-1,100 (`PLAN.md`) | In preparation |
 | [ ] | 2/8 | `🌱 [catalog-rescan] Re-hydrate stale plugin catalogs [step 2/8]` | 20-60 | Not started |
 | [ ] | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 | Not started |
 | [ ] | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 | Not started |
@@ -296,7 +296,7 @@ committed import raises no list invalidation.
 | Refresh catalogs after a rescan commits | Both list cubits run their existing silent refresh on a terminal success. Without it the row announced new sessions over a stale list — the feature's whole purpose |
 | Sanitize import failures before rendering them | Neither failure variant carries free text; the row reports a bounded failure and names the bridge log. A producer-side sanitization boundary is recorded as a named follow-up |
 | Keep failure states visible until dismissal | The 4s clear now applies to `CatalogRescanSucceeded` only; this also removed a contradiction between the plan's own presentation and lifetime tables |
-| Clear retained progress between rescans | The progress map is cleared on every rescan start and every reset to idle; sequential-rescan coverage added |
+| Clear retained progress between rescans | The progress map is cleared when a start opens an operation and on every reset to idle; round four scoped this to opening starts only, since a join must not clear it. Sequential-rescan coverage added |
 | Require architecture review for Step 5 | Step 5 now listed unconditionally alongside 3, 4, and 6 |
 | Model lost mutation responses as uncertain | **Partially applied.** Membership is recorded on dispatch and a harness survives a timeout or lost response, which closes the hole. The proposed third "uncertain" result type was declined as machinery across two layers for a bounded, self-clearing case; the residue is recorded as an accepted risk |
 | Route rescan actions and state through cubits | All three cubits gain a subscription, state, and intent methods; no widget holds the service stream. A dedicated fourth cubit was considered and rejected in the plan |
@@ -358,11 +358,12 @@ refresh gap as consequences of one definition.
 - **Step 1 documentation validation:** `git diff --check` passed; step tokens
   and exact PR titles diffed clean between `PLAN.md` and `TRACKER.md`; plan
   files only in the diff
-- **Step 1 changed lines:** 1,347 documentation-only insertions, 0 deletions, from
-  `git diff --numstat <merge-base>...HEAD` (informational only; the figure counts
-  these verification-log lines, so it cannot independently validate the target)
+- **Step 1 changed lines:** `PLAN.md` is the budgeted scope and is measured
+  against the 950-1,100 target. The combined numstat for both new files is
+  recorded below as information only and is deliberately not a budget check
 - **Step 1 review:** `architecture-plan-review` rejected the first revision;
   all ten findings applied directly, recorded above
+- **Step 1 combined numstat (information only):** `PLAN.md` 988 + `TRACKER.md` 369 = 1,357 insertions, 0 deletions
 - **Step 1 PR:** [#1064](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1064)
   open
 - **Final disposition:** pending

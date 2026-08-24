@@ -560,14 +560,14 @@ New in-memory mutable parts:
 
 | Part | Owner | Why it must exist |
 |---|---|---|
-| `Map<String, CatalogImportProgress>` | `CatalogRescanService` | Aggregating several concurrent harness imports into one row requires the latest progress per harness. Cleared on every rescan start and on every reset to idle |
+| `Map<String, CatalogImportProgress>` | `CatalogRescanService` | Aggregating several concurrent harness imports into one row requires the latest progress per harness. Cleared only when a start **opens** an operation from idle or terminal, and on every reset to idle. A start that joins a live operation must not clear it |
 | `BehaviorSubject<CatalogRescanState>` | `CatalogRescanService` | The published stream, seeded so a late subscriber renders correctly |
 | `CompositeSubscription` | `CatalogRescanService` | SSE plus connection-status subscriptions, matching `PluginManagementService` |
 | `Timer?` | `CatalogRescanService` | The 4s success clear. Owned here, not by the row, so two mounted hosts cannot run disagreeing timers. Never armed for a failure state |
 | `bool _disposed` | `CatalogRescanService` | Module convention for `Disposable` services |
 | `bool _deepArmed` | `PregoSliverRefreshControl` | The refresh control reports pull distance continuously but fires `onRefresh` once; the threshold state at release must survive that one frame |
 | One subscription and one state field each | `ProjectListCubit`, `SessionListCubit`, `PluginManagementCubit` | The shell's Layer-4 boundary: widgets render cubit state rather than holding a service stream, and the two list cubits own their own post-success refresh |
-| `bool _recoverySeeded` | `CatalogRescanService` | Distinguishes a rescan this client started from one discovered already running, so only the former reports a terminal summary. Cleared on every start and every reset |
+| `bool _recoverySeeded` | `CatalogRescanService` | Marks the live operation `observed` rather than `owned`, so only a fully-seen run reports a terminal summary. Set when an operation opens from the recovery `GET` or from unsolicited progress; cleared when a start opens a new operation and on every reset. A join leaves it untouched, because joining an `observed` run does not make this client the observer of its earlier members |
 | `Map<String, CatalogRescanStartResult>` | `PluginManagementCubit` | Per-card targeted-start results, mirroring the `Map<String, PluginInstallProgress>` the cubit already keeps |
 
 Two fan-outs are recorded rather than hidden: `startAll()` issues one `POST` per
@@ -718,7 +718,7 @@ before the plan is retired.
 
 | Step | Exact PR title | Changed-line target |
 |---|---|---:|
-| 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 1,300-1,450 |
+| 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 950-1,100 (`PLAN.md`) |
 | 2/8 | `🌱 [catalog-rescan] Re-hydrate stale plugin catalogs [step 2/8]` | 20-60 |
 | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 |
 | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 |
@@ -729,6 +729,14 @@ before the plan is retired.
 
 Step 5 is `⚙️` rather than `🌿` because it extracts a new shared component and
 moves the split-view pane onto it, rather than adding a parameter to one widget.
+
+Step 1's target is measured against `PLAN.md` alone. Both files are new, so the
+combined numstat counts every line of `TRACKER.md` too — including its review
+records and verification log, which grow with each review round rather than with
+scope. Budgeting the combined figure would mean widening the target whenever
+review documentation grew, which measures nothing. The delivered scope of step 1
+is the plan document; the combined total is recorded in `TRACKER.md` as
+information only.
 
 ## Step 1/8 - Publish The Plan
 
@@ -816,7 +824,8 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
   `GET /plugin/import` once on connect and reconnect, keeping only
   `CatalogImportEnumerating` and `CatalogImportCommitting`; reset to
   `CatalogRescanIdle` on disconnect and on an active-bridge change; clear the
-  retained progress map on every rescan start and every reset; arm the 4s clear
+  retained progress map only when a start opens an operation and on every reset,
+  never on a join; arm the 4s clear
   for `CatalogRescanSucceeded` only; record membership on dispatch per the
   table above; select harnesses by `runtimeState.isRoutable`; never lift
   `CatalogImportFailed.message` into state; and expose
