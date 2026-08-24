@@ -2,12 +2,18 @@ name: Release All Platforms
 
 run-name: "release · build ${{ github.sha }}"
 
-# Per-merge internal release: uploads iOS to TestFlight and Android to the
-# Play internal track, builds the 5-platform bridge archives, and — only when
-# EVERYTHING succeeded (all-or-nothing) — pushes a `v<X>-internal.<N>` tag and
-# rolls the single internal GitHub pre-release onto it (previous pre-release
-# objects are deleted; their tags are kept forever as the build-number→commit
-# map used by submit-release.yml).
+# Automatic internal release: normally runs per relevant main merge, uploads
+# iOS to TestFlight and Android to the Play internal track, builds the
+# 5-platform bridge archives, and — only when EVERYTHING succeeded
+# (all-or-nothing) — pushes a `v<X>-internal.<N>` tag and rolls the single
+# internal GitHub pre-release onto it (previous pre-release objects are deleted;
+# their tags are kept forever as the build-number→commit map used by
+# submit-release.yml).
+#
+# App Store Connect limits binary uploads in a rolling 24-hour window. Automatic
+# runs stop at 18 completed internal releases, then an hourly run retries the
+# latest still-unreleased relevant main commit after capacity returns. Manual
+# dispatches deliberately bypass this admission guard.
 #
 # The bridge auto-updater ignores pre-releases, so the rolling internal
 # pre-release never reaches end users — it serves internal testers and the
@@ -15,6 +21,8 @@ run-name: "release · build ${{ github.sha }}"
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
   push:
     branches: [main]
     # Mobile-PRODUCT paths only (not blanket client/**) so future client/desktop
@@ -31,17 +39,23 @@ on:
       - 'shared/**'
       - 'bridge/**'
 
+# Serial execution makes the tag-based admission count authoritative even when
+# several merges arrive while another release is still running.
 concurrency:
   group: release-all-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  INTERNAL_RELEASE_LIMIT: '18'
+
 jobs:
   preflight:
-    name: Version guard
+    name: Version and release guard
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       version: ${{ steps.check.outputs.version }}
+      should_release: ${{ steps.admission.outputs.should_release }}
     steps:
       - uses: actions/checkout@v6
 
@@ -77,9 +91,106 @@ jobs:
           echo "version=${MOBILE_VERSION}" >> "$GITHUB_OUTPUT"
           echo "Version ${MOBILE_VERSION} is in sync and unreleased."
 
+      - name: Admit automatic internal release
+        id: admission
+        run: |
+          set -euo pipefail
+
+          # An operator may intentionally request another build even when the
+          # automatic rolling-window budget is exhausted.
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "Manual dispatch bypasses automatic release admission."
+            exit 0
+          fi
+
+          git fetch --force --tags origin
+
+          skip_release() {
+            local heading="$1"
+            local reason="$2"
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=${heading}::${reason}"
+            {
+              echo "## ${heading}"
+              echo ""
+              echo "${reason}"
+              echo ""
+              echo "No store build, bridge archive, tag, or pre-release was created."
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          # Re-running a successful automatic event must not create another
+          # build for a commit that already has a complete internal release.
+          EXISTING_TAG=$(git tag --points-at "$GITHUB_SHA" --list 'v*-internal.*' | head -n 1)
+          if [[ -n "$EXISTING_TAG" ]]; then
+            skip_release \
+              "Internal release already complete" \
+              "Commit \`${GITHUB_SHA}\` already has internal release tag \`${EXISTING_TAG}\`."
+            exit 0
+          fi
+
+          # Scheduled runs exist only to catch up after quota deferral. Ignore
+          # newer docs/tooling-only commits when no release-triggering product
+          # path changed since the most recent complete internal release.
+          if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then
+            LATEST_TAG=$(git for-each-ref \
+              --count=1 \
+              --sort=-creatordate \
+              --format='%(refname:short)' \
+              'refs/tags/v*-internal.*')
+            # Keep this path set synchronized with on.push.paths above.
+            RELEASE_PATHS=(
+              client/app
+              client/module_core
+              client/module_auth
+              client/module_prego
+              client/pubspec.yaml
+              client/pubspec.lock
+              client/analysis_options.yaml
+              client/Makefile
+              shared
+              bridge
+            )
+            if [[ -n "$LATEST_TAG" ]] && \
+              git diff --quiet "${LATEST_TAG}^{commit}" "$GITHUB_SHA" -- "${RELEASE_PATHS[@]}"; then
+              skip_release \
+                "No pending internal release" \
+                "No release-triggering paths changed after \`${LATEST_TAG}\`."
+              exit 0
+            fi
+          fi
+
+          NOW=$(date -u +%s)
+          CUTOFF=$((NOW - 86400))
+          RELEASE_TIMES=$(git for-each-ref \
+            --format='%(creatordate:unix)' \
+            'refs/tags/v*-internal.*' | awk -v cutoff="$CUTOFF" '$1 >= cutoff')
+          RECENT_RELEASES=$(printf '%s\n' "$RELEASE_TIMES" | awk 'NF { count++ } END { print count + 0 }')
+
+          if (( RECENT_RELEASES >= INTERNAL_RELEASE_LIMIT )); then
+            # Capacity returns once enough of the oldest tags leave the rolling
+            # window to put the count below the limit.
+            EXPIRATIONS_NEEDED=$((RECENT_RELEASES - INTERNAL_RELEASE_LIMIT + 1))
+            CAPACITY_TAG_TIME=$(printf '%s\n' "$RELEASE_TIMES" | sort -n | awk \
+              -v position="$EXPIRATIONS_NEEDED" 'NR == position { print; exit }')
+            CAPACITY_EPOCH=$((CAPACITY_TAG_TIME + 86400))
+            CAPACITY_AT=$(date -u -r "$CAPACITY_EPOCH" '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null || \
+              date -u --date="@${CAPACITY_EPOCH}" '+%Y-%m-%d %H:%M:%S UTC')
+            REASON="${RECENT_RELEASES} internal releases completed in the rolling 24-hour window; "
+            REASON+="the automatic limit is ${INTERNAL_RELEASE_LIMIT}. The hourly retry can admit the latest relevant "
+            REASON+="main commit after ${CAPACITY_AT}."
+            skip_release "Internal release deferred" "$REASON"
+            exit 0
+          fi
+
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+          echo "Automatic release admitted (${RECENT_RELEASES}/${INTERNAL_RELEASE_LIMIT} completed in the rolling window)."
+
   next-build-number:
     name: Resolve aligned build number
     needs: preflight
+    if: needs.preflight.outputs.should_release == 'true'
     uses: ./.github/workflows/_reusable-next-build-number.yml
     secrets:
       APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
