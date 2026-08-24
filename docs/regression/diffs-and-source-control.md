@@ -77,9 +77,9 @@ and in-place sessions, and default versus explicit base branches.
 
 ## Sources
 
-- Bridge: `bridge/app/lib/src/bridge/` session-diff and worktree services,
-  `repositories/session_diff_repository.dart`, `api/git_cli_api.dart`, and the
-  diff and base-branch handlers
+- Bridge: `bridge/app/lib/src/services/` session-diff and worktree services,
+  `bridge/app/lib/src/repositories/session_diff_repository.dart`,
+  `bridge/app/lib/src/api/git_cli_api.dart`, and the diff and base-branch handlers
 - Contract: `shared/sesori_shared/lib/src/models/sesori/file_diff.dart`
 - Client: `client/module_core/lib/src/cubits/session_diffs/`,
   `client/app/lib/features/session_diffs/`

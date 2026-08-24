@@ -157,6 +157,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Permission auto-approval](permission-auto-approval.md)
 - [Plugin runtime installation](plugin-runtime-installation.md)
 - [Plugin setup and lifecycle](plugin-setup-and-lifecycle.md)
+- [Popup alerts](popup-alerts.md)
 - [Projects and sessions](projects-and-sessions.md)
 - [Pull request monitoring](pull-request-monitoring.md)
 - [Questions and permissions](questions-and-permissions.md)

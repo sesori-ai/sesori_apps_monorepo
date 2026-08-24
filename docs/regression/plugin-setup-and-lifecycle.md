@@ -24,8 +24,9 @@ idle suspension, the management snapshot, and lifecycle commands.
 - Pi and Oh My Pi are registered harnesses with managed installs where a platform
   archive exists and explicit `--pi-bin`/`--omp-bin` paths stay authoritative. Pi
   sessions always launch with `--approve` (project-local Pi settings, extensions,
-  skills, and prompt templates are trusted without prompts); OMP inherits the user's
-  `tools.approvalMode`. Provider login for both happens locally, never from the phone.
+  skills, and prompt templates are trusted without prompts); OMP launches `omp acp`
+  without an approval-mode override, leaving approval behavior to OMP. Provider login
+  for both happens locally, never from the phone.
 - Backend `tui.toast.show` SSE events render app-wide through the backend-neutral
   toast surface, presented with the design-system popup alert on the root
   navigator's overlay: every accepted toast is a new effect (equal repeated guidance
@@ -152,10 +153,10 @@ timeouts, and sessions afterwards.
 
 ## Sources
 
-- `bridge/sesori_plugin_interface/lib/src/lifecycle/`; registered OpenCode, Codex,
-  Cursor, Claude Code, and Hermes Agent descriptors; plugin routing handlers
+- `bridge/sesori_plugin_interface/lib/src/lifecycle/`; registered production plugin
+  descriptors; plugin routing handlers
 - `bridge/app/lib/src/services/plugin_lifecycle_service.dart`,
-  `bridge/app/lib/src/bridge/runtime/plugin_registry.dart`
+  `bridge/app/lib/src/runtime/plugin_registry.dart`
 - `bridge/sesori_plugin_hermes/lib/src/runtime/hermes_plugin_descriptor.dart` and its tests
 - `bridge/sesori_plugin_codex/lib/src/codex_plugin_impl.dart` and `codex_plugin_write_path_test.dart`
 - `client/module_core/.../plugin_management_service.dart`, `PregoBrandLogo`, and the

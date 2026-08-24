@@ -298,8 +298,8 @@ replay, and abort after output has started.
 
 ## Sources
 
-- Bridge: `bridge/app/lib/src/bridge/services/` (prompt, abort, dispatcher,
-  event, chat history), `lib/src/bridge/sse/`, and their tests
+- Bridge: `bridge/app/lib/src/services/` (prompt, abort, dispatcher, event,
+  chat history), `bridge/app/lib/src/sse/`, and their tests
 - Contract: `bridge/sesori_plugin_interface/lib/src/bridge_plugin.dart`;
   `shared/sesori_shared/lib/src/models/sesori/send_prompt_error_response.dart`;
   `shared/sesori_shared/lib/src/models/sesori/sesori_sse_event.dart`
