@@ -1,14 +1,11 @@
 import "package:json_annotation/json_annotation.dart";
 
 part "deepseek_protocol_dto.g.dart";
-
 int _integer(Object? value) {
   if (value is! int) throw const FormatException("Expected integer");
   return value;
 }
-
 int? _nullableInteger(Object? value) => value == null ? null : _integer(value);
-
 @JsonSerializable()
 class const DeepSeekInitializeMetadataDto({
   @JsonKey(fromJson: _integer) required final int extensionProtocolVersion,
@@ -101,7 +98,6 @@ sealed class const DeepSeekHistoryResponseDto() {
     }
     throw const FormatException("Invalid DeepSeek history response");
   }
-
   List<DeepSeekSessionUpdateEnvelopeDto> get updates;
   Map<String, dynamic> toJson();
 }
@@ -113,7 +109,6 @@ class const DeepSeekPaginatedHistoryResponseDto({
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekPaginatedHistoryResponseDtoFromJson(json);
   @JsonKey(includeFromJson: false, includeToJson: true)
   bool get hasMore => true;
-
   @override
   Map<String, dynamic> toJson() => _$DeepSeekPaginatedHistoryResponseDtoToJson(this);
 }
@@ -124,7 +119,6 @@ class const DeepSeekTerminalHistoryResponseDto({
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekTerminalHistoryResponseDtoFromJson(json);
   @JsonKey(includeFromJson: false, includeToJson: true)
   bool get hasMore => false;
-
   @override
   Map<String, dynamic> toJson() => _$DeepSeekTerminalHistoryResponseDtoToJson(this);
 }
@@ -157,7 +151,6 @@ sealed class const DeepSeekQuestionDto() {
     }
     throw const FormatException("Invalid DeepSeek question");
   }
-
   String get id;
   String get text;
   String? get header;
@@ -192,7 +185,6 @@ class const DeepSeekPlanReviewQuestionDto({
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekPlanReviewQuestionDtoFromJson(json);
   @JsonKey(includeFromJson: false, includeToJson: true)
   String get intent => "plan_review";
-
   @override
   Map<String, dynamic> toJson() => _$DeepSeekPlanReviewQuestionDtoToJson(this);
 }
@@ -212,7 +204,6 @@ class const DeepSeekQuestionAnswerDto._({
 }) {
   factory custom({required String questionId, required String customAnswer}) =>
       DeepSeekQuestionAnswerDto._(questionId: questionId, selectedLabels: const [], customAnswer: customAnswer);
-
   factory selected({
     required String questionId,
     required List<String> selectedLabels,
@@ -225,7 +216,6 @@ class const DeepSeekQuestionAnswerDto._({
       customAnswer: customAnswer,
     );
   }
-
   factory fromJson(Map<String, dynamic> json) {
     final labels = json["selectedLabels"];
     if (labels is! List || labels.isEmpty && !json.containsKey("customAnswer")) {
@@ -233,10 +223,8 @@ class const DeepSeekQuestionAnswerDto._({
     }
     return _$DeepSeekQuestionAnswerDtoFromJson(json);
   }
-
   Map<String, dynamic> toJson() => _$DeepSeekQuestionAnswerDtoToJson(this);
 }
-
 @JsonSerializable(explicitToJson: true)
 class const DeepSeekAskUserQuestionResponseDto({required final List<DeepSeekQuestionAnswerDto> answers}) {
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekAskUserQuestionResponseDtoFromJson(json);
@@ -251,7 +239,6 @@ sealed class const DeepSeekSessionStatusNotificationDto() {
     "warning" => DeepSeekWarningStatusDto.fromJson(json),
     _ => throw const FormatException("Invalid DeepSeek session status"),
   };
-
   String get sessionId;
   Map<String, dynamic> toJson();
 }
@@ -265,40 +252,33 @@ class const DeepSeekRetryStatusDto({
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekRetryStatusDtoFromJson(json);
   @JsonKey(includeFromJson: false, includeToJson: true)
   String get kind => "retry";
-
   @override
   Map<String, dynamic> toJson() => _$DeepSeekRetryStatusDtoToJson(this);
 }
-
 @JsonSerializable()
 class const DeepSeekCompactionStartedStatusDto({@override required final String sessionId})
     extends DeepSeekSessionStatusNotificationDto {
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekCompactionStartedStatusDtoFromJson(json);
   @JsonKey(includeFromJson: false, includeToJson: true)
   String get kind => "compaction_started";
-
   @override
   Map<String, dynamic> toJson() => _$DeepSeekCompactionStartedStatusDtoToJson(this);
 }
-
 @JsonSerializable()
 class const DeepSeekCompactionCompletedStatusDto({@override required final String sessionId})
     extends DeepSeekSessionStatusNotificationDto {
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekCompactionCompletedStatusDtoFromJson(json);
   @JsonKey(includeFromJson: false, includeToJson: true)
   String get kind => "compaction_completed";
-
   @override
   Map<String, dynamic> toJson() => _$DeepSeekCompactionCompletedStatusDtoToJson(this);
 }
-
 @JsonSerializable()
 class const DeepSeekWarningStatusDto({@override required final String sessionId, required final String message})
     extends DeepSeekSessionStatusNotificationDto {
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekWarningStatusDtoFromJson(json);
   @JsonKey(includeFromJson: false, includeToJson: true)
   String get kind => "warning";
-
   @override
   Map<String, dynamic> toJson() => _$DeepSeekWarningStatusDtoToJson(this);
 }

@@ -37,9 +37,10 @@ void main() {
   });
   test("catalog rejects bounded collection and entry violations", () async {
     final corpus = jsonDecode(await File("${fixtureDirectory.path}/valid.json").readAsString()) as List;
-    final valid = (corpus.cast<Map<String, dynamic>>().singleWhere(
-      (fixture) => fixture["definition"] == "catalogResponse",
+    Map<String, dynamic> fixture(String definition) => (corpus.cast<Map<String, dynamic>>().firstWhere(
+      (fixture) => fixture["definition"] == definition,
     )["value"] as Map).cast<String, dynamic>();
+    final valid = fixture("catalogResponse");
     Map<String, dynamic> copy() => (jsonDecode(jsonEncode(valid)) as Map).cast<String, dynamic>();
     Map<String, dynamic> mutate(void Function(Map<String, dynamic>) change) {
       final value = copy();
@@ -63,6 +64,12 @@ void main() {
     for (final catalog in malformed) {
       expect(() => api.parseCatalogResponse(catalog), throwsFormatException);
     }
+    final history = fixture("historyResponse");
+    ((history["updates"] as List).first as Map)["sessionId"] = "another-session";
+    expect(() => api.parseHistoryResponse(history, sessionId: "session-1"), throwsFormatException);
+    final questions = fixture("askUserQuestionRequest");
+    (questions["questions"] as List).add((questions["questions"] as List).first);
+    expect(() => api.parseQuestionRequest(questions), throwsFormatException);
   });
 }
 

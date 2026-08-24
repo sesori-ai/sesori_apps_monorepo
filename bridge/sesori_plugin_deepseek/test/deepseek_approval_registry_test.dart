@@ -74,8 +74,17 @@ void main() {
     expect(fake.written.single["error"], {"code": -32603, "message": "invalid answer"});
     expect(registry.hasAnyPendingInput, isFalse);
   });
+  test("oversized custom answer rejects and settles pending question", () async {
+    registry.handleExtensionRequest(questionRequest(9, const {
+      "sessionId": "session-1", "questions": [{"id": "q1", "text": "Explain"}],
+    }));
+    expect(registry.replyQuestion("request-1", [["x".padRight(2049, "x")]]), isTrue);
+    await Future<void>.delayed(Duration.zero);
+    expect(fake.written.single["error"], {"code": -32603, "message": "invalid answer"});
+    expect(registry.hasAnyPendingInput, isFalse);
+  });
   test("malformed question rejects without pending state", () {
-    registry.handleExtensionRequest(questionRequest(9, const {"questions": <Object>[]}));
+    registry.handleExtensionRequest(questionRequest(10, const {"questions": <Object>[]}));
     expect(fake.written.single["error"], {"code": -32602, "message": "Invalid DeepSeek question request"});
     expect(registry.hasAnyPendingInput, isFalse);
   });

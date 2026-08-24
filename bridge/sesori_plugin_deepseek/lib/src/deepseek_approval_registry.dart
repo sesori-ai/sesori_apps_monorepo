@@ -59,7 +59,7 @@ class DeepSeekApprovalRegistry({
   }
 
   static DeepSeekQuestionAnswerDto _answer(DeepSeekQuestionDto question, List<String> answers) {
-    if (answers.isEmpty || answers.any((answer) => answer.trim().isEmpty)) {
+    if (answers.isEmpty || answers.any((answer) => answer.length > 2048 || answer.trim().isEmpty)) {
       throw const FormatException("DeepSeek question answers must not be empty");
     }
     final options = question.options;

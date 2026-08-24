@@ -61,12 +61,12 @@ class const DeepSeekAcpApi({required final String pluginId}) {
       params: {"sessionId": sessionId, "beforeSeq": ?beforeSeq, "maxMessages": maxMessages},
       timeout: timeout,
     );
-    return parseHistoryResponse(_json(raw, historyMethod));
+    return parseHistoryResponse(_json(raw, historyMethod), sessionId: sessionId);
   }
 
-  DeepSeekHistoryResponseDto parseHistoryResponse(Map<String, dynamic> json) {
+  DeepSeekHistoryResponseDto parseHistoryResponse(Map<String, dynamic> json, {required String? sessionId}) {
     final response = DeepSeekHistoryResponseDto.fromJson(json);
-    _validateHistoryResponse(response);
+    _validateHistoryResponse(response, sessionId: sessionId);
     return response;
   }
 
@@ -91,7 +91,10 @@ class const DeepSeekAcpApi({required final String pluginId}) {
 
   DeepSeekAskUserQuestionRequestDto parseQuestionRequest(Map<String, dynamic> json) {
     final request = DeepSeekAskUserQuestionRequestDto.fromJson(json);
-    if (!_nonblank(request.sessionId, 256) || request.questions.isEmpty || request.questions.length > 32) {
+    if (!_nonblank(request.sessionId, 256) ||
+        request.questions.isEmpty ||
+        request.questions.length > 32 ||
+        request.questions.map((question) => question.id).toSet().length != request.questions.length) {
       throw const FormatException("Invalid DeepSeek question request");
     }
     for (final question in request.questions) {
@@ -138,8 +141,9 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     return raw.cast<String, dynamic>();
   }
 
-  static void _validateHistoryResponse(DeepSeekHistoryResponseDto response) {
-    if (response.updates.length > 10000 || response.updates.any((update) => !_nonblank(update.sessionId, 256))) {
+  static void _validateHistoryResponse(DeepSeekHistoryResponseDto response, {required String? sessionId}) {
+    if (response.updates.length > 10000 ||
+        response.updates.any((update) => !_nonblank(update.sessionId, 256) || sessionId != null && update.sessionId != sessionId)) {
       throw const FormatException("Invalid DeepSeek history response");
     }
     if (response case DeepSeekPaginatedHistoryResponseDto(nextBeforeSeq: final cursor) when cursor < 1) {
