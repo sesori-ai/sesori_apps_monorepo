@@ -7,25 +7,62 @@ import "package:test/test.dart";
 void main() {
   test("identity and launch contract are exact", () {
     final spec = DeepSeekBinary.launchSpec(
-      binary: "/runtime/deepseek", cwd: "/project", stateDirectory: "/state",
+      binary: "/runtime/deepseek",
+      cwd: "/project",
+      stateDirectory: "/state",
       environment: const {"TOKEN": "secret", "DSH_TELEMETRY_MODE": "enabled"},
     );
     expect([DeepSeekIdentity.id, DeepSeekIdentity.displayName], ["deepseek", "DeepSeek"]);
-    expect([spec.command, spec.args, spec.cwd], ["/runtime/deepseek", ["serve", "--state-dir", "/state"], "/project"]);
+    expect(
+      [spec.command, spec.args, spec.cwd],
+      [
+        "/runtime/deepseek",
+        ["serve", "--state-dir", "/state"],
+        "/project",
+      ],
+    );
     expect(spec.environment, {"TOKEN": "secret", "DSH_TELEMETRY_MODE": "off"});
   });
-  test("event mapper handles only Step 8 completed compaction status", () {
+  test("event mapper surfaces representable DeepSeek statuses", () {
     final mapper = DeepSeekEventMapper(
-      launchDirectory: "/project", pluginId: DeepSeekIdentity.id,
+      launchDirectory: "/project",
+      pluginId: DeepSeekIdentity.id,
       configurationTracker: AcpSessionConfigurationTracker(),
       api: const DeepSeekAcpApi(pluginId: DeepSeekIdentity.id),
     );
-    List<BridgeSseEvent> map(String kind) => mapper.map(AcpNotification(
-      method: DeepSeekAcpApi.sessionStatusMethod, params: {"sessionId": "session-1", "kind": kind},
-    ));
-    expect(map("compaction_completed"), [isA<BridgeSseSessionCompacted>()]);
-    for (final kind in ["retry", "future_status"]) {
-      expect(map(kind), isEmpty);
-    }
+    List<BridgeSseEvent> map(Map<String, dynamic> params) => mapper.map(
+      AcpNotification(
+        method: DeepSeekAcpApi.sessionStatusMethod,
+        params: {"sessionId": "session-1", ...params},
+      ),
+    );
+    expect(map({"kind": "compaction_completed"}), [isA<BridgeSseSessionCompacted>()]);
+    expect(map({"kind": "warning", "message": "DeepSeek compaction failed"}), [isA<BridgeSseSessionError>()]);
+    expect(map({"kind": "compaction_started"}), isEmpty);
+    expect(map({"kind": "retry", "attempt": 1, "limit": 3}), isEmpty);
+    expect(map({"kind": "future_status"}), isEmpty);
+  });
+  test("event mapper retains standard ACP turn projection", () {
+    final mapper = DeepSeekEventMapper(
+      launchDirectory: "/project",
+      pluginId: DeepSeekIdentity.id,
+      configurationTracker: AcpSessionConfigurationTracker(),
+      api: const DeepSeekAcpApi(pluginId: DeepSeekIdentity.id),
+    )..beginTurn("session-1");
+    final events = mapper.map(
+      const AcpNotification(
+        method: AcpMethods.sessionUpdate,
+        params: {
+          "sessionId": "session-1",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "messageId": "assistant-1",
+            "content": {"type": "text", "text": "hello"},
+          },
+        },
+      ),
+    );
+    expect(events.whereType<BridgeSseMessageUpdated>(), hasLength(1));
+    expect(events.whereType<BridgeSseMessagePartDelta>().single.delta, "hello");
   });
 }

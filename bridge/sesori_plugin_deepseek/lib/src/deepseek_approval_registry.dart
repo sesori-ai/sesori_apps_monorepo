@@ -10,6 +10,7 @@ class DeepSeekApprovalRegistry({
   required super.onFireAndForgetNotification,
   required final DeepSeekAcpApi api,
   super.idGenerator,
+  required super.activeSessionResolver,
 }) extends AcpApprovalRegistry {
   this
     : super(
@@ -59,7 +60,9 @@ class DeepSeekApprovalRegistry({
   }
 
   static DeepSeekQuestionAnswerDto _answer(DeepSeekQuestionDto question, List<String> answers) {
-    if (answers.isEmpty || answers.any((answer) => answer.length > 2048 || answer.trim().isEmpty)) {
+    if (answers.isEmpty ||
+        answers.toSet().length != answers.length ||
+        answers.any((answer) => answer.length > 2048 || answer.trim().isEmpty)) {
       throw const FormatException("DeepSeek question answers must be nonblank and at most 2048 characters");
     }
     final options = question.options;
@@ -72,7 +75,7 @@ class DeepSeekApprovalRegistry({
     }
     final selectedLabels = answers.where(options.contains).toList();
     final customAnswers = answers.where((answer) => !options.contains(answer)).toList();
-    if (customAnswers.length > 1) {
+    if (customAnswers.length > 1 || question is DeepSeekPlanReviewQuestionDto && customAnswers.isNotEmpty) {
       throw const FormatException("DeepSeek questions support at most one custom answer");
     }
     if (selectedLabels.isEmpty) {

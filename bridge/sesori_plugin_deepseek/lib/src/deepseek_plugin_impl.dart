@@ -2,6 +2,7 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/deepseek_acp_api.dart";
+import "deepseek_approval_registry.dart";
 import "deepseek_event_mapper.dart";
 import "repositories/deepseek_history_repository.dart";
 
@@ -9,6 +10,7 @@ class DeepSeekPlugin({
   required super.launchSpec,
   required super.launchDirectory,
   required DeepSeekEventMapper mapper,
+  required final DeepSeekAcpApi api,
   required final DeepSeekHistoryRepository historyRepository,
   required super.commandTracker,
   required super.sessionOptionsService,
@@ -20,6 +22,15 @@ class DeepSeekPlugin({
         agentDisplayName: "DeepSeek",
         eventMapper: mapper,
       );
+
+  @override
+  AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) => DeepSeekApprovalRegistry(
+    client: client,
+    emit: emitActivityEvent,
+    onFireAndForgetNotification: handleAgentNotification,
+    activeSessionResolver: () => activeTurnSessionId,
+    api: api,
+  );
 
   Map<String, dynamic>? _sessionMetadata(AcpSessionInfo info) {
     final value = info.metadata?[DeepSeekAcpApi.initializeMetadataKey];

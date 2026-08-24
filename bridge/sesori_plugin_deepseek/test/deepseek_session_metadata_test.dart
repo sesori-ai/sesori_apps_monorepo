@@ -23,6 +23,7 @@ void main() {
       launchSpec: const AcpLaunchSpec(command: "deepseek", args: [], cwd: "/repo", environment: {}),
       launchDirectory: "/repo",
       mapper: mapper,
+      api: api,
       historyRepository: DeepSeekHistoryRepository(api: api, eventMapper: mapper, pluginId: DeepSeekIdentity.id),
       commandTracker: commandTracker,
       sessionOptionsService: AcpSessionOptionsService(

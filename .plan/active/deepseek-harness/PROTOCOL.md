@@ -277,6 +277,11 @@ for demonstrated DeepSeek statuses without a standard ACP update. Text from a
 model, tool, prompt, transcript, or raw error never enters `message`. Unknown
 future kinds are logged locally and ignored by Dart.
 
+Dart emits completed compaction and a generic session error for warning. It
+validates but does not emit retry or compaction-started: the shared retry state
+requires a next-attempt timestamp that DeepSeek does not provide, while an
+active turn is already busy. No timestamp is fabricated to force that shape.
+
 No generic raw `deepseek/session/event` notification is added. Standard ACP
 remains the canonical common event stream, which avoids dual-feed deduplication.
 
@@ -337,7 +342,7 @@ updates:
 | title owner update | `session_info_update` |
 | command catalog change | `available_commands_update` |
 | selection change | `config_option_update` |
-| assistant usage | standard `usage_update` when representable |
+| assistant usage | terminal `session/prompt` response only; no separate Dart event |
 | retry/compaction status | `deepseek/session/status` |
 | turn end | `session/prompt` stop reason or bounded error |
 
@@ -353,7 +358,7 @@ Stop-reason mapping:
 | completed | `end_turn` |
 | user/owner abort | `cancelled` |
 | blocked/refused | `refusal` when semantically a refusal, otherwise bounded error |
-| max tokens | `end_turn` plus status/usage evidence |
+| max tokens | `max_tokens`; usage remains adapter response-only |
 | provider/tool/internal error | JSON-RPC internal error with sanitized message and local cause |
 | recovered interrupted turn | history status only; never reported as a new live success |
 
