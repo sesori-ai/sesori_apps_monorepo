@@ -264,22 +264,25 @@ class AcpEventMapper({
     parts: parts,
   );
 
+  /// Reserves the next accepted outbound prompt identity.
+  String reserveSentUserMessageId({required String sessionId}) {
+    final sequence = (_sentUserSeq[sessionId] ?? 0) + 1;
+    _sentUserSeq[sessionId] = sequence;
+    return "$sessionId-sent-$sequence-user";
+  }
+
   /// Maps an accepted outbound prompt to its canonical live user message.
   List<BridgeSseEvent> mapSentPrompt({
     required String sessionId,
+    required String messageId,
     required String promptId,
     required List<PluginPromptPart> parts,
-  }) {
-    final sequence = (_sentUserSeq[sessionId] ?? 0) + 1;
-    final events = _mapUserPrompt(
-      sessionId: sessionId,
-      messageId: "$sessionId-sent-$sequence-user",
-      promptId: promptId,
-      parts: parts,
-    );
-    if (events.isNotEmpty) _sentUserSeq[sessionId] = sequence;
-    return events;
-  }
+  }) => _mapUserPrompt(
+    sessionId: sessionId,
+    messageId: messageId,
+    promptId: promptId,
+    parts: parts,
+  );
 
   List<BridgeSseEvent> _mapUserPrompt({
     required String sessionId,

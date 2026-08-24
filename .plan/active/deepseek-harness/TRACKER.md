@@ -3,12 +3,11 @@
 ## Current State
 
 - **Plan slug:** `deepseek-harness`
-- **Plan status:** Steps 1-6 merged; Step 7/16 verified locally
-  after user-approved split on 2026-08-24
+- **Plan status:** Steps 1-6 merged; Step 7/16 in review; Step 8/16 verified locally
 - **Current repository:** `sesori-ai/sesori_apps_monorepo`
-- **Current branch:** `deepseek-harness/step-7-protocol-fixtures`
-- **Current open PR:** none; Step 7 ready to publish
-- **Next action:** open protocol-fixture Step 7, then initialize Step 8 locally
+- **Current branch:** `deepseek-harness/step-8-scaffold-plugin`
+- **Current open PR:** [Step 7 PR #1077](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1077)
+- **Next action:** monitor Step 7 and publish Step 8 after merge
 - **Implementation started:** yes
 - **Retirement:** blocked until every required row in `PLAN.md` passes
 
@@ -22,8 +21,8 @@
 | [x] | 4/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): add durable ACP sessions and replay [step 4/15]` | Complex persistence and live ownership | 1,450 | [PR #3](https://github.com/sesori-ai/sesori-deepseek-acp/pull/3) merged |
 | [x] | 5/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): stream DeepSeek turns and interactions [step 5/15]` | Complex concurrent event and interaction flow | 1,450 | [PR #4](https://github.com/sesori-ai/sesori-deepseek-acp/pull/4) merged |
 | [x] | 6/15 | deepseek adapter | `⚙️ [deepseek-harness] feat(runtime): expose DeepSeek catalogs and commands [step 6/15]` | Moderate option/command boundary | 1,200 | [PR #5](https://github.com/sesori-ai/sesori-deepseek-acp/pull/5) merged |
-| [ ] | 7/16 | apps monorepo | `🌿 [deepseek-harness] test(deepseek): vendor the DeepSeek extension protocol [step 7/16]` | Straightforward test-only protocol fixture foundation | 1,100 | Local implementation verified; ready to publish |
-| [ ] | 8/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): scaffold the DeepSeek bridge plugin [step 8/16]` | Moderate new package and narrow ACP hooks | 1,450 | Pending Step 7 |
+| [ ] | 7/16 | apps monorepo | `🌿 [deepseek-harness] test(deepseek): vendor the DeepSeek extension protocol [step 7/16]` | Straightforward test-only protocol fixture foundation | 1,100 | [PR #1077](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1077) in review |
+| [ ] | 8/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): scaffold the DeepSeek bridge plugin [step 8/16]` | Moderate new package and narrow ACP hooks | 1,450 | Local implementation verified; pending Step 7 |
 | [ ] | 9/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek sessions and history [step 9/16]` | Complex replay and identity flow | 1,450 | Pending Step 8 |
 | [ ] | 10/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek turns and interactions [step 10/16]` | Complex events, questions, and permissions | 1,450 | Pending Step 9 |
 | [ ] | 11/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): expose options and lifecycle [step 11/16]` | Moderate plugin API and lifecycle composition | 1,350 | Pending Step 10 |
@@ -84,6 +83,7 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 | 2026-08-23 | Step 4 architecture implementation review | Pass | Durable session ownership, persistence, and replay matched the planned one-process boundary. |
 | 2026-08-23 | Step 5 architecture implementation review | Rejected first pass; passed second pass | Consolidated duplicate live/replay mappings into one event projector with thin delivery and collection sinks. |
 | 2026-08-23 | Step 6 architecture implementation review | Rejected first pass; passed second pass | Changed cold rename from retained ACP ownership to one coordinated resume/rename/flush/notify/dispose transition. |
+| 2026-08-24 | Step 8 architecture implementation review | Pass on both scoped reviews | Kept generic prompt metadata/client hooks in ACP while sealed generated extension variants and backend behavior remain DeepSeek-owned. |
 
 ## Verification Log
 
@@ -139,6 +139,15 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
   and digests were re-vendored
 - [x] Runtime PR #8 constrained selection IDs and successful question answers
   before its exact merged commit and digests were re-vendored
+
+### Step 8/16
+
+- [x] DeepSeek and ACP `dart analyze --fatal-infos`
+- [x] DeepSeek and full ACP `dart test`
+- [x] Generated JSON and every vendored valid/invalid fixture verified
+- [x] Architecture implementation review passed twice
+- [x] `git diff --check`
+- [x] Final changed-line count: 1,492, below the 1,500-line cap
 
 Later implementation and live evidence is appended here by step. Never mark a
 regression row passed without the boundary and matrix required by `PLAN.md`.

@@ -219,6 +219,12 @@ abstract class AcpPlugin({
   /// agent. The original name remains authoritative for client-facing events.
   String commandForDispatch({required String command}) => command;
 
+  /// Optional top-level metadata for an outbound `session/prompt` request.
+  Map<String, dynamic>? outboundPromptMeta({
+    required String sessionId,
+    required String messageId,
+  }) => null;
+
   /// Builds the approval registry. Override to return a harness-specific
   /// subclass (e.g. one that also handles `cursor/ask_question`). The base
   /// registry resolves sessionId-less server requests to the active turn's
@@ -286,6 +292,7 @@ abstract class AcpPlugin({
 
   AcpStdioClient? get client => _client;
   AcpInitializeResult? get initializeResult => _initResult;
+  Future<AcpStdioClient> requireConnectedClient() => _connectedClient();
   void emitEvent(BridgeSseEvent event) => _eventBuffer.add(event);
 
   /// Returns the normalized directory already attributed to [sessionId].
@@ -807,6 +814,7 @@ abstract class AcpPlugin({
           sessionId: session.sessionId,
           turn: _InitialAcpTurn(
             blocks: blocks,
+            messageId: AcpEventMapper.initialUserMessageId(session.sessionId),
             model: model,
             variant: variant,
             agent: agent,
@@ -855,6 +863,7 @@ abstract class AcpPlugin({
       sessionId: sessionId,
       turn: _QueuedAcpTurn(
         blocks: blocks,
+        messageId: eventMapper.reserveSentUserMessageId(sessionId: sessionId),
         model: model,
         variant: variant,
         agent: agent,
@@ -902,6 +911,7 @@ abstract class AcpPlugin({
       sessionId: sessionId,
       turn: _QueuedAcpTurn(
         blocks: blocks,
+        messageId: eventMapper.reserveSentUserMessageId(sessionId: sessionId),
         model: model,
         variant: variant,
         agent: agent,
@@ -1213,9 +1223,14 @@ abstract class AcpPlugin({
       if (turn case _QueuedAcpTurn(:final queuedPrompt)) {
         queuedPrompt.phase = _QueuedAcpPromptPhase.writing;
       }
+      final meta = outboundPromptMeta(sessionId: sessionId, messageId: turn.messageId);
       final dispatched = await client.dispatchRequest(
         method: AcpMethods.sessionPrompt,
-        params: {"sessionId": sessionId, "prompt": turn.blocks},
+        params: {
+          "sessionId": sessionId,
+          "prompt": turn.blocks,
+          "_meta": ?meta,
+        },
         timeout: const Duration(minutes: 30),
       );
       _markTurnDispatched(sessionId: sessionId, state: state, turn: turn);
@@ -1262,6 +1277,7 @@ abstract class AcpPlugin({
     eventMapper
         .mapSentPrompt(
           sessionId: sessionId,
+          messageId: turn.messageId,
           promptId: queuedPrompt.presentation.id,
           parts: queuedPrompt.visibleParts,
         )
@@ -1834,6 +1850,7 @@ class _SessionTurnState() {
 
 sealed class const _AcpTurn({
   required final List<Map<String, dynamic>> blocks,
+  required final String messageId,
   required final ({String providerID, String modelID})? model,
   required final PluginSessionVariant? variant,
   required final String? agent,
@@ -1841,6 +1858,7 @@ sealed class const _AcpTurn({
 
 final class const _InitialAcpTurn({
   required super.blocks,
+  required super.messageId,
   required super.model,
   required super.variant,
   required super.agent,
@@ -1848,6 +1866,7 @@ final class const _InitialAcpTurn({
 
 final class const _QueuedAcpTurn({
   required super.blocks,
+  required super.messageId,
   required super.model,
   required super.variant,
   required super.agent,

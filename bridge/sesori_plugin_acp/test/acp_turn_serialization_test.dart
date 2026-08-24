@@ -7,6 +7,27 @@ import "package:test/test.dart";
 
 /// An [AcpPlugin] whose [applyTurnSelection] blocks on a test-controlled gate,
 /// so a test can land an abort while a turn is mid-selection.
+class _PromptHookPlugin({
+  required super.id,
+  required super.agentDisplayName,
+  required super.launchSpec,
+  required super.launchDirectory,
+  required super.eventMapper,
+  required super.commandTracker,
+  required super.sessionOptionsService,
+  required AcpProcessFactory super.processFactory,
+}) extends TestAcpPlugin {
+  @override
+  Map<String, dynamic> outboundPromptMeta({
+    required String sessionId,
+    required String messageId,
+  }) => {
+    "identity": {"sessionId": sessionId, "messageId": messageId},
+  };
+
+  Future<AcpStdioClient> borrowConnectedClient() => requireConnectedClient();
+}
+
 class _GatedSelectionPlugin({
   required super.id,
   required super.agentDisplayName,
@@ -162,6 +183,72 @@ void main() {
 
     int busyCount() => emitted.whereType<BridgeSseSessionStatus>().length;
     int idleCount() => emitted.whereType<BridgeSseSessionIdle>().length;
+
+    test("prompt hooks expose live client and preserve reserved identities", () async {
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
+      final hookPlugin = _PromptHookPlugin(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchDirectory: cwd,
+        eventMapper: AcpEventMapper(
+          launchDirectory: cwd,
+          pluginId: "acp",
+          configurationTracker: configurationTracker,
+        ),
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
+        processFactory: (_) async => fake,
+      );
+      await plugin.dispose();
+      plugin = hookPlugin;
+      plugin.events.listen(emitted.add, onError: streamErrors.add);
+
+      final borrowing = hookPlugin.borrowConnectedClient();
+      respondTo(await waitForFrame("initialize"), {
+        "protocolVersion": 1,
+        "agentCapabilities": {"loadSession": false},
+        "authMethods": <Object?>[],
+      });
+      expect(await borrowing, same(hookPlugin.client));
+      final sessionId = await createSession(cwd, "s1");
+      final firstId = await sendPrompt(sessionId, "first");
+      final secondId = await sendPrompt(sessionId, "second");
+      final first = await waitForFrameCount("session/prompt", 1);
+
+      expect((first["params"] as Map)["_meta"], {
+        "identity": {"sessionId": sessionId, "messageId": "$sessionId-sent-1-user"},
+      });
+      respondTo(first, {"stopReason": "end_turn"});
+      final second = await waitForFrameCount("session/prompt", 2);
+      expect((second["params"] as Map)["_meta"], {
+        "identity": {"sessionId": sessionId, "messageId": "$sessionId-sent-2-user"},
+      });
+      expect(
+        emitted
+            .whereType<BridgeSseMessageUpdated>()
+            .where((event) => event.info["promptId"] == firstId)
+            .single
+            .info["id"],
+        "$sessionId-sent-1-user",
+      );
+      respondTo(second, {"stopReason": "end_turn"});
+      expect(secondId, "prompt-2");
+    });
+
+    test("default prompts omit top-level metadata", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      await sendPrompt(sessionId, "plain ACP");
+
+      expect((await waitForFrame("session/prompt"))["params"], isNot(contains("_meta")));
+    });
 
     test("a prompt becomes a user message only when its ACP frame is dispatched", () async {
       await connect();

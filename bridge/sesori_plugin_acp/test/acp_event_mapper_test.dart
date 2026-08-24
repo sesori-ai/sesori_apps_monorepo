@@ -362,6 +362,7 @@ void main() {
 
     test("an accepted prompt maps to one canonical live user message", () {
       final events = mapper.mapSentPrompt(
+        messageId: "s1-sent-1-user",
         promptId: "prompt-1",
         sessionId: "s1",
         parts: [
@@ -392,6 +393,7 @@ void main() {
     ]) {
       test("an accepted prompt preserves ${parts.length == 1 ? "attachment-only" : "mixed"} content", () {
         final events = mapper.mapSentPrompt(
+          messageId: "s1-sent-1-user",
           promptId: "prompt-1",
           sessionId: "s1",
           parts: parts,
@@ -433,6 +435,7 @@ void main() {
 
     test("a live agent user echo is dropped", () {
       mapper.mapSentPrompt(
+        messageId: "s1-sent-1-user",
         promptId: "prompt-1",
         sessionId: "s1",
         parts: [const PluginPromptPart.text(text: "Hello")],
