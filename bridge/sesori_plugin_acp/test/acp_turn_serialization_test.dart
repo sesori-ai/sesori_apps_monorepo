@@ -15,7 +15,7 @@ class _PromptHookPlugin({
   required super.eventMapper,
   required super.commandTracker,
   required super.sessionOptionsService,
-  required AcpProcessFactory super.processFactory,
+  required super.processFactory,
 }) extends TestAcpPlugin {
   @override
   Map<String, dynamic> outboundPromptMeta({
@@ -36,7 +36,7 @@ class _GatedSelectionPlugin({
   required super.eventMapper,
   required super.commandTracker,
   required super.sessionOptionsService,
-  required AcpProcessFactory super.processFactory,
+  required super.processFactory,
 }) extends TestAcpPlugin {
   Completer<void>? selectionGate;
 

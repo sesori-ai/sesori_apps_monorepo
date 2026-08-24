@@ -34,7 +34,7 @@ class CursorPlugin._({
   required super.commandTracker,
   required super.sessionOptionsService,
   required final CursorSessionCleanupService _sessionCleanupService,
-  super.processFactory,
+  required super.processFactory,
 }) extends AcpPlugin implements PersistedSessionCleanupApi {
   static final String pluginId = Harness.cursor.name;
   static const String _providerId = "cursor";
@@ -43,7 +43,7 @@ class CursorPlugin._({
     String binaryPath = CursorBinary.defaultBinary,
     String? launchDirectory,
     String? apiEndpoint,
-    AcpProcessFactory? processFactory,
+    required AcpProcessFactory processFactory,
     required CursorSessionCleanupService sessionCleanupService,
   }) {
     final cwd = launchDirectory ?? Directory.current.path;
@@ -55,7 +55,7 @@ class CursorPlugin._({
     final catalogApi = CursorCatalogProbeApi(
       client: AcpStdioClient(
         launchSpec: launchSpec,
-        processFactory: processFactory ?? defaultAcpProcessFactory,
+        processFactory: processFactory,
         logTag: "$pluginId-catalog",
       ),
     );

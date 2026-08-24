@@ -60,7 +60,7 @@ abstract class AcpPlugin({
   /// also forgets a deleted session's model override. Built by the composer
   /// over the same configuration/command trackers as [eventMapper].
   required final AcpSessionOptionsService _sessionOptionsService,
-  final AcpProcessFactory? _processFactory,
+  required final AcpProcessFactory _processFactory,
 }) extends BridgeDerivedProjectsPluginApi {
   this : _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
 
@@ -338,7 +338,7 @@ abstract class AcpPlugin({
       _authenticationFailure = null;
       final client = AcpStdioClient(
         launchSpec: launchSpec,
-        processFactory: _processFactory ?? defaultAcpProcessFactory,
+        processFactory: _processFactory,
         logTag: id,
       );
       _client = client;
@@ -1525,7 +1525,7 @@ abstract class AcpPlugin({
     // replayed updates don't interleave with the live session's stream.
     final replayClient = AcpStdioClient(
       launchSpec: launchSpec,
-      processFactory: _processFactory ?? defaultAcpProcessFactory,
+      processFactory: _processFactory,
       logTag: "$id-replay",
     );
     final collector = AcpReplayCollector(
