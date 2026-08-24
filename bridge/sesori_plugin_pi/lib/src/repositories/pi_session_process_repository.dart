@@ -60,6 +60,15 @@ final class const PiSessionConnection({
   required final int generation,
 });
 
+sealed class const PiSessionAbortResult();
+
+final class const PiSessionAbortAcknowledged() extends PiSessionAbortResult;
+
+final class const PiSessionAbortProcessExited({
+  required final Object innerError,
+  required final StackTrace innerStackTrace,
+}) extends PiSessionAbortResult;
+
 final class const PiPromptPayload({required final String message, required final List<Map<String, Object?>> images});
 
 enum _PiPromptStreamingBehavior(final String wireValue) {
@@ -388,12 +397,17 @@ final class PiSessionProcessRepository({
     );
   }
 
-  Future<void> abort({required PiSessionConnection connection}) async {
-    await _requiredResident(connection).client.send(
-      command: PiRpcCommand.abort,
-      arguments: const {},
-      timeout: _historyRpcTimeout,
-    );
+  Future<PiSessionAbortResult> abort({required PiSessionConnection connection}) async {
+    try {
+      await _requiredResident(connection).client.send(
+        command: PiRpcCommand.abort,
+        arguments: const {},
+        timeout: _historyRpcTimeout,
+      );
+      return const PiSessionAbortAcknowledged();
+    } on PiRpcProcessExitException catch (error, stackTrace) {
+      return PiSessionAbortProcessExited(innerError: error, innerStackTrace: stackTrace);
+    }
   }
 
   bool sendExtensionUiResponse({

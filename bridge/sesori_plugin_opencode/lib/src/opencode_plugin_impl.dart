@@ -12,6 +12,8 @@ import "prompt_message_tracker.dart";
 import "sse/sse_connection.dart";
 import "sse_event_mapper.dart";
 
+enum _StaleSessionOption() { agent, model, variant }
+
 String formatDroppedSseFrameLog({
   required String category,
   required String message,
@@ -39,6 +41,9 @@ class OpenCodePlugin._({
   void Function()? onConnected,
   void Function()? onDisconnected,
 }) implements OpenCodeManagedApi {
+  static const String _sendPromptOperation = "sendPrompt";
+  static const String _sendCommandOperation = "sendCommand";
+
   final SseEventParser _parser;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.unknown);
@@ -174,6 +179,93 @@ class OpenCodePlugin._({
     final result = await _call(fn);
     _syncWorkState();
     return result;
+  }
+
+  /// Preserves OpenCode's synchronous reservation as the rejection boundary
+  /// while translating its generic 500 for a removed selection into the typed
+  /// stale-options contract. Discovery runs only after that ambiguous failure;
+  /// unrelated backend failures retain their original error and stack trace.
+  Future<T> _reserveWithStaleOptionsClassification<T>({
+    required String operation,
+    required String sessionId,
+    required String? agent,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID})? model,
+    required Future<T> Function() reserve,
+  }) async {
+    try {
+      return await _call(reserve);
+    } on PluginApiException catch (error, stackTrace) {
+      if (error.statusCode != io.HttpStatus.internalServerError ||
+          (agent == null && variant == null && model == null)) {
+        Error.throwWithStackTrace(error, stackTrace);
+      }
+
+      final _StaleSessionOption? staleOption;
+      try {
+        staleOption = await _findStaleSessionOption(
+          sessionId: sessionId,
+          agent: agent,
+          variant: variant,
+          model: model,
+        );
+      } on Object catch (validationError, validationStackTrace) {
+        Log.w(
+          "[opencode] failed to validate session options after reservation failure for $sessionId",
+          validationError,
+          validationStackTrace,
+        );
+        Error.throwWithStackTrace(error, stackTrace);
+      }
+
+      if (staleOption == null) Error.throwWithStackTrace(error, stackTrace);
+      Error.throwWithStackTrace(
+        PluginStaleOptionsException(
+          operation,
+          message: switch (staleOption) {
+            _StaleSessionOption.agent => "OpenCode no longer offers the selected agent.",
+            _StaleSessionOption.model => "OpenCode no longer offers the selected model.",
+            _StaleSessionOption.variant => "OpenCode no longer offers the selected variant.",
+          },
+          cause: error,
+        ),
+        stackTrace,
+      );
+    }
+  }
+
+  Future<_StaleSessionOption?> _findStaleSessionOption({
+    required String sessionId,
+    required String? agent,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    final projectId = _service.tracker.getSessionDirectory(sessionId: sessionId);
+    if (projectId == null) return null;
+
+    if (agent != null) {
+      final agents = await _call(() => _service.getAgents(projectId: projectId));
+      if (!agents.any((candidate) => candidate.name == agent)) return _StaleSessionOption.agent;
+    }
+
+    if (model case final requestedModel?) {
+      final providers = await _call(() => _service.getProviders(projectId: projectId));
+      PluginModel? offeredModel;
+      for (final provider in providers.providers) {
+        if (provider.id != requestedModel.providerID) continue;
+        for (final candidate in provider.models) {
+          if (candidate.id == requestedModel.modelID) {
+            offeredModel = candidate;
+            break;
+          }
+        }
+        break;
+      }
+      if (offeredModel == null || !offeredModel.isAvailable) return _StaleSessionOption.model;
+      if (variant != null && !offeredModel.variants.contains(variant.id)) return _StaleSessionOption.variant;
+    }
+
+    return null;
   }
 
   Future<void> _dispatchReservedMessage({
@@ -424,8 +516,13 @@ class OpenCodePlugin._({
     // OpenCode allocates the ordered id on its own host. Its reservation echo
     // is empty and cannot render; reusing the message below publishes the
     // stamped, renderable envelope after this correlation is recorded.
-    final messageId = await _call(
-      () => _service.reserveMessage(
+    final messageId = await _reserveWithStaleOptionsClassification(
+      operation: _sendPromptOperation,
+      sessionId: sessionId,
+      agent: agent,
+      variant: variant,
+      model: model,
+      reserve: () => _service.reserveMessage(
         sessionId: sessionId,
         agent: agent,
         variant: variant,
@@ -465,8 +562,13 @@ class OpenCodePlugin._({
     required ({String providerID, String modelID})? model,
   }) async {
     if (command == OpenCodeService.compactionCommandName) {
-      final reservation = await _call(
-        () => _service.reserveCompactionMessage(
+      final reservation = await _reserveWithStaleOptionsClassification(
+        operation: _sendCommandOperation,
+        sessionId: sessionId,
+        agent: agent,
+        variant: variant,
+        model: model,
+        reserve: () => _service.reserveCompactionMessage(
           sessionId: sessionId,
           arguments: arguments,
           userVisibleArguments: userVisibleArguments,
@@ -494,8 +596,13 @@ class OpenCodePlugin._({
       return;
     }
 
-    final messageId = await _call(
-      () => _service.reserveMessage(
+    final messageId = await _reserveWithStaleOptionsClassification(
+      operation: _sendCommandOperation,
+      sessionId: sessionId,
+      agent: agent,
+      variant: variant,
+      model: model,
+      reserve: () => _service.reserveMessage(
         sessionId: sessionId,
         agent: agent,
         variant: variant,

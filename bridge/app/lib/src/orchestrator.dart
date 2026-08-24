@@ -1040,6 +1040,7 @@ class OrchestratorSession._({
   Future<void> _teardown() async {
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
+    _prSyncService.beginShutdown();
     final teardownSw = Stopwatch()..start();
     Object? firstTeardownError;
     StackTrace? firstTeardownStackTrace;
@@ -1106,7 +1107,7 @@ class OrchestratorSession._({
     Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_maintenanceListener.dispose);
     await attempt(_viewedProjectPrRefreshListener.dispose);
-    await attempt(_prSyncService.dispose);
+    await attempt(_prSyncService.drain);
     Log.v("[shutdown] maintenance + pr-sync listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
     // Plugin teardown is owned by BridgePlugin.shutdown(), run as the
     // shutdown coordinator's ordered step — the deprecated direct
@@ -1254,6 +1255,7 @@ class OrchestratorSession._({
   void beginShutdown() {
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
+    _prSyncService.beginShutdown();
     if (_cancelRequestedAt == null) {
       _cancelRequestedAt = DateTime.now();
       Log.d(

@@ -182,7 +182,7 @@ class PiRpcClient({
 
     unawaited(
       process.stdin.done.catchError((Object error, StackTrace stack) {
-        if (generation != _generation) return;
+        if (generation != _generation || _exited.isCompleted) return;
         Log.w("[pi] stdin stream failed", error, stack);
         _failPending(PiRpcStdinException(cause: error), stack);
         try {
