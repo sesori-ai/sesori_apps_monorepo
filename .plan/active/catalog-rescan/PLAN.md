@@ -524,8 +524,11 @@ terminal event that arrives after this client already closed a cancelled row.
 Each list cubit records that commit as dirty and refreshes from a forced fresh
 snapshot; a second completion while that read is in flight produces one trailing
 snapshot. The dirty revision is consumed only when a snapshot applies, so an
-older overlapping read cannot overwrite imported rows and a failed snapshot is
-re-armed by the next ordinary, reconnect, or staleness refresh.
+older overlapping read cannot overwrite imported rows. A failed snapshot stays
+pending until a later ordinary, reconnect, or staleness read applies; a stale
+superseded read cannot rearm it. A forced failure that preempts a full-screen
+load owns the terminal error, and an explicit pull follows the newer read's
+outcome.
 
 An observed run still surfaces imported sessions because it receives the same
 global completion event. A run that finishes while disconnected has no live
@@ -673,7 +676,7 @@ Deliberately **not** added:
 | An older bridge omits `newItems` | Success row shows totals instead of a delta | Accepted. Honest degradation, and the absent group makes the difference explicit rather than silently wrong |
 | A rescan in flight when the connection drops | The row disappears and does not return | Accepted. The bridge continues and commits the import; the next connect seeds only non-terminal statuses, so a rescan that finished meanwhile is simply not announced |
 | Two surfaces trigger a rescan for the same harness at once | The bridge coalesces it: `CatalogImportService.start` finds the active control and applies the trigger to it | No client-side guard needed; existing bridge behavior is correct |
-| A post-commit list snapshot fails and no later list trigger arrives | Imported rows stay unseen until a later refresh | Accepted. The dirty completion revision is retained and the next ordinary, reconnect, or staleness refresh re-arms it; no autonomous retry loop is added for this low-frequency recovery path. |
+| A post-commit list snapshot fails and no later list trigger arrives | Imported rows stay unseen until a later refresh | Accepted. The dirty completion revision is retained and the next ordinary, reconnect, or staleness snapshot that applies re-arms it; no autonomous retry loop is added for this low-frequency recovery path. |
 | A failure row names no cause | The user must open the bridge log to learn why a harness failed | Accepted. `CatalogImportFailed.message` is unbounded `error.toString()`; a vaguer row is the honest trade until a producer-side sanitization boundary exists |
 | A lost response for a start that never arrived | That harness stays in `pluginIds` with no progress until the connection resets | Accepted. Bounded and self-clearing; a third result type across two layers is not worth it |
 | A rescan interrupted by a disconnect reports no summary | The user sees progress resume and the lists refresh, but no "Rescan complete" line for that run | Accepted deliberately. The alternative is claiming a total the client cannot vouch for; the lists, which are what the user actually came for, are still correct |

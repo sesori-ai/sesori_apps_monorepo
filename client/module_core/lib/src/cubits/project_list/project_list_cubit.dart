@@ -487,6 +487,10 @@ class ProjectListCubit(
   /// In-flight silent refresh, used for coalescing.
   Future<_ProjectFetchOutcome>? _activeRefresh;
 
+  /// Most recently started read. This is not a coalescing barrier: a refresh
+  /// whose response was superseded uses it only to observe the winning result.
+  Future<_ProjectFetchOutcome>? _latestFetch;
+
   /// Monotonically orders list reads so an older response cannot overwrite a
   /// snapshot requested after it.
   int _fetchGeneration = 0;
@@ -500,9 +504,26 @@ class ProjectListCubit(
 
   /// Re-fetches projects without showing the full-screen loading indicator.
   /// Concurrent ordinary calls coalesce onto the current silent refresh.
-  Future<bool> refreshProjects() async {
-    final outcome = await _refreshProjects(force: false, catalogRefresh: false);
-    return outcome != _ProjectFetchOutcome.failed;
+  Future<bool> refreshProjects() {
+    return _awaitRefreshResult(refresh: _refreshProjects(force: false, catalogRefresh: false));
+  }
+
+  /// A catalog refresh can supersede an explicit pull. Wait for the newer read
+  /// so the caller reports that read's outcome rather than premature success.
+  Future<bool> _awaitRefreshResult({required Future<_ProjectFetchOutcome> refresh}) async {
+    var latest = refresh;
+    while (true) {
+      switch (await latest) {
+        case _ProjectFetchOutcome.applied:
+          return true;
+        case _ProjectFetchOutcome.failed:
+          return false;
+        case _ProjectFetchOutcome.superseded:
+          final winningFetch = _latestFetch;
+          if (winningFetch == null || identical(winningFetch, latest)) return false;
+          latest = winningFetch;
+      }
+    }
   }
 
   Future<_ProjectFetchOutcome> _refreshProjects({
@@ -694,12 +715,14 @@ class ProjectListCubit(
   }) {
     final requestGeneration = ++_fetchGeneration;
     final catalogChangeGeneration = _catalogChangeGeneration;
-    return _runFetchProjects(
+    final fetch = _runFetchProjects(
       silent: silent,
       catalogRefresh: catalogRefresh,
       requestGeneration: requestGeneration,
       catalogChangeGeneration: catalogChangeGeneration,
     );
+    _latestFetch = fetch;
+    return fetch;
   }
 
   Future<_ProjectFetchOutcome> _runFetchProjects({
@@ -708,6 +731,7 @@ class ProjectListCubit(
     required int requestGeneration,
     required int catalogChangeGeneration,
   }) async {
+    var didApplySnapshot = false;
     try {
       // Captured BEFORE the fetch so the seed can't overwrite a live update
       // that arrives while the request is in flight.
@@ -750,10 +774,11 @@ class ProjectListCubit(
             occurredAtUtc: DateTime.now().toUtc(),
           );
           _consumeCatalogChangesThrough(generation: catalogChangeGeneration);
+          didApplySnapshot = true;
           return _ProjectFetchOutcome.applied;
 
         case ErrorResponse(:final error):
-          if (silent) {
+          if (silent && state is! ProjectListLoading) {
             logw("Failed to refresh projects: ${error.toString()}");
           } else if (_isBridgeUnavailable) {
             // The fetch failed because the bridge isn't connected — show the
@@ -770,7 +795,7 @@ class ProjectListCubit(
           return _ProjectFetchOutcome.failed;
       }
     } finally {
-      if (!catalogRefresh) _rearmCatalogRefreshAfterOrdinaryFetch();
+      if (!catalogRefresh && didApplySnapshot) _rearmCatalogRefreshAfterOrdinaryFetch();
     }
   }
 

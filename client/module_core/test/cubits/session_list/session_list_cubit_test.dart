@@ -2316,6 +2316,67 @@ void main() {
         expect((cubit.state as SessionListLoaded).sessions, [catalogSession]);
       });
 
+      test("a catalog failure that supersedes a full load exits loading", () async {
+        final fullLoad = Completer<ApiResponse<SessionListResponse>>();
+        var requestCount = 0;
+        Future<ApiResponse<SessionListResponse>> nextResponse() => switch (requestCount++) {
+          0 => successfulResponse(sessions: const []),
+          1 => fullLoad.future,
+          2 => Future<ApiResponse<SessionListResponse>>.value(ApiResponse.error(ApiError.generic())),
+          _ => successfulResponse(sessions: const []),
+        };
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer((_) => nextResponse());
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+        final load = cubit.loadSessions();
+        await Future<void>.delayed(Duration.zero);
+        final failure = cubit.stream.firstWhere((state) => state is SessionListFailed);
+        fakeCatalogRescanService.emitCatalogChanged();
+
+        expect(await failure, isA<SessionListFailed>());
+        fullLoad.complete(ApiResponse.success(const SessionListResponse(items: [])));
+        await load;
+      });
+
+      test("a superseded explicit refresh reports the catalog refresh failure", () async {
+        final explicitRefresh = Completer<ApiResponse<SessionListResponse>>();
+        var requestCount = 0;
+        Future<ApiResponse<SessionListResponse>> nextResponse() => switch (requestCount++) {
+          0 => successfulResponse(sessions: const []),
+          1 => explicitRefresh.future,
+          2 => Future<ApiResponse<SessionListResponse>>.value(ApiResponse.error(ApiError.generic())),
+          _ => successfulResponse(sessions: const []),
+        };
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer((_) => nextResponse());
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+        final refresh = cubit.refreshSessions(waitForPrData: true);
+        await Future<void>.delayed(Duration.zero);
+        fakeCatalogRescanService.emitCatalogChanged();
+        await Future<void>.delayed(Duration.zero);
+        expect(requestCount, 3);
+
+        explicitRefresh.complete(ApiResponse.success(const SessionListResponse(items: [])));
+        expect(await refresh, isFalse);
+        expect(requestCount, 3, reason: "the stale explicit read must not rearm the failed catalog refresh");
+      });
+
       test("runs a trailing catalog refresh after another commit arrives in flight", () async {
         final firstPostCommit = Completer<ApiResponse<SessionListResponse>>();
         final secondPostCommit = Completer<ApiResponse<SessionListResponse>>();
