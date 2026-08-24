@@ -1,0 +1,13 @@
+name: deepseek_plugin
+version: 0.1.0
+publish_to: none
+
+resolution: workspace
+
+environment:
+  sdk: ^3.13.1
+
+dev_dependencies:
+  crypto: ^3.0.7
+  lints: ^6.1.0
+  test: ^1.31.2

@@ -17,3 +17,4 @@ workspace:
   - sesori_plugin_claude
   - sesori_plugin_pi
   - sesori_plugin_hermes
+  - sesori_plugin_deepseek

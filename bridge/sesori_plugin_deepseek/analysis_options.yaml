@@ -1,0 +1,6 @@
+include: ../app/analysis_options.yaml
+
+analyzer:
+  errors:
+    unnecessary_type_name_in_constructor: ignore
+    use_primary_constructors: ignore

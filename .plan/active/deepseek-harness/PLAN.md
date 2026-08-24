@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `deepseek-harness`
-- **Status:** Step 5/15 merged; Step 6/15 in review; Step 7/15 starting locally
+- **Status:** Steps 1-5/15 merged; Step 6/15 in review; Step 7/16 pending after approved split
 - **Plan date:** 2026-08-22
 - **Implementation base:** `origin/main` at
   `ebcc09bf255e1410720be616b883fa40af95d4a4`
@@ -12,9 +12,13 @@
   `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`
 - **Repositories:** this monorepo plus a new
   `sesori-ai/sesori-deepseek-acp` runtime repository
-- **Delivery:** fifteen sequential PRs: one planning PR, five runtime-source
-  PRs, four bridge-plugin PRs, one runtime-release PR, two activation/runtime
-  PRs, one regression-documentation PR, and one verification/retirement PR
+- **Delivery:** sixteen sequential PRs: one planning PR, five runtime-source
+  PRs, one protocol-fixture foundation PR, four bridge-plugin PRs, one
+  runtime-release PR, two activation/runtime PRs, one regression-documentation
+  PR, and one verification/retirement PR
+- **Approved split:** Exact vendored protocol plus generated code made combined
+  staged implementation 5,120 additions versus 1,500 cap; user approved split
+  on 2026-08-24.
 
 ## Goal
 
@@ -446,7 +450,7 @@ concrete classes directly where needed.
 
 ### ACP Live-Connection Hook
 
-Step 7 adds one protected `AcpPlugin.requireConnectedClient()` method that
+Step 8 adds one protected `AcpPlugin.requireConnectedClient()` method that
 awaits the existing private connection path and returns the exact current
 `AcpStdioClient` or the existing typed authentication/connection failure. It
 does not expose connection creation/reset/disposal, does not retain a lease, and
@@ -484,11 +488,13 @@ conformance corpus in `sesori-deepseek-acp`. That JSON Schema is the sole
 machine-verifiable extension source. Runtime handlers/types validate against
 it; `PROTOCOL.md` is explanatory.
 
-Step 7 vendors the exact schema/corpus under the DeepSeek plugin's test fixtures
-with a source manifest containing runtime repository commit and SHA-256 values.
-Generated Dart DTOs and extension tests must accept every success fixture and
-reject every invalid fixture. Each later protocol-consuming PR reruns the full
-vendored corpus. A protocol change follows this order:
+Step 7 vendors the exact schema/corpus under the DeepSeek plugin's test-only
+package workspace and Makefile inventory with a source manifest containing the
+runtime repository commit and SHA-256 values. Exact schema, corpus, source
+manifest, and digest integrity tests run without production DTOs, APIs, or ACP
+hooks. Step 8 adds generated Dart DTOs and extension tests that accept every
+success fixture and reject every invalid fixture. Each later protocol-consuming
+PR reruns the full vendored corpus. A protocol change follows this order:
 
 1. merge schema, runtime validation/types, and corpus in the runtime repository;
 2. vendor that exact commit/digests and update Dart DTO/mapping tests;
@@ -497,7 +503,7 @@ vendored corpus. A protocol change follows this order:
 5. pin its immutable assets in the monorepo.
 
 A backward-incompatible change increments the extension protocol integer. Step
-11 may fix packaging but may not change protocol v1 after the consumer corpus
+12 may fix packaging but may not change protocol v1 after the consumer corpus
 has passed; a required protocol change pauses the series and rebaselines the
 plan/tracker before another PR opens. No shared production schema package or
 network-dependent CI check is added.
@@ -524,7 +530,7 @@ Node path and `exec` it. Release CI installs/builds dependencies on each target,
 runs adapter `--version`, `check`, initialize, list, new, history, prompt with a
 deterministic provider fixture, close, and restart/load smoke, then publishes
 SHA-256 sums. A target is not advertised in Dart until that exact artifact
-passes; Step 11 cannot complete with an unverified target silently listed.
+passes; Step 12 cannot complete with an unverified target silently listed.
 
 `DeepSeekRuntimeManifest` uses `packageDirectory`, adapter semantic versioning,
 the six immutable URLs/digests, and launcher member paths. Managed install
@@ -611,26 +617,28 @@ monorepo, and no existing ACP plugin is refactored beyond the two narrow hooks.
 2. Steps 2-6 land in `sesori-ai/sesori-deepseek-acp`; they use the canonical
    JSON Schema/corpus and a deterministic provider and do not publish a
    production asset yet.
-3. Steps 7-10 land in this monorepo and can test against a local runtime checkout
-   or packed npm workspace supplied by the runtime repository.
-4. Step 11 runs cross-repository conformance, pins final dependency versions,
+3. Step 7 lands the vendored protocol fixture foundation in this monorepo.
+4. Steps 8-11 land the bridge plugin in this monorepo and can test against a
+   local runtime checkout or packed npm workspace supplied by the runtime repository.
+5. Step 12 runs cross-repository conformance, pins final dependency versions,
    verifies all six targets, and publishes the first immutable adapter release.
-5. Step 12 pins only that published release and checksums in the Dart manifest.
-6. Step 13 activates the registered plugin only after setup, lifecycle, and
+6. Step 13 pins only that published release and checksums in the Dart manifest.
+7. Step 14 activates the registered plugin only after setup, lifecycle, and
    mandatory security/local-setup guidance exist.
-7. Step 14 reconciles all affected regression feature documents.
-8. Step 15 runs the recorded level/matrix and retires the plan only after Steps
+8. Step 15 reconciles all affected regression feature documents.
+9. Step 16 runs the recorded level/matrix and retires the plan only after Steps
    1-14 merge and required evidence passes. Any reduction requires explicit
    owner acceptance in this file.
 
 ## Delivery Rules
 
-- `TRACKER.md` is canonical for the fixed fifteen exact PR titles, repository,
-  complexity, line target, order, and state.
+- `TRACKER.md` is canonical for fixed PR titles, repository, complexity, line
+  target, order, and state. Merged Steps 1-6 retain their historical exact
+  `/15` titles; every unopened title uses `/16`.
 - Every PR targets its repository's main branch and follows the prior numbered
-  step. Cross-repository PR titles still use the exact `deepseek-harness` slug
-  and `/15` denominator.
-- Production Steps 2-13 run owning tests, strict analysis/lint, build or codegen
+  step. Cross-repository unopened PR titles use the exact `deepseek-harness`
+  slug and `/16` denominator.
+- Production Steps 2-14 run owning tests, strict analysis/lint, build or codegen
   where applicable, `git diff --check`, and architecture implementation review
   when required by repository scope.
 - Runtime fixtures contain no real source, prompts, credentials, paths, or raw
@@ -717,22 +725,28 @@ monorepo, and no existing ACP plugin is refactored beyond the two narrow hooks.
   selection, invalid/partial writes failing closed, command-vs-prose parsing,
   synchronous/turn-driving commands, rename, and no credential/error leakage.
 
-### Step 7/15: Scaffold the DeepSeek bridge plugin
+### Step 7/16: Vendor the DeepSeek extension protocol
+
+- Create the test-only package workspace and Makefile inventory needed to vendor
+  the exact runtime JSON Schema and synthetic conformance corpus.
+- Record the exact runtime source commit and SHA-256 values in a source manifest;
+  test schema, corpus, manifest, and digest integrity exactly.
+- Add no production DTO, API, ACP hook, runtime descriptor, wrapper, or manifest.
+
+### Step 8/16: Scaffold the DeepSeek bridge plugin
 
 - Create `bridge/sesori_plugin_deepseek`, public/testing barrels, identity,
   binary launch spec, generated extension DTOs, `DeepSeekAcpApi`, event mapper,
   approval registry, and app-invisible bridge workspace/CI/dependency inventory.
-- Add the narrow ACP base hooks for plugin-owned outbound prompt identity and
-  metadata plus protected `requireConnectedClient()` while preserving all
-  existing Cursor/Hermes/OMP behavior.
-- Vendor the exact runtime JSON Schema/corpus with source commit/digests; add
-  adapter extension-version validation at initialize and generated DTO tests
-  against every fixture.
+- Add narrow ACP base hooks for plugin-owned outbound prompt identity and metadata
+  plus protected `requireConnectedClient()` while preserving Cursor/Hermes/OMP.
+- Add adapter extension-version validation at initialize and generated DTO tests
+  against every vendored fixture. No runtime descriptor, wrapper, or manifest.
 - Cover launch args/environment, exact extension schemas, incompatible adapter,
   prompt metadata, existing ACP regression suites, unknown extension variants,
   and generated JSON omission rules.
 
-### Step 8/15: Map DeepSeek sessions and history
+### Step 9/16: Map DeepSeek sessions and history
 
 - Add history repository pagination over the live ACP client borrowed only
   through `AcpPlugin.requireConnectedClient()` and feed returned standard
@@ -746,7 +760,7 @@ monorepo, and no existing ACP plugin is refactored beyond the two narrow hooks.
   later prompt IDs, hidden context omission, unknown events, upstream artifact
   retention/tombstone, and cause-preserving failures.
 
-### Step 9/15: Map DeepSeek turns and interactions
+### Step 10/16: Map DeepSeek turns and interactions
 
 - Map DeepSeek standard updates and status extensions into existing live text,
   reasoning, image, tool, plan, title, usage, retry, compaction, error, and diff
@@ -757,7 +771,7 @@ monorepo, and no existing ACP plugin is refactored beyond the two narrow hooks.
   recovery, once/reject permissions, multi/single/custom questions, unsupported
   question degradation, late reply cleanup, and process exit/disposal.
 
-### Step 10/15: Expose DeepSeek options and lifecycle
+### Step 11/16: Expose DeepSeek options and lifecycle
 
 - Add catalog repository and history-independent session-options service, one
   primary agent, providers/models/reasoning variants, commands, selection
@@ -765,12 +779,12 @@ monorepo, and no existing ACP plugin is refactored beyond the two narrow hooks.
   `BridgePluginApi` method.
 - Add plugin descriptor and bridge wrapper around an explicit/PATH runtime for
   setup inspection, ensureRuntime, lazy activation, restart, disable, and
-  shutdown. Managed install remains disabled until Step 12.
+  shutdown. Managed install remains disabled until Step 13.
 - Cover complete/partial/failed catalog discovery, opaque values, current
   default, refresh, selection failure before prompt, local setup guidance,
   runtime crash/restart, no-op contracts, and idempotent disposal.
 
-### Step 11/15: Release the managed DeepSeek adapter
+### Step 12/16: Release the managed DeepSeek adapter
 
 - Recheck the latest DeepSeek prerelease. Keep `0.1.1-rc.2` unless a newer exact
   release passes the complete protocol/conformance suite; record any refreshed
@@ -784,9 +798,9 @@ monorepo, and no existing ACP plugin is refactored beyond the two narrow hooks.
   vendored conformance corpus without changing protocol v1. A missing target is
   Blocked, not silently supported.
 
-### Step 12/15: Install the managed DeepSeek runtime
+### Step 13/16: Install the managed DeepSeek runtime
 
-- Add `DeepSeekRuntimeManifest` with the exact Step 11 version, six assets,
+- Add `DeepSeekRuntimeManifest` with the exact Step 12 version, six assets,
   checksums, package layout, semantic floor, explicit/PATH/managed precedence,
   descriptor install capability, provision/install services, and setup output.
 - Pass only adapter/state/security environment owned by the plugin and extend
@@ -797,7 +811,7 @@ monorepo, and no existing ACP plugin is refactored beyond the two narrow hooks.
   fallback, reported version, no-install unsupported state, and local managed
   install plus ACP smoke.
 
-### Step 13/15: Activate DeepSeek Harness
+### Step 14/16: Activate DeepSeek Harness
 
 - Add `Harness.deepseek`, bridge app dependency and registration in
   `bridge/app/lib/src/runtime/plugin_registry.dart`, exact known-plugin fixtures,
@@ -809,7 +823,7 @@ monorepo, and no existing ACP plugin is refactored beyond the two narrow hooks.
   light/dark generic presentation, older-client fallback, app/client analysis,
   and architecture implementation review.
 
-### Step 14/15: Reconcile DeepSeek regression coverage
+### Step 15/16: Reconcile DeepSeek regression coverage
 
 - Update the affected `docs/regression/` files listed below with shipped
   DeepSeek behavior, supported matrix, state/config isolation, generic icon,
@@ -819,20 +833,20 @@ monorepo, and no existing ACP plugin is refactored beyond the two narrow hooks.
 - Run Markdown/reference checks and `git diff --check`; no Dart/Flutter suites
   for this documentation-only step.
 
-### Step 15/15: Verify DeepSeek and retire the plan
+### Step 16/16: Verify DeepSeek and retire the plan
 
 - Run the complete matrix below with the published managed adapter and record
   versions, platforms, build ids, privacy-safe evidence, outcomes, and cleanup
   in `TRACKER.md`/`PROTOCOL.md`.
-- Confirm Steps 1-14 merged and every required row passes. Move
+- Confirm Steps 1-15 merged and every required row passes. Move
   `.plan/active/deepseek-harness/` to `.plan/completed/deepseek-harness/` only
   then. A reduction requires explicit owner acceptance recorded here.
 - This PR is verification/evidence/retirement only and contains no production
-  fix or runtime release. A discovered defect keeps Step 15 blocked; open
+  fix or runtime release. A discovered defect keeps Step 16 blocked; open
   separate owning-repository correction and, when needed, adapter release plus
   monorepo pin PRs. Rebaseline the fixed series total/titles in the plan/tracker
   before those PRs open, complete them, then rerun only affected evidence and
-  resume Step 15.
+  resume Step 16.
 
 ## Regression And Retirement Matrix
 

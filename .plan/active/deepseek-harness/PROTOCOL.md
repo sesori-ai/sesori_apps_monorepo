@@ -23,11 +23,13 @@
 This document explains the intended adapter contract. The sole
 machine-verifiable source is the runtime repository's planned
 `protocol/v1/deepseek-acp.schema.json` plus its synthetic conformance corpus.
-Step 2 creates that source and validates runtime handlers/types against it;
-Step 7 vendors the exact schema/corpus commit and digests and validates generated
-Dart DTOs against every fixture. If implementation discovers an upstream
-mismatch, change the runtime schema/corpus first, then update this explanation
-and the vendored Dart consumer in the release order recorded in `PLAN.md`.
+Step 2 creates that source and validates runtime handlers/types against it.
+Step 7 vendors the exact schema/corpus commit and digests into a test-only
+package workspace and Makefile inventory, then tests schema/corpus/source-manifest
+integrity. Step 8 validates generated Dart DTOs against every fixture. If
+implementation discovers an upstream mismatch, change the runtime schema/corpus
+first, then update this explanation and the vendored Dart consumer in the release
+order recorded in `PLAN.md`.
 
 ## 1. Why A Custom Adapter Exists
 
@@ -58,7 +60,7 @@ Initial research pins:
 ```text
 @deepseek-ai/dsh-base                 0.1.1-rc.2
 @agentclientprotocol/sdk              0.25.1
-Node                                  one exact 24.x patch selected in Step 11
+Node                                  one exact 24.x patch selected in Step 12
 ```
 
 Every direct and transitive DeepSeek package is locked to the same upstream
@@ -468,10 +470,11 @@ The runtime repository owns deterministic protocol fixtures for:
 - telemetry/state/config isolation and stdout/content-log privacy; and
 - archive relocation/launch on all six target artifacts.
 
-The Dart package vendors the runtime repository's synthetic wire corpus and
-schema, with a manifest recording the source commit and SHA-256 values; it does
-not copy DeepSeek private session files. Runtime and Dart protocol-changing PRs
-must update and run that corpus in source/consumer order. Step 11 reruns
-cross-repository conformance without changing protocol v1 before publishing the
-adapter release; Step 15 repeats the complete product boundary with the exact
-managed artifacts pinned by the bridge.
+Step 7 vendors the runtime repository's synthetic wire corpus and schema in a
+test-only package workspace and Makefile inventory, with a manifest recording
+the source commit and SHA-256 values; it does not copy DeepSeek private session
+files or add production DTOs, APIs, or ACP hooks. Step 8 adds consumer DTO tests.
+Runtime and Dart protocol-changing PRs must update and run that corpus in
+source/consumer order. Step 12 reruns cross-repository conformance without
+changing protocol v1 before publishing the adapter release; Step 16 repeats the
+complete product boundary with the exact managed artifacts pinned by the bridge.

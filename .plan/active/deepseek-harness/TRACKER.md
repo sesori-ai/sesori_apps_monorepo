@@ -3,11 +3,12 @@
 ## Current State
 
 - **Plan slug:** `deepseek-harness`
-- **Plan status:** Step 5/15 merged; Step 6/15 PR open; Step 7/15 starting locally
+- **Plan status:** Steps 1-5/15 merged; Step 6/15 PR open; Step 7/16 verified locally
+  after user-approved split on 2026-08-24
 - **Current repository:** `sesori-ai/sesori_apps_monorepo`
-- **Current branch:** `deepseek-harness/step-7-scaffold-plugin`
+- **Current branch:** `deepseek-harness/step-7-protocol-fixtures`
 - **Current open PR:** [runtime PR #5](https://github.com/sesori-ai/sesori-deepseek-acp/pull/5)
-- **Next action:** monitor Step 6 and implement Step 7 locally
+- **Next action:** monitor Step 6 and open protocol-fixture Step 7 after merge
 - **Implementation started:** yes
 - **Retirement:** blocked until every required row in `PLAN.md` passes
 
@@ -21,15 +22,21 @@
 | [x] | 4/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): add durable ACP sessions and replay [step 4/15]` | Complex persistence and live ownership | 1,450 | [PR #3](https://github.com/sesori-ai/sesori-deepseek-acp/pull/3) merged |
 | [x] | 5/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): stream DeepSeek turns and interactions [step 5/15]` | Complex concurrent event and interaction flow | 1,450 | [PR #4](https://github.com/sesori-ai/sesori-deepseek-acp/pull/4) merged |
 | [ ] | 6/15 | deepseek adapter | `⚙️ [deepseek-harness] feat(runtime): expose DeepSeek catalogs and commands [step 6/15]` | Moderate option/command boundary | 1,200 | [PR #5](https://github.com/sesori-ai/sesori-deepseek-acp/pull/5) open; CI running |
-| [ ] | 7/15 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): scaffold the DeepSeek bridge plugin [step 7/15]` | Moderate new package and narrow ACP hooks | 1,250 | Local successor starting |
-| [ ] | 8/15 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek sessions and history [step 8/15]` | Complex replay and identity flow | 1,450 | Pending Step 7 |
-| [ ] | 9/15 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek turns and interactions [step 9/15]` | Complex events, questions, and permissions | 1,450 | Pending Step 8 |
-| [ ] | 10/15 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): expose options and lifecycle [step 10/15]` | Moderate plugin API and lifecycle composition | 1,350 | Pending Step 9 |
-| [ ] | 11/15 | deepseek adapter | `🚧 [deepseek-harness] build(runtime): release the managed DeepSeek adapter [step 11/15]` | Complex supply chain and six-platform release | 1,300 | Pending Step 10 |
-| [ ] | 12/15 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): install the managed DeepSeek runtime [step 12/15]` | Moderate managed-runtime integration | 1,250 | Pending Step 11 |
-| [ ] | 13/15 | apps monorepo | `⚙️ [deepseek-harness] feat(app): activate DeepSeek Harness [step 13/15]` | Moderate registry/client activation | 1,000 | Pending Step 12 |
-| [ ] | 14/15 | apps monorepo | `🌱 [deepseek-harness] docs: document DeepSeek regression coverage [step 14/15]` | Straight documentation reconciliation | 600 | Pending Step 13 |
-| [ ] | 15/15 | apps monorepo | `🌱 [deepseek-harness] docs: verify DeepSeek and retire the plan [step 15/15]` | Trivial evidence/retirement changes after a complex external verification run | 700 | Pending Step 14 |
+| [ ] | 7/16 | apps monorepo | `🌿 [deepseek-harness] test(deepseek): vendor the DeepSeek extension protocol [step 7/16]` | Straightforward test-only protocol fixture foundation | 1,100 | Local implementation verified; pending Step 6 |
+| [ ] | 8/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): scaffold the DeepSeek bridge plugin [step 8/16]` | Moderate new package and narrow ACP hooks | 1,450 | Pending Step 7 |
+| [ ] | 9/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek sessions and history [step 9/16]` | Complex replay and identity flow | 1,450 | Pending Step 8 |
+| [ ] | 10/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek turns and interactions [step 10/16]` | Complex events, questions, and permissions | 1,450 | Pending Step 9 |
+| [ ] | 11/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): expose options and lifecycle [step 11/16]` | Moderate plugin API and lifecycle composition | 1,350 | Pending Step 10 |
+| [ ] | 12/16 | deepseek adapter | `🚧 [deepseek-harness] build(runtime): release the managed DeepSeek adapter [step 12/16]` | Complex supply chain and six-platform release | 1,300 | Pending Step 11 |
+| [ ] | 13/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): install the managed DeepSeek runtime [step 13/16]` | Moderate managed-runtime integration | 1,250 | Pending Step 12 |
+| [ ] | 14/16 | apps monorepo | `⚙️ [deepseek-harness] feat(app): activate DeepSeek Harness [step 14/16]` | Moderate registry/client activation | 1,000 | Pending Step 13 |
+| [ ] | 15/16 | apps monorepo | `🌱 [deepseek-harness] docs: document DeepSeek regression coverage [step 15/16]` | Straight documentation reconciliation | 600 | Pending Step 14 |
+| [ ] | 16/16 | apps monorepo | `🌱 [deepseek-harness] docs: verify DeepSeek and retire the plan [step 16/16]` | Trivial evidence/retirement changes after a complex external verification run | 700 | Pending Step 15 |
+
+On 2026-08-24, user approved this 15-to-16 split because combined staged
+implementation measured 5,120 additions against the 1,500-line cap. Merged
+Existing Steps 1-6 retain historical exact `/15` titles; every unopened former Step 7-15
+was renumbered to Step 8-16 with `/16`.
 
 The total and titles are fixed for the series. If implementation evidence
 requires a split before a PR opens, update both plan and tracker first and
@@ -73,7 +80,7 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 
 | Date | Review | Result | Changes |
 |---|---|---|---|
-| 2026-08-22 | Architecture plan review | Rejected draft with seven concrete findings | Clarified class composition/layers, moved DTO mapping to repositories, removed two unjustified Services, assigned the ACP live-client hook, fixed interaction ownership, made JSON Schema/corpus authoritative, and made Step 15 verification-only. Per repository rules, valid findings were applied without a second approval review. |
+| 2026-08-22 | Architecture plan review | Rejected draft with seven concrete findings | Clarified class composition/layers, moved DTO mapping to repositories, removed two unjustified Services, assigned the ACP live-client hook, fixed interaction ownership, made JSON Schema/corpus authoritative, and made Step 16 verification-only. Per repository rules, valid findings were applied without a second approval review. |
 | 2026-08-23 | Step 4 architecture implementation review | Pass | Durable session ownership, persistence, and replay matched the planned one-process boundary. |
 | 2026-08-23 | Step 5 architecture implementation review | Rejected first pass; passed second pass | Consolidated duplicate live/replay mappings into one event projector with thin delivery and collection sinks. |
 | 2026-08-23 | Step 6 architecture implementation review | Rejected first pass; passed second pass | Changed cold rename from retained ACP ownership to one coordinated resume/rename/flush/notify/dispose transition. |
@@ -116,6 +123,14 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] Changed-line count: 669 of the 1,200-line target
 - [x] Synced with merged Step 5; post-merge verification remained green
 - [x] PR #5 opened; CI started
+
+### Step 7/16
+
+- [x] `dart pub get`
+- [x] `dart analyze --fatal-infos`
+- [x] `dart test`: protocol source-manifest and SHA-256 integrity pass
+- [x] `git diff --check`
+- [x] Changed-line count: 1,079 of the 1,100-line target before this evidence entry
 
 Later implementation and live evidence is appended here by step. Never mark a
 regression row passed without the boundary and matrix required by `PLAN.md`.

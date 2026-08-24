@@ -1,0 +1,92 @@
+[
+  {
+    "definition": "initializeMetadata",
+    "value": {
+      "extensionProtocolVersion": 2,
+      "adapterVersion": "0.1.0",
+      "harnessVersion": "0.1.1",
+      "persistenceOwner": "sesori"
+    }
+  },
+  {
+    "definition": "promptMetadata",
+    "value": {
+      "messageId": ""
+    }
+  },
+  {
+    "definition": "catalogRequest",
+    "value": {
+      "cwd": "relative/project"
+    }
+  },
+  {
+    "definition": "catalogResponse",
+    "value": {
+      "agent": {
+        "id": "other",
+        "name": "DeepSeek",
+        "primary": true
+      },
+      "providers": [],
+      "defaultSelectionId": null,
+      "commands": [],
+      "failures": []
+    }
+  },
+  {
+    "definition": "historyRequest",
+    "value": {
+      "sessionId": "session-1",
+      "maxMessages": 101
+    }
+  },
+  {
+    "definition": "historyResponse",
+    "value": {
+      "updates": [],
+      "hasMore": "yes"
+    }
+  },
+  {
+    "definition": "renameRequest",
+    "value": {
+      "sessionId": "session-1",
+      "title": "   "
+    }
+  },
+  {
+    "definition": "renameResponse",
+    "value": {
+      "title": ""
+    }
+  },
+  {
+    "definition": "askUserQuestionRequest",
+    "value": {
+      "sessionId": "session-1",
+      "questions": []
+    }
+  },
+  {
+    "definition": "askUserQuestionResponse",
+    "value": {
+      "answers": [
+        {
+          "questionId": "q1",
+          "selectedLabels": [
+            "Alpha",
+            "Alpha"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "definition": "sessionStatusNotification",
+    "value": {
+      "sessionId": "session-1",
+      "kind": "future_status"
+    }
+  }
+]
