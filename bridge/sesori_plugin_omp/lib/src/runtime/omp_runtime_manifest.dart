@@ -91,7 +91,8 @@ class const OmpRuntimeManifest() extends RuntimeManifest {
 
   /// Whether this release publishes an asset for [target]. Linux support is
   /// known before the host's libc variant is selected asynchronously.
-  bool hasAssetFor({required PlatformTarget target}) {
+  @override
+  bool supportsManagedInstallOn({required PlatformTarget target}) {
     if (target.os == PlatformOs.linux) return _linuxAssets.values.any((assets) => assets.containsKey(target.arch));
     return assetFor(target: target) != null;
   }

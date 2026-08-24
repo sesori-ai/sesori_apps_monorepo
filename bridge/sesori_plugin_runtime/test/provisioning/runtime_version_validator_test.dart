@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
@@ -158,6 +159,122 @@ void main() {
       );
 
       expect(validator.parseVersionOutput(output: "codex-cli v0.144.5")?.raw, "0.144.5");
+    });
+  });
+
+  group("RuntimeVersionValidator.probe", () {
+    Future<RuntimeProbeOutcome> probe(_FakeCommandExecutor executor) {
+      return RuntimeVersionValidator(
+        commandExecutor: executor,
+        manifest: const _SemverManifest(),
+      ).probe(
+        executable: "opencode",
+        environment: const {"PATH": "/usr/bin"},
+      );
+    }
+
+    test("distinguishes successful, non-zero, and unrecognized output", () async {
+      expect(
+        await probe(
+          _FakeCommandExecutor(
+            result: const CommandResult(exitCode: 0, stdout: "1.17.9", stderr: ""),
+          ),
+        ),
+        isA<RuntimeProbeReady>().having((outcome) => outcome.version.raw, "version", "1.17.9"),
+      );
+      expect(
+        await probe(
+          _FakeCommandExecutor(
+            result: const CommandResult(exitCode: 9, stdout: "", stderr: ""),
+          ),
+        ),
+        isA<RuntimeProbeNonZeroExit>().having((outcome) => outcome.exitCode, "exitCode", 9),
+      );
+      expect(
+        await probe(
+          _FakeCommandExecutor(
+            result: const CommandResult(exitCode: 0, stdout: "unknown", stderr: ""),
+          ),
+        ),
+        isA<RuntimeProbeUnrecognized>(),
+      );
+    });
+
+    test("distinguishes missing, timeout, and other failures", () async {
+      expect(
+        await probe(_FakeCommandExecutor(error: const ProcessException("opencode", ["--version"]))),
+        isA<RuntimeProbeMissing>(),
+      );
+      expect(
+        await probe(_FakeCommandExecutor(error: TimeoutException("timed out"))),
+        isA<RuntimeProbeTimedOut>(),
+      );
+      expect(
+        await probe(_FakeCommandExecutor(error: StateError("failed"))),
+        isA<RuntimeProbeFailed>(),
+      );
+    });
+
+    test("includes the attempted executable in unexpected failure logs", () async {
+      final stderrLines = <String>[];
+      final originalLevel = Log.level;
+      Log.level = LogLevel.warning;
+      try {
+        await IOOverrides.runZoned(
+          () => probe(_FakeCommandExecutor(error: StateError("failed"))),
+          stderr: () => CapturingStdout(lines: stderrLines),
+        );
+      } finally {
+        Log.level = originalLevel;
+      }
+
+      expect(stderrLines.join("\n"), contains("opencode --version"));
+    });
+
+    test("logs a recovered timeout with the attempted executable", () async {
+      final stderrLines = <String>[];
+      final originalLevel = Log.level;
+      Log.level = LogLevel.warning;
+      try {
+        await IOOverrides.runZoned(
+          () => probe(_FakeCommandExecutor(error: TimeoutException("timed out"))),
+          stderr: () => CapturingStdout(lines: stderrLines),
+        );
+      } finally {
+        Log.level = originalLevel;
+      }
+
+      expect(stderrLines.join("\n"), contains("opencode --version"));
+    });
+
+    test("logs nonzero and unrecognized probe outcomes at debug level", () async {
+      final stderrLines = <String>[];
+      final originalLevel = Log.level;
+      Log.level = LogLevel.debug;
+      try {
+        await IOOverrides.runZoned(
+          () async {
+            await probe(
+              _FakeCommandExecutor(
+                result: const CommandResult(exitCode: 7, stdout: "", stderr: ""),
+              ),
+            );
+            await probe(
+              _FakeCommandExecutor(
+                result: const CommandResult(exitCode: 0, stdout: "unknown", stderr: ""),
+              ),
+            );
+          },
+          stderr: () => CapturingStdout(lines: stderrLines),
+        );
+      } finally {
+        Log.level = originalLevel;
+      }
+
+      final output = stderrLines.join("\n");
+      expect(output, contains("opencode --version"));
+      expect(output, contains("exited 7"));
+      expect(output, contains("unrecognized version"));
     });
   });
 }
