@@ -4,7 +4,6 @@ import "plugin_operation_exception.dart";
 ///
 /// Handlers and routers can catch this to forward the real HTTP status
 /// instead of collapsing every failure to 502.
-// ignore: no_slop_linter/prefer_required_named_parameters, public exception constructor
 class PluginApiException(super.endpoint, int statusCode, {super.message, super.cause})
     extends PluginOperationException {
   this : super(statusCode: statusCode);

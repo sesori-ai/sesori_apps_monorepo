@@ -15,7 +15,6 @@ class PluginOperationException implements Exception {
   // ignore: no_slop_linter/prefer_specific_type, caught errors are opaque
   final Object? cause;
 
-  // ignore: no_slop_linter/prefer_required_named_parameters, public exception constructor
   const new(
     this.operation, {
     this.statusCode,
@@ -28,7 +27,6 @@ class PluginOperationException implements Exception {
   /// Handlers use [isNotFound] for idempotent deletes, so non-HTTP plugins
   /// should signal missing entities through this constructor rather than a
   /// hand-rolled status code.
-  // ignore: no_slop_linter/prefer_required_named_parameters, public exception constructor
   const new notFound(this.operation, {this.message, this.cause}) : statusCode = 404;
 
   /// `true` when this failure means the target entity does not exist.

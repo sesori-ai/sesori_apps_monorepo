@@ -33,7 +33,6 @@ sealed class const PluginStatus() {
   ///
   /// Transitioning to a status equal to the current one is handled by the
   /// publisher as a no-op and is not part of this relation.
-  // ignore: no_slop_linter/prefer_required_named_parameters, public state-machine API
   bool canTransitionTo(PluginStatus next) {
     return switch (this) {
       PluginStarting() =>

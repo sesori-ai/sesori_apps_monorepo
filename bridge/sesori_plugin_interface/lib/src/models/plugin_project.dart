@@ -29,7 +29,6 @@ sealed class PluginProject with _$PluginProject {
 /// the activity is null.
 @freezed
 sealed class PluginProjectActivity with _$PluginProjectActivity {
-  // ignore: no_slop_linter/prefer_required_named_parameters, generated public model signature
   const factory({
     required int createdAt,
     required int updatedAt,
