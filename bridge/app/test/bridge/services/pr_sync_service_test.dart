@@ -620,10 +620,11 @@ void main() {
         projectIds: {"one"},
         refreshPolicy: PrRefreshPolicy.explicit,
       );
-      service.dispose();
+      final disposal = service.dispose();
 
       expect(await queued, PrRefreshOutcome.failed);
       selectionBlock.complete();
+      await disposal;
       expect(await first, PrRefreshOutcome.failed);
       expect(source.selectionCalls, hasLength(1));
     });
@@ -651,13 +652,48 @@ void main() {
         refreshPolicy: PrRefreshPolicy.background,
       );
       await sessions.loadStarted.future;
-      service.dispose();
+      final disposal = service.dispose();
       sessionLoadBlock.complete();
+      await disposal;
       await _waitFor(() => sessions.completedLoadCount == 1);
       await refresh;
 
       expect(source.resolveCalls, isEmpty);
       expect(pullRequests.applyCalls, isEmpty);
+    });
+
+    test("dispose waits for an active local refresh write", () async {
+      final applyBlock = Completer<void>();
+      final source = _FakePrSource(
+        targetsByDirectory: const {
+          "/one": PullRequestLocalBranchDirectoryTarget(branchName: "feature/current"),
+        },
+      );
+      final pullRequests = _FakePullRequestRepository(applyBlock: applyBlock);
+      final service = _service(
+        source: source,
+        pullRequests: pullRequests,
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
+        },
+      );
+
+      final refresh = service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.background,
+      );
+      await pullRequests.applyStarted.future;
+      final disposal = service.dispose();
+      var disposalCompleted = false;
+      unawaited(disposal.then((_) => disposalCompleted = true));
+      await Future<void>.delayed(Duration.zero);
+      expect(disposalCompleted, isFalse);
+
+      applyBlock.complete();
+      await disposal;
+
+      expect(disposalCompleted, isTrue);
+      expect(await refresh, PrRefreshOutcome.failed);
     });
 
     test("dispose abandons local resolution finishing during shutdown", () async {
@@ -689,8 +725,9 @@ void main() {
         refreshPolicy: PrRefreshPolicy.background,
       );
       await _waitFor(() => source.resolveCalls.isNotEmpty);
-      service.dispose();
+      final disposal = service.dispose();
       resolutionBlock.complete();
+      await disposal;
       await _waitFor(() => source.completedResolutionCount == 1);
       await refresh;
 
@@ -835,7 +872,7 @@ final class _FakePrSource({
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-final class _FakePullRequestRepository() implements PullRequestRepository {
+final class _FakePullRequestRepository({final Completer<void>? applyBlock}) implements PullRequestRepository {
   Set<String> localChangedProjectIds = const <String>{};
   Set<String> preparedChangedProjectIds = const <String>{};
   final Map<String, PullRequestReplacementOutcome> replacementOutcomes = <String, PullRequestReplacementOutcome>{};
@@ -851,6 +888,7 @@ final class _FakePullRequestRepository() implements PullRequestRepository {
     })
   >
   replaceCalls = [];
+  final Completer<void> applyStarted = Completer<void>();
 
   @override
   Future<Set<String>> applyResolvedTargets({
@@ -861,6 +899,8 @@ final class _FakePullRequestRepository() implements PullRequestRepository {
       sessionsByProject: Map<String, List<StoredSession>>.from(sessionsByProject),
       targets: Map<String, PullRequestDirectoryTarget>.from(targetsByDirectory),
     ));
+    if (!applyStarted.isCompleted) applyStarted.complete();
+    if (applyBlock case final block?) await block.future;
     return localChangedProjectIds;
   }
 

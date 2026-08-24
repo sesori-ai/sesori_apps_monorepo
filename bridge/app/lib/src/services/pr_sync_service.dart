@@ -35,6 +35,8 @@ class PrSyncService({
   ({bool capable, DateTime checkedAt})? _githubCliCapabilityCache;
   Future<bool>? _githubCliCapabilityCheck;
   bool _identityVerificationFailureReported = false;
+  Future<void>? _activeDrain;
+  Future<void>? _disposeFuture;
   bool _isDraining = false;
   bool _disposed = false;
 
@@ -107,7 +109,9 @@ class PrSyncService({
   void _ensureDrainStarted() {
     if (_isDraining || _disposed) return;
     _isDraining = true;
-    unawaited(_drainRefreshCycles());
+    final drain = _drainRefreshCycles();
+    _activeDrain = drain;
+    unawaited(drain);
   }
 
   Future<void> _drainRefreshCycles() async {
@@ -352,7 +356,7 @@ class PrSyncService({
     }
   }
 
-  void dispose() {
+  void beginShutdown() {
     if (_disposed) return;
     _disposed = true;
     _pendingProjectGenerations.clear();
@@ -360,7 +364,19 @@ class PrSyncService({
       waiter.fail();
     }
     _refreshWaiters.clear();
-    _renderedChangesController.close();
+  }
+
+  Future<void> drain() => _disposeFuture ??= _drain();
+
+  Future<void> dispose() {
+    beginShutdown();
+    return drain();
+  }
+
+  Future<void> _drain() async {
+    final activeDrain = _activeDrain;
+    if (activeDrain != null) await activeDrain;
+    await _renderedChangesController.close();
   }
 }
 
