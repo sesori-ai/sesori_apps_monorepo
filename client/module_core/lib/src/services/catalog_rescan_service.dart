@@ -42,6 +42,10 @@ class CatalogRescanService({
       ..add(_connectionService.status.listen(_onConnectionStatus))
       ..add(_connectionService.events.listen(_onSseEvent))
       ..add(_managementService.snapshots.listen(_onManagementSnapshot));
+    // Resolved lazily, so the connection is often already up by the time this
+    // exists and no false-to-true transition will ever arrive to trigger the
+    // recovery read.
+    if (_connected) unawaited(_recoverInFlight());
   }
 
   final BehaviorSubject<CatalogRescanState> _state = BehaviorSubject.seeded(
@@ -63,6 +67,10 @@ class CatalogRescanService({
 
   /// True when the live operation was discovered rather than started here.
   bool _observed = false;
+
+  /// Start requests still awaiting a response, so a cancel can order itself
+  /// after them rather than racing its own POST.
+  final Set<Future<void>> _pendingStarts = {};
 
   Timer? _clearTimer;
   bool _connected = _connectionService.currentStatus is ConnectionConnected;
@@ -120,10 +128,22 @@ class CatalogRescanService({
   Future<void> cancel() async {
     if (_disposed || _members.isEmpty) return;
     final pluginIds = Set<String>.of(_members);
+    // Close first so the row goes at once, then wait for any start still in
+    // flight: a DELETE that overtakes its POST finds no import to cancel, and
+    // the import the user just cancelled would run anyway.
     _closeOperation(const CatalogRescanState.idle());
-    await Future.wait([
+    await Future.wait(_pendingStarts);
+    final outcomes = await Future.wait([
       for (final pluginId in pluginIds) _pluginRepository.cancelCatalogImport(pluginId: pluginId),
     ]);
+    for (final outcome in outcomes) {
+      // A refused or unprovable cancel means the import may still be running,
+      // and nothing else records that.
+      if (outcome case CatalogImportMutationFailure(:final error) ||
+          CatalogImportMutationUncertain(:final error)) {
+        logw("Catalog rescan cancellation was not confirmed for a harness", error);
+      }
+    }
   }
 
   /// Clears a terminal row the user has read.
@@ -150,12 +170,18 @@ class CatalogRescanService({
   }) async {
     _openOrJoin(pluginIds: pluginIds, observed: false);
     final results = <String, CatalogRescanStartResult>{};
-    await Future.wait([
+    final dispatched = [
       for (final pluginId in pluginIds)
         _pluginRepository.startCatalogImport(pluginId: pluginId).then((outcome) {
           results[pluginId] = _applyStartOutcome(pluginId: pluginId, outcome: outcome);
         }),
-    ]);
+    ];
+    _pendingStarts.addAll(dispatched);
+    try {
+      await Future.wait(dispatched);
+    } finally {
+      _pendingStarts.removeAll(dispatched);
+    }
     if (_disposed) return results;
     // Two conditions, not one. `_members.isEmpty` alone is also true when the
     // operation closed while this dispatch was awaiting — settled from SSE,
@@ -225,6 +251,11 @@ class CatalogRescanService({
       _clearTimer = null;
       _progressByPluginId.clear();
       _observed = observed;
+    } else if (observed) {
+      // A harness someone else started joined a run this client owned. The
+      // operation can no longer claim it saw every member, so it stops being
+      // able to summarise itself.
+      _observed = true;
     }
     _members.addAll(pluginIds);
     _publishLive();
@@ -425,7 +456,11 @@ class CatalogRescanService({
         }
         _publishLive();
       case CatalogImportStatusesUnsupported():
-      case CatalogImportStatusesFailure():
+        return;
+      case CatalogImportStatusesFailure(:final error):
+        // Nothing else logs this, and there is no retry until the next
+        // reconnect, so an import already running stays invisible.
+        logw("Catalog rescan could not read in-flight imports after connecting", error);
         return;
     }
   }

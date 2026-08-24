@@ -467,6 +467,72 @@ void main() {
       expect(settled, hasLength(1));
     });
 
+    test("an operation stops claiming a summary once an outside harness joins", () async {
+      await service.startAll();
+
+      // A third harness this client never dispatched appears from elsewhere.
+      connection.emitProgress(const CatalogImportProgress.enumerating(
+        pluginId: "outsider",
+        projectsSeen: 1,
+        sessionsSeen: 1,
+      ));
+      connection.emitProgress(_completed("codex", newProjects: 1, newSessions: 1));
+      connection.emitProgress(_completed("claude", newProjects: 1, newSessions: 1));
+      connection.emitProgress(_completed("outsider", newProjects: 1, newSessions: 1));
+
+      expect(
+        service.state.value,
+        isA<CatalogRescanIdle>(),
+        reason: "it can no longer vouch for every member, so it claims nothing",
+      );
+    });
+
+    test("cancel waits for a start still in flight before sending its DELETE", () async {
+      final release = Completer<CatalogImportMutationResult>();
+      repository.pendingFor["codex"] = release.future;
+      final pending = service.startAll();
+
+      final cancelling = service.cancel();
+      await pumpEventQueue();
+
+      expect(
+        repository.cancelledPluginIds,
+        isEmpty,
+        reason: "a DELETE that overtakes its POST cancels nothing",
+      );
+
+      release.complete(const CatalogImportMutationResult.accepted());
+      await pending;
+      await cancelling;
+
+      expect(repository.cancelledPluginIds, contains("codex"));
+    });
+
+    test("recovers an in-flight import when resolved onto a live connection", () async {
+      repository = _FakePluginRepository();
+      connection = _FakeConnectionService(initialStatus: _connected);
+      management = _FakeManagementService(_snapshot(routable: const {"codex": "Codex"}));
+      repository.statuses = const CatalogImportStatusesResult.supported(
+        statuses: [
+          CatalogImportProgress.enumerating(pluginId: "codex", projectsSeen: 1, sessionsSeen: 5),
+        ],
+      );
+
+      // No false-to-true transition ever arrives for a service built while the
+      // connection is already up.
+      service = CatalogRescanService(
+        pluginRepository: repository,
+        managementService: management,
+        connectionService: connection,
+      );
+      await pumpEventQueue();
+
+      expect(
+        service.state.value,
+        isA<CatalogRescanRunning>().having((s) => s.sessionsSeen, "sessionsSeen", 5),
+      );
+    });
+
     test("a reconnect adopts an in-flight import from the status read", () async {
       build(initialStatus: const ConnectionStatus.disconnected());
       repository.statuses = const CatalogImportStatusesResult.supported(
