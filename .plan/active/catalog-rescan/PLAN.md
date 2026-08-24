@@ -201,8 +201,8 @@ crossing.
 | Pull distance | Caption |
 |---|---|
 | below `triggerDistance` | none (today's indicator) |
-| `triggerDistance` to `1.6 x` | the invitation, quiet and text-only |
-| past `1.6 x` | the fired label, in brand colour with a rotate icon |
+| `triggerDistance` to `1.6 x` | `Keep pulling to scan all harnesses`, quiet and text-only |
+| past `1.6 x` | `Scanning for new sessions`, in brand colour with a rotate icon |
 
 The caption cross-fades between the two, keyed on the phase rather than the
 text, so passing the threshold reads as one label becoming another and a host
@@ -236,13 +236,31 @@ entry. It is not pinned, not a banner, not a toast, not a dialog.
 
 | State | Leading | Title | Subtitle | Trailing |
 |---|---|---|---|---|
-| Starting | indeterminate ring | `Rescanning harnesses` | none | cancel |
-| Running | indeterminate ring | `Rescanning harnesses` | harness currently enumerating plus its running session count | cancel |
-| Succeeded | check | `Rescan complete` | new-item summary | none; the service clears it after 4s |
-| Partly failed | warning | `Rescan finished` | `1 of 3 harnesses could not be rescanned` | dismiss |
-| Failed | warning | `Rescan failed` | `Check the bridge log for details` | dismiss |
-| Unsupported | warning | `Rescan needs a newer bridge` | `Update the bridge to rescan from here` | dismiss |
+| Starting | indeterminate ring | `Scanning all harnesses` | none | cancel |
+| Running | indeterminate ring | `Scanning all harnesses` | the harness currently enumerating and its live session count, e.g. `Codex — 148 sessions` | cancel |
+| Succeeded | check | `Scan complete` | `5 new sessions in 2 new projects`, or `No new sessions` | none; the service clears it after 4s |
+| Partly failed | warning | `Scan finished` | `1 of 3 harnesses could not be scanned` | dismiss |
+| Failed | warning | `Scan failed` | `Check the bridge log for details` | dismiss |
+| Unsupported | warning | `Scanning needs a newer bridge` | `Update the bridge to scan from here` | dismiss |
 | Cancelled | — | — | — | row removed immediately |
+
+The row is a **tinted card**, not a plain tile: a rounded surface in a subtle
+brand tint, visually distinct from the session and project tiles around it. It
+reads as status rather than content, so it is never mistaken for a row that can
+be opened.
+
+The running subtitle names the harness and its **live** session count rather
+than progress across harnesses. A long single-harness scan is exactly when the
+user needs reassurance, and a "2 of 3" line goes completely still there while a
+climbing count keeps showing movement.
+
+Copy leads with sessions throughout and mentions projects only in the completion
+line, and only when there are any. Sessions are what a user notices missing —
+#961 was reported as missing sessions — and it keeps the captions short enough
+for a 226pt split pane.
+
+The Settings action is labelled `Scan for new sessions`, matching the same
+vocabulary.
 
 `Starting` exists because a dispatched request is not yet an enumerating
 harness. Between dispatch and the first progress event there is no active

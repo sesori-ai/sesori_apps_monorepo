@@ -57,6 +57,9 @@
 | Refresh model | Two-stage pull: soft unchanged, deep fires past `1.6 x triggerDistance` | A rescan boots every enabled harness backend, so it must be deliberate |
 | Deep-pull commit | On crossing the threshold, not on release | `CupertinoSliverRefreshControl` fires `onRefresh` on crossing and never on release, so release semantics were unbuildable. Owner decision 2026-08-24 |
 | Gesture owner | One `module_prego` `PregoSliverRefreshControl` | Three hosts, only two of which use `PregoGlassScaffold`; the pane must not re-implement thresholds in `client/app` |
+| Row weight | Tinted card, distinct from the surrounding tiles | Reads as status rather than content, so it is never mistaken for an openable row |
+| Running detail | The harness and its live session count | A "2 of 3" line goes still during a long single-harness scan, which is when reassurance matters most |
+| Copy | "Scan" led, sessions first, projects only in the result | Owner decision 2026-08-24: "rescan" named the mechanism, not the outcome |
 | Progress presentation | One aggregate row | Fixed height; the top of the list never reflows as harnesses finish at different times |
 | Row placement | Ordinary sliver at index 0, scrolls with the list | Non-intrusive; a refresh already scrolls to the top, so it is visible when it matters |
 | Row home | `client/app/lib/core/widgets/` | Consumed by two features; must not live inside either |
