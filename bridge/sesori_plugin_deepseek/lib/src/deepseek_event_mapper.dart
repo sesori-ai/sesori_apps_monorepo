@@ -21,8 +21,8 @@ class DeepSeekEventMapper({
         DeepSeekCompactionCompletedStatusDto() => [BridgeSseSessionCompacted(sessionID: status.sessionId)],
         DeepSeekRetryStatusDto() || DeepSeekCompactionStartedStatusDto() || DeepSeekWarningStatusDto() => const [],
       };
-    } on Object {
-      Log.w("[deepseek] ignored malformed session status notification");
+    } on Object catch (error, stackTrace) {
+      Log.w("[deepseek] ignored malformed session status notification", error, stackTrace);
       return const [];
     }
   }

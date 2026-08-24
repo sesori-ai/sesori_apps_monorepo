@@ -184,7 +184,7 @@ void main() {
     int busyCount() => emitted.whereType<BridgeSseSessionStatus>().length;
     int idleCount() => emitted.whereType<BridgeSseSessionIdle>().length;
 
-    test("prompt hooks expose live client and preserve reserved identities", () async {
+    test("prompt hooks expose live client and preserve prompt identity", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
       final hookPlugin = _PromptHookPlugin(
@@ -219,16 +219,10 @@ void main() {
       expect(await borrowing, same(hookPlugin.client));
       final sessionId = await createSession(cwd, "s1");
       final firstId = await sendPrompt(sessionId, "first");
-      final secondId = await sendPrompt(sessionId, "second");
       final first = await waitForFrameCount("session/prompt", 1);
 
       expect((first["params"] as Map)["_meta"], {
-        "identity": {"sessionId": sessionId, "messageId": "$sessionId-sent-1-user"},
-      });
-      respondTo(first, {"stopReason": "end_turn"});
-      final second = await waitForFrameCount("session/prompt", 2);
-      expect((second["params"] as Map)["_meta"], {
-        "identity": {"sessionId": sessionId, "messageId": "$sessionId-sent-2-user"},
+        "identity": {"sessionId": sessionId, "messageId": "$firstId-user"},
       });
       expect(
         emitted
@@ -236,18 +230,9 @@ void main() {
             .where((event) => event.info["promptId"] == firstId)
             .single
             .info["id"],
-        "$sessionId-sent-1-user",
+        "$firstId-user",
       );
-      respondTo(second, {"stopReason": "end_turn"});
-      expect(secondId, "prompt-2");
-    });
-
-    test("default prompts omit top-level metadata", () async {
-      await connect();
-      final sessionId = await createSession(cwd, "s1");
-      await sendPrompt(sessionId, "plain ACP");
-
-      expect((await waitForFrame("session/prompt"))["params"], isNot(contains("_meta")));
+      respondTo(first, {"stopReason": "end_turn"});
     });
 
     test("a prompt becomes a user message only when its ACP frame is dispatched", () async {

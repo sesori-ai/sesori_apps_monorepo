@@ -30,21 +30,17 @@ class DeepSeekApprovalRegistry({
         acpId: request.id,
         sessionId: parsed.sessionId,
         questions: questions,
-        replyBuilder: (answers) => DeepSeekAskUserQuestionResponseDto(
-          answers: [
-            for (var index = 0; index < parsed.questions.length; index++)
-              if (parsed.questions[index].options == null)
-                DeepSeekQuestionAnswerDto.custom(
-                  questionId: parsed.questions[index].id,
-                  customAnswer: answers[index].first,
-                )
-              else
-                DeepSeekQuestionAnswerDto.selected(
-                  questionId: parsed.questions[index].id,
-                  selectedLabels: answers[index],
-                ),
-          ],
-        ).toJson(),
+        replyBuilder: (answers) {
+          if (answers.length != parsed.questions.length || answers.any((answer) => answer.isEmpty)) {
+            throw const FormatException("Invalid DeepSeek question answers");
+          }
+          return DeepSeekAskUserQuestionResponseDto(
+            answers: [
+              for (var index = 0; index < parsed.questions.length; index++)
+                _answer(parsed.questions[index], answers[index]),
+            ],
+          ).toJson();
+        },
         resolutionBuilder: null,
       );
       emit(
@@ -55,10 +51,38 @@ class DeepSeekApprovalRegistry({
           questions: questions,
         ),
       );
-    } on Object {
+    } on Object catch (error, stack) {
+      Log.w("[deepseek] invalid question request", error, stack);
       respondError(request.id, -32602, "Invalid DeepSeek question request");
     }
     return true;
+  }
+
+  static DeepSeekQuestionAnswerDto _answer(DeepSeekQuestionDto question, List<String> answers) {
+    if (answers.isEmpty || answers.any((answer) => answer.trim().isEmpty)) {
+      throw const FormatException("DeepSeek question answers must not be empty");
+    }
+    final options = question.options;
+    if (options == null) {
+      if (answers.length != 1) throw const FormatException("DeepSeek custom answers must contain one value");
+      return DeepSeekQuestionAnswerDto.custom(questionId: question.id, customAnswer: answers.single);
+    }
+    if (question.multiSelect != true && answers.length != 1) {
+      throw const FormatException("DeepSeek single-select questions require one answer");
+    }
+    final selectedLabels = answers.where(options.contains).toList();
+    final customAnswers = answers.where((answer) => !options.contains(answer)).toList();
+    if (customAnswers.length > 1) {
+      throw const FormatException("DeepSeek questions support at most one custom answer");
+    }
+    if (selectedLabels.isEmpty) {
+      return DeepSeekQuestionAnswerDto.custom(questionId: question.id, customAnswer: customAnswers.single);
+    }
+    return DeepSeekQuestionAnswerDto.selected(
+      questionId: question.id,
+      selectedLabels: selectedLabels,
+      customAnswer: customAnswers.isEmpty ? null : customAnswers.single,
+    );
   }
 
   static PluginQuestionInfo _mapQuestion(DeepSeekQuestionDto question) => PluginQuestionInfo(
@@ -69,6 +93,6 @@ class DeepSeekApprovalRegistry({
         PluginQuestionOption(label: label, description: question.detail ?? ""),
     ],
     multiple: question.multiSelect ?? false,
-    custom: question.options == null,
+    custom: question is DeepSeekOrdinaryQuestionDto,
   );
 }

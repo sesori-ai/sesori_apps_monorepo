@@ -862,7 +862,7 @@ abstract class AcpPlugin({
       sessionId: sessionId,
       turn: _QueuedAcpTurn(
         blocks: blocks,
-        messageId: eventMapper.reserveSentUserMessageId(sessionId: sessionId),
+        messageId: AcpEventMapper.sentUserMessageId(promptId: promptId),
         model: model,
         variant: variant,
         agent: agent,
@@ -910,7 +910,7 @@ abstract class AcpPlugin({
       sessionId: sessionId,
       turn: _QueuedAcpTurn(
         blocks: blocks,
-        messageId: eventMapper.reserveSentUserMessageId(sessionId: sessionId),
+        messageId: AcpEventMapper.sentUserMessageId(promptId: promptId),
         model: model,
         variant: variant,
         agent: agent,

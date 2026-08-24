@@ -147,7 +147,7 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] Generated JSON and every vendored valid/invalid fixture verified
 - [x] Architecture implementation review passed twice
 - [x] `git diff --check`
-- [x] Final changed-line count: 1,492, below the 1,500-line cap
+- [x] Final changed-line count: 1,495, below the 1,500-line cap
 
 Later implementation and live evidence is appended here by step. Never mark a
 regression row passed without the boundary and matrix required by `PLAN.md`.

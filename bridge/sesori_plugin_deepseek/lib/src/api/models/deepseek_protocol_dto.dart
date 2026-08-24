@@ -2,9 +2,16 @@ import "package:json_annotation/json_annotation.dart";
 
 part "deepseek_protocol_dto.g.dart";
 
+int _integer(Object? value) {
+  if (value is! int) throw const FormatException("Expected integer");
+  return value;
+}
+
+int? _nullableInteger(Object? value) => value == null ? null : _integer(value);
+
 @JsonSerializable()
 class const DeepSeekInitializeMetadataDto({
-  required final int extensionProtocolVersion,
+  @JsonKey(fromJson: _integer) required final int extensionProtocolVersion,
   required final String adapterVersion,
   required final String harnessVersion,
   required final String persistenceOwner,
@@ -32,7 +39,7 @@ class const DeepSeekCatalogRequestDto({required final String cwd}) {
 class const DeepSeekCatalogResponseDto({
   required final DeepSeekAgentDto agent,
   required final List<DeepSeekProviderDto> providers,
-  required final String? defaultSelectionId,
+  @JsonKey(required: true, includeIfNull: true) required final String? defaultSelectionId,
   required final List<DeepSeekCommandDto> commands,
   required final List<DeepSeekProviderFailureDto> failures,
 }) {
@@ -65,7 +72,7 @@ class const DeepSeekModelDto({
   required final String upstreamModelId,
   required final String name,
   required final List<String> reasoningEfforts,
-  required final String? defaultReasoningEffort,
+  @JsonKey(required: true, includeIfNull: true) required final String? defaultReasoningEffort,
   required final bool supportsImages,
 }) {
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekModelDtoFromJson(json);
@@ -94,8 +101,8 @@ class const DeepSeekProviderFailureDto({
 @JsonSerializable()
 class const DeepSeekHistoryRequestDto({
   required final String sessionId,
-  final int? beforeSeq,
-  final int maxMessages = 50,
+  @JsonKey(fromJson: _nullableInteger) final int? beforeSeq,
+  @JsonKey(fromJson: _integer) final int maxMessages = 50,
 }) {
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekHistoryRequestDtoFromJson(json);
 
@@ -121,7 +128,7 @@ sealed class const DeepSeekHistoryResponseDto() {
 @JsonSerializable(explicitToJson: true)
 class const DeepSeekPaginatedHistoryResponseDto({
   @override required final List<DeepSeekSessionUpdateEnvelopeDto> updates,
-  required final int nextBeforeSeq,
+  @JsonKey(fromJson: _integer) required final int nextBeforeSeq,
 }) extends DeepSeekHistoryResponseDto {
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekPaginatedHistoryResponseDtoFromJson(json);
 
@@ -290,8 +297,8 @@ sealed class const DeepSeekSessionStatusNotificationDto() {
 @JsonSerializable()
 class const DeepSeekRetryStatusDto({
   @override required final String sessionId,
-  required final int attempt,
-  final int? limit,
+  @JsonKey(fromJson: _integer) required final int attempt,
+  @JsonKey(fromJson: _nullableInteger) final int? limit,
 }) extends DeepSeekSessionStatusNotificationDto {
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekRetryStatusDtoFromJson(json);
 

@@ -18,17 +18,9 @@ void main() {
       expect(_decodeValid(api, definition, value), isA<Map<String, dynamic>>(), reason: definition);
     }
     expect(definitions, {
-      "initializeMetadata",
-      "promptMetadata",
-      "catalogRequest",
-      "catalogResponse",
-      "historyRequest",
-      "historyResponse",
-      "renameRequest",
-      "renameResponse",
-      "askUserQuestionRequest",
-      "askUserQuestionResponse",
-      "sessionStatusNotification",
+      "initializeMetadata", "promptMetadata", "catalogRequest", "catalogResponse",
+      "historyRequest", "historyResponse", "renameRequest", "renameResponse",
+      "askUserQuestionRequest", "askUserQuestionResponse", "sessionStatusNotification",
     });
   });
   test("all invalid runtime fixtures are rejected", () async {
@@ -61,34 +53,28 @@ Map<String, dynamic> _decodeValid(DeepSeekAcpApi api, String definition, Map<Str
     };
 Never _rejectInvalid(DeepSeekAcpApi api, String definition, Map<String, dynamic> value) {
   switch (definition) {
-    case "initializeMetadata":
-      api.parseInitializeMetadata(value);
-    case "promptMetadata":
-      api.parsePromptMetadata(value);
+    case "initializeMetadata" ||
+        "promptMetadata" ||
+        "catalogResponse" ||
+        "historyResponse" ||
+        "askUserQuestionRequest" ||
+        "askUserQuestionResponse" ||
+        "sessionStatusNotification":
+      _decodeValid(api, definition, value);
     case "catalogRequest":
       final request = DeepSeekCatalogRequestDto.fromJson(value);
       if (!request.cwd.startsWith("/") && !RegExp(r"^[A-Za-z]:[\\/]").hasMatch(request.cwd)) {
         throw const FormatException("cwd");
       }
-    case "catalogResponse":
-      api.parseCatalogResponse(value);
     case "historyRequest":
       final request = DeepSeekHistoryRequestDto.fromJson(value);
       if (request.maxMessages < 1 || request.maxMessages > 100) throw const FormatException("maxMessages");
-    case "historyResponse":
-      DeepSeekHistoryResponseDto.fromJson(value);
     case "renameRequest":
       final request = DeepSeekRenameRequestDto.fromJson(value);
       if (!request.title.contains(RegExp(r"\S"))) throw const FormatException("title");
     case "renameResponse":
       final response = DeepSeekRenameResponseDto.fromJson(value);
       if (!response.title.contains(RegExp(r"\S"))) throw const FormatException("title");
-    case "askUserQuestionRequest":
-      api.parseQuestionRequest(value);
-    case "askUserQuestionResponse":
-      api.parseQuestionResponse(value);
-    case "sessionStatusNotification":
-      api.parseSessionStatus(value);
     default:
       throw StateError("Unknown fixture definition $definition");
   }

@@ -154,7 +154,6 @@ class AcpEventMapper({
     _startedParts.remove(sessionId);
     _contentTrackers.remove(sessionId);
     _textPartAccumulators.remove(sessionId);
-    _sentUserSeq.remove(sessionId);
     _idlessAssistantSeq.remove(sessionId);
     _openIdlessAssistant.remove(sessionId);
     // Exact per-session removal — session ids are opaque agent strings that may
@@ -196,10 +195,6 @@ class AcpEventMapper({
   /// ACP emits an empty part snapshot followed by deltas, while chat history
   /// persists complete part snapshots only.
   final Map<String, Map<String, _TextPartAccumulator>> _textPartAccumulators = {};
-
-  /// Sequence for user messages accepted by this plugin. These are emitted
-  /// locally because ACP agents do not reliably echo `user_message_chunk`.
-  final Map<String, int> _sentUserSeq = {};
 
   /// Fallback assistant-envelope sequence when ACP omits `messageId`.
   final Map<String, int> _idlessAssistantSeq = {};
@@ -264,12 +259,8 @@ class AcpEventMapper({
     parts: parts,
   );
 
-  /// Reserves the next accepted outbound prompt identity.
-  String reserveSentUserMessageId({required String sessionId}) {
-    final sequence = (_sentUserSeq[sessionId] ?? 0) + 1;
-    _sentUserSeq[sessionId] = sequence;
-    return "$sessionId-sent-$sequence-user";
-  }
+  /// Derives the durable user-message identity from the accepted prompt id.
+  static String sentUserMessageId({required String promptId}) => "$promptId-user";
 
   /// Maps an accepted outbound prompt to its canonical live user message.
   List<BridgeSseEvent> mapSentPrompt({

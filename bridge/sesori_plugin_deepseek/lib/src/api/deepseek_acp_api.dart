@@ -61,7 +61,11 @@ class const DeepSeekAcpApi() {
       params: {"sessionId": sessionId, "beforeSeq": ?beforeSeq, "maxMessages": maxMessages},
       timeout: timeout,
     );
-    final response = DeepSeekHistoryResponseDto.fromJson(_json(raw, historyMethod));
+    return parseHistoryResponse(_json(raw, historyMethod));
+  }
+
+  DeepSeekHistoryResponseDto parseHistoryResponse(Map<String, dynamic> json) {
+    final response = DeepSeekHistoryResponseDto.fromJson(json);
     _validateHistoryResponse(response);
     return response;
   }
@@ -113,7 +117,8 @@ class const DeepSeekAcpApi() {
           answer.selectedLabels.length > 32 ||
           answer.selectedLabels.toSet().length != answer.selectedLabels.length ||
           !answer.selectedLabels.every((label) => _nonblank(label, 256)) ||
-          !_optionalNonblank(answer.customAnswer, 2048)) {
+          !_optionalNonblank(answer.customAnswer, 2048) ||
+          answer.selectedLabels.isEmpty && answer.customAnswer == null) {
         throw const FormatException("Invalid DeepSeek question answer");
       }
     }
@@ -134,7 +139,7 @@ class const DeepSeekAcpApi() {
   }
 
   static void _validateHistoryResponse(DeepSeekHistoryResponseDto response) {
-    if (response.updates.length > 10000) {
+    if (response.updates.length > 10000 || response.updates.any((update) => !_nonblank(update.sessionId, 256))) {
       throw const FormatException("Invalid DeepSeek history response");
     }
     if (response case DeepSeekPaginatedHistoryResponseDto(nextBeforeSeq: final cursor) when cursor < 1) {
@@ -169,11 +174,7 @@ class const DeepSeekAcpApi() {
   };
 
   static void _validateCatalog(DeepSeekCatalogResponseDto response) {
-    if (response.defaultSelectionId case final id?
-        when !RegExp(
-              r"^v1(?:[A-Za-z0-9_-]{2,3}|(?:[A-Za-z0-9_-]{4})+(?:[A-Za-z0-9_-]{2,3})?)$",
-            ).hasMatch(id) ||
-            id.length > 512) {
+    if (response.defaultSelectionId case final id? when !_validSelectionId(id)) {
       throw const FormatException("Invalid DeepSeek catalog selection");
     }
     if (response.agent.id != "deepseek" || !response.agent.primary || !_nonblank(response.agent.name, 256)) {
@@ -184,14 +185,22 @@ class const DeepSeekAcpApi() {
         throw const FormatException("Invalid DeepSeek catalog provider");
       }
       for (final model in provider.models) {
-        if (!RegExp(r"^v1[A-Za-z0-9._~-]*$").hasMatch(model.id) ||
+        if (!_validSelectionId(model.id) ||
             !_nonblank(model.upstreamModelId, 256) ||
-            !_nonblank(model.name, 256)) {
+            !_nonblank(model.name, 256) ||
+            model.reasoningEfforts.length > 16 ||
+            model.reasoningEfforts.toSet().length != model.reasoningEfforts.length ||
+            !model.reasoningEfforts.every((effort) => _nonblank(effort, 64)) ||
+            model.defaultReasoningEffort != null && !model.reasoningEfforts.contains(model.defaultReasoningEffort)) {
           throw const FormatException("Invalid DeepSeek catalog model");
         }
       }
     }
   }
+
+  static bool _validSelectionId(String id) =>
+      id.length <= 512 &&
+      RegExp(r"^v1(?:[A-Za-z0-9_-]{2,3}|(?:[A-Za-z0-9_-]{4})+(?:[A-Za-z0-9_-]{2,3})?)$").hasMatch(id);
 
   static bool _nonblank(String value, int maxLength) =>
       value.isNotEmpty && value.length <= maxLength && value.contains(RegExp(r"\S"));

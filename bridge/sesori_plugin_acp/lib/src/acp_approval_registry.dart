@@ -288,9 +288,25 @@ class AcpApprovalRegistry({
   }
 
   bool replyQuestion(String bridgeRequestId, List<List<String>> answers) {
-    final entry = _pending.remove(bridgeRequestId);
+    final entry = _pending[bridgeRequestId];
     if (entry == null || entry.kind != _PendingKind.question) return false;
-    final payload = entry.replyBuilder?.call(answers) ?? {"answers": answers.map((row) => row.toList()).toList()};
+    Object? payload;
+    try {
+      payload = entry.replyBuilder?.call(answers) ?? {"answers": answers.map((row) => row.toList()).toList()};
+    } on Object catch (error, stack) {
+      Log.w("[acp] invalid question reply; declining request", error, stack);
+      _pending.remove(bridgeRequestId);
+      _resolveQuestion(entry, resolution: AcpQuestionResolution.declined, fallbackErrorMessage: "invalid answer");
+      _emit(
+        BridgeSseQuestionRejected(
+          requestID: bridgeRequestId,
+          sessionID: entry.sessionId,
+          displaySessionId: entry.sessionId,
+        ),
+      );
+      return true;
+    }
+    _pending.remove(bridgeRequestId);
     _respond(entry.acpId, payload);
     _emit(
       BridgeSseQuestionReplied(
