@@ -167,7 +167,7 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] `git diff --check`
 - [x] Synced with merged Step 9 and current `origin/main`; post-merge verification remained green
 - [x] Late Step 9 review feedback carried forward with blank parent IDs rejected and replay identity override narrowed to user messages
-- [x] Final changed-line count: 394, below soft and hard caps
+- [x] Final changed-line count: 395, below soft and hard caps
 - [x] Architecture implementation review passed twice
 
 Later implementation and live evidence is appended here by step. Never mark a
