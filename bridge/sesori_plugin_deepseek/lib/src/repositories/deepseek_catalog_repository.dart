@@ -14,6 +14,7 @@ class const DeepSeekCatalogRepository({
     required Duration timeout,
   }) async => mapper.map(await api.catalog(client: client, cwd: cwd, timeout: timeout));
 
-  ({String modelId, String providerId, String? variant})? mapSessionSelection(AcpNewSessionResult result) =>
-      mapper.mapSessionSelection(result);
+  ({String modelId, String providerId, String? variant})? mapSessionSelection({
+    required AcpNewSessionResult result,
+  }) => mapper.mapSessionSelection(result: result);
 }

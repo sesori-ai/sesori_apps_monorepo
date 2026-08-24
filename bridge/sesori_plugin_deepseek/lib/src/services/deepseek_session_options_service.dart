@@ -80,7 +80,7 @@ class DeepSeekSessionOptionsService({
     required String? sessionId,
     required bool fromNewSession,
   }) {
-    final selection = repository.mapSessionSelection(result);
+    final selection = repository.mapSessionSelection(result: result);
     if (selection == null) return;
     if (fromNewSession) {
       configurationTracker.setProcessDefaults(

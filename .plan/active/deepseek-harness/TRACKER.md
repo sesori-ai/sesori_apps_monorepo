@@ -179,7 +179,7 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] Explicit/PATH setup probes, catalog mapping and ordered writes, adapter
   rename, extension refusal, crash recovery, and clean shutdown covered
 - [x] `git diff --check`
-- [x] Changed-line count: 1,329, below soft and hard caps
+- [x] Changed-line count: 1,347, below soft and hard caps
 - [x] Architecture implementation review passed after moving rename behind its
   repository/service boundary
 

@@ -95,6 +95,17 @@ void main() {
       isA<PluginSetupRuntimeMissing>(),
     );
 
+    final denied = _ProcessService(spawnError: const ProcessException("deepseek", [], "permission denied", 13));
+    expect(
+      await const DeepSeekPluginDescriptor().inspectSetup(
+        config: config,
+        processes: denied,
+        environment: const {},
+        stateDirectory: "/state",
+      ),
+      isA<PluginSetupUnknown>(),
+    );
+
     final outdated = _ProcessService(
       probes: [
         _ProbeProcess(

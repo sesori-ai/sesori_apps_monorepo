@@ -147,8 +147,10 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
       final parsed = SemanticVersion.tryParse(value: version);
       if (parsed == null) return const _RuntimeUnknown();
       return parsed.compareTo(_minimum) < 0 ? const _RuntimeOutdated() : _RuntimeReady(version: version);
-    } on io.ProcessException {
-      return const _RuntimeMissing();
+    } on io.ProcessException catch (error, stackTrace) {
+      if (error.errorCode == 2) return const _RuntimeMissing();
+      Log.w("[deepseek] adapter version probe could not launch '$binary --version'", error, stackTrace);
+      return const _RuntimeUnknown();
     } on Object catch (error, stackTrace) {
       Log.w("[deepseek] adapter version probe failed", error, stackTrace);
       return const _RuntimeUnknown();

@@ -400,7 +400,9 @@ bridge/sesori_plugin_deepseek/
   lib/src/repositories/mappers/deepseek_catalog_mapper.dart
   lib/src/repositories/deepseek_catalog_repository.dart
   lib/src/repositories/deepseek_history_repository.dart
+  lib/src/repositories/deepseek_session_repository.dart
   lib/src/services/deepseek_session_options_service.dart
+  lib/src/services/deepseek_session_service.dart
   lib/src/deepseek_plugin_impl.dart
   lib/src/runtime/deepseek_runtime_manifest.dart
   lib/src/runtime/deepseek_plugin_descriptor.dart

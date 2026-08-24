@@ -70,7 +70,9 @@ class const DeepSeekCatalogMapper() {
     );
   }
 
-  ({String modelId, String providerId, String? variant})? mapSessionSelection(AcpNewSessionResult result) {
+  ({String modelId, String providerId, String? variant})? mapSessionSelection({
+    required AcpNewSessionResult result,
+  }) {
     final modelOption = result.configOptions.where((option) => option["id"] == "deepseek.model").firstOrNull;
     final modelId = modelOption?["currentValue"];
     if (modelId is! String || modelId.isEmpty) return null;
