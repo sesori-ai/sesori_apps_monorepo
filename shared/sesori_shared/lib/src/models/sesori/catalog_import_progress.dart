@@ -46,10 +46,10 @@ sealed class CatalogImportProgress with _$CatalogImportProgress {
     required int projectsImported,
     required int sessionsImported,
     required int completedAt,
-    // COMPATIBILITY 2026-08-24 (v1.9.0): bridges released before v1.9.0 omit
-    // this, which honestly means the producer reports no delta rather than
+    // COMPATIBILITY 2026-08-24 (v1.8.1): bridges released before this field
+    // omit it, which honestly means the producer reports no delta rather than
     // that nothing was new. Make it non-nullable and drop every consumer's
-    // totals fallback once the minimum supported bridge is >= v1.9.0.
+    // totals fallback once every supported bridge sends it.
     required CatalogImportNewItems? newItems,
   }) = CatalogImportCompleted;
 
