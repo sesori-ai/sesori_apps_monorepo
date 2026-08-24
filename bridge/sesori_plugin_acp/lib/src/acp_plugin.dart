@@ -657,6 +657,10 @@ abstract class AcpPlugin({
     return infos;
   }
 
+  String? sessionParentId(AcpSessionInfo info) => null;
+
+  int? sessionCreatedAtMs(AcpSessionInfo info) => info.updatedAtMs;
+
   PluginSession _toPluginSession(
     AcpSessionInfo info, {
     required String fallbackDirectory,
@@ -681,7 +685,7 @@ abstract class AcpPlugin({
       eventMapper.setSessionSnapshot(
         sessionId: id,
         title: info.title,
-        createdMs: info.updatedAtMs,
+        createdMs: sessionCreatedAtMs(info) ?? info.updatedAtMs,
         updatedMs: info.updatedAtMs,
       );
     }
@@ -690,9 +694,11 @@ abstract class AcpPlugin({
       id: id,
       projectID: directory,
       directory: directory,
-      parentID: null,
+      parentID: sessionParentId(info),
       title: info.title,
-      time: ts == null ? null : PluginSessionTime(created: ts, updated: ts, archived: null),
+      time: ts == null
+          ? null
+          : PluginSessionTime(created: sessionCreatedAtMs(info) ?? ts, updated: ts, archived: null),
     );
   }
 
@@ -1532,6 +1538,7 @@ abstract class AcpPlugin({
       initialUserMessageId: _syntheticInitialPromptSessions.contains(sessionId)
           ? AcpEventMapper.initialUserMessageId(sessionId)
           : null,
+      messageIdOverride: null,
       // Reclassify a halt notice (e.g. Cursor's account/plan gate) the same way
       // the live stream does, so reloaded history renders it identically.
       haltClassifier: eventMapper.classifyHaltNotice,

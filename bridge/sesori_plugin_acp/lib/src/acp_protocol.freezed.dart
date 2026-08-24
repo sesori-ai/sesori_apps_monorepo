@@ -19,7 +19,7 @@ mixin _$AcpSessionInfo {
  String get sessionId;/// The session's working directory. Required by the spec, but kept
 /// nullable — a missing value falls back to the directory the caller
 /// scanned.
- String? get cwd; String? get title;/// Last-activity time in epoch milliseconds (see [AcpTimestampMsConverter]).
+ String? get cwd; String? get title;@JsonKey(name: "_meta") Map<String, dynamic>? get metadata;/// Last-activity time in epoch milliseconds (see [AcpTimestampMsConverter]).
 @AcpTimestampMsConverter()@JsonKey(name: "updatedAt") int? get updatedAtMs;
 /// Create a copy of AcpSessionInfo
 /// with the given fields replaced by the non-null parameter values.
@@ -33,16 +33,16 @@ $AcpSessionInfoCopyWith<AcpSessionInfo> get copyWith => _$AcpSessionInfoCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpSessionInfo&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.title, title) || other.title == title)&&(identical(other.updatedAtMs, updatedAtMs) || other.updatedAtMs == updatedAtMs));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpSessionInfo&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.title, title) || other.title == title)&&const DeepCollectionEquality().equals(other.metadata, metadata)&&(identical(other.updatedAtMs, updatedAtMs) || other.updatedAtMs == updatedAtMs));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,cwd,title,updatedAtMs);
+int get hashCode => Object.hash(runtimeType,sessionId,cwd,title,const DeepCollectionEquality().hash(metadata),updatedAtMs);
 
 @override
 String toString() {
-  return 'AcpSessionInfo(sessionId: $sessionId, cwd: $cwd, title: $title, updatedAtMs: $updatedAtMs)';
+  return 'AcpSessionInfo(sessionId: $sessionId, cwd: $cwd, title: $title, metadata: $metadata, updatedAtMs: $updatedAtMs)';
 }
 
 
@@ -53,7 +53,7 @@ abstract mixin class $AcpSessionInfoCopyWith<$Res>  {
   factory $AcpSessionInfoCopyWith(AcpSessionInfo value, $Res Function(AcpSessionInfo) _then) = _$AcpSessionInfoCopyWithImpl;
 @useResult
 $Res call({
- String sessionId, String? cwd, String? title,@AcpTimestampMsConverter()@JsonKey(name: "updatedAt") int? updatedAtMs
+ String sessionId, String? cwd, String? title,@JsonKey(name: "_meta") Map<String, dynamic>? metadata,@AcpTimestampMsConverter()@JsonKey(name: "updatedAt") int? updatedAtMs
 });
 
 
@@ -70,12 +70,13 @@ class _$AcpSessionInfoCopyWithImpl<$Res>
 
 /// Create a copy of AcpSessionInfo
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? cwd = freezed,Object? title = freezed,Object? updatedAtMs = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? cwd = freezed,Object? title = freezed,Object? metadata = freezed,Object? updatedAtMs = freezed,}) {
   return _then(AcpSessionInfo(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,cwd: freezed == cwd ? _self.cwd : cwd // ignore: cast_nullable_to_non_nullable
 as String?,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
-as String?,updatedAtMs: freezed == updatedAtMs ? _self.updatedAtMs : updatedAtMs // ignore: cast_nullable_to_non_nullable
+as String?,metadata: freezed == metadata ? _self.metadata : metadata // ignore: cast_nullable_to_non_nullable
+as Map<String, dynamic>?,updatedAtMs: freezed == updatedAtMs ? _self.updatedAtMs : updatedAtMs // ignore: cast_nullable_to_non_nullable
 as int?,
   ));
 }
@@ -88,7 +89,7 @@ as int?,
 @JsonSerializable()
 
 class _AcpSessionInfo implements AcpSessionInfo {
-  const _AcpSessionInfo({this.sessionId = "", required this.cwd, required this.title, @AcpTimestampMsConverter()@JsonKey(name: "updatedAt") required this.updatedAtMs});
+  const _AcpSessionInfo({this.sessionId = "", required this.cwd, required this.title, @JsonKey(name: "_meta")  Map<String, dynamic>? metadata = null, @AcpTimestampMsConverter()@JsonKey(name: "updatedAt") required this.updatedAtMs}): _metadata = metadata;
   factory _AcpSessionInfo.fromJson(Map<String, dynamic> json) => _$AcpSessionInfoFromJson(json);
 
 @override@JsonKey() final  String sessionId;
@@ -97,6 +98,15 @@ class _AcpSessionInfo implements AcpSessionInfo {
 /// scanned.
 @override final  String? cwd;
 @override final  String? title;
+ final  Map<String, dynamic>? _metadata;
+@override@JsonKey(name: "_meta") Map<String, dynamic>? get metadata {
+  final value = _metadata;
+  if (value == null) return null;
+  if (_metadata is EqualUnmodifiableMapView) return _metadata;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(value);
+}
+
 /// Last-activity time in epoch milliseconds (see [AcpTimestampMsConverter]).
 @override@AcpTimestampMsConverter()@JsonKey(name: "updatedAt") final  int? updatedAtMs;
 
@@ -113,16 +123,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AcpSessionInfo&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.title, title) || other.title == title)&&(identical(other.updatedAtMs, updatedAtMs) || other.updatedAtMs == updatedAtMs));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AcpSessionInfo&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.title, title) || other.title == title)&&const DeepCollectionEquality().equals(other._metadata, _metadata)&&(identical(other.updatedAtMs, updatedAtMs) || other.updatedAtMs == updatedAtMs));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,cwd,title,updatedAtMs);
+int get hashCode => Object.hash(runtimeType,sessionId,cwd,title,const DeepCollectionEquality().hash(_metadata),updatedAtMs);
 
 @override
 String toString() {
-  return 'AcpSessionInfo(sessionId: $sessionId, cwd: $cwd, title: $title, updatedAtMs: $updatedAtMs)';
+  return 'AcpSessionInfo(sessionId: $sessionId, cwd: $cwd, title: $title, metadata: $metadata, updatedAtMs: $updatedAtMs)';
 }
 
 
@@ -133,7 +143,7 @@ abstract mixin class _$AcpSessionInfoCopyWith<$Res> implements $AcpSessionInfoCo
   factory _$AcpSessionInfoCopyWith(_AcpSessionInfo value, $Res Function(_AcpSessionInfo) _then) = __$AcpSessionInfoCopyWithImpl;
 @override @useResult
 $Res call({
- String sessionId, String? cwd, String? title,@AcpTimestampMsConverter()@JsonKey(name: "updatedAt") int? updatedAtMs
+ String sessionId, String? cwd, String? title,@JsonKey(name: "_meta") Map<String, dynamic>? metadata,@AcpTimestampMsConverter()@JsonKey(name: "updatedAt") int? updatedAtMs
 });
 
 
@@ -150,12 +160,13 @@ class __$AcpSessionInfoCopyWithImpl<$Res>
 
 /// Create a copy of AcpSessionInfo
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? cwd = freezed,Object? title = freezed,Object? updatedAtMs = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? cwd = freezed,Object? title = freezed,Object? metadata = freezed,Object? updatedAtMs = freezed,}) {
   return _then(_AcpSessionInfo(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,cwd: freezed == cwd ? _self.cwd : cwd // ignore: cast_nullable_to_non_nullable
 as String?,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
-as String?,updatedAtMs: freezed == updatedAtMs ? _self.updatedAtMs : updatedAtMs // ignore: cast_nullable_to_non_nullable
+as String?,metadata: freezed == metadata ? _self._metadata : metadata // ignore: cast_nullable_to_non_nullable
+as Map<String, dynamic>?,updatedAtMs: freezed == updatedAtMs ? _self.updatedAtMs : updatedAtMs // ignore: cast_nullable_to_non_nullable
 as int?,
   ));
 }

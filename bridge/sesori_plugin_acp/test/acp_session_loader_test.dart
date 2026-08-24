@@ -85,6 +85,7 @@ void main() {
           sessionId: "s1",
           agentId: "ACP",
           initialUserMessageId: null,
+          messageIdOverride: null,
           haltClassifier: null,
         );
         final liveEvents = <BridgeSseEvent>[];
@@ -130,6 +131,7 @@ void main() {
                   modelId: null,
                   providerId: null,
                   initialUserMessageId: "s1-initial-user",
+                  messageIdOverride: null,
                   haltClassifier: null,
                 )
                 ..consume(
@@ -173,6 +175,7 @@ void main() {
               modelId: "gpt-5.5",
               providerId: "cursor",
               initialUserMessageId: null,
+              messageIdOverride: null,
               haltClassifier: null,
             )
             ..consume(
@@ -226,6 +229,7 @@ void main() {
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
+            messageIdOverride: null,
             haltClassifier: null,
           )..consume(
             upd({
@@ -260,6 +264,7 @@ void main() {
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
+              messageIdOverride: null,
               haltClassifier: null,
             )
             ..consume(
@@ -296,6 +301,7 @@ void main() {
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
+              messageIdOverride: null,
               haltClassifier: null,
             )
             ..consume(
@@ -338,6 +344,7 @@ void main() {
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
+              messageIdOverride: null,
               haltClassifier: null,
             )
             ..consume(
@@ -369,6 +376,7 @@ void main() {
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
+            messageIdOverride: null,
             haltClassifier: null,
           )..consume(
             upd({
@@ -393,6 +401,7 @@ void main() {
             modelId: "claude-opus-4-8",
             providerId: "cursor",
             initialUserMessageId: null,
+            messageIdOverride: null,
             haltClassifier: null,
           )..consume(
             upd({
@@ -413,6 +422,7 @@ void main() {
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
+              messageIdOverride: null,
               haltClassifier: null,
             )
             ..consume(
@@ -450,6 +460,7 @@ void main() {
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
+              messageIdOverride: null,
               haltClassifier: null,
             )
             ..consume(
@@ -473,6 +484,7 @@ void main() {
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
+              messageIdOverride: null,
               haltClassifier: null,
             )
             ..consume(
@@ -496,6 +508,7 @@ void main() {
         sessionId: "s1",
         agentId: "Cursor",
         initialUserMessageId: null,
+        messageIdOverride: null,
         haltClassifier: null,
       );
 
@@ -511,6 +524,7 @@ void main() {
         sessionId: "s1",
         agentId: "Cursor",
         initialUserMessageId: null,
+        messageIdOverride: null,
         haltClassifier: null,
       );
       final output = _captureWarnings(() {
@@ -536,6 +550,7 @@ void main() {
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
+              messageIdOverride: null,
               haltClassifier: null,
             )
             ..consume(
@@ -636,6 +651,7 @@ void main() {
                 sessionId: "s1",
                 agentId: "Cursor",
                 initialUserMessageId: null,
+                messageIdOverride: null,
                 haltClassifier: null,
               )
               ..consume(
@@ -687,6 +703,7 @@ void main() {
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
+              messageIdOverride: null,
               haltClassifier: null,
             )
             ..consume(
@@ -725,6 +742,7 @@ void main() {
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
+              messageIdOverride: null,
               haltClassifier: null,
             )
             ..consume(
@@ -753,6 +771,7 @@ void main() {
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
+              messageIdOverride: null,
               haltClassifier: null,
             )
             ..consume(
@@ -781,6 +800,7 @@ void main() {
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
+              messageIdOverride: null,
               haltClassifier: null,
             )
             ..consume(
@@ -825,6 +845,7 @@ void main() {
             modelId: "claude-fable-5",
             providerId: "cursor",
             initialUserMessageId: null,
+            messageIdOverride: null,
             haltClassifier: ({required text}) => text.trim() == "Check your settings to continue"
                 ? const AcpHaltNotice(errorName: "cursor_gate", message: "Check your settings to continue")
                 : null,
@@ -847,6 +868,7 @@ void main() {
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
+            messageIdOverride: null,
             haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate", message: "gate"),
           )..consume(
             upd({
@@ -865,6 +887,7 @@ void main() {
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
+            messageIdOverride: null,
             haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate", message: "gate"),
           )..consume(
             upd({
@@ -896,6 +919,7 @@ void main() {
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
+            messageIdOverride: null,
             haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate", message: "gate"),
           )..consume(
             upd({
@@ -918,6 +942,7 @@ void main() {
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
+            messageIdOverride: null,
             haltClassifier: null,
           )..consume(
             upd({

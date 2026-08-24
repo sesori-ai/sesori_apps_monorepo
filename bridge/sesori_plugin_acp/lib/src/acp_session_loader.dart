@@ -5,6 +5,8 @@ import "repositories/mappers/acp_content_mapper.dart";
 import "repositories/trackers/acp_content_tracker.dart";
 import "repositories/trackers/acp_tool_content_tracker.dart";
 
+typedef AcpReplayMessageIdOverride = String? Function({required String role, required String acpMessageId});
+
 /// Accumulates the `session/update` notifications replayed by `session/load`
 /// into ordered [PluginMessageWithParts] for `getSessionMessages`.
 ///
@@ -21,6 +23,7 @@ class AcpReplayCollector({
   var String? modelId,
   var String? providerId,
   required final String? initialUserMessageId,
+  required final AcpReplayMessageIdOverride? messageIdOverride,
 
   /// Classifies a fully-accumulated assistant message as a backend halt notice
   /// (see [AcpEventMapper.classifyHaltNotice]) so a reloaded session renders the
@@ -450,9 +453,10 @@ class AcpReplayCollector({
   }) {
     final isFirstUser = role == "user" && !_hasUserDraft;
     if (role == "user") _hasUserDraft = true;
-    final defaultId = messageId != null && messageId.isNotEmpty
-        ? "$sessionId-m$messageId-$role"
-        : "$sessionId-h${_seq++}-$role";
+    final overrideId = messageId == null ? null : messageIdOverride?.call(role: role, acpMessageId: messageId);
+    final defaultId =
+        overrideId ??
+        (messageId != null && messageId.isNotEmpty ? "$sessionId-m$messageId-$role" : "$sessionId-h${_seq++}-$role");
     final draft = _Draft(
       role: role,
       id: isFirstUser && initialUserMessageId != null ? initialUserMessageId! : defaultId,

@@ -145,6 +145,7 @@ sealed class AcpSessionInfo with _$AcpSessionInfo {
     /// scanned.
     required String? cwd,
     required String? title,
+    @JsonKey(name: "_meta") @Default(null) Map<String, dynamic>? metadata,
 
     /// Last-activity time in epoch milliseconds (see [AcpTimestampMsConverter]).
     @AcpTimestampMsConverter() @JsonKey(name: "updatedAt") required int? updatedAtMs,

@@ -3,11 +3,11 @@
 ## Current State
 
 - **Plan slug:** `deepseek-harness`
-- **Plan status:** Steps 1-7 merged; Step 8/16 verified locally
+- **Plan status:** Steps 1-7 merged; Step 8/16 in review; Step 9/16 in progress
 - **Current repository:** `sesori-ai/sesori_apps_monorepo`
-- **Current branch:** `deepseek-harness/step-8-scaffold-plugin`
-- **Current open PR:** none; Step 8 ready to publish
-- **Next action:** publish Step 8, then initialize Step 9 locally
+- **Current branch:** `deepseek-harness/step-9-sessions-history`
+- **Current open PR:** [Step 8 PR #1088](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1088)
+- **Next action:** monitor Step 8 while implementing Step 9 locally
 - **Implementation started:** yes
 - **Retirement:** blocked until every required row in `PLAN.md` passes
 
@@ -22,8 +22,8 @@
 | [x] | 5/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): stream DeepSeek turns and interactions [step 5/15]` | Complex concurrent event and interaction flow | 1,450 | [PR #4](https://github.com/sesori-ai/sesori-deepseek-acp/pull/4) merged |
 | [x] | 6/15 | deepseek adapter | `⚙️ [deepseek-harness] feat(runtime): expose DeepSeek catalogs and commands [step 6/15]` | Moderate option/command boundary | 1,200 | [PR #5](https://github.com/sesori-ai/sesori-deepseek-acp/pull/5) merged |
 | [x] | 7/16 | apps monorepo | `🌿 [deepseek-harness] test(deepseek): vendor the DeepSeek extension protocol [step 7/16]` | Straightforward test-only protocol fixture foundation | 1,100 | [PR #1077](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1077) merged |
-| [ ] | 8/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): scaffold the DeepSeek bridge plugin [step 8/16]` | Moderate new package and narrow ACP hooks | 1,450 | Local implementation verified; ready to publish |
-| [ ] | 9/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek sessions and history [step 9/16]` | Complex replay and identity flow | 1,450 | Pending Step 8 |
+| [ ] | 8/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): scaffold the DeepSeek bridge plugin [step 8/16]` | Moderate new package and narrow ACP hooks | 1,450 | [PR #1088](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1088) in review |
+| [ ] | 9/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek sessions and history [step 9/16]` | Complex replay and identity flow | 1,450 | Local implementation verified |
 | [ ] | 10/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek turns and interactions [step 10/16]` | Complex events, questions, and permissions | 1,450 | Pending Step 9 |
 | [ ] | 11/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): expose options and lifecycle [step 11/16]` | Moderate plugin API and lifecycle composition | 1,350 | Pending Step 10 |
 | [ ] | 12/16 | deepseek adapter | `🚧 [deepseek-harness] build(runtime): release the managed DeepSeek adapter [step 12/16]` | Complex supply chain and six-platform release | 1,300 | Pending Step 11 |
@@ -148,6 +148,14 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] Architecture implementation review passed twice
 - [x] `git diff --check`
 - [x] Final changed-line count: 1,500, at the 1,500-line cap
+
+### Step 9/16
+
+- [x] DeepSeek and ACP `dart analyze --fatal-infos`
+- [x] DeepSeek and full ACP `dart test`
+- [x] `git diff --check`
+- [x] Local changed-line count: 466, below soft and hard caps
+- [x] Architecture implementation review passed twice
 
 Later implementation and live evidence is appended here by step. Never mark a
 regression row passed without the boundary and matrix required by `PLAN.md`.
