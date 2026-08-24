@@ -73,7 +73,7 @@ class ProjectListCubit(
     // A committed import raises no list invalidation of its own, so the list
     // refreshes when the scan leaves a live operation — however it ended,
     // because a run this client only observed publishes no terminal state.
-    _subscriptions.add(_catalogRescanService.settled.listen((_) => unawaited(refreshProjects())));
+    _subscriptions.add(_catalogRescanService.settled.listen((_) => unawaited(_refreshAfterScan())));
 
     // 1b. Immediate unseen (bold) updates (no API call).
     _subscriptions.add(
@@ -719,6 +719,18 @@ class ProjectListCubit(
         }
         return false;
     }
+  }
+
+  /// Reads the catalog strictly after the scan committed.
+  ///
+  /// [refreshProjects] coalesces onto a refresh already in flight, and that one
+  /// may have started before the import committed. Waiting it out first means
+  /// the read that follows is guaranteed to see the imported rows, which is the
+  /// whole point of refreshing here — the import raises no other invalidation.
+  Future<void> _refreshAfterScan() async {
+    await _activeRefresh;
+    if (isClosed) return;
+    await refreshProjects();
   }
 
   /// Starts a catalog scan across every harness this bridge can import from.

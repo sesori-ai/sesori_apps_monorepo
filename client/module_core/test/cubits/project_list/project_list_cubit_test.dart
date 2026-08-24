@@ -2447,6 +2447,33 @@ void main() {
         expect((cubit.state as ProjectListLoaded).catalogScan, isA<CatalogRescanSucceeded>());
       });
 
+      test("reads again after an in-flight refresh rather than coalescing onto it", () async {
+        stubProjects();
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await Future<void>.delayed(Duration.zero);
+
+        // A refresh that started before the import committed.
+        final inFlight = Completer<ApiResponse<Projects>>();
+        when(() => mockProjectRepository.listProjects()).thenAnswer((_) => inFlight.future);
+        unawaited(cubit.refreshProjects());
+        await Future<void>.delayed(Duration.zero);
+        clearInteractions(mockProjectRepository);
+
+        fakeCatalogRescanService.emitSettled();
+        await Future<void>.delayed(Duration.zero);
+        verifyNever(() => mockProjectRepository.listProjects());
+
+        // Releasing the old request must be followed by a fresh read, or the
+        // imported rows are never seen: the import raises no other signal.
+        stubProjects();
+        inFlight.complete(ApiResponse.success(const Projects(data: <ProjectSummary>[])));
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+
+        verify(() => mockProjectRepository.listProjects()).called(1);
+      });
+
       test("forwards the scan intents to the service", () async {
         stubProjects();
         final cubit = buildCubit();

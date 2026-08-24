@@ -58,7 +58,7 @@ class SessionListCubit({
     // refreshes when the scan leaves a live operation — however it ended,
     // because a run this client only observed publishes no terminal state.
     _subscriptions.add(
-      _catalogRescanService.settled.listen((_) => unawaited(refreshSessions())),
+      _catalogRescanService.settled.listen((_) => unawaited(_refreshAfterScan())),
     );
     _subscriptions.add(_connectionService.events.listen(_handleEvent));
     // 1. Navigate-back refresh: one immediate fetch when the user returns to
@@ -611,6 +611,18 @@ class SessionListCubit({
         }
         return false;
     }
+  }
+
+  /// Reads the catalog strictly after the scan committed.
+  ///
+  /// [refreshSessions] coalesces onto a refresh already in flight, and that one
+  /// may have started before the import committed. Waiting it out first means
+  /// the read that follows is guaranteed to see the imported rows, which is the
+  /// whole point of refreshing here — the import raises no other invalidation.
+  Future<void> _refreshAfterScan() async {
+    await _activeRefresh;
+    if (isClosed) return;
+    await refreshSessions();
   }
 
   /// Starts a catalog scan across every harness this bridge can import from.
