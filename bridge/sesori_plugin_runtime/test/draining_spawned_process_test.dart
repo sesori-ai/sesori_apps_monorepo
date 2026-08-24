@@ -59,11 +59,44 @@ void main() {
 
     expect(errors, isEmpty);
   });
+
+  test("keeps draining through stream errors until both pipes reach EOF", () async {
+    final inner = _FakeSpawnedProcess();
+    DrainingSpawnedProcess(inner: inner);
+
+    inner.completeExit();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(inner.stdoutPaused, isFalse);
+    expect(inner.stderrPaused, isFalse);
+    inner.stdoutController.addError(StateError("recoverable stdout error"));
+    inner.stderrController.addError(StateError("recoverable stderr error"));
+    await Future<void>.delayed(Duration.zero);
+    expect(inner.stdoutPaused, isFalse);
+    expect(inner.stderrPaused, isFalse);
+    inner.stdoutController.add(<int>[1]);
+    inner.stderrController.add(<int>[2]);
+    await inner.stdoutController.close();
+    await inner.stderrController.close();
+  });
 }
 
 final class _FakeSpawnedProcess() implements SpawnedProcess {
-  final StreamController<List<int>> stdoutController = StreamController<List<int>>();
-  final StreamController<List<int>> stderrController = StreamController<List<int>>();
+  this {
+    stdoutController = StreamController<List<int>>(
+      onPause: () => stdoutPaused = true,
+      onResume: () => stdoutPaused = false,
+    );
+    stderrController = StreamController<List<int>>(
+      onPause: () => stderrPaused = true,
+      onResume: () => stderrPaused = false,
+    );
+  }
+
+  late final StreamController<List<int>> stdoutController;
+  late final StreamController<List<int>> stderrController;
+  bool stdoutPaused = false;
+  bool stderrPaused = false;
   final Completer<int> _exit = Completer<int>();
   final StreamController<List<int>> _stdinController = StreamController<List<int>>();
 

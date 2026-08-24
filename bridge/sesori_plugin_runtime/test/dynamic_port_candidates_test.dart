@@ -37,6 +37,25 @@ void main() {
     );
   });
 
+  test("does not advance a lazy source beyond the draw limit", () {
+    Iterable<int> candidates() sync* {
+      yield* <int>[49152, 49153, 49154, 49155, 49156];
+      throw StateError("advanced past maxDraws");
+    }
+
+    expect(
+      dynamicPortCandidates(
+        minPort: 49152,
+        maxPort: 65535,
+        maxDraws: 5,
+        reservedPort: 0,
+        candidates: candidates(),
+        random: null,
+      ).toList(),
+      <int>[49152, 49153, 49154, 49155, 49156],
+    );
+  });
+
   test("bounds random draws and skips duplicates", () {
     final random = _FixedRandom(0);
     final ports = dynamicPortCandidates(

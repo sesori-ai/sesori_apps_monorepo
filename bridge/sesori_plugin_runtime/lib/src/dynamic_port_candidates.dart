@@ -12,10 +12,7 @@ Iterable<int> dynamicPortCandidates({
 
   final supplied = candidates;
   if (supplied != null) {
-    var examined = 0;
-    for (final port in supplied) {
-      if (examined >= maxDraws) return;
-      examined++;
+    for (final port in supplied.take(maxDraws)) {
       if (isCandidate(port)) yield port;
     }
     return;

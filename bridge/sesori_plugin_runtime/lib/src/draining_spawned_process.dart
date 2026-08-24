@@ -1,7 +1,7 @@
 import "dart:async";
 import "dart:io" as io;
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show ProcessIdentity, SpawnedProcess;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, ProcessIdentity, SpawnedProcess;
 
 final class DrainingSpawnedProcess({required SpawnedProcess inner}) implements SpawnedProcess {
   final SpawnedProcess _inner = inner;
@@ -9,24 +9,32 @@ final class DrainingSpawnedProcess({required SpawnedProcess inner}) implements S
   final Stream<List<int>> _stderr = inner.stderr.asBroadcastStream();
 
   this {
-    _stdoutDrain = _stdout.listen((_) {}, onError: (Object _) {}, cancelOnError: false);
-    _stderrDrain = _stderr.listen((_) {}, onError: (Object _) {}, cancelOnError: false);
-    // Drain release is best-effort and must not leak an unhandled asynchronous
-    // error after the process has already exited.
-    unawaited(_releaseDrainsOnExit().catchError((Object _) {}));
+    // Keep both pipes flowing through EOF. A process can report its exit code
+    // before trailing output reaches the stream, so exit is not a release
+    // signal for these drains.
+    unawaited(_drain(stream: _stdout, name: "stdout"));
+    unawaited(_drain(stream: _stderr, name: "stderr"));
+    unawaited(_observeExit());
   }
 
-  late final StreamSubscription<List<int>> _stdoutDrain;
-  late final StreamSubscription<List<int>> _stderrDrain;
+  Future<void> _drain({required Stream<List<int>> stream, required String name}) async {
+    final done = Completer<void>();
+    stream.listen(
+      (_) {},
+      onError: (Object error, StackTrace stackTrace) {
+        Log.w("[runtime] $name drain failed", error, stackTrace);
+      },
+      onDone: done.complete,
+      cancelOnError: false,
+    );
+    await done.future;
+  }
 
-  Future<void> _releaseDrainsOnExit() async {
+  Future<void> _observeExit() async {
     try {
       await _inner.exitCode;
-    } on Object {
-      return;
-    } finally {
-      await _stdoutDrain.cancel();
-      await _stderrDrain.cancel();
+    } on Object catch (error, stackTrace) {
+      Log.w("[runtime] process exit observation failed", error, stackTrace);
     }
   }
 

@@ -48,7 +48,8 @@ generic auth callback, hint table, or install factory was added.
 - `dart analyze --fatal-infos` in `bridge/sesori_bridge_foundation`: passed.
 - Foundation ANSI tests: 3 passed.
 - `dart analyze --fatal-infos` in `bridge/sesori_plugin_runtime`: passed.
-- Full `dart test` in `bridge/sesori_plugin_runtime`: 146 passed.
+- Full `dart test` in `bridge/sesori_plugin_runtime`: 148 passed after merging
+  the final Step 25 drain regressions from `main`.
 - `dart analyze --fatal-infos` in Cursor, OMP, Pi, Codex, OpenCode, Hermes, and
   Claude plugin packages: passed.
 - Cursor descriptor availability tests: 17 passed.
