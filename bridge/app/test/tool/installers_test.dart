@@ -727,6 +727,7 @@ Write-Output \$release.TagName
           environment: {
             ...Platform.environment,
             'SESORI_INSTALLER_LIBRARY_MODE': '1',
+            'LOCALAPPDATA': Directory.systemTemp.path,
           },
         );
 
@@ -755,6 +756,7 @@ Write-Output \$ReleasesApiUrl
           environment: {
             ...Platform.environment,
             'SESORI_INSTALLER_LIBRARY_MODE': '1',
+            'LOCALAPPDATA': Directory.systemTemp.path,
             'GITHUB': 'https://github.enterprise.example',
             'GITHUB_API': 'https://api.github.enterprise.example',
           },
