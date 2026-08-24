@@ -16,6 +16,7 @@ class PosixUpdateApi({required final ProcessRunner _processRunner}) implements P
   static const String _binaryName = 'sesori-bridge';
   static const String _binaryBackupName = '.sesori-bridge.rollback';
   static const String _libBackupName = '.lib.rollback';
+  static const FilesystemCleaner _filesystemCleaner = FilesystemCleaner();
 
   @override
   bool get supportsInSessionChaining => true;
@@ -39,8 +40,8 @@ class PosixUpdateApi({required final ProcessRunner _processRunner}) implements P
     }
 
     targetBinary.parent.createSync(recursive: true);
-    await const FilesystemCleaner().delete(path: backupBinary.path, recursive: true);
-    await const FilesystemCleaner().delete(path: backupLibDir.path, recursive: true);
+    await _filesystemCleaner.delete(path: backupBinary.path, recursive: true);
+    await _filesystemCleaner.delete(path: backupLibDir.path, recursive: true);
 
     var movedTargetBinary = false;
     var movedNewBinary = false;
@@ -62,8 +63,8 @@ class PosixUpdateApi({required final ProcessRunner _processRunner}) implements P
       newLibDir.renameSync(targetLibDir.path);
       movedNewLib = true;
 
-      await const FilesystemCleaner().delete(path: backupBinary.path, recursive: true);
-      await const FilesystemCleaner().delete(path: backupLibDir.path, recursive: true);
+      await _filesystemCleaner.delete(path: backupBinary.path, recursive: true);
+      await _filesystemCleaner.delete(path: backupLibDir.path, recursive: true);
 
       if (Platform.isMacOS) {
         await _stripMacOSAttributes(installRoot);
@@ -87,11 +88,11 @@ class PosixUpdateApi({required final ProcessRunner _processRunner}) implements P
 
   @override
   Future<void> sweepResidue({required String installRoot}) async {
-    await const FilesystemCleaner().delete(
+    await _filesystemCleaner.delete(
       path: p.join(installRoot, 'bin', _binaryBackupName),
       recursive: true,
     );
-    await const FilesystemCleaner().delete(path: p.join(installRoot, _libBackupName), recursive: true);
+    await _filesystemCleaner.delete(path: p.join(installRoot, _libBackupName), recursive: true);
   }
 
   Future<void> _stripMacOSAttributes(String path) async {
