@@ -1,24 +1,25 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:sesori_bridge/src/updater/foundation/filesystem_cleaner.dart';
+import 'package:sesori_bridge/src/foundation/filesystem_cleaner.dart';
 import 'package:sesori_bridge/src/updater/models/release_info.dart';
+import 'package:sesori_bridge/src/updater/models/update_install_result.dart';
 import 'package:sesori_bridge/src/updater/models/update_result.dart';
 import 'package:sesori_bridge/src/updater/repositories/update_artifact_repository.dart';
 import 'package:sesori_bridge/src/updater/services/update_install_service.dart';
 import 'package:test/test.dart';
 
 class _FakeArtifactRepository() implements UpdateArtifactRepository {
-  UpdateResult downloadResult = UpdateResult.success;
+  UpdateResult? downloadFailure;
   bool checksumValid = true;
   bool extracted = true;
 
   @override
-  Future<UpdateResult> downloadArchive({required ReleaseInfo release, required String archivePath}) async {
-    if (downloadResult == UpdateResult.success) {
+  Future<UpdateResult?> downloadArchive({required ReleaseInfo release, required String archivePath}) async {
+    if (downloadFailure == null) {
       File(archivePath).writeAsStringSync('archive-bytes');
     }
-    return downloadResult;
+    return downloadFailure;
   }
 
   @override
@@ -64,9 +65,10 @@ void main() {
 
     final result = await service.stageUpdate(release: _release(), installRoot: installRoot.path);
 
-    expect(result.result, UpdateResult.success);
-    expect(result.stagingPath, p.join(installRoot.path, '.sesori-bridge-staging'));
-    expect(Directory(result.stagingPath!).existsSync(), isTrue);
+    expect(result, isA<UpdateInstallStaged>());
+    final staged = result as UpdateInstallStaged;
+    expect(staged.stagingPath, p.join(installRoot.path, '.sesori-bridge-staging'));
+    expect(Directory(staged.stagingPath).existsSync(), isTrue);
     // The archive is removed; the staging directory is kept for the apply step.
     expect(
       File(p.join(installRoot.path, '.sesori-bridge-update.tar.gz')).existsSync(),
@@ -76,15 +78,15 @@ void main() {
 
   test('download failure returns the failure result and no staging path', () async {
     final service = UpdateInstallService(
-      updateArtifactRepository: _FakeArtifactRepository()..downloadResult = UpdateResult.networkError,
+      updateArtifactRepository: _FakeArtifactRepository()..downloadFailure = UpdateResult.networkError,
       filesystemCleaner: const FilesystemCleaner(),
       workspaceLabel: null,
     );
 
     final result = await service.stageUpdate(release: _release(), installRoot: installRoot.path);
 
-    expect(result.result, UpdateResult.networkError);
-    expect(result.stagingPath, isNull);
+    expect(result, isA<UpdateInstallStageFailed>());
+    expect((result as UpdateInstallStageFailed).result, UpdateResult.networkError);
   });
 
   test('checksum mismatch returns checksumFailed', () async {
@@ -96,8 +98,8 @@ void main() {
 
     final result = await service.stageUpdate(release: _release(), installRoot: installRoot.path);
 
-    expect(result.result, UpdateResult.checksumFailed);
-    expect(result.stagingPath, isNull);
+    expect(result, isA<UpdateInstallStageFailed>());
+    expect((result as UpdateInstallStageFailed).result, UpdateResult.checksumFailed);
   });
 
   test('a non-writable install root returns permissionDenied', () async {
@@ -115,8 +117,8 @@ void main() {
 
     final result = await service.stageUpdate(release: _release(), installRoot: installRoot.path);
 
-    expect(result.result, UpdateResult.permissionDenied);
-    expect(result.stagingPath, isNull);
+    expect(result, isA<UpdateInstallStageFailed>());
+    expect((result as UpdateInstallStageFailed).result, UpdateResult.permissionDenied);
   });
 
   test('extraction failure returns downloadFailed and cleans staging', () async {
@@ -128,8 +130,8 @@ void main() {
 
     final result = await service.stageUpdate(release: _release(), installRoot: installRoot.path);
 
-    expect(result.result, UpdateResult.downloadFailed);
-    expect(result.stagingPath, isNull);
+    expect(result, isA<UpdateInstallStageFailed>());
+    expect((result as UpdateInstallStageFailed).result, UpdateResult.downloadFailed);
     expect(Directory(p.join(installRoot.path, '.sesori-bridge-staging')).existsSync(), isFalse);
   });
 
@@ -142,9 +144,10 @@ void main() {
 
     final result = await service.stageUpdate(release: _release(), installRoot: installRoot.path);
 
-    expect(result.result, UpdateResult.success);
-    expect(result.stagingPath, p.join(installRoot.path, '.sesori-bridge-staging.manual.4242'));
-    expect(Directory(result.stagingPath!).existsSync(), isTrue);
+    expect(result, isA<UpdateInstallStaged>());
+    final staged = result as UpdateInstallStaged;
+    expect(staged.stagingPath, p.join(installRoot.path, '.sesori-bridge-staging.manual.4242'));
+    expect(Directory(staged.stagingPath).existsSync(), isTrue);
     // The shared default staging path is never touched, so a concurrent default
     // stager (a resident bridge's background updater) cannot collide with it.
     expect(Directory(p.join(installRoot.path, '.sesori-bridge-staging')).existsSync(), isFalse);

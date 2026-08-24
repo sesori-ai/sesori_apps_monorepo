@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../../foundation/filesystem_cleaner.dart';
 import 'platform_update_api.dart';
 
 /// Windows in-place update applier.
@@ -35,8 +36,8 @@ class const WindowsUpdateApi() implements PlatformUpdateApi {
     }
 
     targetBinary.parent.createSync(recursive: true);
-    _deleteIfExists(entity: backupBinary);
-    _deleteIfExists(entity: backupLibDir);
+    await const FilesystemCleaner().delete(path: backupBinary.path, recursive: true);
+    await const FilesystemCleaner().delete(path: backupLibDir.path, recursive: true);
     backupLibDir.createSync(recursive: true);
     targetLibDir.createSync(recursive: true);
 
@@ -60,8 +61,11 @@ class const WindowsUpdateApi() implements PlatformUpdateApi {
 
   @override
   Future<void> sweepResidue({required String installRoot}) async {
-    _deleteIfExists(entity: File(p.join(installRoot, 'bin', _binaryBackupName)));
-    _deleteIfExists(entity: Directory(p.join(installRoot, _libBackupName)));
+    await const FilesystemCleaner().delete(
+      path: p.join(installRoot, 'bin', _binaryBackupName),
+      recursive: true,
+    );
+    await const FilesystemCleaner().delete(path: p.join(installRoot, _libBackupName), recursive: true);
   }
 
   /// Moves every regular file under [fromDir] (recursively) into [toDir],
@@ -125,16 +129,6 @@ class const WindowsUpdateApi() implements PlatformUpdateApi {
       } on Object {
         // Best-effort rollback; keep reversing the remaining moves.
       }
-    }
-  }
-
-  void _deleteIfExists({required FileSystemEntity entity}) {
-    try {
-      if (entity.existsSync()) {
-        entity.deleteSync(recursive: true);
-      }
-    } on Object {
-      // Best-effort cleanup.
     }
   }
 }

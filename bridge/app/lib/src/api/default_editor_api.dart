@@ -1,21 +1,37 @@
-import 'dart:io';
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart' show PlatformOs;
 
 import '../foundation/process_runner.dart';
-import 'linux_default_editor_api.dart';
-import 'macos_default_editor_api.dart';
-import 'windows_default_editor_api.dart';
 
-abstract class DefaultEditorApi {
+sealed class DefaultEditorApi {
   Future<void> openFile(String filePath);
 
   factory forPlatform({
+    required PlatformOs platform,
     required ProcessRunner processRunner,
-  }) => switch (true) {
-    _ when Platform.isMacOS => MacosDefaultEditorApi(processRunner: processRunner),
-    _ when Platform.isLinux => LinuxDefaultEditorApi(processRunner: processRunner),
-    _ when Platform.isWindows => WindowsDefaultEditorApi(processRunner: processRunner),
-    _ => throw UnsupportedError(
-      'Unsupported platform for opening files: ${Platform.operatingSystem}',
-    ),
+  }) => switch (platform) {
+    PlatformOs.macos => _MacosDefaultEditorApi(processRunner: processRunner),
+    PlatformOs.linux => _LinuxDefaultEditorApi(processRunner: processRunner),
+    PlatformOs.windows => _WindowsDefaultEditorApi(processRunner: processRunner),
   };
+}
+
+final class _MacosDefaultEditorApi({required final ProcessRunner _processRunner}) implements DefaultEditorApi {
+  @override
+  Future<void> openFile(String filePath) async {
+    await _processRunner.startDetached(executable: 'open', arguments: [filePath]);
+  }
+}
+
+final class _LinuxDefaultEditorApi({required final ProcessRunner _processRunner}) implements DefaultEditorApi {
+  @override
+  Future<void> openFile(String filePath) async {
+    await _processRunner.startDetached(executable: 'xdg-open', arguments: [filePath]);
+  }
+}
+
+final class _WindowsDefaultEditorApi({required final ProcessRunner _processRunner}) implements DefaultEditorApi {
+  @override
+  Future<void> openFile(String filePath) async {
+    await _processRunner.startDetached(executable: 'cmd', arguments: ['/c', 'start', '', filePath]);
+  }
 }

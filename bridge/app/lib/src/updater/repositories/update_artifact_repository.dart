@@ -1,12 +1,11 @@
 import 'dart:async';
-import 'dart:io';
 
-import 'package:http/http.dart' show ClientException;
 import 'package:path/path.dart' as p;
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
 import '../api/checksum_manifest_api.dart';
+import '../foundation/update_policy.dart';
 import '../models/release_info.dart';
 import '../models/update_result.dart';
 
@@ -28,7 +27,7 @@ class UpdateArtifactRepository({
   required final ArchiveFormat _archiveFormat,
   required final StreamSink<DownloadProgress> _progressSink,
 }) {
-  Future<UpdateResult> downloadArchive({
+  Future<UpdateResult?> downloadArchive({
     required ReleaseInfo release,
     required String archivePath,
   }) async {
@@ -39,7 +38,7 @@ class UpdateArtifactRepository({
       // a connection-phase error (e.g. SocketException from the initial send)
       // propagates raw and is classified by the install service, as before.
       await _downloadClient.download(url: release.assetUrl, destinationPath: archivePath).forEach(_progressSink.add);
-      return UpdateResult.success;
+      return null;
     } on DownloadException catch (error) {
       switch (error.kind) {
         case DownloadFailureKind.network:
@@ -71,21 +70,10 @@ class UpdateArtifactRepository({
         filePath: archivePath,
         expectedHash: expectedChecksum,
       );
-    } on SocketException {
-      // A network failure fetching the manifest is transient/benign — let it
-      // propagate so the caller classifies it as a network error rather than a
-      // genuine checksum mismatch (which warrants reinstall guidance).
-      rethrow;
-    } on TimeoutException {
-      rethrow;
-    } on HttpException {
-      rethrow;
-    } on ClientException {
-      rethrow;
     } on Object catch (error, stackTrace) {
-      // An unexpected error (e.g. a malformed manifest or a checksum read
-      // failure) is a genuine verification failure, not a transient outage.
-      // Log it so the degradation is observable instead of silently swallowed.
+      if (isTransientNetworkError(error)) {
+        rethrow;
+      }
       Log.w(
         'verifyDownloadedArchive: unexpected error, failing checksum verification: $error',
         error,
