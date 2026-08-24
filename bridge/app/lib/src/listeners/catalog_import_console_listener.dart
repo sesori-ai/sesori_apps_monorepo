@@ -36,8 +36,10 @@ class CatalogImportConsoleListener({required final Stream<CatalogImportProgress>
         :final newItems,
       ):
         Console.message(
-          "Imported $pluginId catalog: $projectsImported project(s), $sessionsImported session(s)."
-          "${_newItemsSuffix(newItems)}",
+          [
+            "Imported $pluginId catalog: $projectsImported project(s), $sessionsImported session(s).",
+            ?_newItemsSentence(newItems),
+          ].join(" "),
         );
         _lastPhase = null;
         return;
@@ -53,12 +55,17 @@ class CatalogImportConsoleListener({required final Stream<CatalogImportProgress>
     _lastPhase = progress.runtimeType;
   }
 
-  /// The " N new ..." tail appended to a completion line, or "" when the delta
-  /// is absent. Absent means the counts came from a bridge that does not report
-  /// them, so the totals stand alone rather than implying nothing changed.
-  String _newItemsSuffix(CatalogImportNewItems? newItems) {
-    if (newItems == null) return "";
-    if (newItems.projects == 0 && newItems.sessions == 0) return " Nothing new.";
-    return " ${newItems.projects} new project(s), ${newItems.sessions} new session(s).";
+  /// The delta sentence that follows a completion line, or null when the delta
+  /// is absent.
+  ///
+  /// Null rather than an empty string so the caller's `join` owns the spacing:
+  /// a sentence carrying its own leading space would silently drop or double it
+  /// if either side changed. Absent means the counts came from a bridge that
+  /// does not report them, so the totals stand alone rather than implying
+  /// nothing changed.
+  String? _newItemsSentence(CatalogImportNewItems? newItems) {
+    if (newItems == null) return null;
+    if (newItems.projects == 0 && newItems.sessions == 0) return "Nothing new.";
+    return "${newItems.projects} new project(s), ${newItems.sessions} new session(s).";
   }
 }
