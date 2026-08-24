@@ -91,6 +91,7 @@ sealed class _PiTurn({
   bool responseSucceeded = false;
   bool agentStarted = false;
   bool agentSettled = false;
+  bool settlementObservedBeforeAcceptance = false;
   bool settled = false;
 }
 
@@ -393,16 +394,30 @@ final class PiSessionService({
 
   void _startNext({required String sessionId, required _PiSessionTurnState state}) {
     if (_disposed || state.active != null || state.queue.isEmpty || !identical(_sessions[sessionId], state)) return;
-    final preceding = state.inFlight.isEmpty ? null : state.inFlight.last;
-    if (preceding != null && _changesSelection(previous: preceding, next: state.queue.first)) return;
+    if (state.inFlight.isNotEmpty && _changesSelection(inFlight: state.inFlight, next: state.queue.first)) return;
     final turn = state.queue.removeAt(0);
     state.active = turn;
     final generation = state.generation;
     unawaited(_runTurn(sessionId: sessionId, state: state, turn: turn, generation: generation));
   }
 
-  bool _changesSelection({required _PiTurn previous, required _PiTurn next}) =>
-      previous.model != next.model || previous.variant?.id != next.variant?.id;
+  bool _changesSelection({required List<_PiTurn> inFlight, required _PiTurn next}) {
+    ({String providerID, String modelID})? effectiveModel;
+    String? effectiveVariant;
+    for (final turn in inFlight) {
+      final requestedModel = turn.model;
+      if (requestedModel != null && requestedModel != effectiveModel) {
+        effectiveModel = requestedModel;
+        effectiveVariant = null;
+      }
+      final requestedVariant = turn.variant?.id;
+      if (requestedVariant != null) effectiveVariant = requestedVariant;
+    }
+    final nextModel = next.model;
+    if (nextModel != null && nextModel != effectiveModel) return true;
+    final nextVariant = next.variant?.id;
+    return nextVariant != null && nextVariant != effectiveVariant;
+  }
 
   Future<void> _runTurn({
     required String sessionId,
@@ -454,7 +469,7 @@ final class PiSessionService({
         _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
         return;
       }
-      if (!turn.agentStarted) {
+      if (turn.settlementObservedBeforeAcceptance || !turn.agentStarted) {
         final agentState = await _processes.getState(connection: connection);
         await Future<void>.delayed(Duration.zero);
         if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
@@ -462,11 +477,14 @@ final class PiSessionService({
           _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
           return;
         }
-        if (!turn.agentStarted && !agentState.streaming && agentState.pendingMessageCount == 0) {
+        final hasAgentWork = agentState.streaming || agentState.pendingMessageCount > 0;
+        if (!hasAgentWork) {
           _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
           return;
         }
-        turn.agentStarted = agentState.streaming || agentState.pendingMessageCount > 0;
+        turn
+          ..agentStarted = true
+          ..settlementObservedBeforeAcceptance = false;
         state.agentRunning = state.agentRunning || agentState.streaming;
       }
       _moveInFlight(sessionId: sessionId, state: state, turn: turn);
@@ -559,12 +577,18 @@ final class PiSessionService({
             if (!turn.promptDispatched) continue;
             turn
               ..agentStarted = true
-              ..agentSettled = false;
+              ..agentSettled = false
+              ..settlementObservedBeforeAcceptance = false;
           }
         } else if (event is PiAgentSettledEvent) {
           state.agentRunning = false;
           for (final turn in generationTurns) {
-            if (turn.promptDispatched) turn.agentSettled = true;
+            if (!turn.promptDispatched) continue;
+            if (turn.responseSucceeded) {
+              turn.agentSettled = true;
+            } else {
+              turn.settlementObservedBeforeAcceptance = true;
+            }
           }
         }
         final now = _clock.now();
@@ -739,8 +763,14 @@ final class PiSessionService({
     unawaited(_clearPendingWhenPersisted(sessionId: sessionId, directory: state.directory));
     _startNext(sessionId: sessionId, state: state);
     if (state.hasWork) {
-      if (state.status == const PluginSessionStatus.idle()) {
+      if (state.status != const PluginSessionStatus.busy()) {
         state.status = const PluginSessionStatus.busy();
+        _emit(
+          BridgeSseSessionStatus(
+            sessionID: sessionId,
+            status: const shared.SessionStatus.busy().toJson(),
+          ),
+        );
         _emit(const BridgeSseProjectUpdated());
       }
       return;

@@ -659,6 +659,12 @@ void main() {
     expect(completed, isFalse);
     process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
     await accepted;
+    final settledState = await waitForCommand(process: process, type: "get_state");
+    process.emitResponse(
+      id: settledState["id"]! as String,
+      command: "get_state",
+      data: {"isStreaming": false, "pendingMessageCount": 0},
+    );
     await _waitForIdle(service: service, sessionId: "session");
 
     final failed = service.sendCommand(
@@ -778,6 +784,55 @@ void main() {
     );
   });
 
+  test("settlement before steering acceptance does not finish the new run", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "settling-first",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: null,
+      model: null,
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "settling-steer",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "steer")],
+      userVisibleText: "steer",
+      variant: null,
+      model: null,
+    );
+
+    await _answerEntries(process);
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+
+    process.emit(frame: {"type": "agent_settled"});
+    process.emitResponse(id: steeringPrompt["id"]! as String, command: "prompt");
+    final stateCommand = await waitForCommand(process: process, type: "get_state");
+    process.emitResponse(
+      id: stateCommand["id"]! as String,
+      command: "get_state",
+      data: {"isStreaming": true, "pendingMessageCount": 0},
+    );
+    await pump();
+
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
+    expect(service.currentWorkState, PluginWorkState.busy);
+
+    process.emit(frame: {"type": "agent_start"});
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
   test("a selection-changing follow-up waits for the active Pi run boundary", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
@@ -820,6 +875,113 @@ void main() {
     process.emitResponse(id: secondModel["id"]! as String, command: "set_model");
     final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
     process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
+  test("omitted selections inherit the active run and keep steering", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    const model = (providerID: "provider", modelID: "model");
+    const variant = PluginSessionVariant(id: "high");
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "effective-first",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: variant,
+      model: model,
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "effective-inherited",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "inherit")],
+      userVisibleText: "inherit",
+      variant: null,
+      model: null,
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "effective-explicit",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "explicit")],
+      userVisibleText: "explicit",
+      variant: variant,
+      model: model,
+    );
+
+    await _answerEntries(process);
+    final setModel = await waitForCommand(process: process, type: "set_model");
+    process.emitResponse(id: setModel["id"]! as String, command: "set_model");
+    final setThinking = await waitForCommand(process: process, type: "set_thinking_level");
+    process.emitResponse(id: setThinking["id"]! as String, command: "set_thinking_level");
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+
+    final inheritedPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    process.emitResponse(id: inheritedPrompt["id"]! as String, command: "prompt");
+    final explicitPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 3);
+    expect(explicitPrompt["message"], "explicit");
+    expect(process.written.where((frame) => frame["type"] == "set_model"), hasLength(1));
+    expect(process.written.where((frame) => frame["type"] == "set_thinking_level"), hasLength(1));
+
+    process.emitResponse(id: explicitPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
+  test("queued work resets a terminal retry status before dispatch", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "retry-first",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: null,
+      model: (providerID: "provider", modelID: "first-model"),
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "retry-next",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "next")],
+      userVisibleText: "next",
+      variant: null,
+      model: (providerID: "provider", modelID: "next-model"),
+    );
+
+    await _answerEntries(process);
+    final firstModel = await waitForCommand(process: process, type: "set_model");
+    process.emitResponse(id: firstModel["id"]! as String, command: "set_model");
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "auto_retry_start", "attempt": 2, "delayMs": 500});
+    process.emit(frame: {"type": "auto_retry_end", "success": false, "attempt": 2});
+    await pump();
+    expect(service.sessionStatuses["session"], isA<PluginSessionStatusRetry>());
+
+    process.emit(frame: {"type": "agent_settled"});
+    final nextModel = await _waitForNthCommand(process: process, type: "set_model", count: 2);
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
+    expect(events.whereType<BridgeSseSessionStatus>().last.status["type"], "busy");
+
+    process.emitResponse(id: nextModel["id"]! as String, command: "set_model");
+    final nextPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    process.emitResponse(id: nextPrompt["id"]! as String, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
   });
