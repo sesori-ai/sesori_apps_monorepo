@@ -167,18 +167,15 @@ class OpenCodeRepository(final OpenCodeApi _api) {
   Future<String> reserveMessage({
     required String sessionId,
     required String? directory,
-    required String? agent,
-    required PluginSessionVariant? variant,
-    required ({String providerID, String modelID})? model,
   }) async {
     final response = await _sendPrompt(
       sessionId: sessionId,
       directory: directory,
       messageId: null,
       parts: const [],
-      agent: agent,
-      variant: variant,
-      model: model,
+      agent: null,
+      variant: null,
+      model: null,
       noReply: true,
       syntheticText: false,
     );

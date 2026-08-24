@@ -704,9 +704,6 @@ void main() {
 
       final messageId = await service.reserveMessage(
         sessionId: "ses-1",
-        agent: "build",
-        variant: null,
-        model: null,
       );
 
       expect(messageId, equals("msg-reserved"));
@@ -2111,9 +2108,6 @@ class FakeOpenCodeRepository._({
   Future<String> reserveMessage({
     required String sessionId,
     required String? directory,
-    required String? agent,
-    required PluginSessionVariant? variant,
-    required ({String providerID, String modelID})? model,
   }) async {
     lastReservedDirectory = directory;
     return "msg-reserved";

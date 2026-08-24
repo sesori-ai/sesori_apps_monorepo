@@ -147,7 +147,9 @@ defaults and queued client sends coherent.
   dispatch, using the link its backend exposes — Claude's queue entry, ACP's
   accepted send, Pi's dispatcher, Codex's client-supplied identifier, and
   OpenCode's server-reserved ordered message identifier that the bridge reuses
-  for the real dispatch. OpenCode applies the same correlation to prompts,
+  for the real dispatch. Reservation does not apply or validate the requested
+  agent, model, or variant; the real dispatch owns those selections. OpenCode
+  applies the same correlation to prompts,
   slash commands, and manual compaction. Compaction renders only the user-entered
   command arguments; bridge-authored guidance remains backend-only. A message
   authored in the backend's own UI carries no prompt id and renders as an

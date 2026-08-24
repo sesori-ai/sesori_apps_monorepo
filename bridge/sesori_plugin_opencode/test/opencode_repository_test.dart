@@ -1034,16 +1034,13 @@ void main() {
   });
 
   group("OpenCodeRepository message reservation", () {
-    test("lets OpenCode name an empty non-renderable message", () async {
+    test("lets OpenCode name an option-free empty non-renderable message", () async {
       final api = FakeOpenCodeApi();
       final repository = OpenCodeRepository(api);
 
       final messageId = await repository.reserveMessage(
         sessionId: "ses-1",
         directory: " /repo ",
-        agent: "build",
-        variant: const PluginSessionVariant(id: "low"),
-        model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 
       expect(messageId, equals("msg-reserved"));
@@ -1052,9 +1049,6 @@ void main() {
         api.lastPromptBody?.toJson(),
         equals({
           "parts": <dynamic>[],
-          "agent": "build",
-          "variant": "low",
-          "model": {"providerID": "openai", "modelID": "gpt-4.1"},
           "noReply": true,
         }),
       );

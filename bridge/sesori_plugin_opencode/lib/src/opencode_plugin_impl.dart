@@ -427,9 +427,6 @@ class OpenCodePlugin._({
     final messageId = await _call(
       () => _service.reserveMessage(
         sessionId: sessionId,
-        agent: agent,
-        variant: variant,
-        model: model,
       ),
     );
     _promptMessages.record(messageId: messageId, promptId: promptId);
@@ -497,9 +494,6 @@ class OpenCodePlugin._({
     final messageId = await _call(
       () => _service.reserveMessage(
         sessionId: sessionId,
-        agent: agent,
-        variant: variant,
-        model: model,
       ),
     );
     _promptMessages.record(messageId: messageId, promptId: promptId);
