@@ -382,11 +382,11 @@ refresh gap as consequences of one definition.
 - **Step 2 PR:** [#1071](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1071)
   merged
 - **Step 3 base:** `main` at `db22f602a`
-- **Step 3 changed lines:** 447 of delivered code against merge-base
+- **Step 3 changed lines:** 454 of delivered code against merge-base
   `db22f602a5457bd94d4c6d8545fad3ce91f0e58b`, inside the 350-600 target:
-  66 production (`catalog_import_console_listener.dart` 26,
+  73 production (`catalog_import_console_listener.dart` 26,
   `catalog_import_repository.dart` 14, `catalog_import_service.dart` 4,
-  `catalog_import_progress.dart` 22), 216 tests, 165 generated
+  `catalog_import_progress.dart` 29), 216 tests, 165 generated
   (`catalog_import_progress.freezed.dart` 146, `.g.dart` 19).
   `.plan/` and `docs/regression/` are excluded on purpose. Counting them makes
   the figure self-inclusive — the commit that writes this entry changes the
@@ -407,7 +407,11 @@ refresh gap as consequences of one definition.
   neither bypasses the counters), that both counters are bounded by their totals,
   that tombstoned sessions cannot inflate the delta, and that the wire contract
   degrades correctly in both directions. It noted separately, outside review
-  scope, that `docs/regression/projects-and-sessions.md` is untouched — that is
-  step 7's job and is deliberate, since nothing here is client-visible yet
+  scope, that `docs/regression/projects-and-sessions.md` was untouched at the
+  time it ran, and judged deferring it to step 7 reasonable because nothing here
+  is client-visible. That judgement was wrong and has since been corrected: the
+  headless completion line **is** user-visible, so this step now records the
+  totals-versus-delta contract and its absent-delta fallback in that document
+  and in its L2 Routine entry. Step 7 builds on that rather than restating it
 - **Step 3 PR:** pending
 - **Final disposition:** pending
