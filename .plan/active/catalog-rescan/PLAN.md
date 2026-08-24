@@ -890,31 +890,28 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
 ### Scope
 
 - Add `PregoSliverRefreshControl` to `module_prego`: wraps
-  `CupertinoSliverRefreshControl`, owns the `1.6 x triggerDistance` arming, the
-  caption selection, and the release dispatch of both callbacks.
-- `PregoGlassScaffold` composes it behind a new optional `onDeepRefresh`, and
-  asserts that `onDeepRefresh` requires `onRefresh`, matching the existing
+  `CupertinoSliverRefreshControl`, owns the `1.6 x triggerDistance` threshold,
+  the caption selection, and the dispatch of both callbacks.
+- `PregoGlassScaffold` composes it behind a new optional `deepRefresh`, and
+  asserts that `deepRefresh` requires `onRefresh`, matching the existing
   `scrollable`/`onRefresh` assertion.
 - `SessionListPanel` replaces its bare `CupertinoSliverRefreshControl` with
-  `PregoSliverRefreshControl` **and** takes an optional `onDeepRefresh` callback
-  parameter, so the pane gets stage 2 without any threshold logic in
-  `client/app`. The parameter is introduced here, defaulting to null, and step 6
-  wires it to the cubit's `startRescan()`. Without it step 5's pane test would
-  have no deep callback to invoke, because the pane currently hardcodes
-  `refreshSessionList(context)` and the cubit intent does not exist until step 6.
+  `PregoSliverRefreshControl` **and** takes an optional `deepRefresh` parameter,
+  so the pane gets stage 2 without any threshold logic in `client/app`. The
+  parameter is introduced here, defaulting to null, and step 6 supplies it.
 - Render the caption under the existing indicator only once the pull passes the
   soft trigger, so an ordinary pull is visually unchanged.
-- Add a design catalog scenario if the scaffold has one; otherwise widget tests
-  covering: a short pull fires only the soft refresh, a long pull fires both,
-  and a long pull abandoned before release fires neither. Prove all three in
-  the pane as well as in the scaffold.
+- Widget tests covering: an ordinary pull fires only the soft refresh, a pull
+  past the deep threshold fires both, a pull abandoned before the trigger fires
+  neither, one pull rescans at most once however far it travels, arming does not
+  leak between pulls, the control behaves as the bare Cupertino one with no
+  second stage supplied, and the fired caption is visually distinct from the
+  invitation.
 
 ### Verification
 
-- targeted `module_prego` and `client/app` session-pane widget tests
+- targeted `module_prego` widget tests
 - `dart analyze --fatal-infos` from `client/module_prego` and `client/app`
-- `dart run tool/generate_manifest.dart --check` from `client/design_catalog`
-  if a scenario was added
 - architecture implementation review
 
 ## Step 6/8 - Surface Catalog Rescan In The App
@@ -934,8 +931,8 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
 - The aggregate rescan row widget in `client/app/lib/core/widgets/`, beside the
   shell's other cross-feature widgets, with its seven presentations. It renders
   the state it is given, owns no timer, and renders no bridge-supplied text.
-- Project list, full-screen session list, and split-view pane: wire
-  `onDeepRefresh` to the cubit's `startRescan()`, and render the row as the
+- Project list, full-screen session list, and split-view pane: supply
+  `deepRefresh` from the cubit's `startRescan()`, and render the row as the
   sliver at index 0 in place of the soft-refresh indicator while a rescan is
   running.
 - Settings to Harnesses: the per-harness `Rescan` action in

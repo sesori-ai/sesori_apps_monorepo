@@ -15,8 +15,8 @@ const double _deepPullFactor = 1.6;
 /// arm the deep pull without telling the user what releasing will do.
 class const PregoDeepRefresh({
   /// Runs in addition to the ordinary refresh, the moment the pull passes the
-  /// deep threshold. Never awaited: the refresh control settles on the soft
-  /// refresh alone.
+  /// deep threshold. Never awaited: the refresh control settles on the ordinary
+  /// refresh alone, so a long-running second stage cannot hold the spinner.
   required final void Function() onDeepRefresh,
 
   /// Shown once the pull passes the ordinary trigger, inviting the user to
@@ -37,8 +37,8 @@ class const PregoDeepRefresh({
 /// control invokes `onRefresh` the moment the pull crosses its trigger rather
 /// than on release (`refresh.dart` transitions `drag` straight to `armed` and
 /// schedules the task there). The second stage follows the same rule at its own
-/// deeper threshold, so a pull refreshes at one depth and additionally rescans
-/// at another.
+/// deeper threshold, so a pull refreshes at one depth and additionally runs the
+/// host's second action at another.
 ///
 /// Hosts differ in where the indicator sits, not in how the pull behaves, so
 /// they supply [decorate] and get identical gesture semantics for free — which
@@ -176,9 +176,9 @@ class const _CaptionedIndicator({
 
 /// One phase of the caption.
 ///
-/// The invitation is quiet and text-only. Once the rescan has fired the label
-/// takes the brand colour and gains its icon, so the moment of commitment is
-/// visible at a glance rather than needing the wording to be read.
+/// The invitation is quiet and text-only. Once the second stage has fired the
+/// label takes the brand colour and gains its icon, so the moment of commitment
+/// is visible at a glance rather than needing the wording to be read.
 class const _CaptionLabel({
   super.key,
   required final String caption,

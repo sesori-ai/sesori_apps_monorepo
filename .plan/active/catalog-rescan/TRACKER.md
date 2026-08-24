@@ -221,7 +221,7 @@
 - [ ] Give all three cubits a rescan subscription, state, and intent methods.
 - [ ] Refresh both lists whenever the service leaves a live operation, not only
   on the terminal summary variants.
-- [ ] Wire the pane's `onDeepRefresh` parameter to the cubit.
+- [ ] Wire the pane's `deepRefresh` parameter to the cubit.
 - [ ] Build the rescan row in `client/app/lib/core/widgets/` with all seven
   presentations, no timer, and no bridge-supplied text.
 - [ ] Wire all three hosts through their cubits; no widget touches the service.
@@ -470,6 +470,13 @@ duplicate-emission nicety.
 - **Step 5 verification:** `dart analyze --fatal-infos` clean on
   `client/module_prego` and `client/app`; full `module_prego` suite 227 tests
   passed, including 8 new `prego_sliver_refresh_control_test.dart` cases
-- **Step 5 review:** pending
+- **Step 5 review:** `architecture-implementation-review` **approved** with zero
+  findings. It confirmed the boundary tightened rather than widened — both hosts
+  lost their `cupertino_ui` imports, and `decorate` hands back only the built
+  indicator so no host can re-derive gesture state — and that the fire-on-
+  crossing correction is architecturally sound. Both of its non-blocking
+  observations were applied: `PLAN.md`'s Step 5 scope section still described the
+  unbuildable release semantics and would have misdirected step 6, and the new
+  design-system file's doc comments carried product vocabulary
 - **Step 5 PR:** pending
 - **Final disposition:** pending
