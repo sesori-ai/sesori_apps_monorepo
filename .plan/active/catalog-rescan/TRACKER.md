@@ -71,6 +71,11 @@
 | Dispatched-but-silent phase | Its own `CatalogRescanStarting` variant | A single running state carrying `activePluginName` and `sessionsSeen` would have to invent both before the first progress event |
 | Older bridges | `CatalogRescanUnsupported` when every harness answers `404` | `/plugin/import` shipped in v1.6.0 but the baseline is `>= v1.4.0`, so supported peers exist with no route |
 | Recovered rescans | Resolve to idle, never to a terminal summary | `latestStatuses` has no operation identity, so a recovered run cannot honestly claim a total |
+| Operation model | One explicit `owned`/`observed` operation owns membership, settlement, and the refresh | Four rounds of separately-correct lifetime rules composed badly; the seam was that no run was ever named |
+| Second start while running | Joins the live operation | Replacing it dropped the first harness from aggregation and cancellation |
+| List refresh trigger | Leaving a live operation, not the terminal variants | An observed run publishes no summary and would otherwise never refresh |
+| Pre-v1.7.0 bridges | `CatalogRescanUnsupported` straight from an unsupported management snapshot | `/plugin/management` is v1.7.0; without a snapshot the fan-out sends zero requests, so the all-`404` branch never fires |
+| Start failures | `CatalogRescanStartFailed` retains the `ApiError` and is logged locally | A transport or decode failure may never reach the bridge, so its log cannot explain it |
 | Targeted rejections | Typed `CatalogRescanStartResult` held per plugin id by `PluginManagementCubit` | The aggregate row cannot say which card was rejected |
 | Completion wording | New items, with a totals fallback | Reporting 193 totals after a no-op rescan would be actively misleading |
 | New-count transport | One nullable `CatalogImportNewItems` object | Two independent `int?` fields make `{5, null}` representable and meaningless |
@@ -103,6 +108,7 @@
 | A privacy-safe failure reason at the producer | Deferred | The right fix is a bounded reason in `CatalogImportService._run` with the original error kept in the bridge log; out of scope for this series |
 | Preserving discarded terminal statuses across a reconnect | Rejected | `latestStatuses` carries no operation identity or grouping, so "belonging to the recovered operation" is not determinable; recovered runs claim no summary instead |
 | Sniffing the error body to tell a missing route from an unknown plugin | Rejected | Both mean "this bridge cannot rescan"; an all-`404` fan-out is the honest signal |
+| Deriving a legacy harness set from `/plugin` discovery | Rejected | Would add a second harness source and a second routability predicate for the single public release (v1.6.0) that has import but not management, on an auto-updating bridge |
 | Analytics for rescans | Rejected | Reliability repair for a reported defect, not a product adoption question |
 
 ## Open Questions
@@ -114,7 +120,7 @@
 
 | Done | Step | Exact PR title | Changed-line target | State |
 |---|---|---|---:|---|
-| [ ] | 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 1,050-1,250 | In preparation |
+| [ ] | 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 1,300-1,450 | In preparation |
 | [ ] | 2/8 | `🌱 [catalog-rescan] Re-hydrate stale plugin catalogs [step 2/8]` | 20-60 | Not started |
 | [ ] | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 | Not started |
 | [ ] | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 | Not started |
@@ -170,8 +176,16 @@
 - [ ] Filter the recovery read to non-terminal statuses only.
 - [ ] Reset to idle on disconnect and on active-bridge change; add no
   generation or fence state.
-- [ ] Clear the retained progress map on every rescan start and every reset.
-- [ ] Arm the 4s clear for `CatalogRescanSucceeded` only.
+- [ ] Implement the `owned`/`observed` operation model: a second start joins the
+  live operation, unsolicited progress opens an observed one, cancel fans out
+  over live members whether `Starting` or `Running`, and the map is cleared only
+  when leaving idle or terminal.
+- [ ] Arm the 4s clear for `CatalogRescanSucceeded` only, and cancel it on every
+  start and reset.
+- [ ] Publish `CatalogRescanUnsupported` from an unsupported management snapshot
+  without issuing any request.
+- [ ] Retain the `ApiError` in `CatalogRescanStartFailed` and log it locally.
+- [ ] Run the `module_core` build runner and commit `injection.config.dart`.
 - [ ] Record membership on dispatch; keep a harness on timeout or lost response.
 - [ ] Select harnesses by `runtimeState.isRoutable`.
 - [ ] Never lift `CatalogImportFailed.message` into client state.
@@ -179,8 +193,11 @@
   outcome, the older-bridge payload, both reconnect cases, a disconnect, a
   `503` in the fan-out, cancel fanning out one `DELETE` per running id, a
   second sequential rescan not inheriting the previous aggregate, a failure
-  surviving past 4s while a success clears, and a lost start response still
-  reaching a terminal state from SSE.
+  surviving past 4s while a success clears, a lost start response still reaching
+  a terminal state from SSE, an unsolicited progress event opening an observed
+  operation and refreshing on close, a targeted start joining a live operation,
+  a cancel while `Starting`, a second rescan begun inside the previous success's
+  4s window, an unsupported management snapshot, and a retained `ApiError`.
 - [ ] Run `architecture-implementation-review`.
 
 ## Step 5 Checklist
@@ -188,7 +205,9 @@
 - [ ] Add `PregoSliverRefreshControl` owning arming, captions, and dispatch.
 - [ ] Compose it in `PregoGlassScaffold` behind `onDeepRefresh` and assert it
   requires `onRefresh`.
-- [ ] Replace `SessionListPanel`'s bare `CupertinoSliverRefreshControl` with it.
+- [ ] Replace `SessionListPanel`'s bare `CupertinoSliverRefreshControl` with it
+  and give the pane an optional `onDeepRefresh` parameter, so the pane test has a
+  callback before the cubit intent exists.
 - [ ] Leave an ordinary pull visually unchanged.
 - [ ] Prove short pull, long pull, and abandoned long pull, in both the scaffold
   and the pane.
@@ -197,8 +216,9 @@
 ## Step 6 Checklist
 
 - [ ] Give all three cubits a rescan subscription, state, and intent methods.
-- [ ] Refresh both lists on `CatalogRescanSucceeded` and
-  `CatalogRescanPartlyFailed`.
+- [ ] Refresh both lists whenever the service leaves a live operation, not only
+  on the terminal summary variants.
+- [ ] Wire the pane's `onDeepRefresh` parameter to the cubit.
 - [ ] Build the rescan row in `client/app/lib/core/widgets/` with all seven
   presentations, no timer, and no bridge-supplied text.
 - [ ] Wire all three hosts through their cubits; no widget touches the service.
@@ -310,12 +330,35 @@ answered twice.
 | Model targeted rejections per harness | Added the typed `CatalogRescanStartResult`, held per plugin id by `PluginManagementCubit` exactly as it already holds `PluginInstallProgress`, so a rejection renders on the card the user selected |
 | Preserve missed terminal outcomes during recovery | **Partially applied.** Fixed the harmful half: a recovery-seeded rescan resolves to idle and never publishes a summary, so it can no longer report an authoritative success that hides a failed harness. Declined the proposed fix itself as not implementable — `latestStatuses` carries no operation identity or grouping, so a discarded terminal status cannot be attributed to the recovered run rather than the previous one or bridge-startup hydration. The residue, a run interrupted by a disconnect reporting no summary while its lists still refresh correctly, is recorded as an accepted risk |
 
+### Fourth round on #1064
+
+`chatgpt-codex-connector` raised nine findings; all nine applied. Four of them —
+adopting cross-surface rescans, cancelling while `Starting`, a second start
+clearing the live run, and a stale success timer resetting a new run — all landed
+on the same seam: the service had accumulated lifetime rules across three rounds
+without ever naming *which run* it tracked. Rather than add four more rules, the
+`Lifetimes owned by the service` section was replaced with an explicit
+`owned`/`observed` operation model, which resolves all four plus the recovered-run
+refresh gap as consequences of one definition.
+
+| Finding | Correction applied |
+|---|---|
+| Adopt rescans started by other connected surfaces | Unsolicited non-terminal progress opens an `observed` operation from idle. The plan had already promised cross-surface refresh while the rules made it impossible |
+| Cancel harnesses while the rescan is still starting | Cancel fans out over the members of the live operation, whether the published state is `Starting` or `Running` |
+| Preserve an active run when another harness starts | A targeted start **joins** the live operation instead of opening a new one; the map is cleared only when leaving idle or terminal |
+| Refresh lists when a recovered rescan settles | The refresh is keyed on leaving a live operation, not on the terminal variants, so an `observed` run still surfaces its sessions |
+| Cancel the prior success timer before a new rescan | Every start and reset cancels the pending clear timer |
+| Handle older bridges without management snapshots | Verified: `/plugin/management` first shipped in `v1.7.0` and a `404` maps to `PluginManagementLoadResultUnsupported`, so the fan-out would have sent zero requests and the all-`404` branch never fired. `CatalogRescanUnsupported` is now published directly from an unsupported snapshot |
+| Retain client request failures in the typed result | `CatalogRescanStartFailed` carries the `ApiError` cause and the service logs it locally; rendering stays bounded |
+| Regenerate injectable registration for the new service | Verified `client/module_core/lib/src/di/injection.config.dart` exists. Step 4 now runs the build runner and commits its output |
+| Add pane callback plumbing before testing the deep pull | Step 5 introduces the pane's optional `onDeepRefresh` parameter so its own test is implementable; step 6 wires it to the cubit |
+
 ## Verification Log
 
 - **Step 1 documentation validation:** `git diff --check` passed; step tokens
   and exact PR titles diffed clean between `PLAN.md` and `TRACKER.md`; plan
   files only in the diff
-- **Step 1 changed lines:** 1,248 documentation-only insertions, 0 deletions, from
+- **Step 1 changed lines:** 1,347 documentation-only insertions, 0 deletions, from
   `git diff --numstat <merge-base>...HEAD` (informational only; the figure counts
   these verification-log lines, so it cannot independently validate the target)
 - **Step 1 review:** `architecture-plan-review` rejected the first revision;

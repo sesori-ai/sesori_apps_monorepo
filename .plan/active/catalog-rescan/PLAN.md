@@ -417,7 +417,7 @@ sealed CatalogRescanStartResult          // returned by start(pluginId)
   CatalogRescanStartAccepted()
   CatalogRescanStartNotImportable()
   CatalogRescanStartUnsupported()
-  CatalogRescanStartFailed()
+  CatalogRescanStartFailed({ ApiError cause })
 ```
 
 Separate variants rather than a single state with nullable fields, so a mixed
@@ -437,52 +437,78 @@ for installs, so the rejection lands on the harness the user selected rather tha
 in the shared aggregate row. The fan-out ignores the result and keeps its silent
 skip.
 
-### Lifetimes owned by the service
+`CatalogRescanStartFailed` retains the repository's `ApiError` as a typed cause,
+and the service logs it locally with the original error and stack trace. A
+transport, authentication, or decoding failure may never have reached the bridge
+at all, so pointing the user at the bridge log would diagnose nothing. Only
+bounded presentation text is rendered; the cause exists for the local log, not
+for the card.
 
-The service owns every transition out of a terminal state. The row widget
-renders whatever it is given and owns no timer.
+### The rescan operation
 
-| Trigger | Transition |
+Four review rounds produced rules that composed badly because the service had no
+explicit notion of *which run* it was tracking. Everything below follows from one
+definition instead.
+
+An **operation** is the set of harness ids the service is currently tracking,
+plus whether this client saw the whole thing. It is `owned` when this client
+dispatched every member's start, and `observed` when the service learned about it
+from `GET /plugin/import` on connect or from an unsolicited progress event.
+
+| Event | Effect on the operation |
 |---|---|
-| 4s after `CatalogRescanSucceeded` | to `CatalogRescanIdle` |
-| Dismiss tapped on either failure state | to `CatalogRescanIdle` |
-| Cancel confirmed | to `CatalogRescanIdle` |
-| A new rescan starts | to `CatalogRescanRunning`, clearing the retained progress map first |
-| Connection lost, or the active bridge changes | to `CatalogRescanIdle`, clearing the retained progress map |
-| Connection established or restored | seed from `GET /plugin/import`, keeping only `CatalogImportEnumerating` and `CatalogImportCommitting`; discard every terminal status |
+| A start is dispatched while idle or terminal | Cancel any pending clear timer, clear the retained progress map, open an `owned` operation containing that harness |
+| A start is dispatched while an operation is live | **Join** it: add the harness to the members. The map is not cleared and the run in flight is not disturbed |
+| A start joins an `observed` operation | The operation stays `observed`; this client still did not see the rest of it |
+| Non-terminal progress arrives for a harness that is not a member, while idle | Open an `observed` operation containing that harness |
+| Non-terminal progress arrives for a member | Update the map; publish `CatalogRescanRunning` |
+| A terminal event arrives for a member | Record it; the member is settled |
+| Every member has settled | See the settlement table below |
+| Cancel | `DELETE` for every member id, whether the state is `Starting` or `Running`; close the operation |
+| Connection lost, or the active bridge changes | Close the operation, clear the map, cancel the timer |
+| Connection established or restored | Seed an `observed` operation from `GET /plugin/import`, keeping only `CatalogImportEnumerating` and `CatalogImportCommitting` and discarding every terminal status |
 
-The 4s clear applies to **success only**. `CatalogRescanPartlyFailed` and
-`CatalogRescanFailed` persist until the user dismisses them, a new rescan
-starts, or the connection resets: a diagnostic the user did not get to read is
-worse than a row that outstays its welcome.
+Settlement:
 
-The retained progress map is cleared whenever a rescan starts and whenever the
-state resets to idle. Without that, a second rescan would aggregate the previous
-run's terminal entries before the harnesses reported anything, and could publish
-a terminal state before the new run had begun.
+| Operation | Published state | Then |
+|---|---|---|
+| `owned`, all members succeeded | `CatalogRescanSucceeded` | cleared to idle after 4s |
+| `owned`, some members failed | `CatalogRescanPartlyFailed` | held until dismissed |
+| `owned`, all members failed | `CatalogRescanFailed` | held until dismissed |
+| `observed` | `CatalogRescanIdle` immediately | no summary is claimed |
 
-A rescan **seeded from recovery resolves to `CatalogRescanIdle`, never to a
-terminal summary.** After a reconnect the service knows only which harnesses
-were still enumerating; a harness that completed or failed while the connection
-was down appears in `latestStatuses` as a terminal status that is discarded, and
-the client cannot tell whether it belonged to this rescan, the previous one, or
-bridge-startup hydration, because `latestStatuses` carries no operation identity
-and no grouping. Publishing a success from that partial membership would
-understate the counts and could hide a failed harness behind an authoritative
-"Rescan complete". Recovery therefore shows progress and refreshes the lists when
-it settles, and claims no summary. Only a rescan this client observed from its
-start reports a terminal result.
+**Every** close of a live operation refreshes the two lists, whether it settled
+with a summary, settled as `observed`, or was cancelled. The refresh is tied to
+leaving a live operation, not to the terminal variants, so a run this client
+merely observed still makes its imported sessions appear.
 
-Terminal outcomes are adopted only from the SSE stream, and only for a rescan
-this service already knows is running. This is deliberately the whole lifetime
-rule: no generation counters, no request fences, and no stale-generation
-tracking. `PluginManagementService` needs that machinery because it reconciles
-mutations against a versioned snapshot token; a progress stream that resets to
-idle on disconnect does not.
+Why `observed` claims nothing: after a reconnect the service knows only which
+harnesses were still enumerating. A harness that completed or failed while the
+connection was down appears in `latestStatuses` as a terminal status that is
+discarded, and the client cannot tell whether it belonged to this run, the
+previous one, or bridge-startup hydration, because `latestStatuses` carries no
+operation identity and no grouping. Publishing a success from that partial
+membership would understate the counts and could hide a failed harness behind an
+authoritative "Rescan complete".
 
-Because the service owns the terminal lifetime, two mounted hosts always render
-the same row for the same duration, and revisiting a list after a rescan
-finished shows nothing rather than replaying a stale success.
+The 4s clear applies to success only, and is cancelled by any new start or reset.
+`CatalogRescanPartlyFailed` and `CatalogRescanFailed` persist until dismissed: a
+diagnostic the user did not get to read is worse than a row that outstays its
+welcome.
+
+Since a targeted start joins rather than replaces, the Settings cards need no
+cross-harness disabling. Each card is disabled only while that harness is itself
+a member, and starting a second harness while a first is importing simply widens
+the same operation.
+
+This is deliberately the whole model: no generation counters, no request fences,
+no stale-generation tracking. `PluginManagementService` needs that machinery
+because it reconciles mutations against a versioned snapshot token; an operation
+that closes on disconnect does not.
+
+Because the service owns the operation, two mounted hosts always render the same
+row for the same duration, and revisiting a list after a rescan finished shows
+nothing rather than replaying a stale success.
 
 ## Compatibility
 
@@ -505,8 +531,17 @@ finished shows nothing rather than replaying a stale success.
   route at all, so the deep pull would otherwise perform its soft refresh and
   silently do nothing.
 
-  When **every** harness in a fan-out answers `404`, the service publishes
-  `CatalogRescanUnsupported` and the row says the bridge needs updating. A
+  `/plugin/management` is **younger still**: its first public tag is `v1.7.0`.
+  `PluginRepository.getManagement()` maps a `404` there to
+  `PluginManagementLoadResultUnsupported` (`plugin_repository.dart:14-20`), so on
+  a `v1.4`-`v1.6` bridge the harness source yields no ids at all and a fan-out
+  would send zero requests. `CatalogRescanUnsupported` is therefore published
+  directly whenever the management snapshot is unsupported, without waiting for a
+  `404` that would never be requested.
+
+  When a snapshot **is** available but **every** harness in a fan-out answers
+  `404`, the service publishes `CatalogRescanUnsupported` too and the row says the
+  bridge needs updating. A
   targeted start on such a bridge returns `CatalogRescanStartUnsupported` and the
   card says the same. Sniffing the error body to tell a missing route from an
   unknown plugin is deliberately avoided: both mean "this bridge cannot rescan",
@@ -683,7 +718,7 @@ before the plan is retired.
 
 | Step | Exact PR title | Changed-line target |
 |---|---|---:|
-| 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 1,050-1,250 |
+| 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 1,300-1,450 |
 | 2/8 | `🌱 [catalog-rescan] Re-hydrate stale plugin catalogs [step 2/8]` | 20-60 |
 | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 |
 | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 |
@@ -791,6 +826,11 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
   harness in a fan-out answers `404`; and let a recovery-seeded rescan resolve
   to `CatalogRescanIdle` rather than to a terminal summary.
 - Leave `sse_event.dart` and `sse_event_tracker.dart` untouched.
+- Run `module_core`'s build runner and commit the regenerated
+  `lib/src/di/injection.config.dart`. `@lazySingleton` alone registers nothing:
+  analysis still passes because `getIt<CatalogRescanService>()` resolves
+  dynamically, so a missing factory would not surface until step 6 fails at
+  runtime.
 - Tests: aggregation across two concurrent harnesses; all seven states including
   a mixed success/failure fan-out; the older-bridge payload with `newItems`
   omitted; a two-harness success summing both deltas rather than reporting one;
@@ -805,7 +845,14 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
   state from SSE; a fan-out where every harness answers `404` publishing
   `CatalogRescanUnsupported`; a dispatched start publishing `CatalogRescanStarting`
   before any progress arrives; and a recovery-seeded rescan settling to idle with
-  no summary while still refreshing.
+  no summary while still refreshing; an unsolicited progress event opening an
+  observed operation from idle and refreshing the lists when it closes; a
+  targeted start joining a live operation instead of clearing it; a cancel while
+  `Starting` issuing a `DELETE` per dispatched harness; a second rescan begun
+  inside the previous success's 4s window not being reset by the stale timer;
+  an unsupported management snapshot publishing `CatalogRescanUnsupported`
+  without issuing any request; and a `CatalogRescanStartFailed` retaining its
+  `ApiError` cause and logging it locally.
 
 ### Verification
 
@@ -823,9 +870,13 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
 - `PregoGlassScaffold` composes it behind a new optional `onDeepRefresh`, and
   asserts that `onDeepRefresh` requires `onRefresh`, matching the existing
   `scrollable`/`onRefresh` assertion.
-- `SessionListPanel._buildScrollableContent` replaces its bare
-  `CupertinoSliverRefreshControl` with `PregoSliverRefreshControl`, so the pane
-  gets stage 2 without any threshold logic in `client/app`.
+- `SessionListPanel` replaces its bare `CupertinoSliverRefreshControl` with
+  `PregoSliverRefreshControl` **and** takes an optional `onDeepRefresh` callback
+  parameter, so the pane gets stage 2 without any threshold logic in
+  `client/app`. The parameter is introduced here, defaulting to null, and step 6
+  wires it to the cubit's `startRescan()`. Without it step 5's pane test would
+  have no deep callback to invoke, because the pane currently hardcodes
+  `refreshSessionList(context)` and the cubit intent does not exist until step 6.
 - Render the caption under the existing indicator only once the pull passes the
   soft trigger, so an ordinary pull is visually unchanged.
 - Add a design catalog scenario if the scaffold has one; otherwise widget tests
@@ -849,9 +900,12 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
   subscribe to `CatalogRescanService`, surface the rescan state through their
   own state, and expose `startRescan()`, `startRescanFor(pluginId)`,
   `cancelRescan()`, and `dismissRescan()`. The two list cubits additionally run
-  their existing silent refresh on `CatalogRescanSucceeded` and
-  `CatalogRescanPartlyFailed`, because a committed import raises no list
-  invalidation of its own.
+  their existing silent refresh whenever the service **leaves a live operation**
+  — settled with a summary, settled as observed, or cancelled — because a
+  committed import raises no list invalidation of its own. Keying the refresh on
+  leaving a live operation rather than on the terminal variants is what makes an
+  observed run, which never publishes a summary, still surface its imported
+  sessions.
 - The aggregate rescan row widget in `client/app/lib/core/widgets/`, beside the
   shell's other cross-feature widgets, with its seven presentations. It renders
   the state it is given, owns no timer, and renders no bridge-supplied text.
@@ -862,7 +916,9 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
 - Settings to Harnesses: the per-harness `Rescan` action in
   `_HarnessControlCard`, calling `startRescanFor(pluginId)`, enabled only for a
   harness whose `runtimeState.isRoutable` is true and disabled while that
-  harness is already rescanning. The typed `CatalogRescanStartResult` is held
+  harness is itself a member of the live operation; a targeted start joins that
+  operation rather than replacing it, so no cross-harness disabling is needed.
+  The typed `CatalogRescanStartResult` is held
   per plugin id by `PluginManagementCubit` and rendered on that card, so a
   targeted `503`, `404`, or unsupported-bridge answer lands on the harness the
   user selected instead of the shared row.
