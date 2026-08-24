@@ -67,21 +67,13 @@ eagerly "just in case."
   modern state when one valid meaning exists. Add a dated compatibility comment
   with the legacy rationale and exact cleanup:
   `// COMPATIBILITY YYYY-MM-DD (vX.Y.Z): ...`
-- `vX.Y.Z` is always the **current** product version, read from the code at the
-  time of writing. Never write the release you expect the change to ship in: a
-  marker dated to a version that does not exist yet cannot be matched against
-  any release. Read it from `bridge/app/pubspec.yaml` or
-  `client/app/pubspec.yaml`, which carry the product version and stay in step.
-  Do not use a library package's own version, such as
-  `shared/sesori_shared/pubspec.yaml`, even when the marker sits in that
-  package. State the cleanup as the condition that retires the marker, such as
-  "once every supported bridge sends it", rather than naming a future version.
-- Attach that marker to the smallest thing it explains. A field, parameter,
-  enum value, or branch that exists for compatibility carries the marker
-  directly above itself, inside the enclosing declaration, not above the
-  enclosing function, factory, constructor, class, or its doc comment. Mark the
-  enclosing declaration only when that whole declaration is what compatibility
-  retains.
+  `vX.Y.Z` is the current product version from `bridge/app/pubspec.yaml` (or
+  `client/app`) — never a library package's own version, never an unreleased
+  one. Word the cleanup as its retiring condition, not a future version.
+- Put the marker directly above the field, parameter, or branch it explains,
+  inside the enclosing declaration, not above the enclosing function, factory,
+  class, or doc comment. Mark the enclosing declaration only when it is itself
+  what compatibility retains.
 - For database fields that should always contain data after migration, prefer
   an honest backfill and a non-null column. Keep the field nullable when absence
   is genuinely meaningful or no valid backfill exists.
