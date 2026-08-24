@@ -380,13 +380,13 @@ refresh gap as consequences of one definition.
 - **Step 2 PR:** [#1071](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1071)
   merged
 - **Step 3 base:** `main` at `db22f602a`
-- **Step 3 changed lines:** 490 total from
-  `git diff --numstat <merge-base>...HEAD` (470 insertions, 20 deletions),
+- **Step 3 changed lines:** 497 total from
+  `git diff --numstat <merge-base>...HEAD` (477 insertions, 20 deletions),
   inside the 350-600 target. Breakdown: 66 production
   (`catalog_import_console_listener.dart` 26,
   `catalog_import_repository.dart` 14, `catalog_import_service.dart` 4,
   `catalog_import_progress.dart` 22), 216 tests, 165 generated
-  (`catalog_import_progress.freezed.dart` 146, `.g.dart` 19), 43 plan
+  (`catalog_import_progress.freezed.dart` 146, `.g.dart` 19), 50 plan
 - **Step 3 verification:** `dart analyze --fatal-infos` clean on `bridge/app`,
   `shared/sesori_shared`, and `client/module_core`; `shared` full suite 361
   tests passed; bridge catalog suites 41 tests passed
