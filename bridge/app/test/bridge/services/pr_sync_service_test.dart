@@ -627,6 +627,43 @@ void main() {
       expect(await first, PrRefreshOutcome.failed);
       expect(source.selectionCalls, hasLength(1));
     });
+
+    test("dispose abandons local resolution finishing during shutdown", () async {
+      final resolutionBlock = Completer<void>();
+      final resolutionError = PullRequestTargetResolutionException(
+        innerError: StateError("git exited during shutdown"),
+        innerStackTrace: StackTrace.current,
+      );
+      final source = _FakePrSource(
+        targetsByDirectory: {
+          "/one": PullRequestRepositoryResolutionFailed(
+            branchName: "feature/current",
+            error: resolutionError,
+          ),
+        },
+        resolutionBlock: resolutionBlock,
+      );
+      final pullRequests = _FakePullRequestRepository();
+      final service = _service(
+        source: source,
+        pullRequests: pullRequests,
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
+        },
+      );
+
+      final refresh = service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.background,
+      );
+      await _waitFor(() => source.resolveCalls.isNotEmpty);
+      service.dispose();
+      resolutionBlock.complete();
+      await _waitFor(() => source.completedResolutionCount == 1);
+      await refresh;
+
+      expect(pullRequests.applyCalls, isEmpty);
+    });
   });
 }
 
@@ -689,6 +726,7 @@ final class _FakePrSource({
   Map<String, PullRequestDirectoryTarget> targetsByDirectory = const {},
   final List<Map<String, PullRequestDirectoryTarget>> resolutionResults = const [],
   final List<Completer<void>> selectionBlocks = const [],
+  final Completer<void>? resolutionBlock,
 }) implements PrSourceRepository {
   final List<List<String>> resolveCalls = <List<String>>[];
   final List<List<PullRequestSelectionTarget>> selectionCalls = <List<PullRequestSelectionTarget>>[];
@@ -704,6 +742,7 @@ final class _FakePrSource({
   int identityCallCount = 0;
   int _activeSelections = 0;
   int maxConcurrentSelections = 0;
+  int completedResolutionCount = 0;
 
   @override
   Future<Map<String, PullRequestDirectoryTarget>> resolvePullRequestTargets({
@@ -711,6 +750,8 @@ final class _FakePrSource({
   }) async {
     final uniqueDirectories = directories.toSet().toList(growable: false)..sort();
     resolveCalls.add(uniqueDirectories);
+    if (resolutionBlock case final block?) await block.future;
+    completedResolutionCount++;
     final resultIndex = resolveCalls.length - 1;
     final configured = resultIndex < resolutionResults.length ? resolutionResults[resultIndex] : targetsByDirectory;
     return {

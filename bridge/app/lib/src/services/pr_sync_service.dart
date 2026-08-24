@@ -204,6 +204,7 @@ class PrSyncService({
     final targetsByDirectory = await _prSource.resolvePullRequestTargets(
       directories: rootSessions.map((session) => session.directory),
     );
+    if (_disposed) return outcomes;
     final failedProjectIds = <String>{};
     for (final entry in targetsByDirectory.entries) {
       switch (entry.value) {

@@ -1106,8 +1106,7 @@ class OrchestratorSession._({
     Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_maintenanceListener.dispose);
     await attempt(_viewedProjectPrRefreshListener.dispose);
-    await attempt(_prSyncService.dispose);
-    Log.v("[shutdown] maintenance + pr-sync listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
+    Log.v("[shutdown] maintenance listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
     // Plugin teardown is owned by BridgePlugin.shutdown(), run as the
     // shutdown coordinator's ordered step — the deprecated direct
     // api.dispose() call is gone since the descriptor flip.
@@ -1254,6 +1253,7 @@ class OrchestratorSession._({
   void beginShutdown() {
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
+    _prSyncService.dispose();
     if (_cancelRequestedAt == null) {
       _cancelRequestedAt = DateTime.now();
       Log.d(
