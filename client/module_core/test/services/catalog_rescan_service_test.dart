@@ -538,6 +538,38 @@ void main() {
       );
     });
 
+    test("a stale event from a cancelled run cannot reopen it", () async {
+      build(snapshot: _snapshot(routable: const {"codex": "Codex"}));
+      final release = Completer<CatalogImportMutationResult>();
+      repository.pendingFor["codex"] = release.future;
+      final firstRun = service.startAll();
+      final cancelling = service.cancel();
+
+      // A progress event from the run being cancelled arrives before the
+      // DELETE has gone out.
+      connection.emitProgress(const CatalogImportProgress.enumerating(
+        pluginId: "codex",
+        projectsSeen: 1,
+        sessionsSeen: 3,
+      ));
+
+      expect(
+        service.state.value,
+        isA<CatalogRescanIdle>(),
+        reason: "a cancelled run must not reopen itself as an observed operation",
+      );
+
+      release.complete(const CatalogImportMutationResult.accepted());
+      await firstRun;
+      await cancelling;
+
+      // The next rescan must still be able to claim its own summary.
+      await service.startAll();
+      connection.emitProgress(_completed("codex", newProjects: 2, newSessions: 2));
+
+      expect(service.state.value, isA<CatalogRescanSucceeded>());
+    });
+
     test("an outside cancellation settles quietly instead of showing a failure", () async {
       build(snapshot: _snapshot(routable: const {"codex": "Codex"}));
       final settled = <void>[];

@@ -80,6 +80,12 @@ class CatalogRescanService({
   /// start waits for the cancel to finish owning its plugin ids first.
   Future<void>? _cancelling;
 
+  /// The harness ids a cancellation currently owns. Progress for these is not
+  /// adopted: a delayed event from the run being cancelled would otherwise
+  /// reopen it as an observed operation, and the next rescan would join that
+  /// stale member and lose its own summary.
+  final Set<String> _cancellingPluginIds = {};
+
   Timer? _clearTimer;
   bool _connected = _connectionService.currentStatus is ConnectionConnected;
   String? _activeBridgeId;
@@ -135,7 +141,9 @@ class CatalogRescanService({
   /// begun. The route cancels one plugin per call, so this fans out.
   Future<void> cancel() {
     if (_disposed || _members.isEmpty) return Future<void>.value();
-    return _cancelling = _cancel(pluginIds: Set<String>.of(_members));
+    final pluginIds = Set<String>.of(_members);
+    _cancellingPluginIds.addAll(pluginIds);
+    return _cancelling = _cancel(pluginIds: pluginIds);
   }
 
   Future<void> _cancel({required Set<String> pluginIds}) async {
@@ -158,6 +166,7 @@ class CatalogRescanService({
           }),
       ]);
     } finally {
+      _cancellingPluginIds.removeAll(pluginIds);
       _cancelling = null;
     }
   }
@@ -299,7 +308,7 @@ class CatalogRescanService({
       // A rescan someone else started, seen live. Adopt it so its imported
       // sessions still reach the lists, but as an observed operation, which
       // claims no summary.
-      if (_isTerminal(progress)) return;
+      if (_isTerminal(progress) || _cancellingPluginIds.contains(pluginId)) return;
       _openOrJoin(pluginIds: [pluginId], observed: true);
     }
     // Someone else cancelled a member of this run. That is intervention, not
