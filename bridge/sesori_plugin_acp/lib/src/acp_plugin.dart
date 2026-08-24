@@ -199,10 +199,10 @@ abstract class AcpPlugin({
 
   /// Whether accepting another input should cancel this session's active turn.
   ///
-  /// OMP gives a concurrent ACP prompt this replacement behavior itself. The
-  /// shared adapter serializes requests, so its concrete adapter declares the
-  /// same policy here and the bridge sends the equivalent standard cancel
-  /// before dispatching the queued input.
+  /// OMP gives another prompt for the same session this replacement behavior
+  /// itself. The shared adapter queues same-session requests, so its concrete
+  /// adapter declares the same policy here and the bridge sends the equivalent
+  /// standard cancel before dispatching the queued input.
   bool get cancelsActiveTurnForQueuedInput => false;
 
   /// Whether a turn must stop when its requested selection cannot be applied.

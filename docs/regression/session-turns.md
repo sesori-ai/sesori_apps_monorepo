@@ -44,7 +44,12 @@ defaults and queued client sends coherent.
 - Codex user prompts use the same visible content live and after rollout replay:
   the bridge worktree context envelope is hidden, authored text remains, and
   bounded inline images render as file parts. An attachment-only initial prompt
-  therefore remains visible without exposing the generated context.
+  therefore remains visible without exposing the generated context. A plain
+  follow-up is sent immediately through `turn/start`; Codex's app server starts
+  a turn while idle and steers the active turn while busy, preserving the
+  client user-message id in either case. The bridge keeps the authoritative
+  active turn until its terminal event even when an older app server returns a
+  separate submission id for the steering request.
 - A plain Claude prompt sent while its resident process is working is written
   immediately with `priority: next`. Claude absorbs it at the next tool
   boundary when possible, within the active agent turn; otherwise Claude keeps
@@ -54,14 +59,18 @@ defaults and queued client sends coherent.
   instead of changing the active turn.
 - Pi keeps at most one lazy resident RPC process per active session and allows
   different sessions to run concurrently. Startup replays and hydrates message
-  identity before live frames attach or a turn dispatches; same-session prompts
-  remain FIFO. An accepted prompt remains bridge-queued through startup and
-  selection until Pi echoes its correlated user message, including an
-  attachment-only echo; it can be cancelled before dispatch, and its
-  undispatched prompt id remains immediately retryable while cancellation
-  settles. If a successful turn omits that echo, Pi maps the stored payload
-  through the same user-message path before clearing the queue. Process exit
-  settles current work before queued work reconnects.
+  identity before live frames attach or a turn dispatches. Same-session prompts
+  remain FIFO, and same-selection ordinary follow-ups dispatch with Pi's
+  `steer` streaming behavior as soon as the preceding prompt is accepted, so Pi
+  injects them at the next tool boundary instead of waiting for the run to
+  settle. A model or thinking-level change remains bridge-queued until the
+  current run settles. An accepted prompt remains bridge-queued through startup
+  and selection until Pi echoes
+  its correlated user message, including an attachment-only echo; it can be
+  cancelled before dispatch, and its undispatched prompt id remains immediately
+  retryable while cancellation settles. If a successful run omits an echo, Pi
+  maps each stored payload through the same user-message path before clearing
+  the queue. Process exit settles dispatched work before queued work reconnects.
 - Pi slash commands are accepted by their correlated response or a matching
   extension dialog and remain in the request's sending state until then rather
   than exposing a cancellable bridge-queue entry. Commands reject while that
@@ -91,17 +100,21 @@ defaults and queued client sends coherent.
   boundary, so earlier prose in a multi-tool turn does not depend on the final
   turn snapshot. Sesori does not call form-elicitation or unadvertised
   session-close methods to complete an ordinary turn.
-- Existing-session ACP prompts remain bridge-queued while an earlier turn,
-  process-wide lane, resume, or selection blocks their `session/prompt` frame.
-  Their synthetic user transcript message is published only after that frame
-  flushes successfully to the agent's stdin. Follow-up and replayed user
-  messages preserve ordered text and bounded data-backed image parts, including
-  attachment-only prompts. Initial projection contains only normalized
-  user-visible text plus those images; injected context, local paths, and URLs
-  remain absent. OMP preserves its active-prompt replacement semantics by
-  cancelling the active turn immediately, then dispatching the newly queued
-  input after cancellation settles; Cursor and Hermes retain ordinary FIFO turn
-  boundaries.
+- Existing-session ACP prompts remain bridge-queued while an earlier same-session
+  turn, declared process-wide lane, resume, or selection blocks their
+  `session/prompt` frame. ACP v1 has no standard steering or queued-input
+  operation and permits the next prompt after the current prompt turn completes,
+  so Cursor and Hermes intentionally retain FIFO turn boundaries rather than
+  sending overlapping prompt requests. Their synthetic user transcript message
+  is published only after that frame flushes successfully to the agent's stdin.
+  Follow-up and replayed user messages preserve ordered text and bounded
+  data-backed image parts, including attachment-only prompts. Initial projection
+  contains only normalized user-visible text plus those images; injected
+  context, local paths, and URLs remain absent. OMP runs different sessions
+  concurrently because its permission and form requests carry explicit session
+  IDs. OMP's ACP server defines a busy follow-up as replacement rather than
+  steering: Sesori immediately cancels the active turn, then dispatches the new
+  input after cancellation settles.
 - Normalized user-message events feed the durable user-side activity marker used
   to order running roots. Known event times are applied monotonically. Backend
   input represented as a user message, including automatic compaction or other
@@ -138,11 +151,14 @@ defaults and queued client sends coherent.
   the same prompt id so retries stay idempotent.
 - When a plugin rejects a send before acceptance because its agent, model, or
   variant is no longer offered, the bridge deletes that options-cache row and
-  returns the typed `staleSessionOptions` rejection. The client force-refreshes
-  the options, replaces only unsupported queued selections without changing
-  FIFO order or prompt ids, warns the user, and retries once. A failed refresh
-  or second stale rejection leaves the prompt visible and queued instead of
-  disappearing or entering a retry loop.
+  returns the typed `staleSessionOptions` rejection. OpenCode keeps the requested
+  selection on its synchronous message reservation; when that endpoint collapses
+  a rejection into a generic 500, the plugin checks fresh project options and
+  classifies the failure as stale only when the requested selection is absent or unavailable.
+  The client force-refreshes the options, replaces only unsupported queued
+  selections without changing FIFO order or prompt ids, warns the user, and
+  retries once. A failed refresh or second stale rejection leaves the prompt
+  visible and queued instead of disappearing or entering a retry loop.
 - Each plugin stamps that prompt id onto the user-message echo of its own
   dispatch, using the link its backend exposes — Claude's queue entry, ACP's
   accepted send, Pi's dispatcher, Codex's client-supplied identifier, and

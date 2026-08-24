@@ -31,10 +31,18 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
   static const int _recentPromptIdLimit = 64;
 
   String directory = initialDirectory;
+
+  /// Admitted turns waiting for their FIFO dispatch attempt.
   final List<_PiTurn> queue = [];
+
+  /// Prompt commands accepted by Pi and governed by its current agent run.
+  final List<_PiTurn> inFlight = [];
+
+  /// The one turn currently connecting, selecting, or awaiting prompt acceptance.
   _PiTurn? active;
   Future<void>? idleReap;
   PluginSessionStatus status = const PluginSessionStatus.idle();
+  bool agentRunning = false;
   int generation = 0;
   int idleGeneration = 0;
 
@@ -44,15 +52,23 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
   /// settled ids need this bounded window.
   final Queue<String> recentPromptIds = Queue<String>();
 
-  bool isAdmitted({required String promptId}) {
+  List<_PiTurn> get turns {
+    final result = List<_PiTurn>.of(inFlight);
     final activeTurn = active;
-    final activeAccepted =
-        activeTurn?.promptId == promptId &&
-        (activeTurn is! _PiQueuedPromptTurn || activeTurn.queueState != _PiQueueState.cancelled);
-    return activeAccepted ||
-        queue.any((turn) => turn.promptId == promptId) ||
-        recentPromptIds.contains(promptId);
+    if (activeTurn != null) result.add(activeTurn);
+    result.addAll(queue);
+    return result;
   }
+
+  bool get hasWork => active != null || inFlight.isNotEmpty || queue.isNotEmpty;
+
+  bool isAdmitted({required String promptId}) =>
+      turns.any(
+        (turn) =>
+            turn.promptId == promptId &&
+            (turn is! _PiQueuedPromptTurn || turn.queueState != _PiQueueState.cancelled),
+      ) ||
+      recentPromptIds.contains(promptId);
 
   void recordSettledPromptId({required String promptId}) {
     recentPromptIds.addLast(promptId);
@@ -75,6 +91,7 @@ sealed class _PiTurn({
   bool responseSucceeded = false;
   bool agentStarted = false;
   bool agentSettled = false;
+  bool settlementObservedBeforeAcceptance = false;
   bool settled = false;
 }
 
@@ -112,7 +129,7 @@ final class PiSessionService({
   required final PiEventDispatcher eventDispatcher,
   required final PiExtensionUiService extensionUiService,
   required final ServerClock clock,
-  required final Duration idleTimeout,
+  required final Duration? Function() resolveIdleTimeout,
 }) {
   this {
     _frameSubscription = _processes.frames.listen(_handleFrame);
@@ -124,7 +141,7 @@ final class PiSessionService({
   final PiEventDispatcher _dispatcher = eventDispatcher;
   final PiExtensionUiService _extensionUi = extensionUiService;
   final ServerClock _clock = clock;
-  final Duration _idleTimeout = idleTimeout;
+  final Duration? Function() _resolveIdleTimeout = resolveIdleTimeout;
   final Map<String, _PiSessionTurnState> _sessions = {};
   final Map<String, String> _pendingNewDirectories = {};
   final Set<Future<void>> _activeIdleReaps = {};
@@ -143,7 +160,7 @@ final class PiSessionService({
     final state = _sessions[sessionId];
     if (state == null) return const [];
     return [
-      for (final turn in [?state.active, ...state.queue])
+      for (final turn in state.turns)
         if (turn is _PiQueuedPromptTurn && turn.queueState == _PiQueueState.visible) turn.presentation,
     ];
   }
@@ -168,6 +185,7 @@ final class PiSessionService({
     if (index == -1) return false;
     final turn = state.queue.removeAt(index) as _PiQueuedPromptTurn;
     _cancelQueuedPresentation(sessionId: sessionId, state: state, turn: turn);
+    _startNext(sessionId: sessionId, state: state);
     return true;
   }
 
@@ -320,7 +338,7 @@ final class PiSessionService({
     if (_disposed) return Future.error(const PiRpcDisposedException());
     final state = _sessions[sessionId];
     if (state != null && state.isAdmitted(promptId: promptId)) return Future.value();
-    if (state?.active != null || (state?.queue.isNotEmpty ?? false)) {
+    if (state?.hasWork ?? false) {
       return Future.error(PiSessionBusyException(sessionId: sessionId));
     }
     final execution = arguments.isEmpty ? "/$command" : "/$command $arguments";
@@ -357,8 +375,9 @@ final class PiSessionService({
     }
     state.directory = directory;
     state.idleGeneration++;
+    final wasIdle = !state.hasWork;
     state.queue.add(turn);
-    if (state.active == null && state.queue.length == 1) {
+    if (wasIdle) {
       state.status = const PluginSessionStatus.busy();
       _emit(
         BridgeSseSessionStatus(
@@ -375,10 +394,29 @@ final class PiSessionService({
 
   void _startNext({required String sessionId, required _PiSessionTurnState state}) {
     if (_disposed || state.active != null || state.queue.isEmpty || !identical(_sessions[sessionId], state)) return;
+    if (state.inFlight.isNotEmpty && _changesSelection(inFlight: state.inFlight, next: state.queue.first)) return;
     final turn = state.queue.removeAt(0);
     state.active = turn;
     final generation = state.generation;
     unawaited(_runTurn(sessionId: sessionId, state: state, turn: turn, generation: generation));
+  }
+
+  bool _changesSelection({required List<_PiTurn> inFlight, required _PiTurn next}) {
+    ({String providerID, String modelID})? effectiveModel;
+    String? effectiveVariant;
+    for (final turn in inFlight) {
+      final requestedModel = turn.model;
+      if (requestedModel != null && requestedModel != effectiveModel) {
+        effectiveModel = requestedModel;
+        effectiveVariant = null;
+      }
+      final requestedVariant = turn.variant?.id;
+      if (requestedVariant != null) effectiveVariant = requestedVariant;
+    }
+    final nextModel = next.model;
+    if (nextModel != null && nextModel != effectiveModel) return true;
+    final nextVariant = next.variant?.id;
+    return nextVariant != null && nextVariant != effectiveVariant;
   }
 
   Future<void> _runTurn({
@@ -410,15 +448,16 @@ final class PiSessionService({
       if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) {
         throw PiTurnCancelledException(sessionId: sessionId);
       }
-      _dispatcher.beginTurn(
+      _dispatcher.registerPrompt(
         sessionId: sessionId,
         promptId: turn.promptId,
         executionText: turn.payload.message,
         userVisibleText: turn.userVisibleText,
       );
-      turn.promptDispatched = true;
-      final response = _processes.dispatchPrompt(connection: connection, payload: turn.payload);
-      await response;
+      turn
+        ..promptDispatched = true
+        ..agentStarted = state.agentRunning;
+      await _processes.dispatchPrompt(connection: connection, payload: turn.payload);
       if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
       turn.responseSucceeded = true;
       if (turn is _PiCommandTurn && !turn.acceptance.isCompleted) {
@@ -428,14 +467,27 @@ final class PiSessionService({
       if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
       if (turn.agentSettled) {
         _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
-      } else if (!turn.agentStarted) {
+        return;
+      }
+      if (turn.settlementObservedBeforeAcceptance || !turn.agentStarted) {
         final agentState = await _processes.getState(connection: connection);
         await Future<void>.delayed(Duration.zero);
         if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
-        if (!turn.agentStarted && !agentState.streaming && agentState.pendingMessageCount == 0) {
+        if (turn.agentSettled) {
           _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
+          return;
         }
+        final hasAgentWork = agentState.streaming || agentState.pendingMessageCount > 0;
+        if (!hasAgentWork) {
+          _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
+          return;
+        }
+        turn
+          ..agentStarted = true
+          ..settlementObservedBeforeAcceptance = false;
+        state.agentRunning = state.agentRunning || agentState.streaming;
       }
+      _moveInFlight(sessionId: sessionId, state: state, turn: turn);
     } on PiTurnCancelledException catch (error, stack) {
       if (turn is _PiCommandTurn && !turn.acceptance.isCompleted) {
         turn.acceptance.completeError(error, stack);
@@ -452,49 +504,93 @@ final class PiSessionService({
         _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
         return;
       }
-      if (error is TimeoutException && turn.promptDispatched) {
-        final connection = turn.connection;
-        if (connection != null) {
-          _extensionUi.cancelForOwner(
-            sessionId: sessionId,
-            processGeneration: connection.generation,
-          );
+      final connection = turn.connection;
+      final connectionFailed =
+          turn.promptDispatched && (error is TimeoutException || error is PiRpcProcessExitException);
+      if (connectionFailed && connection != null) {
+        _extensionUi.cancelForOwner(
+          sessionId: sessionId,
+          processGeneration: connection.generation,
+        );
+        if (error is TimeoutException) {
           await _processes.teardownConnection(connection: connection);
-          if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
+          if (!_ownsTurn(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
         }
       }
       if (turn is _PiCommandTurn && !turn.acceptance.isCompleted) {
         turn.acceptance.completeError(error, stack);
       }
-      if (_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) {
-        final presented = _processes.presentTurnFailure(sessionId: sessionId, error: error);
-        Log.w("[pi] admitted turn failed for session id=$sessionId", presented.cause, stack);
-        if (presented.message?.contains("/login") ?? false) {
-          _emit(
-            BridgeSseTuiToastShow(
-              title: "Pi login required",
-              message: presented.message,
-              variant: "warning",
-            ),
-          );
-        }
+      if (!_ownsTurn(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
+      final presented = _processes.presentTurnFailure(sessionId: sessionId, error: error);
+      Log.w("[pi] admitted turn failed for session id=$sessionId", presented.cause, stack);
+      if (presented.message?.contains("/login") ?? false) {
+        _emit(
+          BridgeSseTuiToastShow(
+            title: "Pi login required",
+            message: presented.message,
+            variant: "warning",
+          ),
+        );
+      }
+      if (connectionFailed && connection != null) {
+        _finishConnectionTurns(
+          sessionId: sessionId,
+          state: state,
+          processGeneration: connection.generation,
+          failure: error,
+        );
+      } else {
         _finish(sessionId: sessionId, state: state, turn: turn, failed: true, failure: error);
       }
     }
   }
 
+  void _moveInFlight({
+    required String sessionId,
+    required _PiSessionTurnState state,
+    required _PiTurn turn,
+  }) {
+    if (!identical(state.active, turn)) return;
+    state
+      ..active = null
+      ..inFlight.add(turn);
+    _startNext(sessionId: sessionId, state: state);
+  }
+
   void _handleFrame(PiSessionProcessFrame processFrame) {
     final state = _sessions[processFrame.sessionId];
-    final turn = state?.active;
-    if (state == null || turn == null) return;
-    turn.connection ??= PiSessionConnection(
+    if (state == null || !state.hasWork) return;
+    state.active?.connection ??= PiSessionConnection(
       sessionId: processFrame.sessionId,
       generation: processFrame.generation,
     );
-    if (turn.connection?.generation != processFrame.generation) return;
+    final generationTurns = [
+      for (final turn in state.turns)
+        if (turn.connection?.generation == processFrame.generation) turn,
+    ];
+    if (generationTurns.isEmpty) return;
     switch (processFrame.frame) {
       case PiEventFrame(:final event):
-        if (turn.promptDispatched && event is PiAgentStartEvent) turn.agentStarted = true;
+        if (event is PiAgentStartEvent) {
+          state.agentRunning = true;
+          for (final turn in generationTurns) {
+            if (!turn.promptDispatched) continue;
+            turn
+              ..agentStarted = true
+              ..agentSettled = false
+              ..settlementObservedBeforeAcceptance = false;
+          }
+        } else if (event is PiAgentSettledEvent) {
+          state.agentRunning = false;
+          for (final turn in generationTurns) {
+            if (!turn.promptDispatched) continue;
+            if (turn.responseSucceeded) {
+              turn.agentSettled = true;
+            } else {
+              turn.settlementObservedBeforeAcceptance = true;
+            }
+          }
+        }
         final now = _clock.now();
         final mappedStatus = _dispatcher.sessionStatusFor(event: event, now: now);
         final statusChanged =
@@ -509,37 +605,34 @@ final class PiSessionService({
               (event is PiAgentStartEvent || event is PiAgentSettledEvent) &&
               (mapped is BridgeSseSessionStatus || mapped is BridgeSseSessionIdle);
           if (!serviceOwnsLifecycle) _emit(mapped);
-        }
-        final userMessageEmitted =
-            turn.promptDispatched &&
-            mappedEvents.any(
-              (mapped) => mapped is BridgeSseMessageUpdated && mapped.info["promptId"] == turn.promptId,
-            );
-        if (userMessageEmitted) {
-          turn.userMessageEmitted = true;
-          if (turn is _PiQueuedPromptTurn && turn.queueState == _PiQueueState.visible) {
-            _releaseQueuedPresentation(sessionId: processFrame.sessionId, state: state, turn: turn);
+          if (mapped is! BridgeSseMessageUpdated) continue;
+          final promptId = mapped.info["promptId"];
+          if (promptId is! String) continue;
+          final correlated = _turnForPrompt(state: state, promptId: promptId);
+          if (correlated == null) continue;
+          correlated.userMessageEmitted = true;
+          if (correlated is _PiQueuedPromptTurn && correlated.queueState == _PiQueueState.visible) {
+            _releaseQueuedPresentation(sessionId: processFrame.sessionId, state: state, turn: correlated);
           }
         }
         if (statusChanged) _emit(const BridgeSseProjectUpdated());
-        if (turn.promptDispatched && event is PiAgentSettledEvent) {
-          turn.agentSettled = true;
-          if (turn.responseSucceeded) {
-            _finish(
-              sessionId: processFrame.sessionId,
-              state: state,
-              turn: turn,
-              failed: false,
-              failure: null,
-            );
+        if (event is PiAgentSettledEvent) {
+          for (final turn in List<_PiTurn>.of(generationTurns)) {
+            if (turn.promptDispatched && turn.responseSucceeded) {
+              _finish(
+                sessionId: processFrame.sessionId,
+                state: state,
+                turn: turn,
+                failed: false,
+                failure: null,
+              );
+            }
           }
         }
       case PiExtensionUiFrame(:final request):
-        if (turn is _PiCommandTurn &&
-            turn.promptDispatched &&
-            request is PiExtensionDialogRequest &&
-            !turn.acceptance.isCompleted) {
-          turn.acceptance.complete();
+        final commandTurn = _pendingCommandTurn(state: state, processGeneration: processFrame.generation);
+        if (commandTurn != null && request is PiExtensionDialogRequest && !commandTurn.acceptance.isCompleted) {
+          commandTurn.acceptance.complete();
         }
         unawaited(
           _extensionUi
@@ -559,13 +652,34 @@ final class PiSessionService({
     }
   }
 
+  _PiTurn? _turnForPrompt({required _PiSessionTurnState state, required String promptId}) {
+    for (final turn in state.turns) {
+      if (turn.promptId == promptId) return turn;
+    }
+    return null;
+  }
+
+  _PiCommandTurn? _pendingCommandTurn({required _PiSessionTurnState state, required int processGeneration}) {
+    for (final turn in state.turns.whereType<_PiCommandTurn>()) {
+      if (turn.promptDispatched && turn.connection?.generation == processGeneration) return turn;
+    }
+    return null;
+  }
+
   void _handleExit(PiSessionProcessExit exit) {
     _extensionUi.cancelForOwner(sessionId: exit.sessionId, processGeneration: exit.generation);
     final state = _sessions[exit.sessionId];
-    final turn = state?.active;
-    if (state == null || turn == null || turn.connection?.generation != exit.generation) return;
-    final cancelled = turn is _PiQueuedPromptTurn && turn.queueState == _PiQueueState.cancelled;
-    if (!cancelled && exit.authUnavailable) {
+    if (state == null) return;
+    final affected = [
+      for (final turn in state.turns)
+        if (turn.connection?.generation == exit.generation) turn,
+    ];
+    if (affected.isEmpty) return;
+    state.agentRunning = false;
+    final hasUncancelled = affected.any(
+      (turn) => turn is! _PiQueuedPromptTurn || turn.queueState != _PiQueueState.cancelled,
+    );
+    if (hasUncancelled && exit.authUnavailable) {
       _emit(
         const BridgeSseTuiToastShow(
           title: "Pi login required",
@@ -575,16 +689,42 @@ final class PiSessionService({
       );
     }
     final failure = PiRpcProcessExitException(exitCode: exit.exitCode);
-    if (!cancelled) {
-      Log.w("[pi] resident process exited during active turn for session id=${exit.sessionId}", failure);
+    if (hasUncancelled) {
+      Log.w("[pi] resident process exited during active turns for session id=${exit.sessionId}", failure);
     }
-    _finish(
-      sessionId: exit.sessionId,
-      state: state,
-      turn: turn,
-      failed: !cancelled,
-      failure: cancelled ? null : failure,
-    );
+    for (final turn in affected) {
+      final cancelled = turn is _PiQueuedPromptTurn && turn.queueState == _PiQueueState.cancelled;
+      _finish(
+        sessionId: exit.sessionId,
+        state: state,
+        turn: turn,
+        failed: !cancelled,
+        failure: cancelled ? null : failure,
+      );
+    }
+  }
+
+  void _finishConnectionTurns({
+    required String sessionId,
+    required _PiSessionTurnState state,
+    required int processGeneration,
+    required Object failure,
+  }) {
+    state.agentRunning = false;
+    final affected = [
+      for (final turn in state.turns)
+        if (turn.connection?.generation == processGeneration) turn,
+    ];
+    for (final turn in affected) {
+      final cancelled = turn is _PiQueuedPromptTurn && turn.queueState == _PiQueueState.cancelled;
+      _finish(
+        sessionId: sessionId,
+        state: state,
+        turn: turn,
+        failed: !cancelled,
+        failure: cancelled ? null : failure,
+      );
+    }
   }
 
   void _finish({
@@ -594,7 +734,9 @@ final class PiSessionService({
     required bool failed,
     required Object? failure,
   }) {
-    if (turn.settled) return;
+    if (turn.settled || !identical(_sessions[sessionId], state)) return;
+    final owned = identical(state.active, turn) || state.inFlight.contains(turn) || state.queue.contains(turn);
+    if (!owned) return;
     turn.settled = true;
     if (turn.promptDispatched) {
       state.recordSettledPromptId(promptId: turn.promptId);
@@ -605,21 +747,32 @@ final class PiSessionService({
         StackTrace.current,
       );
     }
-    if (!identical(_sessions[sessionId], state) || !identical(state.active, turn)) return;
     if (!failed && turn.promptDispatched && !turn.userMessageEmitted) {
       _emitMissingUserMessage(sessionId: sessionId, turn: turn);
+    } else if (!turn.userMessageEmitted) {
+      _dispatcher.cancelPrompt(sessionId: sessionId, promptId: turn.promptId);
     }
-    state.active = null;
+    if (identical(state.active, turn)) state.active = null;
+    state
+      ..inFlight.remove(turn)
+      ..queue.remove(turn);
     if (turn is _PiQueuedPromptTurn) {
       _releaseQueuedPresentation(sessionId: sessionId, state: state, turn: turn);
     }
     if (failed) _emit(BridgeSseSessionError(sessionID: sessionId));
     unawaited(_clearPendingWhenPersisted(sessionId: sessionId, directory: state.directory));
-    if (state.queue.isNotEmpty) {
-      final statusChanged = state.status != const PluginSessionStatus.busy();
-      state.status = const PluginSessionStatus.busy();
-      if (statusChanged) _emit(const BridgeSseProjectUpdated());
-      _startNext(sessionId: sessionId, state: state);
+    _startNext(sessionId: sessionId, state: state);
+    if (state.hasWork) {
+      if (state.status != const PluginSessionStatus.busy()) {
+        state.status = const PluginSessionStatus.busy();
+        _emit(
+          BridgeSseSessionStatus(
+            sessionID: sessionId,
+            status: const shared.SessionStatus.busy().toJson(),
+          ),
+        );
+        _emit(const BridgeSseProjectUpdated());
+      }
       return;
     }
     state.status = const PluginSessionStatus.idle();
@@ -670,7 +823,14 @@ final class PiSessionService({
     }
   }
 
-  Future<void> abort({required String sessionId}) async {
+  Future<void> abort({required String sessionId}) {
+    return _abort(sessionId: sessionId, processExitIsExpected: false);
+  }
+
+  Future<void> _abort({
+    required String sessionId,
+    required bool processExitIsExpected,
+  }) async {
     final state = _sessions[sessionId];
     if (state == null) {
       await _processes.teardown(sessionId: sessionId);
@@ -678,17 +838,21 @@ final class PiSessionService({
     }
     state.generation++;
     state.idleGeneration++;
-    final cancelled = [?state.active, ...state.queue];
+    final cancelled = state.turns.toList(growable: false);
     final hadQueuedPresentations = cancelled.any(
       (turn) => turn is _PiQueuedPromptTurn && turn.queueState == _PiQueueState.visible,
     );
     for (final turn in cancelled) {
       if (turn is _PiQueuedPromptTurn) turn.queueState = _PiQueueState.cancelled;
     }
-    state.active = null;
-    state.queue.clear();
-    state.status = const PluginSessionStatus.idle();
+    state
+      ..active = null
+      ..agentRunning = false
+      ..inFlight.clear()
+      ..queue.clear()
+      ..status = const PluginSessionStatus.idle();
     for (final turn in cancelled) {
+      _dispatcher.cancelPrompt(sessionId: sessionId, promptId: turn.promptId);
       if (turn is _PiCommandTurn && !turn.acceptance.isCompleted) {
         turn.acceptance.completeError(PiTurnCancelledException(sessionId: sessionId), StackTrace.current);
       }
@@ -699,7 +863,16 @@ final class PiSessionService({
     try {
       final idleReap = state.idleReap;
       if (idleReap != null) await idleReap;
-      if (connection != null) await _processes.abort(connection: connection);
+      if (connection != null) {
+        switch (await _processes.abort(connection: connection)) {
+          case PiSessionAbortAcknowledged():
+            break;
+          case PiSessionAbortProcessExited(:final innerError, :final innerStackTrace):
+            if (!processExitIsExpected) {
+              Log.w("[pi] abort command failed for session id=$sessionId", innerError, innerStackTrace);
+            }
+        }
+      }
     } on Object catch (error, stack) {
       Log.w("[pi] abort command failed for session id=$sessionId", error, stack);
     } finally {
@@ -721,11 +894,12 @@ final class PiSessionService({
     return () async {
       final activeSessionIds = <String>{
         for (final entry in _sessions.entries)
-          if (entry.value.active != null || entry.value.queue.isNotEmpty) entry.key,
+          if (entry.value.hasWork) entry.key,
       };
       if (activeSessionIds.isEmpty) return const <String>{};
       await Future.wait([
-        for (final sessionId in activeSessionIds) abort(sessionId: sessionId),
+        for (final sessionId in activeSessionIds)
+          _abort(sessionId: sessionId, processExitIsExpected: true),
       ]);
       if (currentWorkState != PluginWorkState.idle) {
         await workState.firstWhere((state) => state == PluginWorkState.idle);
@@ -739,13 +913,17 @@ final class PiSessionService({
     if (state != null) {
       state.generation++;
       state.idleGeneration++;
-      for (final turn in [?state.active, ...state.queue]) {
+      for (final turn in state.turns) {
+        _dispatcher.cancelPrompt(sessionId: sessionId, promptId: turn.promptId);
         if (turn is _PiCommandTurn && !turn.acceptance.isCompleted) {
           turn.acceptance.completeError(PiTurnCancelledException(sessionId: sessionId), StackTrace.current);
         }
       }
-      state.active = null;
-      state.queue.clear();
+      state
+        ..active = null
+        ..agentRunning = false
+        ..inFlight.clear()
+        ..queue.clear();
     }
     final idleReap = state?.idleReap;
     if (idleReap != null) {
@@ -783,12 +961,13 @@ final class PiSessionService({
 
   void _scheduleIdleReap({required String sessionId, required _PiSessionTurnState state}) {
     final generation = ++state.idleGeneration;
+    final idleTimeout = _resolveIdleTimeout();
+    if (idleTimeout == null) return;
     unawaited(() async {
-      await _clock.delay(duration: _idleTimeout);
+      await _clock.delay(duration: idleTimeout);
       if (_disposed ||
           !identical(_sessions[sessionId], state) ||
-          state.active != null ||
-          state.queue.isNotEmpty ||
+          state.hasWork ||
           state.idleGeneration != generation) {
         return;
       }
@@ -858,9 +1037,7 @@ final class PiSessionService({
   }
 
   void _syncWorkState() => _workState.set(
-    _sessions.values.any((state) => state.active != null || state.queue.isNotEmpty)
-        ? PluginWorkState.busy
-        : PluginWorkState.idle,
+    _sessions.values.any((state) => state.hasWork) ? PluginWorkState.busy : PluginWorkState.idle,
   );
 
   void _emit(BridgeSseEvent event) {
@@ -873,10 +1050,12 @@ final class PiSessionService({
 
   Future<void> _dispose({required Duration? shutdownBudget}) async {
     _disposed = true;
-    for (final state in _sessions.values) {
+    for (final entry in _sessions.entries) {
+      final state = entry.value;
       state.generation++;
       state.idleGeneration++;
-      for (final turn in [?state.active, ...state.queue]) {
+      for (final turn in state.turns) {
+        _dispatcher.cancelPrompt(sessionId: entry.key, promptId: turn.promptId);
         if (turn is _PiCommandTurn && !turn.acceptance.isCompleted) {
           turn.acceptance.completeError(const PiRpcDisposedException(), StackTrace.current);
         }

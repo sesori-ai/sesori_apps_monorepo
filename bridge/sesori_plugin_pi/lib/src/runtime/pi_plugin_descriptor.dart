@@ -24,7 +24,7 @@ typedef PiPluginFactory = PiPlugin Function({
   required Duration historyRpcTimeout,
   required Duration catalogTimeout,
   required Duration healthTimeout,
-  required Duration idleTimeout,
+  required Duration? Function() resolveIdleTimeout,
   required Duration editorTimeout,
 });
 
@@ -40,7 +40,7 @@ PiPlugin _buildPiPlugin({
   required Duration historyRpcTimeout,
   required Duration catalogTimeout,
   required Duration healthTimeout,
-  required Duration idleTimeout,
+  required Duration? Function() resolveIdleTimeout,
   required Duration editorTimeout,
 }) => PiPlugin(
   binaryPath: binaryPath,
@@ -54,7 +54,7 @@ PiPlugin _buildPiPlugin({
   historyRpcTimeout: historyRpcTimeout,
   catalogTimeout: catalogTimeout,
   healthTimeout: healthTimeout,
-  idleTimeout: idleTimeout,
+  resolveIdleTimeout: resolveIdleTimeout,
   editorTimeout: editorTimeout,
 );
 
@@ -96,6 +96,13 @@ final class const PiPluginDescriptor({
 
   @override
   bool get supportsPromptAttachments => true;
+
+  /// Pi owns idle reclamation per session: each RPC child is reaped on the
+  /// user-configured timeout and resumed transparently on the next turn.
+  /// Whole-plugin suspension would duplicate that timer and can race the
+  /// per-session teardown, so the adapter remains resident like Claude Code.
+  @override
+  PluginResidencyPolicy residencyPolicy({required PluginConfig config}) => PluginResidencyPolicy.resident;
 
   @override
   List<PluginOption> get options => cliOptions;
@@ -293,7 +300,7 @@ final class const PiPluginDescriptor({
         historyRpcTimeout: const Duration(minutes: 2),
         catalogTimeout: const Duration(seconds: 30),
         healthTimeout: const Duration(seconds: 10),
-        idleTimeout: const Duration(minutes: 5),
+        resolveIdleTimeout: () => host.pluginIdleTimeout,
         editorTimeout: const Duration(minutes: 30),
       );
     } on Object {

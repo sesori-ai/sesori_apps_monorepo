@@ -18,7 +18,7 @@ class _FakeTokenRefreshManager(final String _token, {final String? _forceRefresh
     if (forceRefresh) {
       forceRefreshCalled = true;
       if (_forceRefreshToken != null) return _forceRefreshToken;
-      throw const TokenRefreshException("Force refresh failed");
+      throw const TokenRefreshException(reason: "Force refresh failed");
     }
     return _token;
   }

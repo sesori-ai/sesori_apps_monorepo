@@ -46,12 +46,13 @@ idle suspension, the management snapshot, and lifecycle commands.
   idle window and a resident one never does, and idle timeouts survive restart.
   Enable, disable, restart, and refresh are offered only where declared, with enable
   persisting eligibility, re-inspecting setup, then starting when ready.
-- A resident harness that keeps the idle-timeout capability (Claude Code) reports the
-  configured timeout instead of zero and consumes it internally through the host: the
-  Claude plugin reaps each idle session's CLI child process after that window and
+- A resident harness that keeps the idle-timeout capability (Claude Code or Pi) reports
+  the configured timeout instead of zero and consumes it internally through the host.
+  Each plugin reaps its idle per-session CLI/RPC child process after that window and
   transparently resumes it on the next prompt, so the settings knob stays effective
-  even though whole-plugin suspension never runs. A runtime timeout change applies at
-  each session's next idle transition without a plugin restart.
+  without a competing whole-plugin suspension timer. A runtime timeout change applies
+  at each session's next idle transition without a plugin restart; no timeout keeps the
+  child resident.
 - A Claude session whose CLI scheduled a `ScheduleWakeup` loop wakeup is not reaped
   before the wakeup fires (the in-process timer would die and `--resume` cannot rearm
   it); a wakeup that never fires stops deferring one idle window past its fire time.

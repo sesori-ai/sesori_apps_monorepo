@@ -15,6 +15,7 @@ import 'package:sesori_bridge/src/auth/bridge_id_storage.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_repository.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_service.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
+import 'package:sesori_bridge/src/auth/token_refresh_exception.dart';
 import 'package:sesori_bridge/src/auth/token_service.dart';
 import 'package:sesori_bridge/src/foundation/abortable_request.dart';
 import 'package:sesori_bridge/src/foundation/bridge_startup_banner_formatter.dart';
@@ -351,11 +352,16 @@ Future<void> _unregisterBridgeRegistration({
   final TokenData tokens;
   try {
     tokens = await loadTokens(dataDirectory: dataDirectory);
-  } on Object catch (e) {
-    // A registered bridge with no usable token file — there is no credential
-    // left to authenticate the unregister call. Logout still proceeds, but
-    // leave a trace.
-    Log.w('Skipping bridge unregistration; could not load tokens: $e');
+  } on PathNotFoundException {
+    // Logout is idempotent. A persisted bridge id can outlive the token file
+    // after an earlier best-effort unregister failed, so no token is expected
+    // when the user runs logout again.
+    return;
+  } on Object catch (error, stackTrace) {
+    // A registered bridge with an unreadable token file has no credential for
+    // the unregister call. Logout still proceeds, but retain the unexpected
+    // local failure for diagnostics.
+    Log.w('Skipping bridge unregistration; could not load tokens', error, stackTrace);
     return;
   }
 
@@ -386,7 +392,18 @@ Future<void> _unregisterBridgeRegistration({
       hostName: Platform.localHostname,
       platform: BridgeRegistrationService.currentPlatformName(),
     );
-    await registrationService.unregister().timeout(const Duration(seconds: 10));
+    try {
+      await registrationService.unregister().timeout(const Duration(seconds: 10));
+    } on TokenRefreshException catch (error) {
+      if (error.statusCode != 401) {
+        rethrow;
+      }
+      // An expired or revoked saved session is a normal reason to log out. The
+      // server registration cannot be removed without valid credentials, but
+      // the local logout should remain clean and the persisted bridge id lets a
+      // later login reclaim the same registration.
+      Log.i('Skipping bridge unregistration because the saved authentication session is no longer valid.');
+    }
   } finally {
     tokenService.dispose();
     httpClient.close();

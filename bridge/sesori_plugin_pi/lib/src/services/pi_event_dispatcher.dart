@@ -19,19 +19,23 @@ final class PiEventDispatcher({
   final PiToolTracker _tools = toolTracker;
   final Map<String, _SessionState> _sessions = {};
 
-  void beginTurn({
+  void registerPrompt({
     required String sessionId,
     required String promptId,
     required String? executionText,
     required String? userVisibleText,
   }) {
-    final state = _session(sessionId);
-    state
-      ..clearMessage()
-      ..executionText = executionText
-      ..userVisibleText = userVisibleText
-      ..promptId = promptId;
-    _tools.beginTurn(sessionId: sessionId);
+    _session(sessionId).pendingPrompts.add(
+      _PendingPrompt(
+        promptId: promptId,
+        executionText: executionText,
+        userVisibleText: userVisibleText,
+      ),
+    );
+  }
+
+  void cancelPrompt({required String sessionId, required String promptId}) {
+    _sessions[sessionId]?.pendingPrompts.removeWhere((prompt) => prompt.promptId == promptId);
   }
 
   void forgetSession({required String sessionId}) {
@@ -110,8 +114,8 @@ final class PiEventDispatcher({
       error: error,
     ),
     PiEntryAppendedEvent(:final entry) => _entryAppended(sessionId: sessionId, raw: entry),
+    PiTurnStartEvent() => _turnStart(sessionId: sessionId),
     PiAgentEndEvent() ||
-    PiTurnStartEvent() ||
     PiTurnEndEvent() ||
     PiBashExecutionUpdateEvent() ||
     PiQueueUpdateEvent() ||
@@ -316,24 +320,21 @@ final class PiEventDispatcher({
     if (message == null) return const [];
     final state = _session(sessionId);
     final textContent = message.content.whereType<PiTextContentDto>().singleOrNull;
-    final visibleText = state.userVisibleText;
-    final isAttachmentOnlyEcho =
-        (state.executionText?.isEmpty ?? false) &&
-        message.content.isNotEmpty &&
-        message.content.every((content) => content is PiImageContentDto);
-    final isTurnEcho = textContent?.text == state.executionText || isAttachmentOnlyEcho;
-    final exactText = isTurnEcho ? visibleText : null;
-    // Consumed on the first echo so a later replay with identical text does
-    // not correlate to the same prompt again.
-    final promptId = isTurnEcho ? state.promptId : null;
-    if (isTurnEcho) state.promptId = null;
+    final isAttachmentOnlyMessage =
+        message.content.isNotEmpty && message.content.every((content) => content is PiImageContentDto);
+    final correlationIndex = state.pendingPrompts.indexWhere(
+      (prompt) =>
+          textContent?.text == prompt.executionText ||
+          ((prompt.executionText?.isEmpty ?? false) && isAttachmentOnlyMessage),
+    );
+    final correlation = correlationIndex == -1 ? null : state.pendingPrompts.removeAt(correlationIndex);
     final messageId = state.identities.next(role: PiMessageIdentityRole.user, timestamp: message.timestamp);
     final mapped = _historyMapper.mapUserMessage(
       sessionId: sessionId,
       messageId: messageId,
       message: message,
-      exactText: exactText,
-      promptId: promptId,
+      exactText: correlation?.userVisibleText,
+      promptId: correlation?.promptId,
     );
     if (mapped == null) return const [];
     return [
@@ -539,6 +540,11 @@ final class PiEventDispatcher({
     );
   }
 
+  List<BridgeSseEvent> _turnStart({required String sessionId}) {
+    _tools.beginTurn(sessionId: sessionId);
+    return const [];
+  }
+
   List<BridgeSseEvent> _status({required String sessionId, required PiEvent event, required DateTime? now}) {
     final status = sessionStatusFor(event: event, now: now);
     return status == null ? const [] : [BridgeSseSessionStatus(sessionID: sessionId, status: status.toJson())];
@@ -619,12 +625,16 @@ final class PiEventDispatcher({
   );
 }
 
+final class const _PendingPrompt({
+  required final String promptId,
+  required final String? executionText,
+  required final String? userVisibleText,
+});
+
 final class _SessionState({required final PiMessageIdentityBuilder identities}) {
   String? messageId;
   PiAssistantMessageDto? message;
-  String? executionText;
-  String? userVisibleText;
-  String? promptId;
+  final List<_PendingPrompt> pendingPrompts = [];
   bool announced = false;
   final Set<({int contentIndex, PluginMessagePartType type})> startedParts = {};
   final Set<String> emittedPartIds = {};

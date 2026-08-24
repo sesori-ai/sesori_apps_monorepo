@@ -31,7 +31,9 @@ reaches the backend so the turn continues.
 - A sessionless backend request is attributed to the most recently dispatched
   active turn, falling back to the last dispatched turn at its settlement
   boundary. A backend requiring exact form correlation must serialize prompts
-  process-wide so another session cannot become the attribution target.
+  process-wide so another session cannot become the attribution target. OMP
+  supplies explicit session IDs on permissions and forms, so its independent
+  session turns remain attributable while running concurrently.
 - Resolving a request retires it in the pending list, on every open surface, and
   in completion-notification suppression. Raising and resolving a request also
   refreshes the activity summary, so the session's awaiting-input state appears
