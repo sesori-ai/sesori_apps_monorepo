@@ -24,3 +24,12 @@
 - `dart analyze --fatal-infos` from `client/app`: passed, no issues.
 - `git diff --check`: passed.
 - `flutter test test/features/session_detail`: passed, 245 tests. Expected fixture error logs and one existing non-fatal hit-test warning remained observable.
+
+## Post-merge follow-up
+
+The replaced package prefetched the older page at 20% from the visual top,
+while the landed trigger waited for a scroll to end exactly at the oldest
+edge — reported as history scrolling feeling less smooth. A follow-up PR
+restores prefetch: older pages now load from scroll updates within ~600px
+(about one viewport) of the oldest edge, keeping the scroll-end fallback for
+transcripts too short to scroll and all existing request gates.

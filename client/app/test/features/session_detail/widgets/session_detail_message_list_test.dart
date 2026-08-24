@@ -516,6 +516,32 @@ void main() {
     expect(requested, greaterThan(0), reason: "reaching the oldest message must load the next page");
   });
 
+  testWidgets("nearing the oldest edge prefetches the older page before reaching it", (tester) async {
+    var requested = 0;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+        onLoadOlderMessages: () async => requested++,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Small increments so the scroll never lands exactly on the edge: the
+    // request must come from a mid-scroll update inside the prefetch band.
+    for (var attempt = 0; attempt < 60 && requested == 0; attempt++) {
+      await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 200));
+      await tester.pump();
+    }
+
+    expect(requested, 1);
+    expect(
+      _position(tester).extentAfter,
+      greaterThan(0),
+      reason: "the older page must be requested before the scroll reaches the oldest edge",
+    );
+  });
+
   testWidgets("older-page requests do not overlap and retry after completion", (tester) async {
     final completions = <Completer<void>>[];
     var requested = 0;

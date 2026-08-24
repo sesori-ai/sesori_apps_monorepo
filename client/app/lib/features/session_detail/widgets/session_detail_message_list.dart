@@ -105,6 +105,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   static const _kRetryErrorRowId = "session-detail-retry-error-row";
   static const _kPromptRowPrefix = "session-detail-prompt-";
 
+  /// Distance from the oldest edge at which the next older page starts
+  /// loading — about one phone viewport, so scrolling back through history
+  /// has its page ready instead of stopping dead at the edge.
+  static const double _kOlderPagePrefetchExtent = 600;
+
   late final ScrollFollowTracker _follow;
 
   /// Shared 0..1 progress for the horizontal timestamp-reveal "peek".
@@ -588,9 +593,17 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   bool _onScrollNotification(ScrollNotification notification) {
     final loadOlderMessages = widget.onLoadOlderMessages;
-    if (notification is ScrollEndNotification &&
+    // Prefetch on scroll updates nearing the oldest edge, so paging back
+    // through history feels continuous. The scroll-end check is the fallback
+    // for a transcript too short to scroll: clamping physics emits no update
+    // at zero extent, only the end notification.
+    final nearingOldestEdge = switch (notification) {
+      ScrollUpdateNotification(:final metrics) => metrics.extentAfter < _kOlderPagePrefetchExtent,
+      ScrollEndNotification(:final metrics) => metrics.extentAfter == 0,
+      _ => false,
+    };
+    if (nearingOldestEdge &&
         notification.metrics.axis == Axis.vertical &&
-        notification.metrics.extentAfter == 0 &&
         !_loadOlderCallbackInFlight &&
         !widget.isLoadingOlderMessages &&
         loadOlderMessages != null) {

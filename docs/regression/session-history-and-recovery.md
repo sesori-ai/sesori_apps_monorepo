@@ -21,8 +21,9 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
   before or after its stream block-stop event. Clients request the latest page
   and page older messages on demand; a client predating pagination gets the full
   transcript.
-- Client history uses a reversed list. Reaching its oldest edge requests one
-  page at a time; prepended rows become visible without shifting the detached
+- Client history uses a reversed list. Nearing its oldest edge prefetches the
+  next page, one request at a time, so paging back through history rarely stops
+  dead at the edge; prepended rows become visible without shifting the detached
   reading position or admitting messages and streaming changes that arrived at
   the newest edge while detached.
 - After a reconnect inside the replay window, buffered events are delivered;
