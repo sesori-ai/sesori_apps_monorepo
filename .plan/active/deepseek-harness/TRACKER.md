@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `deepseek-harness`
-- **Plan status:** Steps 1-5/15 merged; Step 6/15 PR open; Step 7/16 verified locally
+- **Plan status:** Steps 1-6 merged; Step 7/16 verified locally
   after user-approved split on 2026-08-24
 - **Current repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current branch:** `deepseek-harness/step-7-protocol-fixtures`
-- **Current open PR:** [runtime PR #5](https://github.com/sesori-ai/sesori-deepseek-acp/pull/5)
-- **Next action:** monitor Step 6 and open protocol-fixture Step 7 after merge
+- **Current open PR:** none; Step 7 ready to publish
+- **Next action:** open protocol-fixture Step 7, then initialize Step 8 locally
 - **Implementation started:** yes
 - **Retirement:** blocked until every required row in `PLAN.md` passes
 
@@ -21,8 +21,8 @@
 | [x] | 3/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): compose the DeepSeek coding runtime [step 3/15]` | Complex configuration, security, and lifecycle composition | 1,300 | [PR #2](https://github.com/sesori-ai/sesori-deepseek-acp/pull/2) merged |
 | [x] | 4/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): add durable ACP sessions and replay [step 4/15]` | Complex persistence and live ownership | 1,450 | [PR #3](https://github.com/sesori-ai/sesori-deepseek-acp/pull/3) merged |
 | [x] | 5/15 | deepseek adapter | `🚧 [deepseek-harness] feat(runtime): stream DeepSeek turns and interactions [step 5/15]` | Complex concurrent event and interaction flow | 1,450 | [PR #4](https://github.com/sesori-ai/sesori-deepseek-acp/pull/4) merged |
-| [ ] | 6/15 | deepseek adapter | `⚙️ [deepseek-harness] feat(runtime): expose DeepSeek catalogs and commands [step 6/15]` | Moderate option/command boundary | 1,200 | [PR #5](https://github.com/sesori-ai/sesori-deepseek-acp/pull/5) open; CI running |
-| [ ] | 7/16 | apps monorepo | `🌿 [deepseek-harness] test(deepseek): vendor the DeepSeek extension protocol [step 7/16]` | Straightforward test-only protocol fixture foundation | 1,100 | Local implementation verified; pending Step 6 |
+| [x] | 6/15 | deepseek adapter | `⚙️ [deepseek-harness] feat(runtime): expose DeepSeek catalogs and commands [step 6/15]` | Moderate option/command boundary | 1,200 | [PR #5](https://github.com/sesori-ai/sesori-deepseek-acp/pull/5) merged |
+| [ ] | 7/16 | apps monorepo | `🌿 [deepseek-harness] test(deepseek): vendor the DeepSeek extension protocol [step 7/16]` | Straightforward test-only protocol fixture foundation | 1,100 | Local implementation verified; ready to publish |
 | [ ] | 8/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): scaffold the DeepSeek bridge plugin [step 8/16]` | Moderate new package and narrow ACP hooks | 1,450 | Pending Step 7 |
 | [ ] | 9/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek sessions and history [step 9/16]` | Complex replay and identity flow | 1,450 | Pending Step 8 |
 | [ ] | 10/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek turns and interactions [step 10/16]` | Complex events, questions, and permissions | 1,450 | Pending Step 9 |
@@ -116,13 +116,14 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 
 ### Step 6/15
 
-- [x] `npm run check`: lint, typecheck, 72 tests, and build pass
+- [x] `npm run check`: lint, typecheck, 105 tests, and build pass
 - [x] `npm ls --depth=0`; exact direct dependency closure
 - [x] `npm audit --omit=dev`: 0 vulnerabilities
 - [x] Architecture implementation review passed after making cold rename temporary
-- [x] Changed-line count: 669 of the 1,200-line target
+- [x] Final changed-line count: 1,681 after review hardening, 181 above the
+  1,500-line cap; merged by the user with all review findings addressed
 - [x] Synced with merged Step 5; post-merge verification remained green
-- [x] PR #5 opened; CI started
+- [x] PR #5 merged with all five checks passing
 
 ### Step 7/16
 
@@ -130,7 +131,8 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] `dart analyze --fatal-infos`
 - [x] `dart test`: protocol source-manifest and SHA-256 integrity pass
 - [x] `git diff --check`
-- [x] Changed-line count: 1,079 of the 1,100-line target before this evidence entry
+- [x] Synced with current `origin/main` after Step 6 merged
+- [x] Final changed-line count: 1,162, above the 1,100 soft target and below the 1,500-line cap
 
 Later implementation and live evidence is appended here by step. Never mark a
 regression row passed without the boundary and matrix required by `PLAN.md`.

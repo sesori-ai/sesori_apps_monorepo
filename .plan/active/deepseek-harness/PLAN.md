@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `deepseek-harness`
-- **Status:** Steps 1-5/15 merged; Step 6/15 in review; Step 7/16 pending after approved split
+- **Status:** Steps 1-6 merged; Step 7/16 ready for review after approved split
 - **Plan date:** 2026-08-22
 - **Implementation base:** `origin/main` at
   `ebcc09bf255e1410720be616b883fa40af95d4a4`
