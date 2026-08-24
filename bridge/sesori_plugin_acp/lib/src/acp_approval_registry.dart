@@ -197,8 +197,6 @@ class AcpApprovalRegistry({
         .toList(growable: false);
   }
 
-  String? sessionIdFor(String bridgeRequestId) => _pending[bridgeRequestId]?.sessionId;
-
   /// Whether [sessionId] is blocked awaiting user input — a pending permission
   /// ask or question. Both kinds count, mirroring the OpenCode tracker's
   /// "awaiting input" notion (see `_rootHasPendingInput`).

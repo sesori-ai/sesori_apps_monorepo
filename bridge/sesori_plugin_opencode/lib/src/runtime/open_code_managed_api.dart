@@ -14,6 +14,8 @@ abstract interface class OpenCodeManagedApi() implements NativeProjectsPluginApi
 
   Future<Set<String>> interruptActiveWork({required Duration budget});
 
+  Future<void> dispose();
+
   /// Hydrates the session tracker from the server and starts the SSE stream.
   ///
   /// Idempotent: repeated calls share a single in-flight cold-start. Rethrows a

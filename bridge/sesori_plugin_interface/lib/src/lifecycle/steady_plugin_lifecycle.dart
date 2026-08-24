@@ -161,8 +161,7 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
   }
 
   /// Releases the plugin's resources. Override point for the mixed-in class;
-  /// the default does nothing. Must be safe to run before or after
-  /// `BridgePluginApi.dispose()`.
+  /// the default does nothing.
   ///
   /// If this throws, the plugin still reaches `Stopped`, and the same error
   /// is rethrown to *every* `shutdown()` caller — the failure is part of the

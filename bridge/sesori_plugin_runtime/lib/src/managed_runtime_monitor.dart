@@ -13,11 +13,8 @@ import "runtime_restart_policy.dart";
 /// address-frozen port with backoff, publishing lifecycle transitions through
 /// the plugin's [PluginStatusController].
 ///
-/// The monitor is a **separate** component that composes [ManagedProcessService]
-/// rather than living inside it. The legacy in-place wrapper (and its fidelity
-/// gate) drives the service directly and never constructs a monitor, so
-/// "exit monitoring / restart / stderr logging" are simply absent there — the
-/// way the migration keeps these hardened behaviors off until the flip.
+/// Composes [ManagedProcessService] while owning exit monitoring, bounded
+/// restart, and stderr logging.
 ///
 /// Concurrency contract:
 /// - Every exit-driven action runs only for the *current* child

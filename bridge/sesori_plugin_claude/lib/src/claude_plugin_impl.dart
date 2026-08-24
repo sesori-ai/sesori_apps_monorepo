@@ -407,7 +407,6 @@ final class ClaudePlugin({
     _transcripts.deleteSession(sessionId: backendSessionId);
   }
 
-  @override
   Future<void> dispose() => _disposeFuture ??= _dispose();
 
   Future<void> _dispose() async {

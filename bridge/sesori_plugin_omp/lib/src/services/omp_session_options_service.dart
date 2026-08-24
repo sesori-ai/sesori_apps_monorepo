@@ -229,7 +229,7 @@ class OmpSessionOptionsService({
     }
     return [
       for (final entry in providers)
-        PluginProvider.custom(
+        PluginProvider(
           id: entry.key,
           name: entry.key,
           authType: PluginProviderAuthType.unknown,

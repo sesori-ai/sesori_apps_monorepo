@@ -245,15 +245,6 @@ sealed class BridgePluginApi() {
 
   /// Build a summary of the active sessions for each project.
   List<PluginProjectActivitySummary> getActiveSessionsSummary();
-
-  /// Stop the plugin and release resources (SSE connections, HTTP clients, etc.).
-  ///
-  /// Prefer `BridgePlugin.shutdown()`, which owns the plugin's ordered
-  /// teardown; this method will be removed once the bridge core stops
-  /// calling it directly. Until then the core may call `dispose()` before or
-  /// after `shutdown()`, so implementations MUST be idempotent and safe in
-  /// either order.
-  Future<void> dispose();
 }
 
 /// A plugin whose backend owns the project list natively (e.g. OpenCode's

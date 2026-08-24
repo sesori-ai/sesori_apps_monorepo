@@ -53,7 +53,7 @@ final class const ClaudeBackendCatalogRepository() {
         providers: models.isEmpty
             ? const []
             : [
-                PluginProvider.anthropic(
+                PluginProvider(
                   id: providerId,
                   name: "Anthropic",
                   authType: PluginProviderAuthType.oauth,

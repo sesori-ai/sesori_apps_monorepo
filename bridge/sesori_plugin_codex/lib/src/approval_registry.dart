@@ -166,8 +166,6 @@ class ApprovalRegistry({
 
   /// Returns the session id for a pending request, or null if the id is
   /// unknown.
-  String? sessionIdFor(String bridgeRequestId) => _pending[bridgeRequestId]?.sessionId;
-
   bool hasPendingInput(String sessionId) => _pending.values.any((entry) => entry.sessionId == sessionId);
 
   bool get hasAnyPendingInput => _pending.isNotEmpty;

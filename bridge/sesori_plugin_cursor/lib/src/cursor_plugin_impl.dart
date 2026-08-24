@@ -55,7 +55,7 @@ class CursorPlugin._({
     final catalogApi = CursorCatalogProbeApi(
       client: AcpStdioClient(
         launchSpec: launchSpec,
-        processFactory: processFactory,
+        processFactory: processFactory ?? defaultAcpProcessFactory,
         logTag: "$pluginId-catalog",
       ),
     );

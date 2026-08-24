@@ -361,7 +361,7 @@ PluginSessionOptions _pluginOptions({required String marker}) {
     ],
     providers: PluginProvidersResult(
       providers: [
-        PluginProvider.custom(
+        PluginProvider(
           id: "provider-1",
           name: "Provider $marker",
           authType: PluginProviderAuthType.unknown,

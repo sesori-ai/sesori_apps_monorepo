@@ -228,7 +228,7 @@ class HermesSessionOptionsService({
     }
     return [
       for (final entry in entries)
-        PluginProvider.custom(
+        PluginProvider(
           id: entry.key,
           name: providerNames[entry.key] ?? entry.key,
           authType: PluginProviderAuthType.unknown,
@@ -254,7 +254,7 @@ class HermesSessionOptionsService({
   }) => modelId == null
       ? const []
       : [
-          PluginProvider.custom(
+          PluginProvider(
             id: providerId,
             name: _agentDisplayName,
             authType: PluginProviderAuthType.unknown,

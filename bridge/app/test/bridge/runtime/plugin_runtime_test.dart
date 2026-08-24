@@ -1882,7 +1882,6 @@ class _FakeApi({
     return activeSessionsSummary;
   }
 
-  @override
   Future<void> dispose() async {
     disposeCount++;
     if (closeEventsOnDispose && !eventsController.isClosed) await eventsController.close();

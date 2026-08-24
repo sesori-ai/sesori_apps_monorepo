@@ -338,7 +338,7 @@ abstract class AcpPlugin({
       _authenticationFailure = null;
       final client = AcpStdioClient(
         launchSpec: launchSpec,
-        processFactory: _processFactory,
+        processFactory: _processFactory ?? defaultAcpProcessFactory,
         logTag: id,
       );
       _client = client;
@@ -1525,7 +1525,7 @@ abstract class AcpPlugin({
     // replayed updates don't interleave with the live session's stream.
     final replayClient = AcpStdioClient(
       launchSpec: launchSpec,
-      processFactory: _processFactory,
+      processFactory: _processFactory ?? defaultAcpProcessFactory,
       logTag: "$id-replay",
     );
     final collector = AcpReplayCollector(
@@ -1787,7 +1787,6 @@ abstract class AcpPlugin({
     ];
   }
 
-  @override
   Future<void> dispose() async {
     // dispose() must not throw — every step below is isolated (see
     // [_teardownConnection]); the stream closes are best-effort too.

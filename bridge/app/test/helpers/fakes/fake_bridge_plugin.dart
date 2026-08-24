@@ -351,8 +351,5 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
     return providersResult;
   }
 
-  @override
-  Future<void> dispose() async {}
-
   Future<void> close() => _controller.close();
 }

@@ -568,7 +568,6 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
     required String projectId,
   }) async => const PluginProvidersResult(providers: []);
 
-  @override
   Future<void> dispose() async {}
 }
 

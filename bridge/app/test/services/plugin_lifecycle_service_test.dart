@@ -2321,9 +2321,6 @@ class _FakePluginApi({@override required final String id}) extends BridgeDerived
   Stream<BridgeSseEvent> get events => const Stream.empty();
 
   @override
-  Future<void> dispose() async {}
-
-  @override
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required String projectId,
     required PluginSessionOptionsDiscoveryMode discoveryMode,

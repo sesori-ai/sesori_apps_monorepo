@@ -520,7 +520,7 @@ class CodexSessionService({
         providers: selectedModelID == null
             ? const []
             : [
-                PluginProvider.custom(
+                PluginProvider(
                   id: providerID,
                   name: _providerDisplayName(providerID: providerID),
                   authType: PluginProviderAuthType.unknown,

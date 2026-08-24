@@ -59,8 +59,7 @@ class CodexBridgePlugin({
   /// Stops the plugin in order: disarm the monitor (so the child's deliberate
   /// exit is never mistaken for a crash), tear down the api, then stop the owned
   /// `codex app-server` process (when this bridge owns one). Idempotent —
-  /// repeated calls return the same future — and safe before/after
-  /// [BridgePluginApi.dispose].
+  /// repeated calls return the same future.
   ///
   /// [budget] is accepted but not subdivided: the stop path keeps its own
   /// pacing (graceful signal, wait, force).

@@ -468,9 +468,6 @@ class _FakeBridgePluginApi() extends NativeProjectsPluginApi {
   Stream<BridgeSseEvent> get events => const Stream.empty();
 
   @override
-  Future<void> dispose() async {}
-
-  @override
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required String projectId,
     required PluginSessionOptionsDiscoveryMode discoveryMode,

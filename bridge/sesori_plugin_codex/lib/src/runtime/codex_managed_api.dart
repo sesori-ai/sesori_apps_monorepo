@@ -17,6 +17,8 @@ abstract interface class CodexManagedApi() implements BridgeDerivedProjectsPlugi
 
   Future<Set<String>> interruptActiveWork({required Duration budget});
 
+  Future<void> dispose();
+
   /// Opens the WebSocket transport, performs the `initialize` handshake, and
   /// starts pumping `codex app-server` notifications into [BridgePluginApi.events].
   ///

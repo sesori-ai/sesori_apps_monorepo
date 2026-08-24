@@ -99,76 +99,15 @@ PluginProvider _mapProvider({
   // Omit it so clients fall back to newest-by-releaseDate selection instead
   // of trusting the API default. Plugins that publish a trustworthy default
   // (e.g. Cursor's ACP current model) set defaultModelID themselves.
-  return switch (id.toLowerCase()) {
-    "anthropic" => PluginProvider.anthropic(
-      id: id,
-      name: name,
-      authType: PluginProviderAuthType.apiKey,
-      models: models,
-      defaultModelID: null,
-    ),
-    "openai" => PluginProvider.openAI(
-      id: id,
-      name: name,
-      authType: PluginProviderAuthType.apiKey,
-      models: models,
-      defaultModelID: null,
-    ),
-    "google" => PluginProvider.google(
-      id: id,
-      name: name,
-      authType: PluginProviderAuthType.apiKey,
-      models: models,
-      defaultModelID: null,
-    ),
-    "mistral" => PluginProvider.mistral(
-      id: id,
-      name: name,
-      authType: PluginProviderAuthType.apiKey,
-      models: models,
-      defaultModelID: null,
-    ),
-    "groq" => PluginProvider.groq(
-      id: id,
-      name: name,
-      authType: PluginProviderAuthType.apiKey,
-      models: models,
-      defaultModelID: null,
-    ),
-    "xai" => PluginProvider.xAI(
-      id: id,
-      name: name,
-      authType: PluginProviderAuthType.apiKey,
-      models: models,
-      defaultModelID: null,
-    ),
-    "deepseek" => PluginProvider.deepseek(
-      id: id,
-      name: name,
-      authType: PluginProviderAuthType.apiKey,
-      models: models,
-      defaultModelID: null,
-    ),
-    "amazon-bedrock" || "bedrock" => PluginProvider.amazonBedrock(
-      id: id,
-      name: name,
-      authType: PluginProviderAuthType.unknown,
-      models: models,
-      defaultModelID: null,
-    ),
-    "azure" => PluginProvider.azure(
-      id: id,
-      name: name,
-      authType: PluginProviderAuthType.apiKey,
-      models: models,
-      defaultModelID: null,
-    ),
-    _ => PluginProvider.custom(
-      id: id,
-      name: name,
-      authType: PluginProviderAuthType.unknown,
-      models: models,
-      defaultModelID: null,
-    ),
-  };
+  return PluginProvider(
+    id: id,
+    name: name,
+    authType: switch (id.toLowerCase()) {
+      "anthropic" || "openai" || "google" || "mistral" || "groq" || "xai" || "deepseek" || "azure" =>
+        PluginProviderAuthType.apiKey,
+      _ => PluginProviderAuthType.unknown,
+    },
+    models: models,
+    defaultModelID: null,
+  );
 }
