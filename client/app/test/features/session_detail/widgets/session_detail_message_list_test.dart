@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/gestures.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -50,6 +52,10 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
 
   void startLoadingOlderMessages() {
     setState(() => _isLoadingOlderMessages = true);
+  }
+
+  void finishLoadingOlderMessages() {
+    setState(() => _isLoadingOlderMessages = false);
   }
 
   void prependOlderMessages({required List<MessageWithParts> older}) {
@@ -221,13 +227,7 @@ const _jumpToLatestKey = Key("session-detail-jump-to-latest");
 Finder _messageKey(String messageId) => find.byKey(ValueKey(messageId));
 
 ScrollPosition _position(WidgetTester tester) {
-  // The list key sits on the flutter_chat_ui `Chat` widget; the actual
-  // scrollable is the `CustomScrollView` built by `ChatAnimatedListReversed`,
-  // wired to the feature's own follow/detach scroll controller.
-  final scrollView = tester.widget<CustomScrollView>(
-    find.descendant(of: find.byKey(_listViewKey), matching: find.byType(CustomScrollView)),
-  );
-  return scrollView.controller!.position;
+  return tester.widget<ListView>(find.byKey(_listViewKey)).controller!.position;
 }
 
 Future<void> _pumpListUpdate(WidgetTester tester) async {
@@ -318,6 +318,35 @@ void main() {
     expect(find.text("steer it"), findsOneWidget);
     expect(find.byType(QueuedMessageBubble), findsNothing);
     expect(find.byType(UserMessageCard), findsOneWidget);
+  });
+
+  testWidgets("a moved delivered prompt keeps its row state", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [
+          _message(messageId: "assistant-1", role: "assistant", text: "First reply"),
+          _message(messageId: "assistant-2", role: "assistant", text: "Second reply"),
+        ],
+        initialStreamingText: const {},
+        initialBridgeQueuedPrompts: const [
+          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 0, createdAt: 100),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    final promptRow = find.ancestor(of: find.text("steer it"), matching: find.byType(AnimatedSize));
+    final before = tester.state(promptRow);
+
+    harnessKey.currentState!.deliverBridgePrompt(
+      promptId: "prm_1",
+      message: _message(messageId: "delivered", role: "user", text: "steer it", promptId: "prm_1"),
+      insertionIndex: 1,
+    );
+    await tester.pump();
+
+    expect(tester.state(promptRow), same(before));
   });
 
   testWidgets("moving a delivered bridge prompt through assistant rows keeps every row unique", (tester) async {
@@ -485,6 +514,92 @@ void main() {
     }
 
     expect(requested, greaterThan(0), reason: "reaching the oldest message must load the next page");
+  });
+
+  testWidgets("older-page requests do not overlap and retry after completion", (tester) async {
+    final completions = <Completer<void>>[];
+    var requested = 0;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+        onLoadOlderMessages: () {
+          requested++;
+          final completion = Completer<void>();
+          completions.add(completion);
+          return completion.future;
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (var attempt = 0; attempt < 12 && requested == 0; attempt++) {
+      await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 600));
+      await tester.pump();
+    }
+    await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 100));
+    await tester.pump();
+    expect(requested, 1);
+
+    completions.single.complete();
+    await tester.pump();
+    await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 100));
+    await tester.pump();
+    expect(requested, 2);
+  });
+
+  testWidgets("older-page request retries after error without an unhandled exception", (tester) async {
+    var requested = 0;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+        onLoadOlderMessages: () async {
+          requested++;
+          throw StateError("load failed");
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (var attempt = 0; attempt < 12 && requested == 0; attempt++) {
+      await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 600));
+      await tester.pump();
+    }
+    await tester.pump();
+    await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 100));
+    await tester.pump();
+
+    expect(requested, 2);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("parent loading state suppresses older-page requests", (tester) async {
+    final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+    var requested = 0;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: key,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+        onLoadOlderMessages: () async => requested++,
+      ),
+    );
+    await tester.pumpAndSettle();
+    key.currentState!.startLoadingOlderMessages();
+    await tester.pump();
+
+    for (var attempt = 0; attempt < 12; attempt++) {
+      await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 600));
+      await tester.pump();
+    }
+    expect(requested, 0);
+
+    key.currentState!.finishLoadingOlderMessages();
+    await tester.pump();
+    await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 100));
+    await tester.pump();
+    expect(requested, 1);
   });
 
   testWidgets("detached viewport stays stable when a new newest message arrives", (tester) async {
@@ -920,7 +1035,7 @@ void main() {
     expect(_position(tester).pixels, greaterThan(20));
   });
 
-  // --- New-architecture coverage: chat-controller resync and content paths ---
+  // --- Reattach and content-update coverage ---
 
   testWidgets("reattach catches up on messages that arrived while detached", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
@@ -938,8 +1053,7 @@ void main() {
 
     await _detachViewport(tester);
 
-    // Arrives while frozen: neither the snapshot nor the suspended
-    // chat-controller sync may surface it yet.
+    // Arrives while frozen: the detached snapshot must not surface it yet.
     harnessKey.currentState!.appendNewestMessage(
       _message(
         messageId: "user-while-detached",
@@ -950,8 +1064,7 @@ void main() {
     await _pumpListUpdate(tester);
     expect(_messageKey("user-while-detached"), findsNothing);
 
-    // Reattaching must resync the controller and reveal the message at
-    // the newest edge.
+    // Reattaching must reveal the message at the newest edge.
     await tester.tap(find.byKey(_jumpToLatestKey));
     await tester.pumpAndSettle();
 
@@ -1042,8 +1155,7 @@ void main() {
     expect(find.textContaining("Streaming start", findRichText: true), findsOneWidget);
     expect(find.textContaining("freshly streamed token", findRichText: true), findsNothing);
 
-    // Content updates bypass the chat controller entirely — they must
-    // reach the visible row through the rebuilt builders on the very
+    // Content updates must reach the visible row through the rebuilt list on the very
     // next frame while the list stays pinned to the newest edge.
     harnessKey.currentState!.updateStreamingText(
       partId: streamingPartId,

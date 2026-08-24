@@ -1,8 +1,6 @@
 import "dart:async";
 
 import "package:flutter/gestures.dart";
-import "package:flutter_chat_core/flutter_chat_core.dart" as chat_core;
-import "package:flutter_chat_ui/flutter_chat_ui.dart" as chat_ui;
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -19,47 +17,11 @@ import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
 import "user_message_card.dart";
 
-/// Chat-style message list for the session detail screen, rendered with
-/// the flyerhq `flutter_chat_ui` v2 stack (`Chat` +
-/// `ChatAnimatedListReversed` + `InMemoryChatController`).
+/// Chat-style message list for the session detail screen.
 ///
-/// Integration model:
-///
-/// - The [chat_core.ChatController] holds **content-stable index
-///   entries** only — one `CustomMessage(id, authorId)` per domain
-///   message, plus synthetic retry-error and transient-submission rows. All
-///   visible content (message parts, streaming text, tool state) is
-///   resolved from the cubit-provided widget props inside the row
-///   builders, keyed by message id. Token deltas therefore never
-///   round-trip through the controller: `setMessages` diffs (by id +
-///   freezed equality) emit operations only when the message *set*
-///   changes, and in-place content updates flow through ordinary
-///   widget rebuilds.
-/// - Every per-row default of the package is replaced: the row wrapper
-///   (`chatMessageBuilder` returns the bare child — no bubble, no
-///   alignment, no gestures), the composer (the prompt input lives
-///   outside this widget), the scroll-to-bottom button and the empty
-///   state (both owned by this feature already).
-///
-/// Scroll behaviour — "follow / detach" (unchanged semantics):
-///
-/// - The list is reversed, so the newest message renders at the visual
-///   bottom (scroll offset `0`).
-/// - While **following**, a coalesced post-frame `jumpTo(0)` runs via
-///   the [ScrollFollowTracker] — race-free pin-to-edge. The package's
-///   own auto-scroll is disabled (`shouldScrollToEndWhenSendingMessage:
-///   false`; the at-bottom variant is a no-op for reversed lists).
-/// - While **detached** (user dragged / trackpad-scrolled / pan-zoomed
-///   away from the bottom), the full set of rendered inputs
-///   (`messages`, transient submissions, `streamingText`, `children`,
-///   `childStatuses`) is
-///   snapshotted AND controller syncing is suspended, so nothing below
-///   (or above) the user's viewport can grow, shrink, or reorder under
-///   them. Both freezes lift the moment the user reattaches.
-///
-/// Gesture plumbing and the detached overlay toggle live in
-/// [FollowDetachScrollable]; this widget owns message rendering, the
-/// detached snapshot, and the follow/chat controller lifecycles.
+/// The reversed list keeps newest content at scroll offset zero. While following,
+/// [ScrollFollowTracker] pins it there. While detached, rendered inputs are
+/// snapshotted so live changes cannot move the viewport.
 class const SessionDetailMessageList({
   super.key,
   required final String? projectId,
@@ -137,29 +99,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     PointerDeviceKind.unknown,
   };
 
-  /// Synthetic controller-entry id for the shimmering retry-error row
-  /// pinned at the newest edge. Domain message ids come from the
-  /// assistant backend and cannot collide with this.
+  /// Synthetic id for the shimmering retry-error row pinned at the newest
+  /// edge. Domain message ids come from the assistant backend and cannot
+  /// collide with this.
   static const _kRetryErrorRowId = "session-detail-retry-error-row";
   static const _kPromptRowPrefix = "session-detail-prompt-";
 
-  static const _kUserAuthorId = "user";
-  static const _kAgentAuthorId = "agent";
-
-  /// Metadata key carrying each entry's domain role. Assistant and error
-  /// messages share [_kAgentAuthorId], so without this discriminator a
-  /// message flipping from assistant to error mid-stream (same id, same
-  /// authorId) would be value-equal to its previous entry — the
-  /// controller diff would emit no update and the on-screen row would
-  /// stay the stale assistant card until the screen is remounted.
-  static const _kRoleMetadataKey = "role";
-  static const _kUserRole = "user";
-  static const _kAssistantRole = "assistant";
-  static const _kErrorRole = "error";
-  static const _kTransientSubmissionRole = "transient-submission";
-
   late final ScrollFollowTracker _follow;
-  late final chat_core.InMemoryChatController _chatController;
 
   /// Shared 0..1 progress for the horizontal timestamp-reveal "peek".
   /// Set directly while the user drags; springs back to 0 on release.
@@ -178,7 +124,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// Snapshot taken at the moment of detach. `null` means "not frozen
   /// — use live `widget.*` props".
   _DetachedSnapshot? _snapshot;
-  bool _olderPageRequestInFlight = false;
+  bool _loadOlderCallbackInFlight = false;
 
   /// Cache for the id → data-source-index map consumed by the row
   /// builder. Keyed on a content signature of `(length, firstId,
@@ -194,36 +140,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   int? _indexSignature;
   Map<String, int> _indexById = const <String, int>{};
 
-  /// Cache for the chat package theme derived from the app theme. Deriving it
-  /// allocates a full style set, and this widget rebuilds on every streaming
-  /// flush — recompute only when the underlying [ThemeData] changes.
-  (ThemeData, chat_core.ChatTheme)? _chatThemeCache;
-
-  /// Prompts whose queued row would have to move during delivery use the
-  /// backend message id from then on. `flutter_chat_ui` cannot safely move and
-  /// update one animated row together.
-  final Set<String> _promptsUsingMessageEntryId = <String>{};
-
   @override
   void initState() {
     super.initState();
-    _olderPageRequestInFlight = widget.isLoadingOlderMessages;
     _follow = ScrollFollowTracker(edge: ScrollFollowEdge.min);
     _follow.addListener(_onFollowChanged);
     _revealController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 220),
-    );
-    _chatController = chat_core.InMemoryChatController(
-      messages: _chatEntriesFor(
-        messages: widget.messages,
-        sendingSubmission: widget.sendingSubmission,
-        queuedMessages: widget.queuedMessages,
-        bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
-        awaitingBridgeSubmissions: widget.awaitingBridgeSubmissions,
-        hasRetryError: widget.retryErrorMessage != null,
-        currentEntries: const <chat_core.Message>[],
-      ),
     );
   }
 
@@ -232,42 +156,25 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _follow.removeListener(_onFollowChanged);
     _follow.dispose();
     _revealController.dispose();
-    _chatController.dispose();
     super.dispose();
   }
 
   @override
   void didUpdateWidget(SessionDetailMessageList oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.isLoadingOlderMessages) {
-      _olderPageRequestInFlight = true;
-    }
-    final olderPageRequestCompleted = _olderPageRequestInFlight && !widget.isLoadingOlderMessages;
-    // While detached the controller is intentionally left stale so the
-    // list structure cannot shift under the reader; `_onFollowChanged`
-    // re-syncs on reattach.
+    final olderPageRequestCompleted = oldWidget.isLoadingOlderMessages && !widget.isLoadingOlderMessages;
+    // While detached the snapshot keeps the list structure from shifting
+    // under the reader; `_onFollowChanged` restores live inputs on reattach.
     //
     // Older pages are the exception: the reader is detached precisely
     // because they scrolled back for them, and they are prepended *above*
     // the viewport, so rendering them cannot shift what is being read.
     // Freezing them would leave the page loaded but invisible until the
     // user returned to the newest message.
-    if (_follow.following) {
-      if (olderPageRequestCompleted) _olderPageRequestInFlight = false;
-      _syncChatController();
-      return;
-    }
+    if (_follow.following) return;
     final frozen = _snapshot;
     final transientSubmissionsChanged = !_transientSubmissionsMatch(oldWidget: oldWidget);
     if (frozen != null && transientSubmissionsChanged) {
-      _syncChatControllerTo(
-        messages: frozen.messages,
-        sendingSubmission: widget.sendingSubmission,
-        queuedMessages: widget.queuedMessages,
-        bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
-        awaitingBridgeSubmissions: widget.awaitingBridgeSubmissions,
-        hasRetryError: frozen.retryErrorMessage != null,
-      );
       if (_hasNewTransientSubmission(oldWidget: oldWidget)) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted || _follow.following) return;
@@ -276,7 +183,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       }
     }
     if (!olderPageRequestCompleted) return;
-    _olderPageRequestInFlight = false;
     if (frozen == null) return;
     final prepended = _prependedOlderMessages(frozen: frozen);
     if (prepended.isEmpty) return;
@@ -302,16 +208,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // history old enough to be paged back to has finished streaming and has
     // no running child work.
     //
-    // Sync to the frozen list, not the live one, so the controller and the
-    // render agree on both the rows and the retry state.
-    _syncChatControllerTo(
-      messages: merged,
-      sendingSubmission: widget.sendingSubmission,
-      queuedMessages: widget.queuedMessages,
-      bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
-      awaitingBridgeSubmissions: widget.awaitingBridgeSubmissions,
-      hasRetryError: frozen.retryErrorMessage != null,
-    );
   }
 
   /// History prepended above the frozen transcript, in order. Empty when this
@@ -332,7 +228,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     setState(() {
       if (_follow.following) {
         _snapshot = null;
-        _syncChatController();
       } else {
         _snapshot ??= (
           messages: List<MessageWithParts>.unmodifiable(widget.messages),
@@ -377,23 +272,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     ].any((submission) => !previous.contains(submission));
   }
 
-  /// Mirrors the domain transcript into the chat controller. Entries
-  /// are value-equal for unchanged messages, so the controller's
-  /// diff-based `setMessages` emits insert/remove operations only for
-  /// genuine set changes — streaming emits are filtered out by the
-  /// cheap id comparison below and never touch the animated list.
-  void _syncChatController() {
-    _syncChatControllerTo(
-      messages: widget.messages,
-      sendingSubmission: widget.sendingSubmission,
-      queuedMessages: widget.queuedMessages,
-      bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
-      awaitingBridgeSubmissions: widget.awaitingBridgeSubmissions,
-      hasRetryError: widget.retryErrorMessage != null,
-    );
-  }
-
-  void _syncChatControllerTo({
+  List<String> _rowIdsFor({
     required List<MessageWithParts> messages,
     required QueuedSessionSubmission? sendingSubmission,
     required List<QueuedSessionSubmission> queuedMessages,
@@ -401,138 +280,33 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
     required bool hasRetryError,
   }) {
-    final current = _chatController.messages;
-    final target = _chatEntriesFor(
-      messages: messages,
-      sendingSubmission: sendingSubmission,
-      queuedMessages: queuedMessages,
-      bridgeQueuedPrompts: bridgeQueuedPrompts,
-      awaitingBridgeSubmissions: awaitingBridgeSubmissions,
-      hasRetryError: hasRetryError,
-      currentEntries: current,
-    );
-    if (_entriesMatch(current: current, target: target)) return;
-    unawaited(
-      _chatController
-          .setMessages(target, animated: false)
-          .catchError(
-            (Object error, StackTrace stack) => loge("Failed to sync chat controller messages", error, stack),
-          ),
-    );
-  }
-
-  bool _entriesMatch({
-    required List<chat_core.Message> current,
-    required List<chat_core.Message> target,
-  }) {
-    if (current.length != target.length) return false;
-    for (var i = 0; i < target.length; i++) {
-      if (current[i].id != target[i].id) return false;
-      // A same-id entry can still change role in place (assistant→error);
-      // that must not be filtered out as a streaming-only emit, or the
-      // controller never learns the row needs to swap to the error card.
-      if (current[i].metadata?[_kRoleMetadataKey] != target[i].metadata?[_kRoleMetadataKey]) return false;
-    }
-    return true;
-  }
-
-  List<chat_core.Message> _chatEntriesFor({
-    required List<MessageWithParts> messages,
-    required QueuedSessionSubmission? sendingSubmission,
-    required List<QueuedSessionSubmission> queuedMessages,
-    required List<QueuedSessionPrompt> bridgeQueuedPrompts,
-    required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
-    required bool hasRetryError,
-    required List<chat_core.Message> currentEntries,
-  }) {
-    final transientEntryIndexes = <String, int>{
-      for (final (index, entry) in currentEntries.indexed)
-        if (entry.metadata?[_kRoleMetadataKey] == _kTransientSubmissionRole) entry.id: index,
-    };
-    var targetMessageIndex = 0;
-    for (final message in messages) {
-      if (!message.hasRenderableUserContent) continue;
-      if (message.info case MessageUser(promptId: final promptId?)) {
-        final promptEntryId = "$_kPromptRowPrefix$promptId";
-        final currentIndex = transientEntryIndexes[promptEntryId];
-        if (currentIndex != null && currentIndex != targetMessageIndex) {
-          _promptsUsingMessageEntryId.add(promptId);
-        }
-      }
-      targetMessageIndex++;
-    }
     final deliveredPromptIds = <String>{
       for (final message in messages)
         if (message.hasRenderableUserContent)
           if (message.info case MessageUser(promptId: final promptId?)) promptId,
     };
-    // Staged and bridge-queued states share one prompt row. The delivered
-    // message keeps it when the handoff is in place, but uses its message id
-    // when a late replay must move backward through the transcript.
-    final entries = <chat_core.Message>[
+    final entries = <String>[
       for (final message in messages)
-        if (message.hasRenderableUserContent)
-          chat_core.Message.custom(
-            id: _entryIdForMessage(info: message.info),
-            authorId: switch (message.info) {
-              MessageUser() => _kUserAuthorId,
-              MessageAssistant() => _kAgentAuthorId,
-              MessageError() => _kAgentAuthorId,
-            },
-            // Role discriminates assistant from error under the shared
-            // agent authorId, so a live assistant→error transition on the
-            // same message id is no longer value-equal and forces the row
-            // to re-render as the error card. The same inequality drives an
-            // in-place transient-submission→user transform.
-            metadata: <String, String>{
-              _kRoleMetadataKey: switch (message.info) {
-                MessageUser() => _kUserRole,
-                MessageAssistant() => _kAssistantRole,
-                MessageError() => _kErrorRole,
-              },
-            },
-          ),
-      if (hasRetryError) const chat_core.Message.custom(id: _kRetryErrorRowId, authorId: _kAgentAuthorId),
-      // Bridge-accepted prompts render before locally staged ones: they were
-      // accepted earlier and dispatch first. A delivered prompt renders only
-      // as its message even if a stale queue copy is still being reconciled.
+        if (message.hasRenderableUserContent) _entryIdForMessage(info: message.info),
+      if (hasRetryError) _kRetryErrorRowId,
       for (final prompt in bridgeQueuedPrompts)
-        if (!deliveredPromptIds.contains(prompt.id))
-          chat_core.Message.custom(
-            id: "$_kPromptRowPrefix${prompt.id}",
-            authorId: _kUserAuthorId,
-            metadata: const <String, String>{_kRoleMetadataKey: _kTransientSubmissionRole},
-          ),
+        if (!deliveredPromptIds.contains(prompt.id)) "$_kPromptRowPrefix${prompt.id}",
       for (final submission in awaitingBridgeSubmissions)
-        if (!deliveredPromptIds.contains(submission.promptId)) _chatEntryFor(submission: submission),
+        if (!deliveredPromptIds.contains(submission.promptId)) "$_kPromptRowPrefix${submission.promptId}",
       if (sendingSubmission != null && !deliveredPromptIds.contains(sendingSubmission.promptId))
-        _chatEntryFor(submission: sendingSubmission),
+        "$_kPromptRowPrefix${sendingSubmission.promptId}",
       for (final submission in queuedMessages)
-        if (!deliveredPromptIds.contains(submission.promptId)) _chatEntryFor(submission: submission),
+        if (!deliveredPromptIds.contains(submission.promptId)) "$_kPromptRowPrefix${submission.promptId}",
     ];
-    // One row per id: a prompt momentarily present in two sources (its message
-    // landed while the queue copy is still being reconciled) keeps its most
-    // settled entry. The chat controller hard-rejects duplicate ids.
     final seenIds = <String>{};
     return [
       for (final entry in entries)
-        if (seenIds.add(entry.id)) entry,
+        if (seenIds.add(entry)) entry,
     ];
   }
 
-  chat_core.Message _chatEntryFor({required QueuedSessionSubmission submission}) {
-    return chat_core.Message.custom(
-      id: "$_kPromptRowPrefix${submission.promptId}",
-      authorId: _kUserAuthorId,
-      metadata: const <String, String>{
-        _kRoleMetadataKey: _kTransientSubmissionRole,
-      },
-    );
-  }
-
   String _entryIdForMessage({required Message info}) => switch (info) {
-    MessageUser(promptId: final promptId?) =>
-      _promptsUsingMessageEntryId.contains(promptId) ? info.id : "$_kPromptRowPrefix$promptId",
+    MessageUser(promptId: final promptId?) => "$_kPromptRowPrefix$promptId",
     MessageUser() || MessageAssistant() || MessageError() => info.id,
   };
 
@@ -542,8 +316,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     if (command == null) return text;
     return text == null ? "/$command" : "/$command $text";
   }
-
-  static Future<chat_core.User?> _resolveUser(String id) async => chat_core.User(id: id);
 
   @override
   Widget build(BuildContext context) {
@@ -571,6 +343,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         "$_kPromptRowPrefix${submission.promptId}": (submission: submission, isSending: false, awaitingBridge: false),
     };
 
+    final rowIds = _rowIdsFor(
+      messages: messages,
+      sendingSubmission: sendingSubmission,
+      queuedMessages: queuedMessages,
+      bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
+      awaitingBridgeSubmissions: widget.awaitingBridgeSubmissions,
+      hasRetryError: retryErrorMessage != null,
+    );
     // Coalesced post-frame pin-to-edge while following. The scheduler
     // collapses repeated calls within a frame and the jump is skipped
     // when `position.pixels` is already at the edge.
@@ -602,7 +382,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       //   text; hijacking it for the peek would make selection impossible.
       //
       child: NotificationListener<ScrollNotification>(
-        onNotification: _onNestedScrollNotification,
+        onNotification: _onScrollNotification,
         child: PregoHorizontalDragGestureDetector(
           behavior: HitTestBehavior.translucent,
           supportedDevices: _kRevealPointerDevices,
@@ -614,71 +394,37 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           pendingRejectionSlop: _kRevealPendingRejectionSlop,
           direction: PregoHorizontalDragDirection.left,
           dragStartBehavior: DragStartBehavior.down,
-          child: chat_ui.Chat(
+          child: ListView.builder(
             key: _kListViewKey,
-            currentUserId: _kUserAuthorId,
-            resolveUser: _resolveUser,
-            chatController: _chatController,
-            theme: _chatThemeFor(theme: Theme.of(context)),
-            backgroundColor: Colors.transparent,
-            builders: chat_core.Builders(
-              // Full-row control: drop the package's bubble/alignment/
-              // gesture wrapper and render our cards bare, exactly as the
-              // previous ListView did.
-              chatMessageBuilder: (
-                context,
-                message,
-                index,
-                animation,
-                child, {
-                bool? isRemoved,
-                required bool isSentByMe,
-                chat_core.MessageGroupStatus? groupStatus,
-              }) => child,
-              customMessageBuilder:
-                  (
-                    context,
-                    message,
-                    index, {
-                    required bool isSentByMe,
-                    chat_core.MessageGroupStatus? groupStatus,
-                  }) => _buildRow(
-                    entry: message,
-                    messages: messages,
-                    indexById: indexById,
-                    transientSubmissions: transientSubmissions,
-                    streamingText: streamingText,
-                    children: children,
-                    childStatuses: childStatuses,
-                    retryErrorMessage: retryErrorMessage,
-                  ),
-              // The prompt input and tasks bar live outside this widget; reserve
-              // no composer space inside the list.
-              composerBuilder: (context) => const SizedBox.shrink(),
-              // Follow/detach owns the jump affordance via the overlay pill.
-              scrollToBottomBuilder: (context, animation, onPressed) => const SizedBox.shrink(),
-              // The loaded view renders its own empty state before this
-              // widget is ever mounted.
-              emptyChatListBuilder: (context) => const SizedBox.shrink(),
-              chatAnimatedListBuilder: (context, itemBuilder) => chat_ui.ChatAnimatedListReversed(
-                itemBuilder: itemBuilder,
-                scrollController: _follow.scrollController,
-                insertAnimationDuration: Duration.zero,
-                removeAnimationDuration: Duration.zero,
-                shouldScrollToEndWhenSendingMessage: false,
-                topPadding: 8 + widget.topInset,
-                bottomPadding: 8 + widget.bottomInset,
-                handleSafeArea: false,
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-                // Always allow overscroll/bounce, even when the transcript is
-                // shorter than the viewport, so the list never feels locked.
-                physics: const AlwaysScrollableScrollPhysics(),
-                // The list is reversed, so "end" is the top: scrolling back
-                // through history is what asks for the older page. Null once
-                // the start is loaded, which stops the package asking again.
-                onEndReached: widget.onLoadOlderMessages,
-              ),
-            ),
+            reverse: true,
+            controller: _follow.scrollController,
+            padding: EdgeInsetsDirectional.only(top: 8 + widget.topInset, bottom: 8 + widget.bottomInset),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: rowIds.length,
+            findChildIndexCallback: (key) {
+              if (key case ValueKey<String>(value: final rowId)) {
+                final domainIndex = rowIds.indexOf(rowId);
+                return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
+              }
+              return null;
+            },
+            itemBuilder: (context, index) {
+              final entryId = rowIds[rowIds.length - index - 1];
+              return KeyedSubtree(
+                key: ValueKey(entryId),
+                child: _buildRow(
+                  entryId: entryId,
+                  messages: messages,
+                  indexById: indexById,
+                  transientSubmissions: transientSubmissions,
+                  streamingText: streamingText,
+                  children: children,
+                  childStatuses: childStatuses,
+                  retryErrorMessage: retryErrorMessage,
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -686,7 +432,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   }
 
   Widget _buildRow({
-    required chat_core.CustomMessage entry,
+    required String entryId,
     required List<MessageWithParts> messages,
     required Map<String, int> indexById,
     required Map<String, _TransientSubmission> transientSubmissions,
@@ -695,18 +441,18 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required Map<String, SessionStatus> childStatuses,
     required String? retryErrorMessage,
   }) {
-    if (entry.id == _kRetryErrorRowId) {
+    if (entryId == _kRetryErrorRowId) {
       if (retryErrorMessage == null) return const SizedBox.shrink();
       // Synthetic row: no timestamp, but it still slides with the rest.
       return _revealable(createdAtMs: null, child: RetryErrorMessageCard(message: retryErrorMessage));
     }
-    if (entry.id.startsWith(_kPromptRowPrefix)) {
+    if (entryId.startsWith(_kPromptRowPrefix)) {
       // One row serves the prompt's whole lifecycle. Resolve the most settled
       // state first: the delivered message, else the bridge-queued entry, else
       // the locally staged submission. A mid-handoff frame (entry updated
       // before the next widget rebuild, or vice versa) then renders the
       // previous state instead of collapsing to an empty box.
-      final index = indexById[entry.id];
+      final index = indexById[entryId];
       if (index != null && index < messages.length && messages[index].hasRenderableUserContent) {
         final message = messages[index];
         return _revealable(
@@ -714,7 +460,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           child: _animatedPromptRow(child: UserMessageCard(message: message)),
         );
       }
-      final promptId = entry.id.substring(_kPromptRowPrefix.length);
+      final promptId = entryId.substring(_kPromptRowPrefix.length);
       final prompt = widget.bridgeQueuedPrompts.where((candidate) => candidate.id == promptId).firstOrNull;
       if (prompt != null) {
         final onCancel = widget.onCancelBridgeQueuedPrompt;
@@ -722,7 +468,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           createdAtMs: prompt.createdAt,
           child: _animatedPromptRow(
             child: QueuedMessageBubble(
-              key: ValueKey(entry.id),
+              key: ValueKey(entryId),
               displayText: _bridgePromptDisplayText(prompt),
               isCommand: prompt.command != null,
               attachmentCount: prompt.attachmentCount,
@@ -734,7 +480,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         );
       }
     }
-    final transientSubmission = transientSubmissions[entry.id];
+    final transientSubmission = transientSubmissions[entryId];
     if (transientSubmission != null) {
       final submission = transientSubmission.submission;
       final onCancelQueuedMessage = widget.onCancelQueuedMessage;
@@ -742,7 +488,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         createdAtMs: null,
         child: _animatedPromptRow(
           child: QueuedMessageBubble(
-            key: ValueKey(entry.id),
+            key: ValueKey(entryId),
             displayText: submission.displayText,
             isCommand: submission.isCommand,
             attachmentCount: submission.attachments.length,
@@ -757,7 +503,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         ),
       );
     }
-    final index = indexById[entry.id];
+    final index = indexById[entryId];
     if (index == null || index >= messages.length) return const SizedBox.shrink();
     final message = messages[index];
     if (!message.hasRenderableUserContent) {
@@ -840,6 +586,30 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _endReveal();
   }
 
+  bool _onScrollNotification(ScrollNotification notification) {
+    final loadOlderMessages = widget.onLoadOlderMessages;
+    if (notification is ScrollEndNotification &&
+        notification.metrics.axis == Axis.vertical &&
+        notification.metrics.extentAfter == 0 &&
+        !_loadOlderCallbackInFlight &&
+        !widget.isLoadingOlderMessages &&
+        loadOlderMessages != null) {
+      _loadOlderCallbackInFlight = true;
+      unawaited(_loadOlderMessages(loadOlderMessages));
+    }
+    return _onNestedScrollNotification(notification);
+  }
+
+  Future<void> _loadOlderMessages(Future<void> Function() loadOlderMessages) async {
+    try {
+      await loadOlderMessages();
+    } catch (error, stackTrace) {
+      loge("Failed to load older session messages", error, stackTrace);
+    } finally {
+      if (mounted) _loadOlderCallbackInFlight = false;
+    }
+  }
+
   bool _onNestedScrollNotification(ScrollNotification notification) {
     if (notification is! ScrollStartNotification ||
         notification.metrics.axis != Axis.horizontal ||
@@ -872,35 +642,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     } else {
       _revealController.animateTo(0, curve: Curves.easeOut);
     }
-  }
-
-  chat_core.ChatTheme _chatThemeFor({required ThemeData theme}) {
-    final cached = _chatThemeCache;
-    if (cached != null && identical(cached.$1, theme)) return cached.$2;
-    final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
-    final derived = chat_core.ChatTheme(
-      colors: chat_core.ChatColors(
-        primary: colorScheme.primary,
-        onPrimary: colorScheme.onPrimary,
-        surface: colorScheme.surface,
-        onSurface: colorScheme.onSurface,
-        surfaceContainerLow: colorScheme.surfaceContainerLow,
-        surfaceContainer: colorScheme.surfaceContainer,
-        surfaceContainerHigh: colorScheme.surfaceContainerHigh,
-      ),
-      typography: chat_core.ChatTypography(
-        bodyLarge: textTheme.bodyLarge ?? const TextStyle(),
-        bodyMedium: textTheme.bodyMedium ?? const TextStyle(),
-        bodySmall: textTheme.bodySmall ?? const TextStyle(),
-        labelLarge: textTheme.labelLarge ?? const TextStyle(),
-        labelMedium: textTheme.labelMedium ?? const TextStyle(),
-        labelSmall: textTheme.labelSmall ?? const TextStyle(),
-      ),
-      shape: const BorderRadius.all(Radius.circular(12)),
-    );
-    _chatThemeCache = (theme, derived);
-    return derived;
   }
 
   Map<String, int> _indexByIdFor({required List<MessageWithParts> messages}) {

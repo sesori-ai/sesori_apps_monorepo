@@ -2825,7 +2825,7 @@ void main() {
       find.ancestor(
         of: find.byType(QueuedMessageBubble),
         matching: find.byWidgetPredicate(
-          (widget) => widget is CustomScrollView && widget.reverse,
+          (widget) => widget is ListView && widget.reverse,
         ),
       ),
       findsOneWidget,

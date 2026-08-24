@@ -167,6 +167,10 @@ defaults and queued client sends coherent.
 - Transcript content scrolling behind the top navigation or floating composer
   dissolves into a strong surface-colour fade, keeping the title and controls
   visually separate and screenshot-readable without text collisions.
+- Transcript rows render in a plain reversed list with newest content at the
+  bottom. Following stays pinned through appends and streaming growth; scrolling
+  away freezes live row content until reattachment. Sending, queued, retry,
+  streaming, working, and settled rows keep stable identities and transitions.
 - A leftward touch, stylus, or trackpad drag across the transcript reveals all
   message timestamps together without changing vertical scroll or follow state,
   then settles closed on release. System-back edges remain reserved on iOS and
@@ -236,6 +240,9 @@ has started.
   running session as if they were user activity.
 - Scrolled transcript text remains clearly visible through the fade and collides
   with the navigation title or floating composer controls.
+- A live append or streaming update moves a detached viewport, an outgoing
+  prompt blanks or duplicates during its sending-to-sent transition, or keyboard
+  and composer insets obscure newest content.
 - A timestamp peek responds from a reserved system-back edge, detaches or
   vertically scrolls the transcript, captures a mouse selection drag, or moves
   while a fenced code block is handling the horizontal drag.

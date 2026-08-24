@@ -34,7 +34,7 @@ five open PRs). Steps sharing a package stay serialized: 4 after 3 (both
   migration consequence (stale `≤ v1.3.x` installs re-register) is accepted
 - [x] **D2** flatten `bridge/app/lib/src/bridge/*` into `src/*` — **approved**
   by the owner on 2026-08-22; Step 7 performs the move
-- [ ] **D3** `flutter_chat_ui` replacement — default spike, land only on parity
+- [x] **D3** `flutter_chat_ui` replacement — plain reversed list reached widget-test parity in Step 41
 - [ ] **D4** `cryptography_flutter` — default remove as unused (never enabled)
 - [ ] **D5** Material→Prego dialog breadth — default only what the footer and
   confirm-sheet consolidation naturally covers
