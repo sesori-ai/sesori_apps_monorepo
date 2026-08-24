@@ -138,11 +138,14 @@ defaults and queued client sends coherent.
   the same prompt id so retries stay idempotent.
 - When a plugin rejects a send before acceptance because its agent, model, or
   variant is no longer offered, the bridge deletes that options-cache row and
-  returns the typed `staleSessionOptions` rejection. The client force-refreshes
-  the options, replaces only unsupported queued selections without changing
-  FIFO order or prompt ids, warns the user, and retries once. A failed refresh
-  or second stale rejection leaves the prompt visible and queued instead of
-  disappearing or entering a retry loop.
+  returns the typed `staleSessionOptions` rejection. OpenCode keeps the requested
+  selection on its synchronous message reservation; when that endpoint collapses
+  a rejection into a generic 500, the plugin checks fresh project options and
+  classifies the failure as stale only when the requested selection is absent or unavailable.
+  The client force-refreshes the options, replaces only unsupported queued
+  selections without changing FIFO order or prompt ids, warns the user, and
+  retries once. A failed refresh or second stale rejection leaves the prompt
+  visible and queued instead of disappearing or entering a retry loop.
 - Each plugin stamps that prompt id onto the user-message echo of its own
   dispatch, using the link its backend exposes — Claude's queue entry, ACP's
   accepted send, Pi's dispatcher, Codex's client-supplied identifier, and
