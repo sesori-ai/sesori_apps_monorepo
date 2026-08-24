@@ -8,7 +8,7 @@ class const DeepSeekCatalogMapper() {
     final providers = [
       for (final provider in response.providers)
         if (provider.models.isNotEmpty)
-          PluginProvider.custom(
+          PluginProvider(
             id: provider.id,
             name: provider.name,
             authType: PluginProviderAuthType.unknown,
