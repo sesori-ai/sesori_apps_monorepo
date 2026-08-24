@@ -14,7 +14,7 @@ class DeepSeekPlugin({
   required final DeepSeekHistoryRepository historyRepository,
   required super.commandTracker,
   required super.sessionOptionsService,
-  super.processFactory,
+  required super.processFactory,
 }) extends AcpPlugin {
   this
     : super(

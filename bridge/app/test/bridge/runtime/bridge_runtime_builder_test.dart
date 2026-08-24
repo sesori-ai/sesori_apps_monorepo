@@ -119,7 +119,7 @@ void main() {
     await runtime.close();
     await lifecycleService.dispose();
     httpClient.close();
-    await plugin.dispose();
+    await plugin.closeEvents();
   });
 }
 

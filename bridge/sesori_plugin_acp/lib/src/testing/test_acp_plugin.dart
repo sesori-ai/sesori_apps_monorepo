@@ -10,5 +10,5 @@ class TestAcpPlugin({
   required super.eventMapper,
   required super.commandTracker,
   required super.sessionOptionsService,
-  super.processFactory,
+  required super.processFactory,
 }) extends AcpPlugin;

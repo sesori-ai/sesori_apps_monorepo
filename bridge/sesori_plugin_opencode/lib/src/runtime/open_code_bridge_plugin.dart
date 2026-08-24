@@ -147,9 +147,7 @@ class OpenCodeBridgePlugin({
   /// Stops the plugin in order: disarm the monitor (so the child's deliberate
   /// exit is never mistaken for a crash), tear down the api, then stop the owned
   /// `opencode serve` process (when this bridge owns one). Idempotent — repeated
-  /// calls return the same future — and safe before/after
-  /// [BridgePluginApi.dispose], which the contract keeps callable in either
-  /// order for the migration window.
+  /// calls return the same future.
   ///
   /// [budget] is accepted but not subdivided: the stop path keeps its own
   /// pacing (graceful signal, wait, force). The shutdown coordinator's backstop,

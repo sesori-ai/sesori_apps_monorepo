@@ -60,7 +60,7 @@ abstract class AcpPlugin({
   /// also forgets a deleted session's model override. Built by the composer
   /// over the same configuration/command trackers as [eventMapper].
   required final AcpSessionOptionsService _sessionOptionsService,
-  final AcpProcessFactory? _processFactory,
+  required final AcpProcessFactory _processFactory,
 }) extends BridgeDerivedProjectsPluginApi {
   this : _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
 
@@ -1787,7 +1787,6 @@ abstract class AcpPlugin({
     ];
   }
 
-  @override
   Future<void> dispose() async {
     // dispose() must not throw — every step below is isolated (see
     // [_teardownConnection]); the stream closes are best-effort too.

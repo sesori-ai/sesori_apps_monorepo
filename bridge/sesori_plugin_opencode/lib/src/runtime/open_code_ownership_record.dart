@@ -13,17 +13,9 @@ enum OpenCodeOwnershipStatus() {
 
 /// The OpenCode ownership record persisted to `<cacheDir>/runtime/opencode-processes.json`.
 ///
-/// This is the plugin-owned copy of the bridge's existing freezed model — same
-/// fields, same declaration order, same `json_serializable` output — so it
-/// writes **byte-compatible** JSON to the frozen ownership file. It is supplied
-/// to the managed-runtime supervisor as the concrete record type via
-/// [OpenCodeRecordMapper], letting the OpenCode plugin own its own runtime
-/// persistence without depending on `bridge/app`.
-///
-/// During the migration window (PRs 11–12) the bridge-side copy at
-/// `bridge/app/lib/src/server/models/open_code_ownership_record.dart` still
-/// drives the legacy path; the two are deliberately byte-identical and the
-/// bridge-side copy is deleted in PR 13.
+/// Supplied to the managed-runtime supervisor as its concrete record type via
+/// [OpenCodeRecordMapper]. Field names and JSON encoding form the frozen
+/// ownership-file persistence contract.
 @freezed
 sealed class OpenCodeOwnershipRecord with _$OpenCodeOwnershipRecord {
   const factory({

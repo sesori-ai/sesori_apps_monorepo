@@ -10,16 +10,8 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
 import "open_code_ownership_record.dart";
 
-/// OpenCode-specific runtime policy, re-expressed over the [PluginHost] services
-/// instead of the bridge-side `OpenCodeProcessApi` / `OpenCodeServerService`.
-///
-/// PR 11 of the plugin-lifecycle migration: everything that decides *how*
-/// OpenCode is launched, probed, and recorded now lives in the plugin package.
-/// The spawn goes through [PluginHost.processes] (which captures identity), the
-/// health probe hits `/global/health` with the same Basic-auth scheme, the
-/// password is generated the same way, and the port constants are unchanged.
-/// The interim duplication with the bridge-side copies is deliberate; the
-/// bridge-side copies are deleted in PR 13.
+/// OpenCode-specific launch, health-probe, and ownership-record policy over
+/// services exposed by [PluginHost].
 
 /// The reserved default port OpenCode listens on, excluded from dynamic
 /// discovery.

@@ -62,6 +62,7 @@ DeepSeekHistoryRepository _repository(DeepSeekAcpApi api) => DeepSeekHistoryRepo
 
 AcpStdioClient _unusedClient() => AcpStdioClient(
   launchSpec: const AcpLaunchSpec(command: "unused", args: [], cwd: "/", environment: {}),
+  processFactory: (_) => throw UnimplementedError(),
 );
 
 DeepSeekSessionUpdateEnvelopeDto _update(String sessionId, String kind, String messageId, String text) =>

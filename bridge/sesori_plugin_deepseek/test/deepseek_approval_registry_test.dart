@@ -55,6 +55,7 @@ void main() {
     final plugin = DeepSeekPlugin(
       launchSpec: const AcpLaunchSpec(command: "deepseek", args: []),
       launchDirectory: "/project",
+      processFactory: (_) async => fake,
       mapper: mapper,
       api: api,
       historyRepository: DeepSeekHistoryRepository(api: api, eventMapper: mapper, pluginId: DeepSeekIdentity.id),

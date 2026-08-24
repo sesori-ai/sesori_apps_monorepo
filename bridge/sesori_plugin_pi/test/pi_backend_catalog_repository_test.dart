@@ -38,14 +38,15 @@ void main() {
     expect(options.agents.single.model, isNull);
     expect(options.providers.providers, hasLength(2));
     final anthropic = options.providers.providers.first;
-    expect(anthropic, isA<PluginProviderAnthropic>());
+    expect(anthropic.id, "anthropic");
+    expect(anthropic.name, "anthropic");
     expect(anthropic.authType, PluginProviderAuthType.unknown);
     expect(anthropic.defaultModelID, "claude/team");
     expect(anthropic.models.single.id, "claude/team");
     expect(anthropic.models.single.variants, ["off", "max"]);
     final custom = options.providers.providers.last;
-    expect(custom, isA<PluginProviderCustom>());
     expect(custom.id, "custom/team");
+    expect(custom.name, "custom/team");
     expect(custom.models.single.id, "model/v2");
     expect(custom.models.single.variants, isEmpty);
     expect(harness.selected, [("anthropic", "claude/team")]);

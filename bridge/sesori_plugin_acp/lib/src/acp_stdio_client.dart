@@ -44,10 +44,9 @@ class const AcpServerRequest({
 /// never needed.
 class AcpStdioClient({
   required final AcpLaunchSpec _launchSpec,
-  AcpProcessFactory? processFactory,
+  required final AcpProcessFactory _processFactory,
   final String _logTag = "acp",
 }) {
-  final AcpProcessFactory _processFactory = processFactory ?? defaultAcpProcessFactory;
   AcpProcessHandle? _process;
   StreamSubscription<String>? _stdoutSubscription;
   StreamSubscription<String>? _stderrSubscription;

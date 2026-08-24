@@ -107,9 +107,6 @@ class _ReadyPluginApi() extends NativeProjectsPluginApi {
   String get id => "ready";
 
   @override
-  Future<void> dispose() async {}
-
-  @override
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required String projectId,
     required PluginSessionOptionsDiscoveryMode discoveryMode,

@@ -253,85 +253,13 @@ class PiBackendCatalogRepository({
     required List<PluginModel> models,
     required String? defaultModelId,
   }) {
-    final fields = (
+    return PluginProvider(
       id: id,
       name: id,
       authType: PluginProviderAuthType.unknown,
       models: models,
       defaultModelID: defaultModelId,
     );
-    return switch (id.toLowerCase()) {
-      "anthropic" => PluginProvider.anthropic(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-      "openai" => PluginProvider.openAI(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-      "google" => PluginProvider.google(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-      "mistral" => PluginProvider.mistral(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-      "groq" => PluginProvider.groq(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-      "xai" => PluginProvider.xAI(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-      "deepseek" => PluginProvider.deepseek(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-      "amazon-bedrock" || "bedrock" => PluginProvider.amazonBedrock(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-      "azure" || "azure-openai-responses" => PluginProvider.azure(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-      _ => PluginProvider.custom(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-    };
   }
 
   PluginCommand? _command(PiCatalogCommandDto dto) {

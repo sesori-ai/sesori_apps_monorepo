@@ -29,12 +29,8 @@ export "src/opencode_plugin_impl.dart";
 export "src/opencode_repository.dart";
 export "src/opencode_service.dart";
 export "src/plugin_model_mapper.dart";
-// Runtime lifecycle: the descriptor is the public entry point the bridge
-// registers in bin/bridge.dart. The ownership record, record mapper, and
-// runtime-policy helpers stay package-internal — they intentionally share
-// names with the bridge-app copies until the deletion sweep (PR 13), so
-// re-exporting them here would make those names ambiguous in the app. Tests
-// reach them via direct same-package src imports.
+// Runtime internals stay package-private; descriptor and managed API form the
+// public composition surface.
 export "src/runtime/open_code_bridge_plugin.dart";
 export "src/runtime/open_code_managed_api.dart";
 export "src/runtime/open_code_plugin_descriptor.dart";

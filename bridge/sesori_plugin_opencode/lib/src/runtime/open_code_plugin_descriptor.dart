@@ -27,10 +27,8 @@ abstract final class _OpenCodeConfigKey() {
   static const String binary = "bin";
 }
 
-/// Builds the [OpenCodeManagedApi] for a resolved server. The production default
-/// constructs an [OpenCodePlugin] with auto-initialization disabled (the
-/// descriptor awaits [OpenCodeManagedApi.initialize] explicitly); tests inject a
-/// fake.
+/// Builds the [OpenCodeManagedApi] for a resolved server. The descriptor awaits
+/// [OpenCodeManagedApi.initialize] explicitly; tests inject a fake.
 typedef OpenCodeManagedApiFactory = OpenCodeManagedApi Function({
   required String serverUrl,
   required String? password,
@@ -47,7 +45,6 @@ OpenCodeManagedApi _defaultBuildApi({
   return OpenCodePlugin(
     serverUrl: serverUrl,
     password: password,
-    autoInitialize: false,
     onConnected: onConnected,
     onDisconnected: onDisconnected,
   );

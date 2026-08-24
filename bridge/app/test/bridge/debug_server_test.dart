@@ -668,7 +668,7 @@ void main() {
             )
             ..addPhase(
               phase: BridgeShutdownPhase.pluginDispose,
-              action: runtimeForLifecycleService(service: harness.lifecycleService).shutdownStartedPlugins,
+              action: plugin.dispose,
             );
       await debugServer.start();
 
@@ -1243,7 +1243,6 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAware
     required ({String providerID, String modelID})? model,
   }) async {}
 
-  @override
   Future<void> dispose() async {}
 
   void add(BridgeSseEvent event) => _controller.add(event);
@@ -1490,7 +1489,6 @@ class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionA
   Future<PluginProvidersResult> getProviders({required String projectId}) async =>
       const PluginProvidersResult(providers: []);
 
-  @override
   Future<void> dispose() async {}
 
   Future<void> close() => _eventController.close();

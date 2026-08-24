@@ -75,35 +75,3 @@ final class _HostPiProcessHandle({
     }
   }
 }
-
-/// Spawns Pi while preserving the user's inherited environment.
-Future<PiProcessHandle> defaultPiProcessFactory({required PiLaunchSpec spec}) async {
-  final process = await io.Process.start(
-    spec.binaryPath,
-    spec.arguments,
-    workingDirectory: spec.workingDirectory,
-    environment: spec.environment,
-    includeParentEnvironment: true,
-    runInShell: io.Platform.isWindows,
-  );
-  return _IoPiProcessHandle(process: process);
-}
-
-final class _IoPiProcessHandle({required final io.Process process}) implements PiProcessHandle {
-  final io.Process _process = process;
-
-  @override
-  Stream<List<int>> get stdout => _process.stdout;
-
-  @override
-  Stream<List<int>> get stderr => _process.stderr;
-
-  @override
-  io.IOSink get stdin => _process.stdin;
-
-  @override
-  Future<int> get exitCode => _process.exitCode;
-
-  @override
-  bool kill({required io.ProcessSignal signal}) => _process.kill(signal);
-}

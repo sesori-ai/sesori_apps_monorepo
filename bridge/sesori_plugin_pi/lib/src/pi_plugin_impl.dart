@@ -434,7 +434,6 @@ final class PiPlugin._({
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => _sessionService.getActiveSessionsSummary();
 
-  @override
   Future<void> dispose() => _disposeFuture ??= _dispose(shutdownBudget: Duration.zero);
 
   /// [shutdownBudget] `null` means the caller imposes no deadline.
