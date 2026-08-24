@@ -628,6 +628,38 @@ void main() {
       expect(source.selectionCalls, hasLength(1));
     });
 
+    test("dispose during session loading does not start local resolution", () async {
+      final sessionLoadBlock = Completer<void>();
+      final source = _FakePrSource();
+      final pullRequests = _FakePullRequestRepository();
+      final sessions = _FakeSessionRepository(
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
+        },
+        loadBlock: sessionLoadBlock,
+      );
+      final service = PrSyncService(
+        prSource: source,
+        pullRequestRepository: pullRequests,
+        sessionRepository: sessions,
+        clock: const Clock(),
+        debounceWindow: Duration.zero,
+      );
+
+      final refresh = service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.background,
+      );
+      await sessions.loadStarted.future;
+      service.dispose();
+      sessionLoadBlock.complete();
+      await _waitFor(() => sessions.completedLoadCount == 1);
+      await refresh;
+
+      expect(source.resolveCalls, isEmpty);
+      expect(pullRequests.applyCalls, isEmpty);
+    });
+
     test("dispose abandons local resolution finishing during shutdown", () async {
       final resolutionBlock = Completer<void>();
       final resolutionError = PullRequestTargetResolutionException(
@@ -862,10 +894,18 @@ final class _FakePullRequestRepository() implements PullRequestRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-final class _FakeSessionRepository({required final Map<String, List<StoredSession>> sessionsByProject})
-    implements SessionRepository {
+final class _FakeSessionRepository({
+  required final Map<String, List<StoredSession>> sessionsByProject,
+  final Completer<void>? loadBlock,
+}) implements SessionRepository {
+  final Completer<void> loadStarted = Completer<void>();
+  int completedLoadCount = 0;
+
   @override
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
+    if (!loadStarted.isCompleted) loadStarted.complete();
+    if (loadBlock case final block?) await block.future;
+    completedLoadCount++;
     return sessionsByProject[projectId] ?? const <StoredSession>[];
   }
 

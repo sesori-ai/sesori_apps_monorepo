@@ -201,6 +201,7 @@ class PrSyncService({
         for (final session in sessions)
           if (session.parentSessionId == null) session,
     ];
+    if (_disposed) return outcomes;
     final targetsByDirectory = await _prSource.resolvePullRequestTargets(
       directories: rootSessions.map((session) => session.directory),
     );
