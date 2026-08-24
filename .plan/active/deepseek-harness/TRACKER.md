@@ -132,9 +132,11 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] `dart test`: protocol source-manifest and SHA-256 integrity pass
 - [x] `git diff --check`
 - [x] Synced with current `origin/main` after Step 6 merged
-- [x] Final changed-line count: 1,252, above the 1,100 soft target and below the 1,500-line cap
+- [x] Final changed-line count: 1,270, above the 1,100 soft target and below the 1,500-line cap
 - [x] Runtime PR #6 corrected pagination/question schema invariants before the
   exact merged commit and digests were re-vendored
+- [x] Runtime PR #7 required plan-review choices before its exact merged commit
+  and digests were re-vendored
 
 Later implementation and live evidence is appended here by step. Never mark a
 regression row passed without the boundary and matrix required by `PLAN.md`.

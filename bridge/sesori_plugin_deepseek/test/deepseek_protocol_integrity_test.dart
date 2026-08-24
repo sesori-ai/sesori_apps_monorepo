@@ -12,7 +12,7 @@ void main() {
     ) as Map<String, dynamic>;
 
     expect(manifest["repository"], "sesori-ai/sesori-deepseek-acp");
-    expect(manifest["commit"], "073ded5be03b252ec92b9093b28a937974f1503b");
+    expect(manifest["commit"], "3d4c5d0e016390f0077fc01fcfa0aba0025ca2b6");
     final expected = (manifest["files"] as Map).cast<String, String>();
     for (final entry in expected.entries) {
       final bytes = await File("${directory.path}/${entry.key}").readAsBytes();

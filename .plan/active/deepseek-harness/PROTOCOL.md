@@ -3,7 +3,7 @@
 ## Status And Sources
 
 - **State:** runtime protocol implemented and merged through Step 6, including
-  the protocol-v1 invariant correction in runtime PR #6.
+  the protocol-v1 invariant corrections in runtime PRs #6-7.
 - **Observed:** 2026-08-22.
 - **DeepSeek baseline:** `0.1.1-rc.2`, tag `dsh-v0.1.1-rc.2`, commit
   `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`.

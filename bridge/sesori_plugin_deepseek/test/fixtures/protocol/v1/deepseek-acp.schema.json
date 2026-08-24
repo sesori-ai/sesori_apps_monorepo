@@ -423,11 +423,13 @@
             },
             "approveLabel": {
               "$ref": "#/$defs/nonblank"
-            }
+            },
+            "options": true
           },
           "required": [
             "intent",
-            "approveLabel"
+            "approveLabel",
+            "options"
           ]
         },
         {

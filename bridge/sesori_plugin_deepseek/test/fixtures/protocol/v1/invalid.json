@@ -111,6 +111,20 @@
     }
   },
   {
+    "definition": "askUserQuestionRequest",
+    "value": {
+      "sessionId": "session-1",
+      "questions": [
+        {
+          "id": "plan-1",
+          "text": "Review the plan",
+          "intent": "plan_review",
+          "approveLabel": "Approve"
+        }
+      ]
+    }
+  },
+  {
     "definition": "askUserQuestionResponse",
     "value": {
       "answers": [
