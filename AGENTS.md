@@ -68,8 +68,8 @@ eagerly "just in case."
   with the legacy rationale and exact cleanup:
   `// COMPATIBILITY YYYY-MM-DD (vX.Y.Z): ...`
   `vX.Y.Z` is the current product version from `bridge/app/pubspec.yaml` (or
-  `client/app`) — never a library package's own version, never an unreleased
-  one. Word the cleanup as its retiring condition, not a future version.
+  `client/app`), never a library package's own version. Word the cleanup as its
+  retiring condition, not a future version.
 - Put the marker directly above the field, parameter, or branch it explains,
   inside the enclosing declaration, not above the enclosing function, factory,
   class, or doc comment. Mark the enclosing declaration only when it is itself
