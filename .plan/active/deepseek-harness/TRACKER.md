@@ -154,7 +154,8 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] DeepSeek and ACP `dart analyze --fatal-infos`
 - [x] DeepSeek and full ACP `dart test`
 - [x] `git diff --check`
-- [x] Local changed-line count: 466, below soft and hard caps
+- [x] Synced with merged Step 8 and current `origin/main`; post-merge verification remained green
+- [x] Final changed-line count: 467, below soft and hard caps
 - [x] Architecture implementation review passed twice
 
 Later implementation and live evidence is appended here by step. Never mark a
