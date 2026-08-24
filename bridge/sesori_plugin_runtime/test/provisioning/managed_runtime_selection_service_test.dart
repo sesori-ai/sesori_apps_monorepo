@@ -210,6 +210,28 @@ void main() {
     expect((notSelected.primaryRejection as ManagedRuntimeProbeRejected).outcome, same(fallbackFailure));
   });
 
+  test("keeps an informative PATH rejection when fallbacks are missing", () async {
+    const pathFailure = RuntimeProbeNonZeroExit(exitCode: 7);
+    final fallbackFailure = RuntimeProbeMissing(
+      innerError: const ProcessException("/desktop/runtime", ["--version"]),
+      stackTrace: StackTrace.empty,
+    );
+    final result = await select(
+      validator: _Validator(
+        outcomes: {
+          "runtime": pathFailure,
+          "/desktop/runtime": fallbackFailure,
+        },
+        onProbe: null,
+      ),
+      fallbackExecutableCandidates: const ["/desktop/runtime"],
+      abortSignal: StartAbortSignal.never,
+    );
+
+    final notSelected = result as ManagedRuntimeNotSelected;
+    expect((notSelected.primaryRejection as ManagedRuntimeProbeRejected).outcome, same(pathFailure));
+  });
+
   test("throws before probing when already aborted", () async {
     final abort = StartAbortController()..abort();
     final validator = _Validator(outcomes: const {}, onProbe: null);

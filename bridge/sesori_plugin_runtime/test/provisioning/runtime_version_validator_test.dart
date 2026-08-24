@@ -246,5 +246,35 @@ void main() {
 
       expect(stderrLines.join("\n"), contains("opencode --version"));
     });
+
+    test("logs nonzero and unrecognized probe outcomes at debug level", () async {
+      final stderrLines = <String>[];
+      final originalLevel = Log.level;
+      Log.level = LogLevel.debug;
+      try {
+        await IOOverrides.runZoned(
+          () async {
+            await probe(
+              _FakeCommandExecutor(
+                result: const CommandResult(exitCode: 7, stdout: "", stderr: ""),
+              ),
+            );
+            await probe(
+              _FakeCommandExecutor(
+                result: const CommandResult(exitCode: 0, stdout: "unknown", stderr: ""),
+              ),
+            );
+          },
+          stderr: () => CapturingStdout(lines: stderrLines),
+        );
+      } finally {
+        Log.level = originalLevel;
+      }
+
+      final output = stderrLines.join("\n");
+      expect(output, contains("opencode --version"));
+      expect(output, contains("exited 7"));
+      expect(output, contains("unrecognized version"));
+    });
   });
 }

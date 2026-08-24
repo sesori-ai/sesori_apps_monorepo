@@ -61,10 +61,15 @@ class RuntimeVersionValidator({
     }
 
     if (result.exitCode != 0) {
+      Log.d("[${_manifest.runtimeId}] runtime version probe '$executable --version' exited ${result.exitCode}");
       return RuntimeProbeNonZeroExit(exitCode: result.exitCode);
     }
     final version = parseVersionOutput(output: result.stdout);
-    return version == null ? const RuntimeProbeUnrecognized() : RuntimeProbeReady(version: version);
+    if (version == null) {
+      Log.d("[${_manifest.runtimeId}] runtime version probe '$executable --version' returned an unrecognized version");
+      return const RuntimeProbeUnrecognized();
+    }
+    return RuntimeProbeReady(version: version);
   }
 
   /// Returns only the parsed version for callers that do not need failure

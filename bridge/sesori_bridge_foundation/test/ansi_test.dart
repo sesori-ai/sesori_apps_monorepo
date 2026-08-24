@@ -13,4 +13,11 @@ void main() {
   test("strips OSC sequences terminated by string terminator", () {
     expect(stripAnsi(value: "before\x1B]0;secret title\x1B\\after"), "beforeafter");
   });
+
+  test("preserves labels between paired ST-terminated OSC hyperlinks", () {
+    expect(
+      stripAnsi(value: "\x1B]8;;https://example.test\x1B\\logged in\x1B]8;;\x1B\\"),
+      "logged in",
+    );
+  });
 }

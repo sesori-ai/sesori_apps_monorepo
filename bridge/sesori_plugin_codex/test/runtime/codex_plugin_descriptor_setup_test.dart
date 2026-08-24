@@ -193,6 +193,35 @@ void main() {
       expect(processes.spawnedExecutables, ["codex", appCli, managedBinaryPath]);
     });
 
+    test("keeps an indeterminate PATH probe when desktop fallbacks are absent", () async {
+      const manifest = CodexRuntimeManifest();
+      final managedBinaryPath = manifest.managedBinaryPath(stateDirectory: stateDirectory);
+      const appCli = "/Applications/ChatGPT.app/Contents/Resources/codex";
+      final processes = _ProbeProcessService(
+        spawnOutcomes: [
+          _ProbeProcess(
+            pid: 6,
+            stdoutBytes: const [],
+            exitCode: Future<int>.value(7),
+          ),
+          const ProcessException(appCli, ["--version"], "missing", 2),
+          ProcessException(managedBinaryPath, const ["--version"], "missing", 2),
+        ],
+      );
+
+      final result =
+          await const CodexPluginDescriptor(
+            desktopAppCliCandidates: [appCli],
+          ).inspectSetup(
+            config: config,
+            processes: processes,
+            environment: const <String, String>{},
+            stateDirectory: stateDirectory,
+          );
+
+      expect(result, isA<PluginSetupUnknown>());
+    });
+
     test("skips an outdated desktop-app CLI in favor of the managed runtime", () async {
       const manifest = CodexRuntimeManifest();
       final managedBinaryPath = manifest.managedBinaryPath(stateDirectory: stateDirectory);

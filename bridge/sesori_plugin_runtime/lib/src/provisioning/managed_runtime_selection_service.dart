@@ -121,6 +121,7 @@ class ManagedRuntimeSelectionService({
         version: pathVersion,
       );
     }
+    final pathRejection = _rejectionFor(probe: pathProbe);
 
     ManagedRuntimeRejection? fallbackRejection;
     for (final candidate in fallbackExecutableCandidates) {
@@ -137,7 +138,7 @@ class ManagedRuntimeSelectionService({
         );
       }
       final rejection = _rejectionFor(probe: probe);
-      if (fallbackRejection == null || _isMissingRejection(rejection: fallbackRejection)) {
+      if (fallbackRejection == null && !_isMissingRejection(rejection: rejection)) {
         fallbackRejection = rejection;
       }
     }
@@ -160,7 +161,9 @@ class ManagedRuntimeSelectionService({
     }
 
     return ManagedRuntimeAutomaticNotSelected(
-      primaryRejection: fallbackRejection ?? _rejectionFor(probe: pathProbe),
+      primaryRejection: _isMissingRejection(rejection: pathRejection)
+          ? fallbackRejection ?? pathRejection
+          : pathRejection,
       managedRejection: _rejectionFor(probe: managedProbe),
     );
   }
