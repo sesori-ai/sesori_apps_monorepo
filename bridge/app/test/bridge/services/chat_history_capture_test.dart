@@ -340,11 +340,11 @@ void main() {
     });
 
     test("keeps live messages the fetched transcript does not contain", () async {
-      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
+      final repository = _FakeSessionRepository(transcript: [_messageWithPartsAt(id: "m1", createdAt: 100)]);
       final history = createTestChatHistory(sessionRepository: repository);
       await history.service.captureMessage(
         sessionId: "ses_a",
-        message: _message(id: "live"),
+        message: _messageAt(id: "live", createdAt: 200),
       );
 
       await history.service.backfillSession(sessionId: "ses_a");
@@ -354,6 +354,41 @@ void main() {
         stored.map((message) => message.info.id),
         const ["m1", "live"],
         reason: "a message captured after the fetch must survive above the imported maximum",
+      );
+    });
+
+    test("a re-import restores retained messages to timestamp order", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [
+          _messageWithPartsAt(id: "before", createdAt: 100),
+          _messageWithPartsAt(id: "after", createdAt: 300),
+        ],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.backfillSession(sessionId: "ses_a");
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _messageAt(id: "retained", createdAt: 200),
+      );
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: const Message.error(
+          id: "retained-error",
+          sessionID: "ses_a",
+          agent: null,
+          modelID: null,
+          providerID: null,
+          errorName: "Error",
+          errorMessage: "failed",
+          time: null,
+        ),
+      );
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["before", "retained", "retained-error", "after"],
       );
     });
 
@@ -523,12 +558,14 @@ Future<List<MessageWithParts>> _storedMessages({
   storageScope: testAttachmentStorageScope(sessionId: sessionId),
 )).messages;
 
-Message _message({required String id}) => Message.user(
+Message _message({required String id}) => _messageAt(id: id, createdAt: 1);
+
+Message _messageAt({required String id, required int createdAt}) => Message.user(
   promptId: null,
   id: id,
   sessionID: "ses_a",
   agent: null,
-  time: const MessageTime(created: 1, completed: null),
+  time: MessageTime(created: createdAt, completed: null),
 );
 
 MessagePart _part({
@@ -553,8 +590,10 @@ MessagePart _part({
   attachment: attachment,
 );
 
-MessageWithParts _messageWithParts({required String id}) => MessageWithParts(
-  info: _message(id: id),
+MessageWithParts _messageWithParts({required String id}) => _messageWithPartsAt(id: id, createdAt: 1);
+
+MessageWithParts _messageWithPartsAt({required String id, required int createdAt}) => MessageWithParts(
+  info: _messageAt(id: id, createdAt: createdAt),
   parts: [_part(id: "$id-p1", messageId: id, text: "text of $id")],
 );
 
