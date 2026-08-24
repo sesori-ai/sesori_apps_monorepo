@@ -117,8 +117,12 @@
 
 ## Open Questions
 
-- [ ] Does `PregoGlassScaffold` have an existing design catalog scenario, or do
-  widget tests alone cover the second stage?
+- [x] Does `PregoGlassScaffold` have an existing design catalog scenario, or do
+  widget tests alone cover the second stage? **Answered in step 5:** the design
+  catalog has no scaffold scenario, so `PLAN.md`'s "otherwise widget tests" path
+  applies. Eight `prego_sliver_refresh_control_test.dart` cases cover the stage,
+  including its two caption phases and the fired label's visual distinction. No
+  catalog scenario was added, so no manifest regeneration was needed.
 
 ## Delivery Steps
 
