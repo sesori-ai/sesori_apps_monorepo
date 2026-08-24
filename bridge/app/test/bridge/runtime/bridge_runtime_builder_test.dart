@@ -2,7 +2,6 @@ import "dart:convert";
 
 import "package:fake_async/fake_async.dart";
 import "package:http/http.dart" as http;
-import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_bridge/src/models/bridge_config.dart";
@@ -77,7 +76,7 @@ void main() {
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(),
-      tokenRefresher: _FakeTokenRefresher(),
+      tokenRefresher: FakeTokenRefresher(),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: failureReporter,
       restartService: restartService,
@@ -124,11 +123,6 @@ void main() {
   });
 }
 
-class _FakeTokenRefresher() implements TokenRefresher {
-  @override
-  Future<String> getAccessToken({bool forceRefresh = false}) async => "test-token";
-}
-
 ({
   PushDispatcher dispatcher,
   CompletionPushListener completionListener,
@@ -144,7 +138,7 @@ _createPushSubsystemForTest() {
   final dispatcher = PushDispatcher(
     client: PushNotificationClient(
       authBackendURL: "https://api.sesori.test",
-      tokenRefreshManager: _FakeTokenRefresher(),
+      tokenRefreshManager: FakeTokenRefresher(),
       client: http.Client(),
     ),
     rateLimiter: rateLimiter,

@@ -1,17 +1,19 @@
 import 'dart:io';
 
-import 'package:sesori_bridge/src/foundation/control_channel_client.dart';
 import 'package:sesori_bridge/src/server/foundation/process_match.dart';
 import 'package:sesori_bridge/src/server/foundation/terminal_prompt_decision.dart';
 import 'package:sesori_bridge/src/server/models/bridge_startup_lock.dart';
 import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository.dart';
-import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository.dart';
 import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
 import 'package:sesori_bridge/src/services/control_prompt_service.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
-import 'package:sesori_shared/sesori_shared.dart' show ControlMessage, ControlPromptKind, ControlPromptRequest, jsonDecodeMap;
+import 'package:sesori_shared/sesori_shared.dart'
+    show ControlMessage, ControlPromptKind, ControlPromptRequest, jsonDecodeMap;
 import 'package:test/test.dart';
+
+import '../../helpers/fake_control_channel_client.dart';
+import '../../helpers/fake_process_repository.dart';
 
 void main() {
   group('BridgeInstanceService', () {
@@ -354,7 +356,7 @@ void main() {
     late _FakeBridgeInstanceRepository bridgeInstanceRepository;
     late _FakeProcessRepository processRepository;
     late _FakeServerClock clock;
-    late _FakeControlChannelClient client;
+    late FakeControlChannelClient client;
     late ControlPromptService promptService;
     late BridgeInstanceService service;
 
@@ -362,7 +364,7 @@ void main() {
       bridgeInstanceRepository = _FakeBridgeInstanceRepository();
       processRepository = _FakeProcessRepository();
       clock = _FakeServerClock();
-      client = _FakeControlChannelClient();
+      client = FakeControlChannelClient();
       // A short timeout keeps the unanswered-prompt tests fast; production
       // uses the generous human-scale default.
       promptService = ControlPromptService(
@@ -457,7 +459,8 @@ void main() {
   });
 }
 
-ControlPromptRequest _decodePromptRequest(String frame) => ControlMessage.fromJson(jsonDecodeMap(frame)) as ControlPromptRequest;
+ControlPromptRequest _decodePromptRequest(String frame) =>
+    ControlMessage.fromJson(jsonDecodeMap(frame)) as ControlPromptRequest;
 
 ProcessIdentity _candidate({
   required int pid,
@@ -539,16 +542,7 @@ class _FakeTerminalPromptRepository() implements TerminalPromptRepository {
   }
 }
 
-class _FakeProcessRepository() implements ProcessRepository {
-  @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) async {
-    throw UnimplementedError();
-  }
-
+class _FakeProcessRepository() extends StrictFakeProcessRepository {
   final List<String> signalRequests = <String>[];
   final Map<int, List<ProcessMatch?>> matchSnapshots = <int, List<ProcessMatch?>>{};
   bool throwGraceful = false;
@@ -615,31 +609,4 @@ class _FakeServerClock() implements ServerClock {
   DateTime now() {
     return DateTime.utc(2026, 5, 15, 12);
   }
-}
-
-class _FakeControlChannelClient() implements ControlChannelClient {
-  final List<String> sentFrames = <String>[];
-
-  /// Mimics [ControlChannelClient.send] throwing when the channel is down.
-  bool throwOnSend = false;
-
-  @override
-  Stream<String> get inbound => const Stream<String>.empty();
-
-  @override
-  void send(String frame) {
-    if (throwOnSend) {
-      throw const ControlChannelNotConnectedException('Control channel is not connected');
-    }
-    sentFrames.add(frame);
-  }
-
-  @override
-  Stream<ControlChannelConnectionState> get connectionState => const Stream<ControlChannelConnectionState>.empty();
-
-  @override
-  Future<void> connect() async {}
-
-  @override
-  Future<void> dispose() async {}
 }

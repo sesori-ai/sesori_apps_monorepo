@@ -1,13 +1,10 @@
 import "dart:async";
 import "dart:convert";
-import "dart:io";
 
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
-import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
-import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/routing/update_session_archive_status_handler.dart";
@@ -20,6 +17,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fakes/deletion_worktree_service_fake.dart";
 import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
@@ -28,7 +26,7 @@ void main() {
   group("UpdateSessionArchiveStatusHandler", () {
     late AppDatabase db;
     late FakeBridgePlugin plugin;
-    late _FakeWorktreeService worktreeService;
+    late DeletionWorktreeServiceFake worktreeService;
     late SessionOperationDispatcher operationDispatcher;
     late SessionUnseenService unseenService;
     late UpdateSessionArchiveStatusHandler handler;
@@ -36,7 +34,7 @@ void main() {
     setUp(() {
       db = createTestDatabase();
       plugin = FakeBridgePlugin();
-      worktreeService = _FakeWorktreeService(database: db);
+      worktreeService = DeletionWorktreeServiceFake();
       final sessionRepository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -796,107 +794,5 @@ Future<void> _insertSession({
       updatedAt: archivedAt,
       projectionUpdatedAt: archivedAt,
     );
-  }
-}
-
-class _FakeWorktreeService({required AppDatabase database}) extends WorktreeService {
-  WorktreeSafetyResult safetyResult = WorktreeSafe();
-  bool removeResult = true;
-  bool branchExistsResult = true;
-
-  int checkCallCount = 0;
-  int removeCallCount = 0;
-
-  String? lastCheckWorktreePath;
-  String? lastRemoveProjectId;
-  String? lastRemoveWorktreePath;
-  bool? lastRemoveForce;
-
-  this
-    : super(
-        worktreeRepository: singlePluginWorktreeRepository(
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          gitApi: GitCliApi(
-            processRunner: _NoopProcessRunner(),
-            gitPathExists: ({required String gitPath}) => true,
-          ),
-          plugin: _FakeBridgePlugin(),
-        ),
-      );
-
-  @override
-  Future<WorktreeSafetyResult> checkWorktreeSafety({
-    required String worktreePath,
-  }) async {
-    checkCallCount++;
-    lastCheckWorktreePath = worktreePath;
-    return safetyResult;
-  }
-
-  @override
-  Future<bool> removeWorktree({
-    required String pluginId,
-    required String projectId,
-    required String worktreePath,
-    required bool force,
-  }) async {
-    removeCallCount++;
-    lastRemoveProjectId = projectId;
-    lastRemoveWorktreePath = worktreePath;
-    lastRemoveForce = force;
-    return removeResult;
-  }
-
-  @override
-  Future<bool> branchExists({
-    required String projectId,
-    required String branchName,
-  }) async {
-    return branchExistsResult;
-  }
-}
-
-class _FakeBridgePlugin() extends FakeBridgePlugin {
-  @override
-  Future<PluginSession> createSession({
-    required String directory,
-    required String? parentSessionId,
-    required List<PluginPromptPart> parts,
-    required String? userVisibleText,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<PluginSession> renameSession({required String sessionId, required String title}) => throw UnimplementedError();
-
-  @override
-  Future<PluginProject> renameProject({required String projectId, required String name}) => throw UnimplementedError();
-
-  @override
-  Future<PluginProject> getProject(String projectId) => throw UnimplementedError();
-}
-
-class _NoopProcessRunner() implements ProcessRunner {
-  @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
-    Map<String, String>? environment,
-    String? workingDirectory,
-    Duration timeout = const Duration(seconds: 15),
-  }) {
-    throw UnimplementedError("_NoopProcessRunner should never execute git commands");
   }
 }

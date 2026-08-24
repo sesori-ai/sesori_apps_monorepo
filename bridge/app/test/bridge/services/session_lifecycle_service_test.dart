@@ -2,9 +2,7 @@ import "dart:io";
 
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
-import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
-import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
@@ -20,6 +18,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fakes/deletion_worktree_service_fake.dart";
 import "../../helpers/fakes/fake_bridge_plugin.dart";
 import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
@@ -27,14 +26,14 @@ import "../../helpers/test_database.dart";
 void main() {
   group("SessionLifecycleService cleanup", () {
     late AppDatabase db;
-    late _FakeWorktreeService worktreeService;
+    late DeletionWorktreeServiceFake worktreeService;
     late _FakeSessionRepository sessionRepository;
     late SessionOperationDispatcher operationDispatcher;
     late SessionLifecycleService service;
 
     setUp(() {
       db = createTestDatabase();
-      worktreeService = _FakeWorktreeService(database: db);
+      worktreeService = DeletionWorktreeServiceFake();
       sessionRepository = _FakeSessionRepository();
       operationDispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       service = SessionLifecycleService(
@@ -313,7 +312,7 @@ void main() {
       );
       operationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
       service = SessionLifecycleService(
-        worktreeService: _FakeWorktreeService(database: db),
+        worktreeService: DeletionWorktreeServiceFake(),
         sessionRepository: repository,
         filesystemRepository: FilesystemRepository(
           filesystemApi: const FilesystemApi(),
@@ -513,51 +512,6 @@ class _FakeSessionRepository() implements SessionRepository {
   Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
 }
 
-class _FakeWorktreeService({required AppDatabase database}) extends WorktreeService {
-  WorktreeSafetyResult safetyResult = WorktreeSafe();
-  bool removeResult = true;
-
-  int checkCallCount = 0;
-  int removeCallCount = 0;
-
-  String? lastRemoveWorktreePath;
-  bool? lastRemoveForce;
-
-  this
-    : super(
-        worktreeRepository: singlePluginWorktreeRepository(
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          gitApi: GitCliApi(
-            processRunner: _NoopProcessRunner(),
-            gitPathExists: ({required String gitPath}) => true,
-          ),
-          plugin: _FakeBridgePlugin(),
-        ),
-      );
-
-  @override
-  Future<WorktreeSafetyResult> checkWorktreeSafety({
-    required String worktreePath,
-  }) async {
-    checkCallCount++;
-    return safetyResult;
-  }
-
-  @override
-  Future<bool> removeWorktree({
-    required String pluginId,
-    required String projectId,
-    required String worktreePath,
-    required bool force,
-  }) async {
-    removeCallCount++;
-    lastRemoveWorktreePath = worktreePath;
-    lastRemoveForce = force;
-    return removeResult;
-  }
-}
-
 class _FakeBridgePlugin() extends FakeBridgePlugin {
   String? get lastArchivedSessionId => lastArchiveSessionId;
 
@@ -580,26 +534,4 @@ class _FakeBridgePlugin() extends FakeBridgePlugin {
 
   @override
   Future<PluginProject> getProject(String projectId) => throw UnimplementedError();
-}
-
-class _NoopProcessRunner() implements ProcessRunner {
-  @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
-    Map<String, String>? environment,
-    String? workingDirectory,
-    Duration timeout = const Duration(seconds: 15),
-  }) {
-    throw UnimplementedError("_NoopProcessRunner should never execute git commands");
-  }
 }

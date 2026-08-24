@@ -1,15 +1,14 @@
-import "dart:async";
-
-import "package:sesori_bridge/src/foundation/control_channel_client.dart";
 import "package:sesori_bridge/src/server/foundation/terminal_prompt_decision.dart";
 import "package:sesori_bridge/src/services/control_prompt_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../helpers/fake_control_channel_client.dart";
+
 void main() {
   group("ControlPromptService", () {
     test("askReplaceExistingBridge sends a replace_bridge prompt and maps accepted to replace", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = ControlPromptService(client: client);
       addTearDown(service.dispose);
 
@@ -25,7 +24,7 @@ void main() {
     });
 
     test("askReplaceStartingBridge maps a rejected answer to decline", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = ControlPromptService(client: client);
       addTearDown(service.dispose);
 
@@ -41,7 +40,7 @@ void main() {
     });
 
     test("correlates by id — a mismatched answer is ignored", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = ControlPromptService(client: client);
       addTearDown(service.dispose);
 
@@ -56,7 +55,7 @@ void main() {
     });
 
     test("no answer within the timeout degrades to nonInteractive", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = ControlPromptService(
         client: client,
         responseTimeout: const Duration(milliseconds: 20),
@@ -70,7 +69,7 @@ void main() {
     });
 
     test("a disconnected channel degrades to nonInteractive", () async {
-      final client = _FakeControlChannelClient()..throwOnSend = true;
+      final client = FakeControlChannelClient()..throwOnSend = true;
       final service = ControlPromptService(client: client);
       addTearDown(service.dispose);
 
@@ -81,7 +80,7 @@ void main() {
     });
 
     test("an unexpected transport failure degrades to nonInteractive instead of crashing", () async {
-      final client = _FakeControlChannelClient()..sendError = StateError("sink is closed");
+      final client = FakeControlChannelClient()..sendError = StateError("sink is closed");
       final service = ControlPromptService(client: client);
       addTearDown(service.dispose);
 
@@ -92,7 +91,7 @@ void main() {
     });
 
     test("dispose resolves an in-flight ask as nonInteractive", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = ControlPromptService(client: client);
 
       final future = service.askReplaceExistingBridge(bridgeCount: 1);
@@ -103,7 +102,7 @@ void main() {
     });
 
     test("an ask after dispose is nonInteractive without sending", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = ControlPromptService(client: client);
       await service.dispose();
 
@@ -115,7 +114,7 @@ void main() {
     });
 
     test("announceLoginNeeded sends a login_needed prompt without awaiting an answer", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = ControlPromptService(client: client);
       addTearDown(service.dispose);
 
@@ -126,7 +125,7 @@ void main() {
     });
 
     test("announceLoginNeeded is best-effort — a disconnected channel does not throw", () {
-      final client = _FakeControlChannelClient()..throwOnSend = true;
+      final client = FakeControlChannelClient()..throwOnSend = true;
       final service = ControlPromptService(client: client);
       addTearDown(service.dispose);
 
@@ -135,7 +134,7 @@ void main() {
     });
 
     test("announceLoginNeeded is best-effort — an unexpected transport failure does not throw", () {
-      final client = _FakeControlChannelClient()..sendError = StateError("sink is closed");
+      final client = FakeControlChannelClient()..sendError = StateError("sink is closed");
       final service = ControlPromptService(client: client);
       addTearDown(service.dispose);
 
@@ -146,37 +145,3 @@ void main() {
 }
 
 ControlMessage _decode(String frame) => ControlMessage.fromJson(jsonDecodeMap(frame));
-
-class _FakeControlChannelClient() implements ControlChannelClient {
-  final List<String> sentFrames = <String>[];
-
-  /// Mimics [ControlChannelClient.send] throwing when the channel is down.
-  bool throwOnSend = false;
-
-  /// Mimics an unexpected transport failure (e.g. a mid-close sink).
-  Object? sendError;
-
-  @override
-  Stream<String> get inbound => const Stream<String>.empty();
-
-  @override
-  void send(String frame) {
-    if (throwOnSend) {
-      throw const ControlChannelNotConnectedException("Control channel is not connected");
-    }
-    final error = sendError;
-    if (error != null) {
-      throw error;
-    }
-    sentFrames.add(frame);
-  }
-
-  @override
-  Stream<ControlChannelConnectionState> get connectionState => const Stream<ControlChannelConnectionState>.empty();
-
-  @override
-  Future<void> connect() async {}
-
-  @override
-  Future<void> dispose() async {}
-}

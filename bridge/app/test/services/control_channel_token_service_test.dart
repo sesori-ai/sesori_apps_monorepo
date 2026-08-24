@@ -3,19 +3,20 @@ import "dart:convert";
 
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/control/bridge_control_message_dispatcher.dart";
-import "package:sesori_bridge/src/foundation/control_channel_client.dart";
 import "package:sesori_bridge/src/services/control_channel_token_service.dart";
 import "package:sesori_bridge/src/services/control_prompt_service.dart";
 import "package:sesori_bridge/src/services/control_unregister_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../helpers/fake_control_channel_client.dart";
+
 void main() {
   // The service no longer subscribes to the client itself — the dispatcher is
   // the single inbound subscriber — so these behaviour tests wire one over the
   // same fake client to keep driving the service with raw emitted frames.
   ControlChannelTokenService buildService(
-    _FakeControlChannelClient client, {
+    FakeControlChannelClient client, {
     Duration? requestTimeout,
   }) {
     final service = requestTimeout == null
@@ -33,7 +34,7 @@ void main() {
 
   group("ControlChannelTokenService", () {
     test("sends a token_request and resolves with the matching token_response", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = buildService(client);
       addTearDown(service.dispose);
 
@@ -50,7 +51,7 @@ void main() {
     });
 
     test("forwards forceRefresh in the request and returns the fresh token", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = buildService(client);
       addTearDown(service.dispose);
 
@@ -65,7 +66,7 @@ void main() {
     });
 
     test("caches the latest pulled token for accessToken and tokenStream", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = buildService(client);
       addTearDown(service.dispose);
 
@@ -95,7 +96,7 @@ void main() {
     });
 
     test("accessToken throws before the first successful pull", () {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = buildService(client);
       addTearDown(service.dispose);
 
@@ -103,7 +104,7 @@ void main() {
     });
 
     test("a null access token surfaces a typed failure and leaves the cache empty", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = buildService(client);
       addTearDown(service.dispose);
 
@@ -118,7 +119,7 @@ void main() {
     });
 
     test("maps a disconnected-channel send failure to a typed token failure", () async {
-      final client = _FakeControlChannelClient()..throwOnSend = true;
+      final client = FakeControlChannelClient()..throwOnSend = true;
       final service = buildService(client);
       addTearDown(service.dispose);
 
@@ -129,7 +130,7 @@ void main() {
     });
 
     test("a pushed token_update is adopted into accessToken and tokenStream", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = buildService(client);
       addTearDown(service.dispose);
 
@@ -151,7 +152,7 @@ void main() {
     });
 
     test("a pushed token_update clears a prior sign-out invalidation", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = buildService(client);
       addTearDown(service.dispose);
 
@@ -177,7 +178,7 @@ void main() {
     });
 
     test("a null token_response invalidates a previously cached token", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = buildService(client);
       addTearDown(service.dispose);
 
@@ -207,7 +208,7 @@ void main() {
     });
 
     test("an older in-flight pull does not clear a newer sign-out invalidation", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = buildService(client);
       addTearDown(service.dispose);
 
@@ -244,7 +245,7 @@ void main() {
     });
 
     test("a pushed token_update wins over a slower older pull response", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = buildService(client);
       addTearDown(service.dispose);
 
@@ -267,7 +268,7 @@ void main() {
     });
 
     test("the newest-issued pull wins even when an older pull completes first", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = buildService(client);
       addTearDown(service.dispose);
 
@@ -296,7 +297,7 @@ void main() {
     });
 
     test("times out with a typed failure when no response arrives", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = buildService(client, requestTimeout: const Duration(milliseconds: 20));
       addTearDown(service.dispose);
 
@@ -307,7 +308,7 @@ void main() {
     });
 
     test("correlates by id — a mismatched response is ignored", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = buildService(client);
       addTearDown(service.dispose);
 
@@ -322,7 +323,7 @@ void main() {
     });
 
     test("ignores unrelated and undecodable frames", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = buildService(client);
       addTearDown(service.dispose);
 
@@ -345,7 +346,7 @@ void main() {
     });
 
     test("dispose fails any in-flight request", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = buildService(client);
 
       final future = service.getAccessToken();
@@ -357,7 +358,7 @@ void main() {
     });
 
     test("getAccessToken after dispose fails fast without waiting for the timeout", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       // A long timeout proves the failure is the disposed guard, not the timer.
       final service = buildService(client, requestTimeout: const Duration(seconds: 30));
       await service.dispose();
@@ -371,7 +372,7 @@ void main() {
     });
 
     test("dispose is idempotent", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = buildService(client);
 
       await service.dispose();
@@ -379,7 +380,7 @@ void main() {
     });
 
     test("concurrent dispose callers await the same teardown", () async {
-      final client = _FakeControlChannelClient();
+      final client = FakeControlChannelClient();
       final service = buildService(client);
 
       final first = service.dispose();
@@ -396,38 +397,6 @@ void main() {
 ControlMessage _decode(String frame) => ControlMessage.fromJson(jsonDecodeMap(frame));
 
 String _encode(ControlMessage message) => jsonEncode(message.toJson());
-
-class _FakeControlChannelClient() implements ControlChannelClient {
-  final StreamController<String> _inbound = StreamController<String>.broadcast();
-  final List<String> sentFrames = <String>[];
-
-  /// Mimics [ControlChannelClient.send] throwing when the channel is down.
-  bool throwOnSend = false;
-
-  void emit(String frame) => _inbound.add(frame);
-
-  @override
-  Stream<String> get inbound => _inbound.stream;
-
-  @override
-  void send(String frame) {
-    if (throwOnSend) {
-      throw const ControlChannelNotConnectedException("Control channel is not connected");
-    }
-    sentFrames.add(frame);
-  }
-
-  @override
-  Stream<ControlChannelConnectionState> get connectionState => const Stream<ControlChannelConnectionState>.empty();
-
-  @override
-  Future<void> connect() async {}
-
-  @override
-  Future<void> dispose() async {
-    await _inbound.close();
-  }
-}
 
 /// The token-service tests wire a real dispatcher but never exercise the logout
 /// command, so its unregister delegate is a no-op stand-in.

@@ -1,20 +1,22 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/control/control_status_notifier.dart";
-import "package:sesori_bridge/src/foundation/control_channel_client.dart";
+import "package:sesori_bridge/src/foundation/control_channel_client.dart" show ControlChannelConnectionState;
 import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../helpers/fake_control_channel_client.dart";
+
 void main() {
-  late _FakeControlChannelClient client;
+  late FakeControlChannelClient client;
   late StreamController<List<PluginMetadata>> pluginMetadata;
   late StreamController<RelayConnectionState> relayState;
   late StreamController<String> registrations;
   late ControlStatusNotifier notifier;
 
   setUp(() {
-    client = _FakeControlChannelClient();
+    client = FakeControlChannelClient();
     pluginMetadata = StreamController<List<PluginMetadata>>.broadcast();
     relayState = StreamController<RelayConnectionState>.broadcast();
     registrations = StreamController<String>.broadcast();
@@ -174,15 +176,13 @@ void main() {
 
     test("the count sums active sessions across projects", () async {
       notifier.handleProjectsSummary(
-        summary:
-            SesoriSseEvent.projectsSummary(
-                  projects: [
-                    ProjectActivitySummary(id: "p1", activeSessions: [_session("a"), _session("b")]),
-                    ProjectActivitySummary(id: "p2", activeSessions: [_session("c")]),
-                    const ProjectActivitySummary(id: "p3", activeSessions: []),
-                  ],
-                )
-                as SesoriProjectsSummary,
+        summary: SesoriSseEvent.projectsSummary(
+          projects: [
+            ProjectActivitySummary(id: "p1", activeSessions: [_session("a"), _session("b")]),
+            ProjectActivitySummary(id: "p2", activeSessions: [_session("c")]),
+            const ProjectActivitySummary(id: "p3", activeSessions: []),
+          ],
+        ) as SesoriProjectsSummary,
       );
       await pump();
 
@@ -285,48 +285,11 @@ ActiveSession _session(String id) => ActiveSession(id: id, lastUserActivityAt: n
 
 SesoriProjectsSummary _summaryWithSessionCount(int count) {
   return SesoriSseEvent.projectsSummary(
-        projects: [
-          ProjectActivitySummary(
-            id: "project-1",
-            activeSessions: List<ActiveSession>.generate(count, (i) => _session("session-$i")),
-          ),
-        ],
-      )
-      as SesoriProjectsSummary;
-}
-
-class _FakeControlChannelClient() implements ControlChannelClient {
-  final StreamController<ControlChannelConnectionState> _connectionState =
-      StreamController<ControlChannelConnectionState>.broadcast();
-  final List<String> sentFrames = <String>[];
-
-  /// Mimics [ControlChannelClient.send] throwing when the channel is down.
-  bool throwOnSend = false;
-
-  List<ControlMessage> get sentMessages =>
-      sentFrames.map((frame) => ControlMessage.fromJson(jsonDecodeMap(frame))).toList();
-
-  void emitConnectionState(ControlChannelConnectionState state) => _connectionState.add(state);
-
-  @override
-  Stream<String> get inbound => const Stream<String>.empty();
-
-  @override
-  Stream<ControlChannelConnectionState> get connectionState => _connectionState.stream;
-
-  @override
-  void send(String frame) {
-    if (throwOnSend) {
-      throw const ControlChannelNotConnectedException("Control channel is not connected");
-    }
-    sentFrames.add(frame);
-  }
-
-  @override
-  Future<void> connect() async {}
-
-  @override
-  Future<void> dispose() async {
-    await _connectionState.close();
-  }
+    projects: [
+      ProjectActivitySummary(
+        id: "project-1",
+        activeSessions: List<ActiveSession>.generate(count, (i) => _session("session-$i")),
+      ),
+    ],
+  ) as SesoriProjectsSummary;
 }
