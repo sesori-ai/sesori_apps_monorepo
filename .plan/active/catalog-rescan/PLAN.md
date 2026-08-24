@@ -187,24 +187,40 @@ projects or sessions from the bridge's committed catalog. Awaited, spinner in
 the refresh control, near-instant. This remains the default and the only
 behavior most pulls produce.
 
-**Stage 2 (deep rescan)** arms when the pull passes `1.6 x triggerDistance`.
-The refresh control's caption follows the pull:
+**Stage 2 (deep rescan)** fires when the pull passes `1.6 x triggerDistance`.
+
+Both stages commit **on crossing their threshold, while the finger is still
+down**, not on release. That is not a choice: `CupertinoSliverRefreshControl`
+invokes `onRefresh` the moment the pull reaches `refreshTriggerPullDistance`,
+from a post-frame callback, and returns `armed` (`cupertino_ui`
+`refresh.dart:504-530`). There is no release-gated commit to hang a second stage
+on, so an earlier draft of this plan describing "release to rescan" was
+unbuildable. Owner decision 2026-08-24: keep the two-depth gesture and fire on
+crossing.
 
 | Pull distance | Caption |
 |---|---|
 | below `triggerDistance` | none (today's indicator) |
-| `triggerDistance` to `1.6 x` | `Keep pulling to rescan harnesses` |
-| past `1.6 x` | `Release to rescan harnesses` |
+| `triggerDistance` to `1.6 x` | the invitation, quiet and text-only |
+| past `1.6 x` | the fired label, in brand colour with a rotate icon |
 
-Release runs the soft refresh exactly as today **and** additionally triggers the
-catalog import. The import is never awaited: the refresh control settles on the
-soft refresh alone.
+The caption cross-fades between the two, keyed on the phase rather than the
+text, so passing the threshold reads as one label becoming another and a host
+rewording mid-pull cannot look like the stage changed. The fired phase is
+visually distinct rather than only differently worded, so the moment of
+commitment is legible at a glance.
 
-All three arming, caption, and release-dispatch behavior lives in a single
-`module_prego` widget, `PregoSliverRefreshControl`, which wraps
-`CupertinoSliverRefreshControl` and owns the one mutable `bool` recording
-whether the deep threshold was crossed at the moment of release.
-`PregoGlassScaffold` composes it behind a new optional `onDeepRefresh`
+The catalog import is never awaited: the refresh control settles on the soft
+refresh alone. One pull rescans at most once, however far it travels.
+
+Because there is no commit point, a pull past `1.6 x` cannot be taken back by
+dragging up. Cancelling is the progress row's job, which is the affordance that
+exists for it anyway.
+
+All threshold, caption, and dispatch behavior lives in a single `module_prego`
+widget, `PregoSliverRefreshControl`, which wraps `CupertinoSliverRefreshControl`
+and tracks the furthest extent this gesture reached plus whether it has already
+fired. `PregoGlassScaffold` composes it behind a new optional `deepRefresh`
 parameter; `SessionListPanel` uses it directly in place of its bare
 `CupertinoSliverRefreshControl`. No pull-threshold logic is written in
 `client/app`.

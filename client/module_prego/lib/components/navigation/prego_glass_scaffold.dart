@@ -1,4 +1,3 @@
-import "package:cupertino_ui/cupertino_ui.dart" show CupertinoSliverRefreshControl, RefreshIndicatorMode;
 import "package:flutter/rendering.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
@@ -139,6 +138,9 @@ class const PregoGlassScaffold({
     /// When set, an in-scroll refresh control opens below the top bar and pushes
   /// the caller-provided content down while it is pulled.
   final Future<void> Function()? onRefresh,
+    /// An optional second stage for [onRefresh]: pulling past the ordinary
+  /// trigger arms it, and the caption tells the user what releasing will do.
+  final PregoDeepRefresh? deepRefresh,
     /// Page background painted behind the glass. Defaults to `bgSurface1`.
   final Color? backgroundColor,
     /// Whether the body scrolls behind the bar. Defaults to `true`. Set `false`
@@ -161,6 +163,10 @@ class const PregoGlassScaffold({
   this : assert(
          scrollable || onRefresh == null,
          "onRefresh requires scrollable to be true (the refresh control needs a draggable page)",
+       ),
+       assert(
+         deepRefresh == null || onRefresh != null,
+         "deepRefresh is a second stage of onRefresh, so it needs one to extend",
        );
 
   @override
@@ -350,17 +356,11 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
         // the live bar and large-title insets; the sliver itself opens at the
         // scroll origin and pushes the caller-provided content down.
         if (onRefresh != null)
-          CupertinoSliverRefreshControl(
+          PregoSliverRefreshControl(
             onRefresh: onRefresh,
-            builder: (context, refreshState, pulledExtent, triggerDistance, indicatorExtent) {
-              _refreshPulledExtent = refreshState == RefreshIndicatorMode.inactive ? 0 : pulledExtent;
-              final indicator = CupertinoSliverRefreshControl.buildRefreshIndicator(
-                context,
-                refreshState,
-                pulledExtent,
-                triggerDistance,
-                indicatorExtent,
-              );
+            deepRefresh: widget.deepRefresh,
+            onPulledExtentChanged: (extent) => _refreshPulledExtent = extent,
+            decorate: (context, indicator) {
               // A non-extended body already begins below the bar, but its
               // collapsing title still precedes the caller-provided content.
               if (!extendBehind) {
