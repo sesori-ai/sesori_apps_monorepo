@@ -73,7 +73,7 @@ class CatalogImportRepository({
     required CatalogImportControl control,
   }) async* {
     final publicationFinished = Completer<void>();
-    ({int projectsImported, int sessionsImported, int completedAt})? result;
+    ({int projectsImported, int sessionsImported, CatalogImportNewItems newItems, int completedAt})? result;
     try {
       await for (final event in _runtime.useStream<Object>(
         pluginId: pluginId,
@@ -120,6 +120,7 @@ class CatalogImportRepository({
       pluginId: pluginId,
       projectsImported: completed.projectsImported,
       sessionsImported: completed.sessionsImported,
+      newItems: completed.newItems,
       completedAt: completed.completedAt,
     );
   }
@@ -334,7 +335,8 @@ class CatalogImportRepository({
     await publicationFinished;
   }
 
-  Future<({int projectsImported, int sessionsImported, int completedAt})> _publishCatalog({
+  Future<({int projectsImported, int sessionsImported, CatalogImportNewItems newItems, int completedAt})>
+  _publishCatalog({
     required _CatalogImportObservation observation,
     required CatalogImportControl control,
   }) {
@@ -400,6 +402,11 @@ class CatalogImportRepository({
 
         final projectRows = <ProjectDto>[];
         final importedProjectIdByPath = <String, String>{};
+        // Rows this import introduced, as opposed to rows the catalog already
+        // held. Both counters read a fact the loops already compute, so no
+        // extra enumeration or query is needed.
+        var projectsAdded = 0;
+        var sessionsAdded = 0;
         for (final observation in publicationProjects.values) {
           final existing = _projectCatalogIdentityCalculator.calculate(
             projectsById: projectsById,
@@ -407,6 +414,7 @@ class CatalogImportRepository({
             preferredProjectId: observation.preferredId,
             observedPath: observation.path,
           );
+          if (existing == null) projectsAdded++;
           final row = _mergeProjectRow(
             observation: observation,
             existing: existing,
@@ -474,6 +482,7 @@ class CatalogImportRepository({
             projectId: row.projectId,
           );
           sessionsImported++;
+          if (existing == null) sessionsAdded++;
           if (sessionRows.length == _responsivenessBatchSize) {
             requireCurrentGeneration();
             await _sessionDao.upsertSessionRows(rows: sessionRows);
@@ -500,6 +509,7 @@ class CatalogImportRepository({
         return (
           projectsImported: projectRows.length,
           sessionsImported: sessionsImported,
+          newItems: CatalogImportNewItems(projects: projectsAdded, sessions: sessionsAdded),
           completedAt: completedAt,
         );
       }),

@@ -5,9 +5,9 @@
 - **Plan slug:** `catalog-rescan`
 - **Implementation base:** `main` at
   `7b1ebe9bc629d05b5d104e76cd5dbaa1514d65a2`
-- **Series state:** Step 1/8 merged; Step 2/8 open
-- **Current step:** re-hydrate stale plugin catalogs
-- **Next action:** land Step 2, then Step 3's new-item counts
+- **Series state:** Steps 1/8 and 2/8 merged; Step 3/8 open
+- **Current step:** report new items from a catalog import
+- **Next action:** land Step 3, then Step 4's client rescan service
 - **Origin issue:** [#961](https://github.com/sesori-ai/sesori_apps_monorepo/issues/961)
 - **External overlap:** [#1008](https://github.com/sesori-ai/sesori_apps_monorepo/issues/1008)
   owns Codex live updates; do not address it here
@@ -121,8 +121,8 @@
 | Done | Step | Exact PR title | Changed-line target | State |
 |---|---|---|---:|---|
 | [x] | 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 950-1,100 (`PLAN.md`) | [PR #1064](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1064) merged |
-| [ ] | 2/8 | `🌱 [catalog-rescan] Re-hydrate stale plugin catalogs [step 2/8]` | 20-60 | Open |
-| [ ] | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 | Not started |
+| [x] | 2/8 | `🌱 [catalog-rescan] Re-hydrate stale plugin catalogs [step 2/8]` | 20-60 | [PR #1071](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1071) merged |
+| [ ] | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 | Open |
 | [ ] | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 | Not started |
 | [ ] | 5/8 | `⚙️ [catalog-rescan] Add a second stage to pull-to-refresh [step 5/8]` | 350-600 | Not started |
 | [ ] | 6/8 | `⚙️ [catalog-rescan] Surface catalog rescan in the app [step 6/8]` | 950-1,400 | Not started |
@@ -157,12 +157,12 @@
 
 ## Step 3 Checklist
 
-- [ ] Add `CatalogImportNewItems` and hang it off `CatalogImportCompleted` as
+- [x] Add `CatalogImportNewItems` and hang it off `CatalogImportCompleted` as
   one nullable field; regenerate.
-- [ ] Count both from facts already in `_publishCatalog`; add no query or scan.
-- [ ] Count correctly in both `PluginProjectOwnership` branches.
-- [ ] Print the delta in `catalog_import_console_listener.dart` when present.
-- [ ] Prove a first import, a no-op re-import, a partial re-import, both
+- [x] Count both from facts already in `_publishCatalog`; add no query or scan.
+- [x] Count correctly in both `PluginProjectOwnership` branches.
+- [x] Print the delta in `catalog_import_console_listener.dart` when present.
+- [x] Prove a first import, a no-op re-import, a partial re-import, both
   ownership branches, and a decode with the key omitted.
 - [ ] Run `architecture-implementation-review`.
 
@@ -377,5 +377,17 @@ refresh gap as consequences of one definition.
   `dart analyze --fatal-infos` from `bridge/app` reported no issues
 - **Step 2 review:** not architecture-bearing; a constant's value changes no
   boundary, contract, or ownership
-- **Step 2 PR:** pending
+- **Step 2 PR:** [#1071](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1071)
+  merged
+- **Step 3 base:** `main` at `db22f602a`
+- **Step 3 verification:** `dart analyze --fatal-infos` clean on `bridge/app`,
+  `shared/sesori_shared`, and `client/module_core`; `shared` full suite 361
+  tests passed; bridge catalog suites 41 tests passed
+  (`catalog_import_repository_test.dart` 20,
+  `catalog_import_service_test.dart` 9,
+  `catalog_import_console_listener_test.dart` 4,
+  `catalog_import_handlers_test.dart` 3, `catalog_queries_test.dart` 3,
+  `catalog_import_startup_test.dart` 2)
+- **Step 3 review:** pending
+- **Step 3 PR:** pending
 - **Final disposition:** pending

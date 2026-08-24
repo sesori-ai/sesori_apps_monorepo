@@ -29,9 +29,15 @@ class CatalogImportConsoleListener({required final Stream<CatalogImportProgress>
         if (_lastPhase != CatalogImportCommitting) {
           Console.message("Publishing $pluginId catalog...");
         }
-      case CatalogImportCompleted(:final pluginId, :final projectsImported, :final sessionsImported):
+      case CatalogImportCompleted(
+        :final pluginId,
+        :final projectsImported,
+        :final sessionsImported,
+        :final newItems,
+      ):
         Console.message(
-          "Imported $pluginId catalog: $projectsImported project(s), $sessionsImported session(s).",
+          "Imported $pluginId catalog: $projectsImported project(s), $sessionsImported session(s)."
+          "${_newItemsSuffix(newItems)}",
         );
         _lastPhase = null;
         return;
@@ -45,5 +51,14 @@ class CatalogImportConsoleListener({required final Stream<CatalogImportProgress>
         return;
     }
     _lastPhase = progress.runtimeType;
+  }
+
+  /// The " N new ..." tail appended to a completion line, or "" when the delta
+  /// is absent. Absent means the counts came from a bridge that does not report
+  /// them, so the totals stand alone rather than implying nothing changed.
+  String _newItemsSuffix(CatalogImportNewItems? newItems) {
+    if (newItems == null) return "";
+    if (newItems.projects == 0 && newItems.sessions == 0) return " Nothing new.";
+    return " ${newItems.projects} new project(s), ${newItems.sessions} new session(s).";
   }
 }

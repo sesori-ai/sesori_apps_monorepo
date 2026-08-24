@@ -133,6 +133,7 @@ class _HandlerCatalogImportRepository({final Completer<void>? release}) implemen
         pluginId: "selected",
         projectsImported: 0,
         sessionsImported: 0,
+        newItems: CatalogImportNewItems(projects: 0, sessions: 0),
         completedAt: 1,
       );
     }
