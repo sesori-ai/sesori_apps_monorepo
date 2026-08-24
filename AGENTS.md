@@ -70,6 +70,10 @@ eagerly "just in case."
   modern state when one valid meaning exists. Add a dated compatibility comment
   with the legacy rationale and exact cleanup:
   `// COMPATIBILITY YYYY-MM-DD (vX.Y.Z): ...`
+- `vX.Y.Z` is the current version at the time of writing, read from the code.
+  Never guess the release the change will ship in. State the cleanup as the
+  condition that retires it, such as "once every supported bridge sends it",
+  rather than naming a version that does not exist yet.
 - Attach that marker to the smallest thing it explains. A field, parameter,
   enum value, or branch that exists for compatibility carries the marker
   directly above itself, inside the enclosing declaration, not above the
