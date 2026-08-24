@@ -52,6 +52,15 @@ void main() {
         "sesori.ai/deepseek": {"createdAt": 1000, "parentSessionId": "parent"},
       },
     };
+    final malformedParentRow = {
+      "sessionId": "malformed-parent",
+      "cwd": "/repo",
+      "title": "Malformed parent",
+      "updatedAt": 2000,
+      "_meta": {
+        "sesori.ai/deepseek": {"createdAt": 1000, "parentSessionId": 42},
+      },
+    };
     final answered = <Object?>{};
     var responding = true;
     final responder = () async {
@@ -62,7 +71,7 @@ void main() {
             "jsonrpc": "2.0",
             "id": request["id"],
             "result": {
-              "sessions": [sessionRow],
+              "sessions": [sessionRow, malformedParentRow],
             },
           });
         }
@@ -88,9 +97,10 @@ void main() {
       expect(await connecting, isTrue);
 
       final sessions = await plugin.listAllSessions(knownDirectories: const {});
-      final child = sessions.single;
+      final child = sessions.singleWhere((session) => session.id == "child");
       expect(child.parentID, "parent");
       expect(child.time, const PluginSessionTime(created: 1000, updated: 2000, archived: null));
+      expect(sessions.singleWhere((session) => session.id == "malformed-parent").parentID, isNull);
 
       final children = await plugin.getChildSessions("parent");
       expect(children.map((session) => session.id), ["child"]);

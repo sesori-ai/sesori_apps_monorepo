@@ -27,7 +27,10 @@ class DeepSeekPlugin({
   }
 
   @override
-  String? sessionParentId(AcpSessionInfo info) => _sessionMetadata(info)?["parentSessionId"] as String?;
+  String? sessionParentId(AcpSessionInfo info) {
+    final value = _sessionMetadata(info)?["parentSessionId"];
+    return value is String ? value : null;
+  }
 
   @override
   int? sessionCreatedAtMs(AcpSessionInfo info) {
