@@ -5,9 +5,9 @@
 - **Plan slug:** `catalog-rescan`
 - **Implementation base:** `main` at
   `7b1ebe9bc629d05b5d104e76cd5dbaa1514d65a2`
-- **Series state:** Steps 1/8 to 4/8 merged; Step 5/8 open
-- **Current step:** add a second stage to pull-to-refresh
-- **Next action:** land Step 5, then Step 6's app surfaces
+- **Series state:** Steps 1/8 to 5/8 merged; Step 6a/8 open
+- **Current step:** route scan state through the list cubits
+- **Next action:** land 6a, then 6b's row and hosts, then 6c's Settings action
 - **Origin issue:** [#961](https://github.com/sesori-ai/sesori_apps_monorepo/issues/961)
 - **External overlap:** [#1008](https://github.com/sesori-ai/sesori_apps_monorepo/issues/1008)
   owns Codex live updates; do not address it here
@@ -132,8 +132,10 @@
 | [x] | 2/8 | `🌱 [catalog-rescan] Re-hydrate stale plugin catalogs [step 2/8]` | 20-60 | [PR #1071](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1071) merged |
 | [x] | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 | [PR #1074](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1074) merged |
 | [x] | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 | [PR #1085](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1085) merged |
-| [ ] | 5/8 | `⚙️ [catalog-rescan] Add a second stage to pull-to-refresh [step 5/8]` | 350-600 | Open |
-| [ ] | 6/8 | `⚙️ [catalog-rescan] Surface catalog rescan in the app [step 6/8]` | 950-1,400 | Not started |
+| [x] | 5/8 | `⚙️ [catalog-rescan] Add a second stage to pull-to-refresh [step 5/8]` | 350-600 | [PR #1093](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1093) merged |
+| [ ] | 6a/8 | `⚙️ [catalog-rescan] Route scan state through the list cubits [step 6a/8]` | 450-750 | Open |
+| [ ] | 6b/8 | `⚙️ [catalog-rescan] Show the catalog scan in the lists [step 6b/8]` | 500-800 | Not started |
+| [ ] | 6c/8 | `🌿 [catalog-rescan] Scan one harness from Settings [step 6c/8]` | 350-600 | Not started |
 | [ ] | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 | Not started |
 | [ ] | 8/8 | `🌱 [catalog-rescan] Verify and retire the catalog rescan plan [step 8/8]` | 60-140 | Not started |
 
@@ -470,7 +472,8 @@ duplicate-emission nicety.
 - **Step 4 review:** `architecture-implementation-review` **rejected** the first
   pass with two blocking A2 findings, both divergences from the approved
   operation model, both applied with regression coverage
-- **Step 4 PR:** pending
+- **Step 4 PR:** [#1085](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1085)
+  merged
 - **Step 5 base:** `main` at `bafa7cd02`
 - **Step 5 changed lines:** 427 of delivered code, inside the 350-600 target;
   `.plan/` excluded so the figure cannot count itself
@@ -485,5 +488,26 @@ duplicate-emission nicety.
   observations were applied: `PLAN.md`'s Step 5 scope section still described the
   unbuildable release semantics and would have misdirected step 6, and the new
   design-system file's doc comments carried product vocabulary
-- **Step 5 PR:** pending
+- **Step 5 PR:** [#1093](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1093)
+  merged
+- **Step 6a base:** `main` at `0969f00d6`
+- **Step 6a changed lines:** 346 of delivered code, under the 450-750 estimate
+  because the cubits reuse their existing refresh rather than adding one
+- **Step 6a verification:** `dart analyze --fatal-infos` clean on
+  `client/module_core` and `client/app`; module_core 1,349 tests passed
+  (6 new cubit cases); app 854 tests passed
+- **Step 6a review:** `architecture-implementation-review` **rejected** the first
+  pass with three findings, all applied. Two were one real bug: both cubits
+  rebuilt their loaded state without `catalogScan`, so it reverted to idle —
+  and on the project list the erasing rebuild was the very refresh the scan's
+  own `settled` listener fires, which would have wiped the terminal row it was
+  fired for. On the session list any session event during a scan reset the
+  running row. Fixed by re-deriving from the owner in both paths, the way the
+  sibling activity and unseen fields already do. The third: the shared
+  `FakeCatalogRescanService` declared the interface without implementing
+  `start(pluginId:)` and hid the gap behind `noSuchMethod`, which would have
+  turned any future interface addition into a runtime throw in every consumer
+  instead of a compile error. Both regression tests were confirmed to fail
+  without the fix
+- **Step 6a PR:** pending
 - **Final disposition:** pending

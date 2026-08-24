@@ -444,6 +444,7 @@ void main() {
       ),
     );
     GetIt.instance.registerSingleton<ConnectionService>(connectionService);
+    GetIt.instance.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
     GetIt.instance.registerSingleton<ProjectRepository>(projectRepository);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
     GetIt.instance.registerSingleton<ComposerImagePicker>(imagePicker);

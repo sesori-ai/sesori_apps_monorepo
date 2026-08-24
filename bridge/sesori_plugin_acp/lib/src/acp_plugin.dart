@@ -272,6 +272,10 @@ abstract class AcpPlugin({
     required String? agent,
   }) async {}
 
+  /// Validates harness-specific initialize metadata after standard ACP parsing
+  /// and before the connection becomes available to session operations.
+  void validateInitializeResult(AcpInitializeResult result) {}
+
   /// Additional privacy-safe events for a prompt failure. The generic session
   /// error is always emitted separately.
   Iterable<BridgeSseEvent> mapPromptFailure({
@@ -382,12 +386,16 @@ abstract class AcpPlugin({
   /// [getSessionMessages] keeps it local so it never clobbers the live
   /// capabilities). A non-v1 negotiation fails the handshake (degrading the
   /// plugin) rather than driving the agent with a protocol it rejected.
-  Future<AcpInitializeResult> _initialize(AcpStdioClient client) => AcpAgentApi(client: client).initialize(
-    formElicitation: supportsFormElicitation,
-    capabilityMeta: initializeCapabilityMeta,
-    authMethodId: authMethodId,
-    timeout: AcpAgentApi.defaultRequestTimeout,
-  );
+  Future<AcpInitializeResult> _initialize(AcpStdioClient client) async {
+    final result = await AcpAgentApi(client: client).initialize(
+      formElicitation: supportsFormElicitation,
+      capabilityMeta: initializeCapabilityMeta,
+      authMethodId: authMethodId,
+      timeout: AcpAgentApi.defaultRequestTimeout,
+    );
+    validateInitializeResult(result);
+    return result;
+  }
 
   Future<AcpStdioClient> _connectedClient() async {
     final ok = await ensureConnected();

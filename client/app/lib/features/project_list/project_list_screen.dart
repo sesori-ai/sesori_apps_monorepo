@@ -49,6 +49,7 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
               productAnalyticsService: getIt<ProductAnalyticsService>(),
             ),
             failureReporter: getIt<FailureReporter>(),
+            catalogRescanService: getIt<CatalogRescanService>(),
           ),
         ),
         // The machine this account is paired with, resolved independently of the

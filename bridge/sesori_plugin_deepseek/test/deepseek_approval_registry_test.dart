@@ -59,6 +59,15 @@ void main() {
       mapper: mapper,
       api: api,
       historyRepository: DeepSeekHistoryRepository(api: api, eventMapper: mapper, pluginId: DeepSeekIdentity.id),
+      deepSeekSessionService: const DeepSeekSessionService(
+        repository: DeepSeekSessionRepository(api: api),
+      ),
+      deepSeekSessionOptionsService: DeepSeekSessionOptionsService(
+        repository: const DeepSeekCatalogRepository(api: api, mapper: DeepSeekCatalogMapper()),
+        configurationTracker: configurationTracker,
+        pluginId: DeepSeekIdentity.id,
+        discoveryTimeout: const Duration(seconds: 30),
+      ),
       commandTracker: commandTracker,
       sessionOptionsService: AcpSessionOptionsService(
         configurationTracker: configurationTracker,
