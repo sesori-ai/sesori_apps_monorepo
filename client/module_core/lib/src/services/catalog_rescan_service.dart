@@ -81,10 +81,13 @@ class CatalogRescanService({
   Future<void> startAll() async {
     if (_disposed) return;
     switch (_managementService.snapshots.valueOrNull) {
-      // No management route means a bridge older than the import route too, so
-      // there is nothing to fan out to and no `404` would ever be requested.
+      // Without a management snapshot there are no harness ids to fan out to,
+      // so no request is made and no `404` would ever come back to reveal the
+      // missing route. `/plugin/management` is *younger* than `/plugin/import`
+      // (v1.7.0 against v1.6.0), so such a bridge may well be importing right
+      // now — which is why a live operation is left alone.
       case PluginManagementLoadResultUnsupported():
-        _publish(const CatalogRescanState.unsupported());
+        if (_members.isEmpty) _publish(const CatalogRescanState.unsupported());
       case PluginManagementLoadResultSupported(:final response):
         final pluginIds = [
           for (final plugin in response.plugins)
@@ -104,7 +107,9 @@ class CatalogRescanService({
   Future<CatalogRescanStartResult> start({required String pluginId}) async {
     if (_disposed) return const CatalogRescanStartResult.notImportable();
     if (_managementService.snapshots.valueOrNull is PluginManagementLoadResultUnsupported) {
-      _publish(const CatalogRescanState.unsupported());
+      // Tell the caller either way, but never overwrite a run in flight with a
+      // state that reads as terminal.
+      if (_members.isEmpty) _publish(const CatalogRescanState.unsupported());
       return const CatalogRescanStartResult.unsupported();
     }
     final results = await _start(pluginIds: [pluginId]);
@@ -124,7 +129,9 @@ class CatalogRescanService({
 
   /// Clears a terminal row the user has read.
   void dismiss() {
-    if (_disposed || _state.value.isLive) return;
+    // Membership, not the published state, decides whether a run is open: an
+    // unsupported answer can be published over a live operation.
+    if (_disposed || _members.isNotEmpty) return;
     _reset();
   }
 
@@ -148,17 +155,19 @@ class CatalogRescanService({
         }),
     ]);
     if (_disposed) return results;
-    // Every harness answering 404 at once is how a bridge with no import route
-    // presents itself. One harness answering 404 only means that harness is
-    // unknown, so this deliberately requires all of them.
-    if (results.isNotEmpty && results.values.every((r) => r is CatalogRescanStartUnsupported)) {
-      _closeOperation(const CatalogRescanState.unsupported());
-      return results;
-    }
-    // Every harness was skipped as not importable, so nothing is running and
-    // there is nothing to report.
+    // Both branches below require an empty operation. A `404` or `503` already
+    // removed its harness in _applyStartOutcome, so a non-empty _members means
+    // something is still running — including a harness this dispatch never
+    // sent, which a joining start must not tear down.
     if (_members.isEmpty) {
-      _closeOperation(const CatalogRescanState.idle());
+      // Every harness answering 404 at once is how a bridge with no import
+      // route presents itself. One harness answering 404 only means that
+      // harness is unknown, so this deliberately requires all of them.
+      final unsupported =
+          results.isNotEmpty && results.values.every((r) => r is CatalogRescanStartUnsupported);
+      _closeOperation(
+        unsupported ? const CatalogRescanState.unsupported() : const CatalogRescanState.idle(),
+      );
       return results;
     }
     _publishLive();
@@ -233,6 +242,9 @@ class CatalogRescanService({
     _progressByPluginId[pluginId] = progress;
     if (_isTerminal(progress)) {
       _settleIfComplete();
+      // Still running: re-point the row at a harness that is actually working,
+      // rather than leaving it naming the one that just finished.
+      if (_members.isNotEmpty) _publishLive();
       return;
     }
     _publishLive();
@@ -359,7 +371,7 @@ class CatalogRescanService({
     final nextConnected = status is ConnectionConnected;
     if (nextConnected == _connected) return;
     _connected = nextConnected;
-    final wasLive = _state.value.isLive;
+    final wasLive = _members.isNotEmpty;
     _reset();
     // A run interrupted by a drop still committed whatever it had published, so
     // announce the close even though no summary is claimed for it.

@@ -287,6 +287,70 @@ void main() {
       expect(service.state.value, isA<CatalogRescanUnsupported>());
     });
 
+    test("a joining start that answers 404 leaves the live run untouched", () async {
+      build(snapshot: _snapshot(routable: const {"codex": "Codex"}));
+      await service.startAll();
+      repository.resultFor["ghost"] = const CatalogImportMutationResult.notFound();
+
+      final result = await service.start(pluginId: "ghost");
+
+      expect(result, isA<CatalogRescanStartUnsupported>());
+      expect(
+        (service.state.value as CatalogRescanStarting).pluginIds,
+        {"codex"},
+        reason: "one unknown harness must not be read as a bridge without the route",
+      );
+
+      connection.emitProgress(_completed("codex", newProjects: 1, newSessions: 1));
+
+      expect(
+        service.state.value,
+        isA<CatalogRescanSucceeded>(),
+        reason: "the surviving harness must still settle and refresh",
+      );
+    });
+
+    test("an unsupported snapshot does not overwrite a run already in flight", () async {
+      final settled = <void>[];
+      service.settled.listen(settled.add);
+      // A v1.6.x bridge has the import route but no management route, so a run
+      // can be live while the snapshot reports unsupported.
+      connection.emitProgress(const CatalogImportProgress.enumerating(
+        pluginId: "codex",
+        projectsSeen: 1,
+        sessionsSeen: 2,
+      ));
+      management.emit(const PluginManagementLoadResult.unsupported());
+
+      await service.startAll();
+
+      expect(service.state.value.isLive, isTrue, reason: "the live run must survive");
+      service.dismiss();
+      expect(service.state.value.isLive, isTrue, reason: "a live run is not dismissible");
+
+      connection.emitProgress(_completed("codex", newProjects: 3, newSessions: 3));
+
+      expect(settled, hasLength(1), reason: "its close must still refresh the lists");
+    });
+
+    test("re-points the row at a harness still working when another settles", () async {
+      await service.startAll();
+      connection.emitProgress(const CatalogImportProgress.enumerating(
+        pluginId: "claude",
+        projectsSeen: 1,
+        sessionsSeen: 9,
+      ));
+      expect((service.state.value as CatalogRescanRunning).activePluginName, "Claude");
+
+      connection.emitProgress(_completed("claude", newProjects: 1, newSessions: 1));
+
+      expect(
+        service.state.value,
+        isA<CatalogRescanStarting>(),
+        reason: "codex has reported nothing yet, so no harness can be named",
+      );
+    });
+
     test("reports an unsupported bridge from an unsupported snapshot, issuing no request", () async {
       build(snapshot: const PluginManagementLoadResult.unsupported());
 

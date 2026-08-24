@@ -5,9 +5,9 @@
 - **Plan slug:** `catalog-rescan`
 - **Implementation base:** `main` at
   `7b1ebe9bc629d05b5d104e76cd5dbaa1514d65a2`
-- **Series state:** Steps 1/8 and 2/8 merged; Step 3/8 open
-- **Current step:** report new items from a catalog import
-- **Next action:** land Step 3, then Step 4's client rescan service
+- **Series state:** Steps 1/8 to 3/8 merged; Step 4/8 open
+- **Current step:** add the client catalog rescan service
+- **Next action:** land Step 4, then Step 5's two-stage pull control
 - **Origin issue:** [#961](https://github.com/sesori-ai/sesori_apps_monorepo/issues/961)
 - **External overlap:** [#1008](https://github.com/sesori-ai/sesori_apps_monorepo/issues/1008)
   owns Codex live updates; do not address it here
@@ -122,8 +122,8 @@
 |---|---|---|---:|---|
 | [x] | 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 950-1,100 (`PLAN.md`) | [PR #1064](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1064) merged |
 | [x] | 2/8 | `🌱 [catalog-rescan] Re-hydrate stale plugin catalogs [step 2/8]` | 20-60 | [PR #1071](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1071) merged |
-| [ ] | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 | Open |
-| [ ] | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 | Not started |
+| [x] | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 | [PR #1074](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1074) merged |
+| [ ] | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 | Open |
 | [ ] | 5/8 | `⚙️ [catalog-rescan] Add a second stage to pull-to-refresh [step 5/8]` | 350-600 | Not started |
 | [ ] | 6/8 | `⚙️ [catalog-rescan] Surface catalog rescan in the app [step 6/8]` | 950-1,400 | Not started |
 | [ ] | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 | Not started |
@@ -168,30 +168,30 @@
 
 ## Step 4 Checklist
 
-- [ ] Add the three API methods; give cancel a `pluginId`.
-- [ ] Classify `404` and `503` as "cannot import", not as failures.
-- [ ] Declare exactly three collaborators: `PluginRepository`,
+- [x] Add the three API methods; give cancel a `pluginId`.
+- [x] Classify `404` and `503` as "cannot import", not as failures.
+- [x] Declare exactly three collaborators: `PluginRepository`,
   `PluginManagementService`, `ConnectionService`.
-- [ ] Put `CatalogRescanState` in `services/models/catalog_rescan_state.dart`.
-- [ ] Pattern-match `SesoriCatalogImportProgress` in the service; leave
+- [x] Put `CatalogRescanState` in `services/models/catalog_rescan_state.dart`.
+- [x] Pattern-match `SesoriCatalogImportProgress` in the service; leave
   `sse_event.dart` and `sse_event_tracker.dart` untouched.
-- [ ] Filter the recovery read to non-terminal statuses only.
-- [ ] Reset to idle on disconnect and on active-bridge change; add no
+- [x] Filter the recovery read to non-terminal statuses only.
+- [x] Reset to idle on disconnect and on active-bridge change; add no
   generation or fence state.
-- [ ] Implement the `owned`/`observed` operation model: a second start joins the
+- [x] Implement the `owned`/`observed` operation model: a second start joins the
   live operation, unsolicited progress opens an observed one, cancel fans out
   over live members whether `Starting` or `Running`, and the map is cleared only
   when leaving idle or terminal.
-- [ ] Arm the 4s clear for `CatalogRescanSucceeded` only, and cancel it on every
+- [x] Arm the 4s clear for `CatalogRescanSucceeded` only, and cancel it on every
   start and reset.
-- [ ] Publish `CatalogRescanUnsupported` from an unsupported management snapshot
+- [x] Publish `CatalogRescanUnsupported` from an unsupported management snapshot
   without issuing any request.
-- [ ] Retain the `ApiError` in `CatalogRescanStartFailed` and log it locally.
-- [ ] Run the `module_core` build runner and commit `injection.config.dart`.
-- [ ] Record membership on dispatch; keep a harness on timeout or lost response.
-- [ ] Select harnesses by `runtimeState.isRoutable`.
-- [ ] Never lift `CatalogImportFailed.message` into client state.
-- [ ] Prove aggregation across two harnesses, all seven states including a mixed
+- [x] Retain the `ApiError` in `CatalogRescanStartFailed` and log it locally.
+- [x] Run the `module_core` build runner and commit `injection.config.dart`.
+- [x] Record membership on dispatch; keep a harness on timeout or lost response.
+- [x] Select harnesses by `runtimeState.isRoutable`.
+- [x] Never lift `CatalogImportFailed.message` into client state.
+- [x] Prove aggregation across two harnesses, all seven states including a mixed
   outcome, the older-bridge payload, both reconnect cases, a disconnect, a
   `503` in the fan-out, cancel fanning out one `DELETE` per running id, a
   second sequential rescan not inheriting the previous aggregate, a failure
