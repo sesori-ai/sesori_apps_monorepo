@@ -273,10 +273,11 @@ final class PiPlugin._({
     final session = await _requiredSession(sessionId: sessionId, operation: "getSessionMessages");
     if (session.time == null) return const [];
     try {
-      return await _processRepository.loadHistory(
+      final history = await _processRepository.loadHistory(
         sessionId: sessionId,
         knownDirectories: {session.directory},
       );
+      return _sessionService.withLiveMessages(sessionId: sessionId, history: history);
     } on PluginOperationException {
       rethrow;
     } on Object catch (error, stackTrace) {

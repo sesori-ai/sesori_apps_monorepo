@@ -7,7 +7,6 @@ import "package:http/http.dart" as http;
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
-import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/debug_server.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/relay_client.dart";
@@ -73,7 +72,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     httpClient: httpClient,
     processRunner: ProcessRunner(),
     accessTokenProvider: FakeAccessTokenProvider(),
-    tokenRefresher: _FakeTokenRefresher(),
+    tokenRefresher: FakeTokenRefresher(),
     bridgeRegistrationService: createFakeBridgeRegistrationService(),
     failureReporter: failureReporter,
     restartService: effectiveRestartService,
@@ -1055,11 +1054,6 @@ class const _DebugServerHarness({
     httpClient.close();
     await relayServer.close();
   }
-}
-
-class _FakeTokenRefresher() implements TokenRefresher {
-  @override
-  Future<String> getAccessToken({bool forceRefresh = false}) async => "test-token";
 }
 
 // ---------------------------------------------------------------------------

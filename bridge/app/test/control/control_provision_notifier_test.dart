@@ -1,18 +1,17 @@
-import "dart:async";
-
 import "package:sesori_bridge/src/control/control_provision_notifier.dart";
-import "package:sesori_bridge/src/foundation/control_channel_client.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../helpers/fake_control_channel_client.dart";
+
 void main() {
   group("ControlProvisionNotifier", () {
-    late _FakeControlChannelClient client;
+    late FakeControlChannelClient client;
     late ControlProvisionNotifier notifier;
 
     setUp(() {
-      client = _FakeControlChannelClient();
+      client = FakeControlChannelClient();
       notifier = ControlProvisionNotifier(client: client);
     });
 
@@ -206,42 +205,5 @@ void main() {
   });
 }
 
-Iterable<ControlProvisionProgress> _sentProgress(_FakeControlChannelClient client) =>
+Iterable<ControlProvisionProgress> _sentProgress(FakeControlChannelClient client) =>
     client.sentMessages.map((message) => (message as ControlProvisionProgressMessage).progress);
-
-class _FakeControlChannelClient() implements ControlChannelClient {
-  final List<String> sentFrames = <String>[];
-
-  /// Mimics [ControlChannelClient.send] throwing when the channel is down.
-  bool throwOnSend = false;
-
-  /// An arbitrary send failure (exercises the catch-all path).
-  Object? sendError;
-
-  List<ControlMessage> get sentMessages =>
-      sentFrames.map((frame) => ControlMessage.fromJson(jsonDecodeMap(frame))).toList();
-
-  @override
-  Stream<String> get inbound => const Stream<String>.empty();
-
-  @override
-  Stream<ControlChannelConnectionState> get connectionState => const Stream<ControlChannelConnectionState>.empty();
-
-  @override
-  void send(String frame) {
-    if (throwOnSend) {
-      throw const ControlChannelNotConnectedException("Control channel is not connected");
-    }
-    final error = sendError;
-    if (error != null) {
-      throw error;
-    }
-    sentFrames.add(frame);
-  }
-
-  @override
-  Future<void> connect() async {}
-
-  @override
-  Future<void> dispose() async {}
-}
