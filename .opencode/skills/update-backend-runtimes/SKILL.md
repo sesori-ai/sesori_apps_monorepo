@@ -1,6 +1,6 @@
 ---
 name: update-backend-runtimes
-description: Update the target OpenCode, Codex, Cursor, Claude Code, Hermes Agent, Pi, and OMP CLI versions used by the Sesori bridge. Use when asked to update, bump, or refresh coding harness targets, managed runtimes, or release checksums while preserving compatibility minimums.
+description: Update the target OpenCode, Codex, Cursor, DeepSeek, Claude Code, Hermes Agent, Pi, and OMP CLI versions used by the Sesori bridge. Use when asked to update, bump, or refresh coding harness targets, managed runtimes, or release checksums while preserving compatibility minimums.
 ---
 
 # Update Plugin Harness Targets
@@ -32,6 +32,11 @@ Dart/Flutter dependency update workflow.
   `bridge/sesori_plugin_cursor/test/runtime/cursor_runtime_manifest_test.dart`
 - Cursor availability tests:
   `bridge/sesori_plugin_cursor/test/cursor_plugin_descriptor_availability_test.dart`
+- DeepSeek managed adapter target, PATH minimum, package archives, and per-platform checksums:
+  `bridge/sesori_plugin_deepseek/lib/src/runtime/deepseek_runtime_manifest.dart`
+- DeepSeek runtime and lifecycle tests:
+  `bridge/sesori_plugin_deepseek/test/deepseek_runtime_manifest_test.dart`
+  `bridge/sesori_plugin_deepseek/test/deepseek_plugin_descriptor_test.dart`
 - Hermes Agent direct-CLI target and minimum:
   `bridge/sesori_plugin_hermes/lib/src/runtime/hermes_plugin_descriptor.dart`
 - Hermes Agent descriptor tests:
@@ -55,8 +60,8 @@ Read `bridge/AGENTS.md` before editing. Never hand-edit generated files.
 
 Before release discovery, inspect `knownPlugins` in `plugin_registry.dart` and
 confirm every concrete descriptor has a section in this skill. The current
-closed set is OpenCode, Codex, Cursor, Claude Code, Hermes Agent, Pi, and Oh My
-Pi. Shared interface, runtime, and ACP packages are not harnesses. If the
+closed set is OpenCode, Codex, Cursor, DeepSeek, Claude Code, Hermes Agent, Pi,
+and Oh My Pi. Shared interface, runtime, and ACP packages are not harnesses. If the
 registry has gained another harness, extend this skill for it as part of the
 same change instead of silently skipping it.
 
@@ -68,6 +73,7 @@ Every harness must expose an independent compatibility minimum and target:
 | Codex | `CodexRuntimeManifest.minPathVersion` | `CodexRuntimeManifest.targetVersion` |
 | Claude Code | `ClaudePluginDescriptor.minVersion` | `ClaudePluginDescriptor.targetVersion` |
 | Cursor | `CursorRuntimeManifest.minPathVersion` | `CursorRuntimeManifest.targetVersion` |
+| DeepSeek | `DeepSeekRuntimeManifest.minPathVersion` | `DeepSeekRuntimeManifest.targetVersion` |
 | Hermes Agent | `HermesPluginDescriptor.minVersion` | `HermesPluginDescriptor.targetVersion` |
 | Pi | `PiRuntimeManifest.minPathVersion` | `PiRuntimeManifest.targetVersion` |
 | Oh My Pi | `OmpRuntimeManifest.minPathVersion` | `OmpRuntimeManifest.targetVersion` |
@@ -87,6 +93,9 @@ surface was validated; they do not gate otherwise-compatible local installs.
   `anthropics/claude-code` release after the candidate stream-json surface
   probe passes.
 - Update Cursor's `targetVersion` to the current build advertised by the official installer at `https://cursor.com/install`.
+- Update DeepSeek's `targetVersion` to the latest stable `sesori-ai/sesori-deepseek-acp`
+  release only after its six package archives, extension protocol v1, and
+  reported DeepSeek Harness pin pass the release checks below.
 - Update Hermes Agent's direct-CLI `targetVersion` to the semantic package
   version in the latest stable `NousResearch/hermes-agent` release after its
   ACP v1 probe passes. Its calendar release tag is not the CLI version.
@@ -194,6 +203,35 @@ Cursor ships a `dist-package/` directory whose `cursor-agent` entry binary loads
 
 Because the digests are self-computed, a silently re-published asset fails checksum verification at install time with a clear message. That is intended: re-pin rather than relaxing verification.
 
+### DeepSeek
+
+```bash
+gh api repos/sesori-ai/sesori-deepseek-acp/releases/latest --jq '{tag: .tag_name, prerelease: .prerelease, assets: [.assets[] | {name, digest}]}'
+```
+
+Require one stable `vX.Y.Z` release, the aggregate `checksums.txt`, and exactly
+these six package-directory archives with non-null GitHub `sha256:` digests:
+
+- `sesori-deepseek-acp-vX.Y.Z-darwin-arm64.tar.gz`
+- `sesori-deepseek-acp-vX.Y.Z-darwin-x64.tar.gz`
+- `sesori-deepseek-acp-vX.Y.Z-linux-arm64.tar.gz`
+- `sesori-deepseek-acp-vX.Y.Z-linux-x64.tar.gz`
+- `sesori-deepseek-acp-vX.Y.Z-windows-arm64.zip`
+- `sesori-deepseek-acp-vX.Y.Z-windows-x64.zip`
+
+Substitute the candidate version for `X.Y.Z`. Require each GitHub digest to
+match its line in `checksums.txt`, then strip the `sha256:` prefix when writing
+the manifest. Preserve `RuntimeArchiveLayout.packageDirectory`: the launcher
+depends on bundled Node, production dependencies, protocol files, and runtime
+assets beside it.
+
+Run one current-host archive with an isolated home and state directory. Verify
+`--version` reports the candidate adapter, extension protocol `acp/1`, and the
+expected pinned DeepSeek Harness version. Then run `check` and the packaged ACP
+smoke through initialize, list, new, prompt, history, restart/load, and close.
+Stop if the extension version or reported DeepSeek pin changes unexpectedly;
+update the adapter and consumer contract together rather than accepting drift.
+
 ### Hermes Agent
 
 ```bash
@@ -241,13 +279,15 @@ Before changing the pin, run the official candidate in an isolated temporary cwd
 2. Update Codex's target version, release-version documentation, and all six matching SHA-256 values.
 3. Update Claude Code's direct-CLI target and descriptor test fixtures after the candidate probe passes.
 4. Update `CursorRuntimeManifest.targetVersion` to the official current build and refresh all four computed SHA-256 values.
-5. Update Hermes Agent's direct-CLI target and descriptor test fixtures after the tagged-source ACP probe passes.
-6. Update `PiRuntimeManifest.targetVersion` only after the isolated JSONL RPC probe passes; refresh all six SHA-256 values and preserve complete package-directory placement.
-7. Update `OmpRuntimeManifest.targetVersion` only after the isolated ACP probe passes; refresh all seven SHA-256 values and preserve glibc/musl and unsupported Windows arm64 mapping.
-8. Verify every minimum is unchanged from the base branch. A target-only update must not modify a minimum-version line or an outdated-version test boundary.
-9. Update hard-coded version URLs, version assertions, and recent-target fixtures in all manifest/availability tests.
-10. Search the affected plugin packages for the replaced target versions. Update only references that describe the current target; preserve minimum-version fixtures, historical comments, and protocol-shape observations tied to older versions.
-11. Update the setup/lifecycle regression document only for a separately requested compatibility-floor change, then run `dart format` on changed Dart files.
+5. Update `DeepSeekRuntimeManifest.targetVersion` only after all six release
+   digests, the aggregate manifest, and the isolated packaged ACP probe agree.
+6. Update Hermes Agent's direct-CLI target and descriptor test fixtures after the tagged-source ACP probe passes.
+7. Update `PiRuntimeManifest.targetVersion` only after the isolated JSONL RPC probe passes; refresh all six SHA-256 values and preserve complete package-directory placement.
+8. Update `OmpRuntimeManifest.targetVersion` only after the isolated ACP probe passes; refresh all seven SHA-256 values and preserve glibc/musl and unsupported Windows arm64 mapping.
+9. Verify every minimum is unchanged from the base branch. A target-only update must not modify a minimum-version line or an outdated-version test boundary.
+10. Update hard-coded version URLs, version assertions, and recent-target fixtures in all manifest/availability tests.
+11. Search the affected plugin packages for the replaced target versions. Update only references that describe the current target; preserve minimum-version fixtures, historical comments, and protocol-shape observations tied to older versions.
+12. Update the setup/lifecycle regression document only for a separately requested compatibility-floor change, then run `dart format` on changed Dart files.
 
 Use `apply_patch` for manual edits.
 
@@ -260,6 +300,7 @@ Run the plugin suites independently; they may run in parallel:
 (cd bridge/sesori_plugin_codex && dart test && dart analyze --fatal-infos)
 (cd bridge/sesori_plugin_claude && dart test && dart analyze --fatal-infos)
 (cd bridge/sesori_plugin_cursor && dart test && dart analyze --fatal-infos)
+(cd bridge/sesori_plugin_deepseek && dart test && dart analyze --fatal-infos)
 (cd bridge/sesori_plugin_hermes && dart test && dart analyze --fatal-infos)
 (cd bridge/sesori_plugin_pi && dart test && dart analyze --fatal-infos)
 (cd bridge/sesori_plugin_omp && dart test && dart analyze --fatal-infos)
@@ -284,6 +325,8 @@ Before finishing, report:
 - whether all twelve GitHub asset digests were refreshed
 - Claude Code's stable GitHub/npm target, matching Agent SDK version, unchanged direct-CLI floor, and stream-json surface probe result
 - Cursor's installer-advertised build, and whether its four managed-runtime digests were recomputed
+- DeepSeek's adapter release, six verified package-archive digests, reported
+  DeepSeek Harness pin, and packaged ACP probe result
 - Hermes Agent's calendar release tag, semantic CLI target, unchanged direct-CLI floor, and isolated ACP probe result
 - Pi's release, six verified package-archive digests, and JSONL RPC probe result
 - OMP's release, seven verified bare-executable digests, and ACP probe result
