@@ -112,7 +112,12 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
           triggerDistance,
           indicatorExtent,
         );
-        final caption = deepRefresh == null || _maxPulledExtent <= triggerDistance
+        // Visibility follows the *live* extent, not the furthest reached: once
+        // the finger lifts, the control holds a shorter indicator extent while
+        // the refresh runs, and a caption keyed on the maximum would sit under
+        // the spinner for the whole of an ordinary refresh. The phase still
+        // comes from the latch, so the fired label cannot revert mid-gesture.
+        final caption = deepRefresh == null || pulledExtent <= triggerDistance
             ? null
             : _deepFired
             ? deepRefresh.deepCaption
@@ -130,8 +135,10 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
 
 /// The stock indicator with the stage-two caption beneath it.
 ///
-/// Painted in an unclipped stack so adding the caption cannot change the extent
-/// the refresh control reserves, which would shift the content under the pull.
+/// Both sit inside the extent the refresh control already reserved, so the
+/// caption never paints over the first row of the list below. The control
+/// constrains this builder to the whole pulled extent, which is at least the
+/// trigger distance whenever a caption is shown, so there is always room.
 class const _CaptionedIndicator({
   required final Widget indicator,
   required final String caption,
@@ -142,11 +149,10 @@ class const _CaptionedIndicator({
     final prego = context.prego;
     return Stack(
       alignment: Alignment.center,
-      clipBehavior: Clip.none,
       children: [
         indicator,
         Positioned(
-          bottom: -prego.spacing.xl,
+          bottom: prego.spacing.md,
           // Cross-faded and keyed on the phase, so passing the threshold reads
           // as one label becoming another rather than a flicker.
           child: AnimatedSwitcher(

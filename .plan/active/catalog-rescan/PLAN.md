@@ -89,7 +89,7 @@ returns nothing.
 eligible plugin, with no recency or terminality filter. Because the hydration
 short-circuit publishes `completed(0, 0)` for every already-hydrated plugin at
 every bridge start, a naive recovery read of `GET /plugin/import` would render
-a "Rescan complete / Nothing new" row on every connect. The recovery read must
+a "Scan complete / No new sessions" row on every connect. The recovery read must
 therefore seed only from non-terminal statuses.
 
 ### The two "ignore arms" are not an event dispatch registry
@@ -299,7 +299,7 @@ whichever harness happened to finish last.
 The success summary is worded from the counts carrier:
 
 - delta known, one or more new: `5 new sessions in 2 new projects`;
-- delta known, nothing new: `Nothing new`;
+- delta known, nothing new: `No new sessions`;
 - totals only, which is what an older bridge sends:
   `43 projects, 193 sessions`.
 
@@ -553,7 +553,7 @@ nothing rather than replaying a stale success.
 - Every package using `json_serializable` in this repository configures
   `include_if_null: false`, so an older bridge simply omits the key and a newer
   client decodes it as `null`. Nullable is required rather than a zero-valued
-  default: defaulting would make an older bridge report `Nothing new` after a
+  default: defaulting would make an older bridge report `No new sessions` after a
   rescan that in fact imported a hundred sessions.
 - A newer bridge talking to an older client is unaffected: the added key is
   ignored by the older decoder.
@@ -704,7 +704,7 @@ Required matrix:
 | Plugin | One native-ownership and one bridge-derived harness for the new-item counts | `_publishCatalog` counts projects differently per `PluginProjectOwnership` branch, so one branch cannot prove the other |
 | Plugin | Two enabled harnesses at once for the aggregate terminal states | A single-harness run cannot prove `CatalogRescanPartlyFailed` |
 | Platform | One mobile platform plus the wide split-view layout | The pane hosts stage 2 through a different scroll owner than the two scaffold hosts |
-| Compatibility | One run against a bridge that omits `newItems` | Proves the totals fallback rather than a false `Nothing new` |
+| Compatibility | One run against a bridge that omits `newItems` | Proves the totals fallback rather than a false `No new sessions` |
 | Recovery | One reconnect against a bridge holding terminal statuses | Proves the recovery read discards them instead of announcing a stale success |
 | Freshness | One rescan that genuinely imports a new session, observed in the list without a second manual refresh | The whole point of the feature; a committed import raises no list invalidation, so the post-success refresh is the only thing making the new row appear |
 | Compatibility | One run against a supported bridge older than `v1.6.0`, which has no `/plugin/import` at all | Proves the gesture reports an unsupported bridge instead of silently doing nothing |
@@ -963,7 +963,7 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
   targeted `503`, `404`, or unsupported-bridge answer lands on the harness the
   user selected instead of the shared row.
 - New `app_en.arb` resources for both captions, the seven row states, the delta
-  and totals wordings, the `Nothing new` case, the partly-failed wording, the
+  and totals wordings, the `No new sessions` case, the partly-failed wording, the
   bounded failure line naming the bridge log, and the Settings action with its
   semantics label and its rejection message.
 - Widget and cubit tests: all seven row states; the totals fallback; cancel;

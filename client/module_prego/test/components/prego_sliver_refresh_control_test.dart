@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
@@ -153,6 +155,78 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text("Scanning for new sessions"), findsOneWidget);
       expect(find.byIcon(TablerRegular.rotate_clockwise), findsOneWidget);
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets("no caption survives an ordinary refresh once the finger lifts", (tester) async {
+      // The control holds a shorter indicator extent while the refresh runs, so
+      // a caption keyed on the furthest point reached would sit under the
+      // spinner for the whole of an ordinary refresh.
+      final completer = Completer<void>();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          home: Scaffold(
+            body: CustomScrollView(
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              slivers: [
+                PregoSliverRefreshControl(
+                  onRefresh: () => completer.future,
+                  deepRefresh: PregoDeepRefresh(
+                    onDeepRefresh: () => deepRefreshes++,
+                    pullCaption: "Keep pulling to scan all harnesses",
+                    deepCaption: "Scanning for new sessions",
+                  ),
+                ),
+                SliverList.list(
+                  children: [for (var i = 0; i < 20; i++) SizedBox(height: 80, child: Text("row $i"))],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final gesture = await tester.startGesture(const Offset(200, 100));
+      for (var step = 0; step < 5; step++) {
+        await gesture.moveBy(const Offset(0, 40));
+        await tester.pump();
+      }
+      expect(find.text("Keep pulling to scan all harnesses"), findsOneWidget);
+
+      await gesture.up();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(
+        find.text("Keep pulling to scan all harnesses"),
+        findsNothing,
+        reason: "an ordinary refresh must look exactly as it did before",
+      );
+
+      completer.complete();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets("the caption stays inside the extent the control reserved", (tester) async {
+      await tester.pumpWidget(harness(withDeepRefresh: true));
+      final gesture = await tester.startGesture(const Offset(200, 100));
+      for (var step = 0; step < 5; step++) {
+        await gesture.moveBy(const Offset(0, 40));
+        await tester.pump();
+      }
+
+      // The first list row must start below the caption, or the caption paints
+      // over the list.
+      final captionBottom = tester.getRect(find.text("Keep pulling to scan all harnesses")).bottom;
+      final firstRowTop = tester.getRect(find.text("row 0")).top;
+      expect(
+        captionBottom,
+        lessThanOrEqualTo(firstRowTop),
+        reason: "the caption must not overlap the first row",
+      );
 
       await gesture.up();
       await tester.pumpAndSettle();
