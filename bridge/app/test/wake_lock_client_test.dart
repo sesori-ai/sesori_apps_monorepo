@@ -41,6 +41,7 @@ void main() {
 
     await client.enable();
     await client.enable();
+    expect(client.preventsLidCloseSleep, isTrue);
     await client.disable();
 
     expect(calls.single, [
@@ -51,7 +52,7 @@ void main() {
       'cat',
     ]);
     expect(process.killCalled, isTrue);
-    expect(client.preventsLidCloseSleep, isTrue);
+    expect(client.preventsLidCloseSleep, isFalse);
   });
 
   for (final platform in [PlatformOs.macos, PlatformOs.linux]) {
@@ -87,10 +88,23 @@ void main() {
     );
 
     await client.enable();
+    expect(client.preventsLidCloseSleep, isTrue);
     process.completeExit(7);
     await Future<void>.delayed(Duration.zero);
 
     expect(warnings.single, contains('exited unexpectedly with code 7'));
+    expect(client.preventsLidCloseSleep, isFalse);
+  });
+
+  test('Linux does not report lid-close prevention after startup failure', () async {
+    final client = _client(
+      platform: PlatformOs.linux,
+      processStarter: (executable, arguments) async => throw ProcessException(executable, arguments),
+    );
+
+    await client.enable();
+
+    expect(client.preventsLidCloseSleep, isFalse);
   });
 
   test('Windows sets expected execution states and warns on failure', () async {

@@ -29,7 +29,7 @@ void main() {
   for (final testCase in <({PlatformOs platform, List<String> command})>[
     (platform: PlatformOs.macos, command: ['open', '/tmp/example.txt']),
     (platform: PlatformOs.linux, command: ['xdg-open', '/tmp/example.txt']),
-    (platform: PlatformOs.windows, command: ['cmd', '/c', 'start', '', '/tmp/example.txt']),
+    (platform: PlatformOs.windows, command: ['rundll32', 'url.dll,FileProtocolHandler', '/tmp/example.txt']),
   ]) {
     test('${testCase.platform.name} opens file with platform command', () async {
       final calls = <List<String>>[];
@@ -48,6 +48,23 @@ void main() {
       expect(calls, [testCase.command]);
     });
   }
+
+  test('Windows passes shell metacharacters as one argument', () async {
+    final calls = <List<String>>[];
+    final api = DefaultEditorApi.forPlatform(
+      platform: PlatformOs.windows,
+      processRunner: _FakeProcessRunner(
+        handler: ({required executable, required arguments}) async {
+          calls.add([executable, ...arguments]);
+          return 0;
+        },
+      ),
+    );
+
+    await api.openFile(r'C:\tmp\report & del *.txt');
+
+    expect(calls.single, ['rundll32', 'url.dll,FileProtocolHandler', r'C:\tmp\report & del *.txt']);
+  });
 
   test('propagates command failures', () async {
     final api = DefaultEditorApi.forPlatform(

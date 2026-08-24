@@ -10,7 +10,7 @@ import '../foundation/warning_logger.dart';
 typedef ExecutionStateSetter = EXECUTION_STATE Function(EXECUTION_STATE flags);
 
 /// Controls device wake lock state.
-abstract class WakeLockClient {
+sealed class WakeLockClient {
   Future<void> enable();
 
   Future<void> disable();
@@ -100,7 +100,7 @@ final class _LinuxWakeLockClient({
   }
 
   @override
-  bool get preventsLidCloseSleep => true;
+  bool get preventsLidCloseSleep => _process != null;
 }
 
 final class _WindowsWakeLockClient({

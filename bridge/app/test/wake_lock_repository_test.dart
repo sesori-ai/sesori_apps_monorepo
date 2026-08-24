@@ -1,47 +1,48 @@
+import 'dart:io';
+
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart' show PlatformOs;
 import 'package:test/test.dart';
-
-class _FakeWakeLockClient() implements WakeLockClient {
-  int enableCalls = 0;
-  int disableCalls = 0;
-
-  @override
-  Future<void> enable() async {
-    enableCalls += 1;
-  }
-
-  @override
-  Future<void> disable() async {
-    disableCalls += 1;
-  }
-
-  @override
-  bool get preventsLidCloseSleep => true;
-}
+import 'package:win32/win32.dart';
 
 void main() {
   group('WakeLockRepository', () {
     test('tracks enabled state while delegating to the client', () async {
-      final client = _FakeWakeLockClient();
-      final repository = WakeLockRepository(client: client);
+      final flags = <EXECUTION_STATE>[];
+      final repository = WakeLockRepository(
+        client: WakeLockClient.forPlatform(
+          platform: PlatformOs.windows,
+          processStarter: Process.start,
+          executionStateSetter: (flagsValue) {
+            flags.add(flagsValue);
+            return const EXECUTION_STATE(1);
+          },
+          warningLogger: (_, [_, _]) {},
+        ),
+      );
 
       expect(repository.isEnabled, isFalse);
 
       await repository.enable();
-      expect(client.enableCalls, equals(1));
       expect(repository.isEnabled, isTrue);
 
       await repository.disable();
-      expect(client.disableCalls, equals(1));
       expect(repository.isEnabled, isFalse);
+      expect(flags, [ES_CONTINUOUS | ES_SYSTEM_REQUIRED, ES_CONTINUOUS]);
     });
 
     test('exposes preventsLidCloseSleep from the client', () {
-      final client = _FakeWakeLockClient();
-      final repository = WakeLockRepository(client: client);
+      final repository = WakeLockRepository(
+        client: WakeLockClient.forPlatform(
+          platform: PlatformOs.windows,
+          processStarter: Process.start,
+          executionStateSetter: (_) => const EXECUTION_STATE(1),
+          warningLogger: (_, [_, _]) {},
+        ),
+      );
 
-      expect(repository.preventsLidCloseSleep, isTrue);
+      expect(repository.preventsLidCloseSleep, isFalse);
     });
   });
 }

@@ -32,6 +32,9 @@ final class _LinuxDefaultEditorApi({required final ProcessRunner _processRunner}
 final class _WindowsDefaultEditorApi({required final ProcessRunner _processRunner}) implements DefaultEditorApi {
   @override
   Future<void> openFile(String filePath) async {
-    await _processRunner.startDetached(executable: 'cmd', arguments: ['/c', 'start', '', filePath]);
+    await _processRunner.startDetached(
+      executable: 'rundll32',
+      arguments: ['url.dll,FileProtocolHandler', filePath],
+    );
   }
 }

@@ -11,6 +11,7 @@ void main() {
     expect(isTransientNetworkError(TimeoutException('slow')), isTrue);
     expect(isTransientNetworkError(const HttpException('bad response')), isTrue);
     expect(isTransientNetworkError(ClientException('closed')), isTrue);
+    expect(isTransientNetworkError(const HandshakeException('TLS interrupted')), isTrue);
     expect(isTransientNetworkError(const FileSystemException('disk')), isFalse);
     expect(isTransientNetworkError(StateError('bad state')), isFalse);
   });

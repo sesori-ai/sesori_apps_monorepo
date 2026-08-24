@@ -81,7 +81,11 @@ bool isRetryableHttpStatus(int statusCode) {
 }
 
 bool isTransientNetworkError(Object error) {
-  return error is SocketException || error is TimeoutException || error is HttpException || error is ClientException;
+  return error is SocketException ||
+      error is HandshakeException ||
+      error is TimeoutException ||
+      error is HttpException ||
+      error is ClientException;
 }
 
 String? unsupportedPackageRuntimeMessage({
