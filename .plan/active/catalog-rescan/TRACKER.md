@@ -382,11 +382,11 @@ refresh gap as consequences of one definition.
 - **Step 2 PR:** [#1071](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1071)
   merged
 - **Step 3 base:** `main` at `db22f602a`
-- **Step 3 changed lines:** 454 of delivered code against merge-base
+- **Step 3 changed lines:** 451 of delivered code against merge-base
   `db22f602a5457bd94d4c6d8545fad3ce91f0e58b`, inside the 350-600 target:
-  73 production (`catalog_import_console_listener.dart` 26,
+  70 production (`catalog_import_console_listener.dart` 26,
   `catalog_import_repository.dart` 14, `catalog_import_service.dart` 4,
-  `catalog_import_progress.dart` 29), 216 tests, 165 generated
+  `catalog_import_progress.dart` 26), 216 tests, 165 generated
   (`catalog_import_progress.freezed.dart` 146, `.g.dart` 19).
   `.plan/` and `docs/regression/` are excluded on purpose. Counting them makes
   the figure self-inclusive — the commit that writes this entry changes the

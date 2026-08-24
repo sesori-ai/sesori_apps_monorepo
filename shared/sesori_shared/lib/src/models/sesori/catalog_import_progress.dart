@@ -40,19 +40,16 @@ sealed class CatalogImportProgress with _$CatalogImportProgress {
   /// [projectsImported] and [sessionsImported] are the totals published, not
   /// the number that changed. [newItems] carries the delta when the bridge
   /// reports one and is absent on a bridge that predates it.
-  // COMPATIBILITY 2026-08-24 (v1.9.0): newItems is nullable because bridges
-  // released before v1.9.0 omit it, and absence there honestly means "this
-  // producer does not report a delta" rather than "nothing was new". An
-  // @Default is deliberately not used: zero already means "nothing was new",
-  // so defaulting would make an older bridge claim a fact it never sent.
-  // Cleanup: make newItems non-nullable and drop every consumer's totals
-  // fallback once the minimum supported bridge is >= v1.9.0.
   @FreezedUnionValue("completed")
   const factory completed({
     required String pluginId,
     required int projectsImported,
     required int sessionsImported,
     required int completedAt,
+    // COMPATIBILITY 2026-08-24 (v1.9.0): bridges released before v1.9.0 omit
+    // this, which honestly means the producer reports no delta rather than
+    // that nothing was new. Make it non-nullable and drop every consumer's
+    // totals fallback once the minimum supported bridge is >= v1.9.0.
     required CatalogImportNewItems? newItems,
   }) = CatalogImportCompleted;
 
