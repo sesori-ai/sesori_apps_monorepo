@@ -1143,6 +1143,21 @@ List all available slash commands.
 
 **Response 200:** `CommandInfo[]`
 
+### GET /agent
+
+> `operationId: app.agents`
+
+List available AI agents.
+
+**Response 200:**
+
+```json
+[
+  { "name": "build", "description": "Default agent for development" },
+  { "name": "plan", "description": "Read-only analysis agent" }
+]
+```
+
 ### GET /skill
 
 > `operationId: app.skills`

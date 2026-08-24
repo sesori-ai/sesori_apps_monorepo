@@ -21,7 +21,7 @@ Commands used:
 
 ```bash
 grep -rn --include="*.dart" "attemptCount\|validateRuntime\|preProbeBindable\|\
-failFastOnSpawnError\|failOnEarlyChildExit\|recordTiming" bridge/ client/ shared/
+failFastOnSpawnError\|failOnEarlyChildExit" bridge/ client/ shared/
 ```
 
 The `ManagedRuntimeSpec` comment still described serving "the legacy in-place
