@@ -35,6 +35,14 @@ child sessions with titles, activity, statuses, and unseen state.
   "nothing new" after an import that added everything. A headless completion
   line therefore states the delta, or `Nothing new.`, or the totals alone when
   the producer omits the delta.
+- Every observed `CatalogImportCompleted` invalidates mounted project and
+  session lists only after the bridge's atomic catalog transaction completed.
+  A pre-commit list response cannot overwrite that later snapshot; another
+  completion while it is loading produces one trailing read. If the snapshot
+  fails, the committed change remains pending for the next ordinary, reconnect,
+  or staleness refresh rather than being discarded. Cancelling hides the progress
+  row immediately, but a transaction already in progress that completes after
+  that cancellation still drives the same list refresh.
 - Project and session row actions remain swipeable without competing visually
   with system back navigation. On iOS, drags beginning in the row's leading 10%
   are reserved for back; on Android gesture navigation, both 10% edges are
@@ -101,7 +109,7 @@ child sessions with titles, activity, statuses, and unseen state.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: project list and one project's session list return committed data with plugin attribution. |
-| L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. A first import reports every published row as new, a re-import of an unchanged catalog reports the same totals with a zero delta, and a completion whose delta is absent reports its totals without claiming nothing changed. |
+| L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. A first import reports every published row as new, a re-import of an unchanged catalog reports the same totals with a zero delta, and a completion whose delta is absent reports its totals without claiming nothing changed. Focused client coverage holds pre-commit list reads through a completion, proves the post-commit snapshot wins and a second completion gets a trailing snapshot, retains a failed snapshot for the next refresh, and covers a completion after immediate cancellation. |
 | L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; one representative plugin proves two running roots and two projects with running roots reorder after committed user-side activity, inactive session/project order is unchanged, a live patch reorders without another status event or project summary, and omitted ordering facts use updated-time fallbacks. Focused ACP protocol and client ordering tests prove the exact awaiting-only state is not promoted because normal production root prompts remain running while awaiting input. Lists and unseen badges render; project and session row swipes stay inert from the iOS back edge and both Android gesture-navigation edges while remaining active at unreserved edges and under Android button navigation. |
 | L4 Extended | Relay integration, every supporting production plugin: bridge and plugin restart preserve identity and overrides; a moved backend-native project keeps them while a moved bridge-derived project is discovered as new without mutating the old catalog; a cancelled or failed import leaves the prior catalog intact; reads during import stay consistent; an unavailable plugin is reported while others keep listing. |
 | L5 Full | Client end to end, every supporting production plugin: multiple clients observe consistent listings and unseen transitions; large catalogs and paged listings behave; unattributed payloads resolve to the historical identity. |
@@ -121,7 +129,10 @@ navigation, and a non-mobile platform; begin drags inside and just outside each
 
 ## Failure Signals
 
-- A catalog read starts a backend, hangs on import, or returns a partial list.
+- A catalog read starts a backend, hangs on import, returns a partial list, or an
+  older response overwrites a post-commit snapshot.
+- A committed catalog change is lost after a failed list snapshot, or a commit
+  that finishes after cancellation leaves the mounted list stale.
 - A moved backend-native project appears new or empty, loses sessions, or resolves
   git in the old location; a moved bridge-derived project mutates the old catalog
   identity instead of being discovered as new.
@@ -178,6 +189,8 @@ navigation, and a non-mobile platform; begin drags inside and just outside each
   `bridge/sesori_plugin_pi/test/pi_session_catalog_repository_test.dart`,
   `client/module_core/test/services/session_list_service_test.dart`,
   `client/module_core/test/services/session_unseen_tracker_test.dart`,
+  `client/module_core/test/services/catalog_rescan_service_test.dart`,
+  `client/module_core/test/cubits/project_list/project_list_cubit_test.dart`,
   `client/module_core/test/cubits/session_list/session_list_cubit_test.dart`,
   `client/module_prego/test/interactions/prego_swipe_actions_test.dart`,
   `client/app/test/features/session_list/session_list_panel_test.dart`

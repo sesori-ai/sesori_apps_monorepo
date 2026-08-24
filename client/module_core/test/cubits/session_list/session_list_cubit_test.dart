@@ -2201,6 +2201,12 @@ void main() {
         ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
       }
 
+      Future<ApiResponse<SessionListResponse>> successfulResponse({required List<Session> sessions}) {
+        return Future<ApiResponse<SessionListResponse>>.value(
+          ApiResponse.success(SessionListResponse(items: sessions)),
+        );
+      }
+
       test("projects the scan onto the loaded state", () async {
         stubSessions();
         final cubit = buildCubit();
@@ -2222,7 +2228,7 @@ void main() {
         );
       });
 
-      test("refreshes when a scan leaves a live operation", () async {
+      test("refreshes after a committed catalog change", () async {
         stubSessions();
         final cubit = buildCubit();
         addTearDown(cubit.close);
@@ -2230,9 +2236,7 @@ void main() {
         clearInteractions(mockProjectRepository);
         stubSessions();
 
-        // A committed import raises no list invalidation of its own, so this
-        // refresh is the only thing that surfaces what the scan imported.
-        fakeCatalogRescanService.emitSettled();
+        fakeCatalogRescanService.emitCatalogChanged();
         await Future<void>.delayed(Duration.zero);
 
         verify(
@@ -2267,6 +2271,121 @@ void main() {
         );
       });
 
+      test("post-commit data wins over overlapping earlier reads", () async {
+        final olderRefresh = Completer<ApiResponse<SessionListResponse>>();
+        final olderFullLoad = Completer<ApiResponse<SessionListResponse>>();
+        final postCommit = Completer<ApiResponse<SessionListResponse>>();
+        final catalogSession = testSession(id: "catalog", title: "Imported after scan");
+        var requestCount = 0;
+        Future<ApiResponse<SessionListResponse>> nextResponse() => switch (requestCount++) {
+          0 => successfulResponse(sessions: const []),
+          1 => olderRefresh.future,
+          2 => olderFullLoad.future,
+          3 => postCommit.future,
+          _ => throw StateError("unexpected session list request"),
+        };
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer((_) => nextResponse());
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+        unawaited(cubit.refreshSessions());
+        await Future<void>.delayed(Duration.zero);
+        unawaited(cubit.loadSessions());
+        await Future<void>.delayed(Duration.zero);
+        fakeCatalogRescanService.emitCatalogChanged();
+        await Future<void>.delayed(Duration.zero);
+        expect(requestCount, 4, reason: "the catalog refresh must not coalesce onto the older refresh");
+
+        postCommit.complete(ApiResponse.success(SessionListResponse(items: [catalogSession])));
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+        expect((cubit.state as SessionListLoaded).sessions, [catalogSession]);
+
+        olderFullLoad.complete(ApiResponse.success(const SessionListResponse(items: [])));
+        olderRefresh.complete(ApiResponse.success(const SessionListResponse(items: [])));
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+
+        expect((cubit.state as SessionListLoaded).sessions, [catalogSession]);
+      });
+
+      test("runs a trailing catalog refresh after another commit arrives in flight", () async {
+        final firstPostCommit = Completer<ApiResponse<SessionListResponse>>();
+        final secondPostCommit = Completer<ApiResponse<SessionListResponse>>();
+        final firstSession = testSession(id: "first", title: "First import");
+        final secondSession = testSession(id: "second", title: "Second import");
+        var requestCount = 0;
+        Future<ApiResponse<SessionListResponse>> nextResponse() => switch (requestCount++) {
+          0 => successfulResponse(sessions: const []),
+          1 => firstPostCommit.future,
+          2 => secondPostCommit.future,
+          _ => throw StateError("unexpected session list request"),
+        };
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer((_) => nextResponse());
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+        fakeCatalogRescanService
+          ..emitCatalogChanged()
+          ..emitCatalogChanged();
+        await Future<void>.delayed(Duration.zero);
+        expect(requestCount, 2);
+
+        firstPostCommit.complete(ApiResponse.success(SessionListResponse(items: [firstSession])));
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+        expect(requestCount, 3, reason: "the second commit needs a later snapshot");
+
+        secondPostCommit.complete(ApiResponse.success(SessionListResponse(items: [secondSession])));
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+        expect((cubit.state as SessionListLoaded).sessions, [secondSession]);
+      });
+
+      test("preserves a failed catalog refresh for the next ordinary refresh", () async {
+        final catalogSession = testSession(id: "catalog", title: "Imported after retry");
+        var requestCount = 0;
+        Future<ApiResponse<SessionListResponse>> nextResponse() => switch (requestCount++) {
+          0 => successfulResponse(sessions: const []),
+          1 => Future<ApiResponse<SessionListResponse>>.value(ApiResponse.error(ApiError.generic())),
+          2 => successfulResponse(sessions: [catalogSession]),
+          _ => throw StateError("unexpected session list request"),
+        };
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer((_) => nextResponse());
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+        fakeCatalogRescanService.emitCatalogChanged();
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+        expect(requestCount, 2, reason: "a failed catalog refresh must not retry in a loop");
+
+        expect(await cubit.refreshSessions(), isTrue);
+        expect(requestCount, 3);
+        expect((cubit.state as SessionListLoaded).sessions, [catalogSession]);
+      });
+
       test("forwards the scan intents to the service", () async {
         stubSessions();
         final cubit = buildCubit();
@@ -2284,7 +2403,6 @@ void main() {
         expect(fakeCatalogRescanService.dismissCalls, 1);
       });
     });
-
   });
 }
 

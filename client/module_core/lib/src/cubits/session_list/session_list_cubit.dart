@@ -26,6 +26,8 @@ import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
 import "session_list_state.dart";
 
+enum _SessionFetchOutcome() { applied, failed, superseded }
+
 class SessionListCubit({
   required final SessionRepository _sessionRepository,
   required final SessionListService _sessionListService,
@@ -54,12 +56,8 @@ class SessionListCubit({
     // The catalog scan, which any surface can start. Its state is only
     // projected onto this list; the operation itself is the service's.
     _subscriptions.add(_catalogRescanService.state.listen(_onCatalogScanState));
-    // A committed import raises no list invalidation of its own, so the list
-    // refreshes when the scan leaves a live operation — however it ended,
-    // because a run this client only observed publishes no terminal state.
-    _subscriptions.add(
-      _catalogRescanService.settled.listen((_) => unawaited(_refreshAfterScan())),
-    );
+    // A committed import raises no list invalidation of its own.
+    _subscriptions.add(_catalogRescanService.catalogChanged.listen((_) => _onCatalogChanged()));
     _subscriptions.add(_connectionService.events.listen(_handleEvent));
     // 1. Navigate-back refresh: one immediate fetch when the user returns to
     //    the sessions page. pairwise() ensures this doesn't fire on the
@@ -218,7 +216,9 @@ class SessionListCubit({
       final response = await _sessionRepository.markSessionSeen(sessionId: sessionId, read: read);
       if (response case ErrorResponse(:final error)) {
         loge("Failed to mark session ${read ? "read" : "unread"}", error);
-        if (!isClosed) await _fetchSessions(silent: true);
+        if (!isClosed) {
+          await _fetchSessions(silent: true, catalogRefresh: false, waitForPrData: false);
+        }
       }
     } catch (e, st) {
       unawaited(
@@ -235,7 +235,9 @@ class SessionListCubit({
               loge("Failed to report mark-seen error", error, stackTrace);
             }),
       );
-      if (!isClosed) await _fetchSessions(silent: true);
+      if (!isClosed) {
+        await _fetchSessions(silent: true, catalogRefresh: false, waitForPrData: false);
+      }
     }
   }
 
@@ -525,7 +527,7 @@ class SessionListCubit({
 
   Future<void> loadSessions() async {
     emit(const SessionListState.loading());
-    await _fetchSessions();
+    await _fetchSessions(silent: false, catalogRefresh: false, waitForPrData: false);
   }
 
   /// Retries loading sessions after a failure.
@@ -540,114 +542,205 @@ class SessionListCubit({
     if (isClosed) return;
     await _connectionService.reconnectAndAwaitOutcome(timeout: const Duration(seconds: 15));
     if (isClosed) return;
-    await _fetchSessions();
+    await _fetchSessions(silent: false, catalogRefresh: false, waitForPrData: false);
   }
 
   /// In-flight silent refresh, used for coalescing.
-  Future<bool>? _activeRefresh;
+  Future<_SessionFetchOutcome>? _activeRefresh;
 
-  /// The most recent list read of any kind.
-  Future<bool>? _activeFetch;
+  /// Monotonically orders list reads so an older response cannot overwrite a
+  /// snapshot requested after it.
+  int _fetchGeneration = 0;
+
+  /// Durable catalog commits observed by this cubit, and the newest commit a
+  /// successfully applied list snapshot has covered.
+  int _catalogChangeGeneration = 0;
+  int _catalogChangeConsumedGeneration = 0;
+  bool _catalogRefreshPausedAfterFailure = false;
+  Future<void>? _catalogRefresh;
 
   /// Re-fetches sessions without showing the full-screen loading indicator.
-  /// Concurrent calls are coalesced: if a refresh is already in-flight, the
-  /// existing Future is returned instead of starting a second network request.
+  /// Concurrent ordinary calls coalesce onto the current silent refresh.
   ///
   /// When [waitForPrData] is true the bridge will wait up to 5 s for
   /// GitHub PR metadata before returning. This is appropriate only for
   /// explicit user-initiated pull-to-refresh; background triggers such as
   /// reconnects, route navigation, or SSE events should leave it false.
-  Future<bool> refreshSessions({bool waitForPrData = false}) {
-    return _activeRefresh ??= _fetchSessions(
-      silent: true,
+  Future<bool> refreshSessions({bool waitForPrData = false}) async {
+    final outcome = await _refreshSessions(
+      force: false,
+      catalogRefresh: false,
       waitForPrData: waitForPrData,
-    ).whenComplete(() => _activeRefresh = null);
-  }
-
-  /// Registers every list read, silent or not, so an ordering-sensitive caller
-  /// can wait for whatever is already in flight. [_activeRefresh] tracks only
-  /// the coalescing silent path, so an initial or retry load is invisible to it.
-  Future<bool> _fetchSessions({bool silent = false, bool waitForPrData = false}) {
-    final fetch = _runFetchSessions(silent: silent, waitForPrData: waitForPrData);
-    _activeFetch = fetch;
-    unawaited(
-      fetch.whenComplete(() {
-        if (identical(_activeFetch, fetch)) _activeFetch = null;
-      }).catchError((Object _) => false),
     );
-    return fetch;
+    return outcome != _SessionFetchOutcome.failed;
   }
 
-  Future<bool> _runFetchSessions({bool silent = false, bool waitForPrData = false}) async {
-    // Captured BEFORE the fetch so the seed can't overwrite a live update that
-    // arrives while the (possibly PR-data-delayed) request is in flight.
-    final unseenTick = _sessionUnseenTracker.tick;
-    final (sessionsResponse, gitContextResponse) = await (
-      _sessionListService.listSessions(
-        projectId: _projectId,
-        waitForPrData: waitForPrData,
-      ),
-      _projectRepository.getGitContext(projectId: _projectId),
-    ).wait;
-    if (isClosed) return false;
+  Future<_SessionFetchOutcome> _refreshSessions({
+    required bool force,
+    required bool catalogRefresh,
+    required bool waitForPrData,
+  }) {
+    final active = _activeRefresh;
+    if (!force && active != null) return active;
 
-    // Update cached git context on success; silently ignore errors so
-    // the session list still loads even if the endpoint is unavailable.
-    if (gitContextResponse case SuccessResponse(:final data)) {
-      _gitContext = data;
-    }
-
-    switch (sessionsResponse) {
-      case SuccessResponse(:final data):
-        _allSessions = data.items;
-        // The REST flags are authoritative at fetch time — seed the tracker so
-        // a stale live `true` can't keep a row bold after a clear was missed
-        // (e.g. the session was read on another phone while reconnecting).
-        _sessionUnseenTracker.seedSessions(
-          projectId: _projectId,
-          stateBySessionId: {
-            for (final session in data.items)
-              session.id: (
-                unseen: session.unseen,
-                lastUserActivityAt: session.lastUserActivityAt,
-              ),
-          },
-          sinceTick: unseenTick,
-        );
-        _emitFiltered();
-        _projectViewingService.markClaimReady(claim: _projectViewClaim, projectId: _projectId);
-        return true;
-
-      case ErrorResponse(:final error):
-        if (silent) {
-          logw("Failed to refresh sessions: ${error.toString()}");
-        } else {
-          _projectViewingService.markClaimFailed(claim: _projectViewClaim);
-          loge("Session list load failed", error);
-          emit(SessionListState.failed(reason: error.remoteFailureReason));
-        }
-        return false;
-    }
+    late final Future<_SessionFetchOutcome> refresh;
+    refresh =
+        _fetchSessions(
+          silent: true,
+          catalogRefresh: catalogRefresh,
+          waitForPrData: waitForPrData,
+        ).whenComplete(() {
+          if (identical(_activeRefresh, refresh)) _activeRefresh = null;
+        });
+    _activeRefresh = refresh;
+    return refresh;
   }
 
-  /// Reads the catalog strictly after the scan committed.
-  ///
-  /// [refreshSessions] coalesces onto a refresh already in flight, and that one
-  /// may have started before the import committed. Waiting it out first means
-  /// the read that follows is guaranteed to see the imported rows, which is the
-  /// whole point of refreshing here — the import raises no other invalidation.
-  Future<void> _refreshAfterScan() async {
-    // Every read, not just the coalescing silent one: a full load in flight
-    // would otherwise race this fetch and, landing last, overwrite what the
-    // scan just imported. A failing read reports itself, so it is not
-    // re-reported here.
+  Future<_SessionFetchOutcome> _fetchSessions({
+    required bool silent,
+    required bool catalogRefresh,
+    required bool waitForPrData,
+  }) {
+    final requestGeneration = ++_fetchGeneration;
+    final catalogChangeGeneration = _catalogChangeGeneration;
+    return _runFetchSessions(
+      silent: silent,
+      catalogRefresh: catalogRefresh,
+      waitForPrData: waitForPrData,
+      requestGeneration: requestGeneration,
+      catalogChangeGeneration: catalogChangeGeneration,
+    );
+  }
+
+  Future<_SessionFetchOutcome> _runFetchSessions({
+    required bool silent,
+    required bool catalogRefresh,
+    required bool waitForPrData,
+    required int requestGeneration,
+    required int catalogChangeGeneration,
+  }) async {
     try {
-      await _activeFetch;
-    } on Object catch (_) {
-      // Ignored: the read that failed owns its own reporting.
+      // Captured BEFORE the fetch so the seed can't overwrite a live update
+      // that arrives while the (possibly PR-data-delayed) request is in flight.
+      final unseenTick = _sessionUnseenTracker.tick;
+      final (sessionsResponse, gitContextResponse) = await (
+        _sessionListService.listSessions(
+          projectId: _projectId,
+          waitForPrData: waitForPrData,
+        ),
+        _projectRepository.getGitContext(projectId: _projectId),
+      ).wait;
+      if (isClosed || requestGeneration != _fetchGeneration) {
+        return _SessionFetchOutcome.superseded;
+      }
+
+      // Update cached git context on success; silently ignore errors so
+      // the session list still loads even if the endpoint is unavailable.
+      if (gitContextResponse case SuccessResponse(:final data)) {
+        _gitContext = data;
+      }
+
+      switch (sessionsResponse) {
+        case SuccessResponse(:final data):
+          _allSessions = data.items;
+          // The REST flags are authoritative at fetch time — seed the tracker so
+          // a stale live `true` can't keep a row bold after a clear was missed
+          // (e.g. the session was read on another phone while reconnecting).
+          _sessionUnseenTracker.seedSessions(
+            projectId: _projectId,
+            stateBySessionId: {
+              for (final session in data.items)
+                session.id: (
+                  unseen: session.unseen,
+                  lastUserActivityAt: session.lastUserActivityAt,
+                ),
+            },
+            sinceTick: unseenTick,
+          );
+          _emitFiltered();
+          _projectViewingService.markClaimReady(claim: _projectViewClaim, projectId: _projectId);
+          _consumeCatalogChangesThrough(generation: catalogChangeGeneration);
+          return _SessionFetchOutcome.applied;
+
+        case ErrorResponse(:final error):
+          if (silent) {
+            logw("Failed to refresh sessions: ${error.toString()}");
+          } else {
+            _projectViewingService.markClaimFailed(claim: _projectViewClaim);
+            loge("Session list load failed", error);
+            emit(SessionListState.failed(reason: error.remoteFailureReason));
+          }
+          return _SessionFetchOutcome.failed;
+      }
+    } finally {
+      if (!catalogRefresh) _rearmCatalogRefreshAfterOrdinaryFetch();
     }
+  }
+
+  void _onCatalogChanged() {
     if (isClosed) return;
-    await refreshSessions();
+    _catalogChangeGeneration++;
+    _catalogRefreshPausedAfterFailure = false;
+    _ensureCatalogRefresh();
+  }
+
+  void _consumeCatalogChangesThrough({required int generation}) {
+    if (generation > _catalogChangeConsumedGeneration) {
+      _catalogChangeConsumedGeneration = generation;
+    }
+  }
+
+  void _ensureCatalogRefresh() {
+    if (isClosed ||
+        _catalogRefresh != null ||
+        _catalogRefreshPausedAfterFailure ||
+        _catalogChangeConsumedGeneration >= _catalogChangeGeneration) {
+      return;
+    }
+
+    late final Future<void> refresh;
+    refresh = _drainCatalogRefreshes().whenComplete(() {
+      if (!identical(_catalogRefresh, refresh)) return;
+      _catalogRefresh = null;
+      _ensureCatalogRefresh();
+    });
+    _catalogRefresh = refresh;
+    unawaited(refresh);
+  }
+
+  Future<void> _drainCatalogRefreshes() async {
+    while (!isClosed && _catalogChangeConsumedGeneration < _catalogChangeGeneration) {
+      final targetGeneration = _catalogChangeGeneration;
+      late final _SessionFetchOutcome outcome;
+      try {
+        outcome = await _refreshSessions(
+          force: true,
+          catalogRefresh: true,
+          waitForPrData: false,
+        );
+      } on Object catch (error, stackTrace) {
+        loge("Catalog-change session refresh failed unexpectedly", error, stackTrace);
+        _catalogRefreshPausedAfterFailure = true;
+        return;
+      }
+
+      if (_catalogChangeConsumedGeneration >= _catalogChangeGeneration) return;
+      switch (outcome) {
+        case _SessionFetchOutcome.applied:
+        case _SessionFetchOutcome.superseded:
+          continue;
+        case _SessionFetchOutcome.failed:
+          if (targetGeneration < _catalogChangeGeneration) continue;
+          _catalogRefreshPausedAfterFailure = true;
+          return;
+      }
+    }
+  }
+
+  void _rearmCatalogRefreshAfterOrdinaryFetch() {
+    if (isClosed || !_catalogRefreshPausedAfterFailure) return;
+    _catalogRefreshPausedAfterFailure = false;
+    _ensureCatalogRefresh();
   }
 
   /// Starts a catalog scan across every harness this bridge can import from.

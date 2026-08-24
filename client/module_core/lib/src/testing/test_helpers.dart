@@ -849,13 +849,13 @@ class FakeAuthSession({required AuthState initialState}) implements AuthSession 
 /// A [CatalogRescanService] a test drives directly.
 ///
 /// The real service owns a whole operation lifecycle; a consumer only cares
-/// that it publishes state, announces when a run closes, and accepts intents,
-/// so this exposes exactly those.
+/// that it publishes state, announces committed catalog changes, and accepts
+/// intents, so this exposes exactly those.
 class FakeCatalogRescanService() implements CatalogRescanService {
   final BehaviorSubject<CatalogRescanState> _state = BehaviorSubject.seeded(
     const CatalogRescanState.idle(),
   );
-  final StreamController<void> _settled = StreamController<void>.broadcast(sync: true);
+  final StreamController<void> _catalogChanged = StreamController<void>.broadcast(sync: true);
 
   final List<void> _startAlls = [];
   final List<void> _cancels = [];
@@ -869,7 +869,7 @@ class FakeCatalogRescanService() implements CatalogRescanService {
   ValueStream<CatalogRescanState> get state => _state.stream;
 
   @override
-  Stream<void> get settled => _settled.stream;
+  Stream<void> get catalogChanged => _catalogChanged.stream;
 
   /// Plugin ids passed to [start], in call order.
   final List<String> startedPluginIds = [];
@@ -897,8 +897,8 @@ class FakeCatalogRescanService() implements CatalogRescanService {
   /// Publishes [next] as the current scan state.
   void emit(CatalogRescanState next) => _state.add(next);
 
-  /// Announces that a live operation closed, whatever it settled as.
-  void emitSettled() => _settled.add(null);
+  /// Announces that an import committed a durable catalog change.
+  void emitCatalogChanged() => _catalogChanged.add(null);
 
   /// Closes both streams. Named to match `Disposable`, because `get_it` calls
   /// it on reset and every widget test that registers this fake goes through
@@ -907,7 +907,6 @@ class FakeCatalogRescanService() implements CatalogRescanService {
   Future<void> onDispose() async {
     if (_state.isClosed) return;
     await _state.close();
-    await _settled.close();
+    await _catalogChanged.close();
   }
-
 }

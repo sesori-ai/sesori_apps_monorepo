@@ -51,7 +51,7 @@ class CatalogRescanService({
   final BehaviorSubject<CatalogRescanState> _state = BehaviorSubject.seeded(
     const CatalogRescanState.idle(),
   );
-  final StreamController<void> _settled = StreamController<void>.broadcast(sync: true);
+  final StreamController<void> _catalogChanged = StreamController<void>.broadcast(sync: true);
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   /// Latest progress per harness in the live operation. Cleared whenever an
@@ -93,10 +93,12 @@ class CatalogRescanService({
 
   ValueStream<CatalogRescanState> get state => _state.stream;
 
-  /// Fires whenever a live operation closes, however it ended. Consumers
-  /// refresh their lists from this rather than from the terminal variants,
-  /// because an observed run publishes no terminal variant at all.
-  Stream<void> get settled => _settled.stream;
+  /// Fires after any observed import commits its catalog transaction.
+  ///
+  /// List cubits use this durable-data signal rather than the progress row's
+  /// lifecycle, because cancelling a row does not prove an import that already
+  /// entered its atomic commit did not finish.
+  Stream<void> get catalogChanged => _catalogChanged.stream;
 
   /// Rescans every harness this bridge can import from.
   Future<void> startAll() async {
@@ -159,8 +161,8 @@ class CatalogRescanService({
             // A refused or unprovable cancel means that import may still be
             // running, and nothing else records it. The harness id is the only
             // thing that identifies which one, since every call shares a route.
-            if (outcome case CatalogImportMutationFailure(:final error) ||
-                CatalogImportMutationUncertain(:final error)) {
+            if (outcome
+                case CatalogImportMutationFailure(:final error) || CatalogImportMutationUncertain(:final error)) {
               logw("Catalog rescan cancellation was not confirmed for $pluginId", error);
             }
           }),
@@ -186,7 +188,7 @@ class CatalogRescanService({
     _clearTimer?.cancel();
     await _subscriptions.dispose();
     await _state.close();
-    await _settled.close();
+    await _catalogChanged.close();
   }
 
   Future<Map<String, CatalogRescanStartResult>> _start({
@@ -230,9 +232,8 @@ class CatalogRescanService({
       // own rejection through the returned result instead; the bridge answers
       // 404 for an unknown *and* for a deselected plugin, so one 404 says
       // nothing about the route.
-      final unsupported = coversEveryHarness &&
-          results.isNotEmpty &&
-          results.values.every((r) => r is CatalogRescanStartUnsupported);
+      final unsupported =
+          coversEveryHarness && results.isNotEmpty && results.values.every((r) => r is CatalogRescanStartUnsupported);
       _closeOperation(
         unsupported ? const CatalogRescanState.unsupported() : const CatalogRescanState.idle(),
       );
@@ -303,6 +304,14 @@ class CatalogRescanService({
   }
 
   void _applyProgress(CatalogImportProgress progress) {
+    // The bridge publishes this only after its atomic catalog transaction has
+    // returned. Announce it before the operation bookkeeping below: a commit
+    // that wins a user cancellation must still invalidate the lists even
+    // though the progress row remains closed.
+    if (progress is CatalogImportCompleted && !_catalogChanged.isClosed) {
+      _catalogChanged.add(null);
+    }
+
     final pluginId = progress.pluginId;
     if (!_members.contains(pluginId)) {
       // A rescan someone else started, seen live. Adopt it so its imported
@@ -348,9 +357,7 @@ class CatalogRescanService({
                 // Unreachable: _activeProgress only returns a non-terminal
                 // status, and the switch stays exhaustive so a new phase is a
                 // compile error rather than a silent zero.
-                CatalogImportCompleted() ||
-                CatalogImportCancelled() ||
-                CatalogImportFailed() => 0,
+                CatalogImportCompleted() || CatalogImportCancelled() || CatalogImportFailed() => 0,
               },
               pluginIds: Set<String>.unmodifiable(_members),
             ),
@@ -426,14 +433,12 @@ class CatalogRescanService({
     return CatalogRescanCounts.totals(projects: projects, sessions: sessions);
   }
 
-  /// Ends the live operation and publishes [next]. Always announces the close,
-  /// so a consumer refreshes whether the run summarised itself or not.
+  /// Ends the live operation and publishes [next].
   void _closeOperation(CatalogRescanState next) {
     _members.clear();
     _progressByPluginId.clear();
     _observed = false;
     _publish(next);
-    if (!_settled.isClosed) _settled.add(null);
     if (next is CatalogRescanSucceeded) {
       _clearTimer?.cancel();
       _clearTimer = Timer(_successVisibleFor, _reset);
@@ -455,11 +460,7 @@ class CatalogRescanService({
     final nextConnected = status is ConnectionConnected;
     if (nextConnected == _connected) return;
     _connected = nextConnected;
-    final wasLive = _members.isNotEmpty;
     _reset();
-    // A run interrupted by a drop still committed whatever it had published, so
-    // announce the close even though no summary is claimed for it.
-    if (wasLive && !_settled.isClosed) _settled.add(null);
     if (nextConnected) unawaited(_recoverInFlight());
   }
 
@@ -471,11 +472,7 @@ class CatalogRescanService({
     };
     final bridgeId = snapshot.response.bridgeId;
     if (_activeBridgeId != null && _activeBridgeId != bridgeId) {
-      // Same rule as a disconnect: every close of a live operation announces
-      // itself, so the two triggers the plan lists together behave alike.
-      final wasLive = _members.isNotEmpty;
       _reset();
-      if (wasLive && !_settled.isClosed) _settled.add(null);
       // The recovery read fired on reconnect may have adopted the new bridge's
       // run before this identity arrived, and the reset above just discarded
       // it. Read again now that the identity is settled, or an import already
