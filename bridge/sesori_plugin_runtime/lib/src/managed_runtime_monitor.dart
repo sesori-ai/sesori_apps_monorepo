@@ -132,10 +132,12 @@ class ManagedRuntimeMonitor<R>({
 
     // exitCode is a bare Future with no cancel; _onUnexpectedExit re-checks the
     // current-child identity and the disarm flag, so a stale completion is inert.
-    unawaited(process.exitCode.then((code) => _onUnexpectedExit(process, code)).catchError((Object _) {}));
+    unawaited(
+      process.exitCode.then((code) => _onUnexpectedExit(process: process, exitCode: code)).catchError((Object _) {}),
+    );
   }
 
-  Future<void> _onUnexpectedExit(SpawnedProcess process, int exitCode) async {
+  Future<void> _onUnexpectedExit({required SpawnedProcess process, required int exitCode}) async {
     if (_disarmed || !identical(process, _currentHandle?.process)) {
       return;
     }

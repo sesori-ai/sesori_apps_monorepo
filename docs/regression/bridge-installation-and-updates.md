@@ -11,7 +11,9 @@ reconciliation, periodic check, in-place apply, and explicit update command.
 - Installers and the npm bootstrap produce the same managed install, expose the
   `sesori-bridge` launcher, and report the version; installers take the newest
   non-prerelease release carrying the platform archive and its basename-keyed checksum
-  manifest, and verify artifacts before installing them.
+  manifest, and verify artifacts before installing them. Both installer scripts honor
+  `GITHUB`/`GITHUB_API` host overrides and accept only exact `vX.Y.Z` stable tags when
+  scanning releases.
 - An interactive standalone `run` on a sufficiently wide terminal identifies the bridge
   with the installer wordmark and current version. It uses the shared color and Unicode
   capability rules plus a compact ASCII fallback, while supervised starts, redirected
@@ -76,4 +78,5 @@ after apply. Use a throwaway machine when mutating an install root.
 - `bridge/app/lib/src/foundation/bridge_startup_banner_formatter.dart`
 - `bridge/app/lib/src/updater/` policy, track, lock, repositories, services;
   `bridge/app/bin/bridge.dart` (`update`, `config track`)
-- Tests: `bridge/app/test/updater/`, notably policy and release-contract suites
+- Tests: `bridge/app/test/updater/`, notably policy and release-contract suites;
+  `bridge/app/test/tool/installers_test.dart`

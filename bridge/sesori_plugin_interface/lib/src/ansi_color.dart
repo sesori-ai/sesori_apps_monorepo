@@ -28,6 +28,7 @@ class AnsiColorFormatter._() {
   ///
   /// [environment] defaults to the process environment and exists to make the
   /// color opt-in/opt-out deterministically testable.
+  // ignore: no_slop_linter/prefer_required_named_parameters, environment is optional public configuration
   static String colorize({
     required String text,
     required AnsiColor color,

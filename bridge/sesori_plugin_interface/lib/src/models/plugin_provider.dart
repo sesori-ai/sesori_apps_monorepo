@@ -14,6 +14,7 @@ enum PluginProviderAuthType() {
 /// A model available from a provider.
 @freezed
 sealed class PluginModel with _$PluginModel {
+  // ignore: no_slop_linter/prefer_required_named_parameters, generated public model signature
   const factory({
     required String id,
     required String name,

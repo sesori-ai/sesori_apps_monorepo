@@ -301,12 +301,12 @@ function Write-PanelEmphasisRow {
     Write-Line ('  ' + $Border + $bar + $Script:C_RESET + ' ' + $painted + $spaces + ' ' + $Border + $bar + $Script:C_RESET)
 }
 
-Init-Style
-
 $RepoOwner  = 'sesori-ai'
 $RepoName   = 'sesori_apps_monorepo'
-$RepoBase   = "https://github.com/$RepoOwner/$RepoName"
-$ReleasesApiUrl = "https://api.github.com/repos/$RepoOwner/$RepoName/releases"
+$GitHubBase = if ($env:GITHUB) { $env:GITHUB.TrimEnd('/') } else { 'https://github.com' }
+$GitHubApiBase = if ($env:GITHUB_API) { $env:GITHUB_API.TrimEnd('/') } else { 'https://api.github.com' }
+$RepoBase   = "$GitHubBase/$RepoOwner/$RepoName"
+$ReleasesApiUrl = "$GitHubApiBase/repos/$RepoOwner/$RepoName/releases"
 # Fallback-only knobs: scanning recent releases is a cold path used only when the
 # latest release lacks this platform's asset. Kept small because the release
 # pipeline prunes internal pre-releases to a single rolling object.
@@ -344,23 +344,6 @@ function Resolve-OsArchitecture {
     return $null
 }
 
-$detectedOsArchitecture = Resolve-OsArchitecture
-switch ($detectedOsArchitecture) {
-    '64-bit' { $arch = 'x64' }
-    'AMD64'  { $arch = 'x64' }
-    'X64'    { $arch = 'x64' }
-    'ARM64'  { $arch = 'arm64' }
-    'ARM 64-bit Processor' { $arch = 'arm64' }
-    default  { $arch = $null }
-}
-
-if ($arch -notin @('x64', 'arm64')) {
-    Write-Err "Unsupported architecture '$detectedOsArchitecture'."
-    Write-Hint "Only x64 (AMD64) and arm64 are supported on Windows."
-    exit 1
-}
-
-$ArchiveName   = "sesori-bridge-windows-$arch.zip"
 # Returns the Location header of the first (non-followed) redirect for $Url, or
 # $null. Used to learn the version from GitHub's latest -> versioned-download
 # redirect without downloading the asset body.
@@ -476,6 +459,9 @@ function Resolve-BridgeReleaseViaScan {
         if ($release.draft -or $release.prerelease) {
             continue
         }
+        if ($versionText -notmatch '^\d+\.\d+\.\d+$') {
+            continue
+        }
         $parsedVersion = $null
         if (-not [version]::TryParse($versionText, [ref]$parsedVersion)) {
             continue
@@ -516,6 +502,29 @@ function Resolve-BridgeRelease {
     return $release
 }
 
+if ($env:SESORI_INSTALLER_LIBRARY_MODE -eq '1') {
+    return
+}
+
+Init-Style
+
+$detectedOsArchitecture = Resolve-OsArchitecture
+switch ($detectedOsArchitecture) {
+    '64-bit' { $arch = 'x64' }
+    'AMD64'  { $arch = 'x64' }
+    'X64'    { $arch = 'x64' }
+    'ARM64'  { $arch = 'arm64' }
+    'ARM 64-bit Processor' { $arch = 'arm64' }
+    default  { $arch = $null }
+}
+
+if ($arch -notin @('x64', 'arm64')) {
+    Write-Err "Unsupported architecture '$detectedOsArchitecture'."
+    Write-Hint "Only x64 (AMD64) and arm64 are supported on Windows."
+    exit 1
+}
+
+$ArchiveName = "sesori-bridge-windows-$arch.zip"
 $Release = Resolve-BridgeRelease -ArchiveName $ArchiveName
 if (-not $Release -and $arch -eq 'arm64') {
     Write-Warn "No native arm64 bridge release found yet; falling back to the x64 build (runs under emulation on Windows arm64). Re-run this installer after a native arm64 release to switch to the native build."

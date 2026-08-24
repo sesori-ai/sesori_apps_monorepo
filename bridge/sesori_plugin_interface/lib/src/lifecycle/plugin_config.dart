@@ -29,11 +29,13 @@ class const PluginConfigException(
 class PluginConfig {
   /// [values] is held by reference (the constructor is const, so a defensive
   /// copy is impossible) and must not be mutated after construction.
+  // ignore: no_slop_linter/prefer_specific_type, option values have declared heterogeneous types
   const new({required Map<String, Object?> values}) : _values = values;
 
   /// A config with no options, for plugins that declare none.
   const new empty() : _values = const {};
 
+  // ignore: no_slop_linter/prefer_specific_type, option values have declared heterogeneous types
   final Map<String, Object?> _values;
 
   /// Parses [raw] as the integer value of option [name] — the single source
@@ -42,6 +44,7 @@ class PluginConfig {
   /// `null` or empty [raw] returns `null` (absent). A non-numeric value
   /// throws [PluginConfigException] with a usage-style message naming the
   /// flag.
+  // ignore: no_slop_linter/prefer_required_named_parameters, public parsing API
   static int? parseIntegerOption(String name, String? raw) {
     if (raw == null || raw.isEmpty) {
       return null;
@@ -85,6 +88,7 @@ class PluginConfig {
   /// throws for them.
   int? intValue(String name) => parseIntegerOption(name, value(name));
 
+  // ignore: no_slop_linter/prefer_specific_type, option values have declared heterogeneous types
   Object? _require(String name) {
     if (!_values.containsKey(name)) {
       throw ArgumentError.value(name, "name", "Plugin option was never declared");

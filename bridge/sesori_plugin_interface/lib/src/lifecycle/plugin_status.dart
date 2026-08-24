@@ -33,6 +33,7 @@ sealed class const PluginStatus() {
   ///
   /// Transitioning to a status equal to the current one is handled by the
   /// publisher as a no-op and is not part of this relation.
+  // ignore: no_slop_linter/prefer_required_named_parameters, public state-machine API
   bool canTransitionTo(PluginStatus next) {
     return switch (this) {
       PluginStarting() =>
@@ -120,7 +121,7 @@ final class const PluginDegraded({
   @override
   String toString() {
     final action = requiresUserAction ? ", requiresUserAction: $userActionHint" : "";
-    return "PluginDegraded(since: $since, recoverable: $recoverable$action)";
+    return "PluginDegraded(since: ${since.toString()}, recoverable: $recoverable$action)";
   }
 }
 
@@ -157,6 +158,7 @@ final class const PluginFailed({
   required final String reason,
 
   /// The underlying error, when one exists.
+  // ignore: no_slop_linter/prefer_specific_type, caught errors are opaque
   required final Object? cause,
 }) extends PluginStatus {
   @override
@@ -168,7 +170,7 @@ final class const PluginFailed({
   int get hashCode => Object.hash(reason, cause);
 
   @override
-  String toString() => "PluginFailed(reason: $reason${cause == null ? "" : ", cause: $cause"})";
+  String toString() => "PluginFailed(reason: $reason${cause == null ? "" : ", cause: ${cause.toString()}"})";
 }
 
 /// The plugin's `shutdown()` is in progress.

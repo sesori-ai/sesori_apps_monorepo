@@ -76,7 +76,7 @@ class ArchiveExtractor({required final CommandExecutor _commandExecutor}) {
             : _extractZipPosix(archivePath: archivePath, stagingPath: stagingPath),
       };
     } on Object catch (error, stackTrace) {
-      final String reason = "extraction command failed to run: $error";
+      final String reason = "extraction command failed to run: ${error.toString()}";
       Log.w("Archive extraction command threw", error, stackTrace);
       _deleteQuietly(stagingDir);
       return ArchiveExtractionResult.failure(reason: reason);

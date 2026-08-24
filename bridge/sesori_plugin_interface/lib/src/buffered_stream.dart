@@ -32,6 +32,7 @@ class BufferedUntilFirstListener<T>() {
     }
   }
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, mirrors StreamController.addError
   void addError(Object error, [StackTrace? stackTrace]) {
     _ensureOpen();
     if (_hasListener) {

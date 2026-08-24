@@ -12,6 +12,7 @@ enum PluginCommandSource() {
 
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginCommand with _$PluginCommand {
+  // ignore: no_slop_linter/prefer_required_named_parameters, generated public model signature
   const factory({
     required String name,
     String? template,

@@ -38,8 +38,8 @@ five open PRs). Steps sharing a package stay serialized: 4 after 3 (both
 - [ ] **D4** `cryptography_flutter` — default remove as unused (never enabled)
 - [ ] **D5** Material→Prego dialog breadth — default only what the footer and
   confirm-sheet consolidation naturally covers
-- [ ] **D6** `no_slop_linter` in bridge — default small packages only, record
-  counts for the rest
+- [x] **D6** `no_slop_linter` in bridge — default applied: enabled in the three
+  small packages, with counts recorded for the rest
 
 ## Locked Principles
 
@@ -57,7 +57,7 @@ five open PRs). Steps sharing a package stay serialized: 4 after 3 (both
 - [x] Session-detail refresh coordination, dispatcher merging, orchestrator
   splitting, and `ConnectionService`/`RelayClient` lifecycle redesign are out.
 - [x] Architecture-implementation review only for Steps 4, 7, 15, 17, 18, 20,
-  21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 42.
+  21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 42, 43.
 - [x] 1,500 changed-line soft cap; deletion- or generated-heavy overages are
   recorded with the reason.
 
@@ -208,6 +208,27 @@ Fixed titles and order. Status is GitHub's; evidence is in `steps/step-NN.md`.
   `GET /settings` first and fall back to `GET /settings/pull-request-refresh`
   for supported older bridges. Keep the client fallback and bridge route until
   the minimum supported public client and bridge are both greater than v1.8.0.
+
+## Step 43 `no_slop_linter` Counts
+
+Only the three approved small packages include the workspace-root plugin
+configuration. Larger-package counts were measured by temporarily including
+that configuration, then restoring their existing analyzer options.
+
+| Package | Findings | Step 43 enforcement |
+| --- | ---: | --- |
+| `app` | 567 | Deferred |
+| `sesori_bridge_foundation` | 15 before fixes, 0 after | Enabled |
+| `sesori_plugin_interface` | 37 before fixes, 0 after | Enabled |
+| `sesori_plugin_runtime` | 41 before fixes, 0 after | Enabled |
+| `sesori_plugin_opencode` | 403 | Deferred |
+| `sesori_plugin_codex` | 250 | Deferred |
+| `sesori_plugin_acp` | 217 | Deferred |
+| `sesori_plugin_cursor` | 42 | Deferred |
+| `sesori_plugin_omp` | 27 | Deferred |
+| `sesori_plugin_claude` | 161 | Deferred |
+| `sesori_plugin_pi` | 163 | Deferred |
+| `sesori_plugin_hermes` | 5 | Deferred |
 
 ## Plan Review
 

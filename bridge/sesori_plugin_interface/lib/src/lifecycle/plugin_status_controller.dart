@@ -53,9 +53,10 @@ class PluginStatusController({required PluginStatus initial}) {
   ///
   /// Throws [StateError] when the transition is illegal. A no-op when [next]
   /// equals the current status.
+  // ignore: no_slop_linter/prefer_required_named_parameters, public controller API
   void set(PluginStatus next) {
     if (!trySet(next)) {
-      throw StateError("Illegal plugin status transition: $_current -> $next.");
+      throw StateError("Illegal plugin status transition: ${_current.toString()} -> ${next.toString()}.");
     }
   }
 
@@ -64,6 +65,7 @@ class PluginStatusController({required PluginStatus initial}) {
   ///
   /// Use this from racy status sources — an exit monitor firing during a
   /// clean shutdown must not surface `PluginFailed` after `PluginStopping`.
+  // ignore: no_slop_linter/prefer_required_named_parameters, public controller API
   bool trySet(PluginStatus next) {
     if (next == _current) {
       return true;

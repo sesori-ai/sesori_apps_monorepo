@@ -10,6 +10,22 @@ String _installShPath() => p.join(_repoRoot(), 'install.sh');
 
 String _installPs1Path() => p.join(_repoRoot(), 'install.ps1');
 
+String _installerFixturePath() => p.join(Directory.current.path, 'test', 'tool', 'fixtures', 'installer_releases.json');
+
+String _powerShellQuote(String value) => "'${value.replaceAll("'", "''")}'";
+
+String? _powerShellExecutable() {
+  for (final candidate in ['pwsh', 'powershell']) {
+    try {
+      final result = Process.runSync(candidate, const ['-NoProfile', '-NonInteractive', '-Command', r'$null']);
+      if (result.exitCode == 0) return candidate;
+    } on ProcessException {
+      // PowerShell is optional locally; the Ubuntu CI runner provides pwsh.
+    }
+  }
+  return null;
+}
+
 Future<String> _createInstallShLibrary() async {
   final tempDir = await Directory.systemTemp.createTemp('install-sh-lib-');
   addTearDown(() => tempDir.delete(recursive: true));
@@ -667,6 +683,95 @@ cat "\$HOME/.zprofile"
     });
   });
 
+  group('installer release parity', () {
+    test('install.sh selects the newest complete three-component stable release fixture', () async {
+      final libraryPath = await _createInstallShLibrary();
+      final result = await _runBashSnippet(
+        script:
+            '''
+source ${jsonEncode(libraryPath)}
+fetch_redirect_headers() { printf '%s\n' 'HTTP/2 404'; }
+fetch_text() { cat ${jsonEncode(_installerFixturePath())}; }
+resolve_release sesori-bridge-linux-x64.tar.gz
+printf '%s' "\$RESOLVED_VERSION"
+''',
+        environment: {
+          'PATH': Platform.environment['PATH'] ?? '',
+          'HOME': Directory.systemTemp.path,
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect((result.stdout as String).trim(), equals('2.10.0'));
+    });
+
+    final powerShell = _powerShellExecutable();
+    test(
+      'install.ps1 selects the newest complete three-component stable release fixture',
+      () async {
+        final script =
+            '''
+. ${_powerShellQuote(_installPs1Path())}
+function Invoke-RestMethod {
+    param([string]\$Uri, [hashtable]\$Headers)
+    return Get-Content -Raw ${_powerShellQuote(_installerFixturePath())} | ConvertFrom-Json
+}
+\$release = Resolve-BridgeReleaseViaScan -ArchiveName 'sesori-bridge-windows-x64.zip'
+Write-Output \$release.TagName
+''';
+        final result = await Process.run(
+          powerShell!,
+          ['-NoProfile', '-NonInteractive', '-Command', script],
+          environment: {
+            ...Platform.environment,
+            'SESORI_INSTALLER_LIBRARY_MODE': '1',
+          },
+        );
+
+        expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+        expect((result.stdout as String).trim(), equals('v2.10.0'));
+      },
+      skip: powerShell == null ? 'PowerShell is not installed on this host' : false,
+    );
+
+    test(
+      'install.ps1 constructs archive and checksum URLs from GitHub host overrides',
+      () async {
+        final script =
+            '''
+. ${_powerShellQuote(_installPs1Path())}
+function Get-RedirectLocation { return "\$env:GITHUB/sesori-ai/sesori_apps_monorepo/releases/download/v4.5.6/sesori-bridge-windows-x64.zip" }
+function Test-RemoteAssetExists { return \$true }
+\$release = Resolve-BridgeReleaseViaLatest -ArchiveName 'sesori-bridge-windows-x64.zip'
+Write-Output \$release.AssetUrl
+Write-Output \$release.ChecksumsUrl
+Write-Output \$ReleasesApiUrl
+''';
+        final result = await Process.run(
+          powerShell!,
+          ['-NoProfile', '-NonInteractive', '-Command', script],
+          environment: {
+            ...Platform.environment,
+            'SESORI_INSTALLER_LIBRARY_MODE': '1',
+            'GITHUB': 'https://github.enterprise.example',
+            'GITHUB_API': 'https://api.github.enterprise.example',
+          },
+        );
+
+        expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+        expect(
+          (result.stdout as String).trim().split(RegExp(r'\r?\n')),
+          equals([
+            'https://github.enterprise.example/sesori-ai/sesori_apps_monorepo/releases/download/v4.5.6/sesori-bridge-windows-x64.zip',
+            'https://github.enterprise.example/sesori-ai/sesori_apps_monorepo/releases/download/v4.5.6/checksums.txt',
+            'https://api.github.enterprise.example/repos/sesori-ai/sesori_apps_monorepo/releases',
+          ]),
+        );
+      },
+      skip: powerShell == null ? 'PowerShell is not installed on this host' : false,
+    );
+  });
+
   group('install.ps1 contract', () {
     late String script;
 
@@ -705,6 +810,7 @@ cat "\$HOME/.zprofile"
       // Fallback scan retained: pagination + client-side filtering + version sort.
       expect(script, contains(r"$tagName.StartsWith('v')"));
       expect(script, contains(r'''$release.draft -or $release.prerelease'''));
+      expect(script, contains(r"$versionText -notmatch '^\d+\.\d+\.\d+$'"));
       expect(script, contains(r'[version]::TryParse($versionText, [ref]$parsedVersion)'));
       expect(script, contains(r'$page -le $ReleasesMaxPages'));
       expect(script, contains(r'"${ReleasesApiUrl}?per_page=$ReleasesPerPage&page=$page"'));
@@ -776,7 +882,16 @@ cat "\$HOME/.zprofile"
     test('accepts only v release tags', () {
       expect(script, contains(r"if ($tagName.StartsWith('v')) {"));
       expect(script, contains(r'$versionText = $tagName.Substring(1)'));
+      expect(script, contains(r"$versionText -notmatch '^\d+\.\d+\.\d+$'"));
       expect(script, isNot(contains('bridge-v')));
+    });
+
+    test('uses GitHub host overrides and exposes a non-installing library mode', () {
+      expect(script, contains(r'$env:GITHUB.TrimEnd'));
+      expect(script, contains(r'$env:GITHUB_API.TrimEnd'));
+      expect(script, contains(r'$RepoBase   = "$GitHubBase/$RepoOwner/$RepoName"'));
+      expect(script, contains(r'$ReleasesApiUrl = "$GitHubApiBase/repos/$RepoOwner/$RepoName/releases"'));
+      expect(script, contains(r"if ($env:SESORI_INSTALLER_LIBRARY_MODE -eq '1')"));
     });
   });
 }

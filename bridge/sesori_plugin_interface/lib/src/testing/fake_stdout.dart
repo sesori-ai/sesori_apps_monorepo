@@ -18,7 +18,7 @@ class BufferingStdout() implements Stdout {
   void writeln([Object? object = ""]) => _buffer.writeln(object);
 
   @override
-  // ignore: no_slop_linter/prefer_specific_type, Stdout's own signature
+  // ignore: no_slop_linter/prefer_specific_type, no_slop_linter/avoid_dynamic_return_type, Stdout's own signature
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
@@ -38,6 +38,6 @@ class CapturingStdout({required final List<String> lines}) implements Stdout {
   void writeln([Object? object = ""]) => lines.add(object.toString());
 
   @override
-  // ignore: no_slop_linter/prefer_specific_type, Stdout's own signature
+  // ignore: no_slop_linter/prefer_specific_type, no_slop_linter/avoid_dynamic_return_type, Stdout's own signature
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

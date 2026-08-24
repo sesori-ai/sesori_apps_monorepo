@@ -34,6 +34,7 @@ sealed class BridgePluginApi() {
   Stream<BridgeSseEvent> get events;
 
   /// Get sessions for a project directory.
+  // ignore: no_slop_linter/prefer_required_named_parameters, established plugin API signature
   Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit});
 
   /// Get the slash commands available to the current project.
