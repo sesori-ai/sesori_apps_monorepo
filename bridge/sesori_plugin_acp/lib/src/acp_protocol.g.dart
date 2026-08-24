@@ -10,6 +10,8 @@ _AcpSessionInfo _$AcpSessionInfoFromJson(Map json) => _AcpSessionInfo(
   sessionId: json['sessionId'] as String? ?? "",
   cwd: json['cwd'] as String?,
   title: json['title'] as String?,
+  metadata:
+      (json['_meta'] as Map?)?.map((k, e) => MapEntry(k as String, e)) ?? null,
   updatedAtMs: const AcpTimestampMsConverter().fromJson(json['updatedAt']),
 );
 
@@ -19,13 +21,17 @@ Map<String, dynamic> _$AcpSessionInfoToJson(
   'sessionId': instance.sessionId,
   'cwd': ?instance.cwd,
   'title': ?instance.title,
+  '_meta': ?instance.metadata,
   'updatedAt': ?const AcpTimestampMsConverter().toJson(instance.updatedAtMs),
 };
 
-_AcpSessionListResult _$AcpSessionListResultFromJson(Map json) => _AcpSessionListResult(
-  sessions: json['sessions'] == null ? const <AcpSessionInfo>[] : _sessionInfosFromJson(json['sessions']),
-  nextCursor: json['nextCursor'] as String?,
-);
+_AcpSessionListResult _$AcpSessionListResultFromJson(Map json) =>
+    _AcpSessionListResult(
+      sessions: json['sessions'] == null
+          ? const <AcpSessionInfo>[]
+          : _sessionInfosFromJson(json['sessions']),
+      nextCursor: json['nextCursor'] as String?,
+    );
 
 Map<String, dynamic> _$AcpSessionListResultToJson(
   _AcpSessionListResult instance,
