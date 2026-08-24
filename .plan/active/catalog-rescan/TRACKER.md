@@ -357,6 +357,25 @@ refresh gap as consequences of one definition.
 | Regenerate injectable registration for the new service | Verified `client/module_core/lib/src/di/injection.config.dart` exists. Step 4 now runs the build runner and commits its output |
 | Add pane callback plumbing before testing the deep pull | Step 5 introduces the pane's optional `onDeepRefresh` parameter so its own test is implementable; step 6 wires it to the cubit |
 
+### Step 4 implementation review on `catalog-rescan-service`
+
+`architecture-implementation-review` rejected the first pass. Both findings were
+A2 state-ownership violations where the code diverged from the operation model
+the plan had already approved, not disagreements with the model itself. Layering,
+the three declared collaborators, the Layer-3 composition with
+`PluginManagementService`, and the regenerated DI were all cleared.
+
+| Finding | Correction applied |
+|---|---|
+| The all-`404` close acted on dispatch-scoped results and could tear down members it never dispatched | Both terminal branches now require `_members.isEmpty`. A `404` or `503` already removes its own harness, so an empty member set is exactly "nothing else is live"; a joining start that is rejected returns its result and leaves the run alone |
+| Both unsupported-snapshot paths published over a live operation, leaving a non-live state while members were still tracked — so `dismiss()` cleared them without announcing the close and the lists never refreshed | Those publishes are gated on an empty operation, and liveness now reads `_members`, not the published state. Reachable on a v1.6.x bridge, which has `/plugin/import` but not `/plugin/management` |
+
+The reviewer also noted two quality points outside its verdict. The row keeping
+the name of a harness that had just finished was a real wrong label and is
+fixed. The missing value equality on state variants is left alone: `Set<String>`
+has no value equality either, so honest `==` would mean a set comparator for a
+duplicate-emission nicety.
+
 ## Verification Log
 
 - **Step 1 documentation validation:** `git diff --check` passed; step tokens
@@ -414,4 +433,19 @@ refresh gap as consequences of one definition.
   totals-versus-delta contract and its absent-delta fallback in that document
   and in its L2 Routine entry. Step 7 builds on that rather than restating it
 - **Step 3 PR:** pending
+- **Step 4 base:** `main` at `669fd0cd0`
+- **Step 4 changed lines:** 1,271 of delivered code against merge-base
+  `669fd0cd045e5ea8a6740e4f944d0634b0d11939`, over the 700-1,050 target. The
+  overage is test weight: 620 of it is `catalog_rescan_service_test.dart`, which
+  the operation model needs because every rule it encodes — join, dispatch-time
+  membership, observed settlement, the success-only timer — is only observable
+  through a scenario. Production is 653 across six files, inside the estimate.
+  `.plan/` is excluded so the figure cannot count itself
+- **Step 4 verification:** `dart analyze --fatal-infos` clean on
+  `client/module_core`; full module suite 1,333 tests passed, including 28 new
+  `catalog_rescan_service_test.dart` cases
+- **Step 4 review:** `architecture-implementation-review` **rejected** the first
+  pass with two blocking A2 findings, both divergences from the approved
+  operation model, both applied with regression coverage
+- **Step 4 PR:** pending
 - **Final disposition:** pending
