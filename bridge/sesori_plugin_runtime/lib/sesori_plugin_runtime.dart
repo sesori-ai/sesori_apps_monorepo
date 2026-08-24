@@ -1,7 +1,11 @@
+export "src/draining_spawned_process.dart";
+export "src/dynamic_port_candidates.dart";
 export "src/host_json_runtime_ownership_repository.dart";
 export "src/managed_process_service.dart";
+export "src/managed_runtime_bridge_plugin.dart";
 export "src/managed_runtime_monitor.dart";
 export "src/managed_runtime_spec.dart";
+export "src/managed_runtime_status_reporter.dart";
 export "src/provisioning/managed_runtime_cleaner.dart";
 export "src/provisioning/managed_runtime_install_service.dart";
 export "src/provisioning/managed_runtime_inventory.dart";

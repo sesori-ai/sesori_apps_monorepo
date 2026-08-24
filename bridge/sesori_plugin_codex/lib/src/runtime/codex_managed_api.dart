@@ -1,5 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show BridgeDerivedProjectsPluginApi, BridgePluginApi, PluginWorkState;
+    show BridgeDerivedProjectsPluginApi, BridgePluginApi;
+import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart" show ManagedRuntimeApi;
 
 /// The plugin-API object the [CodexPluginDescriptor] drives during `start()`.
 ///
@@ -11,14 +12,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 /// degraded status — before returning. Keeping this as a small interface,
 /// rather than the concrete `CodexPlugin`, lets the descriptor's API
 /// construction be a test seam without forcing a real socket in unit tests.
-abstract interface class CodexManagedApi() implements BridgeDerivedProjectsPluginApi {
-  Stream<PluginWorkState> get workState;
-  PluginWorkState get currentWorkState;
-
-  Future<Set<String>> interruptActiveWork({required Duration budget});
-
-  Future<void> dispose();
-
+abstract interface class CodexManagedApi() implements BridgeDerivedProjectsPluginApi, ManagedRuntimeApi {
   /// Opens the WebSocket transport, performs the `initialize` handshake, and
   /// starts pumping `codex app-server` notifications into [BridgePluginApi.events].
   ///

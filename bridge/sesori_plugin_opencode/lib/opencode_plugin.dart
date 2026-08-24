@@ -31,7 +31,6 @@ export "src/opencode_service.dart";
 export "src/plugin_model_mapper.dart";
 // Runtime internals stay package-private; descriptor and managed API form the
 // public composition surface.
-export "src/runtime/open_code_bridge_plugin.dart";
 export "src/runtime/open_code_managed_api.dart";
 export "src/runtime/open_code_plugin_descriptor.dart";
 export "src/sse_event_parser.dart";

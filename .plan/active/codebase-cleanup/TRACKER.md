@@ -65,8 +65,8 @@ five open PRs). Steps sharing a package stay serialized: 4 after 3 (both
 
 - [x] One `PendingOperations` and one `KeyedParallelLock` (both in
   `sesori_bridge_foundation`), one `AbortableRequestClient` (app foundation),
-  one `PendingPermissionRegistry` base, one managed-runtime start helper, one
-  `RuntimeProbeOutcome`, one `NdjsonProcessClient` (`sesori_plugin_runtime`),
+  one `PendingPermissionRegistry` base, one managed-runtime lifecycle wrapper,
+  one `RuntimeProbeOutcome`, one `NdjsonProcessClient` (`sesori_plugin_runtime`),
   one per-cubit `LoadedStateAnalyticsReporter` — no second variant of any of
   them, and no caller state on singleton services.
 - [x] No listener base class, generic tool tracker, merged dispatcher, shared

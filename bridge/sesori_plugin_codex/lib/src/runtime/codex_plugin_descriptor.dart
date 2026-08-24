@@ -30,7 +30,6 @@ import "../repositories/mappers/codex_user_content_mapper.dart";
 import "../services/codex_authentication_service.dart";
 import "../services/codex_rollout_tailer.dart";
 import "../services/codex_session_service.dart";
-import "codex_bridge_plugin.dart";
 import "codex_desktop_app_locator.dart";
 import "codex_managed_api.dart";
 import "codex_ownership_record.dart";
@@ -38,7 +37,6 @@ import "codex_record_mapper.dart";
 import "codex_runtime_manifest.dart";
 import "codex_runtime_policy.dart";
 import "codex_runtime_selection_service.dart";
-import "codex_status_reporter.dart";
 
 const int _setupProbeOutputLimit = 64 * 1024;
 
@@ -436,7 +434,7 @@ class const CodexPluginDescriptor({
   }
 
   @override
-  Future<CodexBridgePlugin> start(PluginHost host) async {
+  Future<ManagedRuntimeBridgePlugin<CodexOwnershipRecord, CodexManagedApi>> start(PluginHost host) async {
     if (host.startAborted.isAborted) {
       throw const PluginStartAbortedException();
     }
@@ -523,7 +521,7 @@ class const CodexPluginDescriptor({
 
     final ownedRecord = handle.record;
 
-    final reporter = CodexRuntimeStatusReporter(
+    final reporter = ManagedRuntimeStatusReporter(
       status: PluginStatusController(initial: const PluginStarting()),
       clock: host.clock,
       degradedDebounce: _degradedDebounce,
@@ -554,14 +552,21 @@ class const CodexPluginDescriptor({
             onDisconnected: reporter.markDisconnected,
           );
 
-    final plugin = CodexBridgePlugin(
+    final plugin = ManagedRuntimeBridgePlugin<CodexOwnershipRecord, CodexManagedApi>(
       api: api,
+      managedApi: api,
       reporter: reporter,
       monitor: monitor,
       service: service,
       ownedRecord: ownedRecord,
-      port: port,
-      serverUrl: serverUrl,
+      diagnostics: PluginDiagnostics(
+        pluginId: Harness.codex.name,
+        endpoint: serverUrl,
+        details: <String, String>{"port": "$port", "mode": "managed"},
+      ),
+      displayName: "Codex",
+      logContext: "codex",
+      interruptOwnedOnly: false,
     );
 
     // Await cold-start (the WebSocket connect + `initialize` handshake). A

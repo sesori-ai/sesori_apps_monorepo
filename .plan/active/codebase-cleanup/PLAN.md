@@ -889,14 +889,18 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   rollback ≈ 120 lines the same modulo names.
 - Change (in `sesori_plugin_runtime`): `DrainingSpawnedProcess` +
   `dynamicPortCandidates(...)`; `ManagedRuntimeStatusReporter` (codex's variant);
-  `ManagedRuntimeApi` + generic `ManagedRuntimeBridgePlugin<R>` with an
-  owned-only-interrupt option for OpenCode attach mode; a
-  `startManagedRuntimePlugin(...)` helper owning construction → port policy →
-  start → reporter/monitor → api → wrapper → bounded cold start → abort
-  rollback; if it grows beyond thin composition it becomes a named collaborator
-  class with constructor-injected dependencies, not a free function.
-  Descriptors keep config parsing, OpenCode attach/degraded branches, and the
-  spawn/probe seams. Ownership-record unification (JSON keys in
+  a lifecycle-only `ManagedRuntimeApi` plus generic
+  `ManagedRuntimeBridgePlugin<R, A>` with an owned-only-interrupt option for
+  OpenCode attach mode. `BridgePluginApi` is sealed around project ownership,
+  so the lifecycle API remains a separate facet rather than becoming another
+  project-ownership subtype. Re-verification found that descriptor startup is
+  no longer one invariant: OpenCode now has attach, unreachable/degraded, and
+  nullable-handle branches with different rollback ownership, while Codex is
+  managed-only. The planned `startManagedRuntimePlugin(...)` helper is therefore
+  dropped instead of flattening those policies into flags. Descriptors keep
+  config parsing, all startup/abort/rollback orchestration, OpenCode
+  attach/degraded branches, and spawn/probe seams. Ownership-record unification
+  (JSON keys in
   `codex-processes.json`/`opencode-processes.json`) is **deferred** to the D1
   decision.
 - Verify: runtime suite; `codex/test/runtime/*`; `opencode/test/runtime/*`;

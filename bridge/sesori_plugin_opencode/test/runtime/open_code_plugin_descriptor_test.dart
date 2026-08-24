@@ -387,8 +387,8 @@ void main() {
       final plugin = await descriptor().start(host);
 
       expect(plugin.currentStatus, isA<PluginReady>());
-      expect(plugin.port, equals(51000));
-      expect(plugin.serverUrl, equals("http://127.0.0.1:51000"));
+      expect(int.parse(plugin.describe().details["port"]!), equals(51000));
+      expect(plugin.describe().endpoint, equals("http://127.0.0.1:51000"));
       expect(plugin.describe().details["mode"], equals("managed"));
       expect(plugin.describe().endpoint, equals("http://127.0.0.1:51000"));
       expect(apiRecorder.last!.initializeCalled, isTrue);
@@ -421,7 +421,7 @@ void main() {
       final plugin = await descriptor().start(wildcardHost);
 
       // 0.0.0.0 is not a connectable target, so the bridge dials loopback.
-      expect(plugin.serverUrl, equals("http://127.0.0.1:51000"));
+      expect(plugin.describe().endpoint, equals("http://127.0.0.1:51000"));
       // ...while OpenCode is actually told to bind the wildcard.
       final record = wildcardHost.ownershipRecord("owner-current");
       expect(
@@ -449,7 +449,7 @@ void main() {
 
       final plugin = await descriptor().start(concreteHost);
 
-      expect(plugin.serverUrl, equals("http://10.0.0.5:51000"));
+      expect(plugin.describe().endpoint, equals("http://10.0.0.5:51000"));
 
       await plugin.shutdown(budget: null);
     });
@@ -472,7 +472,7 @@ void main() {
       final plugin = await descriptor().start(wildcardHost);
 
       // :: resolves to ::1 (same address family), bracketed in the URL.
-      expect(plugin.serverUrl, equals("http://[::1]:51000"));
+      expect(plugin.describe().endpoint, equals("http://[::1]:51000"));
       final record = wildcardHost.ownershipRecord("owner-current");
       expect(
         record!["openCodeArgs"],
@@ -499,7 +499,7 @@ void main() {
 
       final plugin = await descriptor().start(ipv6Host);
 
-      expect(plugin.serverUrl, equals("http://[::1]:51000"));
+      expect(plugin.describe().endpoint, equals("http://[::1]:51000"));
 
       await plugin.shutdown(budget: null);
     });
@@ -522,7 +522,7 @@ void main() {
       final plugin = await descriptor().start(paddedHost);
 
       // Trimmed to the wildcard, which resolves to the loopback connect host.
-      expect(plugin.serverUrl, equals("http://127.0.0.1:51000"));
+      expect(plugin.describe().endpoint, equals("http://127.0.0.1:51000"));
       final record = paddedHost.ownershipRecord("owner-current");
       expect(
         record!["openCodeArgs"],
@@ -716,7 +716,7 @@ void main() {
       final plugin = await descriptor.start(host);
 
       expect(plugin.currentStatus, isA<PluginReady>());
-      expect(plugin.port, equals(4096));
+      expect(int.parse(plugin.describe().details["port"]!), equals(4096));
       expect(plugin.describe().details["mode"], equals("attached"));
       expect(host.ownershipRecord("owner-current"), isNull);
       expect(host.processes.spawnedProcesses, isEmpty);
@@ -745,7 +745,7 @@ void main() {
       final plugin = await descriptor.start(remoteHost);
 
       expect(plugin.currentStatus, isA<PluginReady>());
-      expect(plugin.serverUrl, equals("http://10.0.0.5:4096"));
+      expect(plugin.describe().endpoint, equals("http://10.0.0.5:4096"));
 
       await plugin.shutdown(budget: null);
     });

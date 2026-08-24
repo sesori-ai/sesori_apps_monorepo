@@ -9,7 +9,6 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness, StringExtensions;
 
 import "../opencode_plugin_impl.dart";
-import "open_code_bridge_plugin.dart";
 import "open_code_managed_api.dart";
 import "open_code_ownership_record.dart";
 import "open_code_record_mapper.dart";
@@ -479,7 +478,7 @@ class const OpenCodePluginDescriptor({
   }
 
   @override
-  Future<OpenCodeBridgePlugin> start(PluginHost host) async {
+  Future<ManagedRuntimeBridgePlugin<OpenCodeOwnershipRecord, OpenCodeManagedApi>> start(PluginHost host) async {
     // The OpenCode database is intentionally left untouched. Previous
     // auto-vacuum maintenance has been removed because it interfered with
     // the database while OpenCode was running.
@@ -650,7 +649,7 @@ class const OpenCodePluginDescriptor({
 
     final ownedRecord = handle?.record;
 
-    final reporter = OpenCodeRuntimeStatusReporter(
+    final reporter = ManagedRuntimeStatusReporter(
       status: PluginStatusController(initial: const PluginStarting()),
       clock: host.clock,
       degradedDebounce: _degradedDebounce,
@@ -679,14 +678,21 @@ class const OpenCodePluginDescriptor({
       onDisconnected: reporter.markDisconnected,
     );
 
-    final plugin = OpenCodeBridgePlugin(
+    final plugin = ManagedRuntimeBridgePlugin<OpenCodeOwnershipRecord, OpenCodeManagedApi>(
       api: api,
+      managedApi: api,
       reporter: reporter,
       monitor: monitor,
       service: service,
       ownedRecord: ownedRecord,
-      port: port,
-      serverUrl: serverUrl,
+      diagnostics: PluginDiagnostics(
+        pluginId: Harness.opencode.name,
+        endpoint: serverUrl,
+        details: <String, String>{"port": "$port", "mode": ownedRecord == null ? "attached" : "managed"},
+      ),
+      displayName: "OpenCode",
+      logContext: "opencode",
+      interruptOwnedOnly: true,
     );
 
     if (handle == null) {
