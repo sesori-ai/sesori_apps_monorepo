@@ -472,7 +472,8 @@ duplicate-emission nicety.
 - **Step 4 review:** `architecture-implementation-review` **rejected** the first
   pass with two blocking A2 findings, both divergences from the approved
   operation model, both applied with regression coverage
-- **Step 4 PR:** pending
+- **Step 4 PR:** [#1085](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1085)
+  merged
 - **Step 5 base:** `main` at `bafa7cd02`
 - **Step 5 changed lines:** 427 of delivered code, inside the 350-600 target;
   `.plan/` excluded so the figure cannot count itself
@@ -487,7 +488,8 @@ duplicate-emission nicety.
   observations were applied: `PLAN.md`'s Step 5 scope section still described the
   unbuildable release semantics and would have misdirected step 6, and the new
   design-system file's doc comments carried product vocabulary
-- **Step 5 PR:** pending
+- **Step 5 PR:** [#1093](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1093)
+  merged
 - **Step 6a base:** `main` at `0969f00d6`
 - **Step 6a changed lines:** 346 of delivered code, under the 450-750 estimate
   because the cubits reuse their existing refresh rather than adding one

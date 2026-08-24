@@ -948,6 +948,16 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
 
 ## Step 6/8 - Surface Catalog Rescan In The App
 
+Delivered as 6a, 6b, and 6c. The scope and verification below are the
+**aggregate** of all three; the sub-step that owns each part is marked, so a
+reviewer of one PR can see what belongs to it.
+
+- **6a** owns the cubit bullet and its module_core verification.
+- **6b** owns the row widget, the three list hosts, and their `app_en.arb`
+  resources, plus the widget tests for the row states.
+- **6c** owns the Settings action, its enablement and rejection, and its
+  resources.
+
 ### Scope
 
 - `ProjectListCubit`, `SessionListCubit`, and `PluginManagementCubit` each
