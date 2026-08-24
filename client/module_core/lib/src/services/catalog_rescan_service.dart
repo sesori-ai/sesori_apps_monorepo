@@ -72,6 +72,14 @@ class CatalogRescanService({
   /// after them rather than racing its own POST.
   final Set<Future<void>> _pendingStarts = {};
 
+  /// A cancellation that has not finished dispatching its DELETEs.
+  ///
+  /// A cancel has to wait for any start still in flight, or its DELETE can
+  /// overtake the POST and cancel nothing. That wait would otherwise leave a
+  /// window where a new rescan could begin and inherit those DELETEs, so a
+  /// start waits for the cancel to finish owning its plugin ids first.
+  Future<void>? _cancelling;
+
   Timer? _clearTimer;
   bool _connected = _connectionService.currentStatus is ConnectionConnected;
   String? _activeBridgeId;
@@ -125,24 +133,32 @@ class CatalogRescanService({
 
   /// Cancels every member of the live operation, whether or not progress has
   /// begun. The route cancels one plugin per call, so this fans out.
-  Future<void> cancel() async {
-    if (_disposed || _members.isEmpty) return;
-    final pluginIds = Set<String>.of(_members);
+  Future<void> cancel() {
+    if (_disposed || _members.isEmpty) return Future<void>.value();
+    return _cancelling = _cancel(pluginIds: Set<String>.of(_members));
+  }
+
+  Future<void> _cancel({required Set<String> pluginIds}) async {
     // Close first so the row goes at once, then wait for any start still in
     // flight: a DELETE that overtakes its POST finds no import to cancel, and
     // the import the user just cancelled would run anyway.
     _closeOperation(const CatalogRescanState.idle());
-    await Future.wait(_pendingStarts);
-    final outcomes = await Future.wait([
-      for (final pluginId in pluginIds) _pluginRepository.cancelCatalogImport(pluginId: pluginId),
-    ]);
-    for (final outcome in outcomes) {
-      // A refused or unprovable cancel means the import may still be running,
-      // and nothing else records that.
-      if (outcome case CatalogImportMutationFailure(:final error) ||
-          CatalogImportMutationUncertain(:final error)) {
-        logw("Catalog rescan cancellation was not confirmed for a harness", error);
-      }
+    try {
+      await Future.wait(_pendingStarts);
+      await Future.wait([
+        for (final pluginId in pluginIds)
+          _pluginRepository.cancelCatalogImport(pluginId: pluginId).then((outcome) {
+            // A refused or unprovable cancel means that import may still be
+            // running, and nothing else records it. The harness id is the only
+            // thing that identifies which one, since every call shares a route.
+            if (outcome case CatalogImportMutationFailure(:final error) ||
+                CatalogImportMutationUncertain(:final error)) {
+              logw("Catalog rescan cancellation was not confirmed for $pluginId", error);
+            }
+          }),
+      ]);
+    } finally {
+      _cancelling = null;
     }
   }
 
@@ -168,6 +184,15 @@ class CatalogRescanService({
     required List<String> pluginIds,
     required bool coversEveryHarness,
   }) async {
+    // Never begin inside a cancellation's window: its DELETEs are already
+    // aimed at these plugin ids and would cancel this run instead. Guarded
+    // rather than awaited unconditionally, because `await null` still yields,
+    // and the operation must open before this call returns to its caller so an
+    // immediate cancel can see it.
+    if (_cancelling case final cancelling?) {
+      await cancelling;
+      if (_disposed) return {};
+    }
     _openOrJoin(pluginIds: pluginIds, observed: false);
     final results = <String, CatalogRescanStartResult>{};
     final dispatched = [
@@ -277,6 +302,10 @@ class CatalogRescanService({
       if (_isTerminal(progress)) return;
       _openOrJoin(pluginIds: [pluginId], observed: true);
     }
+    // Someone else cancelled a member of this run. That is intervention, not
+    // failure, and it means this client no longer saw the whole operation, so
+    // it settles quietly instead of publishing a persistent failure row.
+    if (progress is CatalogImportCancelled) _observed = true;
     _progressByPluginId[pluginId] = progress;
     if (_isTerminal(progress)) {
       _settleIfComplete();

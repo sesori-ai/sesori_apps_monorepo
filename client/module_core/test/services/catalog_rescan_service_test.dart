@@ -508,6 +508,53 @@ void main() {
       expect(repository.cancelledPluginIds, contains("codex"));
     });
 
+    test("a rescan started during a cancellation does not inherit its DELETEs", () async {
+      final release = Completer<CatalogImportMutationResult>();
+      repository.pendingFor["codex"] = release.future;
+      final firstRun = service.startAll();
+
+      final cancelling = service.cancel();
+      // The user taps rescan again while the cancellation is still waiting for
+      // the first start to come back.
+      final secondRun = service.startAll();
+      await pumpEventQueue();
+
+      expect(
+        repository.startedPluginIds.where((id) => id == "codex"),
+        hasLength(1),
+        reason: "the second start must not begin inside the cancellation window",
+      );
+
+      release.complete(const CatalogImportMutationResult.accepted());
+      await firstRun;
+      await cancelling;
+      await secondRun;
+
+      expect(repository.cancelledPluginIds, contains("codex"));
+      expect(
+        repository.startedPluginIds.where((id) => id == "codex"),
+        hasLength(2),
+        reason: "and must run once the cancellation has dispatched",
+      );
+    });
+
+    test("an outside cancellation settles quietly instead of showing a failure", () async {
+      build(snapshot: _snapshot(routable: const {"codex": "Codex"}));
+      final settled = <void>[];
+      service.settled.listen(settled.add);
+      await service.startAll();
+
+      // Another connected surface cancelled this harness.
+      connection.emitProgress(const CatalogImportProgress.cancelled(pluginId: "codex"));
+
+      expect(
+        service.state.value,
+        isA<CatalogRescanIdle>(),
+        reason: "a deliberate cancellation elsewhere is not this run's failure",
+      );
+      expect(settled, hasLength(1));
+    });
+
     test("recovers an in-flight import when resolved onto a live connection", () async {
       repository = _FakePluginRepository();
       connection = _FakeConnectionService(initialStatus: _connected);

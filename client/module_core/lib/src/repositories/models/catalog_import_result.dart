@@ -35,8 +35,8 @@ final class const CatalogImportMutationUnavailable() extends CatalogImportMutati
 final class const CatalogImportMutationUncertain({required final ApiError error})
     extends CatalogImportMutationResult;
 
-/// The bridge answered and refused, or the answer was unusable for a reason
-/// that is not a lost response. [error] is retained so the caller can log it.
+/// Any error not classified as a `404`, a `503`, or an uncertain outcome.
+/// [error] is retained so the caller can log it.
 final class const CatalogImportMutationFailure({required final ApiError error})
     extends CatalogImportMutationResult;
 
