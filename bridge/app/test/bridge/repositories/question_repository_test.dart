@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:io";
 
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/repositories/pending_interaction_support.dart";
 import "package:sesori_bridge/src/repositories/question_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -41,6 +42,7 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "codex",
+        preservePullRequestScope: false,
       );
     }
 
@@ -65,6 +67,7 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           pluginId: "codex",
+          preservePullRequestScope: false,
         );
       } else {
         await db.sessionDao.insertObservedChild(
@@ -161,6 +164,7 @@ void main() {
       );
       final repository = QuestionRepository(
         runtime: createTestPluginRuntime(plugins: [healthyPlugin, throwingPlugin, timedOutPlugin]),
+        pendingSupport: PendingInteractionSupport(sessionDao: db.sessionDao),
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         aggregateSourceDeadline: const Duration(milliseconds: 20),
@@ -203,6 +207,7 @@ void main() {
       );
       final repository = QuestionRepository(
         runtime: createTestPluginRuntime(plugins: [emptyPlugin, failedPlugin]),
+        pendingSupport: PendingInteractionSupport(sessionDao: db.sessionDao),
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         aggregateSourceDeadline: const Duration(milliseconds: 20),
@@ -224,6 +229,7 @@ void main() {
       );
       final repository = QuestionRepository(
         runtime: createTestPluginRuntime(plugins: [throwingPlugin, timedOutPlugin]),
+        pendingSupport: PendingInteractionSupport(sessionDao: db.sessionDao),
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         aggregateSourceDeadline: const Duration(milliseconds: 20),
@@ -263,6 +269,7 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "codex",
+        preservePullRequestScope: false,
       );
       final plugin = _FakeDerivedQuestionPlugin(
         launchDirectory: parent,

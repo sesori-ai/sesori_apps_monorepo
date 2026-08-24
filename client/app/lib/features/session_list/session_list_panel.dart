@@ -1,3 +1,4 @@
+import "package:cupertino_ui/cupertino_ui.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -123,9 +124,16 @@ class const SessionListPanel({
   /// pull-to-refresh (only once the list has loaded).
   Widget _buildScrollableContent(BuildContext context, {required SessionListState state}) {
     final isRefreshing = state is SessionListLoaded && state.isRefreshing;
-    Widget scrollView = CustomScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
+    final canRefresh = state is SessionListLoaded;
+    return CustomScrollView(
+      physics: canRefresh
+          ? const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics())
+          : const AlwaysScrollableScrollPhysics(),
       slivers: [
+        if (canRefresh)
+          CupertinoSliverRefreshControl(
+            onRefresh: () => refreshSessionList(context),
+          ),
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
         SessionListContent(
           projectName: projectName,
@@ -135,16 +143,6 @@ class const SessionListPanel({
         ),
       ],
     );
-    if (state is SessionListLoaded) {
-      // This control owns drag progress and the held in-flight presentation;
-      // PregoActivityIndicator cannot replace either interaction state.
-      // ignore: no_slop_linter/avoid_flutter_spinners
-      scrollView = RefreshIndicator(
-        onRefresh: () => refreshSessionList(context),
-        child: scrollView,
-      );
-    }
-    return scrollView;
   }
 
   String _title({required AppLocalizations loc}) => switch (projectName) {

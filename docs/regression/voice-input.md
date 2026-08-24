@@ -13,6 +13,8 @@ transcription endpoint are external.
   never leaves the composer stuck.
 - One interaction at a time: a concurrent start is ignored, and a release during recorder startup discards the
   incomplete recording.
+- Starting, recording, transcribing, and cancelling are mutually exclusive composer interactions; input from a stale
+  interaction cannot reset or append text into a newer one.
 - While recording the composer shows live amplitude, holds a stable layout, keeps the screen awake, and offers
   drag-to-cancel; recording reaches a maximum duration and signals auto-stop instead of running indefinitely.
 - Cancel stops the recorder, releases the wake lock, attempts audio-file deletion,

@@ -435,8 +435,8 @@ class _QuestionModalState() extends State<QuestionModal> {
                     ),
                   ],
                 ),
+              ),
         ),
-      ),
     );
   }
 }
@@ -724,6 +724,33 @@ class const _QuestionStep({
 // Option tile
 // -----------------------------------------------------------------------------
 
+class const _ChoiceTile({
+  required final Color color,
+  required final ShapeBorder shape,
+  required final VoidCallback onTap,
+  required final Widget child,
+  final Key? materialKey,
+  final double bottomSpacing = 0,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final tile = Material(
+      key: materialKey,
+      color: color,
+      shape: shape,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        customBorder: shape,
+        onTap: onTap,
+        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), child: child),
+      ),
+    );
+    return bottomSpacing == 0
+        ? tile
+        : Padding(padding: EdgeInsetsDirectional.only(bottom: bottomSpacing), child: tile);
+  }
+}
+
 class const _OptionTile({
     required final QuestionOption option,
     required final bool isMultiple,
@@ -734,19 +761,14 @@ class const _OptionTile({
   Widget build(BuildContext context) {
     final prego = context.prego;
 
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(bottom: 8),
-      child: Material(
+    return _ChoiceTile(
+      bottomSpacing: 8,
         // bgSurface1 so the card reads as raised against the sheet's
         // bgSecondary surface (bgSecondary here would vanish into it).
-        color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgSurface1,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
+      color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgSurface1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onTap: onTap,
+      child: Row(
               children: [
                 Icon(
                   isMultiple
@@ -778,9 +800,6 @@ class const _OptionTile({
                   ),
                 ),
               ],
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -802,8 +821,8 @@ class const _DeclineQuestionTile({
     return Semantics(
       button: true,
       selected: isSelected,
-      child: Material(
-        key: const Key("decline-current-question"),
+      child: _ChoiceTile(
+        materialKey: const Key("decline-current-question"),
         color: isSelected ? prego.colors.bgQuaternary : prego.colors.bgSurface1,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -811,12 +830,8 @@ class const _DeclineQuestionTile({
             color: isSelected ? prego.colors.borderPrimary : prego.colors.borderSecondary,
           ),
         ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
+        onTap: onTap,
+        child: Row(
               children: [
                 Icon(
                   TablerRegular.circle_minus,
@@ -844,8 +859,6 @@ class const _DeclineQuestionTile({
                   ),
                 ),
               ],
-            ),
-          ),
         ),
       ),
     );
@@ -868,19 +881,14 @@ class const _CustomAnswerTile({
     final prego = context.prego;
     final loc = context.loc;
 
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(bottom: 8),
-      child: Material(
+    return _ChoiceTile(
+      bottomSpacing: 8,
         // bgSurface1 so the card reads as raised against the sheet's
         // bgSecondary surface (bgSecondary here would vanish into it).
-        color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgSurface1,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
+      color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgSurface1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onTap: onTap,
+      child: Row(
               crossAxisAlignment: .start,
               children: [
                 Padding(
@@ -909,9 +917,6 @@ class const _CustomAnswerTile({
                   ),
                 ),
               ],
-            ),
-          ),
-        ),
       ),
     );
   }

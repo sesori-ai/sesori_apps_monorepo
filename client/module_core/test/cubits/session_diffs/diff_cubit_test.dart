@@ -9,6 +9,7 @@ import "package:sesori_dart_core/src/cubits/session_diffs/diff_state.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_preference.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
+import "package:sesori_dart_core/src/services/loaded_state_analytics_reporter.dart";
 import "package:sesori_dart_core/src/services/models/product_analytics_state.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -40,7 +41,9 @@ void main() {
     DiffCubit buildCubit({Duration staleRetryDelay = const Duration(milliseconds: 10)}) => DiffCubit(
       sessionRepository: mockSessionRepository,
       connectionService: mockConnectionService,
-      productAnalyticsService: mockProductAnalyticsService,
+      loadedStateAnalyticsReporter: LoadedStateAnalyticsReporter.sessionDiff(
+        productAnalyticsService: mockProductAnalyticsService,
+      ),
       sessionId: sessionId,
       staleRetryDelay: staleRetryDelay,
     );
@@ -156,6 +159,53 @@ void main() {
           occurredAtUtc: any(named: "occurredAtUtc"),
         ),
       ).called(2);
+    });
+
+    test("an empty diff does not retry while a manual refresh is loading", () async {
+      final analyticsStates = BehaviorSubject<ProductAnalyticsState>.seeded(ProductAnalyticsState.initial);
+      addTearDown(analyticsStates.close);
+      when(() => mockProductAnalyticsService.state).thenAnswer((_) => analyticsStates.value);
+      when(() => mockProductAnalyticsService.stateStream).thenAnswer((_) => analyticsStates.stream);
+      when(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).thenAnswer((_) async => AnalyticsDeliveryResult.failed);
+      final refreshResponse = Completer<ApiResponse<SessionDiffsResponse>>();
+      var requestCount = 0;
+      when(() => mockSessionRepository.getSessionDiffs(sessionId: sessionId)).thenAnswer(
+        (_) => ++requestCount == 1
+            ? Future.value(ApiResponse.success(const SessionDiffsResponse(diffs: <FileDiff>[])))
+            : refreshResponse.future,
+      );
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      final refresh = cubit.refresh();
+      expect(cubit.state, isA<DiffStateLoading>());
+      analyticsStates.add(
+        const ProductAnalyticsState(
+          preference: ProductAnalyticsPreferenceKnown(
+            preference: ProductAnalyticsPreference.enabled,
+          ),
+          synchronization: ProductAnalyticsSynchronized(),
+          availability: ProductAnalyticsActive(),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.sessionDiffViewed(
+            changeState: AnalyticsChangeState.empty,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(1);
+      refreshResponse.complete(ApiResponse.error(ApiError.generic()));
+      await refresh;
     });
 
     // -------------------------------------------------------------------------

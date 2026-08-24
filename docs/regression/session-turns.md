@@ -91,17 +91,18 @@ defaults and queued client sends coherent.
   boundary, so earlier prose in a multi-tool turn does not depend on the final
   turn snapshot. Sesori does not call form-elicitation or unadvertised
   session-close methods to complete an ordinary turn.
-- Existing-session ACP prompts remain bridge-queued while an earlier turn,
-  process-wide lane, resume, or selection blocks their `session/prompt` frame.
-  Their synthetic user transcript message is published only after that frame
-  flushes successfully to the agent's stdin. Follow-up and replayed user
-  messages preserve ordered text and bounded data-backed image parts, including
-  attachment-only prompts. Initial projection contains only normalized
-  user-visible text plus those images; injected context, local paths, and URLs
-  remain absent. OMP preserves its active-prompt replacement semantics by
-  cancelling the active turn immediately, then dispatching the newly queued
-  input after cancellation settles; Cursor and Hermes retain ordinary FIFO turn
-  boundaries.
+- Existing-session ACP prompts remain bridge-queued while an earlier same-session
+  turn, declared process-wide lane, resume, or selection blocks their
+  `session/prompt` frame. Their synthetic user transcript message is published
+  only after that frame flushes successfully to the agent's stdin. Follow-up and
+  replayed user messages preserve ordered text and bounded data-backed image
+  parts, including attachment-only prompts. Initial projection contains only
+  normalized user-visible text plus those images; injected context, local paths,
+  and URLs remain absent. OMP runs different sessions concurrently because its
+  permission and form requests carry explicit session IDs. Within one OMP
+  session, it preserves active-prompt replacement by cancelling the active turn
+  immediately, then dispatching the newly queued input after cancellation
+  settles; Cursor and Hermes retain ordinary FIFO turn boundaries.
 - Normalized user-message events feed the durable user-side activity marker used
   to order running roots. Known event times are applied monotonically. Backend
   input represented as a user message, including automatic compaction or other

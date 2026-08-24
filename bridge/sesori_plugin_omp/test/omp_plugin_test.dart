@@ -113,8 +113,8 @@ void main() {
       expect(await connecting, isTrue);
     });
 
-    test("uses OMP's process-wide and fail-closed policies", () {
-      expect(plugin.serializesPromptsProcessWide, isTrue);
+    test("uses OMP's per-session and fail-closed policies", () {
+      expect(plugin.serializesPromptsProcessWide, isFalse);
       expect(plugin.cancelsActiveTurnForQueuedInput, isTrue);
       expect(plugin.failsTurnOnSelectionError, isTrue);
       expect(plugin.supportsFormElicitation, isTrue);
@@ -208,7 +208,7 @@ void main() {
       expect(await project, isEmpty);
     });
 
-    test("serializes prompts and routes sessionless forms to the active turn", () async {
+    test("runs sessions concurrently and routes forms by explicit session id", () async {
       await connect();
       final first = await create("first");
       final second = await create("second");
@@ -216,14 +216,15 @@ void main() {
       await send(first.id, "one");
       final firstPrompt = await waitForFrame(AcpMethods.sessionPrompt);
       await send(second.id, "two");
-      await Future<void>.delayed(Duration.zero);
-      expect(frames(AcpMethods.sessionPrompt), hasLength(1));
+      final secondPrompt = await waitForFrame(AcpMethods.sessionPrompt, count: 2);
+      expect((secondPrompt["params"] as Map)["sessionId"], second.id);
 
       fake.emit({
         "jsonrpc": "2.0",
         "id": 41,
         "method": AcpMethods.elicitationCreate,
         "params": {
+          "sessionId": first.id,
           "mode": "form",
           "message": "Configure extension",
           "requestedSchema": {
@@ -251,8 +252,6 @@ void main() {
       });
 
       respond(firstPrompt, {"stopReason": "end_turn"});
-      final secondPrompt = await waitForFrame(AcpMethods.sessionPrompt, count: 2);
-      expect((secondPrompt["params"] as Map)["sessionId"], second.id);
       respond(secondPrompt, {"stopReason": "end_turn"});
     });
 

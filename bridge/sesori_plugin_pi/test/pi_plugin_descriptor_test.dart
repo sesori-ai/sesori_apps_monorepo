@@ -125,7 +125,6 @@ void main() {
               required healthTimeout,
               required idleTimeout,
               required editorTimeout,
-              required maxCatalogModels,
             }) {
               capturedBinaryPath = binaryPath;
               capturedStorageEnvironment = storageEnvironment;
@@ -144,7 +143,6 @@ void main() {
                 healthTimeout: healthTimeout,
                 idleTimeout: idleTimeout,
                 editorTimeout: editorTimeout,
-                maxCatalogModels: maxCatalogModels,
               );
             },
       );
@@ -182,7 +180,6 @@ void main() {
               required healthTimeout,
               required idleTimeout,
               required editorTimeout,
-              required maxCatalogModels,
             }) {
               built = _plugin(
                 binaryPath: binaryPath,
@@ -198,7 +195,6 @@ void main() {
                 healthTimeout: healthTimeout,
                 idleTimeout: idleTimeout,
                 editorTimeout: editorTimeout,
-                maxCatalogModels: maxCatalogModels,
               );
               abort.abort();
               return built!;
@@ -257,7 +253,6 @@ PiPlugin _plugin({
   required Duration healthTimeout,
   required Duration idleTimeout,
   required Duration editorTimeout,
-  required int maxCatalogModels,
 }) => PiPlugin(
   binaryPath: binaryPath,
   storageEnvironment: storageEnvironment,
@@ -272,7 +267,6 @@ PiPlugin _plugin({
   healthTimeout: healthTimeout,
   idleTimeout: idleTimeout,
   editorTimeout: editorTimeout,
-  maxCatalogModels: maxCatalogModels,
 );
 
 class _Host({

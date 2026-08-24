@@ -13,18 +13,17 @@ import "../../logging/logging.dart";
 import "../../platform/lifecycle_source.dart";
 import "../relay/relay_client.dart";
 import "../relay/relay_config.dart";
+import "../relay/relay_request_id_generator.dart";
 import "../relay/room_key_storage.dart";
 import "api_paths.dart";
 import "models/connection_status.dart";
 import "models/sse_event.dart";
 import "server_connection_config.dart";
 
-@lazySingleton
 class const ClockProvider() {
   DateTime call() => DateTime.now();
 }
 
-@lazySingleton
 class const RelayClientFactory() {
   RelayClient call({
     required String relayHost,
@@ -47,8 +46,8 @@ class ConnectionService(
   final AuthSession _authSession,
   final LifecycleSource _lifecycleSource,
   final FailureReporter _failureReporter, {
-  @visibleForTesting final ClockProvider _clock = const ClockProvider(),
-  @visibleForTesting final RelayClientFactory _relayClientFactory = const RelayClientFactory(),
+  @ignoreParam @visibleForTesting final ClockProvider _clock = const ClockProvider(),
+  @ignoreParam @visibleForTesting final RelayClientFactory _relayClientFactory = const RelayClientFactory(),
 }) {
   final BehaviorSubject<ConnectionStatus> _status = BehaviorSubject.seeded(const ConnectionStatus.disconnected());
   final StreamController<SseEvent> _events = StreamController<SseEvent>.broadcast();
@@ -65,8 +64,7 @@ class ConnectionService(
   Completer<void>? _reconnectDelayCompleter;
   Future<bool>? _activeAuthConnect;
   Future<void>? _activeDisconnect;
-  int _requestCounter = 0;
-  final Random _requestIdRandom = Random();
+  final RelayRequestIdGenerator _requestIdGenerator = RelayRequestIdGenerator();
   int _authRetryCount = 0;
   Duration _relayReconnectBackoff = const Duration(seconds: 1);
   // Last health metadata fetched on a fresh-DH connect. Resumed reconnects skip
@@ -167,10 +165,7 @@ class ConnectionService(
     _isInBackground = true;
     _backgroundedAt = _clock();
     logd("App backgrounded — pausing reconnect attempts");
-    _reconnectTimer?.cancel();
-    if (_reconnectDelayCompleter case final completer? when !completer.isCompleted) {
-      completer.complete();
-    }
+    _cancelReconnectDelay();
   }
 
   /// Push-based connection status stream.
@@ -207,15 +202,7 @@ class ConnectionService(
     ConnectionDisconnected() => null,
   };
 
-  /// The current project directory. Set when the user enters a
-  /// project context and used by feature cubits/services as request context.
-  String? _activeDirectory;
-  String? get activeDirectory => _activeDirectory;
   RelayClient? get relayClient => _relayClient;
-
-  void setActiveDirectory(String directory) {
-    _activeDirectory = directory;
-  }
 
   /// Stateless transport primitive: declares to the bridge which session this
   /// phone is currently viewing ([sessionId] == null when viewing nothing).
@@ -335,7 +322,7 @@ class ConnectionService(
       } else {
         final response = await relayClient.sendRequest(
           request: RelayRequest(
-            id: _nextRelayRequestId(),
+            id: _requestIdGenerator(),
             method: "GET",
             path: ApiPaths.health,
             headers: {},
@@ -435,12 +422,27 @@ class ConnectionService(
 
   /// Manually disconnect. Clears config, closes SSE, cancels timers.
   void disconnect() {
-    _reconnectTimer?.cancel();
-    if (_reconnectDelayCompleter case final completer? when !completer.isCompleted) {
-      completer.complete();
-    }
+    _cancelReconnectDelay();
     unawaited(_disconnectRelayClient());
     _status.add(const ConnectionStatus.disconnected());
+  }
+
+  /// Triggers [reconnect] when not already connected or reconnecting, then
+  /// waits until the status settles (connected, lost, bridge offline) or
+  /// [timeout] elapses. A timeout is logged and absorbed so callers can fall
+  /// through to their own fetch, which fails with a user-visible error.
+  Future<void> reconnectAndAwaitOutcome({required Duration timeout}) async {
+    if (_status.value is ConnectionConnected) return;
+    if (_status.value is! ConnectionReconnecting) {
+      reconnect();
+    }
+    if (_status.value is! ConnectionReconnecting) return;
+
+    try {
+      await status.where((status) => status is! ConnectionReconnecting).first.timeout(timeout);
+    } on TimeoutException catch (error, stackTrace) {
+      logw("Timed out waiting for relay reconnect outcome", error, stackTrace);
+    }
   }
 
   /// Manually trigger reconnect attempt (e.g. from the overlay).
@@ -448,10 +450,7 @@ class ConnectionService(
     final config = activeConfig;
     if (config == null) return;
 
-    _reconnectTimer?.cancel();
-    if (_reconnectDelayCompleter case final completer? when !completer.isCompleted) {
-      completer.complete();
-    }
+    _cancelReconnectDelay();
     _relayReconnectBackoff = const Duration(seconds: 1);
     _status.add(ConnectionStatus.reconnecting(config: config));
     unawaited(_reconnectRelayWithRefresh(config, immediate: true));
@@ -886,12 +885,11 @@ class ConnectionService(
     }
   }
 
-  String _nextRelayRequestId() {
-    _requestCounter = (_requestCounter + 1) & 0xFFFF;
-    final timestamp = DateTime.now().microsecondsSinceEpoch.toRadixString(16);
-    final counter = _requestCounter.toRadixString(16).padLeft(4, "0");
-    final random = _requestIdRandom.nextInt(0x10000).toRadixString(16).padLeft(4, "0");
-    return "$timestamp-$counter$random";
+  void _cancelReconnectDelay() {
+    _reconnectTimer?.cancel();
+    if (_reconnectDelayCompleter case final completer? when !completer.isCompleted) {
+      completer.complete();
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -899,10 +897,7 @@ class ConnectionService(
   // ---------------------------------------------------------------------------
 
   void dispose() {
-    _reconnectTimer?.cancel();
-    if (_reconnectDelayCompleter case final completer? when !completer.isCompleted) {
-      completer.complete();
-    }
+    _cancelReconnectDelay();
     _status.add(const ConnectionStatus.disconnected());
     unawaited(_disconnectRelayClient());
     _compositeSubscription.dispose();

@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show KeyedParallelLock;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../repositories/session_repository.dart";
@@ -23,7 +24,7 @@ typedef _DispatchEvent = ({
 class SessionEventDispatcher({required final SessionEventService _sessionEventService}) {
   final StreamController<NormalizedSourcedBridgeEvent> _eventsController =
       StreamController<NormalizedSourcedBridgeEvent>.broadcast();
-  final Map<String, Future<void>> _tails = <String, Future<void>>{};
+  final KeyedParallelLock<String> _dispatchLock = KeyedParallelLock<String>();
   bool _disposed = false;
 
   Stream<NormalizedSourcedBridgeEvent> get events => _eventsController.stream;
@@ -101,7 +102,7 @@ class SessionEventDispatcher({required final SessionEventService _sessionEventSe
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    await Future.wait(_tails.values);
+    await _dispatchLock.idle;
     await _eventsController.close();
   }
 
@@ -110,39 +111,36 @@ class SessionEventDispatcher({required final SessionEventService _sessionEventSe
     required Future<List<_DispatchEvent>> Function() operation,
   }) {
     if (_disposed) return Future.error(StateError("SessionEventDispatcher is disposed"));
-    final previous = _tails[pluginId] ?? Future<void>.value();
-    final release = Completer<void>();
-    _tails[pluginId] = release.future;
-    return () async {
-      await previous;
-      try {
-        final events = await operation();
-        for (final output in events) {
-          final generation = output.generation;
-          final event = output.event;
-          if (await _sessionEventService.canPublish(event: event)) {
-            if (generation != null &&
-                !_sessionEventService.isCurrentEvent(
-                  pluginId: pluginId,
-                  generation: generation,
-                  allowDuringStop: output.allowDuringStop,
-                )) {
-              continue;
+    return _dispatchLock.use(
+      key: pluginId,
+      operation: () async {
+        try {
+          final events = await operation();
+          for (final output in events) {
+            final generation = output.generation;
+            final event = output.event;
+            if (await _sessionEventService.canPublish(event: event)) {
+              if (generation != null &&
+                  !_sessionEventService.isCurrentEvent(
+                    pluginId: pluginId,
+                    generation: generation,
+                    allowDuringStop: output.allowDuringStop,
+                  )) {
+                continue;
+              }
+              _eventsController.add((
+                pluginId: pluginId,
+                generation: generation,
+                event: event,
+                allowDuringStop: output.allowDuringStop,
+                terminalHandoffConsumed: output.terminalHandoffConsumed,
+              ));
             }
-            _eventsController.add((
-              pluginId: pluginId,
-              generation: generation,
-              event: event,
-              allowDuringStop: output.allowDuringStop,
-              terminalHandoffConsumed: output.terminalHandoffConsumed,
-            ));
           }
+        } on Object catch (error, stackTrace) {
+          addSourceError(error, stackTrace);
         }
-      } on Object catch (error, stackTrace) {
-        addSourceError(error, stackTrace);
-      } finally {
-        release.complete();
-      }
-    }();
+      },
+    );
   }
 }

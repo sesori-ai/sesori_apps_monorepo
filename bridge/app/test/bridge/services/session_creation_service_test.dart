@@ -551,6 +551,7 @@ void main() {
         sessionId: "backend-session",
         backendSessionId: "backend-session",
         pluginId: "other",
+        preservePullRequestScope: false,
         projectId: "/retained",
         isDedicated: false,
         createdAt: 1,

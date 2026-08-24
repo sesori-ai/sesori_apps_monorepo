@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/repositories/agent_repository.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
+import "package:sesori_bridge/src/repositories/pending_interaction_support.dart";
 import "package:sesori_bridge/src/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/repositories/project_activity_repository.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
@@ -36,7 +37,7 @@ PermissionRepository singlePluginPermissionRepository({
 }) {
   return PermissionRepository(
     runtime: createTestPluginRuntime(plugins: [plugin]),
-    sessionDao: sessionDao,
+    pendingSupport: PendingInteractionSupport(sessionDao: sessionDao),
   );
 }
 
@@ -88,6 +89,7 @@ QuestionRepository singlePluginQuestionRepository({
 }) {
   return QuestionRepository(
     runtime: createTestPluginRuntime(plugins: [plugin]),
+    pendingSupport: PendingInteractionSupport(sessionDao: sessionDao),
     sessionDao: sessionDao,
     projectsDao: projectsDao,
     aggregateSourceDeadline: const Duration(seconds: 5),
@@ -110,9 +112,6 @@ SessionRepository singlePluginSessionRepository({
           plugins: [plugin],
           eligiblePluginIds: eligiblePluginIds,
         ),
-    bridgeDerivedProjectPluginIds: {
-      if (plugin is BridgeDerivedProjectsPluginApi) plugin.id,
-    },
     sessionDao: sessionDao,
     projectsDao: projectsDao,
     pullRequestDao: pullRequestDao,

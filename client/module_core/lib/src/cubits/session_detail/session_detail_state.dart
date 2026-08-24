@@ -67,9 +67,14 @@ sealed class SessionDetailState with _$SessionDetailState {
     required CommandInfo? stagedCommand,
     required bool isRefreshing,
     @Default([]) List<SessionVariant> availableVariants,
-    // Transient retry error message from the AI provider (e.g. "Provider is overloaded").
-    required String? retryErrorMessage,
   }) = SessionDetailLoaded;
 
   const factory failed({required RemoteFailureReason reason}) = SessionDetailFailed;
+}
+
+extension SessionDetailLoadedX on SessionDetailLoaded {
+  String? get retryErrorMessage => switch (sessionStatus) {
+    SessionStatusRetry(:final message) => message,
+    SessionStatusIdle() || SessionStatusBusy() => null,
+  };
 }

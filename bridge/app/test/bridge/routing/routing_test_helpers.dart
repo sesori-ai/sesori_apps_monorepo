@@ -7,7 +7,6 @@ import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_command_mapper.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_message_mapper.dart";
-import "package:sesori_bridge/src/repositories/mappers/plugin_session_mapper.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_session_status_mapper.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_to_shared_mapping.dart";
 import "package:sesori_bridge/src/repositories/mappers/prompt_part_mapper.dart";
@@ -347,6 +346,7 @@ Future<void> recordSessionBinding({
       lastAgent: null,
       lastAgentModel: null,
       pluginId: pluginId,
+      preservePullRequestScope: false,
     );
     return;
   }
@@ -573,17 +573,7 @@ class _NoopSessionRepository() implements SessionRepository {
   }) async {}
 
   @override
-  Future<String?> findProjectIdForSession({required String sessionId}) async => null;
-
-  @override
   Future<({String pluginId, String projectId})?> findSessionOptionsScope({required String sessionId}) async => null;
-
-  @override
-  Future<Session?> getSessionForProject({
-    required String projectId,
-    required String sessionId,
-    required VerifiedGithubLogin? verifiedGithubLogin,
-  }) async => null;
 
   @override
   Future<void> abortSession({required String sessionId}) async {}
@@ -875,7 +865,6 @@ class FakeSessionRepository({
     enrichSessionsCallCount++;
     lastVerifiedGithubLogin = verifiedGithubLogin;
     final sessionIds = sessions.map((session) => session.id).toList(growable: false);
-    final dbSessions = await _sessionDao.getSessionsByIds(sessionIds: sessionIds);
     final prsBySessionId = verifiedGithubLogin == null
         ? <String, List<PullRequestDto>>{}
         : await _pullRequestRepository.getPrsBySessionIds(
@@ -886,19 +875,13 @@ class FakeSessionRepository({
       for (final session in sessions)
         if (_selectBestPr(prsBySessionId[session.id]) case final pr?) session.id: pullRequestInfoFromDto(pr),
     };
-    return enrichSharedSessions(
-      sessions: [
-        for (final session in sessions)
-          session.copyWith(
-            pullRequest: null,
-            pullRequestHistory: const <PullRequestInfo>[],
-          ),
-      ],
-      storedSessionsById: dbSessions,
-      pullRequestsBySessionId: pullRequestsBySessionId,
-      unseenCalculator: const SessionUnseenCalculator(),
-      adoptStoredProjectId: false,
-    );
+    return [
+      for (final session in sessions)
+        session.copyWith(
+          pullRequest: pullRequestsBySessionId[session.id],
+          pullRequestHistory: const <PullRequestInfo>[],
+        ),
+    ];
   }
 
   static PullRequestDto? _selectBestPr(List<PullRequestDto>? prs) {
@@ -1094,30 +1077,7 @@ class FakeSessionRepository({
   }) async {}
 
   @override
-  Future<String?> findProjectIdForSession({required String sessionId}) async => null;
-
-  @override
   Future<({String pluginId, String projectId})?> findSessionOptionsScope({required String sessionId}) async => null;
-
-  @override
-  Future<Session?> getSessionForProject({
-    required String projectId,
-    required String sessionId,
-    required VerifiedGithubLogin? verifiedGithubLogin,
-  }) async {
-    final sessions = await getSessionsForProject(
-      projectId: projectId,
-      start: null,
-      limit: null,
-      verifiedGithubLogin: verifiedGithubLogin,
-    );
-    for (final session in sessions) {
-      if (session.id == sessionId) {
-        return session;
-      }
-    }
-    return null;
-  }
 
   @override
   Future<void> abortSession({required String sessionId}) async {

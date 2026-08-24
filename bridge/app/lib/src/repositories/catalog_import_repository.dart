@@ -15,6 +15,7 @@ import "../api/database/tables/session_table.dart";
 import "../runtime/plugin_runtime.dart";
 import "models/catalog_import_control.dart";
 import "project_catalog_identity_calculator.dart";
+import "random_hex_id.dart";
 
 /// Backend-owned activity for one session, as reported by the backend itself.
 ///
@@ -30,7 +31,16 @@ class CatalogImportRepository({
     required final CatalogHydrationsDao _catalogHydrationsDao,
     required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
   }) {
-  static const int projectionVersion = 1;
+  /// Invalidates every durable hydration marker written by an earlier version.
+  ///
+  /// The marker at a given version means "this plugin's catalog was fully
+  /// hydrated once", and an automatic import short-circuits whenever one
+  /// exists. Bumped to 2 for issue #961: markers written before v1.8.0 can
+  /// describe a catalog produced by superseded discovery, and the marker was
+  /// the only thing preventing a corrected import from ever running. Bumping
+  /// re-hydrates each plugin exactly once; the merge is non-destructive and
+  /// tombstoned sessions stay deleted.
+  static const int projectionVersion = 2;
   static const int _responsivenessBatchSize = 512;
   static final Random _secureRandom = Random.secure();
 
@@ -563,11 +573,11 @@ class CatalogImportRepository({
 
   String _allocateSessionId({required Set<String> reservedIds}) {
     while (true) {
-      final buffer = StringBuffer("ses_");
-      for (var index = 0; index < 16; index++) {
-        buffer.write(_secureRandom.nextInt(256).toRadixString(16).padLeft(2, "0"));
-      }
-      final candidate = buffer.toString();
+      final candidate = generateRandomHexId(
+        secureRandom: _secureRandom,
+        prefix: "ses_",
+        byteLength: 16,
+      );
       if (reservedIds.add(candidate)) return candidate;
     }
   }

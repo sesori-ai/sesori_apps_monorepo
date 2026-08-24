@@ -16,10 +16,10 @@ import "trackers/omp_catalog_tracker.dart";
 
 /// Oh My Pi backend over ACP.
 ///
-/// OMP diverges from stock ACP in three policies: it serializes every prompt
-/// process-wide, replaces an in-flight turn when another input arrives, and
-/// supports standard form elicitation. Its project-scoped model/mode/thinking
-/// catalog and persisted-session cleanup run over isolated scratch processes.
+/// OMP replaces an in-flight same-session turn when another input arrives and
+/// supports standard form elicitation. Independent sessions retain stock ACP's
+/// per-session turn lanes, while project-scoped model/mode/thinking catalog and
+/// persisted-session cleanup run over isolated scratch processes.
 class OmpPlugin._({
   required super.launchSpec,
   required super.launchDirectory,
@@ -58,7 +58,6 @@ class OmpPlugin._({
       repository: catalogRepository,
       tracker: catalogTracker,
       totalTimeout: const Duration(seconds: 20),
-      maxModels: 24,
     );
     final ompSessionOptionsService = OmpSessionOptionsService(
       catalogService: catalogService,
@@ -114,9 +113,6 @@ class OmpPlugin._({
 
   @override
   bool get supportsFormElicitation => true;
-
-  @override
-  bool get serializesPromptsProcessWide => true;
 
   @override
   bool get cancelsActiveTurnForQueuedInput => true;

@@ -26,10 +26,11 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
+import "new_session_state_matchers.dart";
 
 void main() {
   group("NewSessionCubit", () {
-    late MockSessionService mockSessionService;
+    late MockSessionRepository mockSessionService;
     late MockSessionRepository mockSessionRepository;
     late MockPluginRepository mockPluginRepository;
     late MockPluginPreferenceRepository mockPluginPreferenceRepository;
@@ -50,14 +51,14 @@ void main() {
     setUpAll(registerAllFallbackValues);
 
     setUp(() {
-      mockSessionService = MockSessionService();
+      mockSessionService = MockSessionRepository();
       mockSessionRepository = MockSessionRepository();
       mockPluginRepository = MockPluginRepository();
       mockPluginPreferenceRepository = MockPluginPreferenceRepository();
       mockConnectionService = MockConnectionService();
       connectionStatus = BehaviorSubject.seeded(
         const ConnectionStatus.connected(
-          config: ServerConnectionConfig(relayHost: "relay.example.com"),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
           health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
         ),
       );
@@ -106,9 +107,9 @@ void main() {
           const ProviderListResponse(items: [], connectedOnly: false),
         ),
       );
-      delegateSessionOptionsRepositoryToService(
+      delegateSessionOptionsRepository(
         repository: mockSessionRepository,
-        service: mockSessionService,
+        source: mockSessionService,
       );
       when(
         () => mockSessionService.listCommands(
@@ -137,7 +138,7 @@ void main() {
 
     NewSessionCubit buildCubit({ComposerDraftRepository? composerDraftRepository}) => NewSessionCubit(
       connectionService: mockConnectionService,
-      sessionService: mockSessionService,
+      sessionRepository: mockSessionService,
       newSessionPluginService: NewSessionPluginService(
         pluginRepository: mockPluginRepository,
         pluginPreferenceRepository: mockPluginPreferenceRepository,
@@ -165,29 +166,32 @@ void main() {
 
       expect(
         cubit.state,
-        isA<NewSessionIdle>().having((state) => state.selectedAgentModel, "selectedAgentModel", isNull),
+        composingWith<NewSessionPhaseIdle>().having((state) => state.selectedAgentModel, "selectedAgentModel", isNull),
       );
     });
 
     test("option payloads participate in structural NewSessionState equality", () {
-      NewSessionState buildState() => const NewSessionState.idle(
-        availablePlugins: [defaultPlugin],
-        selectedPlugin: defaultPlugin,
-        options: NewSessionOptionsAvailableState(
-          options: NewSessionOptionsData(
-            agents: [],
-            providers: [],
-            commands: [],
-            selectedAgent: null,
-            selectedAgentModel: null,
-            stagedCommand: null,
-            availableVariants: [],
+      NewSessionState buildState() => const NewSessionState.composing(
+        config: NewSessionComposeConfig(
+          availablePlugins: [defaultPlugin],
+          selectedPlugin: defaultPlugin,
+          options: NewSessionOptionsAvailableState(
+            options: NewSessionOptionsData(
+              agents: [],
+              providers: [],
+              commands: [],
+              selectedAgent: null,
+              selectedAgentModel: null,
+              stagedCommand: null,
+              availableVariants: [],
+            ),
+            source: NewSessionOptionsSource.aggregate,
           ),
-          source: NewSessionOptionsSource.aggregate,
+          backendScope: NewSessionBackendScope.verified(bridgeId: "bridge-1"),
+          isPluginDiscoveryInFlight: false,
+          projectWorktreeCapability: NewSessionProjectWorktreeCapability.supported,
         ),
-        backendScope: NewSessionBackendScope.verified(bridgeId: "bridge-1"),
-        isPluginDiscoveryInFlight: false,
-        projectWorktreeCapability: NewSessionProjectWorktreeCapability.supported,
+        phase: NewSessionPhase.idle(),
       );
 
       final first = buildState();
@@ -223,8 +227,7 @@ void main() {
           text: any(named: "text"),
           attachments: any(named: "attachments"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -298,9 +301,13 @@ void main() {
         return buildCubit();
       },
       expect: () => [
-        isA<NewSessionIdle>().having((state) => state.availableCommands.map((c) => c.name).toList(), "commands", [
-          "review",
-        ]),
+        composingWith<NewSessionPhaseIdle>().having(
+          (state) => state.availableCommands.map((c) => c.name).toList(),
+          "commands",
+          [
+            "review",
+          ],
+        ),
       ],
     );
 
@@ -319,7 +326,7 @@ void main() {
       },
       // The bridge's command paths carry only text, so the send is refused
       // outright rather than reaching the service with the images stripped.
-      expect: () => [isA<NewSessionIdle>()],
+      expect: () => [composingWith<NewSessionPhaseIdle>()],
       verify: (_) {
         verifyNever(
           () => mockSessionService.createSessionWithMessage(
@@ -328,8 +335,7 @@ void main() {
             text: any(named: "text"),
             attachments: any(named: "attachments"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -367,8 +373,7 @@ void main() {
             text: any(named: "text"),
             attachments: any(named: "attachments"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -385,7 +390,11 @@ void main() {
           command: null,
         );
       },
-      expect: () => [isA<NewSessionIdle>(), isA<NewSessionSending>(), isA<NewSessionCreated>()],
+      expect: () => [
+        composingWith<NewSessionPhaseIdle>(),
+        composingWith<NewSessionPhaseSending>(),
+        isA<NewSessionCreated>(),
+      ],
       verify: (_) {
         verify(
           () => mockSessionService.createSessionWithMessage(
@@ -394,8 +403,7 @@ void main() {
             text: "look at this",
             attachments: any(named: "attachments", that: hasLength(1)),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: null,
             dedicatedWorktree: false,
@@ -419,7 +427,7 @@ void main() {
       },
       // Refused before the send even starts: the composer settles into idle
       // and no sending state follows it.
-      expect: () => [isA<NewSessionIdle>()],
+      expect: () => [composingWith<NewSessionPhaseIdle>()],
       verify: (_) {
         verifyNever(
           () => mockSessionService.createSessionWithMessage(
@@ -428,8 +436,7 @@ void main() {
             text: any(named: "text"),
             attachments: any(named: "attachments"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -449,8 +456,7 @@ void main() {
             pluginId: any(named: "pluginId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -468,8 +474,8 @@ void main() {
         );
       },
       expect: () => [
-        isA<NewSessionIdle>(),
-        isA<NewSessionSending>(),
+        composingWith<NewSessionPhaseIdle>(),
+        composingWith<NewSessionPhaseSending>(),
         isA<NewSessionCreated>(),
       ],
       verify: (_) {
@@ -480,8 +486,7 @@ void main() {
             pluginId: "plugin-1",
             text: "hello",
             agent: null,
-            providerID: null,
-            modelID: null,
+            model: null,
             variant: null,
             command: null,
             dedicatedWorktree: false,
@@ -510,8 +515,7 @@ void main() {
             pluginId: any(named: "pluginId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -519,7 +523,7 @@ void main() {
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-command")));
         return NewSessionCubit(
           connectionService: mockConnectionService,
-          sessionService: mockSessionService,
+          sessionRepository: mockSessionService,
           newSessionPluginService: NewSessionPluginService(
             pluginRepository: mockPluginRepository,
             pluginPreferenceRepository: mockPluginPreferenceRepository,
@@ -545,8 +549,8 @@ void main() {
         );
       },
       expect: () => [
-        isA<NewSessionIdle>(),
-        isA<NewSessionSending>(),
+        composingWith<NewSessionPhaseIdle>(),
+        composingWith<NewSessionPhaseSending>(),
         isA<NewSessionCreated>(),
       ],
       verify: (_) {
@@ -557,8 +561,7 @@ void main() {
             pluginId: "plugin-1",
             text: "",
             agent: null,
-            providerID: null,
-            modelID: null,
+            model: null,
             variant: null,
             command: "review",
             dedicatedWorktree: true,
@@ -575,8 +578,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -616,8 +618,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -693,8 +694,7 @@ void main() {
           text: any(named: "text"),
           attachments: any(named: "attachments"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -713,7 +713,7 @@ void main() {
       attachments.clear();
       cubit.clearComposerDraft();
 
-      final sending = cubit.state as NewSessionSending;
+      final sending = (cubit.state as NewSessionComposing).phase as NewSessionPhaseSending;
       final snapshot = sending.submission as NewSessionTextSubmissionSnapshot;
       expect(snapshot.draft, same(draft));
       expect(snapshot.attachments.single, same(attachment));
@@ -722,14 +722,14 @@ void main() {
       response.complete(ApiResponse.error(ApiError.generic()));
       await pending;
 
-      final restoring = cubit.state as NewSessionRestoringSubmission;
+      final restoring = (cubit.state as NewSessionComposing).phase as NewSessionPhaseRestoringSubmission;
       expect(restoring.submission, same(snapshot));
       expect(cubit.composerDraft, same(draft));
       expect(repository.readForNewSession(projectId: "project-1"), same(draft));
       expect(restoring.submission.draft.voiceSpans, draft.voiceSpans);
 
       cubit.acknowledgeRestoredSubmission(submission: snapshot);
-      expect(cubit.state, isA<NewSessionCreationError>());
+      expect(cubit.state, composingWith<NewSessionPhaseCreationError>());
     });
 
     test("failed command submission restores staged command and next submit clears warning", () async {
@@ -750,8 +750,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -772,11 +771,11 @@ void main() {
       firstResponse.complete(ApiResponse.error(ApiError.generic()));
       await first;
 
-      final restoring = cubit.state as NewSessionRestoringSubmission;
+      final restoring = (cubit.state as NewSessionComposing).phase as NewSessionPhaseRestoringSubmission;
       expect(restoring.submission, isA<NewSessionCommandSubmissionSnapshot>());
       expect(cubit.state.stagedCommand, command);
       cubit.acknowledgeRestoredSubmission(submission: restoring.submission);
-      expect(cubit.state, isA<NewSessionCreationError>());
+      expect(cubit.state, composingWith<NewSessionPhaseCreationError>());
 
       final second = cubit.createSession(
         draft: ComposerDraft.typed(text: "next"),
@@ -784,7 +783,7 @@ void main() {
         command: null,
         attachments: const [],
       );
-      expect(cubit.state, isA<NewSessionSending>());
+      expect(cubit.state, composingWith<NewSessionPhaseSending>());
       secondResponse.complete(ApiResponse.success(testSession(id: "next")));
       await second;
       expect(cubit.state, isA<NewSessionCreated>());
@@ -807,8 +806,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -855,8 +853,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -874,29 +871,35 @@ void main() {
       );
       response.complete(ApiResponse.error(ApiError.generic()));
       await pending;
-      final restoring = cubit.state as NewSessionRestoringSubmission;
+      final restoring = (cubit.state as NewSessionComposing).phase as NewSessionPhaseRestoringSubmission;
 
       await cubit.refreshOptions();
-      expect(cubit.state, isA<NewSessionRestoringSubmission>());
-      expect((cubit.state as NewSessionRestoringSubmission).submission, same(restoring.submission));
+      expect(cubit.state, composingWith<NewSessionPhaseRestoringSubmission>());
+      expect(
+        ((cubit.state as NewSessionComposing).phase as NewSessionPhaseRestoringSubmission).submission,
+        same(restoring.submission),
+      );
 
       connectionStatus
         ..add(const ConnectionStatus.disconnected())
         ..add(
           const ConnectionStatus.connected(
-            config: ServerConnectionConfig(relayHost: "relay.example.com"),
+            config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
             health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
           ),
         );
       while (discoveryCalls < 2 || (cubit.state.agentModelData?.isLoading ?? true)) {
         await Future<void>.delayed(Duration.zero);
       }
-      expect(cubit.state, isA<NewSessionRestoringSubmission>());
-      expect((cubit.state as NewSessionRestoringSubmission).submission, same(restoring.submission));
+      expect(cubit.state, composingWith<NewSessionPhaseRestoringSubmission>());
+      expect(
+        ((cubit.state as NewSessionComposing).phase as NewSessionPhaseRestoringSubmission).submission,
+        same(restoring.submission),
+      );
 
       cubit.acknowledgeRestoredSubmission(submission: restoring.submission);
       await cubit.refreshOptions();
-      expect(cubit.state, isA<NewSessionCreationError>());
+      expect(cubit.state, composingWith<NewSessionPhaseCreationError>());
     });
 
     test("voice completion reports a content-free outcome", () async {
@@ -930,8 +933,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -953,7 +955,7 @@ void main() {
         command: command.name,
         dedicatedWorktree: true,
       );
-      expect(cubit.state, isA<NewSessionSending>());
+      expect(cubit.state, composingWith<NewSessionPhaseSending>());
 
       cubit.clearStagedCommand();
       cubit.stageCommand(command);
@@ -965,12 +967,12 @@ void main() {
       firstCreate.complete(ApiResponse.error(ApiError.generic()));
       await pendingCreate;
 
-      expect(cubit.state, isA<NewSessionRestoringSubmission>());
+      expect(cubit.state, composingWith<NewSessionPhaseRestoringSubmission>());
       expect(cubit.state.agentModelData?.stagedCommand, command);
 
-      final restored = cubit.state as NewSessionRestoringSubmission;
+      final restored = (cubit.state as NewSessionComposing).phase as NewSessionPhaseRestoringSubmission;
       cubit.acknowledgeRestoredSubmission(submission: restored.submission);
-      expect(cubit.state, isA<NewSessionCreationError>());
+      expect(cubit.state, composingWith<NewSessionPhaseCreationError>());
 
       await cubit.createSession(
         attachments: const [],
@@ -986,8 +988,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: "",
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: command.name,
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1000,8 +1001,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: "retry",
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: command.name,
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1030,8 +1030,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1059,8 +1058,7 @@ void main() {
           pluginId: "plugin-1",
           text: "hello",
           agent: null,
-          providerID: null,
-          modelID: null,
+          model: null,
           variant: null,
           command: null,
           dedicatedWorktree: false,
@@ -1104,8 +1102,7 @@ void main() {
             pluginId: any(named: "pluginId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1124,17 +1121,17 @@ void main() {
         );
       },
       expect: () => [
-        isA<NewSessionIdle>().having(
+        composingWith<NewSessionPhaseIdle>().having(
           (state) => state.selectedAgentModel?.variant,
           "selectedAgentModel.variant",
           "high",
         ),
-        isA<NewSessionIdle>().having(
+        composingWith<NewSessionPhaseIdle>().having(
           (state) => state.selectedAgentModel?.variant,
           "selectedAgentModel.variant",
           "xhigh",
         ),
-        isA<NewSessionSending>().having(
+        composingWith<NewSessionPhaseSending>().having(
           (state) => state.selectedAgentModel?.variant,
           "selectedAgentModel.variant",
           "xhigh",
@@ -1149,8 +1146,7 @@ void main() {
             pluginId: "plugin-1",
             text: "hello",
             agent: "build",
-            providerID: "openai",
-            modelID: "gpt-4",
+            model: const PromptModel(providerID: "openai", modelID: "gpt-4"),
             variant: const SessionVariant(id: "xhigh"),
             command: null,
             dedicatedWorktree: true,
@@ -1202,17 +1198,17 @@ void main() {
         cubit.selectAgent("Plan");
       },
       expect: () => [
-        isA<NewSessionIdle>().having(
+        composingWith<NewSessionPhaseIdle>().having(
           (state) => state.selectedAgentModel?.variant,
           "initial selectedAgentModel.variant",
           "high",
         ),
-        isA<NewSessionIdle>().having(
+        composingWith<NewSessionPhaseIdle>().having(
           (state) => state.selectedAgentModel?.variant,
           "selectedAgentModel.variant",
           "xhigh",
         ),
-        isA<NewSessionIdle>()
+        composingWith<NewSessionPhaseIdle>()
             .having((state) => state.selectedAgent, "selectedAgent", "Plan")
             .having((state) => state.selectedAgentModel?.variant, "selectedAgentModel.variant preserved", "xhigh"),
       ],
@@ -1319,12 +1315,12 @@ void main() {
         cubit.selectModel(providerID: "anthropic", modelID: "claude-3");
       },
       expect: () => [
-        isA<NewSessionIdle>().having(
+        composingWith<NewSessionPhaseIdle>().having(
           (state) => state.selectedAgentModel,
           "initial selectedAgentModel",
           const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
         ),
-        isA<NewSessionIdle>().having(
+        composingWith<NewSessionPhaseIdle>().having(
           (state) => state.selectedAgentModel,
           "selectedAgentModel",
           const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
@@ -1481,12 +1477,12 @@ void main() {
         cubit.selectModel(providerID: "openai", modelID: "gpt-5");
       },
       expect: () => [
-        isA<NewSessionIdle>().having(
+        composingWith<NewSessionPhaseIdle>().having(
           (state) => state.selectedAgentModel,
           "initial selectedAgentModel",
           const AgentModel(providerID: "openai", modelID: "gpt-4", variant: null),
         ),
-        isA<NewSessionIdle>()
+        composingWith<NewSessionPhaseIdle>()
             .having(
               (state) => state.availableVariants.map((variant) => variant.id),
               "availableVariants",
@@ -1559,12 +1555,12 @@ void main() {
         cubit.selectVariant(const SessionVariant(id: "slow"));
       },
       expect: () => [
-        isA<NewSessionIdle>().having(
+        composingWith<NewSessionPhaseIdle>().having(
           (state) => state.selectedAgentModel?.variant,
           "initial variant",
           "fast",
         ),
-        isA<NewSessionIdle>().having(
+        composingWith<NewSessionPhaseIdle>().having(
           (state) => state.selectedAgentModel?.variant,
           "variant",
           "slow",
@@ -1813,7 +1809,7 @@ void main() {
         return buildCubit();
       },
       expect: () => [
-        isA<NewSessionIdle>().having(
+        composingWith<NewSessionPhaseIdle>().having(
           (state) => state.selectedAgentModel,
           "selectedAgentModel",
           const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
@@ -1884,7 +1880,7 @@ void main() {
         return buildCubit();
       },
       expect: () => [
-        isA<NewSessionIdle>().having(
+        composingWith<NewSessionPhaseIdle>().having(
           (state) => state.selectedAgentModel,
           "selectedAgentModel",
           // Saved model restored; the no-longer-offered "legacy" variant falls
@@ -1931,7 +1927,7 @@ void main() {
         return buildCubit();
       },
       expect: () => [
-        isA<NewSessionIdle>().having(
+        composingWith<NewSessionPhaseIdle>().having(
           (state) => state.selectedAgent,
           "selectedAgent",
           "plan",
@@ -1970,7 +1966,7 @@ void main() {
         return buildCubit();
       },
       expect: () => [
-        isA<NewSessionIdle>().having(
+        composingWith<NewSessionPhaseIdle>().having(
           (state) => state.selectedAgent,
           "selectedAgent",
           "build",
@@ -2018,7 +2014,7 @@ void main() {
         return buildCubit();
       },
       expect: () => [
-        isA<NewSessionIdle>().having(
+        composingWith<NewSessionPhaseIdle>().having(
           (state) => state.selectedAgentModel,
           "selectedAgentModel",
           const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "fast"),
@@ -2045,8 +2041,7 @@ void main() {
             pluginId: any(named: "pluginId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -2085,8 +2080,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -2120,8 +2114,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -2181,8 +2174,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),

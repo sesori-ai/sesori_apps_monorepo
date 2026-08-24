@@ -12,6 +12,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
 import "../../helpers/test_helpers.dart";
 
 class MockRelayCryptoService() extends Mock implements RelayCryptoService;
@@ -108,6 +109,64 @@ void main() {
     tearDown(() async {
       await lifecycleController.close();
       await authStateController.close();
+    });
+
+    test("reconnectAndAwaitOutcome returns immediately when connected", () async {
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+      );
+      addTearDown(service.dispose);
+      service.emitStatusForTesting(
+        const ConnectionStatus.connected(
+          config: config,
+          health: health,
+        ),
+      );
+
+      await service.reconnectAndAwaitOutcome(timeout: const Duration(milliseconds: 10));
+
+      expect(service.currentStatus, isA<ConnectionConnected>());
+    });
+
+    test("reconnectAndAwaitOutcome waits for first resolved status", () async {
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+      );
+      addTearDown(service.dispose);
+      service.emitStatusForTesting(const ConnectionStatus.reconnecting(config: config));
+
+      final waiting = service.reconnectAndAwaitOutcome(timeout: const Duration(seconds: 1));
+      await Future<void>.delayed(Duration.zero);
+      service.emitStatusForTesting(const ConnectionStatus.connectionLost(config: config));
+
+      await waiting;
+    });
+
+    test("reconnectAndAwaitOutcome absorbs timeout", () async {
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+      );
+      addTearDown(service.dispose);
+      service.emitStatusForTesting(const ConnectionStatus.reconnecting(config: config));
+
+      await service.reconnectAndAwaitOutcome(timeout: const Duration(milliseconds: 1));
+
+      expect(service.currentStatus, isA<ConnectionReconnecting>());
     });
 
     test("disconnect during token refresh prevents reconnect", () async {

@@ -196,7 +196,7 @@ deletions, generated and tests included).
 | 18/45 | `🚧 [codebase-cleanup] bridge(app): consolidate auth validation, abortable requests, and encryptor ownership [step 18/45]` | 500–800 | `TokenService` (renamed) absorbs `validate.dart`; one `/auth/me` helper; auth-backend URL normalized once; `AbortableRequestClient`; one `SessionEncryptor` per session; one restricted-file writer. |
 | 19/45 | `⚙️ [codebase-cleanup] bridge(app): deduplicate request-handler error mapping and guards [step 19/45]` | 500–800 | One guard, one non-empty check, one JSON error builder, unused handler parameters removed. |
 | 20/45 | `⚙️ [codebase-cleanup] bridge(app): deduplicate SessionRepository, enrichment, and pending-interaction repositories [step 20/45]` | 500–800 | Plugin-use preamble, chunked reads, `enrichSessions` without re-derivation, shared question/permission helpers. |
-| 21/45 | `🚧 [codebase-cleanup] bridge(app): replace hand-rolled FIFO lanes with the foundation ParallelLock [step 21/45]` | 200–400 | Six single tails and two keyed tails on one tested primitive. |
+| 21/45 | `🚧 [codebase-cleanup] bridge(app): replace hand-rolled FIFO lanes with the foundation ParallelLock [step 21/45]` | 200–400 | Six single tails and four keyed tails on one tested primitive. |
 | 22/45 | `⚙️ [codebase-cleanup] bridge(app): deduplicate updater and server helpers and seal platform trios [step 22/45]` | 400–700 | CSV/IO/cleanup/network helper copies, sealed update result models, `DefaultEditorRepository` fold, sealed wake-lock/editor implementations. |
 | 23/45 | `⚙️ [codebase-cleanup] bridge(plugins): remove dead contract members and collapse PluginProvider [step 23/45]` | 1,200–1,600 | `healthCheck`/`dispose` off the contract, one `PluginProvider`, `PluginSetupStatus` field, dead seams and stale comments. |
 | 24/45 | `🌿 [codebase-cleanup] bridge(runtime): remove the migration-era dual-mode runtime knobs [step 24/45]` | 300–500 | One production behavior for health policy, port policy, early exit, intent store. |
@@ -744,9 +744,12 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   policy: single tails at `project_mutation_service.dart:25,65-69`,
   `project_activity_service.dart:19,167-174`, `session_unseen_service.dart:57,361-374`,
   `bridge_settings_repository.dart:19,84-111`, `chat_history_service.dart:55,209-240`,
-  `session_options_service.dart:170-199`; keyed tails at
+  `plugin_lifecycle_service.dart:108,670-679` (found during Step 21's
+  re-verification); keyed tails at `session_options_service.dart:170-199`,
   `chat_history_service.dart:824-858` (`_enqueueRead`/`_enqueueAll`
-  near-duplicates) and `session_event_dispatcher.dart:108-147`.
+  near-duplicates), `session_event_dispatcher.dart:108-147`, and
+  `server/api/runtime_file_api.dart:23,95-112` (also found during
+  re-verification).
   `sesori_bridge_foundation/lib/src/parallel_lock.dart:5-43` is an error-safe
   FIFO lane used once (`project_repository.dart:33`).
 - Change: Phase A — six single tails → `ParallelLock(maxParallelOperations: 1)`
@@ -757,11 +760,13 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   (`use({required K key, required Future<T> Function() operation})`, per-key
   `idle`, entries removed when idle — required named parameters like the
   existing `ParallelLock.use(operation:)`) for the
-  two keyed sites; `ChatHistoryService._enqueueAll` stays a private method of
+  four keyed sites (including the already key-scoped session-options
+  invalidations); `ChatHistoryService._enqueueAll` stays a private method of
   that service expressed as ordered acquisition of the per-key locks, and
-  `_enqueueRead` becomes a one-line `use`. Unifying the divergent per-site
-  error policy onto the lock's error-safe release is an intentional behavior
-  change and is declared in the PR body. `SessionOperationDispatcher` lanes,
+  `_enqueueRead` becomes a one-line `use`. Every replaced tail already
+  released its lane on failure, so the lock's error-safe release preserves
+  behavior; what the caller observes (rethrow, swallow-and-log, or stream
+  error) stays per site. `SessionOperationDispatcher` lanes,
   the orchestrator per-plugin lane, and the three dispatchers are not merged
   (different domains; only the idiom overlaps).
 - **Verify first — options-epoch re-checks:** `SessionOptionsService`
@@ -775,7 +780,8 @@ All verified with whole-word grep over lib, bin, and test across the repo.
 - Verify: `project_mutation_service_test`, `session_unseen_service_test`,
   `bridge_settings_repository_test`, `chat_history_service_test`,
   `session_event_dispatcher_test`, `session_options_service_test` invalidation
-  cases, plugin-event-listener integration tests; FIFO and drain semantics are
+  cases, `plugin_lifecycle_service_test`, `runtime_file_api_test`,
+  plugin-event-listener integration tests; FIFO and drain semantics are
   the review focus. The unified error policy is recorded against
   `bridge-connectivity.md`/`session-creation-and-options.md` in the same PR
   where it changes an observable outcome.
@@ -1311,8 +1317,10 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   pinnedLayout); cancelling}` (keep the two `ValueNotifier`s). The sealed state
   stays widget-local: it is ephemeral gesture/layout state, so no app-level
   controller class is introduced (business orchestration remains in cubits and
-  the shell stays thin). User-visible voice UX; lands only after Step 39 and
-  after #918 merges; updates `voice-input.md` in the same PR.
+  the shell stays thin). User-visible voice UX; lands after Step 39 and before
+  the replacement for #918, which will adapt realtime preview transitions to
+  this sealed state per the owner's 2026-08-24 sequencing decision; updates
+  `voice-input.md` in the same PR.
 - Verify: `flutter test test/features/session_detail`; manual hold-to-talk,
   cancel-drag, max-duration, and minimum-duration flows on the release-target phone.
 

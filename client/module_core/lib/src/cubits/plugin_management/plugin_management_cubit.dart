@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:bloc/bloc.dart";
 import "package:collection/collection.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../platform/url_launcher.dart";
@@ -12,14 +13,13 @@ import "plugin_management_state.dart";
 class PluginManagementCubit({required final PluginManagementService _service, required final UrlLauncher _urlLauncher})
     extends Cubit<PluginManagementState> {
   this : super(const PluginManagementState.loading()) {
-    _snapshotSubscription = _service.snapshots.listen((snapshot) => _onSnapshot(snapshot: snapshot));
-    _installSubscription = _service.installProgress.listen((installs) => _onInstallProgress(installs: installs));
-    _authenticationTerminalSubscription = _service.authenticationTerminal.listen(_onAuthenticationTerminal);
+    _subscriptions
+      ..add(_service.snapshots.listen((snapshot) => _onSnapshot(snapshot: snapshot)))
+      ..add(_service.installProgress.listen((installs) => _onInstallProgress(installs: installs)))
+      ..add(_service.authenticationTerminal.listen(_onAuthenticationTerminal));
   }
 
-  late final StreamSubscription<PluginManagementLoadResult> _snapshotSubscription;
-  late final StreamSubscription<Map<String, PluginInstallProgress>> _installSubscription;
-  late final StreamSubscription<PluginAuthenticationTerminalUpdate> _authenticationTerminalSubscription;
+  final CompositeSubscription _subscriptions = CompositeSubscription();
   int _actionGeneration = 0;
   int _authenticationGeneration = 0;
 
@@ -66,7 +66,10 @@ class PluginManagementCubit({required final PluginManagementService _service, re
           ),
         );
       case PluginAuthenticationStartFailed(:final failure):
-        _setAuthenticationFailure(pluginId: pluginId, error: _presentationErrorFor(failure: failure));
+        _setAuthenticationFailure(
+          pluginId: pluginId,
+          error: _presentationErrorFor(failure: failure),
+        );
     }
   }
 
@@ -143,7 +146,10 @@ class PluginManagementCubit({required final PluginManagementService _service, re
           ),
         );
       case PluginAuthenticationCancelFailed(:final failure):
-        _setAuthenticationFailure(pluginId: challenge.pluginId, error: _presentationErrorFor(failure: failure));
+        _setAuthenticationFailure(
+          pluginId: challenge.pluginId,
+          error: _presentationErrorFor(failure: failure),
+        );
     }
   }
 
@@ -507,9 +513,7 @@ class PluginManagementCubit({required final PluginManagementService _service, re
 
   @override
   Future<void> close() async {
-    await _snapshotSubscription.cancel();
-    await _installSubscription.cancel();
-    await _authenticationTerminalSubscription.cancel();
+    await _subscriptions.dispose();
     return await super.close();
   }
 }

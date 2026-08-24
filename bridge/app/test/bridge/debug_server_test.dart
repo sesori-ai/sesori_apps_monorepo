@@ -184,6 +184,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
         pluginId: plugin.id,
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "p1",
@@ -415,6 +416,7 @@ void main() {
       ];
       await db.sessionDao.insertSession(
         pluginId: plugin.id,
+        preservePullRequestScope: false,
         sessionId: "stable-s1",
         backendSessionId: "s1",
         projectId: "/tmp/test",
@@ -465,6 +467,7 @@ void main() {
       ];
       await db.sessionDao.insertSession(
         pluginId: plugin.id,
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         projectId: "/tmp/test",
@@ -522,6 +525,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/test"]);
       await db.sessionDao.insertSession(
         pluginId: plugin.id,
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         projectId: "/tmp/test",
@@ -620,6 +624,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/test"]);
       await db.sessionDao.insertSession(
         pluginId: plugin.id,
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         projectId: "/tmp/test",

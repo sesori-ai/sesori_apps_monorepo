@@ -70,7 +70,6 @@ void main() {
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final loaded = result as SessionDetailLoadResultLoaded;
-      expect(loaded.isBridgeConnected, isTrue);
       expect(loaded.snapshot.messages, hasLength(1));
       expect(loaded.snapshot.agents, hasLength(1));
       expect(loaded.snapshot.providerData?.items, hasLength(1));

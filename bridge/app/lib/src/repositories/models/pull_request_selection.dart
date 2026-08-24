@@ -1,4 +1,4 @@
-import "package:sesori_shared/sesori_shared.dart";
+import "../../api/gh_pull_request.dart";
 
 typedef PullRequestSelectionTarget = ({
   String githubRepositoryIdentity,
@@ -14,16 +14,7 @@ final class const PullRequestSelectionIdentityChanged() extends PullRequestSelec
 
 sealed class const PullRequestTargetSelection({required final PullRequestSelectionTarget target});
 
-final class const PullRequestTargetSelected({
-  required super.target,
-  required final int number,
-  required final String url,
-  required final String title,
-  required final DateTime createdAt,
-  required final PrState state,
-  required final PrMergeableStatus mergeableStatus,
-  required final PrReviewDecision reviewDecision,
-  required final PrCheckStatus checkStatus,
-}) extends PullRequestTargetSelection;
+final class const PullRequestTargetSelected({required super.target, required final GhPullRequest pullRequest})
+    extends PullRequestTargetSelection;
 
 final class const PullRequestTargetUnmatched({required super.target}) extends PullRequestTargetSelection;

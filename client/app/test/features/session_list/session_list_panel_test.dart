@@ -1,4 +1,7 @@
+import "dart:async";
+
 import "package:bloc_test/bloc_test.dart";
+import "package:cupertino_ui/cupertino_ui.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -95,11 +98,46 @@ void main() {
     expect(find.text(newSessionLabel(tester)), findsOneWidget);
   });
 
-  testWidgets("wide macOS pane keeps pull-to-refresh feedback enabled", (tester) async {
+  testWidgets("wide Android pane uses the Cupertino refresh control", (tester) async {
+    await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
+
+    expect(find.byType(CupertinoSliverRefreshControl, skipOffstage: false), findsOneWidget);
+    expect(find.byType(RefreshIndicator), findsNothing);
+  });
+
+  testWidgets("wide macOS pane stays displaced while refresh is pending", (tester) async {
+    final refreshCompleter = Completer<bool>();
+    var refreshStarted = false;
+    when(
+      () => cubit.refreshSessions(waitForPrData: true),
+    ).thenAnswer((_) {
+      refreshStarted = true;
+      return refreshCompleter.future;
+    });
     await pumpPanel(tester, width: 600, platform: TargetPlatform.macOS);
 
-    final refreshIndicator = tester.widget<RefreshIndicator>(find.byType(RefreshIndicator));
-    expect(refreshIndicator.displacement, greaterThan(0));
-    expect(refreshIndicator.strokeWidth, greaterThan(0));
+    expect(tester.widget<CustomScrollView>(find.byType(CustomScrollView)).physics, isA<BouncingScrollPhysics>());
+    expect(find.byType(CupertinoSliverRefreshControl, skipOffstage: false), findsOneWidget);
+    expect(find.byType(RefreshIndicator), findsNothing);
+    final content = find.byKey(const Key("session-empty-terminal"));
+    final initialContentTop = tester.getTopLeft(content).dy;
+
+    final gesture = await tester.startGesture(tester.getCenter(content));
+    for (var step = 0; step < 30 && !refreshStarted; step++) {
+      await gesture.moveBy(const Offset(0, 10));
+      await tester.pump();
+    }
+    expect(refreshStarted, isTrue);
+    await gesture.up();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
+    expect(find.byType(RefreshProgressIndicator), findsNothing);
+    expect(tester.getTopLeft(content).dy, greaterThan(initialContentTop));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    refreshCompleter.complete(true);
+    await tester.pump();
   });
 }

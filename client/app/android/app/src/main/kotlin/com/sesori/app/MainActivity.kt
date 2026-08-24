@@ -17,7 +17,6 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
     private var recorderPrewarmService: RecorderPrewarmService? = null
-    private var firebaseTestLabChannel: MethodChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -27,19 +26,6 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
                 RecorderPrewarmService.channelName,
             ),
         )
-        firebaseTestLabChannel = MethodChannel(
-            flutterEngine.dartExecutor.binaryMessenger,
-            FIREBASE_TEST_LAB_CHANNEL_NAME,
-        ).also { channel ->
-            channel.setMethodCallHandler { call, result ->
-                when (call.method) {
-                    "isRunning" -> result.success(
-                        Settings.System.getString(contentResolver, "firebase.test.lab") == "true",
-                    )
-                    else -> result.notImplemented()
-                }
-            }
-        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,8 +46,6 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
     override fun onDestroy() {
         recorderPrewarmService?.dispose()
         recorderPrewarmService = null
-        firebaseTestLabChannel?.setMethodCallHandler(null)
-        firebaseTestLabChannel = null
         flutterEngine?.renderer?.removeIsDisplayingFlutterUiListener(this)
         super.onDestroy()
     }
@@ -113,9 +97,5 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
             return false
         }
         return getNavigationMode() == 2
-    }
-
-    private companion object {
-        const val FIREBASE_TEST_LAB_CHANNEL_NAME = "com.sesori.app/firebase-test-lab"
     }
 }

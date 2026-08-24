@@ -47,10 +47,10 @@ void main() {
     verifyNoMoreInteractions(analytics);
   });
 
-  test("keeps collection off for debug and automated test environments", () async {
+  test("keeps collection off for ineligible processes", () async {
     for (final reason in [
       AnalyticsRuntimeDisabledReason.debugOrProfile,
-      AnalyticsRuntimeDisabledReason.automatedTestEnvironment,
+      AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated,
     ]) {
       final capability = await startup.configure(ineligibilityReason: reason);
 

@@ -35,6 +35,7 @@ void main() {
     }) async {
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: sessionId,
         backendSessionId: sessionId,
         projectId: projectId,

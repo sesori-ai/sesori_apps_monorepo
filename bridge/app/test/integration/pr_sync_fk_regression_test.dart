@@ -22,6 +22,7 @@
 ///   exceptions.
 library;
 
+import "package:sesori_bridge/src/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_target.dart";
 import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
@@ -86,6 +87,7 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           pluginId: "opencode",
+          preservePullRequestScope: false,
         );
         await db.sessionDao.updatePullRequestScopes(
           updates: const [
@@ -266,14 +268,17 @@ PullRequestTargetSelected _selectedPullRequest() => PullRequestTargetSelected(
     githubRepositoryIdentity: _githubRepositoryIdentity,
     branchName: "feature-branch",
   ),
-  number: 42,
-  url: "https://github.com/org/repo/pull/42",
-  title: "Test PR",
-  createdAt: DateTime.fromMillisecondsSinceEpoch(1, isUtc: true),
-  state: PrState.open,
-  mergeableStatus: PrMergeableStatus.mergeable,
-  reviewDecision: PrReviewDecision.reviewRequired,
-  checkStatus: PrCheckStatus.success,
+  pullRequest: GhPullRequest(
+    number: 42,
+    url: "https://github.com/org/repo/pull/42",
+    title: "Test PR",
+    createdAt: DateTime.fromMillisecondsSinceEpoch(1, isUtc: true),
+    state: PrState.open,
+    headRefName: "feature-branch",
+    mergeable: PrMergeableStatus.mergeable,
+    reviewDecision: PrReviewDecision.reviewRequired,
+    statusCheckRollup: PrCheckStatus.success,
+  ),
 );
 
 /// Constructs a minimal [PluginSession] for use in session publication tests.

@@ -77,7 +77,6 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
       runtime = createBenchmarkPluginRuntime(plugins: [plugin]);
       repository = SessionRepository(
         runtime: runtime,
-        bridgeDerivedProjectPluginIds: const {},
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
@@ -314,6 +313,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
       lastAgent: null,
       lastAgentModel: null,
       pluginId: _pluginId,
+      preservePullRequestScope: false,
     );
   }
 

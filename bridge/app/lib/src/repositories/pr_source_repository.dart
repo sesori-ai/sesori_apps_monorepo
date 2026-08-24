@@ -257,17 +257,7 @@ final class _PullRequestTargetSelection({required final PullRequestSelectionTarg
     if (pullRequest == null) {
       return PullRequestTargetUnmatched(target: target);
     }
-    return PullRequestTargetSelected(
-      target: target,
-      number: pullRequest.number,
-      url: pullRequest.url,
-      title: pullRequest.title,
-      createdAt: pullRequest.createdAt,
-      state: pullRequest.state,
-      mergeableStatus: pullRequest.mergeable,
-      reviewDecision: pullRequest.reviewDecision,
-      checkStatus: pullRequest.statusCheckRollup,
-    );
+    return PullRequestTargetSelected(target: target, pullRequest: pullRequest);
   }
 
   _PendingPullRequestCursor? get pendingRequest {

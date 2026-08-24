@@ -15,6 +15,7 @@ import "../../platform/route_source.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
 import "../../routing/app_routes.dart";
+import "../../services/loaded_state_analytics_reporter.dart";
 import "../../services/models/session_activity_info.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/project_list_service.dart";
@@ -32,22 +33,19 @@ const refreshThrottleDuration = Duration(seconds: 30);
 @visibleForTesting
 const initialProjectLoadConnectionWaitTimeout = Duration(seconds: 15);
 
-enum _InventoryAnalyticsGuard() { ready, inFlight, consumed }
-
 class ProjectListCubit(
-    final ProjectRepository _projectRepository,
-    final ConnectionService _connectionService,
-    final SseEventTracker _sseEventTracker,
-    RouteSource routeSource, {
-    required final ProjectListService _projectListService,
-    required final SessionUnseenTracker _sessionUnseenTracker,
-    required final RegisteredBridgesService _registeredBridgesService,
-    required final ProductAnalyticsService _productAnalyticsService,
-    required final FailureReporter _failureReporter,
-  }) extends Cubit<ProjectListState> {
+  final ProjectRepository _projectRepository,
+  final ConnectionService _connectionService,
+  final SseEventTracker _sseEventTracker,
+  RouteSource routeSource, {
+  required final ProjectListService _projectListService,
+  required final SessionUnseenTracker _sessionUnseenTracker,
+  required final RegisteredBridgesService _registeredBridgesService,
+  required final ProductAnalyticsService _productAnalyticsService,
+  required final LoadedStateAnalyticsReporter _loadedStateAnalyticsReporter,
+  required final FailureReporter _failureReporter,
+}) extends Cubit<ProjectListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
-  _InventoryAnalyticsGuard _emptyInventoryAnalytics = _InventoryAnalyticsGuard.ready;
-  _InventoryAnalyticsGuard _nonEmptyInventoryAnalytics = _InventoryAnalyticsGuard.ready;
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   this : super(const ProjectListState.loading()) {
@@ -118,21 +116,6 @@ class ProjectListCubit(
     _subscriptions.add(
       _connectionService.dataMayBeStale.listen((_) => _onStaleReconnect()),
     );
-
-    // 6. Empty diagnostics cannot be deferred. If the first successful load
-    //    beats preference reconciliation, retry its bounded classification on
-    //    the later active edge without fetching or polling.
-    _subscriptions.add(
-      _productAnalyticsService.stateStream
-          .map((state) => state.isActive)
-          .distinct()
-          .where((isActive) => isActive)
-          .listen((_) => _retryCurrentInventoryAnalytics()),
-    );
-  }
-
-  void setActiveProject(ProjectSummary project) {
-    _connectionService.setActiveDirectory(project.id);
   }
 
   void reportNeedHelpMenuOpened({required OnboardingSurface surface}) {
@@ -187,64 +170,6 @@ class ProjectListCubit(
     );
   }
 
-  void _retryCurrentInventoryAnalytics() {
-    if (isClosed) return;
-    final current = state;
-    if (current is ProjectListLoaded) {
-      _reportInventoryLoaded(isEmpty: current.projects.isEmpty);
-    }
-  }
-
-  void _reportInventoryLoaded({required bool isEmpty}) {
-    final guard = isEmpty ? _emptyInventoryAnalytics : _nonEmptyInventoryAnalytics;
-    if (guard != _InventoryAnalyticsGuard.ready) return;
-    final attemptedWhileActive = _productAnalyticsService.state.isActive;
-    if (isEmpty) {
-      _emptyInventoryAnalytics = _InventoryAnalyticsGuard.inFlight;
-    } else {
-      _nonEmptyInventoryAnalytics = _InventoryAnalyticsGuard.inFlight;
-    }
-
-    unawaited(
-      _productAnalyticsService
-          .logEvent(
-            event: ProductAnalyticsEvent.projectInventoryLoaded(
-              inventoryState: isEmpty ? AnalyticsInventoryState.empty : AnalyticsInventoryState.nonEmpty,
-            ),
-            occurredAtUtc: DateTime.now().toUtc(),
-          )
-          .then<void>((result) {
-            final consumed =
-                result == AnalyticsDeliveryResult.acceptedBySdk ||
-                (!isEmpty && result == AnalyticsDeliveryResult.deferredUntilPreference);
-            final next = consumed ? _InventoryAnalyticsGuard.consumed : _InventoryAnalyticsGuard.ready;
-            if (isEmpty) {
-              _emptyInventoryAnalytics = next;
-            } else {
-              _nonEmptyInventoryAnalytics = next;
-            }
-            final isActive = _productAnalyticsService.state.isActive;
-            if (!consumed && isActive) {
-              logw("Failed to deliver project inventory analytics event");
-            }
-            if (!consumed && isEmpty && !attemptedWhileActive && isActive) {
-              _retryCurrentInventoryAnalytics();
-            }
-          })
-          .catchError((Object error, StackTrace stackTrace) {
-            if (isEmpty) {
-              _emptyInventoryAnalytics = _InventoryAnalyticsGuard.ready;
-            } else {
-              _nonEmptyInventoryAnalytics = _InventoryAnalyticsGuard.ready;
-            }
-            logw("Failed to report project inventory analytics event", error, stackTrace);
-            if (isEmpty && !attemptedWhileActive && _productAnalyticsService.state.isActive) {
-              _retryCurrentInventoryAnalytics();
-            }
-          }),
-    );
-  }
-
   void _onUnseenUpdated() {
     if (isClosed) return;
     if (state case final ProjectListLoaded loaded) {
@@ -289,33 +214,17 @@ class ProjectListCubit(
   void _onSessionActivityUpdated(Map<String, Map<String, SessionActivityInfo>> activityByProjectId) {
     if (isClosed) return;
     if (state case final ProjectListLoaded loaded) {
-      final ordered = _projectListService.orderProjects(
-        projects: loaded.projects,
-        activityByProjectId: activityByProjectId,
-        listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
-      );
-      emit(
-        loaded.copyWith(
-          projects: ordered,
-          unseenByProjectId: _unseenByProjectId(ordered),
-        ),
-      );
+      _emitOrdered(loaded: loaded, projects: loaded.projects, activityByProjectId: activityByProjectId);
     }
   }
 
   void _onSessionListStateUpdated() {
     if (isClosed) return;
     if (state case final ProjectListLoaded loaded) {
-      final ordered = _projectListService.orderProjects(
+      _emitOrdered(
+        loaded: loaded,
         projects: loaded.projects,
         activityByProjectId: _sseEventTracker.currentSessionActivity,
-        listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
-      );
-      emit(
-        loaded.copyWith(
-          projects: ordered,
-          unseenByProjectId: _unseenByProjectId(ordered),
-        ),
       );
     }
   }
@@ -330,17 +239,10 @@ class ProjectListCubit(
         );
         if (!merged.changed) return;
 
-        final ordered = _projectListService.orderProjects(
+        _emitOrdered(
+          loaded: loaded,
           projects: merged.projects,
           activityByProjectId: _sseEventTracker.currentSessionActivity,
-          listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
-        );
-
-        emit(
-          loaded.copyWith(
-            projects: ordered,
-            unseenByProjectId: _unseenByProjectId(ordered),
-          ),
         );
       }
     } catch (e, st) {
@@ -428,6 +330,7 @@ class ProjectListCubit(
     final hasRegisteredBridges = await _registeredBridgesService.hasRegisteredBridges();
     if (isClosed) return;
     if (!_isBridgeUnavailable) return;
+    _loadedStateAnalyticsReporter.clearCurrentOccurrence();
     emit(ProjectListState.bridgeDisconnected(hasRegisteredBridges: hasRegisteredBridges));
   }
 
@@ -448,6 +351,7 @@ class ProjectListCubit(
   }
 
   Future<void> loadProjects() async {
+    _loadedStateAnalyticsReporter.clearCurrentOccurrence();
     emit(const ProjectListState.loading());
     await _fetchProjects();
   }
@@ -505,37 +409,16 @@ class ProjectListCubit(
   /// fetching. This ensures the retry actually reaches the bridge instead
   /// of failing immediately with a "not connected" error.
   Future<void> retryLoadProjects() async {
+    _loadedStateAnalyticsReporter.clearCurrentOccurrence();
     emit(const ProjectListState.loading());
     // Yield to the event loop so the loading indicator renders before
     // the reconnection / fetch attempt (which may resolve synchronously
     // when the relay is disconnected).
     await Future<void>.delayed(Duration.zero);
     if (isClosed) return;
-    await _reconnectIfNeeded();
+    await _connectionService.reconnectAndAwaitOutcome(timeout: const Duration(seconds: 15));
     if (isClosed) return;
     await _fetchProjects();
-  }
-
-  /// Attempts to reconnect the relay when it is not in the
-  /// [ConnectionConnected] state. Returns once the connection resolves
-  /// (connected, lost, or timed out).
-  Future<void> _reconnectIfNeeded() async {
-    if (_connectionService.currentStatus is ConnectionConnected) return;
-
-    if (_connectionService.currentStatus is! ConnectionReconnecting) {
-      _connectionService.reconnect();
-    }
-    // If reconnect is now in progress, wait for the outcome.
-    if (_connectionService.currentStatus is! ConnectionReconnecting) return;
-
-    try {
-      await _connectionService.status
-          .where((s) => s is! ConnectionReconnecting)
-          .first
-          .timeout(const Duration(seconds: 15));
-    } on TimeoutException catch (_) {
-      // Fall through — fetch will fail gracefully with a user-visible error.
-    }
   }
 
   /// True while [reconnectBridge] is re-establishing the connection. The
@@ -576,7 +459,7 @@ class ProjectListCubit(
         await _connectionService.connectWithFreshAuthToken();
       } else {
         // An existing config dropped (e.g. bridge offline) — reconnect it.
-        await _reconnectIfNeeded();
+        await _connectionService.reconnectAndAwaitOutcome(timeout: const Duration(seconds: 15));
       }
       if (isClosed) return;
       if (_isBridgeUnavailable) {
@@ -610,22 +493,34 @@ class ProjectListCubit(
       return false;
     }
     if (state case final ProjectListLoaded loaded) {
-      final remaining = _projectListService.orderProjects(
+      _emitOrdered(
+        loaded: loaded,
         projects: _projectListService.removeProject(
           projects: loaded.projects,
           projectId: projectId,
         ),
         activityByProjectId: _sseEventTracker.currentSessionActivity,
-        listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
-      );
-      emit(
-        loaded.copyWith(
-          projects: remaining,
-          unseenByProjectId: _unseenByProjectId(remaining),
-        ),
       );
     }
     return true;
+  }
+
+  void _emitOrdered({
+    required ProjectListLoaded loaded,
+    required List<ProjectSummary> projects,
+    required Map<String, Map<String, SessionActivityInfo>> activityByProjectId,
+  }) {
+    final ordered = _projectListService.orderProjects(
+      projects: projects,
+      activityByProjectId: activityByProjectId,
+      listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
+    );
+    emit(
+      loaded.copyWith(
+        projects: ordered,
+        unseenByProjectId: _unseenByProjectId(ordered),
+      ),
+    );
   }
 
   /// Creates a new project named [name] below [parentPath].
@@ -789,7 +684,10 @@ class ProjectListCubit(
             unseenByProjectId: _unseenByProjectId(sortedProjects),
           ),
         );
-        _reportInventoryLoaded(isEmpty: sortedProjects.isEmpty);
+        _loadedStateAnalyticsReporter.reportLoaded(
+          isEmpty: sortedProjects.isEmpty,
+          occurredAtUtc: DateTime.now().toUtc(),
+        );
         return true;
 
       case ErrorResponse(:final error):
@@ -801,6 +699,7 @@ class ProjectListCubit(
           await _emitBridgeDisconnected();
         } else {
           loge("Project list load failed", error);
+          _loadedStateAnalyticsReporter.clearCurrentOccurrence();
           emit(ProjectListState.failed(reason: error.remoteFailureReason));
         }
         return false;
@@ -808,8 +707,9 @@ class ProjectListCubit(
   }
 
   @override
-  Future<void> close() {
-    _subscriptions.dispose();
-    return super.close();
+  Future<void> close() async {
+    await _subscriptions.dispose();
+    await _loadedStateAnalyticsReporter.close();
+    return await super.close();
   }
 }

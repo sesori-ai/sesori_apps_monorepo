@@ -135,7 +135,6 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
       );
       sessionRepository = SessionRepository(
         runtime: runtime,
-        bridgeDerivedProjectPluginIds: {plugin.id},
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,

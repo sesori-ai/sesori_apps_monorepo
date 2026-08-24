@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart' show ParallelLock;
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 import 'package:sesori_shared/sesori_shared.dart'
     show BridgeSettingsResponse, PullRequestRefreshSettingsResponse, YoloSettingsResponse, jsonDecodeMap;
@@ -16,7 +17,7 @@ class BridgeSettingsRepository({required final BridgeSettingsApi _api}) {
     sync: true,
   );
   BridgeSettings? _currentSettings;
-  Future<void> _mutationTail = Future<void>.value();
+  final ParallelLock _mutationLock = ParallelLock(maxParallelOperations: 1);
   Future<void>? _disposeFuture;
   bool _disposed = false;
 
@@ -31,7 +32,7 @@ class BridgeSettingsRepository({required final BridgeSettingsApi _api}) {
   }
 
   Future<BridgeSettings> readCommittedSettings() async {
-    await _mutationTail;
+    await _mutationLock.idle;
     return currentSettings;
   }
 
@@ -86,15 +87,11 @@ class BridgeSettingsRepository({required final BridgeSettingsApi _api}) {
   }) {
     if (_disposed) return Future<BridgeSettings>.error(StateError('Bridge settings repository has been disposed.'));
 
-    final completer = Completer<BridgeSettings>();
-    _mutationTail = _mutationTail.then((_) async {
-      try {
+    return _mutationLock.use(
+      operation: () async {
         final current = _currentSettings ?? await loadSettings();
         final updated = mutation(current: current);
-        if (identical(updated, current)) {
-          completer.complete(current);
-          return;
-        }
+        if (identical(updated, current)) return current;
         if (updated.pullRequestRefreshIntervalSeconds < minimumPullRequestRefreshIntervalSeconds ||
             updated.pullRequestRefreshIntervalSeconds > maximumPullRequestRefreshIntervalSeconds) {
           throw const PullRequestRefreshIntervalFormatException();
@@ -102,12 +99,9 @@ class BridgeSettingsRepository({required final BridgeSettingsApi _api}) {
         await _api.writeConfig(_jsonEncoder.convert(updated.toJson()));
         _currentSettings = updated;
         _settingsChanges.add(BridgeSettingsChange(previous: current, current: updated));
-        completer.complete(updated);
-      } on Object catch (error, stackTrace) {
-        completer.completeError(error, stackTrace);
-      }
-    });
-    return completer.future;
+        return updated;
+      },
+    );
   }
 
   Future<void> updateReleaseTrack({required ReleaseTrack track}) async {
@@ -130,7 +124,7 @@ class BridgeSettingsRepository({required final BridgeSettingsApi _api}) {
 
   Future<void> _dispose() async {
     _disposed = true;
-    await _mutationTail;
+    await _mutationLock.idle;
     await _settingsChanges.close();
   }
 

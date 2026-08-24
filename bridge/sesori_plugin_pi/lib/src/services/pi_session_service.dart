@@ -670,7 +670,14 @@ final class PiSessionService({
     }
   }
 
-  Future<void> abort({required String sessionId}) async {
+  Future<void> abort({required String sessionId}) {
+    return _abort(sessionId: sessionId, processExitIsExpected: false);
+  }
+
+  Future<void> _abort({
+    required String sessionId,
+    required bool processExitIsExpected,
+  }) async {
     final state = _sessions[sessionId];
     if (state == null) {
       await _processes.teardown(sessionId: sessionId);
@@ -699,7 +706,16 @@ final class PiSessionService({
     try {
       final idleReap = state.idleReap;
       if (idleReap != null) await idleReap;
-      if (connection != null) await _processes.abort(connection: connection);
+      if (connection != null) {
+        switch (await _processes.abort(connection: connection)) {
+          case PiSessionAbortAcknowledged():
+            break;
+          case PiSessionAbortProcessExited(:final innerError, :final innerStackTrace):
+            if (!processExitIsExpected) {
+              Log.w("[pi] abort command failed for session id=$sessionId", innerError, innerStackTrace);
+            }
+        }
+      }
     } on Object catch (error, stack) {
       Log.w("[pi] abort command failed for session id=$sessionId", error, stack);
     } finally {
@@ -725,7 +741,8 @@ final class PiSessionService({
       };
       if (activeSessionIds.isEmpty) return const <String>{};
       await Future.wait([
-        for (final sessionId in activeSessionIds) abort(sessionId: sessionId),
+        for (final sessionId in activeSessionIds)
+          _abort(sessionId: sessionId, processExitIsExpected: true),
       ]);
       if (currentWorkState != PluginWorkState.idle) {
         await workState.firstWhere((state) => state == PluginWorkState.idle);

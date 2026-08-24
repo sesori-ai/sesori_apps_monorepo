@@ -681,9 +681,6 @@ class _ThrowingUpdateSessionRepository({
   this
     : super(
         runtime: createTestPluginRuntime(plugins: [plugin]),
-        bridgeDerivedProjectPluginIds: {
-          if (plugin is BridgeDerivedProjectsPluginApi) plugin.id,
-        },
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,

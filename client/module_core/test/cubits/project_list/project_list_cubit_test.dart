@@ -14,6 +14,7 @@ import "package:sesori_dart_core/src/cubits/project_list/project_list_state.dart
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_preference.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
+import "package:sesori_dart_core/src/services/loaded_state_analytics_reporter.dart";
 import "package:sesori_dart_core/src/services/models/product_analytics_state.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
@@ -92,6 +93,9 @@ void main() {
       // Must be stubbed before any cubit is built — constructor subscribes immediately.
       when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
+      when(
+        () => mockConnectionService.reconnectAndAwaitOutcome(timeout: any(named: "timeout")),
+      ).thenAnswer((_) async {});
       when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => true);
       // Default: a fresh account with no registered bridge (setup onboarding).
       when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => false);
@@ -133,6 +137,9 @@ void main() {
       sessionUnseenTracker: fakeSessionUnseenTracker,
       registeredBridgesService: mockRegisteredBridgesService,
       productAnalyticsService: mockProductAnalyticsService,
+      loadedStateAnalyticsReporter: LoadedStateAnalyticsReporter.projectInventory(
+        productAnalyticsService: mockProductAnalyticsService,
+      ),
       failureReporter: mockFailureReporter,
     );
 
@@ -333,6 +340,46 @@ void main() {
           occurredAtUtc: any(named: "occurredAtUtc"),
         ),
       ).called(2);
+    });
+
+    test("an empty inventory does not retry after the cubit leaves loaded state", () async {
+      when(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).thenAnswer((_) async => AnalyticsDeliveryResult.failed);
+      var requestCount = 0;
+      when(() => mockProjectRepository.listProjects()).thenAnswer(
+        (_) async => ++requestCount == 1
+            ? ApiResponse.success(const Projects(data: <ProjectSummary>[]))
+            : ApiResponse.error(ApiError.generic()),
+      );
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      await cubit.loadProjects();
+      expect(cubit.state, isA<ProjectListFailed>());
+      analyticsStateController.add(
+        const ProductAnalyticsState(
+          preference: ProductAnalyticsPreferenceKnown(
+            preference: ProductAnalyticsPreference.enabled,
+          ),
+          synchronization: ProductAnalyticsSynchronized(),
+          availability: ProductAnalyticsActive(),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.projectInventoryLoaded(
+            inventoryState: AnalyticsInventoryState.empty,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(1);
     });
 
     // -------------------------------------------------------------------------
@@ -1304,30 +1351,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // Test 5: setActiveProject — calls connectionService.setActiveDirectory
-    // -------------------------------------------------------------------------
-
-    blocTest<ProjectListCubit, ProjectListState>(
-      "setActiveProject: calls connectionService.setActiveDirectory with project id",
-      build: () {
-        when(
-          () => mockProjectRepository.listProjects(),
-        ).thenAnswer((_) async => ApiResponse.success(const Projects(data: <ProjectSummary>[])));
-        return buildCubit();
-      },
-      act: (cubit) => cubit.setActiveProject(testProjectSummary()),
-      expect: () => [
-        isA<ProjectListLoaded>(),
-      ],
-      verify: (cubit) {
-        verify(
-          () => mockConnectionService.setActiveDirectory(testProjectSummary().id),
-        ).called(1);
-      },
-    );
-
-    // -------------------------------------------------------------------------
-    // Test 6: explicit loadProjects call — re-fetches and re-emits
+    // Test 5: explicit loadProjects call — re-fetches and re-emits
     // -------------------------------------------------------------------------
 
     blocTest<ProjectListCubit, ProjectListState>(
@@ -2175,24 +2199,12 @@ void main() {
         when(() => mockProjectRepository.listProjects()).thenAnswer(
           (_) async => ApiResponse.success(Projects(data: [testProjectSummary()])),
         );
-        const config = ServerConnectionConfig(
-          relayHost: "relay.example.com",
-          authToken: "test-token",
-        );
-        when(() => mockConnectionService.reconnect()).thenAnswer((_) {
-          when(() => mockConnectionService.currentStatus).thenReturn(
-            const ConnectionStatus.reconnecting(config: config),
-          );
-          statusController.add(const ConnectionStatus.reconnecting(config: config));
-        });
-        final retryFuture = cubit.retryLoadProjects();
-        await Future<void>.delayed(Duration.zero);
-        await Future<void>.delayed(Duration.zero);
-        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
-        statusController.add(
-          const ConnectionStatus.connected(config: config, health: health),
-        );
-        await retryFuture;
+        when(
+          () => mockConnectionService.reconnectAndAwaitOutcome(
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer((_) async {});
+        await cubit.retryLoadProjects();
       },
       skip: 1,
       expect: () => [
@@ -2204,7 +2216,11 @@ void main() {
         ),
       ],
       verify: (_) {
-        verify(() => mockConnectionService.reconnect()).called(1);
+        verify(
+          () => mockConnectionService.reconnectAndAwaitOutcome(
+            timeout: const Duration(seconds: 15),
+          ),
+        ).called(1);
       },
     );
 
@@ -2241,7 +2257,11 @@ void main() {
         ),
       ],
       verify: (_) {
-        verifyNever(() => mockConnectionService.reconnect());
+        verify(
+          () => mockConnectionService.reconnectAndAwaitOutcome(
+            timeout: const Duration(seconds: 15),
+          ),
+        ).called(1);
       },
     );
 

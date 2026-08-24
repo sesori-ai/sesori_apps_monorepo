@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:math";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ParallelLock;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -16,7 +17,7 @@ class ProjectActivityService({
 }) {
   final StreamController<ProjectActivityChange> _changes = StreamController<ProjectActivityChange>.broadcast();
 
-  Future<void> _writeTail = Future<void>.value();
+  final ParallelLock _writeLock = ParallelLock(maxParallelOperations: 1);
   bool _disposing = false;
 
   Stream<ProjectActivityChange> get changes => _changes.stream;
@@ -35,7 +36,7 @@ class ProjectActivityService({
       if (result.updatedAtAdvanced) {
         _emit(
           projectId: result.committedProject.id,
-          updatedAt: result.committedActivity.updatedAt,
+          updatedAt: result.committedActivity.updated,
         );
       }
       return await _projectRepository.mapOpenedProject(
@@ -75,14 +76,14 @@ class ProjectActivityService({
     return _serialize(() async {
       final stored = await _projectRepository.getStoredSessionActivity(sessionId: sessionId);
       if (stored == null) return;
-      final activity = ProjectActivity(
-        createdAt: stored.activity.createdAt,
-        updatedAt: max(stored.activity.updatedAt, occurredAt),
+      final activity = ProjectTime(
+        created: stored.activity.created,
+        updated: max(stored.activity.updated, occurredAt),
       );
       if (activity == stored.activity) return;
       await _projectRepository.writeActivity(projectId: stored.projectId, activity: activity);
-      if (activity.updatedAt > stored.activity.updatedAt) {
-        _emit(projectId: stored.projectId, updatedAt: activity.updatedAt);
+      if (activity.updated > stored.activity.updated) {
+        _emit(projectId: stored.projectId, updatedAt: activity.updated);
       }
     });
   }
@@ -107,7 +108,7 @@ class ProjectActivityService({
     final storedActivities = await _projectRepository.getActivities(
       projectIds: {for (final item in evidence) item.projectId},
     );
-    final updates = <String, ProjectActivity>{};
+    final updates = <String, ProjectTime>{};
     final advances = <ProjectActivityChange>[];
 
     for (final item in evidence) {
@@ -119,8 +120,8 @@ class ProjectActivityService({
       final current = storedActivities[item.projectId];
       if (activity == current) continue;
       updates[item.projectId] = activity;
-      if (current == null || activity.updatedAt > current.updatedAt) {
-        advances.add(ProjectActivityChange(projectId: item.projectId, updatedAt: activity.updatedAt));
+      if (current == null || activity.updated > current.updated) {
+        advances.add(ProjectActivityChange(projectId: item.projectId, updatedAt: activity.updated));
       }
     }
 
@@ -130,8 +131,8 @@ class ProjectActivityService({
       activities: {
         for (final entry in updates.entries)
           entry.key: (
-            createdAt: entry.value.createdAt,
-            updatedAt: entry.value.updatedAt,
+            createdAt: entry.value.created,
+            updatedAt: entry.value.updated,
           ),
       },
     );
@@ -140,8 +141,8 @@ class ProjectActivityService({
     }
   }
 
-  ProjectActivity? _reconciledActivity({
-    required ProjectActivity? current,
+  ProjectTime? _reconciledActivity({
+    required ProjectTime? current,
     required ProjectActivityEvidence evidence,
   }) {
     int? createdAt;
@@ -158,19 +159,17 @@ class ProjectActivityService({
     }
     if (createdAt == null || updatedAt == null) return null;
     if (current != null) {
-      createdAt = min(current.createdAt, createdAt);
-      updatedAt = max(current.updatedAt, updatedAt);
+      createdAt = min(current.created, createdAt);
+      updatedAt = max(current.updated, updatedAt);
     }
-    return ProjectActivity(createdAt: createdAt, updatedAt: updatedAt);
+    return ProjectTime(created: createdAt, updated: updatedAt);
   }
 
   Future<T> _serialize<T>(Future<T> Function() operation) {
     if (_disposing) {
       return Future<T>.error(StateError("ProjectActivityService is disposed"));
     }
-    final result = _writeTail.then((_) => operation());
-    _writeTail = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
-    return result;
+    return _writeLock.use(operation: operation);
   }
 
   void _emit({required String projectId, required int updatedAt}) {
@@ -180,7 +179,7 @@ class ProjectActivityService({
   Future<void> dispose() async {
     if (_disposing) return;
     _disposing = true;
-    await _writeTail;
+    await _writeLock.idle;
     await _changes.close();
   }
 }

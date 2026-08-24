@@ -14,6 +14,26 @@ final class const BridgeSettingsLoadUnsupported() extends BridgeSettingsLoadResu
 
 final class const BridgeSettingsLoadFailure({required final ApiError error}) extends BridgeSettingsLoadResult;
 
+sealed class const PullRequestRefreshSettingsUpdatePlan() {
+  static PullRequestRefreshSettingsUpdatePlan parse({
+    required String input,
+    required PullRequestRefreshSettingsBounds? bounds,
+  }) {
+    final intervalSeconds = int.tryParse(input.trim());
+    if (intervalSeconds == null ||
+        intervalSeconds <= 0 ||
+        (bounds != null && !bounds.includes(intervalSeconds: intervalSeconds))) {
+      return const PullRequestRefreshSettingsUpdateInvalid();
+    }
+    return PullRequestRefreshSettingsUpdateRequest(intervalSeconds: intervalSeconds);
+  }
+}
+
+final class const PullRequestRefreshSettingsUpdateRequest({required final int intervalSeconds})
+    extends PullRequestRefreshSettingsUpdatePlan;
+
+final class const PullRequestRefreshSettingsUpdateInvalid() extends PullRequestRefreshSettingsUpdatePlan;
+
 sealed class const PullRequestRefreshSettingsMutationResult();
 
 final class const PullRequestRefreshSettingsMutationCommitted({

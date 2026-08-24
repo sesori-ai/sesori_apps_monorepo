@@ -34,7 +34,6 @@ void main() {
       setUp(() {
         when(() => mockConnectionService.relayClient).thenReturn(mockRelayClient);
         when(() => mockRelayClient.isConnected).thenReturn(true);
-        when(() => mockConnectionService.activeDirectory).thenReturn(null);
       });
 
       test("GET sends request via relay and returns parsed response", () async {
@@ -501,7 +500,6 @@ void main() {
         // Arrange
         when(() => mockConnectionService.relayClient).thenReturn(mockRelayClient);
         when(() => mockRelayClient.isConnected).thenReturn(true);
-        when(() => mockConnectionService.activeDirectory).thenReturn(null);
         when(
           () => mockRelayClient.sendRequest(
             request: any(named: "request"),

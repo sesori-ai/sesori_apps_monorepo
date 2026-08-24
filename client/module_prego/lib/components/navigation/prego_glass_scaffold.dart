@@ -583,8 +583,8 @@ class _AnimatedBannerSlotState() extends State<_AnimatedBannerSlot> {
     //  - Align(heightFactor: 0) sizes the hidden slot to zero while keeping
     //    the retained content laid out, which is what AnimatedSize animates
     //    toward during the exit.
-    return _HeightObserver(
-      onHeightChanged: _onHeightChanged,
+    return PregoSizeObserver(
+      onSizeChanged: (size) => _onHeightChanged(size.height),
       child: ClipRect(
         child: AnimatedSize(
           duration: _AnimatedBannerSlot._duration,
@@ -605,33 +605,6 @@ class _AnimatedBannerSlotState() extends State<_AnimatedBannerSlot> {
         ),
       ),
     );
-  }
-}
-
-/// Reports its child's laid-out height via [onHeightChanged] whenever it
-/// changes. The callback is invoked post-frame so listeners may safely call
-/// `setState`/notify — the same measure-and-report pattern as the session
-/// detail composer measurement.
-class const _HeightObserver({required final ValueChanged<double> onHeightChanged, required super.child}) extends SingleChildRenderObjectWidget {
-  @override
-  RenderObject createRenderObject(BuildContext context) => _RenderHeightObserver(onHeightChanged);
-
-  @override
-  void updateRenderObject(BuildContext context, _RenderHeightObserver renderObject) {
-    renderObject.onHeightChanged = onHeightChanged;
-  }
-}
-
-class _RenderHeightObserver(var ValueChanged<double> onHeightChanged) extends RenderProxyBox {
-  double? _lastReportedHeight;
-
-  @override
-  void performLayout() {
-    super.performLayout();
-    final height = size.height;
-    if (height == _lastReportedHeight) return;
-    _lastReportedHeight = height;
-    WidgetsBinding.instance.addPostFrameCallback((_) => onHeightChanged(height));
   }
 }
 
@@ -744,8 +717,8 @@ class const _LargeTitleSliver({
     );
 
     return SliverToBoxAdapter(
-      child: _HeightObserver(
-        onHeightChanged: onHeightChanged,
+      child: PregoSizeObserver(
+        onSizeChanged: (size) => onHeightChanged(size.height),
         child: pulledExtent == null
             ? titleContent
             : _OverscrollPinnedBox(pulledExtent: pulledExtent, child: titleContent),

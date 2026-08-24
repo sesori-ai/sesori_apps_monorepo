@@ -57,6 +57,7 @@ import "repositories/filesystem_repository.dart";
 import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
 import "repositories/mappers/session_event_mapper.dart";
+import "repositories/pending_interaction_support.dart";
 import "repositories/permission_repository.dart";
 import "repositories/pr_source_repository.dart";
 import "repositories/project_activity_repository.dart";
@@ -215,10 +216,6 @@ class Orchestrator({
     final gitCliApi = GitCliApi(processRunner: _processRunner, gitPathExists: _gitPathExists);
     final sessionRepository = SessionRepository(
       runtime: _pluginRuntime,
-      bridgeDerivedProjectPluginIds: {
-        for (final entry in pluginComposition.projectOwnershipById.entries)
-          if (entry.value == PluginProjectOwnership.bridgeDerived) entry.key,
-      },
       sessionDao: _database.sessionDao,
       projectsDao: _database.projectsDao,
       pullRequestDao: _database.pullRequestDao,
@@ -347,9 +344,10 @@ class Orchestrator({
       ),
       now: () => DateTime.now().millisecondsSinceEpoch,
     );
+    final pendingInteractionSupport = PendingInteractionSupport(sessionDao: _database.sessionDao);
     final permissionRepository = PermissionRepository(
       runtime: _pluginRuntime,
-      sessionDao: _database.sessionDao,
+      pendingSupport: pendingInteractionSupport,
     );
     final healthRepository = HealthRepository(
       bridgeVersion: appVersion,
@@ -366,6 +364,7 @@ class Orchestrator({
     );
     final questionRepository = QuestionRepository(
       runtime: _pluginRuntime,
+      pendingSupport: pendingInteractionSupport,
       sessionDao: _database.sessionDao,
       projectsDao: _database.projectsDao,
       aggregateSourceDeadline: aggregateSourceDeadline,
@@ -1041,6 +1040,7 @@ class OrchestratorSession._({
   Future<void> _teardown() async {
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
+    _prSyncService.beginShutdown();
     final teardownSw = Stopwatch()..start();
     Object? firstTeardownError;
     StackTrace? firstTeardownStackTrace;
@@ -1107,7 +1107,7 @@ class OrchestratorSession._({
     Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_maintenanceListener.dispose);
     await attempt(_viewedProjectPrRefreshListener.dispose);
-    await attempt(_prSyncService.dispose);
+    await attempt(_prSyncService.drain);
     Log.v("[shutdown] maintenance + pr-sync listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
     // Plugin teardown is owned by BridgePlugin.shutdown(), run as the
     // shutdown coordinator's ordered step — the deprecated direct
@@ -1255,6 +1255,7 @@ class OrchestratorSession._({
   void beginShutdown() {
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
+    _prSyncService.beginShutdown();
     if (_cancelRequestedAt == null) {
       _cancelRequestedAt = DateTime.now();
       Log.d(

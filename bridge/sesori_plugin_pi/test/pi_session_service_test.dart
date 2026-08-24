@@ -1307,6 +1307,38 @@ void main() {
     expect(fixture.repository.residentSessionIds, isEmpty);
   });
 
+  test("shutdown interruption accepts process exit before abort response", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-shutdown",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "active work")],
+      userVisibleText: "active work",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+
+    final warnings = await _captureWarnings(() async {
+      final interruption = service.interruptActiveWork(budget: const Duration(seconds: 1));
+      await waitForCommand(process: process, type: "abort");
+      process.exit(code: -2);
+      await interruption;
+    });
+
+    expect(warnings, isNot(contains("abort command failed")));
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.idle());
+    expect(fixture.repository.residentSessionIds, isEmpty);
+  });
+
   test("idle reap and disposal terminate residents", () async {
     final first = FakePiProcess();
     final second = FakePiProcess();

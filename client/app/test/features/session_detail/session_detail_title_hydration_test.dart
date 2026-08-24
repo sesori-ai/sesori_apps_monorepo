@@ -67,7 +67,6 @@ SessionDetailLoadResult _loadedResult() {
       isRootSession: true,
       isArchived: false,
     ),
-    isBridgeConnected: true,
   );
 }
 
@@ -92,7 +91,6 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
       isRootSession: true,
       isArchived: false,
     ),
-    isBridgeConnected: true,
   );
 }
 
@@ -124,7 +122,6 @@ SessionDetailLoadResult _loadedResultWithPendingQuestion() {
       isRootSession: true,
       isArchived: false,
     ),
-    isBridgeConnected: true,
   );
 }
 
@@ -187,7 +184,7 @@ void main() {
     globalEvents = StreamController<SseEvent>.broadcast();
     connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(
       ConnectionStatus.connected(
-        config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+        config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
         health: testHealthResponse(),
       ),
     );
@@ -197,7 +194,7 @@ void main() {
     when(() => connectionService.status).thenAnswer((_) => connectionStatus.stream);
     when(() => connectionService.currentStatus).thenReturn(
       ConnectionStatus.connected(
-        config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+        config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
         health: testHealthResponse(),
       ),
     );

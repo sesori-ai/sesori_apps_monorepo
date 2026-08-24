@@ -22,6 +22,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
+import "new_session_state_matchers.dart";
 
 const pluginA = PluginMetadata(
   id: "plugin-a",
@@ -38,7 +39,7 @@ const pluginB = PluginMetadata(
   actionHint: null,
 );
 const connectedStatus = ConnectionStatus.connected(
-  config: ServerConnectionConfig(relayHost: "relay.example.com"),
+  config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
   health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
 );
 
@@ -81,7 +82,7 @@ final class _AggregateTestOptionsService({required MockSessionRepository session
 
 void main() {
   group("NewSessionCubit plugin selection", () {
-    late MockSessionService sessionService;
+    late MockSessionRepository sessionService;
     late MockSessionRepository sessionRepository;
     late MockPluginRepository pluginRepository;
     late MockPluginPreferenceRepository pluginPreferenceRepository;
@@ -93,7 +94,7 @@ void main() {
     setUpAll(registerAllFallbackValues);
 
     setUp(() {
-      sessionService = MockSessionService();
+      sessionService = MockSessionRepository();
       sessionRepository = MockSessionRepository();
       pluginRepository = MockPluginRepository();
       pluginPreferenceRepository = MockPluginPreferenceRepository();
@@ -126,9 +127,9 @@ void main() {
         ),
       );
       _stubEmptyResources(sessionService);
-      delegateSessionOptionsRepositoryToService(
+      delegateSessionOptionsRepository(
         repository: sessionRepository,
-        service: sessionService,
+        source: sessionService,
       );
     });
 
@@ -136,7 +137,7 @@ void main() {
 
     NewSessionCubit buildCubit({NewSessionOptionsService? optionsService}) => NewSessionCubit(
       connectionService: connectionService,
-      sessionService: sessionService,
+      sessionRepository: sessionService,
       newSessionPluginService: NewSessionPluginService(
         pluginRepository: pluginRepository,
         pluginPreferenceRepository: pluginPreferenceRepository,
@@ -167,7 +168,7 @@ void main() {
 
       final cubit = buildCubit();
       addTearDown(cubit.close);
-      await _waitUntil(() => cubit.state is NewSessionDiscoveryError);
+      await _waitUntil(() => cubit.state.phase is NewSessionPhaseDiscoveryError);
 
       connectionStatus
         ..add(const ConnectionStatus.disconnected())
@@ -178,7 +179,7 @@ void main() {
       });
 
       expect(discoveryCalls, 2);
-      expect(cubit.state, isA<NewSessionIdle>());
+      expect(cubit.state, composingWith<NewSessionPhaseIdle>());
       expect(cubit.state.agentModelData?.plugin, pluginA);
     });
 
@@ -214,12 +215,12 @@ void main() {
         ..add(connectedStatus);
       await _waitUntil(() {
         final data = cubit.state.agentModelData;
-        return cubit.state is NewSessionDiscoveryError && !(data?.isLoading ?? true);
+        return cubit.state.phase is NewSessionPhaseDiscoveryError && !(data?.isLoading ?? true);
       });
 
-      final state = cubit.state as NewSessionDiscoveryError;
+      final state = cubit.state as NewSessionComposing;
       final afterRefresh = state.agentModelData!;
-      expect(state.reason, RemoteFailureReason.serverRejected);
+      expect((state.phase as NewSessionPhaseDiscoveryError).reason, RemoteFailureReason.serverRejected);
       expect(afterRefresh.plugins, beforeRefresh.plugins);
       expect(afterRefresh.plugin, beforeRefresh.plugin);
       expect(afterRefresh.agents, beforeRefresh.agents);
@@ -233,7 +234,7 @@ void main() {
       expect(afterRefresh.isPluginDiscoveryInFlight, isFalse);
 
       cubit.selectPlugin(pluginId: "plugin-b");
-      expect(cubit.state, isA<NewSessionDiscoveryError>());
+      expect(cubit.state, composingWith<NewSessionPhaseDiscoveryError>());
       expect(cubit.state.agentModelData?.plugin, pluginA);
 
       cubit.clearStagedCommand();
@@ -1268,12 +1269,12 @@ void main() {
 
       final cubit = buildCubit();
       addTearDown(cubit.close);
-      final state = cubit.state as NewSessionIdle;
+      final state = cubit.state as NewSessionComposing;
 
-      expect(state.availablePlugins, isEmpty);
-      expect(state.selectedPlugin, isNull);
+      expect(state.config.availablePlugins, isEmpty);
+      expect(state.config.selectedPlugin, isNull);
       expect(state.isComposerDataLoading, isTrue);
-      expect(state.isPluginDiscoveryInFlight, isTrue);
+      expect(state.config.isPluginDiscoveryInFlight, isTrue);
       expect(state.availableAgents, isEmpty);
       expect(state.availableProviders, isEmpty);
       expect(state.availableCommands, isEmpty);
@@ -1286,18 +1287,18 @@ void main() {
 
       final cubit = buildCubit();
       addTearDown(cubit.close);
-      await _waitUntil(() => cubit.state is NewSessionDiscoveryError);
+      await _waitUntil(() => cubit.state.phase is NewSessionPhaseDiscoveryError);
 
-      final state = cubit.state as NewSessionDiscoveryError;
-      expect(state.reason, RemoteFailureReason.serverRejected);
-      expect(state.availablePlugins, isEmpty);
-      expect(state.selectedPlugin, isNull);
+      final state = cubit.state as NewSessionComposing;
+      expect((state.phase as NewSessionPhaseDiscoveryError).reason, RemoteFailureReason.serverRejected);
+      expect(state.config.availablePlugins, isEmpty);
+      expect(state.config.selectedPlugin, isNull);
       expect(
-        state.options,
+        state.config.options,
         isA<NewSessionOptionsLoadingState>().having((options) => options.source, "source", isNull),
       );
       expect(state.isComposerDataLoading, isTrue);
-      expect(state.isPluginDiscoveryInFlight, isFalse);
+      expect(state.config.isPluginDiscoveryInFlight, isFalse);
       expect(state.availableAgents, isEmpty);
       expect(state.availableProviders, isEmpty);
       expect(state.availableCommands, isEmpty);
@@ -1341,9 +1342,9 @@ void main() {
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
 
-      final state = cubit.state as NewSessionIdle;
-      expect(state.availablePlugins.map((plugin) => plugin.id), ["blocked", "selected"]);
-      expect(state.selectedPlugin, second);
+      final state = cubit.state as NewSessionComposing;
+      expect(state.config.availablePlugins.map((plugin) => plugin.id), ["blocked", "selected"]);
+      expect(state.config.selectedPlugin, second);
       verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "selected")).called(1);
       verify(() => sessionService.listProviders(projectId: "project-1", pluginId: "selected")).called(1);
       verify(() => sessionService.listCommands(projectId: "project-1", pluginId: "selected")).called(1);
@@ -1367,8 +1368,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1395,8 +1395,7 @@ void main() {
           pluginId: "degraded",
           text: "hello",
           agent: null,
-          providerID: null,
-          modelID: null,
+          model: null,
           variant: null,
           command: null,
           dedicatedWorktree: true,
@@ -1427,9 +1426,9 @@ void main() {
       addTearDown(cubit.close);
       await _waitUntil(() => cubit.state.agentModelData?.isLoading == false);
 
-      final state = cubit.state as NewSessionIdle;
-      expect(state.availablePlugins, [unavailable, failed]);
-      expect(state.selectedPlugin, unavailable);
+      final state = cubit.state as NewSessionComposing;
+      expect(state.config.availablePlugins, [unavailable, failed]);
+      expect(state.config.selectedPlugin, unavailable);
       cubit.selectPlugin(pluginId: "failed");
       cubit.selectPlugin(pluginId: "unknown");
       await cubit.createSession(
@@ -1439,7 +1438,7 @@ void main() {
         command: null,
       );
 
-      expect((cubit.state as NewSessionIdle).selectedPlugin, unavailable);
+      expect((cubit.state as NewSessionComposing).config.selectedPlugin, unavailable);
       _verifyNoComposerCalls(sessionService);
       verifyNever(
         () => sessionService.createSessionWithMessage(
@@ -1448,8 +1447,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1502,10 +1500,10 @@ void main() {
 
       cubit.selectPlugin(pluginId: "plugin-b");
 
-      final state = cubit.state as NewSessionIdle;
-      expect(state.selectedPlugin?.id, "plugin-b");
+      final state = cubit.state as NewSessionComposing;
+      expect(state.config.selectedPlugin?.id, "plugin-b");
       expect(state.isComposerDataLoading, isTrue);
-      expect(state.isPluginDiscoveryInFlight, isFalse);
+      expect(state.config.isPluginDiscoveryInFlight, isFalse);
       expect(state.availableAgents, isEmpty);
       expect(state.availableProviders, isEmpty);
       expect(state.availableCommands, isEmpty);
@@ -1538,8 +1536,8 @@ void main() {
       a.complete(ApiResponse.success(Agents(agents: [_agent("late-agent-a")])));
       await Future<void>.delayed(Duration.zero);
 
-      final state = cubit.state as NewSessionIdle;
-      expect(state.selectedPlugin?.id, "plugin-b");
+      final state = cubit.state as NewSessionComposing;
+      expect(state.config.selectedPlugin?.id, "plugin-b");
       expect(state.availableAgents.map((agent) => agent.name), ["agent-b"]);
     });
 
@@ -1569,8 +1567,8 @@ void main() {
       firstA.complete(ApiResponse.success(Agents(agents: [_agent("old-agent-a")])));
       await Future<void>.delayed(Duration.zero);
 
-      final state = cubit.state as NewSessionIdle;
-      expect(state.selectedPlugin?.id, "plugin-a");
+      final state = cubit.state as NewSessionComposing;
+      expect(state.config.selectedPlugin?.id, "plugin-a");
       expect(state.availableAgents.map((agent) => agent.name), ["fresh-agent-a"]);
     });
 
@@ -1614,8 +1612,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1647,8 +1644,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1765,8 +1761,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1782,7 +1777,7 @@ void main() {
         dedicatedWorktree: true,
         command: null,
       );
-      await _waitUntil(() => cubit.state is NewSessionSending);
+      await _waitUntil(() => cubit.state.phase is NewSessionPhaseSending);
       connectionStatus
         ..add(const ConnectionStatus.disconnected())
         ..add(connectedStatus);
@@ -1812,8 +1807,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1829,7 +1823,7 @@ void main() {
         ..add(connectedStatus);
       await _waitUntil(() {
         final data = cubit.state.agentModelData;
-        return cubit.state is NewSessionDiscoveryError && !(data?.isLoading ?? true);
+        return cubit.state.phase is NewSessionPhaseDiscoveryError && !(data?.isLoading ?? true);
       });
 
       clearInteractions(sessionRepository);
@@ -1863,8 +1857,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1883,8 +1876,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1911,7 +1903,7 @@ void main() {
   });
 }
 
-void _stubEmptyResources(MockSessionService sessionService) {
+void _stubEmptyResources(MockSessionRepository sessionService) {
   when(
     () => sessionService.listAgents(
       projectId: any(named: "projectId"),
@@ -1934,7 +1926,7 @@ void _stubEmptyResources(MockSessionService sessionService) {
   ).thenAnswer((_) async => ApiResponse.success(const CommandListResponse(items: [])));
 }
 
-void _verifyNoComposerCalls(MockSessionService sessionService) {
+void _verifyNoComposerCalls(MockSessionRepository sessionService) {
   verifyNever(
     () => sessionService.listAgents(
       projectId: any(named: "projectId"),

@@ -31,9 +31,14 @@ void main() {
       selectedAgentModel: null,
       stagedCommand: null,
       isRefreshing: false,
-      retryErrorMessage: null,
     );
-    expect((state as SessionDetailLoaded).isRefreshing, isFalse);
+    const loaded = state as SessionDetailLoaded;
+    expect(loaded.isRefreshing, isFalse);
+    expect(loaded.retryErrorMessage, isNull);
+    expect(
+      loaded.copyWith(sessionStatus: const SessionStatus.retry(attempt: 1, message: "Provider overloaded", next: 2)).retryErrorMessage,
+      "Provider overloaded",
+    );
   });
 
   test("SessionListLoaded.isRefreshing defaults to false", () {

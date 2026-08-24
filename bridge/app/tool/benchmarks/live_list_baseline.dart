@@ -290,15 +290,10 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
           expectedRowsReturned: 1,
           pluginCounters: pluginCounters,
           operation: () async {
-            final projectId = await sessionRepository.findProjectIdForSession(sessionId: detailSessionId);
-            if (projectId != _projectDirectory) {
-              throw StateError("session detail resolved project $projectId; expected $_projectDirectory");
+            final session = await sessionRepository.getCatalogSession(sessionId: detailSessionId);
+            if (session?.projectID != _projectDirectory) {
+              throw StateError("session detail resolved project ${session?.projectID}; expected $_projectDirectory");
             }
-            final session = await sessionRepository.getSessionForProject(
-              projectId: _projectDirectory,
-              sessionId: detailSessionId,
-              verifiedGithubLogin: null,
-            );
             if (session?.id != detailSessionId) {
               throw StateError("session detail returned ${session?.id}; expected $detailSessionId");
             }
@@ -427,10 +422,6 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
   }) {
     return SessionRepository(
       runtime: createBenchmarkPluginRuntime(plugins: plugins.values),
-      bridgeDerivedProjectPluginIds: {
-        for (final entry in plugins.entries)
-          if (entry.value is BridgeDerivedProjectsPluginApi) entry.key,
-      },
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,

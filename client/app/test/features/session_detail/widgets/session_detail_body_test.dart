@@ -148,8 +148,10 @@ SessionDetailLoaded _loadedState({
     ),
     stagedCommand: null,
     isRefreshing: false,
-    availableVariants: const [SessionVariant(id: "xhigh"), SessionVariant(id: "low")],
-    retryErrorMessage: null,
+    availableVariants: const [
+      SessionVariant(id: "xhigh"),
+      SessionVariant(id: "low"),
+    ],
   );
 }
 
@@ -200,6 +202,7 @@ void main() {
   late MockVoiceTranscriptionService voiceTranscriptionService;
   late MockComposerImagePicker imagePicker;
   late MockImageClipboard imageClipboard;
+  late StreamController<void> maxDurationReached;
 
   setUpAll(() {
     registerFallbackValue(ComposerDraft.typed(text: ""));
@@ -230,7 +233,7 @@ void main() {
     when(cubit.clearComposerDraft).thenReturn(null);
     when(cubit.reportVoiceTranscriptionCompleted).thenReturn(null);
 
-    final maxDurationReached = StreamController<void>.broadcast();
+    maxDurationReached = StreamController<void>.broadcast();
     addTearDown(maxDurationReached.close);
     when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
     when(() => voiceTranscriptionService.prewarmRecording()).thenAnswer((_) async {});
@@ -669,8 +672,10 @@ void main() {
       ),
       stagedCommand: null,
       isRefreshing: false,
-      availableVariants: const [SessionVariant(id: "xhigh"), SessionVariant(id: "low")],
-      retryErrorMessage: null,
+      availableVariants: const [
+        SessionVariant(id: "xhigh"),
+        SessionVariant(id: "low"),
+      ],
     );
 
     final controller = StreamController<SessionDetailState>.broadcast();
@@ -1631,6 +1636,27 @@ void main() {
     verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
     verifyNever(() => voiceTranscriptionService.cancelRecording());
     expect(find.text("yes"), findsOneWidget);
+  });
+
+  testWidgets("the recording limit stops and transcribes the active hold", (tester) async {
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "limit words");
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 250));
+    maxDurationReached.add(null);
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
+    expect(find.text("Recording limit reached (15 minutes)"), findsOneWidget);
+    expect(find.text("limit words"), findsOneWidget);
+
+    await gesture.up();
   });
 
   testWidgets("release during recorder startup discards the incomplete recording", (tester) async {

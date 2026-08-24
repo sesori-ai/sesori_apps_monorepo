@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart' show KeyedParallelLock;
 
 /// Raw file persistence inside [runtimeDirectory].
 ///
@@ -20,7 +21,7 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
   /// sidecar would reopen the same race.
   static const String updateLockSuffix = '.update-lock';
 
-  final Map<String, Future<void>> _updateChains = <String, Future<void>>{};
+  final KeyedParallelLock<String> _updateLock = KeyedParallelLock<String>();
 
   String get startupLockFilePath => p.join(runtimeDirectory, 'bridge-startup.lock');
 
@@ -96,19 +97,10 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
     required String name,
     required FutureOr<String?> Function(String? current) transform,
   }) {
-    final previous = _updateChains[name] ?? Future<void>.value();
-    final completer = Completer<void>();
-    _updateChains[name] = completer.future;
-    return previous.then((_) async {
-      try {
-        return await _lockedUpdate(name: name, transform: transform);
-      } finally {
-        completer.complete();
-        if (identical(_updateChains[name], completer.future)) {
-          unawaited(_updateChains.remove(name));
-        }
-      }
-    });
+    return _updateLock.use(
+      key: name,
+      operation: () => _lockedUpdate(name: name, transform: transform),
+    );
   }
 
   Future<String?> _lockedUpdate({

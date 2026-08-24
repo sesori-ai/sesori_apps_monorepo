@@ -32,8 +32,9 @@ child sessions with titles, activity, statuses, and unseen state.
   reserved. Android button navigation and other platforms retain the full row
   as a swipe target.
 - Pull-to-refresh provides visible drag and in-flight feedback in both the
-  full-screen lists and the wide split-view session pane. Releasing a trackpad
-  pull while the refresh is pending keeps the pane's indicator visible.
+  full-screen lists and the wide split-view session pane. On every platform,
+  releasing a pull while the refresh is pending keeps the pane content
+  displaced and its Cupertino indicator visible.
 - A session created in a dedicated worktree receives a system prompt identifying
   that worktree, its initial branch, and base branch. The prompt requires all
   work to remain in that worktree, while permitting use of the initial branch,
@@ -82,6 +83,9 @@ child sessions with titles, activity, statuses, and unseen state.
 - Statuses report per-session idle/busy/retry plus unavailable plugins. A
   payload without plugin attribution means the historical OpenCode identity,
   never "the first enabled plugin".
+- Project and session rename sheets start from the current display name, reject
+  a blank trimmed value, prevent duplicate submission while saving, and show
+  success or failure feedback without losing the failed edit.
 
 ## Regression Levels
 

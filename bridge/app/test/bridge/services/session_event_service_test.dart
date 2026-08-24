@@ -34,7 +34,6 @@ void main() {
       pluginRuntime = createTestPluginRuntime(plugins: [plugin]);
       repository = SessionRepository(
         runtime: pluginRuntime,
-        bridgeDerivedProjectPluginIds: const {},
         sessionDao: sessionDao,
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
@@ -1350,6 +1349,7 @@ Future<void> _insertRoot({
     lastAgent: null,
     lastAgentModel: null,
     pluginId: pluginId,
+    preservePullRequestScope: false,
   );
 }
 

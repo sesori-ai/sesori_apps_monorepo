@@ -116,7 +116,6 @@ PiCatalogService _service({required PiBackendCatalogRepository repository, requi
       repository: repository,
       tracker: tracker,
       totalTimeout: const Duration(seconds: 2),
-      maxModels: 4,
     );
 
 PluginSessionOptions _options({
@@ -141,7 +140,6 @@ class _FakeCatalogRepository({required final List<Object> results}) implements P
   Future<PiCatalogProbeSnapshot> probe({
     required String projectId,
     required Duration totalTimeout,
-    required int maxModels,
   }) async {
     projects.add(projectId);
     active++;

@@ -12,6 +12,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/cubits/session_list/session_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
 import "package:sesori_dart_core/src/repositories/models/repo_provider.dart";
+import "package:sesori_dart_core/src/repositories/models/session_cleanup_rejection.dart" as domain;
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
@@ -25,7 +26,7 @@ void main() {
   setUpAll(registerAllFallbackValues);
 
   group("SessionListCubit", () {
-    late MockSessionService mockSessionService;
+    late MockSessionRepository mockSessionService;
     late MockProjectRepository mockProjectRepository;
     late SessionListService sessionListService;
     late MockConnectionService mockConnectionService;
@@ -40,7 +41,7 @@ void main() {
     const projectId = "project-1";
 
     setUp(() {
-      mockSessionService = MockSessionService();
+      mockSessionService = MockSessionRepository();
       mockProjectRepository = MockProjectRepository();
       sessionListService = SessionListService(
         repository: mockProjectRepository,
@@ -84,7 +85,7 @@ void main() {
 
     /// Convenience factory — stubs must be set up before calling this.
     SessionListCubit buildCubit() => SessionListCubit(
-      sessionService: mockSessionService,
+      sessionRepository: mockSessionService,
       sessionListService: sessionListService,
       projectRepository: mockProjectRepository,
       connectionService: mockConnectionService,
@@ -551,11 +552,7 @@ void main() {
             force: any(named: "force"),
           ),
         ).thenThrow(
-          const SessionCleanupRejectedException(
-            rejection: SessionCleanupRejection(
-              issues: [CleanupIssue.unstagedChanges()],
-            ),
-          ),
+          _cleanupRejected(const CleanupIssue.unstagedChanges()),
         );
         return buildCubit();
       },
@@ -633,11 +630,7 @@ void main() {
             force: any(named: "force"),
           ),
         ).thenThrow(
-          const SessionCleanupRejectedException(
-            rejection: SessionCleanupRejection(
-              issues: [CleanupIssue.branchMismatch(expected: "feat/session-1", actual: "main")],
-            ),
-          ),
+          _cleanupRejected(const CleanupIssue.branchMismatch(expected: "feat/session-1", actual: "main")),
         );
         return buildCubit();
       },
@@ -1130,6 +1123,46 @@ void main() {
     );
 
     blocTest<SessionListCubit, SessionListState>(
+      "retryLoadSessions reconnects before loading",
+      build: () {
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        when(
+          () => mockConnectionService.reconnectAndAwaitOutcome(
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer((_) async {});
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
+        await cubit.retryLoadSessions();
+      },
+      skip: 1,
+      expect: () => [
+        isA<SessionListLoading>(),
+        isA<SessionListLoaded>().having((state) => state.sessions.length, "sessions count after retry", 1),
+      ],
+      verify: (_) {
+        verify(
+          () => mockConnectionService.reconnectAndAwaitOutcome(
+            timeout: const Duration(seconds: 15),
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
       "connection reconnect triggers silent refresh",
       build: () {
         when(
@@ -1495,7 +1528,7 @@ void main() {
           (_) async => ApiResponse.success(const SessionListResponse(items: sessions)),
         );
         return SessionListCubit(
-          sessionService: mockSessionService,
+          sessionRepository: mockSessionService,
           sessionListService: sessionListService,
           projectRepository: mockProjectRepository,
           connectionService: mockConnectionService,
@@ -1926,7 +1959,7 @@ void main() {
         mockConnectionService.emitDataMayBeStale();
         statusController.add(
           const ConnectionStatus.connected(
-            config: ServerConnectionConfig(relayHost: "test.example.com"),
+            config: ServerConnectionConfig(relayHost: "test.example.com", authToken: null),
             health: HealthResponse(healthy: true, version: "0.1.0", filesystemAccessDegraded: null),
           ),
         );
@@ -2153,4 +2186,12 @@ void main() {
       expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isTrue);
     });
   });
+}
+
+domain.SessionCleanupRejectedException _cleanupRejected(CleanupIssue issue) {
+  final rejection = SessionCleanupRejection(issues: [issue]);
+  return domain.SessionCleanupRejectedException(
+    rejection: domain.SessionCleanupRejection(issues: rejection.issues),
+    innerError: SessionCleanupApiRejectedException(rejection: rejection),
+  );
 }

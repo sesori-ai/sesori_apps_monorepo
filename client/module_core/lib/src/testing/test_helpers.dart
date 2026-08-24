@@ -14,7 +14,6 @@ import "../capabilities/relay/relay_client.dart";
 import "../capabilities/relay/room_key_storage.dart";
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/server_connection_config.dart";
-import "../capabilities/session/session_service.dart";
 import "../capabilities/voice/voice_api.dart";
 import "../foundation/models/composer/composer_attachment.dart";
 import "../foundation/models/product_analytics/product_analytics_event.dart";
@@ -246,8 +245,6 @@ class MockProjectRepository() extends Mock implements ProjectRepository;
 
 class MockSessionApi() extends Mock implements SessionApi;
 
-class MockSessionService() extends Mock implements SessionService;
-
 class MockSessionRepository() extends Mock implements SessionRepository;
 
 class MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
@@ -360,12 +357,12 @@ T _namedArgument<T>({required Invocation invocation, required Symbol name}) {
   );
 }
 
-void delegateSessionRepositoryToService({
+void delegateSessionRepository({
   required MockSessionRepository repository,
-  required MockSessionService service,
+  required MockSessionRepository source,
 }) {
   when(() => repository.abortSession(sessionId: any(named: "sessionId"))).thenAnswer(
-    (invocation) => service.abortSession(
+    (invocation) => source.abortSession(
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
     ),
   );
@@ -376,7 +373,7 @@ void delegateSessionRepositoryToService({
       answers: any(named: "answers"),
     ),
   ).thenAnswer(
-    (invocation) => service.replyToQuestion(
+    (invocation) => source.replyToQuestion(
       requestId: _namedArgument<String>(invocation: invocation, name: #requestId),
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
       answers: _namedArgument<List<ReplyAnswer>>(invocation: invocation, name: #answers),
@@ -388,7 +385,7 @@ void delegateSessionRepositoryToService({
       sessionId: any(named: "sessionId"),
     ),
   ).thenAnswer(
-    (invocation) => service.rejectQuestion(
+    (invocation) => source.rejectQuestion(
       requestId: _namedArgument<String>(invocation: invocation, name: #requestId),
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
     ),
@@ -400,7 +397,7 @@ void delegateSessionRepositoryToService({
       before: any(named: "before"),
     ),
   ).thenAnswer(
-    (invocation) => service.getMessages(
+    (invocation) => source.getMessages(
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
       limit: _namedArgument<int?>(invocation: invocation, name: #limit),
       before: _namedArgument<int?>(invocation: invocation, name: #before),
@@ -409,14 +406,14 @@ void delegateSessionRepositoryToService({
   when(
     () => repository.getPendingQuestions(sessionId: any(named: "sessionId")),
   ).thenAnswer(
-    (invocation) => service.getPendingQuestions(
+    (invocation) => source.getPendingQuestions(
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
     ),
   );
   when(
     () => repository.getPendingPermissions(sessionId: any(named: "sessionId")),
   ).thenAnswer(
-    (invocation) => service.getPendingPermissions(
+    (invocation) => source.getPendingPermissions(
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
     ),
   );
@@ -426,19 +423,19 @@ void delegateSessionRepositoryToService({
   when(
     () => repository.getChildren(sessionId: any(named: "sessionId")),
   ).thenAnswer(
-    (invocation) => service.getChildren(
+    (invocation) => source.getChildren(
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
     ),
   );
-  when(() => repository.getSessionStatuses()).thenAnswer((_) => service.getSessionStatuses());
-  delegateSessionOptionsRepositoryToService(repository: repository, service: service);
+  when(() => repository.getSessionStatuses()).thenAnswer((_) => source.getSessionStatuses());
+  delegateSessionOptionsRepository(repository: repository, source: source);
   when(
     () => repository.listAgents(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
     ),
   ).thenAnswer(
-    (invocation) => service.listAgents(
+    (invocation) => source.listAgents(
       projectId: _namedArgument<String>(invocation: invocation, name: #projectId),
       pluginId: _namedArgument<String>(invocation: invocation, name: #pluginId),
     ),
@@ -449,7 +446,7 @@ void delegateSessionRepositoryToService({
       pluginId: any(named: "pluginId"),
     ),
   ).thenAnswer(
-    (invocation) => service.listProviders(
+    (invocation) => source.listProviders(
       projectId: _namedArgument<String>(invocation: invocation, name: #projectId),
       pluginId: _namedArgument<String>(invocation: invocation, name: #pluginId),
     ),
@@ -460,8 +457,8 @@ void delegateSessionRepositoryToService({
       pluginId: any(named: "pluginId"),
     ),
   ).thenAnswer(
-    (invocation) => service.listCommands(
-      projectId: _namedArgument<String?>(invocation: invocation, name: #projectId),
+    (invocation) => source.listCommands(
+      projectId: _namedArgument<String>(invocation: invocation, name: #projectId),
       pluginId: _namedArgument<String>(invocation: invocation, name: #pluginId),
     ),
   );
@@ -477,14 +474,13 @@ void delegateSessionRepositoryToService({
       command: any(named: "command"),
     ),
   ).thenAnswer(
-    (invocation) => service.sendMessage(
+    (invocation) => source.sendMessage(
       promptId: "prompt-1",
       attachments: _namedArgument<List<ComposerAttachment>>(invocation: invocation, name: #attachments),
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
       text: _namedArgument<String>(invocation: invocation, name: #text),
       agent: _namedArgument<String?>(invocation: invocation, name: #agent),
-      providerID: _namedArgument<PromptModel?>(invocation: invocation, name: #model)?.providerID,
-      modelID: _namedArgument<PromptModel?>(invocation: invocation, name: #model)?.modelID,
+      model: _namedArgument<PromptModel?>(invocation: invocation, name: #model),
       variant: _namedArgument<SessionVariant?>(invocation: invocation, name: #variant),
       command: _namedArgument<String?>(invocation: invocation, name: #command),
     ),
@@ -493,17 +489,17 @@ void delegateSessionRepositoryToService({
 
 /// Adapts existing new-session tests that stub the three legacy service calls
 /// to the aggregate repository seam used by the modern client flow.
-void delegateSessionOptionsRepositoryToService({
+void delegateSessionOptionsRepository({
   required MockSessionRepository repository,
-  required MockSessionService service,
+  required MockSessionRepository source,
 }) {
   Future<SessionOptionsRepositoryResult> loadOptions(Invocation invocation) async {
     final projectId = _namedArgument<String>(invocation: invocation, name: #projectId);
     final pluginId = _namedArgument<String>(invocation: invocation, name: #pluginId);
     final (agents, providers, commands) = await (
-      service.listAgents(projectId: projectId, pluginId: pluginId),
-      service.listProviders(projectId: projectId, pluginId: pluginId),
-      service.listCommands(projectId: projectId, pluginId: pluginId),
+      source.listAgents(projectId: projectId, pluginId: pluginId),
+      source.listProviders(projectId: projectId, pluginId: pluginId),
+      source.listCommands(projectId: projectId, pluginId: pluginId),
     ).wait;
     return switch ((agents, providers, commands)) {
       (
@@ -546,7 +542,7 @@ void stubSessionRepositoryGetSession({
 }
 
 void registerCoreFallbackValues() {
-  registerFallbackValue(const ServerConnectionConfig(relayHost: "fake.example.com"));
+  registerFallbackValue(const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null));
   registerFallbackValue(FakeUri());
   registerFallbackValue(StackTrace.empty);
   registerFallbackValue(const ProductAnalyticsEvent.analyticsSchemaReady());

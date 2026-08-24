@@ -52,6 +52,7 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "offline-plugin",
+        preservePullRequestScope: false,
       );
       await database.sessionDao.insertObservedChild(
         sessionId: "child",
@@ -216,9 +217,10 @@ void main() {
     });
 
     test("unknown detail and parent ids remain 404s without plugin calls", () async {
+      final prSyncService = FakePrSyncService();
       final detailHandler = GetSessionHandler(
         sessionRepository: repository,
-        prSyncService: FakePrSyncService(),
+        prSyncService: prSyncService,
       );
       final childrenHandler = GetChildSessionsHandler(sessionRepository: repository);
 
@@ -239,6 +241,7 @@ void main() {
 
       expect(detail.status, 404);
       expect(children.status, 404);
+      expect(prSyncService.identityVerificationCallCount, 0);
       expect(plugin.calls, 0);
     });
   });
