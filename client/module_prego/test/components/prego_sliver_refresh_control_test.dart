@@ -232,6 +232,94 @@ void main() {
       await tester.pumpAndSettle();
     });
 
+    testWidgets("the fired report survives the finger lifting", (tester) async {
+      // The second stage has already run by this point, so the report is not
+      // an invitation that should retract with the pull.
+      final completer = Completer<void>();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          home: Scaffold(
+            body: CustomScrollView(
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              slivers: [
+                PregoSliverRefreshControl(
+                  onRefresh: () => completer.future,
+                  deepRefresh: PregoDeepRefresh(
+                    onDeepRefresh: () => deepRefreshes++,
+                    pullCaption: "Keep pulling to scan all harnesses",
+                    deepCaption: "Scanning for new sessions",
+                  ),
+                ),
+                SliverList.list(
+                  children: [for (var i = 0; i < 20; i++) SizedBox(height: 80, child: Text("row $i"))],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final gesture = await tester.startGesture(const Offset(200, 100));
+      for (var step = 0; step < 11; step++) {
+        await gesture.moveBy(const Offset(0, 40));
+        await tester.pump();
+      }
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("Scanning for new sessions"), findsOneWidget);
+
+      await gesture.up();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text("Scanning for new sessions"), findsOneWidget);
+
+      completer.complete();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets("a long caption truncates rather than overflowing", (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          home: MediaQuery(
+            // A large accessibility text scale, which is where an
+            // unconstrained label overflows instead of truncating.
+            data: const MediaQueryData(textScaler: TextScaler.linear(2.5)),
+            child: Scaffold(
+              body: CustomScrollView(
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                slivers: [
+                  PregoSliverRefreshControl(
+                    onRefresh: () async => softRefreshes++,
+                    deepRefresh: PregoDeepRefresh(
+                      onDeepRefresh: () => deepRefreshes++,
+                      pullCaption: "Keep pulling to scan every harness for sessions you have not seen",
+                      deepCaption: "Scanning for new sessions",
+                    ),
+                  ),
+                  SliverList.list(
+                    children: [for (var i = 0; i < 20; i++) SizedBox(height: 80, child: Text("row $i"))],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final gesture = await tester.startGesture(const Offset(200, 100));
+      for (var step = 0; step < 5; step++) {
+        await gesture.moveBy(const Offset(0, 40));
+        await tester.pump();
+      }
+
+      expect(tester.takeException(), isNull, reason: "the caption must not overflow its row");
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
     testWidgets("one pull rescans once however far it travels", (tester) async {
       await tester.pumpWidget(harness(withDeepRefresh: true));
 

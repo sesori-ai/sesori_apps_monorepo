@@ -112,12 +112,13 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
           triggerDistance,
           indicatorExtent,
         );
-        // Visibility follows the *live* extent, not the furthest reached: once
-        // the finger lifts, the control holds a shorter indicator extent while
-        // the refresh runs, and a caption keyed on the maximum would sit under
-        // the spinner for the whole of an ordinary refresh. The phase still
-        // comes from the latch, so the fired label cannot revert mid-gesture.
-        final caption = deepRefresh == null || pulledExtent <= triggerDistance
+        // An unfired invitation follows the *live* extent, not the furthest
+        // reached: once the finger lifts, the control holds a shorter indicator
+        // extent while the refresh runs, and a caption keyed on the maximum
+        // would sit under the spinner for the whole of an ordinary refresh.
+        // A fired label ignores the extent entirely — the second stage has
+        // already run, so the report stays until the gesture ends.
+        final caption = deepRefresh == null || (!_deepFired && pulledExtent <= triggerDistance)
             ? null
             : _deepFired
             ? deepRefresh.deepCaption
@@ -201,13 +202,18 @@ class const _CaptionLabel({
           Icon(TablerRegular.rotate_clockwise, size: prego.spacing.lg, color: color),
           SizedBox(width: prego.spacing.sm),
         ],
-        Text(
-          caption,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: fired
-              ? prego.textTheme.textXs.medium.copyWith(color: color)
-              : prego.textTheme.textXs.regular.copyWith(color: color),
+        // Flexible so the ellipsis can actually engage: a Row measures a plain
+        // Text against the space it asks for, so at large accessibility text
+        // scales an unconstrained label overflows instead of truncating.
+        Flexible(
+          child: Text(
+            caption,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: fired
+                ? prego.textTheme.textXs.medium.copyWith(color: color)
+                : prego.textTheme.textXs.regular.copyWith(color: color),
+          ),
         ),
       ],
     );
