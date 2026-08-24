@@ -825,7 +825,6 @@ void main() {
       );
       for (final session in [inLaunch, inOpened]) {
         plugin.registry!.addPendingQuestion(
-          bridgeRequestId: "q-${session.id}",
           acpId: "acp-${session.id}",
           sessionId: session.id,
           questions: const [question],

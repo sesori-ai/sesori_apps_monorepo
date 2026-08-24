@@ -44,6 +44,12 @@ reaches the backend so the turn continues.
   in completion-notification suppression. Raising and resolving a request also
   refreshes the activity summary, so the session's awaiting-input state appears
   and clears without waiting for the turn to end.
+- ACP and Codex teardown attempts every pending backend resolution independently,
+  logs responder or request-subscription failures, and still clears each stale
+  client prompt. One failed resolution never skips later pending entries.
+- Cursor acknowledges `generate_image` and `update_todos` extension requests
+  before reinjecting them as notifications. A notification-mapping failure is
+  logged and does not break later permission or question routing.
 - Normalized question and permission replies or rejections feed the existing
   durable user-side activity marker. Lifecycle cleanup that emits those events
   to retire pending UI on abort, thread close, process exit, or disposal can
@@ -97,6 +103,8 @@ different combination than the previous recorded run.
   scope, accepts custom plan-review input, or survives abort/process cleanup.
 - A resolved request stays visible, keeps suppressing notifications, or returns
   after reconnect.
+- One failed backend resolution prevents another pending prompt from clearing,
+  or a Cursor notification-mapping failure breaks later approval routing.
 - A manually routed reply/rejection fails to advance the existing activity
   marker, or an auto-approved permission reply advances it.
 - Reading pending state starts an intentionally stopped backend.

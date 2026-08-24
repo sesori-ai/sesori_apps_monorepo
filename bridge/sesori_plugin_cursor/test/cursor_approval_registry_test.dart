@@ -38,7 +38,7 @@ void main() {
         },
         activeSessionResolver: () => activeSession,
       );
-      registry.attach(client.serverRequests);
+      registry.attach(stream: client.serverRequests);
     });
 
     tearDown(() async {
@@ -82,11 +82,14 @@ void main() {
         ["Yes", "No"],
       );
 
-      expect(registry.pendingForSession("s1"), hasLength(1));
+      expect(registry.pendingForSession(sessionId: "s1"), hasLength(1));
 
-      registry.replyQuestion(asked.id, [
-        ["Yes"],
-      ]);
+      registry.replyQuestion(
+        requestId: asked.id,
+        answers: [
+          ["Yes"],
+        ],
+      );
       final reply = fake.written.last;
       expect(reply["id"], 1);
       final questions = (reply["result"] as Map)["questions"] as List;
@@ -105,9 +108,12 @@ void main() {
       final asked = emitted.single as BridgeSseQuestionAsked;
       expect(asked.questions.single.header, "Plan A");
 
-      registry.replyQuestion(asked.id, [
-        ["Accept"],
-      ]);
+      registry.replyQuestion(
+        requestId: asked.id,
+        answers: [
+          ["Accept"],
+        ],
+      );
       final reply = fake.written.last;
       expect((reply["result"] as Map)["accepted"], true);
     });
@@ -133,7 +139,7 @@ void main() {
       expect(asked.sessionID, "active-s", reason: "create_plan has no sessionId; falls back to the active turn");
       expect(asked.displaySessionId, "active-s");
       expect(asked.questions.single.header, "Plan Z");
-      expect(registry.pendingForSession("active-s"), hasLength(1));
+      expect(registry.pendingForSession(sessionId: "active-s"), hasLength(1));
     });
 
     test("a non-bool allowMultiple does not crash the handler", () async {
@@ -158,7 +164,7 @@ void main() {
       await pump();
       final asked = emitted.single as BridgeSseQuestionAsked;
       expect(asked.questions.single.multiple, false);
-      expect(registry.pendingForSession("s1"), hasLength(1));
+      expect(registry.pendingForSession(sessionId: "s1"), hasLength(1));
     });
 
     test("an empty question list is rejected, not registered as blocking", () async {
@@ -172,7 +178,7 @@ void main() {
       // No pending question is created, and the agent gets an error reply so it
       // is not left blocked on input that can never be answered.
       expect(emitted, isEmpty);
-      expect(registry.pendingForSession("s1"), isEmpty);
+      expect(registry.pendingForSession(sessionId: "s1"), isEmpty);
       final reply = fake.written.last;
       expect(reply["id"], 5);
       expect(reply.containsKey("error"), isTrue);
@@ -203,7 +209,7 @@ void main() {
       });
       await pump();
       expect(emitted, isEmpty);
-      expect(registry.pendingForSession(""), isEmpty);
+      expect(registry.pendingForSession(sessionId: ""), isEmpty);
       final reply = fake.written.last;
       expect(reply["id"], 8);
       expect(reply.containsKey("error"), isTrue);
@@ -219,7 +225,7 @@ void main() {
       });
       await pump();
       expect(emitted, isEmpty);
-      expect(registry.pendingForSession(""), isEmpty);
+      expect(registry.pendingForSession(sessionId: ""), isEmpty);
       final reply = fake.written.last;
       expect(reply["id"], 9);
       expect(reply.containsKey("error"), isTrue);
@@ -245,7 +251,7 @@ void main() {
         },
       });
       await pump();
-      final pending = registry.pendingForSession("s1").single;
+      final pending = registry.pendingForSession(sessionId: "s1").single;
       final labels = pending.questions.single.options.map((o) => o.label).toList();
       expect(labels, ["Option", "Option (2)"], reason: "duplicate labels are made unique so label->id stays 1:1");
     });
@@ -263,7 +269,7 @@ void main() {
         },
       });
       await pump();
-      expect(registry.pendingForSession("s1"), isEmpty);
+      expect(registry.pendingForSession(sessionId: "s1"), isEmpty);
       expect(fake.written.last.containsKey("error"), isTrue);
     });
 

@@ -242,7 +242,7 @@ class CodexPlugin._({
     final hadVisibleActivity =
         activeSessionIds.isNotEmpty ||
         _sessionStatuses.keys.any(
-          (sessionId) => registry?.hasPendingInput(sessionId) ?? false,
+          (sessionId) => registry?.hasPendingInput(sessionId: sessionId) ?? false,
         );
     _connectFuture = null;
     _client = null;
@@ -455,7 +455,7 @@ class CodexPlugin._({
       ),
     );
     _approvalRegistry = registry;
-    registry.attach(client.serverRequests);
+    registry.attach(stream: client.serverRequests);
   }
 
   void _emitApprovalEvent(BridgeSseEvent event) {
@@ -564,7 +564,7 @@ class CodexPlugin._({
         if (!_deletedThreadIds.contains(threadId)) {
           _recordAuthoritativeTurnEvidence(threadId);
         }
-        _approvalRegistry?.cancelForSession(threadId);
+        _approvalRegistry?.cancelForSession(sessionId: threadId);
         _activeTurnByThread.remove(threadId);
         final wasActive = _isActiveStatus(_sessionStatuses.remove(threadId));
         // The app-server unloaded this thread; a later turn must resume it.
@@ -798,7 +798,7 @@ class CodexPlugin._({
 
   @override
   Future<void> abortSession({required String sessionId}) async {
-    _approvalRegistry?.cancelForSession(sessionId);
+    _approvalRegistry?.cancelForSession(sessionId: sessionId);
     final turnId = _activeTurnByThread[sessionId];
     if (turnId == null) {
       _syncWorkState();
@@ -1172,7 +1172,7 @@ class CodexPlugin._({
         // Continue with delete even if the abort raced.
       }
     }
-    _approvalRegistry?.cancelForSession(sessionId);
+    _approvalRegistry?.cancelForSession(sessionId: sessionId);
     await _sessionService.deleteSession(sessionId: sessionId);
     _activeTurnByThread.remove(sessionId);
     _sessionStatuses.remove(sessionId);
@@ -1251,12 +1251,12 @@ class CodexPlugin._({
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({
     required String sessionId,
-  }) async => _approvalRegistry?.pendingForSession(sessionId) ?? const [];
+  }) async => _approvalRegistry?.pendingForSession(sessionId: sessionId) ?? const [];
 
   @override
   Future<List<PluginPendingPermission>> getPendingPermissions({
     required String sessionId,
-  }) async => _approvalRegistry?.pendingPermissionsForSession(sessionId) ?? const [];
+  }) async => _approvalRegistry?.pendingPermissionsForSession(sessionId: sessionId) ?? const [];
 
   @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({
@@ -1270,7 +1270,7 @@ class CodexPlugin._({
     // session (not yet flushed to its rollout) is still scoped correctly.
     final target = normalizeProjectDirectory(directory: projectId);
     final sessionIds = _sessionStatuses.keys.where((id) => _directoryForSession(id) == target).toList(growable: false);
-    return registry.pendingForProject(sessionIds);
+    return registry.pendingForProject(sessionIds: sessionIds);
   }
 
   @override
@@ -1281,7 +1281,7 @@ class CodexPlugin._({
   }) async {
     final registry = _approvalRegistry;
     if (registry == null) return;
-    registry.replyQuestion(questionId, answers);
+    registry.replyQuestion(requestId: questionId, answers: answers);
   }
 
   @override
@@ -1291,7 +1291,7 @@ class CodexPlugin._({
   }) async {
     // sessionId is unused: the approval registry keys pending requests by their
     // bridge request id alone (codex requests are globally unique per session).
-    _approvalRegistry?.rejectQuestion(questionId);
+    _approvalRegistry?.rejectQuestion(requestId: questionId);
   }
 
   @override
@@ -1300,7 +1300,7 @@ class CodexPlugin._({
     required String sessionId,
     required PluginPermissionReply reply,
   }) async {
-    _approvalRegistry?.replyPermission(requestId, reply);
+    _approvalRegistry?.replyPermission(requestId: requestId, reply: reply);
   }
 
   @override
@@ -1313,7 +1313,7 @@ class CodexPlugin._({
     final byProject = <String, List<PluginActiveSession>>{};
     for (final entry in _sessionStatuses.entries) {
       final running = _isActiveStatus(entry.value);
-      final awaitingInput = registry?.hasPendingInput(entry.key) ?? false;
+      final awaitingInput = registry?.hasPendingInput(sessionId: entry.key) ?? false;
       if (!running && !awaitingInput) continue;
       (byProject[_directoryForSession(entry.key)] ??= []).add(
         PluginActiveSession(
