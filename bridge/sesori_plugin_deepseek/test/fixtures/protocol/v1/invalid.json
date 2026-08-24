@@ -35,6 +35,48 @@
     }
   },
   {
+    "definition": "catalogResponse",
+    "value": {
+      "agent": {
+        "id": "deepseek",
+        "name": "DeepSeek",
+        "primary": true
+      },
+      "providers": [],
+      "defaultSelectionId": "v1",
+      "commands": [],
+      "failures": []
+    }
+  },
+  {
+    "definition": "catalogResponse",
+    "value": {
+      "agent": {
+        "id": "deepseek",
+        "name": "DeepSeek",
+        "primary": true
+      },
+      "providers": [],
+      "defaultSelectionId": "v1payload+",
+      "commands": [],
+      "failures": []
+    }
+  },
+  {
+    "definition": "catalogResponse",
+    "value": {
+      "agent": {
+        "id": "deepseek",
+        "name": "DeepSeek",
+        "primary": true
+      },
+      "providers": [],
+      "defaultSelectionId": "v1A",
+      "commands": [],
+      "failures": []
+    }
+  },
+  {
     "definition": "historyRequest",
     "value": {
       "sessionId": "session-1",
@@ -134,6 +176,17 @@
             "Alpha",
             "Alpha"
           ]
+        }
+      ]
+    }
+  },
+  {
+    "definition": "askUserQuestionResponse",
+    "value": {
+      "answers": [
+        {
+          "questionId": "q1",
+          "selectedLabels": []
         }
       ]
     }

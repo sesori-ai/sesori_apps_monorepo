@@ -149,6 +149,32 @@
     }
   },
   {
+    "definition": "askUserQuestionResponse",
+    "value": {
+      "answers": [
+        {
+          "questionId": "q1",
+          "selectedLabels": [],
+          "customAnswer": "Synthetic custom answer"
+        }
+      ]
+    }
+  },
+  {
+    "definition": "askUserQuestionResponse",
+    "value": {
+      "answers": [
+        {
+          "questionId": "q1",
+          "selectedLabels": [
+            "Alpha"
+          ],
+          "customAnswer": "Synthetic additional answer"
+        }
+      ]
+    }
+  },
+  {
     "definition": "askUserQuestionRequest",
     "value": {
       "sessionId": "session-1",

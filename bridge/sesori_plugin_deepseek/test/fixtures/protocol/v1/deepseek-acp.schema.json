@@ -12,6 +12,12 @@
     "sessionId": {
       "$ref": "#/$defs/nonblank"
     },
+    "selectionId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 512,
+      "pattern": "^v1(?:[A-Za-z0-9_-]{2,3}|(?:[A-Za-z0-9_-]{4})+(?:[A-Za-z0-9_-]{2,3})?)$"
+    },
     "absolutePath": {
       "type": "string",
       "minLength": 1,
@@ -141,10 +147,7 @@
                   ],
                   "properties": {
                     "id": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 512,
-                      "pattern": "^v1[A-Za-z0-9._~-]*$"
+                      "$ref": "#/$defs/selectionId"
                     },
                     "upstreamModelId": {
                       "$ref": "#/$defs/nonblank"
@@ -182,12 +185,14 @@
           }
         },
         "defaultSelectionId": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "maxLength": 512,
-          "pattern": "\\S"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/selectionId"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "commands": {
           "type": "array",
@@ -507,6 +512,24 @@
                 "pattern": "\\S"
               }
             },
+            "anyOf": [
+              {
+                "properties": {
+                  "selectedLabels": {
+                    "type": "array",
+                    "minItems": 1
+                  }
+                }
+              },
+              {
+                "required": [
+                  "customAnswer"
+                ],
+                "properties": {
+                  "customAnswer": true
+                }
+              }
+            ],
             "additionalProperties": false
           }
         }
