@@ -60,13 +60,18 @@ void main() {
     expect(errors, isEmpty);
   });
 
-  test("keeps draining until both output streams reach EOF", () async {
+  test("keeps draining through stream errors until both pipes reach EOF", () async {
     final inner = _FakeSpawnedProcess();
     DrainingSpawnedProcess(inner: inner);
 
     inner.completeExit();
     await Future<void>.delayed(Duration.zero);
 
+    expect(inner.stdoutPaused, isFalse);
+    expect(inner.stderrPaused, isFalse);
+    inner.stdoutController.addError(StateError("recoverable stdout error"));
+    inner.stderrController.addError(StateError("recoverable stderr error"));
+    await Future<void>.delayed(Duration.zero);
     expect(inner.stdoutPaused, isFalse);
     expect(inner.stderrPaused, isFalse);
     inner.stdoutController.add(<int>[1]);

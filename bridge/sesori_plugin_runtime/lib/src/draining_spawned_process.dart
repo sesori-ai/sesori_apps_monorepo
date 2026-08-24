@@ -18,11 +18,16 @@ final class DrainingSpawnedProcess({required SpawnedProcess inner}) implements S
   }
 
   Future<void> _drain({required Stream<List<int>> stream, required String name}) async {
-    try {
-      await stream.drain<void>();
-    } on Object catch (error, stackTrace) {
-      Log.w("[runtime] $name drain failed", error, stackTrace);
-    }
+    final done = Completer<void>();
+    stream.listen(
+      (_) {},
+      onError: (Object error, StackTrace stackTrace) {
+        Log.w("[runtime] $name drain failed", error, stackTrace);
+      },
+      onDone: done.complete,
+      cancelOnError: false,
+    );
+    await done.future;
   }
 
   Future<void> _observeExit() async {
