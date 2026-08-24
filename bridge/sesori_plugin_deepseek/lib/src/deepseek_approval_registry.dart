@@ -10,6 +10,7 @@ class DeepSeekApprovalRegistry({
   required super.onFireAndForgetNotification,
   required final DeepSeekAcpApi api,
   super.idGenerator,
+  required super.activeSessionResolver,
 }) extends AcpApprovalRegistry {
   this
     : super(
@@ -62,6 +63,9 @@ class DeepSeekApprovalRegistry({
     if (answers.isEmpty || answers.any((answer) => answer.length > 2048 || answer.trim().isEmpty)) {
       throw const FormatException("DeepSeek question answers must be nonblank and at most 2048 characters");
     }
+    if (answers.toSet().length != answers.length) {
+      throw const FormatException("DeepSeek question answers must not contain duplicates");
+    }
     final options = question.options;
     if (options == null) {
       if (answers.length != 1) throw const FormatException("DeepSeek custom answers must contain one value");
@@ -75,6 +79,9 @@ class DeepSeekApprovalRegistry({
     if (customAnswers.length > 1) {
       throw const FormatException("DeepSeek questions support at most one custom answer");
     }
+    if (question is DeepSeekPlanReviewQuestionDto && customAnswers.isNotEmpty) {
+      throw const FormatException("DeepSeek plan-review questions do not accept custom answers");
+    }
     if (selectedLabels.isEmpty) {
       return DeepSeekQuestionAnswerDto.custom(questionId: question.id, customAnswer: customAnswers.single);
     }
@@ -86,7 +93,9 @@ class DeepSeekApprovalRegistry({
   }
 
   static PluginQuestionInfo _mapQuestion(DeepSeekQuestionDto question) => PluginQuestionInfo(
-    question: question.text,
+    question: question.options == null && question.detail != null
+        ? "${question.text}\n\n${question.detail}"
+        : question.text,
     header: question.header ?? "Question",
     options: [
       for (final label in question.options ?? const <String>[])

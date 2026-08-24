@@ -19,11 +19,17 @@ class DeepSeekEventMapper({
       final status = api.parseSessionStatus(notification.params);
       return switch (status) {
         DeepSeekCompactionCompletedStatusDto() => [BridgeSseSessionCompacted(sessionID: status.sessionId)],
-        DeepSeekRetryStatusDto() || DeepSeekCompactionStartedStatusDto() || DeepSeekWarningStatusDto() => const [],
+        DeepSeekWarningStatusDto() => _mapWarning(status),
+        DeepSeekRetryStatusDto() || DeepSeekCompactionStartedStatusDto() => const [],
       };
     } on Object catch (error, stackTrace) {
       Log.w("[deepseek] ignored malformed session status notification", error, stackTrace);
       return const [];
     }
+  }
+
+  List<BridgeSseEvent> _mapWarning(DeepSeekWarningStatusDto status) {
+    Log.w("[deepseek] session warning for ${status.sessionId}: ${status.message}");
+    return [BridgeSseSessionError(sessionID: status.sessionId)];
   }
 }

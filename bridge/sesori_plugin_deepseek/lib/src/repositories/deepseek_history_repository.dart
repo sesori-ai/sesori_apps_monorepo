@@ -23,7 +23,7 @@ class DeepSeekHistoryRepository({
       modelId: eventMapper.modelForSession(sessionId: sessionId),
       providerId: eventMapper.providerForSession(sessionId: sessionId),
       initialUserMessageId: null,
-      messageIdOverride: ({required role, required acpMessageId}) => role == "user" ? acpMessageId : null,
+      messageIdOverride: ({required acpMessageId}) => acpMessageId,
       haltClassifier: eventMapper.classifyHaltNotice,
     );
     int? cursor;

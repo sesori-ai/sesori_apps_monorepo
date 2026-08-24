@@ -762,9 +762,9 @@ monorepo, and no existing ACP plugin is refactored beyond the two narrow hooks.
 
 ### Step 10/16: Map DeepSeek turns and interactions
 
-- Map DeepSeek standard updates and status extensions into existing live text,
-  reasoning, image, tool, plan, title, usage, retry, compaction, error, and diff
-  behavior.
+- Reuse inherited ACP mapping for live text, reasoning, image, tool, plan,
+  title, stop reason, error, and diff behavior; map representable DeepSeek
+  compaction/warning extensions without inventing unavailable retry timing.
 - Route permissions through standard ACP and questions through the DeepSeek
   approval registry, preserving exact session/tool/question correlation.
 - Cover live/replay parity, concurrent sessions, prompt queueing, abort and

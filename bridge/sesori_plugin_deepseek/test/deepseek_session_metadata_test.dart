@@ -23,6 +23,7 @@ void main() {
       launchSpec: const AcpLaunchSpec(command: "deepseek", args: [], cwd: "/repo", environment: {}),
       launchDirectory: "/repo",
       mapper: mapper,
+      api: api,
       historyRepository: DeepSeekHistoryRepository(api: api, eventMapper: mapper, pluginId: DeepSeekIdentity.id),
       commandTracker: commandTracker,
       sessionOptionsService: AcpSessionOptionsService(
@@ -61,6 +62,15 @@ void main() {
         "sesori.ai/deepseek": {"createdAt": 1000, "parentSessionId": 42},
       },
     };
+    final blankParentRow = {
+      "sessionId": "blank-parent",
+      "cwd": "/repo",
+      "title": "Blank parent",
+      "updatedAt": 2000,
+      "_meta": {
+        "sesori.ai/deepseek": {"createdAt": 1000, "parentSessionId": "  "},
+      },
+    };
     final answered = <Object?>{};
     var responding = true;
     final responder = () async {
@@ -71,7 +81,7 @@ void main() {
             "jsonrpc": "2.0",
             "id": request["id"],
             "result": {
-              "sessions": [sessionRow, malformedParentRow],
+              "sessions": [sessionRow, malformedParentRow, blankParentRow],
             },
           });
         }
@@ -101,6 +111,7 @@ void main() {
       expect(child.parentID, "parent");
       expect(child.time, const PluginSessionTime(created: 1000, updated: 2000, archived: null));
       expect(sessions.singleWhere((session) => session.id == "malformed-parent").parentID, isNull);
+      expect(sessions.singleWhere((session) => session.id == "blank-parent").parentID, isNull);
 
       final children = await plugin.getChildSessions("parent");
       expect(children.map((session) => session.id), ["child"]);

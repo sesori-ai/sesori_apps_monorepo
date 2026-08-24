@@ -3,11 +3,11 @@
 ## Current State
 
 - **Plan slug:** `deepseek-harness`
-- **Plan status:** Steps 1-8 merged; Step 9/16 in review
+- **Plan status:** Steps 1-9 merged; Step 10/16 in review
 - **Current repository:** `sesori-ai/sesori_apps_monorepo`
-- **Current branch:** `deepseek-harness/step-9-sessions-history`
-- **Current open PR:** [Step 9 PR #1094](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1094)
-- **Next action:** monitor Step 9 while implementing Step 10 locally
+- **Current branch:** `deepseek-harness/step-10-turns-interactions`
+- **Current open PR:** [Step 10 PR #1097](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1097)
+- **Next action:** monitor Step 10 while implementing Step 11 locally
 - **Implementation started:** yes
 - **Retirement:** blocked until every required row in `PLAN.md` passes
 
@@ -23,8 +23,8 @@
 | [x] | 6/15 | deepseek adapter | `⚙️ [deepseek-harness] feat(runtime): expose DeepSeek catalogs and commands [step 6/15]` | Moderate option/command boundary | 1,200 | [PR #5](https://github.com/sesori-ai/sesori-deepseek-acp/pull/5) merged |
 | [x] | 7/16 | apps monorepo | `🌿 [deepseek-harness] test(deepseek): vendor the DeepSeek extension protocol [step 7/16]` | Straightforward test-only protocol fixture foundation | 1,100 | [PR #1077](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1077) merged |
 | [x] | 8/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): scaffold the DeepSeek bridge plugin [step 8/16]` | Moderate new package and narrow ACP hooks | 1,450 | [PR #1088](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1088) merged |
-| [ ] | 9/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek sessions and history [step 9/16]` | Complex replay and identity flow | 1,450 | [PR #1094](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1094) in review |
-| [ ] | 10/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek turns and interactions [step 10/16]` | Complex events, questions, and permissions | 1,450 | Pending Step 9 |
+| [x] | 9/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek sessions and history [step 9/16]` | Complex replay and identity flow | 1,450 | [PR #1094](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1094) merged |
+| [ ] | 10/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek turns and interactions [step 10/16]` | Complex events, questions, and permissions | 1,450 | [PR #1097](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1097) open |
 | [ ] | 11/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): expose options and lifecycle [step 11/16]` | Moderate plugin API and lifecycle composition | 1,350 | Pending Step 10 |
 | [ ] | 12/16 | deepseek adapter | `🚧 [deepseek-harness] build(runtime): release the managed DeepSeek adapter [step 12/16]` | Complex supply chain and six-platform release | 1,300 | Pending Step 11 |
 | [ ] | 13/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): install the managed DeepSeek runtime [step 13/16]` | Moderate managed-runtime integration | 1,250 | Pending Step 12 |
@@ -84,6 +84,7 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 | 2026-08-23 | Step 5 architecture implementation review | Rejected first pass; passed second pass | Consolidated duplicate live/replay mappings into one event projector with thin delivery and collection sinks. |
 | 2026-08-23 | Step 6 architecture implementation review | Rejected first pass; passed second pass | Changed cold rename from retained ACP ownership to one coordinated resume/rename/flush/notify/dispose transition. |
 | 2026-08-24 | Step 8 architecture implementation review | Pass on both scoped reviews | Kept generic prompt metadata/client hooks in ACP while sealed generated extension variants and backend behavior remain DeepSeek-owned. |
+| 2026-08-24 | Step 10 architecture implementation review | Pass on both scoped reviews | Kept common turn projection in ACP while DeepSeek owns question composition, replay identity override, metadata normalization, and representable status mapping. |
 
 ## Verification Log
 
@@ -155,6 +156,17 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] DeepSeek and full ACP `dart test`
 - [x] `git diff --check`
 - [x] Synced with merged Step 8 and current `origin/main`; post-merge verification remained green
+- [x] Final changed-line count: 480, below soft and hard caps
+- [x] Architecture implementation review passed twice
+
+### Step 10/16
+
+- [x] DeepSeek and ACP `dart analyze --fatal-infos`
+- [x] DeepSeek `dart test`: 21 tests pass
+- [x] Full ACP `dart test`: 261 tests pass
+- [x] `git diff --check`
+- [x] Synced with merged Step 9 and current `origin/main`; post-merge verification remained green
+- [x] Late Step 9 review feedback carried forward with blank parent IDs rejected and replay identity override narrowed to user messages
 - [x] Final changed-line count: 480, below soft and hard caps
 - [x] Architecture implementation review passed twice
 
