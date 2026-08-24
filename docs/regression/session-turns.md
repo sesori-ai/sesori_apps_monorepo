@@ -93,28 +93,30 @@ defaults and queued client sends coherent.
 - Hermes runs turns through ACP v1 over `hermes acp`: initialization uses the
   first non-terminal provider authentication method, image prompt parts remain
   available, streamed updates use the shared ACP normalization, and abort uses
-  session cancellation. Available models come from Hermes's ACP session model
-  state, and the selected exact model ID is applied through Hermes's
-  `session/set_model` extension before each changed-model turn. A rejected model
-  fails before prompting. Completed assistant text is finalized at each tool
-  boundary, so earlier prose in a multi-tool turn does not depend on the final
-  turn snapshot. Sesori does not call form-elicitation or unadvertised
-  session-close methods to complete an ordinary turn.
+  session cancellation. A follow-up accepted during an active turn uses that
+  same cancellation path, then dispatches after the interrupted turn settles.
+  Available models come from Hermes's ACP session model state, and the selected
+  exact model ID is applied through Hermes's `session/set_model` extension before
+  each changed-model turn. A rejected model fails before prompting. Completed
+  assistant text is finalized at each tool boundary, so earlier prose in a
+  multi-tool turn does not depend on the final turn snapshot. Sesori does not
+  call form-elicitation or unadvertised session-close methods to complete an
+  ordinary turn.
 - Existing-session ACP prompts remain bridge-queued while an earlier same-session
   turn, declared process-wide lane, resume, or selection blocks their
-  `session/prompt` frame. ACP v1 has no standard steering or queued-input
-  operation and permits the next prompt after the current prompt turn completes,
-  so Cursor and Hermes intentionally retain FIFO turn boundaries rather than
-  sending overlapping prompt requests. Their synthetic user transcript message
-  is published only after that frame flushes successfully to the agent's stdin.
-  Follow-up and replayed user messages preserve ordered text and bounded
-  data-backed image parts, including attachment-only prompts. Initial projection
-  contains only normalized user-visible text plus those images; injected
-  context, local paths, and URLs remain absent. OMP runs different sessions
-  concurrently because its permission and form requests carry explicit session
-  IDs. OMP's ACP server defines a busy follow-up as replacement rather than
-  steering: Sesori immediately cancels the active turn, then dispatches the new
-  input after cancellation settles.
+  `session/prompt` frame. ACP v1 has no standard steering operation, so Sesori
+  never sends overlapping prompt requests. It does define `session/cancel`:
+  Cursor and Hermes therefore implement active-turn follow-ups as stop-and-send,
+  immediately cancelling the active turn and dispatching the queued input after
+  cancellation settles. Further already-queued inputs retain FIFO order. Their
+  synthetic user transcript message is published only after its frame flushes
+  successfully to the agent's stdin. Follow-up and replayed user messages
+  preserve ordered text and bounded data-backed image parts, including
+  attachment-only prompts. Initial projection contains only normalized
+  user-visible text plus those images; injected context, local paths, and URLs
+  remain absent. OMP runs different sessions concurrently because its permission
+  and form requests carry explicit session IDs. OMP uses the same stop-and-send
+  sequence for its ACP server's replacement semantics.
 - Normalized user-message events feed the durable user-side activity marker used
   to order running roots. Known event times are applied monotonically. Backend
   input represented as a user message, including automatic compaction or other
@@ -207,11 +209,11 @@ defaults and queued client sends coherent.
 
 Vary prompt shape, prompt versus slash command, explicit versus default
 agent/model, aborting early versus late, sending while busy to steer at a tool
-boundary, sending a command or selection change that must wait, cancelling before
-dispatch, leaving and reopening while an entry is visible, turn length, and
-client count. For Hermes, include text and image prompts,
-tool updates, a permission decision, cold history replay, and abort after output
-has started.
+boundary where supported or stop-and-send over ACP, sending a command or
+selection change that must wait, cancelling before dispatch, leaving and
+reopening while an entry is visible, turn length, and client count. For Hermes,
+include text and image prompts, tool updates, a permission decision, cold history
+replay, and abort after output has started.
 
 ## Failure Signals
 
@@ -248,7 +250,8 @@ has started.
   without a bound, or leaves a corrected selection on a variant the picker does
   not display.
 - An abort, permission reply, or question reply stalls behind a send to a
-  busy session on the same session lane.
+  busy session on the same session lane, or a Cursor/Hermes follow-up waits for
+  the active turn to finish naturally instead of cancelling it before dispatch.
 - Recovery or interruption artifacts from an aborted turn appear in the next
   user turn.
 - A normalized user message fails to advance the existing activity marker, or

@@ -227,6 +227,78 @@ void main() {
       });
     });
 
+    test("a busy follow-up cancels the active turn before replacement dispatch", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      final connecting = plugin.ensureConnected();
+      await respond("initialize", const {
+        "protocolVersion": 1,
+        "agentCapabilities": <String, dynamic>{},
+        "authMethods": <Object?>[],
+      });
+      expect(await connecting, isTrue);
+
+      final creating = plugin.createSession(
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await respond("session/new", const {"sessionId": "s-follow-up"});
+      final session = await creating;
+
+      await plugin.sendPrompt(
+        promptId: "prompt-1",
+        sessionId: session.id,
+        parts: const [PluginPromptPart.text(text: "first")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final firstPrompt = await waitForFrame("session/prompt");
+
+      await plugin.sendPrompt(
+        promptId: "prompt-2",
+        sessionId: session.id,
+        parts: const [PluginPromptPart.text(text: "replace it")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final cancel = await waitForFrame("session/cancel");
+      expect(cancel["params"], {"sessionId": session.id});
+      expect(fake.written.where((frame) => frame["method"] == "session/prompt"), hasLength(1));
+      expect((await plugin.getQueuedPrompts(sessionId: session.id)).single.id, "prompt-2");
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": firstPrompt["id"],
+        "result": {"stopReason": "cancelled"},
+      });
+      final replacement = await waitForFrame("session/prompt");
+      final replacementParams = (replacement["params"] as Map).cast<String, dynamic>();
+      expect(replacementParams["sessionId"], session.id);
+      expect(((replacementParams["prompt"] as List).single as Map)["text"], "replace it");
+      expect(await plugin.getQueuedPrompts(sessionId: session.id), isEmpty);
+      expect(events.whereType<BridgeSseSessionIdle>(), isEmpty);
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": replacement["id"],
+        "result": {"stopReason": "end_turn"},
+      });
+      for (var i = 0; i < 10 && events.whereType<BridgeSseSessionIdle>().isEmpty; i++) {
+        await pump();
+      }
+      expect(events.whereType<BridgeSseSessionIdle>(), hasLength(1));
+      expect(events.whereType<BridgeSseSessionError>(), isEmpty);
+    });
+
     test("captureSessionConfig populates providers, effort variants, and mode agents", () async {
       capture(catalogResult(), fromNewSession: true);
 

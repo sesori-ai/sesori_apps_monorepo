@@ -199,10 +199,9 @@ abstract class AcpPlugin({
 
   /// Whether accepting another input should cancel this session's active turn.
   ///
-  /// OMP gives another prompt for the same session this replacement behavior
-  /// itself. The shared adapter queues same-session requests, so its concrete
-  /// adapter declares the same policy here and the bridge sends the equivalent
-  /// standard cancel before dispatching the queued input.
+  /// Harnesses use this for stop-and-send behavior when they cannot steer an
+  /// active turn. The shared adapter queues the new input, sends the standard
+  /// ACP cancel, and dispatches the input only after cancellation settles.
   bool get cancelsActiveTurnForQueuedInput => false;
 
   /// Whether a turn must stop when its requested selection cannot be applied.
