@@ -246,6 +246,7 @@ void main() {
       identityTracker: identities,
       startupExitTimeout: const Duration(milliseconds: 50),
       historyRpcTimeout: const Duration(seconds: 2),
+      promptRpcTimeout: const Duration(minutes: 30),
     );
     addTearDown(repository.dispose);
 
@@ -1354,13 +1355,44 @@ void main() {
     expect(events.whereType<BridgeSseSessionError>(), hasLength(1));
   });
 
+  test("pre-prompt compaction can outlive ordinary RPC timeout", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process])
+      ..historyRpcTimeout = const Duration(milliseconds: 20)
+      ..promptRpcTimeout = const Duration(seconds: 1);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "compacting-prompt",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "after compaction")],
+      userVisibleText: "after compaction",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "compaction_start", "reason": "threshold"});
+
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    expect(process.killed, isFalse);
+    expect(service.queuedPrompts(sessionId: "session").single.id, "compacting-prompt");
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
+
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    await pump();
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
   test("ambiguous prompt timeout tears down generation before queued work reconnects", () async {
     final timedOut = FakePiProcess();
     final replacement = FakePiProcess();
-    final fixture = _Fixture(
-      processes: [timedOut, replacement],
-      historyRpcTimeout: const Duration(milliseconds: 20),
-    );
+    final fixture = _Fixture(processes: [timedOut, replacement])..promptRpcTimeout = const Duration(milliseconds: 20);
     addTearDown(fixture.dispose);
     final service = fixture.service();
 
@@ -2022,10 +2054,11 @@ PiResolvedSession _resolved({String id = "session"}) => PiResolvedSession(
 final class _Fixture({
   required List<FakePiProcess> processes,
   final _Storage? storageOverride,
-  final Duration historyRpcTimeout = const Duration(seconds: 2),
 }) {
   final List<FakePiProcess> _processes = List.of(processes);
   Duration? idleTimeout = const Duration(minutes: 5);
+  Duration historyRpcTimeout = const Duration(seconds: 2);
+  Duration promptRpcTimeout = const Duration(seconds: 2);
   late final _Storage storage = storageOverride ?? _Storage(initialResolvedSession: _resolved());
   final List<PiLaunchSpec> spawned = [];
   late final PiMessageIdentityTracker identities = PiMessageIdentityTracker(pluginId: "pi");
@@ -2046,6 +2079,7 @@ final class _Fixture({
     identityTracker: identities,
     startupExitTimeout: const Duration(milliseconds: 50),
     historyRpcTimeout: historyRpcTimeout,
+    promptRpcTimeout: promptRpcTimeout,
   );
 
   PiSessionService service({ServerClock clock = const ServerClock()}) {

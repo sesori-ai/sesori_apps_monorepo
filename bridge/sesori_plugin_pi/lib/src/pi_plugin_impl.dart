@@ -65,6 +65,9 @@ final class PiPlugin._({
       identityTracker: identities,
       startupExitTimeout: startupExitTimeout,
       historyRpcTimeout: historyRpcTimeout,
+      // Pi can run model-backed automatic compaction before acknowledging a
+      // prompt, so prompt preflight needs the same generous bound as a turn.
+      promptRpcTimeout: const Duration(minutes: 30),
     );
     final extensionUiService = PiExtensionUiService(
       catalogRepository: catalogRepository,

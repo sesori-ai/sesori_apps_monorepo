@@ -470,6 +470,7 @@ final class _ProcessFixture({required final FakePiExtensionSessionStorageApi sto
     identityTracker: PiMessageIdentityTracker(pluginId: "pi"),
     startupExitTimeout: const Duration(milliseconds: 50),
     historyRpcTimeout: const Duration(seconds: 2),
+    promptRpcTimeout: const Duration(minutes: 30),
   );
 
   List<_SentReply> get replies => [
