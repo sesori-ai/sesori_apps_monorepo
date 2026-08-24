@@ -89,7 +89,7 @@ returns nothing.
 eligible plugin, with no recency or terminality filter. Because the hydration
 short-circuit publishes `completed(0, 0)` for every already-hydrated plugin at
 every bridge start, a naive recovery read of `GET /plugin/import` would render
-a "Rescan complete / Nothing new" row on every connect. The recovery read must
+a "Scan complete / No new sessions" row on every connect. The recovery read must
 therefore seed only from non-terminal statuses.
 
 ### The two "ignore arms" are not an event dispatch registry
@@ -187,24 +187,40 @@ projects or sessions from the bridge's committed catalog. Awaited, spinner in
 the refresh control, near-instant. This remains the default and the only
 behavior most pulls produce.
 
-**Stage 2 (deep rescan)** arms when the pull passes `1.6 x triggerDistance`.
-The refresh control's caption follows the pull:
+**Stage 2 (deep rescan)** fires when the pull passes `1.6 x triggerDistance`.
+
+Both stages commit **on crossing their threshold, while the finger is still
+down**, not on release. That is not a choice: `CupertinoSliverRefreshControl`
+invokes `onRefresh` the moment the pull reaches `refreshTriggerPullDistance`,
+from a post-frame callback, and returns `armed` (`cupertino_ui`
+`refresh.dart:504-530`). There is no release-gated commit to hang a second stage
+on, so an earlier draft of this plan describing "release to rescan" was
+unbuildable. Owner decision 2026-08-24: keep the two-depth gesture and fire on
+crossing.
 
 | Pull distance | Caption |
 |---|---|
 | below `triggerDistance` | none (today's indicator) |
-| `triggerDistance` to `1.6 x` | `Keep pulling to rescan harnesses` |
-| past `1.6 x` | `Release to rescan harnesses` |
+| `triggerDistance` to `1.6 x` | `Keep pulling to scan all harnesses`, quiet and text-only |
+| past `1.6 x` | `Scanning for new sessions`, in brand colour with a rotate icon |
 
-Release runs the soft refresh exactly as today **and** additionally triggers the
-catalog import. The import is never awaited: the refresh control settles on the
-soft refresh alone.
+The caption cross-fades between the two, keyed on the phase rather than the
+text, so passing the threshold reads as one label becoming another and a host
+rewording mid-pull cannot look like the stage changed. The fired phase is
+visually distinct rather than only differently worded, so the moment of
+commitment is legible at a glance.
 
-All three arming, caption, and release-dispatch behavior lives in a single
-`module_prego` widget, `PregoSliverRefreshControl`, which wraps
-`CupertinoSliverRefreshControl` and owns the one mutable `bool` recording
-whether the deep threshold was crossed at the moment of release.
-`PregoGlassScaffold` composes it behind a new optional `onDeepRefresh`
+The catalog import is never awaited: the refresh control settles on the soft
+refresh alone. One pull rescans at most once, however far it travels.
+
+Because there is no commit point, a pull past `1.6 x` cannot be taken back by
+dragging up. Cancelling is the progress row's job, which is the affordance that
+exists for it anyway.
+
+All threshold, caption, and dispatch behavior lives in a single `module_prego`
+widget, `PregoSliverRefreshControl`, which wraps `CupertinoSliverRefreshControl`
+and tracks the furthest extent this gesture reached plus whether it has already
+fired. `PregoGlassScaffold` composes it behind a new optional `deepRefresh`
 parameter; `SessionListPanel` uses it directly in place of its bare
 `CupertinoSliverRefreshControl`. No pull-threshold logic is written in
 `client/app`.
@@ -220,13 +236,31 @@ entry. It is not pinned, not a banner, not a toast, not a dialog.
 
 | State | Leading | Title | Subtitle | Trailing |
 |---|---|---|---|---|
-| Starting | indeterminate ring | `Rescanning harnesses` | none | cancel |
-| Running | indeterminate ring | `Rescanning harnesses` | harness currently enumerating plus its running session count | cancel |
-| Succeeded | check | `Rescan complete` | new-item summary | none; the service clears it after 4s |
-| Partly failed | warning | `Rescan finished` | `1 of 3 harnesses could not be rescanned` | dismiss |
-| Failed | warning | `Rescan failed` | `Check the bridge log for details` | dismiss |
-| Unsupported | warning | `Rescan needs a newer bridge` | `Update the bridge to rescan from here` | dismiss |
+| Starting | indeterminate ring | `Scanning all harnesses` | none | cancel |
+| Running | indeterminate ring | `Scanning all harnesses` | the harness currently enumerating and its live session count, e.g. `Codex — 148 sessions` | cancel |
+| Succeeded | check | `Scan complete` | `5 new sessions in 2 new projects`, or `No new sessions` | none; the service clears it after 4s |
+| Partly failed | warning | `Scan finished` | `1 of 3 harnesses could not be scanned` | dismiss |
+| Failed | warning | `Scan failed` | `Check the bridge log for details` | dismiss |
+| Unsupported | warning | `Scanning needs a newer bridge` | `Update the bridge to scan from here` | dismiss |
 | Cancelled | — | — | — | row removed immediately |
+
+The row is a **tinted card**, not a plain tile: a rounded surface in a subtle
+brand tint, visually distinct from the session and project tiles around it. It
+reads as status rather than content, so it is never mistaken for a row that can
+be opened.
+
+The running subtitle names the harness and its **live** session count rather
+than progress across harnesses. A long single-harness scan is exactly when the
+user needs reassurance, and a "2 of 3" line goes completely still there while a
+climbing count keeps showing movement.
+
+Copy leads with sessions throughout and mentions projects only in the completion
+line, and only when there are any. Sessions are what a user notices missing —
+#961 was reported as missing sessions — and it keeps the captions short enough
+for a 226pt split pane.
+
+The Settings action is labelled `Scan for new sessions`, matching the same
+vocabulary.
 
 `Starting` exists because a dispatched request is not yet an enumerating
 harness. Between dispatch and the first progress event there is no active
@@ -265,7 +299,7 @@ whichever harness happened to finish last.
 The success summary is worded from the counts carrier:
 
 - delta known, one or more new: `5 new sessions in 2 new projects`;
-- delta known, nothing new: `Nothing new`;
+- delta known, nothing new: `No new sessions`;
 - totals only, which is what an older bridge sends:
   `43 projects, 193 sessions`.
 
@@ -519,7 +553,7 @@ nothing rather than replaying a stale success.
 - Every package using `json_serializable` in this repository configures
   `include_if_null: false`, so an older bridge simply omits the key and a newer
   client decodes it as `null`. Nullable is required rather than a zero-valued
-  default: defaulting would make an older bridge report `Nothing new` after a
+  default: defaulting would make an older bridge report `No new sessions` after a
   rescan that in fact imported a hundred sessions.
 - A newer bridge talking to an older client is unaffected: the added key is
   ignored by the older decoder.
@@ -670,7 +704,7 @@ Required matrix:
 | Plugin | One native-ownership and one bridge-derived harness for the new-item counts | `_publishCatalog` counts projects differently per `PluginProjectOwnership` branch, so one branch cannot prove the other |
 | Plugin | Two enabled harnesses at once for the aggregate terminal states | A single-harness run cannot prove `CatalogRescanPartlyFailed` |
 | Platform | One mobile platform plus the wide split-view layout | The pane hosts stage 2 through a different scroll owner than the two scaffold hosts |
-| Compatibility | One run against a bridge that omits `newItems` | Proves the totals fallback rather than a false `Nothing new` |
+| Compatibility | One run against a bridge that omits `newItems` | Proves the totals fallback rather than a false `No new sessions` |
 | Recovery | One reconnect against a bridge holding terminal statuses | Proves the recovery read discards them instead of announcing a stale success |
 | Freshness | One rescan that genuinely imports a new session, observed in the list without a second manual refresh | The whole point of the feature; a committed import raises no list invalidation, so the post-success refresh is the only thing making the new row appear |
 | Compatibility | One run against a supported bridge older than `v1.6.0`, which has no `/plugin/import` at all | Proves the gesture reports an unsupported bridge instead of silently doing nothing |
@@ -874,31 +908,28 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
 ### Scope
 
 - Add `PregoSliverRefreshControl` to `module_prego`: wraps
-  `CupertinoSliverRefreshControl`, owns the `1.6 x triggerDistance` arming, the
-  caption selection, and the release dispatch of both callbacks.
-- `PregoGlassScaffold` composes it behind a new optional `onDeepRefresh`, and
-  asserts that `onDeepRefresh` requires `onRefresh`, matching the existing
+  `CupertinoSliverRefreshControl`, owns the `1.6 x triggerDistance` threshold,
+  the caption selection, and the dispatch of both callbacks.
+- `PregoGlassScaffold` composes it behind a new optional `deepRefresh`, and
+  asserts that `deepRefresh` requires `onRefresh`, matching the existing
   `scrollable`/`onRefresh` assertion.
 - `SessionListPanel` replaces its bare `CupertinoSliverRefreshControl` with
-  `PregoSliverRefreshControl` **and** takes an optional `onDeepRefresh` callback
-  parameter, so the pane gets stage 2 without any threshold logic in
-  `client/app`. The parameter is introduced here, defaulting to null, and step 6
-  wires it to the cubit's `startRescan()`. Without it step 5's pane test would
-  have no deep callback to invoke, because the pane currently hardcodes
-  `refreshSessionList(context)` and the cubit intent does not exist until step 6.
+  `PregoSliverRefreshControl` **and** takes an optional `deepRefresh` parameter,
+  so the pane gets stage 2 without any threshold logic in `client/app`. The
+  parameter is introduced here, defaulting to null, and step 6 supplies it.
 - Render the caption under the existing indicator only once the pull passes the
   soft trigger, so an ordinary pull is visually unchanged.
-- Add a design catalog scenario if the scaffold has one; otherwise widget tests
-  covering: a short pull fires only the soft refresh, a long pull fires both,
-  and a long pull abandoned before release fires neither. Prove all three in
-  the pane as well as in the scaffold.
+- Widget tests covering: an ordinary pull fires only the soft refresh, a pull
+  past the deep threshold fires both, a pull abandoned before the trigger fires
+  neither, one pull rescans at most once however far it travels, arming does not
+  leak between pulls, the control behaves as the bare Cupertino one with no
+  second stage supplied, and the fired caption is visually distinct from the
+  invitation.
 
 ### Verification
 
-- targeted `module_prego` and `client/app` session-pane widget tests
+- targeted `module_prego` widget tests
 - `dart analyze --fatal-infos` from `client/module_prego` and `client/app`
-- `dart run tool/generate_manifest.dart --check` from `client/design_catalog`
-  if a scenario was added
 - architecture implementation review
 
 ## Step 6/8 - Surface Catalog Rescan In The App
@@ -918,8 +949,8 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
 - The aggregate rescan row widget in `client/app/lib/core/widgets/`, beside the
   shell's other cross-feature widgets, with its seven presentations. It renders
   the state it is given, owns no timer, and renders no bridge-supplied text.
-- Project list, full-screen session list, and split-view pane: wire
-  `onDeepRefresh` to the cubit's `startRescan()`, and render the row as the
+- Project list, full-screen session list, and split-view pane: supply
+  `deepRefresh` from the cubit's `startRescan()`, and render the row as the
   sliver at index 0 in place of the soft-refresh indicator while a rescan is
   running.
 - Settings to Harnesses: the per-harness `Rescan` action in
@@ -932,7 +963,7 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
   targeted `503`, `404`, or unsupported-bridge answer lands on the harness the
   user selected instead of the shared row.
 - New `app_en.arb` resources for both captions, the seven row states, the delta
-  and totals wordings, the `Nothing new` case, the partly-failed wording, the
+  and totals wordings, the `No new sessions` case, the partly-failed wording, the
   bounded failure line naming the bridge log, and the Settings action with its
   semantics label and its rejection message.
 - Widget and cubit tests: all seven row states; the totals fallback; cancel;

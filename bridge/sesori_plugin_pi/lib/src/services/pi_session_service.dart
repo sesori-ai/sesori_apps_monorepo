@@ -165,6 +165,17 @@ final class PiSessionService({
     ];
   }
 
+  List<PluginMessageWithParts> withLiveMessages({
+    required String sessionId,
+    required List<PluginMessageWithParts> history,
+  }) {
+    final activeCompaction = _dispatcher.activeCompactionMessage(sessionId: sessionId);
+    if (activeCompaction == null || history.any((message) => message.info.id == activeCompaction.info.id)) {
+      return history;
+    }
+    return [...history, activeCompaction];
+  }
+
   bool cancelQueuedPrompt({required String sessionId, required String promptId}) {
     final state = _sessions[sessionId];
     if (state == null) return false;
@@ -666,6 +677,10 @@ final class PiSessionService({
     return null;
   }
 
+  void _clearCompaction({required String sessionId}) {
+    _dispatcher.clearCompaction(sessionId: sessionId).forEach(_emit);
+  }
+
   void _handleExit(PiSessionProcessExit exit) {
     _extensionUi.cancelForOwner(sessionId: exit.sessionId, processGeneration: exit.generation);
     final state = _sessions[exit.sessionId];
@@ -675,6 +690,7 @@ final class PiSessionService({
         if (turn.connection?.generation == exit.generation) turn,
     ];
     if (affected.isEmpty) return;
+    _clearCompaction(sessionId: exit.sessionId);
     state.agentRunning = false;
     final hasUncancelled = affected.any(
       (turn) => turn is! _PiQueuedPromptTurn || turn.queueState != _PiQueueState.cancelled,
@@ -710,6 +726,7 @@ final class PiSessionService({
     required int processGeneration,
     required Object failure,
   }) {
+    _clearCompaction(sessionId: sessionId);
     state.agentRunning = false;
     final affected = [
       for (final turn in state.turns)
@@ -857,6 +874,7 @@ final class PiSessionService({
         turn.acceptance.completeError(PiTurnCancelledException(sessionId: sessionId), StackTrace.current);
       }
     }
+    _clearCompaction(sessionId: sessionId);
     if (hadQueuedPresentations) _emitQueueUpdate(sessionId: sessionId, state: state);
     _extensionUi.cancelForOwner(sessionId: sessionId, processGeneration: null);
     final connection = cancelled.firstOrNull?.connection;

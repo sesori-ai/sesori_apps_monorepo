@@ -1,4 +1,3 @@
-import "package:cupertino_ui/cupertino_ui.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -18,6 +17,10 @@ class const SessionListPanel({
   required final SessionMenuEntriesBuilder sessionMenuEntries,
   required final VoidCallback onNewSession,
   final VoidCallback? onBack,
+    /// The optional second stage of this pane's pull-to-refresh. Introduced
+  /// here rather than with its consumer so the pane's own gesture is testable
+  /// before anything wires it up.
+  final PregoDeepRefresh? deepRefresh,
 }) extends StatelessWidget {
   /// Header width below which the labelled "New session" button collapses to an
   /// icon-only button so the title keeps a usable width.
@@ -131,8 +134,11 @@ class const SessionListPanel({
           : const AlwaysScrollableScrollPhysics(),
       slivers: [
         if (canRefresh)
-          CupertinoSliverRefreshControl(
+          PregoSliverRefreshControl(
             onRefresh: () => refreshSessionList(context),
+            deepRefresh: deepRefresh,
+            decorate: null,
+            onPulledExtentChanged: null,
           ),
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
         SessionListContent(

@@ -1,11 +1,9 @@
 import "dart:async";
 import "dart:convert";
-import "dart:io";
 
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart" show SessionDto;
 import "package:sesori_bridge/src/api/git_cli_api.dart";
-import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
@@ -18,6 +16,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_process_runner.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -1211,7 +1210,7 @@ class _FakeWorktreeService({required AppDatabase database}) extends WorktreeServ
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           gitApi: GitCliApi(
-            processRunner: _NoopProcessRunner(),
+            processRunner: NoopProcessRunner(),
             gitPathExists: ({required String gitPath}) => true,
           ),
           plugin: _FakeBridgePlugin(),
@@ -1244,28 +1243,6 @@ class _FakeWorktreeService({required AppDatabase database}) extends WorktreeServ
     required String initialBranchName,
     required String generatedBranchName,
   }) async => renameResult;
-}
-
-class _NoopProcessRunner() implements ProcessRunner {
-  @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
-    Map<String, String>? environment,
-    String? workingDirectory,
-    Duration timeout = const Duration(seconds: 15),
-  }) {
-    throw UnimplementedError("_NoopProcessRunner should never execute git commands");
-  }
 }
 
 class _OpenCodeFakeBridgePlugin() extends FakeBridgePlugin {

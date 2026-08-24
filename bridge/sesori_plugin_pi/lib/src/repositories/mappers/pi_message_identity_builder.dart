@@ -16,6 +16,7 @@ final class PiMessageIdentityBuilder({
 
   final Map<String, int> _ordinals = {};
   final Map<String, int> _allocations = {};
+  int? _reservedCompactionOrdinal;
 
   PiMessageIdentitySnapshot snapshot() => PiMessageIdentitySnapshot._(
     ordinals: Map.unmodifiable(_ordinals),
@@ -48,6 +49,29 @@ final class PiMessageIdentityBuilder({
     return _next(role: PiMessageIdentityRole.compaction, timestampPart: compactionTimestampSentinel);
   }
 
+  /// Reserves the next compaction ID without advancing the persisted-history
+  /// cursor. Hydration can therefore replace ordinals while the live
+  /// compaction keeps the ID it will receive when persisted.
+  String reserveCompaction() {
+    final key = _compactionKey;
+    final ordinal = _reservedCompactionOrdinal ??= (_ordinals[key] ?? 0) + 1;
+    return _compactionId(ordinal: ordinal);
+  }
+
+  String commitCompaction() {
+    final ordinal = _reservedCompactionOrdinal;
+    if (ordinal == null) return nextCompaction();
+    final key = _compactionKey;
+    if ((_ordinals[key] ?? 0) < ordinal) _ordinals[key] = ordinal;
+    _allocations[key] = (_allocations[key] ?? 0) + 1;
+    _reservedCompactionOrdinal = null;
+    return _compactionId(ordinal: ordinal);
+  }
+
+  void releaseCompaction() {
+    _reservedCompactionOrdinal = null;
+  }
+
   String nextTopLevelCustomMessage() {
     return _next(role: PiMessageIdentityRole.custom, timestampPart: customMessageTimestampSentinel);
   }
@@ -59,6 +83,11 @@ final class PiMessageIdentityBuilder({
     _allocations[key] = (_allocations[key] ?? 0) + 1;
     return "$pluginId:$sessionId:${role.segment}:$timestampPart:$ordinal";
   }
+
+  String get _compactionKey => "${PiMessageIdentityRole.compaction.segment}\u0000$compactionTimestampSentinel";
+
+  String _compactionId({required int ordinal}) =>
+      "$pluginId:$sessionId:${PiMessageIdentityRole.compaction.segment}:$compactionTimestampSentinel:$ordinal";
 }
 
 final class PiMessageIdentitySnapshot._({

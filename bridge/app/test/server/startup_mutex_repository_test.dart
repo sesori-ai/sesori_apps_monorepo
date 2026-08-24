@@ -5,10 +5,11 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:sesori_bridge/src/server/api/runtime_file_api.dart';
 import 'package:sesori_bridge/src/server/foundation/process_match.dart';
-import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/startup_mutex_repository.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:test/test.dart';
+
+import '../helpers/fake_process_repository.dart';
 
 void main() {
   group('StartupMutexRepository', () {
@@ -312,16 +313,7 @@ void main() {
   });
 }
 
-class _FakeProcessRepository() implements ProcessRepository {
-  @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) async {
-    throw UnimplementedError();
-  }
-
+class _FakeProcessRepository() extends StrictFakeProcessRepository {
   final Map<int, ProcessMatch?> matchResults = <int, ProcessMatch?>{};
 
   @override
@@ -332,16 +324,6 @@ class _FakeProcessRepository() implements ProcessRepository {
   @override
   Future<ProcessMatch?> inspectProcessMatch({required int pid}) async {
     return matchResults[pid];
-  }
-
-  @override
-  Future<SignalResult> sendGracefulSignal({required int pid}) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<SignalResult> sendForceSignal({required int pid}) {
-    throw UnimplementedError();
   }
 }
 

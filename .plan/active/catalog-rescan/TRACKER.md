@@ -5,9 +5,9 @@
 - **Plan slug:** `catalog-rescan`
 - **Implementation base:** `main` at
   `7b1ebe9bc629d05b5d104e76cd5dbaa1514d65a2`
-- **Series state:** Steps 1/8 to 3/8 merged; Step 4/8 open
-- **Current step:** add the client catalog rescan service
-- **Next action:** land Step 4, then Step 5's two-stage pull control
+- **Series state:** Steps 1/8 to 4/8 merged; Step 5/8 open
+- **Current step:** add a second stage to pull-to-refresh
+- **Next action:** land Step 5, then Step 6's app surfaces
 - **Origin issue:** [#961](https://github.com/sesori-ai/sesori_apps_monorepo/issues/961)
 - **External overlap:** [#1008](https://github.com/sesori-ai/sesori_apps_monorepo/issues/1008)
   owns Codex live updates; do not address it here
@@ -54,8 +54,12 @@
 
 | Decision | Chosen | Rationale |
 |---|---|---|
-| Refresh model | Two-stage pull: soft unchanged, deep armed past `1.6 x triggerDistance` | A rescan boots every enabled harness backend, so it must be deliberate |
+| Refresh model | Two-stage pull: soft unchanged, deep fires past `1.6 x triggerDistance` | A rescan boots every enabled harness backend, so it must be deliberate |
+| Deep-pull commit | On crossing the threshold, not on release | `CupertinoSliverRefreshControl` fires `onRefresh` on crossing and never on release, so release semantics were unbuildable. Owner decision 2026-08-24 |
 | Gesture owner | One `module_prego` `PregoSliverRefreshControl` | Three hosts, only two of which use `PregoGlassScaffold`; the pane must not re-implement thresholds in `client/app` |
+| Row weight | Tinted card, distinct from the surrounding tiles | Reads as status rather than content, so it is never mistaken for an openable row |
+| Running detail | The harness and its live session count | A "2 of 3" line goes still during a long single-harness scan, which is when reassurance matters most |
+| Copy | "Scan" led, sessions first, projects only in the result | Owner decision 2026-08-24: "rescan" named the mechanism, not the outcome |
 | Progress presentation | One aggregate row | Fixed height; the top of the list never reflows as harnesses finish at different times |
 | Row placement | Ordinary sliver at index 0, scrolls with the list | Non-intrusive; a refresh already scrolls to the top, so it is visible when it matters |
 | Row home | `client/app/lib/core/widgets/` | Consumed by two features; must not live inside either |
@@ -113,8 +117,12 @@
 
 ## Open Questions
 
-- [ ] Does `PregoGlassScaffold` have an existing design catalog scenario, or do
-  widget tests alone cover the second stage?
+- [x] Does `PregoGlassScaffold` have an existing design catalog scenario, or do
+  widget tests alone cover the second stage? **Answered in step 5:** the design
+  catalog has no scaffold scenario, so `PLAN.md`'s "otherwise widget tests" path
+  applies. Eight `prego_sliver_refresh_control_test.dart` cases cover the stage,
+  including its two caption phases and the fired label's visual distinction. No
+  catalog scenario was added, so no manifest regeneration was needed.
 
 ## Delivery Steps
 
@@ -123,8 +131,8 @@
 | [x] | 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 950-1,100 (`PLAN.md`) | [PR #1064](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1064) merged |
 | [x] | 2/8 | `🌱 [catalog-rescan] Re-hydrate stale plugin catalogs [step 2/8]` | 20-60 | [PR #1071](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1071) merged |
 | [x] | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 | [PR #1074](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1074) merged |
-| [ ] | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 | Open |
-| [ ] | 5/8 | `⚙️ [catalog-rescan] Add a second stage to pull-to-refresh [step 5/8]` | 350-600 | Not started |
+| [x] | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 | [PR #1085](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1085) merged |
+| [ ] | 5/8 | `⚙️ [catalog-rescan] Add a second stage to pull-to-refresh [step 5/8]` | 350-600 | Open |
 | [ ] | 6/8 | `⚙️ [catalog-rescan] Surface catalog rescan in the app [step 6/8]` | 950-1,400 | Not started |
 | [ ] | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 | Not started |
 | [ ] | 8/8 | `🌱 [catalog-rescan] Verify and retire the catalog rescan plan [step 8/8]` | 60-140 | Not started |
@@ -204,15 +212,15 @@
 
 ## Step 5 Checklist
 
-- [ ] Add `PregoSliverRefreshControl` owning arming, captions, and dispatch.
-- [ ] Compose it in `PregoGlassScaffold` behind `onDeepRefresh` and assert it
+- [x] Add `PregoSliverRefreshControl` owning thresholds, captions, and dispatch.
+- [x] Compose it in `PregoGlassScaffold` behind `deepRefresh` and assert it
   requires `onRefresh`.
-- [ ] Replace `SessionListPanel`'s bare `CupertinoSliverRefreshControl` with it
-  and give the pane an optional `onDeepRefresh` parameter, so the pane test has a
-  callback before the cubit intent exists.
-- [ ] Leave an ordinary pull visually unchanged.
-- [ ] Prove short pull, long pull, and abandoned long pull, in both the scaffold
-  and the pane.
+- [x] Replace `SessionListPanel`'s bare `CupertinoSliverRefreshControl` with it
+  and give the pane an optional `deepRefresh` parameter, so step 6 has somewhere
+  to wire the cubit intent.
+- [x] Leave an ordinary pull visually unchanged.
+- [x] Prove short pull, long pull, abandoned pull, once-per-pull, no-second-stage,
+  caption order, and the fired label's visual distinction.
 - [ ] Run `architecture-implementation-review`.
 
 ## Step 6 Checklist
@@ -220,7 +228,7 @@
 - [ ] Give all three cubits a rescan subscription, state, and intent methods.
 - [ ] Refresh both lists whenever the service leaves a live operation, not only
   on the terminal summary variants.
-- [ ] Wire the pane's `onDeepRefresh` parameter to the cubit.
+- [ ] Wire the pane's `deepRefresh` parameter to the cubit.
 - [ ] Build the rescan row in `client/app/lib/core/widgets/` with all seven
   presentations, no timer, and no bridge-supplied text.
 - [ ] Wire all three hosts through their cubits; no widget touches the service.
@@ -463,4 +471,19 @@ duplicate-emission nicety.
   pass with two blocking A2 findings, both divergences from the approved
   operation model, both applied with regression coverage
 - **Step 4 PR:** pending
+- **Step 5 base:** `main` at `bafa7cd02`
+- **Step 5 changed lines:** 427 of delivered code, inside the 350-600 target;
+  `.plan/` excluded so the figure cannot count itself
+- **Step 5 verification:** `dart analyze --fatal-infos` clean on
+  `client/module_prego` and `client/app`; full `module_prego` suite 227 tests
+  passed, including 8 new `prego_sliver_refresh_control_test.dart` cases
+- **Step 5 review:** `architecture-implementation-review` **approved** with zero
+  findings. It confirmed the boundary tightened rather than widened — both hosts
+  lost their `cupertino_ui` imports, and `decorate` hands back only the built
+  indicator so no host can re-derive gesture state — and that the fire-on-
+  crossing correction is architecturally sound. Both of its non-blocking
+  observations were applied: `PLAN.md`'s Step 5 scope section still described the
+  unbuildable release semantics and would have misdirected step 6, and the new
+  design-system file's doc comments carried product vocabulary
+- **Step 5 PR:** pending
 - **Final disposition:** pending

@@ -2,7 +2,6 @@ import "dart:io";
 
 import "package:fake_async/fake_async.dart";
 import "package:http/http.dart" as http;
-import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/completion_push_listener.dart";
 import "package:sesori_bridge/src/push/maintenance_push_listener.dart";
@@ -16,6 +15,8 @@ import "package:sesori_bridge/src/push/push_session_state_tracker_types.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, LogLevel;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
+import "../helpers/test_helpers.dart";
 
 void main() {
   group("PushDispatcher", () {
@@ -578,7 +579,7 @@ class FakePushNotificationClient() extends PushNotificationClient {
   this
     : super(
         authBackendURL: "https://example.com",
-        tokenRefreshManager: _FakeTokenRefresher(),
+        tokenRefreshManager: FakeTokenRefresher(token: "token"),
         client: http.Client(),
       );
 
@@ -604,13 +605,6 @@ class FakePushRateLimiter({var bool shouldAllowSend = true, super.now}) extends 
       sessionId: sessionId,
       rateLimitKey: rateLimitKey,
     );
-  }
-}
-
-class _FakeTokenRefresher() implements TokenRefresher {
-  @override
-  Future<String> getAccessToken({bool forceRefresh = false}) async {
-    return "token";
   }
 }
 
