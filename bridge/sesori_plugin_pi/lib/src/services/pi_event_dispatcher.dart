@@ -99,8 +99,8 @@ final class PiEventDispatcher({
       finalError: finalError,
     ),
     PiAutoRetryEndEvent() ||
-    PiSummarizationRetryAttemptStartEvent() ||
-    PiCompactionStartEvent() => _status(sessionId: sessionId, event: event, now: now),
+    PiSummarizationRetryAttemptStartEvent() => _status(sessionId: sessionId, event: event, now: now),
+    PiCompactionStartEvent() => _compactionStart(sessionId: sessionId, event: event, now: now),
     PiCompactionEndEvent(:final reason, :final aborted, :final willRetry, :final errorMessage) => _compactionEnd(
       sessionId: sessionId,
       reason: reason,
@@ -550,6 +550,21 @@ final class PiEventDispatcher({
     return status == null ? const [] : [BridgeSseSessionStatus(sessionID: sessionId, status: status.toJson())];
   }
 
+  List<BridgeSseEvent> _compactionStart({
+    required String sessionId,
+    required PiCompactionStartEvent event,
+    required DateTime? now,
+  }) {
+    final state = _session(sessionId);
+    final messageId = state.compactionMessageId ??= state.identities.nextCompaction();
+    final mapped = _historyMapper.mapRunningCompaction(sessionId: sessionId, messageId: messageId);
+    return [
+      ..._status(sessionId: sessionId, event: event, now: now),
+      BridgeSseMessageUpdated(info: mapped.info.toJson()),
+      for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
+    ];
+  }
+
   List<BridgeSseEvent> _retryEnd({
     required String sessionId,
     required int? attempt,
@@ -577,12 +592,17 @@ final class PiEventDispatcher({
         _PiCompactionFailureDiagnostic(reason: reason, detail: errorMessage),
       );
     }
-    if ((aborted || errorMessage != null) && !willRetry) {
-      return [BridgeSseSessionError(sessionID: sessionId)];
+    if (aborted || errorMessage != null) {
+      if (willRetry) return const [];
+      final messageId = _sessions[sessionId]?.compactionMessageId;
+      return [
+        if (messageId != null) BridgeSseMessageRemoved(sessionID: sessionId, messageID: messageId),
+        BridgeSseSessionError(sessionID: sessionId),
+      ];
     }
-    if (willRetry) return const [];
     final state = _session(sessionId);
-    final messageId = state.identities.nextCompaction();
+    final messageId = state.compactionMessageId ?? state.identities.nextCompaction();
+    state.compactionMessageId = null;
     final mapped = _historyMapper.mapCompaction(sessionId: sessionId, messageId: messageId);
     return [
       BridgeSseSessionCompacted(sessionID: sessionId),
@@ -638,6 +658,7 @@ final class _SessionState({required final PiMessageIdentityBuilder identities}) 
   bool announced = false;
   final Set<({int contentIndex, PluginMessagePartType type})> startedParts = {};
   final Set<String> emittedPartIds = {};
+  String? compactionMessageId;
 
   void clearMessage() {
     messageId = null;

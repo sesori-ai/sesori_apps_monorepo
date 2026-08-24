@@ -119,6 +119,31 @@ MessagePart _toolPart({required String id, required String toolName}) {
   );
 }
 
+MessagePart _runningCompactionPart() {
+  return const MessagePart(
+    id: "compaction-tool",
+    sessionID: "session-1",
+    messageID: "assistant-1",
+    type: MessagePartType.tool,
+    text: null,
+    tool: "compact",
+    state: ToolState(
+      status: ToolStatus.running,
+      title: "Compacting context",
+      output: null,
+      error: null,
+      attachments: [],
+    ),
+    prompt: null,
+    description: null,
+    agent: null,
+    agentName: null,
+    attempt: null,
+    retryError: null,
+    attachment: null,
+  );
+}
+
 MessagePart _filePart({required String id, String filename = "report.pdf"}) {
   return MessagePart(
     id: id,
@@ -219,6 +244,18 @@ void main() {
 
     final markdownBodies = tester.widgetList<MarkdownBody>(find.byType(MarkdownBody)).toList();
     expect(markdownBodies.map((widget) => widget.data), ['Before tool', 'After tool']);
+  });
+
+  testWidgets("renders an active compaction tool as running", (tester) async {
+    await tester.pumpWidget(
+      _AssistantMessageCardHarness(
+        message: _assistantMessage(parts: [_runningCompactionPart()]),
+        streamingText: const {},
+      ),
+    );
+
+    expect(find.text("Compacting context"), findsOneWidget);
+    expect(find.text("Running"), findsOneWidget);
   });
 
   testWidgets("streaming text updates the rendered markdown without breaking the SelectionArea", (tester) async {

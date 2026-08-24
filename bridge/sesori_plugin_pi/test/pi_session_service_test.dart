@@ -1355,13 +1355,15 @@ void main() {
     expect(events.whereType<BridgeSseSessionError>(), hasLength(1));
   });
 
-  test("pre-prompt compaction can outlive ordinary RPC timeout", () async {
+  test("pre-prompt compaction stays visible beyond the ordinary RPC timeout", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process])
       ..historyRpcTimeout = const Duration(milliseconds: 20)
       ..promptRpcTimeout = const Duration(seconds: 1);
     addTearDown(fixture.dispose);
     final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
 
     await service.sendPrompt(
       sessionId: "session",
@@ -1381,6 +1383,20 @@ void main() {
     expect(process.killed, isFalse);
     expect(service.queuedPrompts(sessionId: "session").single.id, "compacting-prompt");
     expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
+    final runningMessage = events.whereType<BridgeSseMessageUpdated>().single;
+    final runningPart = events.whereType<BridgeSseMessagePartUpdated>().single.part;
+    expect(runningPart.messageID, runningMessage.info["id"]);
+    expect(runningPart.state?.status, PluginToolStatus.running);
+    expect(runningPart.state?.title, "Compacting context");
+
+    process.emit(frame: {"type": "compaction_end", "aborted": false, "willRetry": false});
+    await pump();
+
+    expect(events.whereType<BridgeSseMessageUpdated>().last.info["id"], runningMessage.info["id"]);
+    final completedPart = events.whereType<BridgeSseMessagePartUpdated>().last.part;
+    expect(completedPart.id, runningPart.id);
+    expect(completedPart.state?.status, PluginToolStatus.completed);
+    expect(completedPart.state?.title, "Context compacted");
 
     process.emit(frame: {"type": "agent_start"});
     process.emitResponse(id: prompt["id"]! as String, command: "prompt");
