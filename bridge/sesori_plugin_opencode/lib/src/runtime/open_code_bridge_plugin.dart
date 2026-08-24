@@ -93,7 +93,7 @@ class OpenCodeRuntimeStatusReporter({
 /// address-frozen port across a supervisor restart) with the lifecycle surface:
 /// a [PluginStatusController] fed by both the SSE transport (via
 /// [OpenCodeRuntimeStatusReporter]) and the exit monitor, plus an ordered,
-  /// idempotent [shutdown].
+/// idempotent [shutdown].
 class OpenCodeBridgePlugin({
   @override required final OpenCodeManagedApi api,
   required final OpenCodeRuntimeStatusReporter _reporter,
