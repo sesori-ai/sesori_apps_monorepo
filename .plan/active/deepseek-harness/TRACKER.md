@@ -3,11 +3,11 @@
 ## Current State
 
 - **Plan slug:** `deepseek-harness`
-- **Plan status:** Steps 1-8 merged; Step 9/16 verified locally
+- **Plan status:** Steps 1-8 merged; Step 9/16 in review
 - **Current repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current branch:** `deepseek-harness/step-9-sessions-history`
-- **Current open PR:** none; Step 9 ready to publish
-- **Next action:** publish Step 9, then initialize Step 10 locally
+- **Current open PR:** [Step 9 PR #1094](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1094)
+- **Next action:** monitor Step 9 while implementing Step 10 locally
 - **Implementation started:** yes
 - **Retirement:** blocked until every required row in `PLAN.md` passes
 
@@ -23,7 +23,7 @@
 | [x] | 6/15 | deepseek adapter | `⚙️ [deepseek-harness] feat(runtime): expose DeepSeek catalogs and commands [step 6/15]` | Moderate option/command boundary | 1,200 | [PR #5](https://github.com/sesori-ai/sesori-deepseek-acp/pull/5) merged |
 | [x] | 7/16 | apps monorepo | `🌿 [deepseek-harness] test(deepseek): vendor the DeepSeek extension protocol [step 7/16]` | Straightforward test-only protocol fixture foundation | 1,100 | [PR #1077](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1077) merged |
 | [x] | 8/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): scaffold the DeepSeek bridge plugin [step 8/16]` | Moderate new package and narrow ACP hooks | 1,450 | [PR #1088](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1088) merged |
-| [ ] | 9/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek sessions and history [step 9/16]` | Complex replay and identity flow | 1,450 | Local implementation verified; ready to publish |
+| [ ] | 9/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek sessions and history [step 9/16]` | Complex replay and identity flow | 1,450 | [PR #1094](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1094) in review |
 | [ ] | 10/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek turns and interactions [step 10/16]` | Complex events, questions, and permissions | 1,450 | Pending Step 9 |
 | [ ] | 11/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): expose options and lifecycle [step 11/16]` | Moderate plugin API and lifecycle composition | 1,350 | Pending Step 10 |
 | [ ] | 12/16 | deepseek adapter | `🚧 [deepseek-harness] build(runtime): release the managed DeepSeek adapter [step 12/16]` | Complex supply chain and six-platform release | 1,300 | Pending Step 11 |
