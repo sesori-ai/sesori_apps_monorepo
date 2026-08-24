@@ -26,7 +26,8 @@
   `bridge/app`, `bridge/sesori_plugin_opencode`,
   `bridge/sesori_plugin_codex`, `bridge/sesori_plugin_runtime`,
   `client/module_core`, and `client/app`.
-- Full pure-Dart suites passed: 358 shared tests, 2,681 bridge tests, and
+- Full pure-Dart suites passed after merging the current `origin/main`: 358
+  shared tests, 2,685 bridge tests, and
   1,305 client-core tests.
 - The focused filesystem warning widget suite passed 18 tests.
 - Focused bridge route, dispatch, runtime, restart, registration, client
