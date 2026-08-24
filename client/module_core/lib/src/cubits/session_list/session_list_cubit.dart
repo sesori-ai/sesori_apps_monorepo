@@ -16,6 +16,8 @@ import "../../repositories/models/session_cleanup_rejection.dart";
 import "../../repositories/project_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../routing/app_routes.dart";
+import "../../services/catalog_rescan_service.dart";
+import "../../services/models/catalog_rescan_state.dart";
 import "../../services/models/session_activity_info.dart";
 import "../../services/models/session_list_item_state.dart";
 import "../../services/project_viewing_service.dart";
@@ -35,6 +37,7 @@ class SessionListCubit({
   required final RouteSource _routeSource,
   required final String _projectId,
   required final FailureReporter _failureReporter,
+  required final CatalogRescanService _catalogRescanService,
 }) extends Cubit<SessionListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
@@ -48,6 +51,15 @@ class SessionListCubit({
 
   this : super(const SessionListState.loading()) {
     loadSessions();
+    // The catalog scan, which any surface can start. Its state is only
+    // projected onto this list; the operation itself is the service's.
+    _subscriptions.add(_catalogRescanService.state.listen(_onCatalogScanState));
+    // A committed import raises no list invalidation of its own, so the list
+    // refreshes when the scan leaves a live operation — however it ended,
+    // because a run this client only observed publishes no terminal state.
+    _subscriptions.add(
+      _catalogRescanService.settled.listen((_) => unawaited(refreshSessions())),
+    );
     _subscriptions.add(_connectionService.events.listen(_handleEvent));
     // 1. Navigate-back refresh: one immediate fetch when the user returns to
     //    the sessions page. pairwise() ensures this doesn't fire on the
@@ -593,6 +605,22 @@ class SessionListCubit({
           emit(SessionListState.failed(reason: error.remoteFailureReason));
         }
         return false;
+    }
+  }
+
+  /// Starts a catalog scan across every harness this bridge can import from.
+  void startCatalogScan() => unawaited(_catalogRescanService.startAll());
+
+  /// Stops the scan in flight.
+  void cancelCatalogScan() => unawaited(_catalogRescanService.cancel());
+
+  /// Clears a finished scan the user has read.
+  void dismissCatalogScan() => _catalogRescanService.dismiss();
+
+  void _onCatalogScanState(CatalogRescanState scan) {
+    if (isClosed) return;
+    if (state case final SessionListLoaded loaded) {
+      emit(loaded.copyWith(catalogScan: scan));
     }
   }
 

@@ -15,7 +15,9 @@ import "../../platform/route_source.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
 import "../../routing/app_routes.dart";
+import "../../services/catalog_rescan_service.dart";
 import "../../services/loaded_state_analytics_reporter.dart";
+import "../../services/models/catalog_rescan_state.dart";
 import "../../services/models/session_activity_info.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/project_list_service.dart";
@@ -44,6 +46,7 @@ class ProjectListCubit(
   required final ProductAnalyticsService _productAnalyticsService,
   required final LoadedStateAnalyticsReporter _loadedStateAnalyticsReporter,
   required final FailureReporter _failureReporter,
+  required final CatalogRescanService _catalogRescanService,
 }) extends Cubit<ProjectListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
@@ -63,6 +66,14 @@ class ProjectListCubit(
     _subscriptions.add(
       _sseEventTracker.projectTimestampUpdates.listen(_onProjectTimestampUpdated),
     );
+
+    // 1a2. The catalog scan, which any surface can start. Its state is only
+    //     projected onto the list; the operation itself is the service's.
+    _subscriptions.add(_catalogRescanService.state.listen(_onCatalogScanState));
+    // A committed import raises no list invalidation of its own, so the list
+    // refreshes when the scan leaves a live operation — however it ended,
+    // because a run this client only observed publishes no terminal state.
+    _subscriptions.add(_catalogRescanService.settled.listen((_) => unawaited(refreshProjects())));
 
     // 1b. Immediate unseen (bold) updates (no API call).
     _subscriptions.add(
@@ -703,6 +714,22 @@ class ProjectListCubit(
           emit(ProjectListState.failed(reason: error.remoteFailureReason));
         }
         return false;
+    }
+  }
+
+  /// Starts a catalog scan across every harness this bridge can import from.
+  void startCatalogScan() => unawaited(_catalogRescanService.startAll());
+
+  /// Stops the scan in flight.
+  void cancelCatalogScan() => unawaited(_catalogRescanService.cancel());
+
+  /// Clears a finished scan the user has read.
+  void dismissCatalogScan() => _catalogRescanService.dismiss();
+
+  void _onCatalogScanState(CatalogRescanState scan) {
+    if (isClosed) return;
+    if (state case final ProjectListLoaded loaded) {
+      emit(loaded.copyWith(catalogScan: scan));
     }
   }
 

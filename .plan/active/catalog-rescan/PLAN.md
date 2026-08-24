@@ -757,12 +757,26 @@ before the plan is retired.
 | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 |
 | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 |
 | 5/8 | `⚙️ [catalog-rescan] Add a second stage to pull-to-refresh [step 5/8]` | 350-600 |
-| 6/8 | `⚙️ [catalog-rescan] Surface catalog rescan in the app [step 6/8]` | 950-1,400 |
+| 6a/8 | `⚙️ [catalog-rescan] Route scan state through the list cubits [step 6a/8]` | 450-750 |
+| 6b/8 | `⚙️ [catalog-rescan] Show the catalog scan in the lists [step 6b/8]` | 500-800 |
+| 6c/8 | `🌿 [catalog-rescan] Scan one harness from Settings [step 6c/8]` | 350-600 |
 | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 |
 | 8/8 | `🌱 [catalog-rescan] Verify and retire the catalog rescan plan [step 8/8]` | 60-140 |
 
 Step 5 is `⚙️` rather than `🌿` because it extracts a new shared component and
 moves the split-view pane onto it, rather than adding a parameter to one widget.
+
+Step 6 is delivered as three sub-steps rather than one PR, split by layer and
+surface so none exceeds the size cap. The denominator stays 8: these are one
+step's worth of scope, not three new steps.
+
+- **6a** is `module_core` only — the two list cubits gain the scan state, the
+  intent methods, and the refresh on leaving a live operation. Nothing renders,
+  so it is reviewable as pure state.
+- **6b** is the row widget and the three list hosts, which is where the feature
+  first becomes visible.
+- **6c** is the Settings action, whose per-harness result and enablement rules
+  are independent of the aggregate row.
 
 Step 1's target is measured against `PLAN.md` alone. Both files are new, so the
 combined numstat counts every line of `TRACKER.md` too — including its review
