@@ -5,9 +5,9 @@
 - **Plan slug:** `catalog-rescan`
 - **Implementation base:** `main` at
   `7b1ebe9bc629d05b5d104e76cd5dbaa1514d65a2`
-- **Series state:** Step 1/8 in preparation, plan review applied
-- **Current step:** publish the plan
-- **Next action:** open the Step 1 PR, then Step 2's `projectionVersion` bump
+- **Series state:** Step 1/8 merged; Step 2/8 open
+- **Current step:** re-hydrate stale plugin catalogs
+- **Next action:** land Step 2, then Step 3's new-item counts
 - **Origin issue:** [#961](https://github.com/sesori-ai/sesori_apps_monorepo/issues/961)
 - **External overlap:** [#1008](https://github.com/sesori-ai/sesori_apps_monorepo/issues/1008)
   owns Codex live updates; do not address it here
@@ -120,8 +120,8 @@
 
 | Done | Step | Exact PR title | Changed-line target | State |
 |---|---|---|---:|---|
-| [ ] | 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 950-1,100 (`PLAN.md`) | In preparation |
-| [ ] | 2/8 | `🌱 [catalog-rescan] Re-hydrate stale plugin catalogs [step 2/8]` | 20-60 | Not started |
+| [x] | 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 950-1,100 (`PLAN.md`) | [PR #1064](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1064) merged |
+| [ ] | 2/8 | `🌱 [catalog-rescan] Re-hydrate stale plugin catalogs [step 2/8]` | 20-60 | Open |
 | [ ] | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 | Not started |
 | [ ] | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 | Not started |
 | [ ] | 5/8 | `⚙️ [catalog-rescan] Add a second stage to pull-to-refresh [step 5/8]` | 350-600 | Not started |
@@ -146,12 +146,14 @@
 
 ## Step 2 Checklist
 
-- [ ] Bump `projectionVersion` to `2` with a comment recording why.
-- [ ] Leave `projectionVersion = 1` rows in place; add no migration.
-- [ ] Update only the tests that assert the constant.
-- [ ] Confirm re-import stays non-destructive: `hidden`, `displayName`,
+- [x] Bump `projectionVersion` to `2` with a comment recording why.
+- [x] Leave `projectionVersion = 1` rows in place; add no migration.
+- [x] Update only the tests that assert the constant. No test asserts it: the
+  literal `1` in `catalog_queries_test.dart` is an arbitrary DAO-level value
+  proving exact-match retrieval, not the production constant, so it stays.
+- [x] Confirm re-import stays non-destructive: `hidden`, `displayName`,
   `title`, overrides, archive state, and tombstones survive.
-- [ ] Run targeted bridge tests and `dart analyze --fatal-infos`.
+- [x] Run targeted bridge tests and `dart analyze --fatal-infos`.
 
 ## Step 3 Checklist
 
@@ -365,5 +367,15 @@ refresh gap as consequences of one definition.
   all ten findings applied directly, recorded above
 - **Step 1 combined numstat (information only):** `PLAN.md` 988 + `TRACKER.md` 369 = 1,357 insertions, 0 deletions
 - **Step 1 PR:** [#1064](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1064)
-  open
+  merged
+- **Step 2 base:** `main` at `116f8fb2c`
+- **Step 2 verification:** 33 targeted tests passed —
+  `catalog_import_repository_test.dart` (16),
+  `catalog_import_service_test.dart` (9),
+  `catalog_import_handlers_test.dart` (3),
+  `catalog_queries_test.dart` (3), `catalog_import_startup_test.dart` (2);
+  `dart analyze --fatal-infos` from `bridge/app` reported no issues
+- **Step 2 review:** not architecture-bearing; a constant's value changes no
+  boundary, contract, or ownership
+- **Step 2 PR:** pending
 - **Final disposition:** pending
