@@ -1483,7 +1483,8 @@ This series is cleanup, so the assessment records what is deliberately kept:
 - `bootstrapSesoriApp` test seam, `module_auth` HTTP client placement,
   `OAuthStorageService` clear methods, `prego_tappable` platform variants,
   `prego_buttons_solid`, `background_tasks_*` split, `universal_platform`.
-- `AGENTS.bak.md` and `docs/parallel-plugins/PLAN.md` as explicit archives.
+- `docs/parallel-plugins/PLAN.md` as an explicit archive. `AGENTS.bak.md` was
+  listed here too until the owner had it deleted; Git history retains it.
 - Codex `archiveSession` commented body (retained at reviewer request) and the
   live Codex/OpenCode/runtime COMPATIBILITY rows owned by backend versions.
 - `RuntimeStartIntent` frozen ownership schema (v1.0.9) — deferred with D1.

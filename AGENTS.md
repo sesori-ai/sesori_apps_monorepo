@@ -1,8 +1,5 @@
 # Sesori Agent Context
 
-`AGENTS.bak.md` is a historical archive, not active instruction. Do not use it
-as guidance unless the user explicitly asks to inspect the old rules.
-
 ## Project And Stakes
 
 Sesori lets developers monitor and control AI coding sessions from phone and
