@@ -871,8 +871,22 @@ class FakeCatalogRescanService() implements CatalogRescanService {
   @override
   Stream<void> get settled => _settled.stream;
 
+  /// Plugin ids passed to [start], in call order.
+  final List<String> startedPluginIds = [];
+
+  CatalogRescanStartResult _startResult = const CatalogRescanStartResult.accepted();
+
+  /// Sets what [start] answers, so a test can drive a rejection.
+  void stubStartResult(CatalogRescanStartResult result) => _startResult = result;
+
   @override
   Future<void> startAll() async => _startAlls.add(null);
+
+  @override
+  Future<CatalogRescanStartResult> start({required String pluginId}) async {
+    startedPluginIds.add(pluginId);
+    return _startResult;
+  }
 
   @override
   Future<void> cancel() async => _cancels.add(null);
@@ -896,7 +910,4 @@ class FakeCatalogRescanService() implements CatalogRescanService {
     await _settled.close();
   }
 
-  @override
-  // ignore: no_slop_linter/avoid_dynamic_return_type, mocktail's fallback signature
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -2425,6 +2425,28 @@ void main() {
         verify(() => mockProjectRepository.listProjects()).called(1);
       });
 
+      test("keeps a terminal scan through the refresh it triggers", () async {
+        stubProjects();
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await Future<void>.delayed(Duration.zero);
+        stubProjects();
+
+        // The service publishes its terminal state and then announces the
+        // close, which starts the refresh. That refresh must not erase the row
+        // it was fired for.
+        fakeCatalogRescanService.emit(
+          const CatalogRescanState.succeeded(
+            harnessCount: 1,
+            counts: CatalogRescanCounts.delta(newProjects: 2, newSessions: 5),
+          ),
+        );
+        fakeCatalogRescanService.emitSettled();
+        await Future<void>.delayed(Duration.zero);
+
+        expect((cubit.state as ProjectListLoaded).catalogScan, isA<CatalogRescanSucceeded>());
+      });
+
       test("forwards the scan intents to the service", () async {
         stubProjects();
         final cubit = buildCubit();

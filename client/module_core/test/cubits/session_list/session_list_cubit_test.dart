@@ -2243,6 +2243,30 @@ void main() {
         ).called(1);
       });
 
+      test("keeps a terminal scan through an unrelated list rebuild", () async {
+        stubSessions();
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+        fakeCatalogRescanService.emit(
+          const CatalogRescanState.failed(harnessCount: 2),
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect((cubit.state as SessionListLoaded).catalogScan, isA<CatalogRescanFailed>());
+
+        // Any list rebuild — a session event, a toggle, the refresh the scan
+        // itself triggers — must not reset a row that persists until dismissed.
+        cubit.toggleArchived();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          (cubit.state as SessionListLoaded).catalogScan,
+          isA<CatalogRescanFailed>(),
+          reason: "a failure the user has not read must survive a rebuild",
+        );
+      });
+
       test("forwards the scan intents to the service", () async {
         stubSessions();
         final cubit = buildCubit();

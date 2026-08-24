@@ -693,6 +693,10 @@ class ProjectListCubit(
             projects: sortedProjects,
             activityById: _sseEventTracker.currentProjectActivity,
             unseenByProjectId: _unseenByProjectId(sortedProjects),
+            // Re-derived from its owner, like the two fields above it. This
+            // emit is what the scan's own settled listener triggers, so
+            // omitting it would erase the terminal row it was fired for.
+            catalogScan: _catalogRescanService.state.value,
           ),
         );
         _loadedStateAnalyticsReporter.reportLoaded(

@@ -511,6 +511,11 @@ class SessionListCubit({
         activeSessionIds: projectActivity,
         unseenBySessionId: _unseenBySessionId(visible),
         isRefreshing: isRefreshing,
+        // Re-derived from its owner, like the two fields above it. Threading
+        // the previous loaded state forward would not do: the refresh this
+        // scan itself triggers rebuilds from a state that may not exist yet,
+        // and the terminal row it was fired for would be erased.
+        catalogScan: _catalogRescanService.state.value,
         baseBranch: _gitContext?.baseBranch,
         repoSlug: _gitContext?.repoSlug,
         repoProvider: _gitContext?.repoProvider ?? RepoProvider.other,

@@ -494,6 +494,18 @@ duplicate-emission nicety.
 - **Step 6a verification:** `dart analyze --fatal-infos` clean on
   `client/module_core` and `client/app`; module_core 1,349 tests passed
   (6 new cubit cases); app 854 tests passed
-- **Step 6a review:** pending
+- **Step 6a review:** `architecture-implementation-review` **rejected** the first
+  pass with three findings, all applied. Two were one real bug: both cubits
+  rebuilt their loaded state without `catalogScan`, so it reverted to idle —
+  and on the project list the erasing rebuild was the very refresh the scan's
+  own `settled` listener fires, which would have wiped the terminal row it was
+  fired for. On the session list any session event during a scan reset the
+  running row. Fixed by re-deriving from the owner in both paths, the way the
+  sibling activity and unseen fields already do. The third: the shared
+  `FakeCatalogRescanService` declared the interface without implementing
+  `start(pluginId:)` and hid the gap behind `noSuchMethod`, which would have
+  turned any future interface addition into a runtime throw in every consumer
+  instead of a compile error. Both regression tests were confirmed to fail
+  without the fix
 - **Step 6a PR:** pending
 - **Final disposition:** pending
