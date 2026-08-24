@@ -62,6 +62,9 @@ idle suspension, the management snapshot, and lifecycle commands.
   teardown, so a clean owned-runtime exit is neither reported nor restarted as a crash.
 - Codex keeps its long-lived app-server connection active with a local in-memory RPC;
   idle keepalives never trigger remote model discovery, and stop when the plugin is disposed.
+- Codex session metadata uses the top-level `model` and `model_provider` values from
+  `~/.codex/config.toml` when durable rollout metadata omits them; rollout metadata
+  remains authoritative when present.
 - Interactive authentication is optional per descriptor. A capable harness owns its
   backend process and credentials, exposes only a safe challenge and sanitized terminal
   state, cancels cooperatively, and settles process cleanup before the operation ends.

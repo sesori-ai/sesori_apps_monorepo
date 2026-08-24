@@ -12,7 +12,6 @@ Checked before editing, because the plan's audit counts have been wrong before.
 | Knob | Legacy default | Codex | OpenCode | Other production callers |
 | --- | --- | --- | --- | --- |
 | `RuntimeHealthPolicy.attemptCount` | — | never | never | none (3 test files only) |
-| `RuntimeRecordTiming.afterSpawn` | default | alternate value | alternate value | none |
 | `preProbeBindable` | `false` | `true` | `true` | none |
 | `failFastOnSpawnError` | `false` | `true` | `true` | none |
 | `failOnEarlyChildExit` | `false` | `true` | `true` | none |
@@ -58,7 +57,7 @@ Codex and OpenCode already passed. Two consequences worth stating explicitly:
 
 ## Tests
 
-Five tests were removed because the change makes their premise unrepresentable,
+Two tests were removed because the change makes their premise unrepresentable,
 not because they were inconvenient:
 
 | Test | Why it cannot exist |
