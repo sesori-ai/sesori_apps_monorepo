@@ -214,6 +214,32 @@ void main() {
         await expectLater(plugin.shutdown(budget: null), throwsStateError);
         expect(plugin.currentStatus, const PluginStopped());
       });
+
+      test('runs every cleanup and preserves first error and stack', () async {
+        final plugin = _SteadyPlugin();
+        final calls = <String>[];
+        final firstError = StateError('first');
+        final firstStack = StackTrace.current;
+
+        try {
+          await plugin.runCleanups([
+            () async {
+              calls.add('first');
+              Error.throwWithStackTrace(firstError, firstStack);
+            },
+            () async {
+              calls.add('second');
+              throw ArgumentError('second');
+            },
+            () async => calls.add('third'),
+          ]);
+          fail('cleanup failure expected');
+        } on Object catch (error, stackTrace) {
+          expect(error, same(firstError));
+          expect(stackTrace.toString(), firstStack.toString());
+        }
+        expect(calls, ['first', 'second', 'third']);
+      });
     });
   });
 }
@@ -232,6 +258,8 @@ class _SteadyPlugin({final bool throwOnShutdown = false}) with SteadyPluginLifec
   }
 
   void reportFailed(String reason, {Object? cause}) => markFailed(reason, cause: cause);
+
+  Future<void> runCleanups(List<Future<void> Function()> cleanups) => runShutdownCleanups(cleanups: cleanups);
 
   @override
   ServerClock get statusClock => clock;

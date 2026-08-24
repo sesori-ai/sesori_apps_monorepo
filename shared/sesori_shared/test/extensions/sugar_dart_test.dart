@@ -20,6 +20,20 @@ void main() {
     });
   });
 
+  group("JSON value helpers", () {
+    test("returns string-keyed maps only", () {
+      expect(asStringKeyedMap(<String, Object?>{"key": "value"}), {"key": "value"});
+      expect(asStringKeyedMap("value"), isNull);
+    });
+
+    test("returns non-empty strings without trimming", () {
+      expect(nonEmptyString("value"), "value");
+      expect(nonEmptyString(" "), " ");
+      expect(nonEmptyString(""), isNull);
+      expect(nonEmptyString(1), isNull);
+    });
+  });
+
   group("jsonDecodeMap", () {
     test("decodes valid JSON map", () {
       const json = '{"key": "value", "number": 42}';

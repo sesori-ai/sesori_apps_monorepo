@@ -60,6 +60,73 @@ sealed class PluginMessageWithParts with _$PluginMessageWithParts {
 
 @freezed
 sealed class PluginMessagePart with _$PluginMessagePart {
+  static PluginMessagePart fromText({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    required String text,
+  }) => PluginMessagePart(
+    id: id,
+    sessionID: sessionID,
+    messageID: messageID,
+    type: PluginMessagePartType.text,
+    text: text,
+    tool: null,
+    state: null,
+    prompt: null,
+    description: null,
+    agent: null,
+    agentName: null,
+    attempt: null,
+    retryError: null,
+    attachment: null,
+  );
+
+  static PluginMessagePart fromThinking({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    required String text,
+  }) => PluginMessagePart(
+    id: id,
+    sessionID: sessionID,
+    messageID: messageID,
+    type: PluginMessagePartType.reasoning,
+    text: text,
+    tool: null,
+    state: null,
+    prompt: null,
+    description: null,
+    agent: null,
+    agentName: null,
+    attempt: null,
+    retryError: null,
+    attachment: null,
+  );
+
+  static PluginMessagePart fromTool({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    required String tool,
+    required PluginToolState state,
+  }) => PluginMessagePart(
+    id: id,
+    sessionID: sessionID,
+    messageID: messageID,
+    type: PluginMessagePartType.tool,
+    text: null,
+    tool: tool,
+    state: state,
+    prompt: null,
+    description: null,
+    agent: null,
+    agentName: null,
+    attempt: null,
+    retryError: null,
+    attachment: null,
+  );
+
   const factory({
     required String id,
     required String sessionID,
@@ -122,7 +189,9 @@ enum PluginToolStatus() {
   @JsonValue("error")
   error,
   @JsonValue("unknown")
-  unknown,
+  unknown;
+
+  bool get isTerminal => this == completed || this == error;
 }
 
 @freezed

@@ -691,38 +691,28 @@ PluginMessagePart _textPart({
   required int contentIndex,
   required PluginMessagePartType type,
   required String text,
-}) => PluginMessagePart(
-  id: _blockId(messageId: messageId, contentIndex: contentIndex),
-  sessionID: sessionId,
-  messageID: messageId,
-  type: type,
-  text: text,
-  tool: null,
-  state: null,
-  prompt: null,
-  description: null,
-  agent: null,
-  agentName: null,
-  attempt: null,
-  retryError: null,
-  attachment: null,
-);
+}) => switch (type) {
+  PluginMessagePartType.text => PluginMessagePart.fromText(
+    id: _blockId(messageId: messageId, contentIndex: contentIndex),
+    sessionID: sessionId,
+    messageID: messageId,
+    text: text,
+  ),
+  PluginMessagePartType.reasoning => PluginMessagePart.fromThinking(
+    id: _blockId(messageId: messageId, contentIndex: contentIndex),
+    sessionID: sessionId,
+    messageID: messageId,
+    text: text,
+  ),
+  _ => throw ArgumentError.value(type, "type"),
+};
 
-PluginMessagePart _toolPart({required String sessionId, required PiTrackedTool tool}) => PluginMessagePart(
+PluginMessagePart _toolPart({required String sessionId, required PiTrackedTool tool}) => PluginMessagePart.fromTool(
   id: tool.id,
   sessionID: sessionId,
   messageID: tool.messageId,
-  type: PluginMessagePartType.tool,
-  text: null,
   tool: tool.name,
   state: tool.state,
-  prompt: null,
-  description: null,
-  agent: null,
-  agentName: null,
-  attempt: null,
-  retryError: null,
-  attachment: null,
 );
 
 String _blockId({required String messageId, required int contentIndex}) => "$messageId-block-${contentIndex + 1}";

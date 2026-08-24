@@ -265,6 +265,9 @@ Fixed titles and order. Status is GitHub's; evidence is in `steps/step-NN.md`.
 - **Step 27 architecture implementation review (2026-08-24):** approved with
   no findings; `PendingPermissionRegistry` remains in
   `sesori_plugin_interface` as planned.
+- **Step 28 architecture implementation review (2026-08-24):** approved with
+  no findings; neutral helpers remain in interface/shared, ACP config parsing
+  remains in the ACP package, and lifecycle/runtime ownership remains intact.
 - **Step 1 PR review round 3 (bot, 2026-08-22):** six new findings; five
   applied (Steps 4 and 20 added to the implementation-review list; Step 7
   moves `plugin_runtime.dart` to `api/` and keeps `runtime/` as the

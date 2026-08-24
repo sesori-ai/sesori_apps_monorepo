@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart"
     show
@@ -243,7 +241,7 @@ final class const CodexImageAttachmentMapper() {
       );
     }
 
-    final normalized = _tryNormalizeBase64(encoded: encoded);
+    final normalized = normalizeAttachmentBase64(encoded: encoded);
     if (normalized == null) {
       return _metadata(
         mime: normalizedMime,
@@ -298,21 +296,13 @@ final class const CodexImageAttachmentMapper() {
     );
   }
 
-  String? _tryNormalizeBase64({required String encoded}) {
-    try {
-      return base64.normalize(encoded);
-    } on FormatException {
-      return null;
-    }
-  }
+  String _normalizeMime({required String? raw}) => normalizeAttachmentMime(
+    raw: raw,
+    fallback: _fallbackMime,
+    maxCharacters: _maxMimeCharacters,
+  );
 
-  String _normalizeMime({required String? raw}) {
-    final trimmed = raw?.trim();
-    if (trimmed == null || trimmed.isEmpty) return _fallbackMime;
-    return String.fromCharCodes(trimmed.runes.take(_maxMimeCharacters)).toLowerCase();
-  }
-
-  String _mimeEssence({required String mime}) => mime.split(";").first.trim();
+  String _mimeEssence({required String mime}) => attachmentMimeEssence(mime: mime);
 
   bool _isDataUrl({required String url}) => url.length >= 5 && url.substring(0, 5).toLowerCase() == "data:";
 

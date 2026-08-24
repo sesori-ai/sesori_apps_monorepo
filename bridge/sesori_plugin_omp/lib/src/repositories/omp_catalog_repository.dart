@@ -104,26 +104,11 @@ class OmpCatalogRepository({required final OmpAcpApi _api}) {
     required AcpNewSessionResult result,
     required String category,
     required String id,
-  }) {
-    Map<String, dynamic>? categoryFallback;
-    for (final config in result.configOptions) {
-      if (config["id"] == id) return config;
-      if (categoryFallback == null && config["category"] == category) {
-        categoryFallback = config;
-      }
-    }
-    return categoryFallback;
-  }
+  }) => AcpConfigOptionParser.find(configs: result.configOptions, category: category, id: id);
 
-  static String? _configId(Map<String, dynamic>? config) {
-    final id = config?["id"];
-    return id is String && id.isNotEmpty ? id : null;
-  }
+  static String? _configId(Map<String, dynamic>? config) => AcpConfigOptionParser.id(config);
 
-  static String? _currentValue(Map<String, dynamic>? config) {
-    final value = config?["currentValue"] ?? config?["value"];
-    return value is String && value.isNotEmpty ? value : null;
-  }
+  static String? _currentValue(Map<String, dynamic>? config) => AcpConfigOptionParser.currentValue(config);
 
   static List<OmpCatalogModel> _models(Map<String, dynamic>? config) {
     return [
@@ -164,21 +149,6 @@ class OmpCatalogRepository({required final OmpAcpApi _api}) {
 
   static Object? _optionValue(Map<String, dynamic> option) => option["value"];
 
-  static List<Map<String, dynamic>> _flattenedOptions(Map<String, dynamic>? config) {
-    final raw = config?["options"];
-    if (raw is! List) return const [];
-    final options = <Map<String, dynamic>>[];
-    for (final entry in raw.whereType<Map<dynamic, dynamic>>()) {
-      final option = entry.cast<String, dynamic>();
-      final nested = option["options"];
-      if (nested is List) {
-        options.addAll(
-          nested.whereType<Map<dynamic, dynamic>>().map((item) => item.cast<String, dynamic>()),
-        );
-      } else {
-        options.add(option);
-      }
-    }
-    return options;
-  }
+  static List<Map<String, dynamic>> _flattenedOptions(Map<String, dynamic>? config) =>
+      AcpConfigOptionParser.flattenedOptions(config);
 }

@@ -12,6 +12,12 @@ Map<String, dynamic> jsonDecodeMap(String source) {
   return jsonCastMap(jsonDecode(source));
 }
 
+// ignore: no_slop_linter/prefer_specific_type, decoded JSON boundary
+Map<String, dynamic>? asStringKeyedMap(Object? value) => value is Map ? value.cast<String, dynamic>() : null;
+
+// ignore: no_slop_linter/prefer_specific_type, decoded JSON boundary
+String? nonEmptyString(Object? value) => value is String && value.isNotEmpty ? value : null;
+
 // ignore: no_slop_linter/prefer_specific_type, JSON decoding
 List<Map<String, dynamic>> jsonDecodeListMap(String source) {
   final result = jsonDecode(source);

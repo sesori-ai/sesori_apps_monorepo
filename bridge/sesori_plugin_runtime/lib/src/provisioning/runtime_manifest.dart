@@ -94,6 +94,9 @@ abstract class const RuntimeManifest() {
   /// The download URL for [asset] at [bundledVersion].
   String downloadUrlFor({required RuntimeAsset asset});
 
+  String githubReleaseAssetUrl({required String repository, required String tag, required RuntimeAsset asset}) =>
+      "https://github.com/$repository/releases/download/$tag/${asset.assetName}";
+
   /// Expected path of this manifest's pinned managed binary under a plugin
   /// state root. Computing the path is read-only and does not imply that the
   /// runtime is installed or valid.

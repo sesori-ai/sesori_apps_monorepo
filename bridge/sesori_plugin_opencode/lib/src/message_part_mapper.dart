@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart"
     show
@@ -288,7 +286,7 @@ class const MessagePartMapper() {
       return PluginMessageAttachment.metadata(mime: mime, filename: filename);
     }
 
-    final normalized = _tryNormalizeBase64(encoded: raw.url.substring(separator + 1));
+    final normalized = normalizeAttachmentBase64(encoded: raw.url.substring(separator + 1));
     if (normalized == null) {
       Log.w("OpenCode returned an invalid base64 image attachment; forwarding metadata only");
       return PluginMessageAttachment.metadata(mime: mime, filename: filename);
@@ -299,14 +297,6 @@ class const MessagePartMapper() {
       return PluginMessageAttachment.metadata(mime: mime, filename: filename);
     }
     return PluginMessageAttachment.inlineImage(mime: mime, base64: normalized, filename: filename);
-  }
-
-  String? _tryNormalizeBase64({required String encoded}) {
-    try {
-      return base64.normalize(encoded);
-    } on FormatException {
-      return null;
-    }
   }
 
   bool _isDataUrl({required String url}) => url.length >= 5 && url.substring(0, 5).toLowerCase() == "data:";
