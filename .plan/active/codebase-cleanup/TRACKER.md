@@ -44,8 +44,9 @@ five open PRs). Steps sharing a package stay serialized: 4 after 3 (both
 ## Locked Principles
 
 - [x] Behavior-preserving by default; Steps 19, 21, 38, 40, 41, 42 (and the
-  installer delta in 43) name their intentional changes and update the affected
-  regression document in the same PR; Step 44 is the final consistency pass.
+  installer delta in 43) name their intentional changes. Regression documents
+  change only for supported behavior or executable coverage, never to retain a
+  tombstone for deleted behavior; Step 44 is the final consistency pass.
 - [x] Nothing is extracted unless it replaces at least two copies and owns
   state, a lifecycle, or an invariant.
 - [x] Every step re-verifies its evidence against current `main` before editing
@@ -56,7 +57,7 @@ five open PRs). Steps sharing a package stay serialized: 4 after 3 (both
 - [x] Session-detail refresh coordination, dispatcher merging, orchestrator
   splitting, and `ConnectionService`/`RelayClient` lifecycle redesign are out.
 - [x] Architecture-implementation review only for Steps 4, 7, 15, 17, 18, 20,
-  21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37.
+  21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 42.
 - [x] 1,500 changed-line soft cap; deletion- or generated-heavy overages are
   recorded with the reason.
 
@@ -182,9 +183,8 @@ Fixed titles and order. Status is GitHub's; evidence is in `steps/step-NN.md`.
 
 ## Step 42 Peer Verification
 
-- `GET /agent`: public v1.4.0 clients use project-scoped `POST /agent`; remove the
-  context-free handler, CWD fallback, and repository legacy ID dependency. Keep
-  the missing-`pluginId` wire default because v1.4.0 POST bodies omit it.
+- Missing agent-discovery `pluginId`: keep the OpenCode wire default because
+  public v1.4.0 request bodies omit it.
 - Question rejection owner: public v1.4.0 clients always send `sessionId`; make
   it required and remove owner discovery plus its dispatcher admission lanes.
 - Child interaction display owner: public v1.4.0 bridges send
@@ -201,14 +201,9 @@ Fixed titles and order. Status is GitHub's; evidence is in `steps/step-NN.md`.
   invocations. Accepted consequence: a direct <=v1.3.x-to-current upgrade can
   mint a new bridge registration and orphan the old server registration; token
   authentication remains usable.
-- OpenCode `--port`, `--no-auto-start`, and `--password` aliases: keep as a live
-  external user-script contract, not a client/bridge peer compatibility path.
 - Codex config fallback: keep because current live notifications and durable
   rollout data can omit model metadata; top-level Codex config remains a live
   backend-owned source rather than released Sesori-era storage.
-- Runtime start-intent side file: keep because every encoding inside the frozen
-  v1.0.9 ownership root is parsed as a strict PID-bearing record; no ignored
-  encoding exists, and fabricating ownership could adopt or kill the wrong PID.
 - Pull-request refresh settings: current clients already read aggregate
   `GET /settings` first and fall back to `GET /settings/pull-request-refresh`
   for supported older bridges. Keep the client fallback and bridge route until

@@ -139,16 +139,13 @@ class RunCommand() extends cli.Command<void> {
 
     final BridgeCliOptions options;
     final Map<String, PluginConfig> pluginConfigs;
-    final pluginConfigDeprecations = <String>[];
     try {
       // Plugin option validate hooks and config validation run at
       // argument-parse time — strictly before the startup mutex, so a typo'd
       // flag can never terminate a healthy resident bridge.
       pluginConfigs = <String, PluginConfig>{};
       for (final plugin in knownPlugins) {
-        final parsed = _pluginCliMappers[plugin.id]!.parse(results: results, options: plugin.options);
-        pluginConfigs[plugin.id] = parsed.config;
-        pluginConfigDeprecations.addAll(parsed.deprecations);
+        pluginConfigs[plugin.id] = _pluginCliMappers[plugin.id]!.parse(results: results, options: plugin.options);
       }
       for (final plugin in knownPlugins) {
         plugin.validateConfig(pluginConfigs[plugin.id]!);
@@ -181,11 +178,6 @@ class RunCommand() extends cli.Command<void> {
       ).format(version: appVersion);
       if (banner != null) Console.message(banner);
     }
-
-    // Surface deprecated-flag usage to the user directly. The legacy flag still
-    // worked; this only nudges the user toward the namespaced form, so it must
-    // be visible regardless of --log-level and is not a diagnostic.
-    pluginConfigDeprecations.forEach(Console.warning);
 
     final settingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
     final sleepPreventionService = SleepPreventionService(

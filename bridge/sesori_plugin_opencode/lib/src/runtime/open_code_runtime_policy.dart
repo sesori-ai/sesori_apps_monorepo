@@ -356,11 +356,10 @@ OpenCodeOwnershipRecord buildOpenCodeOwnershipRecord({required RuntimeRecordDraf
 
 /// Assembles the [ManagedRuntimeSpec] for OpenCode with the **hardened** policy
 /// knobs active since the flip (PR 12): deadline-paced health confirmation
-/// ([openCodeHealthDeadline] probed every [openCodeHealthPollInterval]), the
-/// start intent recorded to a bridge-private side file before spawn (the frozen
-/// ownership file is untouched), and a child exit before the first healthy
-/// probe treated as authoritative failure (a healthy response after our child
-/// died would be an unrelated process squatting the port).
+/// ([openCodeHealthDeadline] probed every [openCodeHealthPollInterval]) and a
+/// child exit before the first healthy probe treated as authoritative failure
+/// (a healthy response after our child died would be an unrelated process
+/// squatting the port).
 ManagedRuntimeSpec<OpenCodeOwnershipRecord> buildOpenCodeManagedRuntimeSpec({
   required PluginHost host,
   required String executablePath,

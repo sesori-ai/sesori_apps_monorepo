@@ -10,15 +10,14 @@
 
 ## Change
 
-- Removed the context-free `GET /agent` route and CWD/repository identity glue.
 - Required rejection ownership and removed legacy question-owner discovery plus
   the dispatcher coordination used only by it.
 - Required typed filesystem health state and strict fresh-health parsing.
 - Removed the pre-v1.4 post-update relaunch and bridge-ID migration paths.
 - Removed the old child-interaction display-owner fallback.
-- Retained external CLI aliases, live Codex config fallback, the frozen-schema
-  runtime intent side file, and supported-peer settings fallback with corrected
-  durable rationale.
+- Removed obsolete unprefixed OpenCode CLI aliases and write-only managed-runtime
+  start-intent state. Retained the live Codex config fallback and supported-peer
+  settings fallback.
 
 ## Verification
 
@@ -27,13 +26,14 @@
   `bridge/sesori_plugin_codex`, `bridge/sesori_plugin_runtime`,
   `client/module_core`, and `client/app`.
 - Full pure-Dart suites passed after merging the current `origin/main`: 358
-  shared tests, 2,685 bridge tests, and
-  1,305 client-core tests.
+  shared tests and 1,305 client-core tests. After review feedback, the affected
+  full suites passed with 152 plugin-interface, 123 plugin-runtime, 436
+  OpenCode, 392 Codex, and 2,681 bridge-app tests.
 - The focused filesystem warning widget suite passed 18 tests.
 - Focused bridge route, dispatch, runtime, restart, registration, client
   reconnect, settings fallback, and interaction-owner suites passed.
-- Generated diffs are confined to `HealthResponse` and
-  `RejectQuestionRequest`; `git diff --check` passed.
+- Generated changes comprise `HealthResponse`, `RejectQuestionRequest`, and the
+  removal of the unused runtime start-intent outputs; `git diff --check` passed.
 - Architecture implementation review approved the complete working-tree diff
   across the client, bridge, and shared workspaces with no findings.
 - Independent correctness review found one missing empty-`sessionId` boundary

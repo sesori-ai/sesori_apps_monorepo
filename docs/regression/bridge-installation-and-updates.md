@@ -24,9 +24,6 @@ reconciliation, periodic check, in-place apply, and explicit update command.
   release in place; the running process stays on its old code until the next start. Its
   track is stable by default, internal also takes pre-releases, and a change applies after restart.
   Transient auto-update outages stay quiet and retry on the next cycle.
-- Current updates never relaunch the bridge through the retired
-  `SESORI_POST_UPDATE_RESTART` process marker; login prompts and terminal detection
-  use the active process's actual standard streams.
 - Applying happens in place under a cross-process lock with a durable attempt record and
   log, and can roll back; startup reconciliation is local and network-free, reports the
   prior attempt, and never fails startup. Residue sweeping is best-effort: lock

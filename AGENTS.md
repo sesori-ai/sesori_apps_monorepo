@@ -80,6 +80,11 @@ eagerly "just in case."
 - Never hand-edit generated files. Change their source and run the generator.
 - Add or update the relevant `docs/regression/` feature document when adding a
   feature or materially changing existing feature behavior.
+- Regression documents track supported behavior, material failure signals, and
+  coverage worth executing. Do not leave tombstones for removed routes, fields,
+  migrations, flags, or other behavior; remove stale references instead. Record
+  absence only when reintroducing the artifact would itself break a live
+  capability or security invariant.
 - Create and update GitHub PR bodies with real multiline Markdown through
   `--body-file` or stdin; never pass escaped `\n` text.
 - Every PR title starts with one implementation-complexity emoji: `🌱` trivial,

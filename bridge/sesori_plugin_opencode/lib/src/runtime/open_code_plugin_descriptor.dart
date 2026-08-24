@@ -60,9 +60,8 @@ OpenCodeManagedApi _defaultBuildApi({
 ///
 /// Registered in `bin/bridge.dart` since the flip (PR 12 of the
 /// plugin-lifecycle migration), with the hardened policy knobs active:
-/// deadline-paced health confirmation, the start intent recorded to a
-/// bridge-private side file, pre-probed explicit ports, early child exits
-/// treated as authoritative failure, and bounded restart pinned to the
+/// deadline-paced health confirmation, pre-probed explicit ports, early child
+/// exits treated as authoritative failure, and bounded restart pinned to the
 /// original port.
 ///
 /// The optional constructor parameters are test seams (and the random/candidate
@@ -87,26 +86,14 @@ class const OpenCodePluginDescriptor({
   /// Frozen ownership filename in the legacy shared runtime directory.
   static const String ownershipFileName = "opencode-processes.json";
 
-  /// Backend-namespaced start intent filename in shared runtime storage.
-  static const String startIntentFileName = "opencode-start-intent.json";
-
-  /// The OpenCode CLI options the bridge declares for this plugin.
-  ///
-  /// Names are bare; the bridge namespaces them to `--opencode-<name>`. The
-  /// pre-namespacing spellings that already shipped (`--port`, `--no-auto-start`,
-  /// `--password`) are kept as deprecated aliases so existing invocations keep
-  /// working (with a warning). `bin` already namespaces to the historical
-  /// `--opencode-bin`, and the never-released `host`/`no-password` flags are new,
-  /// so none of those need an alias.
+  /// The OpenCode CLI options the bridge declares for this plugin. Names are
+  /// bare; the bridge namespaces them to `--opencode-<name>`.
   static const List<PluginOption> cliOptions = [
     PluginValueOption.integer(
       name: _OpenCodeConfigKey.port,
       help: "Port for opencode server to listen on",
       defaultsTo: null,
       valueHelp: null,
-      // COMPATIBILITY: `--port` is a durable external CLI contract. Remove only in
-      // an explicitly announced breaking CLI release after its removal gate passes.
-      deprecatedAliases: ["port"],
     ),
     PluginValueOption(
       name: _OpenCodeConfigKey.host,
@@ -126,9 +113,6 @@ class const OpenCodePluginDescriptor({
       help: "Skip auto-starting opencode server (use existing server)",
       defaultsTo: false,
       negatable: true,
-      // COMPATIBILITY: `--no-auto-start` is a durable external CLI contract. Remove
-      // only in an explicitly announced breaking CLI release after its removal gate passes.
-      deprecatedAliases: ["no-auto-start"],
     ),
     PluginValueOption(
       name: _OpenCodeConfigKey.password,
@@ -137,9 +121,6 @@ class const OpenCodePluginDescriptor({
       allowedValues: null,
       valueHelp: null,
       validate: null,
-      // COMPATIBILITY: `--password` is a durable external CLI contract. Remove only
-      // in an explicitly announced breaking CLI release after its removal gate passes.
-      deprecatedAliases: ["password"],
     ),
     PluginFlagOption(
       name: _OpenCodeConfigKey.noPassword,
@@ -541,11 +522,6 @@ class const OpenCodePluginDescriptor({
       clock: host.clock,
       runtimeId: "opencode",
       gracefulShutdownWait: openCodeGracefulShutdownWait,
-      // Backs the intentSideFile record timing: the start intent is written
-      // here before spawn and resolved after. The bridge-private side file
-      // never touches the frozen ownership file, and a leftover intent from a
-      // crashed start is simply overwritten (then cleared) by the next one.
-      intentStore: RuntimeStartIntentStore(store: host.store, fileName: startIntentFileName),
     );
 
     late final ManagedRuntimeSpec<OpenCodeOwnershipRecord> spec;

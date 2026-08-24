@@ -136,9 +136,8 @@ any of them in the Step 1 PR review or later in `TRACKER.md`.
   v1.4.0; keep every v1.4.x+ marker; managed-runtime and on-disk-data compat
   (Codex rollout formats, OpenCode runtime events) stays regardless of marker
   age unless its peer is itself a released Sesori surface older than v1.4.
-  Step 42 therefore retires `GET /agent` and `AgentRepository.legacyPluginId`
-  (v1.0.7 clients), the nullable `RejectQuestionRequest.sessionId` legacy
-  question path and its dispatcher lanes (v1.0.9 clients), the
+  Step 42 therefore retires the nullable `RejectQuestionRequest.sessionId`
+  legacy question path and its dispatcher lanes (v1.0.9 clients), the
   `displaySessionId` fallback and the empty-health-body tolerance (v1.1.x
   bridges), the `v1.1.2` post-update relaunch variable, and the `v1.3.0`
   bridge-id migration (peer: `token.json` written by installs last run on
@@ -861,19 +860,17 @@ All verified with whole-word grep over lib, bin, and test across the repo.
 
 - `bridge/sesori_plugin_runtime/lib/src/managed_runtime_spec.dart:39-59`
   (`RuntimeHealthPolicy.attemptCount`, 0 production uses), `:78-87`
-  (`RuntimeRecordTiming.afterSpawn`, 0 uses — both policies pass
-  `intentSideFile`), `:94,114` `preProbeBindable` and `:105,140`
+  (`RuntimeRecordTiming.afterSpawn`, 0 uses), `:94,114` `preProbeBindable` and `:105,140`
   `failFastOnSpawnError` (both descriptors pass `true`), `:176` `validateRuntime`
   (never set), `:180` `failOnEarlyChildExit` (`true` in both);
-  `managed_process_service.dart:17-20,127-131` nullable `_intentStore` +
-  `_requireIntentStoreFor` and the branches at `:173-182, 228-230, 247-260,
+  `managed_process_service.dart` branches at `:173-182, 228-230, 247-260,
   268-271, 280-282, 301-303, 313-317, 322-333, 353-355, 382-395, 431`.
 - Change: delete the unused variants; make the single production behavior
-  unconditional; `RuntimeStartIntentStore` required; rewrite the migration-era
-  doc comments. Stays inside `sesori_plugin_runtime`; no persisted-schema change.
+  unconditional; rewrite the migration-era doc comments. Stays inside
+  `sesori_plugin_runtime`; no persisted-schema change.
 - Verify: runtime suite (`managed_runtime_monitor_test`,
-  `managed_process_service_start_test`, `managed_process_service_intent_test`),
-  codex/opencode descriptor and runtime-policy tests.
+  `managed_process_service_start_test`), codex/opencode descriptor and
+  runtime-policy tests.
 
 ### Step 25 — Codex/OpenCode managed-runtime fold
 
@@ -899,9 +896,9 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   rollback; if it grows beyond thin composition it becomes a named collaborator
   class with constructor-injected dependencies, not a free function.
   Descriptors keep config parsing, OpenCode attach/degraded branches, and the
-  spawn/probe seams. The ownership-record unification (JSON keys in
-  `codex-processes.json`/`opencode-processes.json`, `runtime_start_intent.dart:21`
-  v1.0.9 compatibility) is **deferred** to the D1 decision.
+  spawn/probe seams. Ownership-record unification (JSON keys in
+  `codex-processes.json`/`opencode-processes.json`) is **deferred** to the D1
+  decision.
 - Verify: runtime suite; `codex/test/runtime/*`; `opencode/test/runtime/*`;
   start/shutdown ordering is the review focus.
 
@@ -1347,9 +1344,8 @@ All verified with whole-word grep over lib, bin, and test across the repo.
 ### Step 42 — compatibility expiry (D1)
 
 - Executes against the owner-recorded D1 baseline `≥ v1.4.0` (decided
-  2026-08-22): `GetAgentsHandler` + `AgentRepository.legacyPluginId` +
-  orchestrator registration (`orchestrator.dart:575`); nullable
-  `RejectQuestionRequest.sessionId` (`reply_to_question_request.dart:25`) +
+  2026-08-22): nullable `RejectQuestionRequest.sessionId`
+  (`reply_to_question_request.dart:25`) +
   `pending_interaction_service.dart:78-105` legacy owner resolution +
   `session_operation_dispatcher.dart:62 dispatchLegacyQuestion` and the
   per-plugin admission lane/settlement tracking that exist only for it
@@ -1358,17 +1354,16 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   + `connection_service.dart:423` empty-body tolerance;
   `legacy_post_update_relaunch.dart` + three consumers (v1.1.2);
   `BridgeIdMigrationService` + `readLegacyBridgeId` + its two startup
-  invocations (v1.3.0); the three `open_code_plugin_descriptor.dart` CLI flag
-  aliases (v1.1.1, user scripts); `codex_config_reader.dart` fallback reads
+  invocations (v1.3.0); the obsolete unprefixed OpenCode CLI aliases;
+  `codex_config_reader.dart` fallback reads
   (v1.1.2) only if the peer is released-Sesori-era data rather than a live
-  rollout format; the `runtime_start_intent.dart` side file (v1.0.9) only if an
-  encoding provably ignored by every frozen-schema reader exists — each gets a
-  per-marker peer-verification line in the tracker and stays, with reason, if
-  the check fails. Under the `≥ v1.6.0` candidate, additionally the v1.4–v1.5
+  rollout format; write-only managed-runtime start-intent state with no
+  production reader. Under the `≥ v1.6.0` candidate, additionally the v1.4–v1.5
   family listed in D1. `GET /pull-request-refresh-settings` stays
   until the current client migrates to `/settings` (migrate the client in this
-  step; keep the route until the baseline passes v1.8.0). Every removal names
-  the regression document whose compatibility row it changes.
+  step; keep the route until the baseline passes v1.8.0). Regression documents
+  retain only supported behavior and executable coverage, not deleted-artifact
+  tombstones.
 - Verify: handler tests for each removed route/field; a current client against
   the baseline bridge and the current bridge against the baseline client (or
   equivalent wire fixtures).
@@ -1487,7 +1482,6 @@ This series is cleanup, so the assessment records what is deliberately kept:
   listed here too until the owner had it deleted; Git history retains it.
 - Codex `archiveSession` commented body (retained at reviewer request) and the
   live Codex/OpenCode/runtime COMPATIBILITY rows owned by backend versions.
-- `RuntimeStartIntent` frozen ownership schema (v1.0.9) — deferred with D1.
 
 ## Complexity Budget
 

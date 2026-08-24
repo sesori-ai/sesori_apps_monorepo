@@ -12,7 +12,7 @@ Checked before editing, because the plan's audit counts have been wrong before.
 | Knob | Legacy default | Codex | OpenCode | Other production callers |
 | --- | --- | --- | --- | --- |
 | `RuntimeHealthPolicy.attemptCount` | — | never | never | none (3 test files only) |
-| `RuntimeRecordTiming.afterSpawn` | default | `intentSideFile` | `intentSideFile` | none |
+| `RuntimeRecordTiming.afterSpawn` | default | alternate value | alternate value | none |
 | `preProbeBindable` | `false` | `true` | `true` | none |
 | `failFastOnSpawnError` | `false` | `true` | `true` | none |
 | `failOnEarlyChildExit` | `false` | `true` | `true` | none |
@@ -25,10 +25,8 @@ grep -rn --include="*.dart" "attemptCount\|validateRuntime\|preProbeBindable\|\
 failFastOnSpawnError\|failOnEarlyChildExit\|recordTiming" bridge/ client/ shared/
 ```
 
-Two doc comments were already stale on `main`: `RuntimeRecordTiming.intentSideFile`
-claimed "the supervisor rejects it until then" while both descriptors were
-selecting it, and `ManagedRuntimeSpec` still described serving "the legacy
-in-place wrapper". Both were rewritten rather than deleted silently.
+The `ManagedRuntimeSpec` comment still described serving "the legacy in-place
+wrapper" and was rewritten.
 
 ## What changed
 
@@ -37,12 +35,8 @@ in-place wrapper". Both were rewritten rather than deleted silently.
   gone it wrapped a single variant. `HealthDeadlinePolicy` folds into
   `RuntimeHealthPolicy(deadline:, pollInterval:)` and the supervisor's
   `switch` over the pair becomes the loop it always ran in production.
-- **`RuntimeRecordTiming` is deleted.** The start-intent side file is written
-  before every spawn and cleared after, unconditionally.
-- **`RuntimeStartIntentStore` is now a required constructor parameter.** It was
-  nullable only to serve the after-spawn timing, and `_requireIntentStoreFor`
-  existed to turn that nullable into a runtime `ArgumentError` at two call
-  sites. The compiler enforces it now; the check and both calls are gone.
+- **`RuntimeRecordTiming` is deleted.** Both shipping plugins selected the same
+  timing, so the branch had no production variation.
 - **`preProbeBindable`, `failFastOnSpawnError`, `failOnEarlyChildExit` and
   `validateRuntime` are deleted**, each replaced by its single production value.
 
@@ -69,9 +63,6 @@ not because they were inconvenient:
 
 | Test | Why it cannot exist |
 | --- | --- |
-| `rejects intent side-file record timing when no intent store is wired` | the store is a required parameter |
-| `rejects a storeless intent timing once, never retrying across dynamic candidates` | same |
-| `restartOnPort rejects a storeless intent timing before waiting on the port` | same |
 | `a failing validateRuntime rolls back the start` | `validateRuntime` no longer exists |
 | `aborting settles as an abort even when the remaining candidates are all invalid` | needed the loop to continue past a spawn error, which only the legacy path did |
 
@@ -91,10 +82,6 @@ Reshaped rather than removed:
   Most tests run on a clock that never advances, so the bound that fires is the
   poll backstop — `ceil(1500 / 500) + 2 = 5` — reproducing the five probes the
   old `attemptCount(attempts: 5)` gave them.
-- `_InMemoryHostJsonStore` moved from the intent test into
-  `test/support/in_memory_host_json_store.dart`, since three more harnesses now
-  need an intent store.
-
 ## Verification
 
 ```bash

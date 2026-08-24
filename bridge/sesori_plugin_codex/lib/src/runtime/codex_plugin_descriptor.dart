@@ -155,9 +155,6 @@ class const CodexPluginDescriptor({
   /// Backend-namespaced ownership filename in shared runtime storage.
   static const String ownershipFileName = "codex-processes.json";
 
-  /// Backend-namespaced start intent filename in shared runtime storage.
-  static const String startIntentFileName = "codex-start-intent.json";
-
   /// The codex CLI options the bridge registers when this plugin is selected.
   static const List<PluginOption> cliOptions = [
     PluginValueOption.integer(
@@ -480,7 +477,6 @@ class const CodexPluginDescriptor({
       clock: host.clock,
       runtimeId: "codex",
       gracefulShutdownWait: codexGracefulShutdownWait,
-      intentStore: RuntimeStartIntentStore(store: host.store, fileName: startIntentFileName),
     );
 
     final RuntimePortPolicy portPolicy;
