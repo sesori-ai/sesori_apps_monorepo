@@ -35,7 +35,7 @@ connection/close timing remained test-specific and fail loud locally.
   control client now registers an idempotent teardown, and its affected suites
   pass.
 - `git diff --check`: passed.
-- Size excluding this evidence file against merge-base `3c45717ce5`:
+- Size excluding this evidence file against merge-base `e9aa8faeaf`:
   **`+435 / -968` = 1,403 changed lines**, under the 1,500-line soft cap and 533
   fewer test lines overall.
 - Architecture implementation review not run: this change is test-only and
