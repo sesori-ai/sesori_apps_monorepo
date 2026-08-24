@@ -6,6 +6,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/plugin_api.dart";
 import "../capabilities/relay/relay_client.dart";
+import "models/catalog_import_result.dart";
 import "models/plugin_discovery_snapshot.dart";
 import "models/plugin_management_result.dart";
 
@@ -38,6 +39,31 @@ class PluginRepository({required final PluginApi _api}) {
       ErrorResponse(:final error) => PluginAuthenticationStartResult.failed(
         failure: _mapAuthenticationFailure(error: error),
       ),
+    };
+  }
+
+  Future<CatalogImportMutationResult> startCatalogImport({required String pluginId}) async {
+    return _mapCatalogImportMutation(await _api.startCatalogImport(pluginId: pluginId));
+  }
+
+  Future<CatalogImportMutationResult> cancelCatalogImport({required String pluginId}) async {
+    return _mapCatalogImportMutation(await _api.cancelCatalogImport(pluginId: pluginId));
+  }
+
+  Future<CatalogImportStatusesResult> getCatalogImportStatuses() async {
+    return switch (await _api.getCatalogImportStatuses()) {
+      SuccessResponse(:final data) => CatalogImportStatusesResult.supported(statuses: data.statuses),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => const CatalogImportStatusesResult.unsupported(),
+      ErrorResponse(:final error) => CatalogImportStatusesResult.failure(error: error),
+    };
+  }
+
+  CatalogImportMutationResult _mapCatalogImportMutation(ApiResponse<SuccessEmptyResponse> response) {
+    return switch (response) {
+      SuccessResponse() => const CatalogImportMutationResult.accepted(),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => const CatalogImportMutationResult.notFound(),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 503)) => const CatalogImportMutationResult.unavailable(),
+      ErrorResponse(:final error) => CatalogImportMutationResult.failure(error: error),
     };
   }
 
