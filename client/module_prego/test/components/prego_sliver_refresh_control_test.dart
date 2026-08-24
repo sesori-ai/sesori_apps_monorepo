@@ -30,8 +30,8 @@ void main() {
                 deepRefresh: withDeepRefresh
                     ? PregoDeepRefresh(
                         onDeepRefresh: () => deepRefreshes++,
-                        pullCaption: "Keep pulling to rescan",
-                        deepCaption: "Rescanning harnesses",
+                        pullCaption: "Keep pulling to scan all harnesses",
+                        deepCaption: "Scanning for new sessions",
                       )
                     : null,
               ),
@@ -105,14 +105,14 @@ void main() {
       // gradual pull and asserted on their order rather than on a distance.
       final order = <String>[];
       void record() {
-        if (find.text("Keep pulling to rescan").evaluate().isNotEmpty) order.add("pull");
-        if (find.text("Rescanning harnesses").evaluate().isNotEmpty) order.add("deep");
+        if (find.text("Keep pulling to scan all harnesses").evaluate().isNotEmpty) order.add("pull");
+        if (find.text("Scanning for new sessions").evaluate().isNotEmpty) order.add("deep");
       }
 
       await gesture.moveBy(const Offset(0, 20));
       await tester.pump();
-      expect(find.text("Keep pulling to rescan"), findsNothing);
-      expect(find.text("Rescanning harnesses"), findsNothing);
+      expect(find.text("Keep pulling to scan all harnesses"), findsNothing);
+      expect(find.text("Scanning for new sessions"), findsNothing);
 
       for (var step = 0; step < 16; step++) {
         await gesture.moveBy(const Offset(0, 40));
@@ -142,7 +142,7 @@ void main() {
         await gesture.moveBy(const Offset(0, 40));
         await tester.pump();
       }
-      expect(find.text("Keep pulling to rescan"), findsOneWidget);
+      expect(find.text("Keep pulling to scan all harnesses"), findsOneWidget);
       expect(find.byIcon(TablerRegular.rotate_clockwise), findsNothing);
 
       // Past the deep threshold: the label gains its icon.
@@ -151,7 +151,7 @@ void main() {
         await tester.pump();
       }
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text("Rescanning harnesses"), findsOneWidget);
+      expect(find.text("Scanning for new sessions"), findsOneWidget);
       expect(find.byIcon(TablerRegular.rotate_clockwise), findsOneWidget);
 
       await gesture.up();
