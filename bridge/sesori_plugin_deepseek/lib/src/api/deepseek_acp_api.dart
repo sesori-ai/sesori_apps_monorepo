@@ -2,7 +2,7 @@ import "package:acp_plugin/acp_plugin.dart" show AcpStdioClient;
 
 import "models/deepseek_protocol_dto.dart";
 
-class const DeepSeekAcpApi() {
+class const DeepSeekAcpApi({required final String pluginId}) {
   static const String catalogMethod = "deepseek/catalog";
   static const String historyMethod = "deepseek/session/history";
   static const String renameMethod = "deepseek/session/rename";
@@ -173,15 +173,18 @@ class const DeepSeekAcpApi() {
     DeepSeekCompactionStartedStatusDto() || DeepSeekCompactionCompletedStatusDto() => true,
   };
 
-  static void _validateCatalog(DeepSeekCatalogResponseDto response) {
+  void _validateCatalog(DeepSeekCatalogResponseDto response) {
     if (response.defaultSelectionId case final id? when !_validSelectionId(id)) {
       throw const FormatException("Invalid DeepSeek catalog selection");
     }
-    if (response.agent.id != "deepseek" || !response.agent.primary || !_nonblank(response.agent.name, 256)) {
+    if (response.agent.id != pluginId || !response.agent.primary || !_nonblank(response.agent.name, 256)) {
       throw const FormatException("Invalid DeepSeek catalog agent");
     }
+    if (response.providers.length > 64 || response.commands.length > 128 || response.failures.length > 64) {
+      throw const FormatException("Invalid DeepSeek catalog collections");
+    }
     for (final provider in response.providers) {
-      if (!_nonblank(provider.id, 256) || !_nonblank(provider.name, 256)) {
+      if (!_nonblank(provider.id, 256) || !_nonblank(provider.name, 256) || provider.models.length > 256) {
         throw const FormatException("Invalid DeepSeek catalog provider");
       }
       for (final model in provider.models) {
@@ -194,6 +197,21 @@ class const DeepSeekAcpApi() {
             model.defaultReasoningEffort != null && !model.reasoningEfforts.contains(model.defaultReasoningEffort)) {
           throw const FormatException("Invalid DeepSeek catalog model");
         }
+      }
+    }
+    for (final command in response.commands) {
+      if (command.name.isEmpty ||
+          command.name.length > 128 ||
+          !RegExp(r"^[A-Za-z0-9_-]+$").hasMatch(command.name) ||
+          !_nonblank(command.description, 256)) {
+        throw const FormatException("Invalid DeepSeek catalog command");
+      }
+    }
+    for (final failure in response.failures) {
+      if (!_nonblank(failure.providerId, 256) ||
+          !_nonblank(failure.category, 256) ||
+          !_nonblank(failure.message, 512)) {
+        throw const FormatException("Invalid DeepSeek catalog failure");
       }
     }
   }

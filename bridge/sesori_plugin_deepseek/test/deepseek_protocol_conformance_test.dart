@@ -3,10 +3,11 @@ import "dart:io";
 
 import "package:deepseek_plugin/src/api/deepseek_acp_api.dart";
 import "package:deepseek_plugin/src/api/models/deepseek_protocol_dto.dart";
+import "package:deepseek_plugin/src/deepseek_identity.dart";
 import "package:test/test.dart";
 
 void main() {
-  const api = DeepSeekAcpApi();
+  const api = DeepSeekAcpApi(pluginId: DeepSeekIdentity.id);
   final fixtureDirectory = Directory("test/fixtures/protocol/v1");
   test("all valid runtime fixtures decode and encode through generated DTOs", () async {
     final corpus = jsonDecode(await File("${fixtureDirectory.path}/valid.json").readAsString()) as List;
@@ -34,6 +35,35 @@ void main() {
       );
     }
   });
+  test("catalog rejects bounded collection and entry violations", () async {
+    final corpus = jsonDecode(await File("${fixtureDirectory.path}/valid.json").readAsString()) as List;
+    final valid = (corpus.cast<Map<String, dynamic>>().singleWhere(
+      (fixture) => fixture["definition"] == "catalogResponse",
+    )["value"] as Map).cast<String, dynamic>();
+    Map<String, dynamic> copy() => (jsonDecode(jsonEncode(valid)) as Map).cast<String, dynamic>();
+    Map<String, dynamic> mutate(void Function(Map<String, dynamic>) change) {
+      final value = copy();
+      change(value);
+      return value;
+    }
+    final provider = (valid["providers"] as List).single;
+    final model = ((provider as Map)["models"] as List).single;
+    final malformed = [
+      mutate((value) => value["providers"] = List.filled(65, provider)),
+      mutate((value) => ((value["providers"] as List).single as Map)["models"] = List.filled(257, model)),
+      mutate((value) => value["commands"] = [{"name": "", "description": "invalid"}]),
+      mutate((value) => value["commands"] = List.filled(129, {"name": "valid", "description": "valid"})),
+      mutate((value) => value["failures"] = [
+        {"providerId": "provider", "category": "catalog", "message": "x".padRight(513, "x")},
+      ]),
+      mutate((value) => value["failures"] = List.filled(65, {
+        "providerId": "provider", "category": "catalog", "message": "failed",
+      })),
+    ];
+    for (final catalog in malformed) {
+      expect(() => api.parseCatalogResponse(catalog), throwsFormatException);
+    }
+  });
 }
 
 Map<String, dynamic> _decodeValid(DeepSeekAcpApi api, String definition, Map<String, dynamic> value) =>
@@ -51,7 +81,7 @@ Map<String, dynamic> _decodeValid(DeepSeekAcpApi api, String definition, Map<Str
       "sessionStatusNotification" => api.parseSessionStatus(value).toJson(),
       _ => throw StateError("Unknown fixture definition $definition"),
     };
-Never _rejectInvalid(DeepSeekAcpApi api, String definition, Map<String, dynamic> value) {
+void _rejectInvalid(DeepSeekAcpApi api, String definition, Map<String, dynamic> value) {
   switch (definition) {
     case "initializeMetadata" ||
         "promptMetadata" ||
@@ -78,5 +108,4 @@ Never _rejectInvalid(DeepSeekAcpApi api, String definition, Map<String, dynamic>
     default:
       throw StateError("Unknown fixture definition $definition");
   }
-  throw StateError("Invalid fixture accepted: $definition");
 }

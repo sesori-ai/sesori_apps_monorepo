@@ -29,7 +29,7 @@ void main() {
       client: client,
       emit: events.add,
       onFireAndForgetNotification: (_) {},
-      api: const DeepSeekAcpApi(),
+      api: const DeepSeekAcpApi(pluginId: DeepSeekIdentity.id),
       idGenerator: () => "request-1",
     );
   });

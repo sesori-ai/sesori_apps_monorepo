@@ -18,7 +18,7 @@ void main() {
     final mapper = DeepSeekEventMapper(
       launchDirectory: "/project", pluginId: DeepSeekIdentity.id,
       configurationTracker: AcpSessionConfigurationTracker(),
-      api: const DeepSeekAcpApi(),
+      api: const DeepSeekAcpApi(pluginId: DeepSeekIdentity.id),
     );
     List<BridgeSseEvent> map(String kind) => mapper.map(AcpNotification(
       method: DeepSeekAcpApi.sessionStatusMethod, params: {"sessionId": "session-1", "kind": kind},
