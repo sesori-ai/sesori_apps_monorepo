@@ -303,10 +303,8 @@ function Write-PanelEmphasisRow {
 
 $RepoOwner  = 'sesori-ai'
 $RepoName   = 'sesori_apps_monorepo'
-$GitHubBase = if ($env:GITHUB) { $env:GITHUB.TrimEnd('/') } else { 'https://github.com' }
-$GitHubApiBase = if ($env:GITHUB_API) { $env:GITHUB_API.TrimEnd('/') } else { 'https://api.github.com' }
-$RepoBase   = "$GitHubBase/$RepoOwner/$RepoName"
-$ReleasesApiUrl = "$GitHubApiBase/repos/$RepoOwner/$RepoName/releases"
+$RepoBase   = "https://github.com/$RepoOwner/$RepoName"
+$ReleasesApiUrl = "https://api.github.com/repos/$RepoOwner/$RepoName/releases"
 # Fallback-only knobs: scanning recent releases is a cold path used only when the
 # latest release lacks this platform's asset. Kept small because the release
 # pipeline prunes internal pre-releases to a single rolling object.

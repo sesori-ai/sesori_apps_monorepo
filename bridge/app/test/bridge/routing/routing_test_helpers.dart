@@ -799,7 +799,7 @@ class FakeSessionRepository({
     lastVerifiedGithubLogin = verifiedGithubLogin;
     lastGetSessionsArgs = (projectId: projectId, start: start, limit: limit);
     final pluginSessions = await _plugin.getSessions(
-      projectId,
+      projectId: projectId,
       start: start,
       limit: limit,
     );

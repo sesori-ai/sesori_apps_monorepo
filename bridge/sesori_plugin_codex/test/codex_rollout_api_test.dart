@@ -2318,13 +2318,13 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         keepaliveInterval: const Duration(seconds: 30),
       );
 
-      final sessions = await plugin.getSessions("/work/sample-app");
+      final sessions = await plugin.getSessions(projectId: "/work/sample-app", start: null, limit: null);
       expect(sessions, hasLength(1));
       expect(sessions.single.id, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
       expect(sessions.single.directory, equals("/work/sample-app"));
 
       // Filtering by a different CWD returns empty.
-      final none = await plugin.getSessions("/somewhere/else");
+      final none = await plugin.getSessions(projectId: "/somewhere/else", start: null, limit: null);
       expect(none, isEmpty);
       await plugin.dispose();
     });

@@ -130,7 +130,7 @@ final class PiPlugin._({
       _catalogRepository.primeSessionDirectory(sessionId: sessionId, directory: directory);
 
   @override
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) =>
+  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) =>
       _catalogRepository.getSessions(projectId: projectId, start: start, limit: limit);
 
   @override

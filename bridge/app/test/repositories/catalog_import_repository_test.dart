@@ -1135,7 +1135,7 @@ class _NativeImportPlugin({
   }
 
   @override
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) async {
+  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) async {
     await onGetSessions?.call(projectId);
     return rootsByProject[projectId] ?? const [];
   }

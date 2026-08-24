@@ -134,7 +134,7 @@ void main() {
     test("getSessions maps internal sessions to plugin sessions", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
-      final sessions = await plugin.getSessions("/repo");
+      final sessions = await plugin.getSessions(projectId: "/repo", start: null, limit: null);
 
       expect(sessions, hasLength(2));
 
@@ -168,7 +168,7 @@ void main() {
 
       await plugin.getProjects();
 
-      final sessions = await plugin.getSessions("/moved/repo");
+      final sessions = await plugin.getSessions(projectId: "/moved/repo", start: null, limit: null);
       final moved = sessions.firstWhere((session) => session.id == "s-moved");
       expect(moved.projectID, equals("/repo"));
     });
@@ -196,7 +196,7 @@ void main() {
       expect(project.directory, equals("/moved/repo"));
       expect(project.activity, isNull);
 
-      final sessions = await plugin.getSessions("/moved/repo");
+      final sessions = await plugin.getSessions(projectId: "/moved/repo", start: null, limit: null);
       final moved = sessions.firstWhere((session) => session.id == "s-moved");
       // Without the alias this would fall back to the requested directory.
       expect(moved.projectID, equals("/repo"));

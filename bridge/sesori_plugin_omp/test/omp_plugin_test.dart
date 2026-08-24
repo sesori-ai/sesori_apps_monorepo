@@ -201,7 +201,7 @@ void main() {
       respond(launchDirectoryFrame, {"sessions": <Object?>[]});
       expect(await global, isEmpty);
 
-      final project = plugin.getSessions("/repo");
+      final project = plugin.getSessions(projectId: "/repo", start: null, limit: null);
       final cwdFrame = await waitForFrame(AcpMethods.sessionList, count: 3);
       expect(cwdFrame["params"], {"cwd": "/repo"});
       respond(cwdFrame, {"sessions": <Object?>[]});

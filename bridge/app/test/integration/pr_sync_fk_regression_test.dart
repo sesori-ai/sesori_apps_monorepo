@@ -309,7 +309,7 @@ class _FakeBridgePlugin({required final List<PluginProject> _projects, required 
   Stream<BridgeSseEvent> get events => throw UnimplementedError();
 
   @override
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) async => _sessions;
+  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) async => _sessions;
 
   @override
   Future<List<PluginCommand>> getCommands({required String? projectId}) async => const [];

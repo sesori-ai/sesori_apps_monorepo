@@ -180,7 +180,7 @@ class CatalogImportRepository({
             return;
           }
           final projectPath = _normalizeRequiredPath(project.directory);
-          final roots = await plugin.getSessions(projectPath);
+          final roots = await plugin.getSessions(projectId: projectPath, start: null, limit: null);
           if (control.cancellationRequested) {
             yield CatalogImportProgress.cancelled(pluginId: pluginId);
             return;

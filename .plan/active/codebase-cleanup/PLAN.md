@@ -1370,17 +1370,17 @@ All verified with whole-word grep over lib, bin, and test across the repo.
 
 ### Step 43 — installer parity, codegen freshness, `no_slop_linter` (D6)
 
-- Installer parity (PR #1017 finding F16): `install.sh` supports
-  `GITHUB`/`GITHUB_API` overrides that `install.ps1` hardcodes past, and
-  stable-version validation differs (regex vs `[version]::TryParse`, which
-  accepts four-component versions), so the two installers can select different
-  releases from identical metadata. `install.ps1` gains the env-override
-  handling and exact three-component validation; fixture-driven parity tests
+- Installer parity (PR #1017 finding F16): stable-version validation differs
+  (regex vs `[version]::TryParse`, which accepts four-component versions), so
+  the two installers can select different releases from identical metadata.
+  Both installers pin the canonical GitHub hosts so environment variables cannot
+  redirect executable downloads, and `install.ps1` gains exact three-component
+  validation; fixture-driven parity tests
   extending `bridge/app/test/tool/installers_test.dart` cover release selection
   and order, partial releases, checksum parsing, archive/checksum URL
-  construction including overrides, and manifest writing for both scripts. The
-  PowerShell rejection of non-three-component versions is a recorded behavior
-  delta (matches `install.sh`).
+  construction including hostile host variables, and manifest writing for both
+  scripts. The PowerShell rejection of non-three-component versions is a
+  recorded behavior delta (matches `install.sh`).
 - Codegen freshness: a CI job regenerates the OpenCode outputs that are fully
   reproducible from committed inputs (SSE events from the committed manifest)
   and fails on diff; the OpenAPI-derived client requires an uncommitted spec and
@@ -1391,7 +1391,7 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   (validating whether a per-package `analysis_options.yaml` under the pub
   workspace accepts `plugins:` or the workspace root must carry it), fix what
   it reports there, and record per-package warning counts for `bridge/app` and
-  the plugins in `TRACKER.md` for the owner's later decision.
+  the plugins in `steps/step-43.md` for the owner's later decision.
 - Verify: installer parity suite; the freshness job fails when an offline-
   reproducible output is dirtied locally; `dart analyze --fatal-infos` in the
   three packages; CI green.

@@ -374,10 +374,10 @@ class OpenCodePlugin._({
   Future<List<PluginProject>> getProjects() => _call(_service.getProjects);
 
   @override
-  Future<List<PluginSession>> getSessions(
-    String projectId, {
-    int? start,
-    int? limit,
+  Future<List<PluginSession>> getSessions({
+    required String projectId,
+    required int? start,
+    required int? limit,
   }) async {
     final sessions = await _call(
       () => _service.getSessions(

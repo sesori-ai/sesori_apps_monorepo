@@ -128,7 +128,7 @@ printf '%s\n' 'HTTP/2 302' 'location: https://github.com/sesori-ai/sesori_apps_m
       expect((result.stdout as String).trim(), equals('1.2.3'));
     });
 
-    test('resolves the latest release via the static latest/download redirect (no API, no Python)', () async {
+    test('resolves latest/download from canonical GitHub despite hostile host variables', () async {
       final libraryPath = await _createInstallShLibrary();
       final tempDir = await Directory.systemTemp.createTemp('install-sh-latest-');
       addTearDown(() => tempDir.delete(recursive: true));
@@ -155,6 +155,8 @@ printf '%s\n%s\n%s\n' "\$RESOLVED_VERSION" "\$RESOLVED_ARCHIVE_URL" "\$RESOLVED_
         environment: {
           'PATH': '${binDir.path}:${Platform.environment['PATH'] ?? ''}',
           'HOME': tempDir.path,
+          'GITHUB': 'https://github.enterprise.example',
+          'GITHUB_API': 'https://api.github.enterprise.example',
         },
       );
 
@@ -735,12 +737,12 @@ Write-Output \$release.TagName
     );
 
     test(
-      'install.ps1 constructs archive and checksum URLs from GitHub host overrides',
+      'install.ps1 ignores GitHub host environment variables',
       () async {
         final script =
             '''
 . ${_powerShellQuote(_installPs1Path())}
-function Get-RedirectLocation { return "\$env:GITHUB/sesori-ai/sesori_apps_monorepo/releases/download/v4.5.6/sesori-bridge-windows-x64.zip" }
+function Get-RedirectLocation { return "https://github.com/sesori-ai/sesori_apps_monorepo/releases/download/v4.5.6/sesori-bridge-windows-x64.zip" }
 function Test-RemoteAssetExists { return \$true }
 \$release = Resolve-BridgeReleaseViaLatest -ArchiveName 'sesori-bridge-windows-x64.zip'
 Write-Output \$release.AssetUrl
@@ -762,9 +764,9 @@ Write-Output \$ReleasesApiUrl
         expect(
           (result.stdout as String).trim().split(RegExp(r'\r?\n')),
           equals([
-            'https://github.enterprise.example/sesori-ai/sesori_apps_monorepo/releases/download/v4.5.6/sesori-bridge-windows-x64.zip',
-            'https://github.enterprise.example/sesori-ai/sesori_apps_monorepo/releases/download/v4.5.6/checksums.txt',
-            'https://api.github.enterprise.example/repos/sesori-ai/sesori_apps_monorepo/releases',
+            'https://github.com/sesori-ai/sesori_apps_monorepo/releases/download/v4.5.6/sesori-bridge-windows-x64.zip',
+            'https://github.com/sesori-ai/sesori_apps_monorepo/releases/download/v4.5.6/checksums.txt',
+            'https://api.github.com/repos/sesori-ai/sesori_apps_monorepo/releases',
           ]),
         );
       },
@@ -886,11 +888,10 @@ Write-Output \$ReleasesApiUrl
       expect(script, isNot(contains('bridge-v')));
     });
 
-    test('uses GitHub host overrides and exposes a non-installing library mode', () {
-      expect(script, contains(r'$env:GITHUB.TrimEnd'));
-      expect(script, contains(r'$env:GITHUB_API.TrimEnd'));
-      expect(script, contains(r'$RepoBase   = "$GitHubBase/$RepoOwner/$RepoName"'));
-      expect(script, contains(r'$ReleasesApiUrl = "$GitHubApiBase/repos/$RepoOwner/$RepoName/releases"'));
+    test('pins GitHub hosts and exposes a non-installing library mode', () {
+      expect(script, isNot(contains(r'$env:GITHUB')));
+      expect(script, contains(r'$RepoBase   = "https://github.com/$RepoOwner/$RepoName"'));
+      expect(script, contains(r'$ReleasesApiUrl = "https://api.github.com/repos/$RepoOwner/$RepoName/releases"'));
       expect(script, contains(r"if ($env:SESORI_INSTALLER_LIBRARY_MODE -eq '1')"));
     });
   });

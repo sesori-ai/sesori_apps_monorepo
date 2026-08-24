@@ -417,10 +417,10 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
   Future<List<PluginProject>> getProjects() async => [];
 
   @override
-  Future<List<PluginSession>> getSessions(
-    String worktree, {
-    int? start,
-    int? limit,
+  Future<List<PluginSession>> getSessions({
+    required String projectId,
+    required int? start,
+    required int? limit,
   }) async => [];
 
   @override

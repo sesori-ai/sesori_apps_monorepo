@@ -30,8 +30,7 @@ class Log._() {
   static void v(String message) => _write(LogLevel.verbose, message, null, null);
 
   /// Log a debug-level message.
-  // ignore: no_slop_linter/prefer_required_named_parameters, logging APIs keep the primary message positional
-  static void d(String message, [Object? error, StackTrace? st]) => _write(LogLevel.debug, message, error, st);
+  static void d(String message) => _write(LogLevel.debug, message, null, null);
 
   /// Log an info-level message.
   static void i(String message) => _write(LogLevel.info, message, null, null);
