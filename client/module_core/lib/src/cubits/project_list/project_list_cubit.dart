@@ -486,6 +486,9 @@ class ProjectListCubit(
   /// In-flight silent refresh, used for coalescing.
   Future<bool>? _activeRefresh;
 
+  /// The most recent list read of any kind.
+  Future<bool>? _activeFetch;
+
   /// Re-fetches projects without showing the full-screen loading indicator.
   /// Concurrent calls are coalesced: if a refresh is already in-flight, the
   /// existing Future is returned instead of starting a second network request.
@@ -661,7 +664,21 @@ class ProjectListCubit(
     return error is NonSuccessCodeError && error.errorCode == 403;
   }
 
-  Future<bool> _fetchProjects({bool silent = false}) async {
+  /// Registers every list read, silent or not, so an ordering-sensitive caller
+  /// can wait for whatever is already in flight. [_activeRefresh] tracks only
+  /// the coalescing silent path, so an initial or retry load is invisible to it.
+  Future<bool> _fetchProjects({bool silent = false}) {
+    final fetch = _runFetchProjects(silent: silent);
+    _activeFetch = fetch;
+    unawaited(
+      fetch.whenComplete(() {
+        if (identical(_activeFetch, fetch)) _activeFetch = null;
+      }).catchError((Object _) => false),
+    );
+    return fetch;
+  }
+
+  Future<bool> _runFetchProjects({bool silent = false}) async {
     // Captured BEFORE the fetch so the seed can't overwrite a live update that
     // arrives while the request is in flight.
     final unseenTick = _sessionUnseenTracker.tick;
@@ -728,7 +745,15 @@ class ProjectListCubit(
   /// the read that follows is guaranteed to see the imported rows, which is the
   /// whole point of refreshing here — the import raises no other invalidation.
   Future<void> _refreshAfterScan() async {
-    await _activeRefresh;
+    // Every read, not just the coalescing silent one: a full load in flight
+    // would otherwise race this fetch and, landing last, overwrite what the
+    // scan just imported. A failing read reports itself, so it is not
+    // re-reported here.
+    try {
+      await _activeFetch;
+    } on Object catch (_) {
+      // Ignored: the read that failed owns its own reporting.
+    }
     if (isClosed) return;
     await refreshProjects();
   }

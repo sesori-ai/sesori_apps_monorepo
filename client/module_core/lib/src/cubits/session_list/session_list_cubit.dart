@@ -546,6 +546,9 @@ class SessionListCubit({
   /// In-flight silent refresh, used for coalescing.
   Future<bool>? _activeRefresh;
 
+  /// The most recent list read of any kind.
+  Future<bool>? _activeFetch;
+
   /// Re-fetches sessions without showing the full-screen loading indicator.
   /// Concurrent calls are coalesced: if a refresh is already in-flight, the
   /// existing Future is returned instead of starting a second network request.
@@ -561,7 +564,21 @@ class SessionListCubit({
     ).whenComplete(() => _activeRefresh = null);
   }
 
-  Future<bool> _fetchSessions({bool silent = false, bool waitForPrData = false}) async {
+  /// Registers every list read, silent or not, so an ordering-sensitive caller
+  /// can wait for whatever is already in flight. [_activeRefresh] tracks only
+  /// the coalescing silent path, so an initial or retry load is invisible to it.
+  Future<bool> _fetchSessions({bool silent = false, bool waitForPrData = false}) {
+    final fetch = _runFetchSessions(silent: silent, waitForPrData: waitForPrData);
+    _activeFetch = fetch;
+    unawaited(
+      fetch.whenComplete(() {
+        if (identical(_activeFetch, fetch)) _activeFetch = null;
+      }).catchError((Object _) => false),
+    );
+    return fetch;
+  }
+
+  Future<bool> _runFetchSessions({bool silent = false, bool waitForPrData = false}) async {
     // Captured BEFORE the fetch so the seed can't overwrite a live update that
     // arrives while the (possibly PR-data-delayed) request is in flight.
     final unseenTick = _sessionUnseenTracker.tick;
@@ -620,7 +637,15 @@ class SessionListCubit({
   /// the read that follows is guaranteed to see the imported rows, which is the
   /// whole point of refreshing here — the import raises no other invalidation.
   Future<void> _refreshAfterScan() async {
-    await _activeRefresh;
+    // Every read, not just the coalescing silent one: a full load in flight
+    // would otherwise race this fetch and, landing last, overwrite what the
+    // scan just imported. A failing read reports itself, so it is not
+    // re-reported here.
+    try {
+      await _activeFetch;
+    } on Object catch (_) {
+      // Ignored: the read that failed owns its own reporting.
+    }
     if (isClosed) return;
     await refreshSessions();
   }

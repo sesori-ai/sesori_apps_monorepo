@@ -2474,6 +2474,29 @@ void main() {
         verify(() => mockProjectRepository.listProjects()).called(1);
       });
 
+      test("waits for a full load too, not only a silent refresh", () async {
+        // Only the silent path is coalesced, so an initial or retry load is
+        // invisible to it. Landing last, it would overwrite what the scan
+        // imported.
+        final initial = Completer<ApiResponse<Projects>>();
+        when(() => mockProjectRepository.listProjects()).thenAnswer((_) => initial.future);
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await Future<void>.delayed(Duration.zero);
+        clearInteractions(mockProjectRepository);
+
+        fakeCatalogRescanService.emitSettled();
+        await Future<void>.delayed(Duration.zero);
+        verifyNever(() => mockProjectRepository.listProjects());
+
+        stubProjects();
+        initial.complete(ApiResponse.success(const Projects(data: <ProjectSummary>[])));
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+
+        verify(() => mockProjectRepository.listProjects()).called(1);
+      });
+
       test("forwards the scan intents to the service", () async {
         stubProjects();
         final cubit = buildCubit();
