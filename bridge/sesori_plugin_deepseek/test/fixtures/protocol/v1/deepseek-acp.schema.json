@@ -308,6 +308,27 @@
           "type": "boolean"
         }
       },
+      "oneOf": [
+        {
+          "required": [
+            "nextBeforeSeq"
+          ],
+          "properties": {
+            "nextBeforeSeq": true,
+            "hasMore": {
+              "const": true
+            }
+          }
+        },
+        {
+          "properties": {
+            "nextBeforeSeq": false,
+            "hasMore": {
+              "const": false
+            }
+          }
+        }
+      ],
       "additionalProperties": false
     },
     "renameRequest": {
@@ -388,15 +409,44 @@
           "type": "boolean"
         },
         "intent": {
-          "enum": [
-            "question",
-            "plan_review"
-          ]
+          "const": "plan_review"
         },
         "approveLabel": {
           "$ref": "#/$defs/nonblank"
         }
       },
+      "oneOf": [
+        {
+          "properties": {
+            "intent": {
+              "const": "plan_review"
+            },
+            "approveLabel": {
+              "$ref": "#/$defs/nonblank"
+            }
+          },
+          "required": [
+            "intent",
+            "approveLabel"
+          ]
+        },
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "intent"
+                ]
+              },
+              {
+                "required": [
+                  "approveLabel"
+                ]
+              }
+            ]
+          }
+        }
+      ],
       "additionalProperties": false
     },
     "askUserQuestionRequest": {

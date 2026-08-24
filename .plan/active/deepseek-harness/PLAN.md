@@ -627,7 +627,7 @@ monorepo, and no existing ACP plugin is refactored beyond the two narrow hooks.
    mandatory security/local-setup guidance exist.
 8. Step 15 reconciles all affected regression feature documents.
 9. Step 16 runs the recorded level/matrix and retires the plan only after Steps
-   1-14 merge and required evidence passes. Any reduction requires explicit
+   1-15 merge and required evidence passes. Any reduction requires explicit
    owner acceptance in this file.
 
 ## Delivery Rules

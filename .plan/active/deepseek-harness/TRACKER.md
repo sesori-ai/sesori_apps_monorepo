@@ -80,7 +80,7 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 
 | Date | Review | Result | Changes |
 |---|---|---|---|
-| 2026-08-22 | Architecture plan review | Rejected draft with seven concrete findings | Clarified class composition/layers, moved DTO mapping to repositories, removed two unjustified Services, assigned the ACP live-client hook, fixed interaction ownership, made JSON Schema/corpus authoritative, and made Step 16 verification-only. Per repository rules, valid findings were applied without a second approval review. |
+| 2026-08-22 | Architecture plan review | Rejected draft with seven concrete findings | Clarified class composition/layers, moved DTO mapping to repositories, removed two unjustified Services, assigned the ACP live-client hook, fixed interaction ownership, made JSON Schema/corpus authoritative, and made the final step verification-only (then Step 15, now Step 16 after the approved split). Per repository rules, valid findings were applied without a second approval review. |
 | 2026-08-23 | Step 4 architecture implementation review | Pass | Durable session ownership, persistence, and replay matched the planned one-process boundary. |
 | 2026-08-23 | Step 5 architecture implementation review | Rejected first pass; passed second pass | Consolidated duplicate live/replay mappings into one event projector with thin delivery and collection sinks. |
 | 2026-08-23 | Step 6 architecture implementation review | Rejected first pass; passed second pass | Changed cold rename from retained ACP ownership to one coordinated resume/rename/flush/notify/dispose transition. |
@@ -132,7 +132,9 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] `dart test`: protocol source-manifest and SHA-256 integrity pass
 - [x] `git diff --check`
 - [x] Synced with current `origin/main` after Step 6 merged
-- [x] Final changed-line count: 1,162, above the 1,100 soft target and below the 1,500-line cap
+- [x] Final changed-line count: 1,252, above the 1,100 soft target and below the 1,500-line cap
+- [x] Runtime PR #6 corrected pagination/question schema invariants before the
+  exact merged commit and digests were re-vendored
 
 Later implementation and live evidence is appended here by step. Never mark a
 regression row passed without the boundary and matrix required by `PLAN.md`.

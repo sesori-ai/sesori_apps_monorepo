@@ -130,8 +130,7 @@
             "Alpha",
             "Beta"
           ],
-          "multiSelect": false,
-          "intent": "question"
+          "multiSelect": false
         }
       ]
     }

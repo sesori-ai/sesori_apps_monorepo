@@ -2,8 +2,8 @@
 
 ## Status And Sources
 
-- **State:** runtime protocol implemented locally through Step 6; the Step 6
-  catalog, command, option, and rename handlers await predecessor merge.
+- **State:** runtime protocol implemented and merged through Step 6, including
+  the protocol-v1 invariant correction in runtime PR #6.
 - **Observed:** 2026-08-22.
 - **DeepSeek baseline:** `0.1.1-rc.2`, tag `dsh-v0.1.1-rc.2`, commit
   `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`.
