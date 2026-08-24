@@ -86,7 +86,6 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
       ),
       dispatcher: dispatcher,
       archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
-      legacyMissingPluginId: plugin.id,
     ),
   );
 }

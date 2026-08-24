@@ -39,7 +39,6 @@ void main() {
         questionRepository: questionRepository,
         dispatcher: dispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
-        legacyMissingPluginId: "legacy",
       );
       autoApproval = PermissionAutoApprovalService(
         sessionRepository: sessionRepository,
@@ -114,7 +113,9 @@ void main() {
       sessionRepository.activitySummaries = const [
         ProjectActivitySummary(
           id: "project",
-          activeSessions: [ActiveSession(id: "session-one", awaitingInput: true, lastUserActivityAt: null, updatedAt: null)],
+          activeSessions: [
+            ActiveSession(id: "session-one", awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
+          ],
         ),
       ];
       permissionRepository.pendingPermissions = const [

@@ -40,7 +40,7 @@ const pluginB = PluginMetadata(
 );
 const connectedStatus = ConnectionStatus.connected(
   config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
-  health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
+  health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false),
 );
 
 PluginDiscoverySnapshot _pluginSnapshot({

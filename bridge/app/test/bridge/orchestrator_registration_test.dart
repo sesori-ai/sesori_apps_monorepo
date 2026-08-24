@@ -545,7 +545,6 @@ class _RegistrationHarness._({
         yolo: false,
       ),
       client: relayClient,
-      legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),

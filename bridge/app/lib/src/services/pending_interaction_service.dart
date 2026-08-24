@@ -1,4 +1,3 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginOperationException;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/session_operation.dart";
@@ -12,7 +11,6 @@ class PendingInteractionService({
   required final QuestionRepository _questionRepository,
   required final SessionOperationDispatcher _dispatcher,
   required final ArchivedSessionValidator _archivedSessionValidator,
-  required final String _legacyMissingPluginId,
 }) {
   var _disposed = false;
 
@@ -58,55 +56,17 @@ class PendingInteractionService({
 
   Future<void> rejectQuestion({
     required String questionId,
-    required String? sessionId,
+    required String sessionId,
   }) {
     if (_disposed) return _disposedFuture();
-    if (sessionId != null) {
-      return _dispatcher.dispatch(
-        sessionId: sessionId,
-        operation: SessionOperation.rejectQuestion,
-        body: () async {
-          await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
-          await _questionRepository.rejectQuestion(
-            questionId: questionId,
-            sessionId: sessionId,
-          );
-        },
-      );
-    }
-
-    // COMPATIBILITY 2026-06-17 (v1.1.0): Released clients may omit the rejection sessionId. Require it and remove legacy owner resolution once those clients are unsupported.
-    return _dispatcher.dispatchLegacyQuestion(
-      pluginId: _legacyMissingPluginId,
-      questionId: questionId,
+    return _dispatcher.dispatch(
+      sessionId: sessionId,
       operation: SessionOperation.rejectQuestion,
-      resolveOwnerSessionId: () async {
-        final owners = await _questionRepository.findPendingQuestionOwnerSessionIds(
-          pluginId: _legacyMissingPluginId,
-          questionId: questionId,
-        );
-        if (owners.isEmpty) {
-          throw PluginOperationException.notFound(
-            SessionOperation.rejectQuestion.name,
-            message: "pending question $questionId was not found for legacy rejection",
-          );
-        }
-        if (owners.length > 1) {
-          throw PluginOperationException(
-            SessionOperation.rejectQuestion.name,
-            statusCode: 409,
-            message: "pending question $questionId has multiple owners for legacy rejection",
-          );
-        }
-        return owners.single;
-      },
-      body: ({required ownerSessionId}) async {
-        // The archive rule is uniform: a resolved legacy owner is checked the
-        // same way an explicit session id is.
-        await _archivedSessionValidator.requireNotArchived(sessionId: ownerSessionId);
+      body: () async {
+        await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
         await _questionRepository.rejectQuestion(
           questionId: questionId,
-          sessionId: ownerSessionId,
+          sessionId: sessionId,
         );
       },
     );

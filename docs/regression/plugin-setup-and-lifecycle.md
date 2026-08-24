@@ -15,6 +15,10 @@ idle suspension, the management snapshot, and lifecycle commands.
 - Runtime resolution before start may resolve a suitable existing or managed binary but
   never downloads or mutates files, and failure there is non-fatal. The persisted disable
   list is the only durable eligibility policy, with setup deciding blocked versus routable.
+- OpenCode retains `--port`, `--no-auto-start`, and `--password` as deprecated
+  aliases for durable external CLI compatibility. Codex uses top-level config defaults
+  when rollout metadata omits model or provider. Managed-runtime start intent stays in
+  its own side file so frozen ownership-file readers never receive incompatible state.
 - Hermes is a direct-CLI harness with no managed install. Setup distinguishes a missing or
   pre-ACP binary, a Hermes Agent release below `0.20.0`, and missing model/provider
   configuration; startup revalidates the effective PATH or explicit `--hermes-bin` executable

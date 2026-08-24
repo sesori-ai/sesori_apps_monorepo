@@ -240,32 +240,4 @@ class QuestionRepository({
       },
     );
   }
-
-  Future<List<String>> findPendingQuestionOwnerSessionIds({
-    required String pluginId,
-    required String questionId,
-  }) async {
-    final bindings = await _sessionDao.getSessionsForPlugin(pluginId: pluginId);
-    final roots = bindings.values.where((binding) => binding.parentSessionId == null);
-    return await _runtime.use(
-      pluginId: pluginId,
-      operation: SessionOperation.rejectQuestion,
-      body: (plugin) async {
-        final tombstoned = plugin is BridgeDerivedProjectsPluginApi
-            ? await _sessionDao.getTombstonedSessionIds(pluginId: pluginId)
-            : const <String>{};
-        final owners = <String>{};
-        for (final root in roots) {
-          if (tombstoned.contains(root.backendSessionId)) continue;
-          final questions = await plugin.getPendingQuestions(sessionId: root.backendSessionId);
-          for (final question in questions) {
-            if (question.id != questionId || !_isVisible(question, tombstoned)) continue;
-            final owner = bindings[question.sessionID];
-            if (owner != null) owners.add(owner.sessionId);
-          }
-        }
-        return owners.toList(growable: false)..sort();
-      },
-    );
-  }
 }

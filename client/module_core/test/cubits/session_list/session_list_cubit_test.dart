@@ -1203,7 +1203,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -1243,7 +1243,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -1298,7 +1298,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         const connected = ConnectionStatus.connected(config: config, health: health);
 
         // Fire two rapid ConnectionConnected events.
@@ -1343,7 +1343,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -1960,7 +1960,7 @@ void main() {
         statusController.add(
           const ConnectionStatus.connected(
             config: ServerConnectionConfig(relayHost: "test.example.com", authToken: null),
-            health: HealthResponse(healthy: true, version: "0.1.0", filesystemAccessDegraded: null),
+            health: HealthResponse(healthy: true, version: "0.1.0", filesystemAccessDegraded: false),
           ),
         );
         await awaitState(

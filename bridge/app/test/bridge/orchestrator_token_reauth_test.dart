@@ -328,7 +328,6 @@ class _ReauthHarness._({
         accessTokenProvider: authority,
         bridgeIdProvider: registrationService,
       ),
-      legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),

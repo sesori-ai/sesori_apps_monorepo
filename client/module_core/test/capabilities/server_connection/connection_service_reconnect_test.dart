@@ -85,7 +85,7 @@ void main() {
       authToken: "token",
     );
 
-    const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+    const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
 
     setUp(() {
       cryptoService = MockRelayCryptoService();
@@ -420,7 +420,7 @@ void main() {
       expect((resumedStatus as ConnectionConnected).health.filesystemAccessDegraded, isTrue);
     });
 
-    test("fresh reconnect with an unparseable body does not carry over a stale degraded flag", () async {
+    test("fresh reconnect with an unparseable health body fails instead of using stale health", () async {
       final sseController = StreamController<RelaySseEvent>.broadcast();
       addTearDown(sseController.close);
 
@@ -439,8 +439,8 @@ void main() {
         // Both are fresh-DH connects (no resume), so each re-probes /health.
         when(() => client.didResume).thenReturn(false);
       }
-      // First bridge reports degraded access; the second is an older/different
-      // bridge that returns an empty (unparseable) body.
+      // First bridge reports degraded access; the second returns a malformed
+      // health body.
       when(
         () => degradedClient.sendRequest(
           request: any(named: "request"),
@@ -483,17 +483,15 @@ void main() {
       await service.connect(config);
       expect((service.currentStatus as ConnectionConnected).health.filesystemAccessDegraded, isTrue);
 
-      // A fresh reconnect to a different bridge re-probes /health and gets an
-      // unparseable body — it must fall back to plain-healthy, not the cache.
+      // A fresh reconnect to a different bridge re-probes /health and rejects
+      // its malformed response instead of reusing cached health.
       lifecycleController.add(LifecycleState.paused);
       await Future<void>.delayed(Duration.zero);
       now = now.add(const Duration(seconds: 30));
       lifecycleController.add(LifecycleState.resumed);
       await pumpEventQueue();
 
-      final freshStatus = service.currentStatus;
-      expect(freshStatus, isA<ConnectionConnected>());
-      expect((freshStatus as ConnectionConnected).health.filesystemAccessDegraded, isNull);
+      expect(service.currentStatus, isNot(isA<ConnectionConnected>()));
     });
 
     test("fresh-DH connect still sends GET /health", () async {
@@ -511,7 +509,7 @@ void main() {
           timeout: any(named: "timeout"),
         ),
       ).thenAnswer(
-        (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
+        (_) async => RelayResponse(id: "h", status: 200, body: jsonEncode(health.toJson()), headers: const {}),
       );
       when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
       when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
@@ -566,7 +564,7 @@ void main() {
             timeout: any(named: "timeout"),
           ),
         ).thenAnswer(
-          (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
+          (_) async => RelayResponse(id: "h", status: 200, body: jsonEncode(health.toJson()), headers: const {}),
         );
         when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
         when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
@@ -645,7 +643,7 @@ void main() {
           timeout: any(named: "timeout"),
         ),
       ).thenAnswer(
-        (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
+        (_) async => RelayResponse(id: "h", status: 200, body: jsonEncode(health.toJson()), headers: const {}),
       );
       when(() => connectedClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
       when(() => connectedClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
@@ -749,7 +747,7 @@ void main() {
           timeout: any(named: "timeout"),
         ),
       ).thenAnswer(
-        (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
+        (_) async => RelayResponse(id: "h", status: 200, body: jsonEncode(health.toJson()), headers: const {}),
       );
       when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
       when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
@@ -838,7 +836,7 @@ void main() {
             timeout: any(named: "timeout"),
           ),
         ).thenAnswer(
-          (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
+          (_) async => RelayResponse(id: "h", status: 200, body: jsonEncode(health.toJson()), headers: const {}),
         );
         when(() => client.subscribeSse(any())).thenAnswer((_) => sseController.stream);
         when(() => client.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
@@ -925,7 +923,7 @@ void main() {
             timeout: any(named: "timeout"),
           ),
         ).thenAnswer(
-          (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
+          (_) async => RelayResponse(id: "h", status: 200, body: jsonEncode(health.toJson()), headers: const {}),
         );
         when(() => client.subscribeSse(any())).thenAnswer((_) => sseController.stream);
         when(() => client.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());

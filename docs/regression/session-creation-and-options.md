@@ -10,6 +10,9 @@ variant, and worktree mode, and creating the session with its first input.
 
 - Options are discovered per plugin and cached under the plugin's declared
   coherence scope; retention and replacement are bridge-owned.
+- Project-scoped agent discovery uses `POST /agent`; the retired context-free
+  `GET /agent` route is not registered. Baseline request bodies that omit
+  `pluginId` still resolve to the historical OpenCode identity.
 - Claude's plugin-scoped discovery runs in its host-created state directory,
   never a selected project or the bridge process's launch directory. This keeps
   its global option probe on a valid, stable path when projects move or disappear.

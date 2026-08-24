@@ -180,6 +180,40 @@ Fixed titles and order. Status is GitHub's; evidence is in `steps/step-NN.md`.
 | Mandatory repositories, `StoredSession`, dispatchers, plugin-boundary mapping, SSE ignore arms, archives | Keep | — |
 | PR #1017 `RelayConnectionCoordinator`/`PluginEventProcessingDispatcher` extractions, `_MessageListSynchronizer`, app-level voice/attachment controllers | Not adopted (see PLAN "Relationship To PR #1017"); separate evidence-backed follow-up if wanted | — |
 
+## Step 42 Peer Verification
+
+- `GET /agent`: public v1.4.0 clients use project-scoped `POST /agent`; remove the
+  context-free handler, CWD fallback, and repository legacy ID dependency. Keep
+  the missing-`pluginId` wire default because v1.4.0 POST bodies omit it.
+- Question rejection owner: public v1.4.0 clients always send `sessionId`; make
+  it required and remove owner discovery plus its dispatcher admission lanes.
+- Child interaction display owner: public v1.4.0 bridges send
+  `displaySessionId`; remove the client fallback from `displaySessionId` to the
+  backend session ID while preserving honest nullability for direct requests.
+- Health filesystem state: public v1.4.0 bridges send
+  `filesystemAccessDegraded` (introduced in v1.2.0); make it required and reject
+  missing or malformed health bodies.
+- `SESORI_POST_UPDATE_RESTART`: its writer was removed by the v1.1.2 updater;
+  public v1.4.0 has no writer. Remove the marker and its auth, terminal, and
+  explicit-restart consumers.
+- Legacy bridge ID migration: public v1.4.0 already persists `bridge_id`
+  separately. Remove `BridgeIdMigrationService`, `readLegacyBridgeId`, and both
+  invocations. Accepted consequence: a direct <=v1.3.x-to-current upgrade can
+  mint a new bridge registration and orphan the old server registration; token
+  authentication remains usable.
+- OpenCode `--port`, `--no-auto-start`, and `--password` aliases: keep as a live
+  external user-script contract, not a client/bridge peer compatibility path.
+- Codex config fallback: keep because current live notifications and durable
+  rollout data can omit model metadata; top-level Codex config remains a live
+  backend-owned source rather than released Sesori-era storage.
+- Runtime start-intent side file: keep because every encoding inside the frozen
+  v1.0.9 ownership root is parsed as a strict PID-bearing record; no ignored
+  encoding exists, and fabricating ownership could adopt or kill the wrong PID.
+- Pull-request refresh settings: current clients already read aggregate
+  `GET /settings` first and fall back to `GET /settings/pull-request-refresh`
+  for supported older bridges. Keep the client fallback and bridge route until
+  the minimum supported public client and bridge are both greater than v1.8.0.
+
 ## Plan Review
 
 - **Reviewer:** `architecture-plan-review` sub-agent

@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:convert";
 
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
@@ -11,6 +12,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
 import "../helpers/test_helpers.dart";
 
 class MockRelayCryptoService() extends Mock implements RelayCryptoService;
@@ -61,7 +63,7 @@ void main() {
       authToken: "token",
     );
 
-    const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+    const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
 
     Future<void> flush() => Future<void>.delayed(Duration.zero);
 
@@ -279,7 +281,7 @@ void main() {
           timeout: any(named: "timeout"),
         ),
       ).thenAnswer(
-        (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
+        (_) async => RelayResponse(id: "h", status: 200, body: jsonEncode(health.toJson()), headers: const {}),
       );
       when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
       when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());

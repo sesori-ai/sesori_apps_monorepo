@@ -31,6 +31,9 @@ explicit restart, and the connection states the app presents.
   network-derived numeric hostnames must not replace the machine's LocalHostName.
 - The client distinguishes connected, reconnecting, connection lost, bridge offline, and
   disconnected, and returns to connected when the bridge is back.
+- Fresh connections require the typed health body, including explicit filesystem-access
+  degradation state; missing or malformed fields fail the connection rather than being
+  treated as healthy. Resumed connections retain the last validated health state.
 - The configured sleep policy applies at standalone startup and releases its wake lock on
   shutdown; unsupported lid-close prevention and wake-lock failures warn without aborting.
 - In supervised mode, the authenticated local control channel can supply tokens, report

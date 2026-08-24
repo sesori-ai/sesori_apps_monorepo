@@ -34,20 +34,6 @@ void main() {
       expect(json["lastProvider"], equals("github"));
     });
 
-    test("fromJson ignores a legacy bridgeId key from old token files", () {
-      final restored = TokenData.fromJson(<String, dynamic>{
-        "accessToken": "access-token",
-        "refreshToken": "refresh-token",
-        "bridgeId": "br_abc12345",
-        "lastProvider": "github",
-      });
-
-      expect(restored.accessToken, equals("access-token"));
-      expect(restored.refreshToken, equals("refresh-token"));
-      expect(restored.lastProvider, equals(AuthProvider.github));
-      expect(restored.toJson().containsKey("bridgeId"), isFalse);
-    });
-
     test("fromJson throws when lastProvider is missing", () {
       expect(
         () => TokenData.fromJson(<String, dynamic>{

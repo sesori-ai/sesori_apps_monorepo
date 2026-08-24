@@ -104,7 +104,8 @@ class const OpenCodePluginDescriptor({
       help: "Port for opencode server to listen on",
       defaultsTo: null,
       valueHelp: null,
-      // COMPATIBILITY 2026-06-22 (v1.1.1): Existing scripts may use --port. Remove this alias when pre-namespaced bridge CLI flags are unsupported.
+      // COMPATIBILITY: `--port` is a durable external CLI contract. Remove only in
+      // an explicitly announced breaking CLI release after its removal gate passes.
       deprecatedAliases: ["port"],
     ),
     PluginValueOption(
@@ -125,7 +126,8 @@ class const OpenCodePluginDescriptor({
       help: "Skip auto-starting opencode server (use existing server)",
       defaultsTo: false,
       negatable: true,
-      // COMPATIBILITY 2026-06-22 (v1.1.1): Existing scripts may use --no-auto-start. Remove this alias when pre-namespaced bridge CLI flags are unsupported.
+      // COMPATIBILITY: `--no-auto-start` is a durable external CLI contract. Remove
+      // only in an explicitly announced breaking CLI release after its removal gate passes.
       deprecatedAliases: ["no-auto-start"],
     ),
     PluginValueOption(
@@ -135,7 +137,8 @@ class const OpenCodePluginDescriptor({
       allowedValues: null,
       valueHelp: null,
       validate: null,
-      // COMPATIBILITY 2026-06-22 (v1.1.1): Existing scripts may use --password. Remove this alias when pre-namespaced bridge CLI flags are unsupported.
+      // COMPATIBILITY: `--password` is a durable external CLI contract. Remove only
+      // in an explicitly announced breaking CLI release after its removal gate passes.
       deprecatedAliases: ["password"],
     ),
     PluginFlagOption(
@@ -352,6 +355,7 @@ class const OpenCodePluginDescriptor({
       manifest: manifest,
       probeTimeout: _versionProbeTimeout,
     );
+
     /// The pinned managed runtime's version when it is already installed and
     /// matches the bundled pin, or null. Only consulted without an explicit
     /// binary, which is authoritative when set.
