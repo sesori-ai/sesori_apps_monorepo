@@ -47,7 +47,7 @@ permission rule. Both current semantics were preserved.
   the logic now lives on the named `CsvParser` collaborator, and the second
   review approved the implementation with no remaining findings.
 - `git diff --check`: passed.
-- Size excluding this evidence file against `7caddf5579`:
+- Size excluding this evidence file against `a278f0dc82`:
   **`+672 / -1064` = 1,736 changed lines**. This is 236 lines above the
   1,500-line soft cap because the coherent step replaces nine platform and
   repository files and their tests while making editor absence explicit at all
