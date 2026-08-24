@@ -44,7 +44,12 @@ defaults and queued client sends coherent.
 - Codex user prompts use the same visible content live and after rollout replay:
   the bridge worktree context envelope is hidden, authored text remains, and
   bounded inline images render as file parts. An attachment-only initial prompt
-  therefore remains visible without exposing the generated context.
+  therefore remains visible without exposing the generated context. A plain
+  follow-up is sent immediately through `turn/start`; Codex's app server starts
+  a turn while idle and steers the active turn while busy, preserving the
+  client user-message id in either case. The bridge keeps the authoritative
+  active turn until its terminal event even when an older app server returns a
+  separate submission id for the steering request.
 - A plain Claude prompt sent while its resident process is working is written
   immediately with `priority: next`. Claude absorbs it at the next tool
   boundary when possible, within the active agent turn; otherwise Claude keeps
@@ -97,16 +102,19 @@ defaults and queued client sends coherent.
   session-close methods to complete an ordinary turn.
 - Existing-session ACP prompts remain bridge-queued while an earlier same-session
   turn, declared process-wide lane, resume, or selection blocks their
-  `session/prompt` frame. Their synthetic user transcript message is published
-  only after that frame flushes successfully to the agent's stdin. Follow-up and
-  replayed user messages preserve ordered text and bounded data-backed image
-  parts, including attachment-only prompts. Initial projection contains only
-  normalized user-visible text plus those images; injected context, local paths,
-  and URLs remain absent. OMP runs different sessions concurrently because its
-  permission and form requests carry explicit session IDs. Within one OMP
-  session, it preserves active-prompt replacement by cancelling the active turn
-  immediately, then dispatching the newly queued input after cancellation
-  settles; Cursor and Hermes retain ordinary FIFO turn boundaries.
+  `session/prompt` frame. ACP v1 has no standard steering or queued-input
+  operation and permits the next prompt after the current prompt turn completes,
+  so Cursor and Hermes intentionally retain FIFO turn boundaries rather than
+  sending overlapping prompt requests. Their synthetic user transcript message
+  is published only after that frame flushes successfully to the agent's stdin.
+  Follow-up and replayed user messages preserve ordered text and bounded
+  data-backed image parts, including attachment-only prompts. Initial projection
+  contains only normalized user-visible text plus those images; injected
+  context, local paths, and URLs remain absent. OMP runs different sessions
+  concurrently because its permission and form requests carry explicit session
+  IDs. OMP's ACP server defines a busy follow-up as replacement rather than
+  steering: Sesori immediately cancels the active turn, then dispatches the new
+  input after cancellation settles.
 - Normalized user-message events feed the durable user-side activity marker used
   to order running roots. Known event times are applied monotonically. Backend
   input represented as a user message, including automatic compaction or other
