@@ -68,8 +68,9 @@ defaults and queued client sends coherent.
   acknowledges a prompt, so that preflight uses a turn-scale deadline instead
   of the shorter history/control RPC deadline. The prompt remains visibly
   queued alongside a running `Compacting context` tool card while compaction
-  runs; the card updates in place to `Context compacted` when Pi persists the
-  result. An accepted prompt remains bridge-queued
+  runs, including in snapshots loaded by later viewers. The card updates in
+  place to `Context compacted` when Pi persists the result; aborting or losing
+  the Pi process removes it. An accepted prompt remains bridge-queued
   through startup and selection until Pi echoes its correlated user message,
   including an attachment-only echo; it can be
   cancelled before dispatch, and its undispatched prompt id remains immediately
@@ -255,9 +256,10 @@ replay, and abort after output has started.
   without a bound, or leaves a corrected selection on a variant the picker does
   not display.
 - A cold Pi follow-up wakes the process but times out in pre-prompt automatic
-  compaction before reaching the agent, exposes only the queued prompt while
-  compaction is underway, or replaces the running compaction card instead of
-  updating it in place when compaction ends.
+  compaction before reaching the agent; an initial or later viewer exposes only
+  the queued prompt while compaction is underway; the running card is replaced
+  instead of updated when compaction ends, or survives an abort or process
+  exit.
 - An abort, permission reply, or question reply stalls behind a send to a
   busy session on the same session lane, or a Cursor/Hermes follow-up waits for
   the active turn to finish naturally instead of cancelling it before dispatch.

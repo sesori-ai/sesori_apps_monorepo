@@ -38,6 +38,23 @@ final class PiEventDispatcher({
     _sessions[sessionId]?.pendingPrompts.removeWhere((prompt) => prompt.promptId == promptId);
   }
 
+  PluginMessageWithParts? activeCompactionMessage({required String sessionId}) {
+    final state = _sessions[sessionId];
+    final messageId = state?.compactionMessageId;
+    if (messageId == null) return null;
+    return _historyMapper.mapRunningCompaction(sessionId: sessionId, messageId: messageId);
+  }
+
+  List<BridgeSseEvent> clearCompaction({required String sessionId}) {
+    final state = _sessions[sessionId];
+    final messageId = state?.compactionMessageId;
+    if (state == null || messageId == null) return const [];
+    state
+      ..compactionMessageId = null
+      ..identities.releaseCompaction();
+    return [BridgeSseMessageRemoved(sessionID: sessionId, messageID: messageId)];
+  }
+
   void forgetSession({required String sessionId}) {
     _sessions.remove(sessionId);
     _identityTracker.forgetSession(sessionId: sessionId);
@@ -556,7 +573,7 @@ final class PiEventDispatcher({
     required DateTime? now,
   }) {
     final state = _session(sessionId);
-    final messageId = state.compactionMessageId ??= state.identities.nextCompaction();
+    final messageId = state.compactionMessageId ??= state.identities.reserveCompaction();
     final mapped = _historyMapper.mapRunningCompaction(sessionId: sessionId, messageId: messageId);
     return [
       ..._status(sessionId: sessionId, event: event, now: now),
@@ -594,14 +611,13 @@ final class PiEventDispatcher({
     }
     if (aborted || errorMessage != null) {
       if (willRetry) return const [];
-      final messageId = _sessions[sessionId]?.compactionMessageId;
       return [
-        if (messageId != null) BridgeSseMessageRemoved(sessionID: sessionId, messageID: messageId),
+        ...clearCompaction(sessionId: sessionId),
         BridgeSseSessionError(sessionID: sessionId),
       ];
     }
     final state = _session(sessionId);
-    final messageId = state.compactionMessageId ?? state.identities.nextCompaction();
+    final messageId = state.identities.commitCompaction();
     state.compactionMessageId = null;
     final mapped = _historyMapper.mapCompaction(sessionId: sessionId, messageId: messageId);
     return [

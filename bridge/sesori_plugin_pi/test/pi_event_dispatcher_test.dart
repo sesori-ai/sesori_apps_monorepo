@@ -652,6 +652,31 @@ void main() {
     expect(events.whereType<BridgeSseSessionError>(), isEmpty);
   });
 
+  test("successful overflow compaction completes before Pi retries the agent", () {
+    final compacting = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_start", {"reason": "overflow"}),
+    );
+    final compacted = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_end", {
+        "reason": "overflow",
+        "aborted": false,
+        "willRetry": true,
+      }),
+    );
+
+    expect(compacted.whereType<BridgeSseSessionCompacted>(), hasLength(1));
+    expect(
+      compacted.whereType<BridgeSseMessageUpdated>().single.info["id"],
+      compacting.whereType<BridgeSseMessageUpdated>().single.info["id"],
+    );
+    expect(
+      compacted.whereType<BridgeSseMessagePartUpdated>().single.part.state?.status,
+      PluginToolStatus.completed,
+    );
+  });
+
   test("terminal compaction failures remove the running card and preserve its replay identity", () {
     final compacting = dispatcher.map(
       sessionId: sessionId,
@@ -676,6 +701,27 @@ void main() {
     expect(failed.whereType<BridgeSseMessageRemoved>().single.messageID, messageId);
     expect(failed.whereType<BridgeSseSessionError>(), hasLength(1));
     expect(restarted.whereType<BridgeSseMessageUpdated>().single.info["id"], messageId);
+  });
+
+  test("running compaction identity survives history hydration before completion", () {
+    final compacting = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_start", {"reason": "threshold"}),
+    );
+    final messageId = compacting.whereType<BridgeSseMessageUpdated>().single.info["id"];
+    identities.hydrate<void>(sessionId: sessionId, map: (_) {});
+
+    final compacted = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_end", {"aborted": false, "willRetry": false}),
+    );
+    final next = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_start", {"reason": "threshold"}),
+    );
+
+    expect(compacted.whereType<BridgeSseMessageUpdated>().single.info["id"], messageId);
+    expect(next.whereType<BridgeSseMessageUpdated>().single.info["id"], "pi:session:compaction:compaction:2");
   });
 
   test("interleaved sessions and unknown variants keep state isolated", () {

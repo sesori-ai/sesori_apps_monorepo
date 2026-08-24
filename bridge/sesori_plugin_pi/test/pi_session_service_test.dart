@@ -1355,6 +1355,35 @@ void main() {
     expect(events.whereType<BridgeSseSessionError>(), hasLength(1));
   });
 
+  test("process exit removes an active compaction card", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "compacting-prompt",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "after compaction")],
+      userVisibleText: "after compaction",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "compaction_start", "reason": "threshold"});
+    await _waitForEventCount<BridgeSseMessageUpdated>(events: events, count: 1);
+    final messageId = events.whereType<BridgeSseMessageUpdated>().single.info["id"];
+
+    process.exit(code: 9);
+
+    await _waitForIdle(service: service, sessionId: "session");
+    expect(events.whereType<BridgeSseMessageRemoved>().single.messageID, messageId);
+  });
+
   test("pre-prompt compaction stays visible beyond the ordinary RPC timeout", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process])
@@ -1575,11 +1604,13 @@ void main() {
     await _waitForIdle(service: service, sessionId: "child");
   });
 
-  test("abort invalidates queue, sends abort, and tears down process", () async {
+  test("abort invalidates queue, removes compaction, sends abort, and tears down process", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
     addTearDown(fixture.dispose);
     final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
 
     await service.sendPrompt(
       sessionId: "session",
@@ -1603,6 +1634,9 @@ void main() {
     final prompt = await waitForCommand(process: process, type: "prompt");
     process.emitResponse(id: prompt["id"]! as String, command: "prompt");
     process.emit(frame: {"type": "agent_start"});
+    process.emit(frame: {"type": "compaction_start", "reason": "threshold"});
+    await _waitForEventCount<BridgeSseMessageUpdated>(events: events, count: 1);
+    final compactionMessageId = events.whereType<BridgeSseMessageUpdated>().single.info["id"];
     final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
     expect(steeringPrompt["message"], "queued");
     expect(steeringPrompt["streamingBehavior"], "steer");
@@ -1615,6 +1649,7 @@ void main() {
     expect(process.killed, isTrue);
     expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(2));
     expect(fixture.repository.residentSessionIds, isEmpty);
+    expect(events.whereType<BridgeSseMessageRemoved>().single.messageID, compactionMessageId);
   });
 
   test("shutdown interruption accepts process exit before abort response", () async {
