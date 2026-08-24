@@ -538,6 +538,49 @@ void main() {
       );
     });
 
+    test("a member restarted from outside stops the run claiming a summary", () async {
+      await service.startAll();
+      connection.emitProgress(_completed("codex", newProjects: 1, newSessions: 1));
+
+      // Another surface restarts codex while claude is still running.
+      connection.emitProgress(const CatalogImportProgress.enumerating(
+        pluginId: "codex",
+        projectsSeen: 1,
+        sessionsSeen: 1,
+      ));
+      connection.emitProgress(_completed("codex", newProjects: 50, newSessions: 50));
+      connection.emitProgress(_completed("claude", newProjects: 1, newSessions: 1));
+
+      expect(
+        service.state.value,
+        isA<CatalogRescanIdle>(),
+        reason: "the second codex run's counts are not this operation's to report",
+      );
+    });
+
+    test("reads in-flight imports again once a new bridge identity lands", () async {
+      build(initialStatus: const ConnectionStatus.disconnected());
+      repository.statuses = const CatalogImportStatusesResult.supported(
+        statuses: [
+          CatalogImportProgress.enumerating(pluginId: "codex", projectsSeen: 1, sessionsSeen: 6),
+        ],
+      );
+      connection.emitStatus(_connected);
+      await pumpEventQueue();
+      expect(service.state.value, isA<CatalogRescanRunning>());
+
+      // The management snapshot for the newly connected bridge arrives after
+      // the recovery read and reports a different identity.
+      management.emit(_snapshot(routable: const {"codex": "Codex"}, bridgeId: "bridge-2"));
+      await pumpEventQueue();
+
+      expect(
+        service.state.value,
+        isA<CatalogRescanRunning>().having((s) => s.sessionsSeen, "sessionsSeen", 6),
+        reason: "the reset for the new identity must be followed by another read",
+      );
+    });
+
     test("a stale event from a cancelled run cannot reopen it", () async {
       build(snapshot: _snapshot(routable: const {"codex": "Codex"}));
       final release = Completer<CatalogImportMutationResult>();

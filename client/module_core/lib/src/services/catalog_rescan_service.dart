@@ -264,13 +264,13 @@ class CatalogRescanService({
       case CatalogImportMutationUncertain(:final error):
         // The request may well have landed, so the harness stays a member and
         // settles from its own progress event rather than being written off.
-        logw("Catalog rescan start could not be confirmed for a harness", error);
+        logw("Catalog rescan start could not be confirmed for $pluginId", error);
         return CatalogRescanStartResult.failed(cause: error);
       case CatalogImportMutationFailure(:final error):
         // The bridge answered and refused, so this harness is settled and
         // counts against the run. Retained locally because the failure may
         // never have reached the bridge's own log.
-        logw("Catalog rescan could not be started for a harness", error);
+        logw("Catalog rescan could not be started for $pluginId", error);
         _progressByPluginId[pluginId] = CatalogImportProgress.failed(
           pluginId: pluginId,
           message: "start rejected",
@@ -315,6 +315,14 @@ class CatalogRescanService({
     // failure, and it means this client no longer saw the whole operation, so
     // it settles quietly instead of publishing a persistent failure row.
     if (progress is CatalogImportCancelled) _observed = true;
+    // A member that already settled and is reporting progress again was
+    // restarted by someone else. Its second run is not this operation's to
+    // summarise, so the aggregate stops claiming one — the same rule as a
+    // harness joining from outside, which this path bypasses.
+    final previous = _progressByPluginId[pluginId];
+    if (previous != null && _isTerminal(previous) && !_isTerminal(progress)) {
+      _observed = true;
+    }
     _progressByPluginId[pluginId] = progress;
     if (_isTerminal(progress)) {
       _settleIfComplete();
@@ -468,6 +476,13 @@ class CatalogRescanService({
       final wasLive = _members.isNotEmpty;
       _reset();
       if (wasLive && !_settled.isClosed) _settled.add(null);
+      // The recovery read fired on reconnect may have adopted the new bridge's
+      // run before this identity arrived, and the reset above just discarded
+      // it. Read again now that the identity is settled, or an import already
+      // running here stays invisible until it ends.
+      _activeBridgeId = bridgeId;
+      unawaited(_recoverInFlight());
+      return;
     }
     _activeBridgeId = bridgeId;
   }
