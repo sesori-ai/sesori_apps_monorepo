@@ -74,21 +74,23 @@ void main() {
     expect(replies.every((frame) => frame["cancelled"] == true), isTrue);
   });
 
-  test("bounds model hydration and marks capped catalog partial", () async {
+  test("hydrates every advertised model and keeps large catalogs complete", () async {
+    final models = [
+      for (var index = 0; index < 101; index++) _model(provider: "google", id: "model-$index", reasoning: true),
+    ];
     final harness = _ProbeHarness(
-      stateModel: _model(provider: "google", id: "third", reasoning: true),
-      models: [
-        _model(provider: "google", id: "first", reasoning: true),
-        _model(provider: "google", id: "second", reasoning: true),
-        _model(provider: "google", id: "third", reasoning: true),
-      ],
+      stateModel: _model(provider: "google", id: "model-100", reasoning: true),
+      models: models,
     );
 
-    final options = await harness.probe(maxModels: 2);
+    final options = await harness.probe();
+    final discovered = options.providers.providers.single.models;
 
-    expect(options.completeness, PluginSessionOptionsCompleteness.partial);
-    expect(options.providers.providers.single.models.map((model) => model.id), ["third", "first"]);
-    expect(harness.selected, [("google", "third"), ("google", "first")]);
+    expect(options.completeness, PluginSessionOptionsCompleteness.complete);
+    expect(discovered, hasLength(models.length));
+    expect(discovered.first.id, "model-100");
+    expect(discovered.last.id, "model-99");
+    expect(harness.selected, hasLength(models.length));
   });
 
   test("optional thinking and command failures preserve partial catalogs", () async {
@@ -217,7 +219,6 @@ class _ProbeHarness({
 
   Future<PluginSessionOptions> probe({
     Duration timeout = const Duration(seconds: 2),
-    int maxModels = 8,
   }) async {
     final snapshot =
         await PiBackendCatalogRepository(
@@ -236,7 +237,6 @@ class _ProbeHarness({
         ).probe(
           projectId: path.normalize(path.absolute("project/./nested/..")),
           totalTimeout: timeout,
-          maxModels: maxModels,
         );
     return PluginSessionOptions(
       agents: snapshot.agents,

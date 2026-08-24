@@ -109,10 +109,15 @@ variant, and worktree mode, and creating the session with its first input.
 - Graceful shutdown fences new create routes, aborts and drains accepted metadata
   work, drains session operations and local mutations, then closes normalized
   event delivery and its remaining tails.
-- OMP discovers modes, commands, providers/models, and model-specific thinking
-  levels in a project-scoped scratch session. Model values remain exact even
-  when the model ID contains slashes, and the configured pre-sweep model remains
-  the default. A rejected or partially applied selection fails before prompting.
+- OMP discovers modes, commands, every advertised provider/model, and model-specific
+  thinking levels in a project-scoped scratch session. Large catalogs from multiple
+  logged-in providers remain complete so they can replace an older complete cache.
+  Model values remain exact even when the model ID contains slashes, and the configured
+  pre-sweep model remains the default. A rejected or partially applied selection fails
+  before prompting.
+- Pi likewise discovers every advertised model and its available thinking levels within
+  the existing total probe deadline, so catalog size alone never makes a healthy refresh
+  partial or leaves an older complete cache in place.
 
 ## Regression Levels
 

@@ -50,7 +50,6 @@ final class PiPlugin._({
     required Duration healthTimeout,
     required Duration idleTimeout,
     required Duration editorTimeout,
-    required int maxCatalogModels,
   }) {
     final storage = PiSessionStorageApi(environment: storageEnvironment);
     final catalogRepository = PiSessionCatalogRepository(storageApi: storage);
@@ -95,7 +94,6 @@ final class PiPlugin._({
       ),
       tracker: PiCatalogTracker(),
       totalTimeout: catalogTimeout,
-      maxModels: maxCatalogModels,
     );
     return PiPlugin._(
       catalogRepository: catalogRepository,
