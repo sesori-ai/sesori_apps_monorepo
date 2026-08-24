@@ -836,7 +836,7 @@ class _BenchmarkPlugin({
   }
 
   @override
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) {
+  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) {
     listReadCalls++;
     return Future<List<PluginSession>>.error(StateError("catalog read unexpectedly called plugin.getSessions"));
   }

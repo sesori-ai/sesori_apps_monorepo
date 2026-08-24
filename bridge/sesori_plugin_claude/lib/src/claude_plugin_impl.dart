@@ -59,7 +59,7 @@ final class ClaudePlugin({
   String get launchDirectory => _launchDirectory;
 
   @override
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) async {
+  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) async {
     final persisted = await _transcripts.getSessions(projectId: projectId, start: null, limit: null);
     final target = normalizeProjectDirectory(directory: projectId);
     final combined = _mergeSessions(persisted, [
@@ -307,7 +307,7 @@ final class ClaudePlugin({
 
   @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async {
-    final sessions = await getSessions(projectId);
+    final sessions = await getSessions(projectId: projectId, start: null, limit: null);
     return [
       for (final session in sessions) ..._approvals.pendingQuestionsForSession(sessionId: session.id),
     ];

@@ -110,6 +110,7 @@ final class PiSessionProcessRepository({
   required final PiMessageIdentityTracker _identityTracker,
   required final Duration _startupExitTimeout,
   required final Duration _historyRpcTimeout,
+  required final Duration _promptRpcTimeout,
 }) {
   final Map<String, String> _environment = Map.unmodifiable(environment);
   final Map<String, _ResidentClient> _residents = {};
@@ -378,7 +379,7 @@ final class PiSessionProcessRepository({
         "images": payload.images,
         "streamingBehavior": _PiPromptStreamingBehavior.steer.wireValue,
       },
-      timeout: _historyRpcTimeout,
+      timeout: _promptRpcTimeout,
     );
   }
 

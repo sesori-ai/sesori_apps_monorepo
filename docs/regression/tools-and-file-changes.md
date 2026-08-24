@@ -66,8 +66,8 @@ multi-byte, and empty output; compare live with a later reload.
 
 - Contract: `bridge/sesori_plugin_interface/lib/src/models/plugin_message.dart`;
   `shared/sesori_shared/lib/src/models/sesori/message_part.dart`
-- Bridge: `bridge/app/lib/src/bridge/plugin_to_shared_mapping.dart`,
-  `bridge/sse/bridge_event_mapper.dart`; mappers and tests under
+- Bridge: `bridge/app/lib/src/repositories/mappers/plugin_to_shared_mapping.dart`,
+  `bridge/app/lib/src/sse/bridge_event_mapper.dart`; mappers and tests under
   `bridge/sesori_plugin_*/`; `client/app/lib/features/session_detail/widgets/`
 - Tests: `bridge/app/test/bridge/sse/bridge_event_mapper_test.dart`
 - Plans (discovery only): `.plan/completed/output-image-support`,

@@ -12,6 +12,7 @@ class PluginOperationException implements Exception {
   final int? statusCode;
 
   final String? message;
+  // ignore: no_slop_linter/prefer_specific_type, caught errors are opaque
   final Object? cause;
 
   const new(
@@ -35,7 +36,7 @@ class PluginOperationException implements Exception {
   String toString() {
     final status = statusCode == null ? "" : " with status $statusCode";
     final detail = message == null ? "" : ": $message";
-    final causeDetail = cause == null ? "" : " (cause: $cause)";
+    final causeDetail = cause == null ? "" : " (cause: ${cause.toString()})";
     return "PluginOperationException: $operation failed$status$detail$causeDetail";
   }
 }

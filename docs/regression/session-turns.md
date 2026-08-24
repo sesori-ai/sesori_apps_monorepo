@@ -64,9 +64,12 @@ defaults and queued client sends coherent.
   `steer` streaming behavior as soon as the preceding prompt is accepted, so Pi
   injects them at the next tool boundary instead of waiting for the run to
   settle. A model or thinking-level change remains bridge-queued until the
-  current run settles. An accepted prompt remains bridge-queued through startup
-  and selection until Pi echoes
-  its correlated user message, including an attachment-only echo; it can be
+  current run settles. Pi may run model-backed automatic compaction before it
+  acknowledges a prompt, so that preflight uses a turn-scale deadline instead
+  of the shorter history/control RPC deadline and the prompt remains visibly
+  queued while compaction runs. An accepted prompt remains bridge-queued
+  through startup and selection until Pi echoes its correlated user message,
+  including an attachment-only echo; it can be
   cancelled before dispatch, and its undispatched prompt id remains immediately
   retryable while cancellation settles. If a successful run omits an echo, Pi
   maps each stored payload through the same user-message path before clearing
@@ -249,6 +252,8 @@ replay, and abort after output has started.
   staged prompt, changes FIFO order or prompt identity, refreshes and retries
   without a bound, or leaves a corrected selection on a variant the picker does
   not display.
+- A cold Pi follow-up wakes the process but times out in pre-prompt automatic
+  compaction before reaching the agent.
 - An abort, permission reply, or question reply stalls behind a send to a
   busy session on the same session lane, or a Cursor/Hermes follow-up waits for
   the active turn to finish naturally instead of cancelling it before dispatch.
@@ -293,8 +298,8 @@ replay, and abort after output has started.
 
 ## Sources
 
-- Bridge: `bridge/app/lib/src/bridge/services/` (prompt, abort, dispatcher,
-  event, chat history), `lib/src/bridge/sse/`, and their tests
+- Bridge: `bridge/app/lib/src/services/` (prompt, abort, dispatcher, event,
+  chat history), `bridge/app/lib/src/sse/`, and their tests
 - Contract: `bridge/sesori_plugin_interface/lib/src/bridge_plugin.dart`;
   `shared/sesori_shared/lib/src/models/sesori/send_prompt_error_response.dart`;
   `shared/sesori_shared/lib/src/models/sesori/sesori_sse_event.dart`

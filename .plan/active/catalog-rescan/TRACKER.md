@@ -5,9 +5,9 @@
 - **Plan slug:** `catalog-rescan`
 - **Implementation base:** `main` at
   `7b1ebe9bc629d05b5d104e76cd5dbaa1514d65a2`
-- **Series state:** Steps 1/8 and 2/8 merged; Step 3/8 open
-- **Current step:** report new items from a catalog import
-- **Next action:** land Step 3, then Step 4's client rescan service
+- **Series state:** Steps 1/8 to 3/8 merged; Step 4/8 open
+- **Current step:** add the client catalog rescan service
+- **Next action:** land Step 4, then Step 5's two-stage pull control
 - **Origin issue:** [#961](https://github.com/sesori-ai/sesori_apps_monorepo/issues/961)
 - **External overlap:** [#1008](https://github.com/sesori-ai/sesori_apps_monorepo/issues/1008)
   owns Codex live updates; do not address it here
@@ -122,8 +122,8 @@
 |---|---|---|---:|---|
 | [x] | 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 950-1,100 (`PLAN.md`) | [PR #1064](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1064) merged |
 | [x] | 2/8 | `🌱 [catalog-rescan] Re-hydrate stale plugin catalogs [step 2/8]` | 20-60 | [PR #1071](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1071) merged |
-| [ ] | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 | Open |
-| [ ] | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 | Not started |
+| [x] | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 | [PR #1074](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1074) merged |
+| [ ] | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 | Open |
 | [ ] | 5/8 | `⚙️ [catalog-rescan] Add a second stage to pull-to-refresh [step 5/8]` | 350-600 | Not started |
 | [ ] | 6/8 | `⚙️ [catalog-rescan] Surface catalog rescan in the app [step 6/8]` | 950-1,400 | Not started |
 | [ ] | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 | Not started |
@@ -168,30 +168,30 @@
 
 ## Step 4 Checklist
 
-- [ ] Add the three API methods; give cancel a `pluginId`.
-- [ ] Classify `404` and `503` as "cannot import", not as failures.
-- [ ] Declare exactly three collaborators: `PluginRepository`,
+- [x] Add the three API methods; give cancel a `pluginId`.
+- [x] Classify `404` and `503` as "cannot import", not as failures.
+- [x] Declare exactly three collaborators: `PluginRepository`,
   `PluginManagementService`, `ConnectionService`.
-- [ ] Put `CatalogRescanState` in `services/models/catalog_rescan_state.dart`.
-- [ ] Pattern-match `SesoriCatalogImportProgress` in the service; leave
+- [x] Put `CatalogRescanState` in `services/models/catalog_rescan_state.dart`.
+- [x] Pattern-match `SesoriCatalogImportProgress` in the service; leave
   `sse_event.dart` and `sse_event_tracker.dart` untouched.
-- [ ] Filter the recovery read to non-terminal statuses only.
-- [ ] Reset to idle on disconnect and on active-bridge change; add no
+- [x] Filter the recovery read to non-terminal statuses only.
+- [x] Reset to idle on disconnect and on active-bridge change; add no
   generation or fence state.
-- [ ] Implement the `owned`/`observed` operation model: a second start joins the
+- [x] Implement the `owned`/`observed` operation model: a second start joins the
   live operation, unsolicited progress opens an observed one, cancel fans out
   over live members whether `Starting` or `Running`, and the map is cleared only
   when leaving idle or terminal.
-- [ ] Arm the 4s clear for `CatalogRescanSucceeded` only, and cancel it on every
+- [x] Arm the 4s clear for `CatalogRescanSucceeded` only, and cancel it on every
   start and reset.
-- [ ] Publish `CatalogRescanUnsupported` from an unsupported management snapshot
+- [x] Publish `CatalogRescanUnsupported` from an unsupported management snapshot
   without issuing any request.
-- [ ] Retain the `ApiError` in `CatalogRescanStartFailed` and log it locally.
-- [ ] Run the `module_core` build runner and commit `injection.config.dart`.
-- [ ] Record membership on dispatch; keep a harness on timeout or lost response.
-- [ ] Select harnesses by `runtimeState.isRoutable`.
-- [ ] Never lift `CatalogImportFailed.message` into client state.
-- [ ] Prove aggregation across two harnesses, all seven states including a mixed
+- [x] Retain the `ApiError` in `CatalogRescanStartFailed` and log it locally.
+- [x] Run the `module_core` build runner and commit `injection.config.dart`.
+- [x] Record membership on dispatch; keep a harness on timeout or lost response.
+- [x] Select harnesses by `runtimeState.isRoutable`.
+- [x] Never lift `CatalogImportFailed.message` into client state.
+- [x] Prove aggregation across two harnesses, all seven states including a mixed
   outcome, the older-bridge payload, both reconnect cases, a disconnect, a
   `503` in the fan-out, cancel fanning out one `DELETE` per running id, a
   second sequential rescan not inheriting the previous aggregate, a failure
@@ -357,6 +357,40 @@ refresh gap as consequences of one definition.
 | Regenerate injectable registration for the new service | Verified `client/module_core/lib/src/di/injection.config.dart` exists. Step 4 now runs the build runner and commits its output |
 | Add pane callback plumbing before testing the deep pull | Step 5 introduces the pane's optional `onDeepRefresh` parameter so its own test is implementable; step 6 wires it to the cubit |
 
+### Step 4 implementation review on `catalog-rescan-service`
+
+`architecture-implementation-review` rejected the first pass. Both findings were
+A2 state-ownership violations where the code diverged from the operation model
+the plan had already approved, not disagreements with the model itself. Layering,
+the three declared collaborators, the Layer-3 composition with
+`PluginManagementService`, and the regenerated DI were all cleared.
+
+| Finding | Correction applied |
+|---|---|
+| The all-`404` close acted on dispatch-scoped results and could tear down members it never dispatched | Both terminal branches now require `_members.isEmpty`. A `404` or `503` already removes its own harness, so an empty member set is exactly "nothing else is live"; a joining start that is rejected returns its result and leaves the run alone |
+| Both unsupported-snapshot paths published over a live operation, leaving a non-live state while members were still tracked — so `dismiss()` cleared them without announcing the close and the lists never refreshed | Those publishes are gated on an empty operation, and liveness now reads `_members`, not the published state. Reachable on a v1.6.x bridge, which has `/plugin/import` but not `/plugin/management` |
+
+A second pass also rejected, with two further A2 findings — both in `_start`'s
+post-`await` continuation, both applied with regression coverage:
+
+| Finding | Correction applied |
+|---|---|
+| `_members.isEmpty` alone is also true when the operation closed *during* the await, so a start whose response resolved late could erase a failure row that must persist and fire a duplicate refresh. Reachable by a relay timeout, or by tapping cancel before the POST returns | The guard is now `_members.isEmpty && _state.value.isLive`; `_openOrJoin` always publishes a live state before dispatch and an unsupported answer is never published over a live operation, so this is true exactly when the dispatch's own operation is still open |
+| The bridge-wide `CatalogRescanUnsupported` claim was inferred from a dispatch that need not cover every harness, so one targeted `404` — which the bridge also returns for a *deselected* plugin — told every surface the bridge cannot rescan at all | `_start` takes `coversEveryHarness`, true only from `startAll()`. A targeted rejection is reported solely through its returned result, per `PLAN.md` |
+
+Both of its non-blocking observations were applied too: an active-bridge change
+now announces its close like a disconnect does, and the `NonSuccessCodeError`
+sniff moved out of the service into a `CatalogImportMutationUncertain` variant,
+matching the two sibling mappers that already own transport classification in
+the repository. The exhaustive-switch error that fix produced is what proved the
+service had been reasoning about transport shapes at all.
+
+The first reviewer also noted two quality points outside its verdict. The row keeping
+the name of a harness that had just finished was a real wrong label and is
+fixed. The missing value equality on state variants is left alone: `Set<String>`
+has no value equality either, so honest `==` would mean a set comparator for a
+duplicate-emission nicety.
+
 ## Verification Log
 
 - **Step 1 documentation validation:** `git diff --check` passed; step tokens
@@ -414,4 +448,19 @@ refresh gap as consequences of one definition.
   totals-versus-delta contract and its absent-delta fallback in that document
   and in its L2 Routine entry. Step 7 builds on that rather than restating it
 - **Step 3 PR:** pending
+- **Step 4 base:** `main` at `669fd0cd0`
+- **Step 4 changed lines:** 1,271 of delivered code against merge-base
+  `669fd0cd045e5ea8a6740e4f944d0634b0d11939`, over the 700-1,050 target. The
+  overage is test weight: 620 of it is `catalog_rescan_service_test.dart`, which
+  the operation model needs because every rule it encodes — join, dispatch-time
+  membership, observed settlement, the success-only timer — is only observable
+  through a scenario. Production is 653 across six files, inside the estimate.
+  `.plan/` is excluded so the figure cannot count itself
+- **Step 4 verification:** `dart analyze --fatal-infos` clean on
+  `client/module_core`; full module suite 1,333 tests passed, including 28 new
+  `catalog_rescan_service_test.dart` cases
+- **Step 4 review:** `architecture-implementation-review` **rejected** the first
+  pass with two blocking A2 findings, both divergences from the approved
+  operation model, both applied with regression coverage
+- **Step 4 PR:** pending
 - **Final disposition:** pending

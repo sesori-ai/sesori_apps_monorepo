@@ -130,13 +130,13 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   }
 
   @override
-  Future<List<PluginSession>> getSessions(
-    String worktree, {
-    int? start,
-    int? limit,
+  Future<List<PluginSession>> getSessions({
+    required String projectId,
+    required int? start,
+    required int? limit,
   }) async {
     if (throwOnGetSessions) throw Exception("getSessions error");
-    lastGetSessionsWorktree = worktree;
+    lastGetSessionsWorktree = projectId;
     lastGetSessionsStart = start;
     lastGetSessionsLimit = limit;
     return sessionsResult;

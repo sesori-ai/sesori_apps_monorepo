@@ -146,7 +146,7 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
           // An unhandled async error here would take down the whole isolate
           // over a status report; log it instead.
           .catchError((Object error, StackTrace stackTrace) {
-            Log.w("SteadyPluginLifecycle: degraded debounce failed: $error\n$stackTrace");
+            Log.w("SteadyPluginLifecycle: degraded debounce failed", error, stackTrace);
           }),
     );
   }
@@ -154,6 +154,7 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
   /// Reports a terminal failure. Dropped silently once [shutdown] has
   /// started (no `Failed` after `Stopping`).
   @protected
+  // ignore: no_slop_linter/prefer_specific_type, caught failure causes are opaque
   void markFailed(String reason, {required Object? cause}) {
     _cancelPendingDegraded();
     _statusMachine.trySet(PluginFailed(reason: reason, cause: cause));

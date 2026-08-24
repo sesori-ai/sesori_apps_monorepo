@@ -179,7 +179,7 @@ reconnect or option refresh while restoration is pending.
 
 - Bridge: `bridge/app/lib/src/api/sesori_server_api.dart`,
   `bridge/app/lib/src/repositories/session_metadata_repository.dart`,
-  `bridge/app/lib/src/bridge/services/` (session creation, mutation, events,
+  `bridge/app/lib/src/services/` (session creation, mutation, events,
   options, worktree), the create-session and options handlers, and their tests
 - OMP: `bridge/sesori_plugin_omp/lib/src/services/` and package tests
 - Contract:

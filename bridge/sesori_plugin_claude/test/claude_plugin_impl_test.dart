@@ -541,7 +541,7 @@ void main() {
       await harness.plugin.deleteSession(session.id);
 
       expect(process.killed, isTrue);
-      expect(await harness.plugin.getSessions("/tmp/project"), isEmpty);
+      expect(await harness.plugin.getSessions(projectId: "/tmp/project", start: null, limit: null), isEmpty);
       expect(await harness.plugin.getSessionStatuses(), isEmpty);
       await expectLater(
         harness.plugin.deleteSession(session.id),
@@ -563,7 +563,7 @@ void main() {
         ),
       );
 
-      expect(await harness.plugin.getSessions("/tmp/project"), isEmpty);
+      expect(await harness.plugin.getSessions(projectId: "/tmp/project", start: null, limit: null), isEmpty);
       expect(await harness.plugin.getSessionStatuses(), isEmpty);
     });
 

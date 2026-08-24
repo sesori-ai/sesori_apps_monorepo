@@ -65,6 +65,9 @@ final class PiPlugin._({
       identityTracker: identities,
       startupExitTimeout: startupExitTimeout,
       historyRpcTimeout: historyRpcTimeout,
+      // Pi can run model-backed automatic compaction before acknowledging a
+      // prompt, so prompt preflight needs the same generous bound as a turn.
+      promptRpcTimeout: const Duration(minutes: 30),
     );
     final extensionUiService = PiExtensionUiService(
       catalogRepository: catalogRepository,
@@ -130,7 +133,7 @@ final class PiPlugin._({
       _catalogRepository.primeSessionDirectory(sessionId: sessionId, directory: directory);
 
   @override
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) =>
+  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) =>
       _catalogRepository.getSessions(projectId: projectId, start: start, limit: limit);
 
   @override

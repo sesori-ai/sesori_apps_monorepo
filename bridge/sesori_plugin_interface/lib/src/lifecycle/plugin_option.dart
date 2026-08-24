@@ -80,6 +80,7 @@ final class const PluginValueOption({
   /// Built-in [validate] hook requiring an integer value. Delegates to
   /// [PluginConfig.parseIntegerOption] so the parse rule and error message
   /// have a single source of truth.
+  // ignore: no_slop_linter/prefer_required_named_parameters, validator callback signature
   static void validateInteger(String name, String value) {
     PluginConfig.parseIntegerOption(name, value);
   }

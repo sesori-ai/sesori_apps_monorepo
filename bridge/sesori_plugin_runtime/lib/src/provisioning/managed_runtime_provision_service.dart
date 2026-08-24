@@ -42,7 +42,7 @@ class ManagedRuntimeProvisionService({
     );
     _throwIfAborted(host);
     if (pathVersion != null && pathVersion.compareTo(minimum) >= 0) {
-      Log.i("[$id] using PATH $name $pathVersion (>= minimum $minimum)");
+      Log.i("[$id] using PATH $name ${pathVersion.toString()} (>= minimum ${minimum.toString()})");
       yield ProvisionReady(binaryPath: _manifest.pathExecutableName);
       return;
     }
@@ -54,7 +54,7 @@ class ManagedRuntimeProvisionService({
       );
       _throwIfAborted(host);
       if (candidateVersion != null && candidateVersion.compareTo(minimum) >= 0) {
-        Log.i("[$id] using $name $candidateVersion at $candidate (>= minimum $minimum)");
+        Log.i("[$id] using $name ${candidateVersion.toString()} at $candidate (>= minimum ${minimum.toString()})");
         yield ProvisionReady(binaryPath: candidate);
         return;
       }
@@ -70,11 +70,11 @@ class ManagedRuntimeProvisionService({
       if (pathVersion != null) {
         yield ProvisionNotice(
           message:
-              "Installed $name $pathVersion is older than the minimum supported $minimum; "
-              "using the existing managed $name $bundled instead.",
+              "Installed $name ${pathVersion.toString()} is older than the minimum supported ${minimum.toString()}; "
+              "using the existing managed $name ${bundled.toString()} instead.",
         );
       }
-      Log.i("[$id] using existing managed $name $bundled");
+      Log.i("[$id] using existing managed $name ${bundled.toString()}");
       yield ProvisionReady(binaryPath: managedBinaryPath);
       return;
     }

@@ -38,8 +38,8 @@ five open PRs). Steps sharing a package stay serialized: 4 after 3 (both
 - [ ] **D4** `cryptography_flutter` — default remove as unused (never enabled)
 - [ ] **D5** Material→Prego dialog breadth — default only what the footer and
   confirm-sheet consolidation naturally covers
-- [ ] **D6** `no_slop_linter` in bridge — default small packages only, record
-  counts for the rest
+- [x] **D6** `no_slop_linter` in bridge — default applied: enabled in the three
+  small packages, with deferred-package counts recorded in Step 43 evidence
 
 ## Locked Principles
 
@@ -57,7 +57,7 @@ five open PRs). Steps sharing a package stay serialized: 4 after 3 (both
 - [x] Session-detail refresh coordination, dispatcher merging, orchestrator
   splitting, and `ConnectionService`/`RelayClient` lifecycle redesign are out.
 - [x] Architecture-implementation review only for Steps 4, 7, 15, 17, 18, 20,
-  21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 42.
+  21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 36, 37, 42, 43.
 - [x] 1,500 changed-line soft cap; deletion- or generated-heavy overages are
   recorded with the reason.
 

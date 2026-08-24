@@ -436,6 +436,7 @@ PiSessionProcessRepository _repository({
     identityTracker: identityTracker ?? PiMessageIdentityTracker(pluginId: "pi"),
     startupExitTimeout: startupExitTimeout,
     historyRpcTimeout: historyRpcTimeout,
+    promptRpcTimeout: const Duration(minutes: 30),
   );
 }
 

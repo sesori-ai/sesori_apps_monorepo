@@ -242,16 +242,21 @@ class const BridgeRuntimeRunner._() {
       )
       ..addPhase(
         phase: BridgeShutdownPhase.drain,
-        action: () => runtime?.catalogImportService.drain() ?? Future<void>.value(),
-      )
-      ..addPhase(
-        phase: BridgeShutdownPhase.drain,
         action: () => sessionRun ?? Future<void>.value(),
       )
       ..addPhase(
         phase: BridgeShutdownPhase.pluginDispose,
         action: shutdownStartedPlugins,
         budget: _pluginShutdownBudget,
+      )
+      ..addPhase(
+        phase: BridgeShutdownPhase.pluginDispose,
+        // Imports were fenced and asked to cancel in the signal phase, but a
+        // backend call already in flight may only settle when its plugin
+        // transport closes. Start the drain beside plugin shutdown rather than
+        // waiting on it first; the coordinator starts every action in a phase
+        // before awaiting any of them.
+        action: () => runtime?.catalogImportService.drain() ?? Future<void>.value(),
       )
       ..addPhase(
         phase: BridgeShutdownPhase.lifecycle,

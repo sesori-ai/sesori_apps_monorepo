@@ -30,9 +30,9 @@ class RuntimeVersionValidator({
         environment: environment,
         timeout: _probeTimeout,
       );
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
       // Almost always ENOENT (not installed / not on PATH) or a probe timeout.
-      Log.d("[${_manifest.runtimeId}] version probe could not run '$executable --version': $error");
+      Log.w("[${_manifest.runtimeId}] version probe could not run '$executable --version'", error, stackTrace);
       return null;
     }
 

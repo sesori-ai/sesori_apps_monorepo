@@ -97,6 +97,8 @@ import 'package:sesori_dart_core/src/routing/analytics_route_listener.dart'
     as _i888;
 import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
     as _i516;
+import 'package:sesori_dart_core/src/services/catalog_rescan_service.dart'
+    as _i572;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
@@ -462,6 +464,13 @@ extension GetItInjectableX on _i174.GetIt {
         authSession: gh<_i442.AuthSession>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i572.CatalogRescanService>(
+      () => _i572.CatalogRescanService(
+        pluginRepository: gh<_i337.PluginRepository>(),
+        managementService: gh<_i110.PluginManagementService>(),
+        connectionService: gh<_i369.ConnectionService>(),
+      ),
     );
     return this;
   }

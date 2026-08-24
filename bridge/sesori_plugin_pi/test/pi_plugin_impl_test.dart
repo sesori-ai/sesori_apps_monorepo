@@ -29,7 +29,7 @@ void main() {
       );
 
       expect(harness.processes, isEmpty);
-      expect((await harness.plugin.getSessions(harness.project.path)).single.id, session.id);
+      expect((await harness.plugin.getSessions(projectId: harness.project.path, start: null, limit: null)).single.id, session.id);
       expect(await harness.plugin.getSessionMessages(session.id), isEmpty);
 
       final events = <BridgeSseEvent>[];

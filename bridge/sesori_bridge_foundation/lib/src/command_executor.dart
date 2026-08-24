@@ -12,6 +12,7 @@ abstract class CommandExecutor() {
   /// captured result. Implementations must enforce a timeout (killing the child
   /// and throwing) so a hung command can never stall the caller; [timeout],
   /// when provided, overrides the implementation default.
+  // ignore: no_slop_linter/prefer_required_named_parameters, public command-execution API has established positional call sites
   Future<CommandResult> run(
     String executable,
     List<String> arguments, {

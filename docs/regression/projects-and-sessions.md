@@ -165,9 +165,10 @@ navigation, and a non-mobile platform; begin drags inside and just outside each
 
 ## Sources
 
-- Bridge: `bridge/app/lib/src/bridge/repositories/` (project, session, derived
-  session), `bridge/services/project_*`, `services/catalog_import_service.dart`,
-  catalog and session handlers in `bridge/routing/`
+- Bridge: `bridge/app/lib/src/repositories/` (project, session, derived session),
+  `bridge/app/lib/src/services/project_*`,
+  `bridge/app/lib/src/services/catalog_import_service.dart`, and catalog and
+  session handlers in `bridge/app/lib/src/routing/`
 - Contract: `bridge/sesori_plugin_interface/lib/src/bridge_plugin.dart`
 - Pi metadata catalog: `bridge/sesori_plugin_pi/lib/src/api/pi_session_storage_api.dart`,
   `bridge/sesori_plugin_pi/lib/src/repositories/pi_session_catalog_repository.dart`

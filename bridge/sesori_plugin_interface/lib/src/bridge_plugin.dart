@@ -34,7 +34,7 @@ sealed class BridgePluginApi() {
   Stream<BridgeSseEvent> get events;
 
   /// Get sessions for a project directory.
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit});
+  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit});
 
   /// Get the slash commands available to the current project.
   Future<List<PluginCommand>> getCommands({required String? projectId});

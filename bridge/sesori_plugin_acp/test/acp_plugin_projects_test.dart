@@ -520,7 +520,7 @@ void main() {
       // enumeration would (the app lists a project's sessions before opening
       // one), then prompt a session this process never created so a
       // resume-load is forced.
-      final listing = plugin.getSessions(opened);
+      final listing = plugin.getSessions(projectId: opened, start: null, limit: null);
       await respond("session/list", {
         "sessions": [
           {"sessionId": "old-s", "cwd": opened, "title": "Prior"},
@@ -708,7 +708,7 @@ void main() {
       const opened = "/Users/x/kustos";
 
       // The agent itself reported the session's cwd via enumeration…
-      final listing = plugin.getSessions(opened);
+      final listing = plugin.getSessions(projectId: opened, start: null, limit: null);
       await respond("session/list", {
         "sessions": [
           {"sessionId": "old-s", "cwd": opened, "title": "Prior"},

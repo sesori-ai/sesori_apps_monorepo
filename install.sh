@@ -10,13 +10,11 @@ SYMLINK_DIR="${HOME}/.local/bin"
 SYMLINK="${SYMLINK_DIR}/sesori-bridge"
 MANAGED_MANIFEST="${INSTALL_DIR}/.managed-runtime.json"
 GITHUB_REPO="sesori-ai/sesori_apps_monorepo"
-# Base hosts are overridable for GitHub Enterprise or testing (see Bun/uv installers).
-GITHUB="${GITHUB:-https://github.com}"
-GITHUB_API="${GITHUB_API:-https://api.github.com}"
+GITHUB_BASE_URL="https://github.com"
 # Fallback-only knobs: scanning recent releases is a cold path used only when the
 # latest release is missing this platform's asset. Kept small because the release
 # pipeline prunes internal pre-releases to a single rolling object.
-GITHUB_RELEASES_API_URL="${GITHUB_API}/repos/${GITHUB_REPO}/releases"
+GITHUB_RELEASES_API_URL="https://api.github.com/repos/${GITHUB_REPO}/releases"
 GITHUB_RELEASES_PER_PAGE=30
 GITHUB_RELEASES_MAX_PAGES=3
 
@@ -558,7 +556,7 @@ remote_asset_exists() {
 # caller can fall back to a scan of older releases.
 resolve_release_via_latest() {
     local filename="${1}"
-    local latest_base="${GITHUB}/${GITHUB_REPO}/releases/latest/download"
+    local latest_base="${GITHUB_BASE_URL}/${GITHUB_REPO}/releases/latest/download"
 
     local headers
     headers="$(fetch_redirect_headers "${latest_base}/${filename}")" || return 1
@@ -575,8 +573,8 @@ resolve_release_via_latest() {
 
     if [ -n "${version}" ]; then
         RESOLVED_VERSION="${version}"
-        RESOLVED_ARCHIVE_URL="${GITHUB}/${GITHUB_REPO}/releases/download/v${version}/${filename}"
-        RESOLVED_CHECKSUMS_URL="${GITHUB}/${GITHUB_REPO}/releases/download/v${version}/checksums.txt"
+        RESOLVED_ARCHIVE_URL="${GITHUB_BASE_URL}/${GITHUB_REPO}/releases/download/v${version}/${filename}"
+        RESOLVED_CHECKSUMS_URL="${GITHUB_BASE_URL}/${GITHUB_REPO}/releases/download/v${version}/checksums.txt"
     else
         # The asset exists but the version was not parseable from the redirect;
         # download via the always-latest URLs and resolve the version from the
@@ -680,8 +678,8 @@ sys.exit(1)
     }
 
     RESOLVED_VERSION="${tag#v}"
-    RESOLVED_ARCHIVE_URL="${GITHUB}/${GITHUB_REPO}/releases/download/${tag}/${filename}"
-    RESOLVED_CHECKSUMS_URL="${GITHUB}/${GITHUB_REPO}/releases/download/${tag}/checksums.txt"
+    RESOLVED_ARCHIVE_URL="${GITHUB_BASE_URL}/${GITHUB_REPO}/releases/download/${tag}/${filename}"
+    RESOLVED_CHECKSUMS_URL="${GITHUB_BASE_URL}/${GITHUB_REPO}/releases/download/${tag}/checksums.txt"
     return 0
 }
 

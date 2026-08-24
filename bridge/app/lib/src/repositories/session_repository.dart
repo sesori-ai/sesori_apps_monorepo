@@ -765,7 +765,7 @@ class SessionRepository({
             existing ??
             _hiddenProjectPlaceholder(projectId: project.id, path: project.directory);
         if (hydratedProjectIds.contains(hydratedProject.projectId)) continue;
-        final sessions = await plugin.getSessions(project.directory, start: null, limit: null);
+        final sessions = await plugin.getSessions(projectId: project.directory, start: null, limit: null);
         hydratedProjectIds.add(hydratedProject.projectId);
         hydrations.add(
           _ActiveRootHydration(

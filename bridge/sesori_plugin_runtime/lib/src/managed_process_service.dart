@@ -29,9 +29,9 @@ class ManagedProcessService<R>({
   Future<ManagedRuntimeHandle<R>> start({
     required ManagedRuntimeSpec<R> spec,
     required List<ProcessIdentity> terminatedBridgeIdentities,
-    StartAbortSignal? startAborted,
+    required StartAbortSignal startAborted,
   }) async {
-    final abort = startAborted ?? StartAbortSignal.never;
+    final abort = startAborted;
 
     await cleanupStaleOwnedRuntimes(terminatedBridgeIdentities: terminatedBridgeIdentities);
     _throwIfAborted(abort);
@@ -52,9 +52,9 @@ class ManagedProcessService<R>({
   Future<ManagedRuntimeHandle<R>> attach({
     required ManagedRuntimeSpec<R> spec,
     required int port,
-    StartAbortSignal? startAborted,
+    required StartAbortSignal startAborted,
   }) async {
-    final abort = startAborted ?? StartAbortSignal.never;
+    final abort = startAborted;
     _throwIfAborted(abort);
 
     final probe = await _probeTolerant(spec: spec, port: port);
@@ -92,9 +92,9 @@ class ManagedProcessService<R>({
     required int port,
     required Duration portReleaseTimeout,
     required Duration portReleasePollInterval,
-    StartAbortSignal? startAborted,
+    required StartAbortSignal startAborted,
   }) async {
-    final abort = startAborted ?? StartAbortSignal.never;
+    final abort = startAborted;
     _throwIfAborted(abort);
     await _waitForPortRelease(
       spec: spec,
@@ -562,8 +562,8 @@ class ManagedProcessService<R>({
         (_runtimeStartMarkerOf(record: record) == null ||
             process.identity.startMarker == _runtimeStartMarkerOf(record: record)) &&
         _samePath(
-          process.identity.executablePath,
-          _runtimeExecutablePathOf(record: record),
+          actual: process.identity.executablePath,
+          expected: _runtimeExecutablePathOf(record: record),
           platform: process.identity.platform,
         ) &&
         _matchesRuntimeCommandLine(identity: process.identity, record: record);
@@ -613,10 +613,18 @@ class ManagedProcessService<R>({
     }
     if (_runtimeStartMarkerOf(record: record) != null || identity.startMarker != null) {
       return identity.startMarker == _runtimeStartMarkerOf(record: record) &&
-          _samePath(identity.executablePath, _runtimeExecutablePathOf(record: record), platform: identity.platform) &&
+          _samePath(
+            actual: identity.executablePath,
+            expected: _runtimeExecutablePathOf(record: record),
+            platform: identity.platform,
+          ) &&
           _matchesRuntimeCommandLine(identity: identity, record: record);
     }
-    return _samePath(identity.executablePath, _runtimeExecutablePathOf(record: record), platform: identity.platform);
+    return _samePath(
+      actual: identity.executablePath,
+      expected: _runtimeExecutablePathOf(record: record),
+      platform: identity.platform,
+    );
   }
 
   bool _matchesBridgeRecord({required ProcessIdentity identity, required R record}) {
@@ -629,7 +637,7 @@ class ManagedProcessService<R>({
     return true;
   }
 
-  bool _samePath(String? actual, String? expected, {required String platform}) {
+  bool _samePath({required String? actual, required String? expected, required String platform}) {
     if (actual == null || expected == null) {
       return false;
     }

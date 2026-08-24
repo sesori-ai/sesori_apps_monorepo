@@ -55,7 +55,7 @@ class PluginStatusController({required PluginStatus initial}) {
   /// equals the current status.
   void set(PluginStatus next) {
     if (!trySet(next)) {
-      throw StateError("Illegal plugin status transition: $_current -> $next.");
+      throw StateError("Illegal plugin status transition: ${_current.toString()} -> ${next.toString()}.");
     }
   }
 

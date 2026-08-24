@@ -2776,14 +2776,14 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   }
 
   @override
-  Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit}) async {
+  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) async {
     getSessionsCalls++;
-    lastGetSessionsWorktree = worktree;
+    lastGetSessionsWorktree = projectId;
     if (getSessionsFailuresRemaining > 0) {
       getSessionsFailuresRemaining--;
       throw StateError("session collection unavailable");
     }
-    return sessionsByWorktree[worktree] ?? sessionsResult;
+    return sessionsByWorktree[projectId] ?? sessionsResult;
   }
 
   @override
