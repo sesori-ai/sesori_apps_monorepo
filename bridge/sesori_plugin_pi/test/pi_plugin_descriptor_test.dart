@@ -11,12 +11,18 @@ void main() {
   group("PiPluginDescriptor setup", () {
     test("declares Pi capabilities without registering it", () {
       final descriptor = PiPluginDescriptor.production();
+      const config = PluginConfig(values: {PiPluginDescriptor.binOption: null});
 
       expect(descriptor.id, "pi");
       expect(descriptor.displayName, "Pi");
       expect(descriptor.projectOwnership, PluginProjectOwnership.bridgeDerived);
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.project);
       expect(descriptor.supportsPromptAttachments, isTrue);
+      expect(descriptor.residencyPolicy(config: config), PluginResidencyPolicy.resident);
+      expect(
+        descriptor.managementCapabilities(config: config),
+        contains(PluginControlCapability.idleTimeout),
+      );
       expect(descriptor.options.single.name, "bin");
       expect((descriptor.options.single as PluginValueOption).defaultsTo, isNull);
     });
@@ -100,7 +106,14 @@ void main() {
       final descriptor = PiPluginDescriptor.production();
 
       expect(descriptor.managementCapabilities(config: config), isNot(contains(PluginControlCapability.install)));
-      expect(await descriptor.ensureRuntime(host: _Host(processes: _Processes(), config: config)).toList(), isEmpty);
+      expect(
+        await descriptor
+            .ensureRuntime(
+              host: _Host(processes: _Processes(), config: config),
+            )
+            .toList(),
+        isEmpty,
+      );
     });
   });
 
@@ -109,6 +122,7 @@ void main() {
       String? capturedBinaryPath;
       Map<String, String>? capturedStorageEnvironment;
       Map<String, String>? capturedProcessEnvironment;
+      Duration? Function()? capturedIdleTimeoutResolver;
       final descriptor = _descriptor(
         buildPlugin:
             ({
@@ -123,12 +137,13 @@ void main() {
               required historyRpcTimeout,
               required catalogTimeout,
               required healthTimeout,
-              required idleTimeout,
+              required resolveIdleTimeout,
               required editorTimeout,
             }) {
               capturedBinaryPath = binaryPath;
               capturedStorageEnvironment = storageEnvironment;
               capturedProcessEnvironment = processEnvironment;
+              capturedIdleTimeoutResolver = resolveIdleTimeout;
               return _plugin(
                 binaryPath: binaryPath,
                 storageEnvironment: storageEnvironment,
@@ -141,18 +156,22 @@ void main() {
                 historyRpcTimeout: historyRpcTimeout,
                 catalogTimeout: catalogTimeout,
                 healthTimeout: healthTimeout,
-                idleTimeout: idleTimeout,
+                resolveIdleTimeout: resolveIdleTimeout,
                 editorTimeout: editorTimeout,
               );
             },
       );
-      final plugin = await descriptor.start(
-        _Host(processes: _Processes(), provisionedRuntimePath: "/managed/pi"),
+      final host = _Host(
+        processes: _Processes(),
+        provisionedRuntimePath: "/managed/pi",
+        pluginIdleTimeout: const Duration(minutes: 17),
       );
+      final plugin = await descriptor.start(host);
 
       expect(capturedBinaryPath, "/managed/pi");
       expect(capturedStorageEnvironment, containsPair("HOME", "/home/test"));
       expect(capturedProcessEnvironment, isEmpty);
+      expect(capturedIdleTimeoutResolver?.call(), const Duration(minutes: 17));
       expect(plugin.currentStatus, const PluginReady());
       expect(plugin.currentWorkState, PluginWorkState.idle);
 
@@ -178,7 +197,7 @@ void main() {
               required historyRpcTimeout,
               required catalogTimeout,
               required healthTimeout,
-              required idleTimeout,
+              required resolveIdleTimeout,
               required editorTimeout,
             }) {
               built = _plugin(
@@ -193,7 +212,7 @@ void main() {
                 historyRpcTimeout: historyRpcTimeout,
                 catalogTimeout: catalogTimeout,
                 healthTimeout: healthTimeout,
-                idleTimeout: idleTimeout,
+                resolveIdleTimeout: resolveIdleTimeout,
                 editorTimeout: editorTimeout,
               );
               abort.abort();
@@ -251,7 +270,7 @@ PiPlugin _plugin({
   required Duration historyRpcTimeout,
   required Duration catalogTimeout,
   required Duration healthTimeout,
-  required Duration idleTimeout,
+  required Duration? Function() resolveIdleTimeout,
   required Duration editorTimeout,
 }) => PiPlugin(
   binaryPath: binaryPath,
@@ -265,7 +284,7 @@ PiPlugin _plugin({
   historyRpcTimeout: historyRpcTimeout,
   catalogTimeout: catalogTimeout,
   healthTimeout: healthTimeout,
-  idleTimeout: idleTimeout,
+  resolveIdleTimeout: resolveIdleTimeout,
   editorTimeout: editorTimeout,
 );
 
@@ -273,6 +292,7 @@ class _Host({
   @override required final HostProcessService processes,
   @override final PluginConfig config = const PluginConfig(values: {PiPluginDescriptor.binOption: null}),
   @override final String? provisionedRuntimePath,
+  @override final Duration? pluginIdleTimeout = const Duration(minutes: 10),
   StartAbortSignal? startAborted,
 }) implements PluginHost {
   @override

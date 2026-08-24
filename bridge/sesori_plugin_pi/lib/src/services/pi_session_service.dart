@@ -112,7 +112,7 @@ final class PiSessionService({
   required final PiEventDispatcher eventDispatcher,
   required final PiExtensionUiService extensionUiService,
   required final ServerClock clock,
-  required final Duration idleTimeout,
+  required final Duration? Function() resolveIdleTimeout,
 }) {
   this {
     _frameSubscription = _processes.frames.listen(_handleFrame);
@@ -124,7 +124,7 @@ final class PiSessionService({
   final PiEventDispatcher _dispatcher = eventDispatcher;
   final PiExtensionUiService _extensionUi = extensionUiService;
   final ServerClock _clock = clock;
-  final Duration _idleTimeout = idleTimeout;
+  final Duration? Function() _resolveIdleTimeout = resolveIdleTimeout;
   final Map<String, _PiSessionTurnState> _sessions = {};
   final Map<String, String> _pendingNewDirectories = {};
   final Set<Future<void>> _activeIdleReaps = {};
@@ -800,8 +800,10 @@ final class PiSessionService({
 
   void _scheduleIdleReap({required String sessionId, required _PiSessionTurnState state}) {
     final generation = ++state.idleGeneration;
+    final idleTimeout = _resolveIdleTimeout();
+    if (idleTimeout == null) return;
     unawaited(() async {
-      await _clock.delay(duration: _idleTimeout);
+      await _clock.delay(duration: idleTimeout);
       if (_disposed ||
           !identical(_sessions[sessionId], state) ||
           state.active != null ||

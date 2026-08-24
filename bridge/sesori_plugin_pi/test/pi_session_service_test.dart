@@ -1371,6 +1371,55 @@ void main() {
     expect(second.killed, isTrue);
   });
 
+  test("reads the configured idle timeout live at each reap arm", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final clock = _ManualClock();
+    final service = fixture.service(clock: clock);
+    fixture.idleTimeout = null;
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-no-reap",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+
+    expect(clock.delays, isEmpty);
+    clock.elapse();
+    await pump();
+    expect(fixture.repository.residentSessionIds, contains("session"));
+
+    fixture.idleTimeout = const Duration(minutes: 1);
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-reap",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "second")],
+      userVisibleText: "second",
+      variant: null,
+      model: null,
+    );
+    final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+
+    expect(clock.delays, [const Duration(minutes: 1)]);
+    clock.elapse();
+    await pump();
+    expect(process.killed, isTrue);
+  });
+
   test("dispose awaits an active idle-reap teardown", () async {
     final process = FakePiProcess(stdinCloseCompletes: false);
     final fixture = _Fixture(processes: [process]);
@@ -1714,6 +1763,7 @@ final class _Fixture({
   final Duration historyRpcTimeout = const Duration(seconds: 2),
 }) {
   final List<FakePiProcess> _processes = List.of(processes);
+  Duration? idleTimeout = const Duration(minutes: 5);
   late final _Storage storage = storageOverride ?? _Storage(initialResolvedSession: _resolved());
   final List<PiLaunchSpec> spawned = [];
   late final PiMessageIdentityTracker identities = PiMessageIdentityTracker(pluginId: "pi");
@@ -1754,7 +1804,7 @@ final class _Fixture({
       ),
       extensionUiService: extension,
       clock: clock,
-      idleTimeout: const Duration(minutes: 5),
+      resolveIdleTimeout: () => idleTimeout,
     );
     extensions.add(extension);
     _services.add(service);
@@ -1813,9 +1863,13 @@ final class _HistoryStorage({required super.storageApi}) extends PiSessionHistor
 
 final class _ManualClock() implements ServerClock {
   Completer<void>? _delay;
+  final List<Duration> delays = [];
 
   @override
-  Future<void> delay({required Duration duration}) => (_delay = Completer<void>()).future;
+  Future<void> delay({required Duration duration}) {
+    delays.add(duration);
+    return (_delay = Completer<void>()).future;
+  }
 
   void elapse() => _delay?.complete();
 

@@ -390,7 +390,7 @@ final class _Harness({bool stdinCloseCompletes = true}) {
       historyRpcTimeout: const Duration(seconds: 2),
       catalogTimeout: const Duration(seconds: 2),
       healthTimeout: const Duration(seconds: 1),
-      idleTimeout: const Duration(minutes: 5),
+      resolveIdleTimeout: () => const Duration(minutes: 5),
       editorTimeout: const Duration(minutes: 1),
     );
   }
