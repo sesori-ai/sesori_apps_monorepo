@@ -908,41 +908,61 @@ All verified with whole-word grep over lib, bin, and test across the repo.
 
 ### Step 26 — descriptor setup and installation
 
-- `installRuntime` body identical ×5 (`cursor_plugin_descriptor.dart:185-222`,
-  `omp:129-170`, `pi:139-176`, `codex:223-264`, `opencode:287-328`);
-  `_supportsManagedInstall` ×5; version-probe + sealed outcome + "PATH → managed
-  → hint" setup copied per plugin (cursor `:362-411,463-476`, hermes `:218-300`,
-  omp `:236-272,298-309`, pi `:229-262,323`, opencode `:355-448` with six
-  re-probes, codex `codex_runtime_selection_service.dart` 260 lines that
-  re-implement `ManagedRuntimeProvisionService.provision` precedence though it
-  already accepts `fallbackExecutableCandidates`); `HostProcessCommandExecutor(…)`
-  constructed 26 times; `64 * 1024` probe limit ×7; ANSI strip ×3. Root cause:
-  `RuntimeVersionValidator.detectVersion` returns `null` for every failure, so
-  each descriptor re-rolls a probe to tell missing/timeout/non-zero/unrecognized apart.
-- Change (runtime package): sealed `RuntimeProbeOutcome {Ready(version),
-  Missing, TimedOut, NonZeroExit, Unrecognized, Outdated}` from
-  `RuntimeVersionValidator.probe()`; `ManagedRuntimeSelectionService` with
-  constructor `({required RuntimeVersionValidator validator, required
-  RuntimeManifest manifest, required List<String> fallbackExecutableCandidates,
-  required Duration probeTimeout})` — it receives an injected validator and
-  takes no `HostProcessService` or capture-limit parameters (the codex source it
-  generalizes builds executors and a validator from pass-through constructor
-  arguments; that shape is not lifted). It exposes `select()` (explicit bin →
-  PATH → fallback candidates → managed) consumed by
-  `ManagedRuntimeProvisionService.provision()`, and `inspectSetup({required
-  hints, required Future<RuntimeProbeOutcome>? Function() authProbe})` returning
-  a neutral sealed setup result that each descriptor maps to `PluginSetupStatus`
-  through its own hint table. `ManagedRuntimeInstallService.forHost({manifest,
-  processes, versionProbeTimeout, assetResolver})` is a composition seam only;
-  its injected main constructor stays. `RuntimeManifest.supportsManagedInstallOn(
-  PlatformTarget)`; a foundation `stripAnsi()`; one setup-probe executor factory
-  used by descriptors at composition time, never inside the services. Hermes
-  either adds the runtime dependency or keeps its custom `acp --version` probe;
-  Claude stays custom (no manifest). Per-plugin hint/status differences (cursor
-  outdated-without-explicit-bin → `RuntimeMissing`; omp/pi → `Unavailable`) are
-  preserved through the hint table, not flattened.
+- Re-verification found five structurally similar, but not identical,
+  `installRuntime` pipelines (Cursor, OMP, Pi, Codex, OpenCode), five managed
+  install capability checks, and duplicated setup probing/selection across the
+  same descriptors. OMP resolves Linux assets asynchronously from host libc;
+  install executors use different capture policies; and every descriptor owns
+  an `http.Client` whose lifetime spans the install stream. The planned install
+  factory would therefore either leak ownership or flatten real policy. The
+  executor count is now 24 production constructions and `64 * 1024` has broader
+  plugin-specific uses, so neither an executor factory nor a shared probe-limit
+  constant is justified. Cursor, Codex, and Hermes retain byte-identical CSI
+  stripping, while Claude has the existing stronger CSI+OSC variant.
+- Change (runtime package): add sealed mechanical probe outcomes
+  `RuntimeProbeReady(version)`, `RuntimeProbeMissing`, `RuntimeProbeTimedOut`,
+  `RuntimeProbeNonZeroExit`, `RuntimeProbeUnrecognized`, and
+  `RuntimeProbeFailed` from `RuntimeVersionValidator.probe()`. Outdated is not a
+  raw probe outcome because minimum-versus-exact acceptance belongs to runtime
+  selection policy. Add `ManagedRuntimeSelectionService` owning only explicit
+  → PATH → fallback candidates → managed precedence, abort boundaries, selected
+  source/path/version, and minimum-versus-exact managed-version policy. It
+  receives only an injected validator and manifest. Its `select({required
+  String? explicitExecutablePath, required List<String>
+  fallbackExecutableCandidates, required Map<String, String> environment,
+  required String stateDirectory, required StartAbortSignal abortSignal,
+  required ManagedRuntimeVersionPolicy managedVersionPolicy})` accepts neutral,
+  already-parsed candidates: each descriptor trims/interprets its own `--bin`
+  config first, and Codex resolves desktop-app paths before calling it. The
+  result is sealed selected/not-selected data with a neutral source
+  (`explicit`, `path`, `fallback`, `managed`), selected path/version, rejected
+  PATH version when present, and either the mechanical probe failure or rejected
+  version that prevented selection. The service takes no `PluginConfig`,
+  platform locator, process service,
+  capture limit, auth callback, hint strings, or `PluginSetupStatus` vocabulary.
+  `ManagedRuntimeProvisionService` consumes the same selection seam; Codex's
+  duplicate selection service is removed. Descriptors continue mapping neutral
+  selection/probe outcomes to their exact existing setup variants and hints,
+  and keep backend-specific authentication checks.
+- Add `RuntimeManifest.supportsManagedInstallOn({required PlatformTarget
+  target})` with the synchronous `assetFor` default; OMP overrides it with its
+  libc-aware capability rule. Keep install composition local so each descriptor
+  visibly owns asset resolution, output policy, and HTTP client disposal. Add
+  foundation `stripAnsi()` using the existing CSI+OSC behavior and migrate the
+  Cursor, Codex, Hermes, and Claude copies. Hermes remains custom because it
+  probes `hermes acp --version` and interprets backend-specific non-zero output;
+  Claude and DeepSeek remain custom/no-manifest probes. No generic
+  `inspectSetup`, auth callback, hint table, install factory, executor factory,
+  or shared output-limit constant is introduced.
+- Preserve each descriptor's explicit-bin authority, selected runtime version,
+  installability, unknown/outdated/missing classification, auth behavior, and
+  setup hint text. In particular Cursor's managed setup accepts its current
+  minimum-version rule, OMP/Pi/Codex/OpenCode keep exact pinned-managed checks,
+  OpenCode attach mode remains unprobed ready, and abort still throws
+  `PluginStartAbortedException`.
 - Verify: descriptor/setup tests in cursor, omp, pi, codex, opencode, hermes;
-  runtime provisioning tests; `PluginSetupStatus` wire shape unchanged.
+  runtime probe/selection/provisioning tests; foundation ANSI tests and Claude's
+  OSC coverage; `PluginSetupStatus` wire shape unchanged.
 
 ### Step 27 — pending-permission registry base
 

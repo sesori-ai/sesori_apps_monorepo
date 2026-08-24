@@ -248,12 +248,16 @@ class const OpenCodePluginDescriptor({
     };
   }
 
+  String? _explicitBin(PluginConfig config) {
+    final value = config.value(_OpenCodeConfigKey.binary)?.trim();
+    return value == null || value.isEmpty ? null : value;
+  }
+
   /// Whether the pinned managed OpenCode runtime can be installed on request:
   /// no explicit binary override (that binary is authoritative) and a
   /// published release asset for this platform.
   bool _supportsManagedInstall({required PluginConfig config}) {
-    final explicitBin = config.value(_OpenCodeConfigKey.binary)?.trim();
-    if (explicitBin != null && explicitBin.isNotEmpty) return false;
+    if (_explicitBin(config) != null) return false;
     final PlatformTarget target;
     try {
       target = PlatformTarget.current();
@@ -261,7 +265,7 @@ class const OpenCodePluginDescriptor({
       Log.w("[opencode] platform detection failed; managed install unavailable", error, stackTrace);
       return false;
     }
-    return const OpenCodeRuntimeManifest().assetFor(target: target) != null;
+    return const OpenCodeRuntimeManifest().supportsManagedInstallOn(target: target);
   }
 
   @override
@@ -318,33 +322,13 @@ class const OpenCodePluginDescriptor({
       return const PluginSetupReady();
     }
 
-    final explicitBin = config.value(_OpenCodeConfigKey.binary)?.trim();
-    final hasExplicitBin = explicitBin != null && explicitBin.isNotEmpty;
+    final explicitBin = _explicitBin(config);
     const manifest = OpenCodeRuntimeManifest();
-    final executable = hasExplicitBin ? explicitBin : manifest.pathExecutableName;
     final executor = HostProcessCommandExecutor(
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
     );
-    final versionValidator = RuntimeVersionValidator(
-      commandExecutor: executor,
-      manifest: manifest,
-      probeTimeout: _versionProbeTimeout,
-    );
-
-    /// The pinned managed runtime's version when it is already installed and
-    /// matches the bundled pin, or null. Only consulted without an explicit
-    /// binary, which is authoritative when set.
-    Future<String?> managedRuntimeVersion() async {
-      if (hasExplicitBin) return null;
-      final managedVersion = await versionValidator.detectVersion(
-        executable: manifest.managedBinaryPath(stateDirectory: stateDirectory),
-        environment: environment,
-      );
-      if (managedVersion == null || managedVersion.compareTo(manifest.bundledVersion) != 0) return null;
-      return managedVersion.raw;
-    }
 
     /// What to tell the user when no usable runtime was found and Sesori can
     /// install one: a superseded managed install needs updating, anything else
@@ -356,77 +340,50 @@ class const OpenCodePluginDescriptor({
           : "Install OpenCode from Sesori, or install it locally and retry setup detection.";
     }
 
-    final CommandResult result;
-    try {
-      result = await executor.run(
-        executable,
-        const ["--version"],
-        environment: environment,
-        timeout: _versionProbeTimeout,
-      );
-    } on io.ProcessException {
-      final managedVersion = await managedRuntimeVersion();
-      if (managedVersion == null) {
-        return PluginSetupRuntimeMissing(
-          actionHint: hasExplicitBin
-              ? "Fix the configured OpenCode binary path, then restart the bridge."
-              : missingRuntimeHint(),
-        );
-      }
-      return PluginSetupReady.versioned(runtimeVersion: managedVersion);
-    } on TimeoutException {
-      final managedVersion = await managedRuntimeVersion();
-      if (managedVersion == null) {
-        return const PluginSetupUnknown(
+    final selection = await ManagedRuntimeSelectionService(
+      manifest: manifest,
+      versionValidator: RuntimeVersionValidator(
+        commandExecutor: executor,
+        manifest: manifest,
+        probeTimeout: _versionProbeTimeout,
+      ),
+    ).select(
+      explicitExecutablePath: explicitBin,
+      fallbackExecutableCandidates: const [],
+      environment: environment,
+      stateDirectory: stateDirectory,
+      abortSignal: StartAbortSignal.never,
+      managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
+    );
+    if (selection case ManagedRuntimeSelected(:final version)) {
+      return PluginSetupReady.versioned(runtimeVersion: version.raw);
+    }
+    final rejection = (selection as ManagedRuntimeNotSelected).primaryRejection;
+    return switch (rejection) {
+      ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => PluginSetupRuntimeMissing(
+        actionHint: explicitBin == null
+            ? missingRuntimeHint()
+            : "Fix the configured OpenCode binary path, then restart the bridge.",
+      ),
+      ManagedRuntimeVersionRejected() when explicitBin == null => PluginSetupRuntimeMissing(
+        actionHint: missingRuntimeHint(),
+      ),
+      ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
+        actionHint: "The configured OpenCode binary is too old. Update it and restart the bridge.",
+      ),
+      ManagedRuntimeProbeRejected(outcome: RuntimeProbeNonZeroExit()) when explicitBin == null =>
+        PluginSetupRuntimeMissing(actionHint: missingRuntimeHint()),
+      ManagedRuntimeProbeRejected(outcome: RuntimeProbeNonZeroExit() || RuntimeProbeTimedOut()) =>
+        const PluginSetupUnknown(
           actionHint: "OpenCode did not answer its setup check. Verify the local installation and retry.",
-        );
-      }
-      return PluginSetupReady.versioned(runtimeVersion: managedVersion);
-    } on Object {
-      final managedVersion = await managedRuntimeVersion();
-      if (managedVersion == null) {
-        return const PluginSetupUnknown(
-          actionHint: "OpenCode setup could not be determined. Verify the local installation and retry.",
-        );
-      }
-      return PluginSetupReady.versioned(runtimeVersion: managedVersion);
-    }
-
-    if (result.exitCode != 0) {
-      final managedVersion = await managedRuntimeVersion();
-      if (managedVersion == null) {
-        if (!hasExplicitBin) {
-          return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
-        }
-        return const PluginSetupUnknown(
-          actionHint: "OpenCode did not answer its setup check. Verify the local installation and retry.",
-        );
-      }
-      return PluginSetupReady.versioned(runtimeVersion: managedVersion);
-    }
-    final version = versionValidator.parseVersionOutput(output: result.stdout);
-    if (version == null) {
-      final managedVersion = await managedRuntimeVersion();
-      if (managedVersion == null) {
-        return const PluginSetupUnknown(
-          actionHint: "OpenCode returned an unrecognized version. Update OpenCode and retry.",
-        );
-      }
-      return PluginSetupReady.versioned(runtimeVersion: managedVersion);
-    }
-    if (version.compareTo(manifest.minPathVersion) < 0) {
-      final managedVersion = await managedRuntimeVersion();
-      if (managedVersion == null) {
-        if (!hasExplicitBin) {
-          return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
-        }
-        return const PluginSetupUnavailable(
-          actionHint: "The configured OpenCode binary is too old. Update it and restart the bridge.",
-        );
-      }
-      return PluginSetupReady.versioned(runtimeVersion: managedVersion);
-    }
-    return PluginSetupReady.versioned(runtimeVersion: version.raw);
+        ),
+      ManagedRuntimeProbeRejected(outcome: RuntimeProbeUnrecognized()) => const PluginSetupUnknown(
+        actionHint: "OpenCode returned an unrecognized version. Update OpenCode and retry.",
+      ),
+      ManagedRuntimeProbeRejected(outcome: RuntimeProbeFailed()) => const PluginSetupUnknown(
+        actionHint: "OpenCode setup could not be determined. Verify the local installation and retry.",
+      ),
+    };
   }
 
   /// Resolves an existing OpenCode runtime (a recent-enough PATH install or the
@@ -440,18 +397,17 @@ class const OpenCodePluginDescriptor({
     if (config.flag(_OpenCodeConfigKey.noAutoStart)) {
       return;
     }
-    final explicitBin = config.value(_OpenCodeConfigKey.binary)?.trim();
-    if (explicitBin != null && explicitBin.isNotEmpty) {
+    if (_explicitBin(config) != null) {
       return;
     }
 
     final injected = _provisionService;
     if (injected != null) {
-      yield* injected.provision(host: host);
+      yield* injected.provision(host: host, explicitExecutablePath: null);
       return;
     }
 
-    yield* _buildDefaultProvisionService(host: host).provision(host: host);
+    yield* _buildDefaultProvisionService(host: host).provision(host: host, explicitExecutablePath: null);
   }
 
   /// Assembles the production resolver from the host's process service so
@@ -467,10 +423,13 @@ class const OpenCodePluginDescriptor({
     );
     return ManagedRuntimeProvisionService(
       manifest: manifest,
-      versionValidator: RuntimeVersionValidator(
-        commandExecutor: commandExecutor,
+      selectionService: ManagedRuntimeSelectionService(
         manifest: manifest,
-        probeTimeout: _versionProbeTimeout,
+        versionValidator: RuntimeVersionValidator(
+          commandExecutor: commandExecutor,
+          manifest: manifest,
+          probeTimeout: _versionProbeTimeout,
+        ),
       ),
       // OpenCode has no desktop app bundling a CLI.
       fallbackExecutableCandidates: const [],
@@ -561,10 +520,7 @@ class const OpenCodePluginDescriptor({
       // Precedence: an explicit --opencode-bin wins (trusted, no version gate),
       // else the path ensureRuntime resolved (a recent PATH install or the
       // managed download), exposed via the host.
-      final explicitBin = config.value(_OpenCodeConfigKey.binary)?.trim();
-      final resolvedExecutable = (explicitBin != null && explicitBin.isNotEmpty)
-          ? explicitBin
-          : host.provisionedRuntimePath;
+      final resolvedExecutable = _explicitBin(config) ?? host.provisionedRuntimePath;
 
       if (resolvedExecutable == null) {
         // Runtime provisioning failed and no explicit binary was given. Stay

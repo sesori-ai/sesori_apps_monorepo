@@ -1,3 +1,4 @@
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show stripAnsi;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/models/claude_stream_message.dart";
@@ -425,12 +426,9 @@ List<PluginQuestionInfo> _questions({
 
 String _description(Map<String, Object?> request) {
   final values = [request["title"], request["description"], request["decision_reason"]];
-  return values.map(_nonEmptyString).whereType<String>().map(_stripAnsi).firstOrNull ??
+  return values.map(_nonEmptyString).whereType<String>().map((value) => stripAnsi(value: value)).firstOrNull ??
       "Claude Code requested permission.";
 }
-
-String _stripAnsi(String value) =>
-    value.replaceAll(RegExp(r"\x1B(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1B\\))"), "");
 
 String? _nonEmptyString(Object? value) => value is String && value.isNotEmpty ? value : null;
 
