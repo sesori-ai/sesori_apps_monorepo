@@ -40,7 +40,7 @@ class DeepSeekPlugin({
   @override
   String? sessionParentId(AcpSessionInfo info) {
     final value = _sessionMetadata(info)?["parentSessionId"];
-    return value is String ? value : null;
+    return value is String && value.trim().isNotEmpty ? value : null;
   }
 
   @override
