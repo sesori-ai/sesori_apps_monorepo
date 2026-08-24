@@ -1,3 +1,5 @@
+import "dart:io";
+
 import "package:acp_plugin/acp_plugin.dart";
 import "package:deepseek_plugin/deepseek_plugin.dart";
 import "package:deepseek_plugin/deepseek_testing.dart";
@@ -23,7 +25,7 @@ void main() {
     );
     expect(spec.environment, {"TOKEN": "secret", "DSH_TELEMETRY_MODE": "off"});
   });
-  test("event mapper surfaces representable DeepSeek statuses", () {
+  test("event mapper surfaces representable DeepSeek statuses", () async {
     final mapper = DeepSeekEventMapper(
       launchDirectory: "/project",
       pluginId: DeepSeekIdentity.id,
@@ -37,7 +39,10 @@ void main() {
       ),
     );
     expect(map({"kind": "compaction_completed"}), [isA<BridgeSseSessionCompacted>()]);
-    expect(map({"kind": "warning", "message": "DeepSeek compaction failed"}), [isA<BridgeSseSessionError>()]);
+    final logs = await _captureWarnings(() async {
+      expect(map({"kind": "warning", "message": "DeepSeek compaction failed"}), [isA<BridgeSseSessionError>()]);
+    });
+    expect(logs, contains("DeepSeek compaction failed"));
     expect(map({"kind": "compaction_started"}), isEmpty);
     expect(map({"kind": "retry", "attempt": 1, "limit": 3}), isEmpty);
     expect(map({"kind": "future_status"}), isEmpty);
@@ -65,4 +70,28 @@ void main() {
     expect(events.whereType<BridgeSseMessageUpdated>(), hasLength(1));
     expect(events.whereType<BridgeSseMessagePartDelta>().single.delta, "hello");
   });
+}
+
+Future<String> _captureWarnings(Future<void> Function() action) async {
+  final previousLevel = Log.level;
+  final stderr = _BufferingStdout();
+  try {
+    Log.level = LogLevel.warning;
+    await IOOverrides.runZoned(action, stderr: () => stderr);
+  } finally {
+    Log.level = previousLevel;
+  }
+  return stderr.text;
+}
+
+final class _BufferingStdout() implements Stdout {
+  final StringBuffer _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
+  @override
+  void writeln([Object? object = ""]) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }

@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
@@ -81,11 +82,13 @@ void main() {
             "options": ["Yes", "No"],
             "multiSelect": true,
           },
-          {"id": "q-free", "text": "Why?"},
+          {"id": "q-free", "text": "Why?", "detail": "Explain the tradeoff."},
         ],
       }),
     );
-    expect((events.single as BridgeSseQuestionAsked).questions.first.custom, isTrue);
+    final questions = (events.single as BridgeSseQuestionAsked).questions;
+    expect(questions.first.custom, isTrue);
+    expect(questions.last.question, "Why?\n\nExplain the tradeoff.");
     expect(
       registry.replyQuestion("request-1", const [
         ["Yes", "With safeguards"],
@@ -209,13 +212,16 @@ void main() {
     final question = (events.single as BridgeSseQuestionAsked).questions.single;
     expect([question.multiple, question.custom], [false, false]);
 
-    expect(
-      registry.replyQuestion("request-1", const [
-        ["Change it"],
-      ]),
-      isTrue,
-    );
+    final logs = await _captureWarnings(() async {
+      expect(
+        registry.replyQuestion("request-1", const [
+          ["Change it"],
+        ]),
+        isTrue,
+      );
+    });
     await Future<void>.delayed(Duration.zero);
+    expect(logs, contains("DeepSeek plan-review questions do not accept custom answers"));
     expect(fake.written.single["error"], {"code": -32603, "message": "invalid answer"});
     expect(
       registry.replyQuestion("request-1", const [
@@ -238,13 +244,16 @@ void main() {
         ],
       }),
     );
-    expect(
-      registry.replyQuestion("request-1", const [
-        ["A", "A"],
-      ]),
-      isTrue,
-    );
+    final logs = await _captureWarnings(() async {
+      expect(
+        registry.replyQuestion("request-1", const [
+          ["A", "A"],
+        ]),
+        isTrue,
+      );
+    });
     await Future<void>.delayed(Duration.zero);
+    expect(logs, contains("DeepSeek question answers must not contain duplicates"));
     expect(fake.written.single["error"], {"code": -32603, "message": "invalid answer"});
     expect(registry.hasAnyPendingInput, isFalse);
   });
@@ -310,4 +319,28 @@ void main() {
     expect(events.last, isA<BridgeSseQuestionRejected>());
     expect(registry.hasAnyPendingInput, isFalse);
   });
+}
+
+Future<String> _captureWarnings(Future<void> Function() action) async {
+  final previousLevel = Log.level;
+  final stderr = _BufferingStdout();
+  try {
+    Log.level = LogLevel.warning;
+    await IOOverrides.runZoned(action, stderr: () => stderr);
+  } finally {
+    Log.level = previousLevel;
+  }
+  return stderr.text;
+}
+
+final class _BufferingStdout() implements Stdout {
+  final StringBuffer _buffer = StringBuffer();
+
+  String get text => _buffer.toString();
+
+  @override
+  void writeln([Object? object = ""]) => _buffer.writeln(object);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }
