@@ -18,7 +18,11 @@ class const SubtaskPartWidget({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
-    final description = part.description ?? part.prompt ?? loc.sessionDetailSubtaskUnnamed;
+    final description = part.description.isNotEmpty
+        ? part.description
+        : part.prompt.isNotEmpty
+        ? part.prompt
+        : loc.sessionDetailSubtaskUnnamed;
     final agent = part.agent;
 
     // Find the matching child session for this subtask.
@@ -67,7 +71,7 @@ class const SubtaskPartWidget({
                         maxLines: 2,
                         overflow: .ellipsis,
                       ),
-                      if (agent != null)
+                      if (agent.isNotEmpty)
                         Text(
                           agent,
                           style: prego.textTheme.textXs.regular.copyWith(
@@ -120,7 +124,11 @@ class const SubtaskPartWidget({
     // If there's only one child, it's likely the one.
     if (children.length == 1) return children.first;
 
-    final desc = part.description ?? part.prompt;
+    final desc = part.description.isNotEmpty
+        ? part.description
+        : part.prompt.isNotEmpty
+        ? part.prompt
+        : null;
     if (desc == null) return null;
 
     // 1. Exact match.

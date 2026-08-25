@@ -61,7 +61,7 @@ SessionDetailState _loadedState({
 MessageWithParts _messageWithPart({
   String messageId = "msg-1",
   String partId = "part-1",
-  String? text,
+  String text = "",
 }) {
   return MessageWithParts(
     info: Message.assistant(

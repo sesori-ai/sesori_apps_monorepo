@@ -80,7 +80,7 @@ void main() {
           .having((image) => image.byteLength, "byteLength", fileBytes.length),
     );
     expect((page.messages.single.parts[1] as MessagePartFile).attachment, isA<MessageAttachmentRemoteUrl>());
-    final toolAttachments = (page.messages.single.parts[2] as MessagePartTool).state!.attachments;
+    final toolAttachments = (page.messages.single.parts[2] as MessagePartTool).state.attachments;
     expect(toolAttachments[0], isA<MessageAttachmentMetadata>());
     expect(
       toolAttachments[1],
@@ -137,7 +137,7 @@ void main() {
     );
 
     expect((page.messages.single.parts[0] as MessagePartFile).attachment, isA<MessageAttachmentInlineImage>());
-    final toolAttachments = (page.messages.single.parts[1] as MessagePartTool).state!.attachments;
+    final toolAttachments = (page.messages.single.parts[1] as MessagePartTool).state.attachments;
     expect(
       toolAttachments[0],
       isA<MessageAttachmentMetadata>().having((metadata) => metadata.filename, "filename", "second.png"),
@@ -336,7 +336,12 @@ MessagePart _part({
   MessageAttachment? attachment,
   ToolState? state,
 }) => state == null
-    ? MessagePart.file(id: id, sessionID: "ses_a", messageID: messageId, attachment: attachment)
+    ? MessagePart.file(
+        id: id,
+        sessionID: "ses_a",
+        messageID: messageId,
+        attachment: attachment ?? const MessageAttachment.unknown(),
+      )
     : MessagePart.tool(id: id, sessionID: "ses_a", messageID: messageId, tool: "tool", state: state);
 
 class const _BridgeIdProvider(@override final String? bridgeId) implements BridgeIdProvider;

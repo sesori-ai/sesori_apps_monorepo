@@ -13,8 +13,11 @@ signal that a tool changed files.
   completed, error, plus a forward-compatible unknown), title, output, error.
 - Plugin and shared message parts are sealed variants, so text, tool, subtask,
   file, agent, and retry data cannot be combined with unrelated part types. The
-  shared variants retain the released `type` values and still decode known
-  payloads whose variant-specific fields were omitted by an older bridge.
+  shared variants retain the released `type` values and normalize known payloads
+  whose variant-specific fields were omitted by an older bridge into temporary,
+  non-null compatibility defaults: empty text/name details, retry attempt zero,
+  an unknown file attachment, and pending tool state. Current peers serialize
+  those non-null values.
 - Tool output is bounded to the shared limit and truncated by runes, so a
   character is never split; the rule is identical live and on replay.
 - Backend vocabulary stays in the owning plugin. Attachments use client-safe
@@ -53,7 +56,8 @@ multi-byte, and empty output; compare live with a later reload.
 - Backend naming or payload shape reaches the client unnormalized, or a local
   path or unsafe URL crosses the attachment contract.
 - A part carries fields owned by another variant, or a released known-type
-  payload fails to decode because an older bridge omitted variant data.
+  payload fails to decode because an older bridge omitted variant data, or a
+  current peer serializes null variant data.
 - The file-change signal is missing after a real mutation, emitted for a
   read-only tool, emitted repeatedly for one call, or wrongly attributed.
 

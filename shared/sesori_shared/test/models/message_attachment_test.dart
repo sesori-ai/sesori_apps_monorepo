@@ -38,7 +38,7 @@ void main() {
       });
 
       expect(part, isA<MessagePartFile>());
-      expect((part as MessagePartFile).attachment, isNull);
+      expect((part as MessagePartFile).attachment, isA<MessageAttachmentUnknown>());
       expect(
         state.attachments,
         equals([const MessageAttachment.metadata(mime: "image/png", filename: "valid.png")]),
@@ -59,29 +59,24 @@ void main() {
   group("message part compatibility", () {
     const common = {"id": "part-1", "sessionID": "session-1", "messageID": "message-1"};
     const variants = <String, MessagePart>{
-      "text": MessagePart.text(id: "part-1", sessionID: "session-1", messageID: "message-1", text: null),
-      "reasoning": MessagePart.reasoning(id: "part-1", sessionID: "session-1", messageID: "message-1", text: null),
-      "tool": MessagePart.tool(id: "part-1", sessionID: "session-1", messageID: "message-1", tool: null, state: null),
+      "text": MessagePart.text(id: "part-1", sessionID: "session-1", messageID: "message-1"),
+      "reasoning": MessagePart.reasoning(id: "part-1", sessionID: "session-1", messageID: "message-1"),
+      "tool": MessagePart.tool(id: "part-1", sessionID: "session-1", messageID: "message-1"),
       "subtask": MessagePart.subtask(
         id: "part-1",
         sessionID: "session-1",
         messageID: "message-1",
-        prompt: null,
-        description: null,
-        agent: null,
       ),
       "step-start": MessagePart.stepStart(id: "part-1", sessionID: "session-1", messageID: "message-1"),
       "step-finish": MessagePart.stepFinish(id: "part-1", sessionID: "session-1", messageID: "message-1"),
-      "file": MessagePart.file(id: "part-1", sessionID: "session-1", messageID: "message-1", attachment: null),
+      "file": MessagePart.file(id: "part-1", sessionID: "session-1", messageID: "message-1"),
       "snapshot": MessagePart.snapshot(id: "part-1", sessionID: "session-1", messageID: "message-1"),
       "patch": MessagePart.patch(id: "part-1", sessionID: "session-1", messageID: "message-1"),
-      "agent": MessagePart.agent(id: "part-1", sessionID: "session-1", messageID: "message-1", agentName: null),
+      "agent": MessagePart.agent(id: "part-1", sessionID: "session-1", messageID: "message-1"),
       "retry": MessagePart.retry(
         id: "part-1",
         sessionID: "session-1",
         messageID: "message-1",
-        attempt: null,
-        retryError: null,
       ),
       "compaction": MessagePart.compaction(id: "part-1", sessionID: "session-1", messageID: "message-1"),
     };
@@ -89,9 +84,13 @@ void main() {
     for (final MapEntry(key: type, value: expected) in variants.entries) {
       test("decodes a legacy $type payload with omitted variant fields", () {
         final json = {...common, "type": type};
+        final decoded = MessagePart.fromJson(json);
+        final encoded = decoded.toJson();
 
-        expect(MessagePart.fromJson(json), expected);
-        expect(expected.toJson(), json);
+        expect(decoded, expected);
+        expect(encoded["type"], type);
+        expect(encoded.values, everyElement(isNotNull));
+        expect(MessagePart.fromJson(encoded), expected);
       });
     }
 

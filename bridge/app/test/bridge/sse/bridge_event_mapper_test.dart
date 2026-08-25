@@ -276,8 +276,8 @@ void main() {
       expect(result, isA<SesoriMessagePartUpdated>());
       final event = result! as SesoriMessagePartUpdated;
       final state = (event.part as MessagePartTool).state;
-      expect(state?.output?.length, lessThanOrEqualTo(500));
-      expect(state?.output?.length, equals(500));
+      expect(state.output?.length, lessThanOrEqualTo(500));
+      expect(state.output?.length, equals(500));
     });
 
     test("passes through text message parts", () async {
@@ -314,7 +314,7 @@ void main() {
 
       expect(result, isA<SesoriMessagePartUpdated>());
       final event = result! as SesoriMessagePartUpdated;
-      expect((event.part as MessagePartTool).state?.output, equals("short"));
+      expect((event.part as MessagePartTool).state.output, equals("short"));
     });
 
     test("map() drops BridgeSseProjectUpdated (the orchestrator builds the summary)", () {

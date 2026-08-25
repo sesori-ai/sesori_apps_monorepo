@@ -83,12 +83,12 @@ class const AssistantMessageCard({
     return switch (part) {
       MessagePartText(:final text) => TextPartWidget(
         key: ValueKey(part.id),
-        text: streaming ?? text ?? "",
+        text: streaming ?? text,
         isStreaming: streaming != null,
       ),
       MessagePartReasoning(:final text) => ReasoningPartCard(
         key: ValueKey(part.id),
-        text: streaming ?? text ?? "",
+        text: streaming ?? text,
         isStreaming: streaming != null,
         partId: part.id,
         messageId: message.info.id,

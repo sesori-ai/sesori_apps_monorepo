@@ -54,7 +54,7 @@ final class const _MalformedMessageAttachmentError({required final Object innerE
 }
 
 // ignore: no_slop_linter/prefer_specific_type, JSON converter input
-MessageAttachment? _messageAttachmentFromJson(Object? json) {
+MessageAttachment? _messageAttachmentOrNullFromJson(Object? json) {
   if (json == null) return null;
   if (json is! Map) {
     developer.log("Ignoring malformed message attachment payload", name: "sesori_shared");
@@ -75,6 +75,10 @@ MessageAttachment? _messageAttachmentFromJson(Object? json) {
 }
 
 // ignore: no_slop_linter/prefer_specific_type, JSON converter input
+MessageAttachment _messageAttachmentFromJson(Object? json) =>
+    _messageAttachmentOrNullFromJson(json) ?? const MessageAttachment.unknown();
+
+// ignore: no_slop_linter/prefer_specific_type, JSON converter input
 List<MessageAttachment> _messageAttachmentsFromJson(Object? json) {
   if (json == null) return const [];
   if (json is! List) {
@@ -82,7 +86,7 @@ List<MessageAttachment> _messageAttachmentsFromJson(Object? json) {
     return const [];
   }
   return [
-    for (final item in json) ?_messageAttachmentFromJson(item),
+    for (final item in json) ?_messageAttachmentOrNullFromJson(item),
   ];
 }
 
@@ -97,8 +101,8 @@ sealed class const MessagePart._() with _$MessagePart {
     required String sessionID,
     required String messageID,
     // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit text.
-    // Remove nullability when the minimum supported bridge always sends it.
-    required String? text,
+    // Remove @Default and require text when the minimum supported bridge always sends it.
+    @Default("") String text,
   }) = MessagePartText;
 
   @FreezedUnionValue("reasoning")
@@ -107,8 +111,8 @@ sealed class const MessagePart._() with _$MessagePart {
     required String sessionID,
     required String messageID,
     // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit text.
-    // Remove nullability when the minimum supported bridge always sends it.
-    required String? text,
+    // Remove @Default and require text when the minimum supported bridge always sends it.
+    @Default("") String text,
   }) = MessagePartReasoning;
 
   @FreezedUnionValue("tool")
@@ -117,11 +121,19 @@ sealed class const MessagePart._() with _$MessagePart {
     required String sessionID,
     required String messageID,
     // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the tool name.
-    // Remove nullability when the minimum supported bridge always sends it.
-    required String? tool,
+    // Remove @Default and require tool when the minimum supported bridge always sends it.
+    @Default("") String tool,
     // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit tool state.
-    // Remove nullability when the minimum supported bridge always sends it.
-    required ToolState? state,
+    // Remove @Default and require state when the minimum supported bridge always sends it.
+    @Default(
+      ToolState(
+        status: ToolStatus.pending,
+        title: null,
+        output: null,
+        error: null,
+      ),
+    )
+    ToolState state,
   }) = MessagePartTool;
 
   @FreezedUnionValue("subtask")
@@ -130,14 +142,14 @@ sealed class const MessagePart._() with _$MessagePart {
     required String sessionID,
     required String messageID,
     // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the subtask prompt.
-    // Remove nullability when the minimum supported bridge always sends it.
-    required String? prompt,
+    // Remove @Default and require prompt when the minimum supported bridge always sends it.
+    @Default("") String prompt,
     // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the subtask description.
-    // Remove nullability when the minimum supported bridge always sends it.
-    required String? description,
+    // Remove @Default and require description when the minimum supported bridge always sends it.
+    @Default("") String description,
     // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the subtask agent.
-    // Remove nullability when the minimum supported bridge always sends it.
-    required String? agent,
+    // Remove @Default and require agent when the minimum supported bridge always sends it.
+    @Default("") String agent,
   }) = MessagePartSubtask;
 
   @FreezedUnionValue("step-start")
@@ -154,8 +166,10 @@ sealed class const MessagePart._() with _$MessagePart {
     required String sessionID,
     required String messageID,
     // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the attachment.
-    // Remove nullability when the minimum supported bridge always sends it.
-    @JsonKey(fromJson: _messageAttachmentFromJson) required MessageAttachment? attachment,
+    // Remove @Default and require attachment when the minimum supported bridge always sends it.
+    @JsonKey(fromJson: _messageAttachmentFromJson)
+    @Default(MessageAttachment.unknown())
+    MessageAttachment attachment,
   }) = MessagePartFile;
 
   @FreezedUnionValue("snapshot")
@@ -171,8 +185,8 @@ sealed class const MessagePart._() with _$MessagePart {
     required String sessionID,
     required String messageID,
     // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the agent name.
-    // Remove nullability when the minimum supported bridge always sends it.
-    required String? agentName,
+    // Remove @Default and require agentName when the minimum supported bridge always sends it.
+    @Default("") String agentName,
   }) = MessagePartAgent;
 
   @FreezedUnionValue("retry")
@@ -181,11 +195,11 @@ sealed class const MessagePart._() with _$MessagePart {
     required String sessionID,
     required String messageID,
     // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the retry attempt.
-    // Remove nullability when the minimum supported bridge always sends it.
-    required int? attempt,
+    // Remove @Default and require attempt when the minimum supported bridge always sends it.
+    @Default(0) int attempt,
     // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the retry error.
-    // Remove nullability when the minimum supported bridge always sends it.
-    required String? retryError,
+    // Remove @Default and require retryError when the minimum supported bridge always sends it.
+    @Default("") String retryError,
   }) = MessagePartRetry;
 
   @FreezedUnionValue("compaction")

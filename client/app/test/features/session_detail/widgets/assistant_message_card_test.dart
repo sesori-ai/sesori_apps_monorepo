@@ -96,7 +96,6 @@ MessagePartTool _toolPart({required String id, required String toolName}) {
     sessionID: "session-1",
     messageID: "assistant-1",
     tool: toolName,
-    state: null,
   );
   if (part case final MessagePartTool toolPart) return toolPart;
   throw StateError("MessagePart.tool returned a non-tool variant");
@@ -199,6 +198,28 @@ void main() {
 
     final markdownBodies = tester.widgetList<MarkdownBody>(find.byType(MarkdownBody)).toList();
     expect(markdownBodies.map((widget) => widget.data), ['Before tool', 'After tool']);
+  });
+
+  testWidgets("renders compatibility defaults with meaningful labels", (tester) async {
+    await tester.pumpWidget(
+      _AssistantMessageCardHarness(
+        message: _assistantMessage(
+          parts: const [
+            MessagePart.tool(id: "tool", sessionID: "session-1", messageID: "assistant-1"),
+            MessagePart.subtask(id: "subtask", sessionID: "session-1", messageID: "assistant-1"),
+            MessagePart.agent(id: "agent", sessionID: "session-1", messageID: "assistant-1"),
+            MessagePart.retry(id: "retry", sessionID: "session-1", messageID: "assistant-1"),
+          ],
+        ),
+        streamingText: const {},
+      ),
+    );
+
+    expect(find.text("Tool"), findsOneWidget);
+    expect(find.text("Pending"), findsOneWidget);
+    expect(find.text("Background task"), findsOneWidget);
+    expect(find.text("Agent"), findsOneWidget);
+    expect(find.text("Retry"), findsOneWidget);
   });
 
   testWidgets("renders an active compaction tool as running", (tester) async {

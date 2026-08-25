@@ -52,7 +52,8 @@ five open PRs). Steps sharing a package stay serialized: 4 after 3 (both
 - [x] Every step re-verifies its evidence against current `main` before editing
   and records the delta in its own `steps/step-NN.md` — never in this file, so
   parallel steps cannot conflict.
-- [x] No wire-contract or compatibility removal outside Step 42 and D1.
+- [x] No compatibility removal outside Step 42 and D1. Step 28's additive
+  non-null message-part defaults are the only other wire-contract change.
 - [x] No database schema change anywhere in the series.
 - [x] Session-detail refresh coordination, dispatcher merging, orchestrator
   splitting, and `ConnectionService`/`RelayClient` lifecycle redesign are out.

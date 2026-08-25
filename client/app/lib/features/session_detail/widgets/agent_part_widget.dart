@@ -3,12 +3,12 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 
-class const AgentPartWidget({super.key, required final String? agentName}) extends StatelessWidget {
+class const AgentPartWidget({super.key, required final String agentName}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
-    final label = agentName ?? loc.sessionDetailAgentFallback;
+    final label = agentName.isEmpty ? loc.sessionDetailAgentFallback : agentName;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),

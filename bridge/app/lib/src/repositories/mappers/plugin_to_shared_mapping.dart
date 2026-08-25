@@ -91,7 +91,7 @@ extension PluginMessagePartMapping on PluginMessagePart {
       id: id,
       sessionID: sessionId,
       messageID: messageID,
-      tool: tool,
+      tool: tool ?? "",
       state: state.toShared(),
     ),
     PluginMessagePartSubtask(:final id, :final messageID, :final prompt, :final description, :final agent) =>

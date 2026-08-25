@@ -11,7 +11,7 @@ import "text_part_widget.dart" show MarkdownMessageImage;
 class const UserMessageCard({super.key, required final MessageWithParts message}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final text = message.parts.whereType<MessagePartText>().map((part) => part.text ?? "").join("\n");
+    final text = message.parts.whereType<MessagePartText>().map((part) => part.text).join("\n");
     final attachments = message.parts
         .whereType<MessagePartFile>()
         .map((part) => part.attachment)

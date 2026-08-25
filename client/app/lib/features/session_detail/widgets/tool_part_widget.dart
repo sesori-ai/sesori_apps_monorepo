@@ -14,10 +14,10 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
     final prego = context.prego;
     final loc = context.loc;
     final state = part.state;
-    final toolName = part.state?.title ?? part.tool ?? loc.sessionDetailToolUnknown;
-    final status = state?.status ?? ToolStatus.pending;
-    final output = status == ToolStatus.completed ? state?.output : null;
-    final errorText = status == ToolStatus.error ? state?.error : null;
+    final toolName = state.title ?? (part.tool.isEmpty ? loc.sessionDetailToolUnknown : part.tool);
+    final status = state.status;
+    final output = status == ToolStatus.completed ? state.output : null;
+    final errorText = status == ToolStatus.error ? state.error : null;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -72,7 +72,7 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
                   overflow: .ellipsis,
                 ),
               ),
-            if (state != null && state.attachments.isNotEmpty)
+            if (state.attachments.isNotEmpty)
               Padding(
                 padding: EdgeInsetsDirectional.fromSTEB(
                   prego.spacing.lg,
