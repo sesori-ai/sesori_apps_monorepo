@@ -109,6 +109,20 @@ void main() {
       expect(find.text("No new sessions"), findsOneWidget);
     });
 
+    // The sessions clause is dropped rather than joined at zero, so the line
+    // stays a noun phrase instead of reading "No new sessions in 2 new projects".
+    testWidgets("leads with projects when a scan turned up no new session", (tester) async {
+      await pumpRow(
+        tester,
+        const CatalogRescanState.succeeded(
+          harnessCount: 1,
+          counts: CatalogRescanCounts.delta(newProjects: 2, newSessions: 0),
+        ),
+      );
+
+      expect(find.text("2 new projects"), findsOneWidget);
+    });
+
     // A harness that omitted its delta makes the whole row fall back, so the
     // wording must not imply any of the counted items is new.
     testWidgets("reports published totals as totals when no delta is available", (tester) async {
@@ -146,6 +160,37 @@ void main() {
       final loc = await AppLocalizations.delegate.load(const Locale("en"));
       expect(find.text(loc.catalogScanUnsupportedTitle), findsOneWidget);
       expect(find.text(loc.catalogScanUnsupportedDetail), findsOneWidget);
+    });
+
+    testWidgets("says there is nothing to scan when no harness is ready", (tester) async {
+      await pumpRow(tester, const CatalogRescanState.noHarness());
+
+      final loc = await AppLocalizations.delegate.load(const Locale("en"));
+      expect(find.text(loc.catalogScanNoHarnessTitle), findsOneWidget);
+      expect(find.text(loc.catalogScanNoHarnessDetail), findsOneWidget);
+    });
+
+    // The running row's session count changes with every enumerated session, so
+    // announcing it would interrupt a screen reader throughout a long scan.
+    testWidgets("announces every state except the one whose count keeps moving", (tester) async {
+      Future<bool?> announcesFor(CatalogRescanState scan) async {
+        await pumpRow(tester, scan);
+        return tester
+            .widget<Semantics>(
+              find.descendant(of: find.byType(CatalogScanRow), matching: find.byType(Semantics)).first,
+            )
+            .properties
+            .liveRegion;
+      }
+
+      expect(await announcesFor(const CatalogRescanState.starting(pluginIds: {"codex"})), isTrue);
+      expect(await announcesFor(const CatalogRescanState.failed(harnessCount: 1)), isTrue);
+      expect(
+        await announcesFor(
+          const CatalogRescanState.running(activePluginName: "Codex", sessionsSeen: 9, pluginIds: {"codex"}),
+        ),
+        isFalse,
+      );
     });
 
     testWidgets("dismisses a finished scan without cancelling anything", (tester) async {

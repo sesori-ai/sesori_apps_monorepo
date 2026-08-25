@@ -3307,10 +3307,16 @@ abstract class AppLocalizations {
   /// **'Scan complete'**
   String get catalogScanCompleteTitle;
 
-  /// Sessions clause of a finished scan's result, counting only sessions the scan had not imported before.
+  /// Whole result line of a finished scan that turned up neither a new session nor a new project. A standalone sentence, unlike the count clauses, which are noun phrases meant to be joined.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =0{No new sessions} =1{1 new session} other{{count} new sessions}}'**
+  /// **'No new sessions'**
+  String get catalogScanNothingNew;
+
+  /// Sessions clause of a finished scan's result, counting only sessions the scan had not imported before. Never rendered for a count of zero; that clause is dropped so the line reads as a noun phrase either way.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 new session} other{{count} new sessions}}'**
   String catalogScanNewSessionCount(int count);
 
   /// Projects clause of a finished scan's result, counting only projects the scan had not imported before.
@@ -3372,6 +3378,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Update the bridge to scan from here'**
   String get catalogScanUnsupportedDetail;
+
+  /// Title of the scan row when no harness could be scanned: none is connected and ready, or the bridge has not reported its harnesses yet.
+  ///
+  /// In en, this message translates to:
+  /// **'No harness to scan'**
+  String get catalogScanNoHarnessTitle;
+
+  /// Supporting line on the no-harness scan row, naming where the user can see and fix their harness setup.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your harnesses in Settings'**
+  String get catalogScanNoHarnessDetail;
 
   /// Action on a finished scan row that clears it once the user has read the result.
   ///

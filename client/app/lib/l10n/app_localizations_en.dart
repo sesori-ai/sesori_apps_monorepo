@@ -1770,13 +1770,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catalogScanCompleteTitle => 'Scan complete';
 
   @override
+  String get catalogScanNothingNew => 'No new sessions';
+
+  @override
   String catalogScanNewSessionCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
       other: '$count new sessions',
       one: '1 new session',
-      zero: 'No new sessions',
     );
     return '$_temp0';
   }
@@ -1838,6 +1840,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get catalogScanUnsupportedDetail => 'Update the bridge to scan from here';
+
+  @override
+  String get catalogScanNoHarnessTitle => 'No harness to scan';
+
+  @override
+  String get catalogScanNoHarnessDetail => 'Check your harnesses in Settings';
 
   @override
   String get catalogScanDismiss => 'Dismiss';

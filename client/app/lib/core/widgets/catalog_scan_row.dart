@@ -54,10 +54,12 @@ class const CatalogScanRow({
       ),
       // Announced when it appears without moving focus, the same treatment the
       // connection banner uses: a scan started by a pull finishes with no other
-      // signal that it is done.
+      // signal that it is done. Every state announces except the running one,
+      // whose session count changes with each enumerated session and would
+      // otherwise interrupt a screen reader hundreds of times during one scan.
       child: Semantics(
         container: true,
-        liveRegion: true,
+        liveRegion: _scan is! CatalogRescanRunning,
         child: PregoInlineAlertsNotifications(
           type: content.type,
           title: content.title,
@@ -139,28 +141,41 @@ class const CatalogScanRow({
       actionLabel: loc.catalogScanDismiss,
       onAction: _onDismiss,
     ),
+    // Nothing was ever asked of the bridge, so the row says what is missing
+    // instead of leaving the pull that started it with no answer.
+    CatalogRescanNoHarness() => (
+      type: PregoInlineAlertsNotificationsType.warning,
+      title: loc.catalogScanNoHarnessTitle,
+      detail: loc.catalogScanNoHarnessDetail,
+      icon: TablerRegular.plug_connected_x,
+      actionLabel: loc.catalogScanDismiss,
+      onAction: _onDismiss,
+    ),
   };
 
   /// What a finished scan found, sessions first.
   ///
-  /// The projects clause is dropped when nothing new landed in one, so an
-  /// ordinary result reads "3 new sessions" rather than trailing a zero.
+  /// A clause counting nothing is dropped rather than joined, so an ordinary
+  /// result reads "3 new sessions" instead of trailing a zero, and a scan that
+  /// only turned up a project does not lead with the sessions it did not find.
   String _countsLine({required AppLocalizations loc, required CatalogRescanCounts counts}) {
     final (sessions, projects) = switch (counts) {
       CatalogRescanDelta(:final newSessions, :final newProjects) => (
-        loc.catalogScanNewSessionCount(newSessions),
+        newSessions == 0 ? null : loc.catalogScanNewSessionCount(newSessions),
         newProjects == 0 ? null : loc.catalogScanNewProjectCount(newProjects),
       ),
       // No delta to report, so the row names what the harnesses published
       // instead of implying every one of them is new.
       CatalogRescanTotals(:final sessions, :final projects) => (
-        loc.catalogScanSessionCount(sessions),
-        loc.catalogScanProjectCount(projects),
+        sessions == 0 ? null : loc.catalogScanSessionCount(sessions),
+        projects == 0 ? null : loc.catalogScanProjectCount(projects),
       ),
     };
-    return switch (projects) {
-      final projects? => loc.catalogScanCountsJoined(sessions, projects),
-      null => sessions,
+    return switch ((sessions, projects)) {
+      (final sessions?, final projects?) => loc.catalogScanCountsJoined(sessions, projects),
+      (final sessions?, null) => sessions,
+      (null, final projects?) => projects,
+      (null, null) => loc.catalogScanNothingNew,
     };
   }
 }

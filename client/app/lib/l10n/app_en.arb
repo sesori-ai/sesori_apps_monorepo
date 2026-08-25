@@ -1064,9 +1064,13 @@
   "@catalogScanCompleteTitle": {
     "description": "Title of the scan row once every harness finished scanning successfully."
   },
-  "catalogScanNewSessionCount": "{count, plural, =0{No new sessions} =1{1 new session} other{{count} new sessions}}",
+  "catalogScanNothingNew": "No new sessions",
+  "@catalogScanNothingNew": {
+    "description": "Whole result line of a finished scan that turned up neither a new session nor a new project. A standalone sentence, unlike the count clauses, which are noun phrases meant to be joined."
+  },
+  "catalogScanNewSessionCount": "{count, plural, =1{1 new session} other{{count} new sessions}}",
   "@catalogScanNewSessionCount": {
-    "description": "Sessions clause of a finished scan's result, counting only sessions the scan had not imported before.",
+    "description": "Sessions clause of a finished scan's result, counting only sessions the scan had not imported before. Never rendered for a count of zero; that clause is dropped so the line reads as a noun phrase either way.",
     "placeholders": {
       "count": {
         "type": "int"
@@ -1145,6 +1149,14 @@
   "catalogScanUnsupportedDetail": "Update the bridge to scan from here",
   "@catalogScanUnsupportedDetail": {
     "description": "Supporting line on the unsupported scan row, naming what would make scanning available."
+  },
+  "catalogScanNoHarnessTitle": "No harness to scan",
+  "@catalogScanNoHarnessTitle": {
+    "description": "Title of the scan row when no harness could be scanned: none is connected and ready, or the bridge has not reported its harnesses yet."
+  },
+  "catalogScanNoHarnessDetail": "Check your harnesses in Settings",
+  "@catalogScanNoHarnessDetail": {
+    "description": "Supporting line on the no-harness scan row, naming where the user can see and fix their harness setup."
   },
   "catalogScanDismiss": "Dismiss",
   "@catalogScanDismiss": {
