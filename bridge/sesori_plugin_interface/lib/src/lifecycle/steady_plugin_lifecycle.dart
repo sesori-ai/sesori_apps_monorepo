@@ -178,8 +178,12 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
       try {
         await cleanup();
       } on Object catch (error, stackTrace) {
-        firstError ??= error;
-        firstStackTrace ??= stackTrace;
+        if (firstError == null) {
+          firstError = error;
+          firstStackTrace = stackTrace;
+        } else {
+          Log.w("Additional shutdown cleanup failed", error, stackTrace);
+        }
       }
     }
     final stackTrace = firstStackTrace;

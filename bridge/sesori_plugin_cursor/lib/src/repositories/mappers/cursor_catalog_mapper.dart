@@ -117,7 +117,7 @@ abstract final class CursorCatalogMapper() {
   static Map<String, dynamic>? _findConfig({
     required AcpNewSessionResult result,
     required String category,
-  }) => AcpConfigOptionParser.find(configs: result.configOptions, category: category);
+  }) => AcpConfigOptionParser.find(configs: result.configOptions, category: category, id: null);
 
   static Map<String, dynamic>? _findThoughtLevelConfig({
     required AcpNewSessionResult result,
@@ -140,9 +140,10 @@ abstract final class CursorCatalogMapper() {
     return null;
   }
 
-  static String? _configId({required Map<String, dynamic>? config}) => AcpConfigOptionParser.id(config);
+  static String? _configId({required Map<String, dynamic>? config}) => AcpConfigOptionParser.id(config: config);
 
-  static String? _currentValue({required Map<String, dynamic>? config}) => AcpConfigOptionParser.currentValue(config);
+  static String? _currentValue({required Map<String, dynamic>? config}) =>
+      AcpConfigOptionParser.currentValue(config: config);
 
   static List<CursorCatalogOption> _options({
     required Map<String, dynamic>? config,
@@ -177,7 +178,7 @@ abstract final class CursorCatalogMapper() {
 
   static List<Map<String, dynamic>> _flattenedOptions({
     required Map<String, dynamic>? config,
-  }) => AcpConfigOptionParser.flattenedOptions(config);
+  }) => AcpConfigOptionParser.flattenedOptions(config: config);
 
   static bool _hasMultiLevelOptions({required Map<String, dynamic> config}) {
     final options = _options(config: config);

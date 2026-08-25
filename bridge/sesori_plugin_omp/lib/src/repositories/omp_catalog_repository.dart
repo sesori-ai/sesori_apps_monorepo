@@ -106,9 +106,9 @@ class OmpCatalogRepository({required final OmpAcpApi _api}) {
     required String id,
   }) => AcpConfigOptionParser.find(configs: result.configOptions, category: category, id: id);
 
-  static String? _configId(Map<String, dynamic>? config) => AcpConfigOptionParser.id(config);
+  static String? _configId(Map<String, dynamic>? config) => AcpConfigOptionParser.id(config: config);
 
-  static String? _currentValue(Map<String, dynamic>? config) => AcpConfigOptionParser.currentValue(config);
+  static String? _currentValue(Map<String, dynamic>? config) => AcpConfigOptionParser.currentValue(config: config);
 
   static List<OmpCatalogModel> _models(Map<String, dynamic>? config) {
     return [
@@ -150,5 +150,5 @@ class OmpCatalogRepository({required final OmpAcpApi _api}) {
   static Object? _optionValue(Map<String, dynamic> option) => option["value"];
 
   static List<Map<String, dynamic>> _flattenedOptions(Map<String, dynamic>? config) =>
-      AcpConfigOptionParser.flattenedOptions(config);
+      AcpConfigOptionParser.flattenedOptions(config: config);
 }

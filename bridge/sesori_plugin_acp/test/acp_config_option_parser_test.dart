@@ -21,20 +21,20 @@ void main() {
   ];
 
   test("finds category or exact id with category fallback", () {
-    expect(AcpConfigOptionParser.find(configs: configs, category: "model"), same(configs.first));
+    expect(AcpConfigOptionParser.find(configs: configs, category: "model", id: null), same(configs.first));
     expect(AcpConfigOptionParser.find(configs: configs, category: "model", id: "exact"), same(configs.last));
     expect(AcpConfigOptionParser.find(configs: configs, category: "model", id: "missing"), same(configs.first));
-    expect(AcpConfigOptionParser.find(configs: configs, category: "mode"), isNull);
+    expect(AcpConfigOptionParser.find(configs: configs, category: "mode", id: null), isNull);
   });
 
   test("parses ids, current values, and flattened options", () {
-    expect(AcpConfigOptionParser.id(configs.first), "fallback");
-    expect(AcpConfigOptionParser.currentValue(configs.first), "current");
-    expect(AcpConfigOptionParser.currentValue(configs.last), "selected");
-    expect(AcpConfigOptionParser.flattenedOptions(configs.first), [
+    expect(AcpConfigOptionParser.id(config: configs.first), "fallback");
+    expect(AcpConfigOptionParser.currentValue(config: configs.first), "current");
+    expect(AcpConfigOptionParser.currentValue(config: configs.last), "selected");
+    expect(AcpConfigOptionParser.flattenedOptions(config: configs.first), [
       {"value": "flat"},
       {"value": "nested"},
     ]);
-    expect(AcpConfigOptionParser.id({"id": ""}), isNull);
+    expect(AcpConfigOptionParser.id(config: {"id": ""}), isNull);
   });
 }

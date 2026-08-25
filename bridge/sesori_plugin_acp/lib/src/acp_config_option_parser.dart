@@ -4,7 +4,7 @@ abstract final class AcpConfigOptionParser() {
   static Map<String, dynamic>? find({
     required List<Map<String, dynamic>> configs,
     required String category,
-    String? id,
+    required String? id,
   }) {
     Map<String, dynamic>? categoryFallback;
     for (final config in configs) {
@@ -17,21 +17,21 @@ abstract final class AcpConfigOptionParser() {
     return categoryFallback;
   }
 
-  static String? id(Map<String, dynamic>? config) => nonEmptyString(config?["id"]);
+  static String? id({required Map<String, dynamic>? config}) => nonEmptyString(value: config?["id"]);
 
-  static String? currentValue(Map<String, dynamic>? config) =>
-      nonEmptyString(config?["currentValue"] ?? config?["value"]);
+  static String? currentValue({required Map<String, dynamic>? config}) =>
+      nonEmptyString(value: config?["currentValue"] ?? config?["value"]);
 
-  static List<Map<String, dynamic>> flattenedOptions(Map<String, dynamic>? config) {
+  static List<Map<String, dynamic>> flattenedOptions({required Map<String, dynamic>? config}) {
     final raw = config?["options"];
     if (raw is! List) return const [];
     final options = <Map<String, dynamic>>[];
     for (final entry in raw) {
-      final option = asStringKeyedMap(entry);
+      final option = asStringKeyedMap(value: entry);
       if (option == null) continue;
       final nested = option["options"];
       if (nested is List) {
-        options.addAll(nested.map(asStringKeyedMap).nonNulls);
+        options.addAll(nested.map((entry) => asStringKeyedMap(value: entry)).nonNulls);
       } else {
         options.add(option);
       }

@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:sesori_plugin_interface/plugin_interface_testing.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:test/test.dart';
 
@@ -239,6 +241,24 @@ void main() {
           expect(stackTrace.toString(), firstStack.toString());
         }
         expect(calls, ['first', 'second', 'third']);
+      });
+
+      test('logs cleanup failures after the first', () async {
+        final plugin = _SteadyPlugin();
+        final stderrLines = <String>[];
+
+        await IOOverrides.runZoned(
+          () => expectLater(
+            plugin.runCleanups([
+              () async => throw StateError('first'),
+              () async => throw ArgumentError('second'),
+            ]),
+            throwsStateError,
+          ),
+          stderr: () => CapturingStdout(lines: stderrLines),
+        );
+
+        expect(stderrLines.join('\n'), contains('Invalid argument(s): second'));
       });
     });
   });

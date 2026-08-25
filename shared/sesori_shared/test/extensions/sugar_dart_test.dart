@@ -22,15 +22,15 @@ void main() {
 
   group("JSON value helpers", () {
     test("returns string-keyed maps only", () {
-      expect(asStringKeyedMap(<String, Object?>{"key": "value"}), {"key": "value"});
-      expect(asStringKeyedMap("value"), isNull);
+      expect(asStringKeyedMap(value: <String, Object?>{"key": "value"}), {"key": "value"});
+      expect(asStringKeyedMap(value: "value"), isNull);
     });
 
     test("returns non-empty strings without trimming", () {
-      expect(nonEmptyString("value"), "value");
-      expect(nonEmptyString(" "), " ");
-      expect(nonEmptyString(""), isNull);
-      expect(nonEmptyString(1), isNull);
+      expect(nonEmptyString(value: "value"), "value");
+      expect(nonEmptyString(value: " "), " ");
+      expect(nonEmptyString(value: ""), isNull);
+      expect(nonEmptyString(value: 1), isNull);
     });
   });
 
