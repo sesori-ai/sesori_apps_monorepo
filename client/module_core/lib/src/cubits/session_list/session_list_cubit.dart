@@ -548,6 +548,9 @@ class SessionListCubit({
   /// In-flight silent refresh, used for coalescing.
   Future<_SessionFetchOutcome>? _activeRefresh;
 
+  /// Whether the current silent refresh honors an explicit pull's PR-data wait.
+  bool _activeRefreshWaitsForPrData = false;
+
   /// Most recently started read. This is not a coalescing barrier: a refresh
   /// whose response was superseded uses it only to observe the winning result.
   Future<_SessionFetchOutcome>? _latestFetch;
@@ -613,9 +616,12 @@ class SessionListCubit({
           catalogRefresh: catalogRefresh,
           waitForPrData: waitForPrData,
         ).whenComplete(() {
-          if (identical(_activeRefresh, refresh)) _activeRefresh = null;
+          if (!identical(_activeRefresh, refresh)) return;
+          _activeRefresh = null;
+          _activeRefreshWaitsForPrData = false;
         });
     _activeRefresh = refresh;
+    _activeRefreshWaitsForPrData = waitForPrData;
     return refresh;
   }
 
@@ -656,7 +662,15 @@ class SessionListCubit({
         ),
         _projectRepository.getGitContext(projectId: _projectId),
       ).wait;
-      if (isClosed || requestGeneration != _fetchGeneration) {
+      if (isClosed) return _SessionFetchOutcome.superseded;
+      if (requestGeneration != _fetchGeneration) {
+        if (sessionsResponse case ErrorResponse(:final error)) {
+          logw(
+            "Discarded superseded session list response "
+            "(request generation $requestGeneration, current $_fetchGeneration)",
+            error,
+          );
+        }
         return _SessionFetchOutcome.superseded;
       }
 
@@ -738,12 +752,15 @@ class SessionListCubit({
   Future<void> _drainCatalogRefreshes() async {
     while (!isClosed && _catalogChangeConsumedGeneration < _catalogChangeGeneration) {
       final targetGeneration = _catalogChangeGeneration;
+      // A catalog snapshot superseding an explicit pull is still that pull's
+      // winning response, so preserve its bounded PR-data wait.
+      final waitForPrData = _activeRefresh == null ? false : _activeRefreshWaitsForPrData;
       late final _SessionFetchOutcome outcome;
       try {
         outcome = await _refreshSessions(
           force: true,
           catalogRefresh: true,
-          waitForPrData: false,
+          waitForPrData: waitForPrData,
         );
       } on Object catch (error, stackTrace) {
         loge("Catalog-change session refresh failed unexpectedly", error, stackTrace);

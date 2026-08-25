@@ -93,11 +93,12 @@ class CatalogRescanService({
 
   ValueStream<CatalogRescanState> get state => _state.stream;
 
-  /// Fires after any observed import commits its catalog transaction.
+  /// Fires after an observed import publishes list-visible catalog rows.
   ///
   /// List cubits use this durable-data signal rather than the progress row's
   /// lifecycle, because cancelling a row does not prove an import that already
-  /// entered its atomic commit did not finish.
+  /// entered its atomic commit did not finish. Automatic hydration markers
+  /// complete with zero published rows and do not invalidate the lists.
   Stream<void> get catalogChanged => _catalogChanged.stream;
 
   /// Rescans every harness this bridge can import from.
@@ -304,11 +305,14 @@ class CatalogRescanService({
   }
 
   void _applyProgress(CatalogImportProgress progress) {
-    // The bridge publishes this only after its atomic catalog transaction has
-    // returned. Announce it before the operation bookkeeping below: a commit
-    // that wins a user cancellation must still invalidate the lists even
-    // though the progress row remains closed.
-    if (progress is CatalogImportCompleted && !_catalogChanged.isClosed) {
+    // An automatic hydration marker completes without catalog publication and
+    // reports zero totals. Imports are non-destructive, so an actual empty
+    // publication also leaves every list row unchanged. Announce a committed
+    // snapshot before the operation bookkeeping below: a commit that wins a
+    // user cancellation must still invalidate the lists even though the
+    // progress row remains closed.
+    if (progress case CatalogImportCompleted(:final projectsImported, :final sessionsImported)
+        when (projectsImported > 0 || sessionsImported > 0) && !_catalogChanged.isClosed) {
       _catalogChanged.add(null);
     }
 

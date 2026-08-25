@@ -470,6 +470,16 @@ void main() {
       expect(catalogChanges, hasLength(1));
     });
 
+    test("ignores a zero-count hydration completion", () async {
+      final catalogChanges = <void>[];
+      service.catalogChanged.listen(catalogChanges.add);
+
+      connection.emitProgress(_completed("codex", newProjects: 0, newSessions: 0, totals: 0));
+
+      expect(catalogChanges, isEmpty);
+      expect(service.state.value, isA<CatalogRescanIdle>());
+    });
+
     test("announces each durable catalog commit", () async {
       final catalogChanges = <void>[];
       service.catalogChanged.listen(catalogChanges.add);

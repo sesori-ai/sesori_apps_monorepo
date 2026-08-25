@@ -2348,6 +2348,7 @@ void main() {
 
       test("a superseded explicit refresh reports the catalog refresh failure", () async {
         final explicitRefresh = Completer<ApiResponse<SessionListResponse>>();
+        final waitForPrDataCalls = <bool>[];
         var requestCount = 0;
         Future<ApiResponse<SessionListResponse>> nextResponse() => switch (requestCount++) {
           0 => successfulResponse(sessions: const []),
@@ -2360,7 +2361,10 @@ void main() {
             projectId: projectId,
             waitForPrData: any(named: "waitForPrData"),
           ),
-        ).thenAnswer((_) => nextResponse());
+        ).thenAnswer((invocation) {
+          waitForPrDataCalls.add(invocation.namedArguments[#waitForPrData] as bool);
+          return nextResponse();
+        });
 
         final cubit = buildCubit();
         addTearDown(cubit.close);
@@ -2371,6 +2375,7 @@ void main() {
         fakeCatalogRescanService.emitCatalogChanged();
         await Future<void>.delayed(Duration.zero);
         expect(requestCount, 3);
+        expect(waitForPrDataCalls, [false, true, true]);
 
         explicitRefresh.complete(ApiResponse.success(const SessionListResponse(items: [])));
         expect(await refresh, isFalse);

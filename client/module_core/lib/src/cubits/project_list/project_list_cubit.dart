@@ -737,7 +737,15 @@ class ProjectListCubit(
       // that arrives while the request is in flight.
       final unseenTick = _sessionUnseenTracker.tick;
       final projectResponse = await _projectListService.listProjects();
-      if (isClosed || requestGeneration != _fetchGeneration) {
+      if (isClosed) return _ProjectFetchOutcome.superseded;
+      if (requestGeneration != _fetchGeneration) {
+        if (projectResponse case ErrorResponse(:final error)) {
+          logw(
+            "Discarded superseded project list response "
+            "(request generation $requestGeneration, current $_fetchGeneration)",
+            error,
+          );
+        }
         return _ProjectFetchOutcome.superseded;
       }
 

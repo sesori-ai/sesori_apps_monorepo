@@ -519,16 +519,18 @@ Settlement:
 | `owned`, all members failed | `CatalogRescanFailed` | held until dismissed |
 | `observed` | `CatalogRescanIdle` immediately | no summary is claimed |
 
-Every observed `CatalogImportCompleted` announces `catalogChanged`, including a
-terminal event that arrives after this client already closed a cancelled row.
-Each list cubit records that commit as dirty and refreshes from a forced fresh
-snapshot; a second completion while that read is in flight produces one trailing
-snapshot. The dirty revision is consumed only when a snapshot applies, so an
-older overlapping read cannot overwrite imported rows. A failed snapshot stays
-pending until a later ordinary, reconnect, or staleness read applies; a stale
-superseded read cannot rearm it. A forced failure that preempts a full-screen
-load owns the terminal error, and an explicit pull follows the newer read's
-outcome.
+Every observed `CatalogImportCompleted` with one or more published project or
+session rows announces `catalogChanged`, including a terminal event that arrives
+after this client already closed a cancelled row. The automatic hydration
+shortcut reports zero rows without catalog publication, so it does not displace
+an ordinary list read. Each list cubit records a signalled commit as dirty and
+refreshes from a forced fresh snapshot; a second completion while that read is
+in flight produces one trailing snapshot. The dirty revision is consumed only
+when a snapshot applies, so an older overlapping read cannot overwrite imported
+rows. A failed snapshot stays pending until a later ordinary, reconnect, or
+staleness read applies; a stale superseded read cannot rearm it. A forced
+failure that preempts a full-screen load owns the terminal error, and an
+explicit pull follows the newer read's outcome.
 
 An observed run still surfaces imported sessions because it receives the same
 global completion event. A run that finishes while disconnected has no live
@@ -616,7 +618,7 @@ New in-memory mutable parts:
 |---|---|---|
 | `Map<String, CatalogImportProgress>` | `CatalogRescanService` | Aggregating several concurrent harness imports into one row requires the latest progress per harness. Cleared only when a start **opens** an operation from idle or terminal, and on every reset to idle. A start that joins a live operation must not clear it |
 | `BehaviorSubject<CatalogRescanState>` | `CatalogRescanService` | The published row state, seeded so a late subscriber renders correctly |
-| `StreamController<void>` | `CatalogRescanService` | Announces each `CatalogImportCompleted` as a durable catalog change, even if the progress row was already cancelled and closed |
+| `StreamController<void>` | `CatalogRescanService` | Announces each nonzero `CatalogImportCompleted` as a durable catalog change, even if the progress row was already cancelled and closed |
 | `CompositeSubscription` | `CatalogRescanService` | SSE plus connection-status subscriptions, matching `PluginManagementService` |
 | `Timer?` | `CatalogRescanService` | The 4s success clear. Owned here, not by the row, so two mounted hosts cannot run disagreeing timers. Never armed for a failure state |
 | `bool _disposed` | `CatalogRescanService` | Module convention for `Disposable` services |
