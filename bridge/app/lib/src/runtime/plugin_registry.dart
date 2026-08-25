@@ -1,6 +1,7 @@
 import "package:claude_plugin/claude_plugin.dart" show ClaudePluginDescriptor;
 import "package:codex_plugin/codex_plugin.dart" show CodexPluginDescriptor;
 import "package:cursor_plugin/cursor_plugin.dart" show CursorPluginDescriptor;
+import "package:deepseek_plugin/deepseek_plugin.dart" show DeepSeekPluginDescriptor;
 import "package:hermes_plugin/hermes_plugin.dart" show HermesPluginDescriptor;
 import "package:omp_plugin/omp_plugin.dart" show OmpPluginDescriptor;
 import "package:opencode_plugin/opencode_plugin.dart" show OpenCodePluginDescriptor;
@@ -19,6 +20,7 @@ final List<BridgePluginDescriptor> knownPlugins = List.unmodifiable([
   const HermesPluginDescriptor(),
   PiPluginDescriptor.production(),
   OmpPluginDescriptor.production(),
+  const DeepSeekPluginDescriptor(),
 ]);
 
 /// Product-preferred default when OpenCode is selectable. Lifecycle policy

@@ -148,8 +148,25 @@ Your laptop and phone perform an ephemeral X25519 key exchange, then encrypt eve
 | [Hermes Agent](https://github.com/NousResearch/hermes-agent) | ACP-based integration with Nous Research's coding agent. |
 | [Pi](https://github.com/badlogic/pi-mono) | Native JSONL RPC integration. |
 | [Oh My Pi](https://github.com/can1357/oh-my-pi) | ACP-based integration. |
+| [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness) | ACP-based integration through Sesori's managed adapter. |
 
 Every integration ships enabled by default — pick your assistant when you start a session, and run several at once on the same Bridge.
+
+<details>
+<summary><strong>DeepSeek Harness notes</strong></summary>
+
+- **Install:** the Bridge can install the pinned Sesori DeepSeek ACP adapter, or
+  it uses a compatible `sesori-deepseek-acp` from your PATH. Point
+  `--deepseek-bin <path>` at a specific adapter to make it authoritative.
+- **Profile and state:** your normal `DSH_HOME` settings, provider credentials,
+  and skills remain local and available to DeepSeek Harness. Sesori-owned
+  session mutations are isolated under the Bridge's DeepSeek plugin state.
+- **Security:** telemetry is forced off. The default sandbox is workspace-write
+  and approval behavior is ask; only open projects whose code you trust.
+- **Login:** provider setup and login happen locally through DeepSeek Harness;
+  Sesori does not expose provider credentials to phone clients.
+
+</details>
 
 <details>
 <summary><strong>Pi notes</strong></summary>

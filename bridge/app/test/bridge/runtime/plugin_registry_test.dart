@@ -6,7 +6,7 @@ void main() {
   test("registry contains every bundled plugin exactly once", () {
     final ids = knownPlugins.map((plugin) => plugin.id).toList();
 
-    expect(ids, unorderedEquals(["opencode", "codex", "cursor", "claude", "hermes", "pi", "omp"]));
+    expect(ids, unorderedEquals(["opencode", "codex", "cursor", "claude", "hermes", "pi", "omp", "deepseek"]));
   });
 
   test("every registered plugin id is a built-in Harness identity", () {
