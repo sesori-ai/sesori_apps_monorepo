@@ -341,6 +341,107 @@ void main() {
       await tester.pumpAndSettle();
     });
 
+    // The control only *schedules* its refresh from the builder, so a move fast
+    // enough to cross both thresholds in one frame fires the second stage
+    // before the refresh exists to be released from.
+    testWidgets("a single move across both thresholds still releases the list", (tester) async {
+      final completer = Completer<void>();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          home: Scaffold(
+            body: CustomScrollView(
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              slivers: [
+                PregoSliverRefreshControl(
+                  onRefresh: () => completer.future,
+                  decorate: null,
+                  onPulledExtentChanged: null,
+                  deepRefresh: PregoDeepRefresh(
+                    onDeepRefresh: () => deepRefreshes++,
+                    pullCaption: "Keep pulling to find new sessions",
+                  ),
+                ),
+                SliverList.list(
+                  children: [for (var i = 0; i < 20; i++) SizedBox(height: 80, child: Text("row $i"))],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      final restingTop = tester.getTopLeft(find.text("row 0")).dy;
+
+      // One move, far past both thresholds, rather than the gradual pull the
+      // other tests use.
+      final gesture = await tester.startGesture(const Offset(200, 100));
+      await gesture.moveBy(const Offset(0, 900));
+      await tester.pump();
+      await tester.pump();
+      expect(deepRefreshes, 1);
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(completer.isCompleted, isFalse);
+      expect(
+        tester.getTopLeft(find.text("row 0")).dy,
+        restingTop,
+        reason: "the release must not depend on the refresh having started first",
+      );
+
+      completer.complete();
+      await tester.pumpAndSettle();
+    });
+
+    // The released refresh has nothing downstream left to observe it, and this
+    // package has no logger of its own.
+    testWidgets("a released refresh reports its own failure", (tester) async {
+      final completer = Completer<void>();
+      final reported = <Object>[];
+      final previous = FlutterError.onError;
+      FlutterError.onError = (details) => reported.add(details.exception);
+      addTearDown(() => FlutterError.onError = previous);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          home: Scaffold(
+            body: CustomScrollView(
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              slivers: [
+                PregoSliverRefreshControl(
+                  onRefresh: () => completer.future,
+                  decorate: null,
+                  onPulledExtentChanged: null,
+                  deepRefresh: PregoDeepRefresh(
+                    onDeepRefresh: () => deepRefreshes++,
+                    pullCaption: "Keep pulling to find new sessions",
+                  ),
+                ),
+                SliverList.list(
+                  children: [for (var i = 0; i < 20; i++) SizedBox(height: 80, child: Text("row $i"))],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final gesture = await tester.startGesture(const Offset(200, 100));
+      await gesture.moveBy(const Offset(0, 900));
+      await tester.pump();
+      await tester.pump();
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      completer.completeError(StateError("refresh blew up"), StackTrace.current);
+      await tester.pumpAndSettle();
+
+      expect(reported, hasLength(1));
+      expect(reported.single, isA<StateError>());
+    });
+
     testWidgets("a long caption truncates rather than overflowing", (tester) async {
       await tester.pumpWidget(
         MaterialApp(

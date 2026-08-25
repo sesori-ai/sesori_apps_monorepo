@@ -92,14 +92,29 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
   /// The control keeps the pull open for exactly as long as this future runs,
   /// so returning early is what retracts the list.
   Future<void> _runRefresh() async {
+    final refresh = widget._onRefresh();
+    // The refresh outlives this wait whenever the second stage releases it, so
+    // nothing downstream is left to observe its failure. Reported rather than
+    // discarded: this package has no logger of its own, and the framework's
+    // own channel reaches whatever the app installed.
+    final reported = refresh.catchError((Object error, StackTrace stack) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stack,
+          library: "theme_prego",
+          context: ErrorDescription("running a pull-to-refresh"),
+        ),
+      );
+    });
+    // Already fired before this even started: one fast move can cross both
+    // thresholds in a single frame, and the control only *schedules* the
+    // refresh from its builder, so the release below found nothing to release.
+    if (_deepFired) return;
     final released = Completer<void>();
     _released = released;
-    final refresh = widget._onRefresh();
-    // The refresh outlives this wait when the second stage releases it, so a
-    // failure of its own must not surface as an unhandled error in the zone.
-    unawaited(refresh.catchError((Object _, StackTrace _) {}));
     try {
-      await Future.any([refresh, released.future]);
+      await Future.any([reported, released.future]);
     } finally {
       if (identical(_released, released)) _released = null;
     }
