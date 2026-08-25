@@ -35,7 +35,7 @@ class DeepSeekApprovalRegistry({
           return DeepSeekAskUserQuestionResponseDto(
             answers: [
               for (var index = 0; index < parsed.questions.length; index++)
-                _answer(parsed.questions[index], answers[index]),
+                _answer(parsed.questions[index], answers: answers[index]),
             ],
           ).toJson();
         },
@@ -48,7 +48,7 @@ class DeepSeekApprovalRegistry({
     return true;
   }
 
-  static DeepSeekQuestionAnswerDto _answer(DeepSeekQuestionDto question, List<String> answers) {
+  static DeepSeekQuestionAnswerDto _answer(DeepSeekQuestionDto question, {required List<String> answers}) {
     if (answers.isEmpty || answers.any((answer) => answer.length > 2048 || answer.trim().isEmpty)) {
       throw const FormatException("DeepSeek question answers must be nonblank and at most 2048 characters");
     }
