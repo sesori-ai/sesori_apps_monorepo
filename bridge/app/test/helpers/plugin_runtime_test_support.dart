@@ -313,6 +313,9 @@ class const _UnusedGenerationFactory() implements PluginGenerationFactory {
   Future<void> enforceBridgeOwnership() async {}
 
   @override
+  void setEnvironmentOverrides({required String pluginId, required Map<String, String> overrides}) {}
+
+  @override
   Stream<PluginGenerationStartEvent> start({
     required PluginRuntimeRegistration registration,
     required StartAbortSignal startAborted,

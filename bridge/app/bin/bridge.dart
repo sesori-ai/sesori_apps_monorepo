@@ -21,7 +21,6 @@ import 'package:sesori_bridge/src/auth/token_service.dart';
 import 'package:sesori_bridge/src/bridge/device_canvas/integration_state.dart';
 import 'package:sesori_bridge/src/foundation/abortable_request.dart';
 import 'package:sesori_bridge/src/foundation/bridge_startup_banner_formatter.dart';
-import 'package:sesori_bridge/src/foundation/data_directory_hardening.dart';
 import 'package:sesori_bridge/src/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/foundation/filesystem_cleaner.dart';
 import 'package:sesori_bridge/src/foundation/process_runner.dart';

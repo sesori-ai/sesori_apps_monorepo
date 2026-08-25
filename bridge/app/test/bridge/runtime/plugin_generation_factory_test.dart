@@ -48,6 +48,8 @@ void main() {
     Future<BridgePlugin> startPlugin({
       String? stateDirectory,
       List<RuntimeProvisionProgress>? observedProgress,
+      Map<String, Map<String, String>> environmentOverridesByPluginId = const <String, Map<String, String>>{},
+      void Function(PluginGenerationFactory factory)? configureFactory,
     }) async {
       final directory = stateDirectory ?? runtimeDirectory.path;
       final managedRuntimePaths = ManagedRuntimePaths(
@@ -65,9 +67,11 @@ void main() {
         runtimeFileApi: RuntimeFileApi(runtimeDirectory: directory),
         clock: const ServerClock(),
         environment: const <String, String>{"HOME": "/home/alex"},
+        environmentOverridesByPluginId: environmentOverridesByPluginId,
         currentUser: ProcessUser.fromRawUser("alex"),
         resolveIdleTimeoutMins: ({required pluginId}) => 10,
       );
+      configureFactory?.call(factory);
       BridgePlugin? startedPlugin;
       await for (final event in factory.start(
         registration: PluginRuntimeRegistration(
@@ -130,6 +134,28 @@ void main() {
       );
     });
 
+    test("scopes environment overrides to the matching plugin only", () async {
+      await startPlugin(
+        configureFactory: (factory) {
+          factory
+            ..setEnvironmentOverrides(
+              pluginId: "fake",
+              overrides: const <String, String>{"SCOPED_SECRET": "available"},
+            )
+            ..setEnvironmentOverrides(
+              pluginId: "other",
+              overrides: const <String, String>{"OTHER_SECRET": "hidden"},
+            );
+        },
+      );
+
+      final environment = descriptor.startedHosts.single.environment;
+      expect(environment, containsPair("SCOPED_SECRET", "available"));
+      expect(environment, isNot(contains("OTHER_SECRET")));
+      expect(environment, containsPair("HOME", "/home/alex"));
+      expect(descriptor.provisioningEnvironments.single, isNot(contains("SCOPED_SECRET")));
+    });
+
     test("zero-plugin startup still performs single-live-bridge enforcement", () async {
       final factory = PluginGenerationFactory(
         managedRuntimePaths: ManagedRuntimePaths(
@@ -145,6 +171,7 @@ void main() {
         runtimeFileApi: RuntimeFileApi(runtimeDirectory: runtimeDirectory.path),
         clock: const ServerClock(),
         environment: const <String, String>{},
+        environmentOverridesByPluginId: const <String, Map<String, String>>{},
         currentUser: null,
         resolveIdleTimeoutMins: ({required pluginId}) => 10,
       );
@@ -386,6 +413,7 @@ StartupLockRejection _startupLockRejection({String lockFilePath = "/tmp/bridge-s
 // ignore: prefer_const_constructors_in_immutables, mutable test logs prevent a const primary constructor
 class _RecordingDescriptor() extends BridgePluginDescriptor {
   final List<PluginHost> startedHosts = <PluginHost>[];
+  final List<Map<String, String>> provisioningEnvironments = <Map<String, String>>[];
   final List<String> operations = <String>[];
   final _FakeBridgePlugin startedPlugin = _FakeBridgePlugin();
   final List<bool> stateDirectoryExistedAtStartLog = <bool>[];
@@ -413,6 +441,7 @@ class _RecordingDescriptor() extends BridgePluginDescriptor {
 
   @override
   Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
+    provisioningEnvironments.add(Map<String, String>.of(host.environment));
     for (final event in provisionEvents) {
       yield event;
     }

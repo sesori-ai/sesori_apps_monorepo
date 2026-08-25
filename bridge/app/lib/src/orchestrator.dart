@@ -140,6 +140,7 @@ import "services/catalog_import_service.dart";
 import "services/chat_history_reconcile_service.dart";
 import "services/chat_history_service.dart";
 import "services/deleted_session_storage_cleanup_service.dart";
+import "services/device_canvas_agent_tool_service.dart";
 import "services/device_canvas_claim_service.dart";
 import "services/device_canvas_client_service.dart";
 import "services/pending_interaction_service.dart";
@@ -180,6 +181,7 @@ typedef OrchestratorComposition = ({
   BridgeRestartDispatcher restartDispatcher,
   RoutedRequestDispatcher routedRequestDispatcher,
   SessionRepository sessionRepository,
+  DeviceCanvasAgentToolService deviceCanvasAgentToolService,
   DeviceCanvasClaimService deviceCanvasClaimService,
   DeviceCanvasIntegrationState deviceCanvasIntegrationState,
   SessionUnseenService sessionUnseenService,
@@ -240,6 +242,12 @@ class Orchestrator({
       integrationState: deviceCanvasIntegrationState,
     );
     final deviceCanvasClientService = DeviceCanvasClientService(
+      bridgeIdProvider: _bridgeRegistrationService,
+      claimService: deviceCanvasClaimService,
+      integrationState: deviceCanvasIntegrationState,
+      sessionRepository: sessionRepository,
+    );
+    final deviceCanvasAgentToolService = DeviceCanvasAgentToolService(
       bridgeIdProvider: _bridgeRegistrationService,
       claimService: deviceCanvasClaimService,
       integrationState: deviceCanvasIntegrationState,
@@ -694,6 +702,7 @@ class Orchestrator({
       restartDispatcher: restartDispatcher,
       routedRequestDispatcher: routedRequestDispatcher,
       sessionRepository: sessionRepository,
+      deviceCanvasAgentToolService: deviceCanvasAgentToolService,
       deviceCanvasClaimService: deviceCanvasClaimService,
       deviceCanvasIntegrationState: deviceCanvasIntegrationState,
       sessionUnseenService: sessionUnseenService,

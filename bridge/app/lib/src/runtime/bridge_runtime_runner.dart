@@ -14,7 +14,12 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
         DownloadProgress,
         OsVersionFormatter,
         PlatformOs,
-        sesoriAttachmentsDirectory;
+        deviceCanvasAgentToolBootstrapFileEnvironment,
+        deviceCanvasAgentToolBootstrapSecretEnvironment,
+        deviceCanvasAgentToolReadyFileEnvironment,
+        deviceCanvasAgentToolRendezvousEnvironment,
+        sesoriAttachmentsDirectory,
+        writeRestrictedFile;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         Console,
@@ -47,6 +52,8 @@ import "../auth/login_oauth_service.dart";
 import "../auth/token.dart";
 import "../auth/token_refresher.dart";
 import "../auth/token_service.dart";
+import "../bridge/device_canvas/agent_tool_rendezvous_repository.dart";
+import "../bridge/device_canvas/agent_tool_server.dart";
 import "../control/bridge_control_message_dispatcher.dart";
 import "../control/control_channel_loss_listener.dart";
 import "../control/control_provision_notifier.dart";
@@ -55,7 +62,6 @@ import "../foundation/abortable_request.dart";
 import "../foundation/app_connection_wait_indicator.dart";
 import "../foundation/app_onboarding_formatter.dart";
 import "../foundation/control_channel_client.dart";
-import "../foundation/data_directory_hardening.dart";
 import "../foundation/filesystem_cleaner.dart";
 import "../foundation/log_failure_reporter.dart";
 import "../foundation/process_runner.dart";
@@ -290,6 +296,11 @@ class const BridgeRuntimeRunner._() {
     // live here under a frozen cross-version contract (see pluginStateDirectoryPath).
     final runtimeDirectory = path.join(managedRuntimePaths.cacheDirectory, "runtime");
     final runtimeFileApi = RuntimeFileApi(runtimeDirectory: runtimeDirectory);
+    final pluginEnvironment = sanitizePluginEnvironment(environment);
+    final deviceCanvasAgentToolBootstrapSecret = generateDeviceCanvasAgentToolSecret();
+    final deviceCanvasAgentToolRendezvous = deviceCanvasAgentToolRendezvousPath(
+      dataDirectory: options.dataDirectory,
+    );
     final systemProcessApi = SystemProcessApi(
       processRunner: processRunner,
       clock: serverClock,
@@ -610,7 +621,8 @@ class const BridgeRuntimeRunner._() {
         processRepository: processRepository,
         runtimeFileApi: runtimeFileApi,
         clock: serverClock,
-        environment: environment,
+        environment: pluginEnvironment,
+        environmentOverridesByPluginId: const <String, Map<String, String>>{},
         currentUser: currentUser,
         resolveIdleTimeoutMins: ({required pluginId}) =>
             bridgeSettingsRepository.currentSettings.plugins.idleTimeoutMinsFor(pluginId: pluginId),
@@ -630,7 +642,7 @@ class const BridgeRuntimeRunner._() {
         ],
         generationFactory: generationFactory,
         setupProcesses: hostProcessService,
-        environment: environment,
+        environment: pluginEnvironment,
         clock: serverClock,
         shutdownBudget: _pluginShutdownBudget,
       );
@@ -858,6 +870,35 @@ class const BridgeRuntimeRunner._() {
       }
       await activeRuntime.cleanupDeviceCanvasClaimsOnStartup(bridgeId: currentBridgeId);
       try {
+        final agentToolServer = DeviceCanvasAgentToolServer(
+          service: composition.deviceCanvasAgentToolService,
+          rendezvousRepository: DeviceCanvasAgentToolRendezvousRepository(
+            filePath: deviceCanvasAgentToolRendezvous,
+          ),
+          pluginId: openCodePluginId,
+          bootstrapSecret: deviceCanvasAgentToolBootstrapSecret,
+        );
+        await agentToolServer.start();
+        generationFactory.setEnvironmentOverrides(
+          pluginId: openCodePluginId,
+          overrides: <String, String>{
+            deviceCanvasAgentToolBootstrapSecretEnvironment: deviceCanvasAgentToolBootstrapSecret,
+            deviceCanvasAgentToolRendezvousEnvironment: deviceCanvasAgentToolRendezvous,
+          },
+        );
+        shutdownCoordinator
+          ..addPhase(
+            phase: BridgeShutdownPhase.signal,
+            action: agentToolServer.beginShutdown,
+          )
+          ..addPhase(
+            phase: BridgeShutdownPhase.drain,
+            action: agentToolServer.drain,
+          );
+      } on Object catch (error, stackTrace) {
+        Log.w("failed to start Device Canvas agent-tool server", error, stackTrace);
+      }
+      try {
         await activeRuntime.startDeviceCanvasIpcServer(
           dataDirectory: options.dataDirectory,
           bridgeId: currentBridgeId,
@@ -1028,6 +1069,14 @@ class const BridgeRuntimeRunner._() {
     required bool isSupervised,
     required bool isInteractive,
   }) => !isSupervised && isInteractive;
+
+  @visibleForTesting
+  static Map<String, String> sanitizePluginEnvironment(Map<String, String> environment) =>
+      <String, String>{...environment}
+        ..remove(deviceCanvasAgentToolBootstrapFileEnvironment)
+        ..remove(deviceCanvasAgentToolBootstrapSecretEnvironment)
+        ..remove(deviceCanvasAgentToolRendezvousEnvironment)
+        ..remove(deviceCanvasAgentToolReadyFileEnvironment);
 
   static void _presentAppOnboardingPrompt({required Map<String, String> environment}) {
     Console.message("");

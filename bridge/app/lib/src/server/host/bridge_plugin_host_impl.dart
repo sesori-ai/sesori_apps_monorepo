@@ -26,7 +26,7 @@ import "../api/runtime_file_api.dart";
 class BridgePluginHostImpl({
   @override required final PluginConfig config,
   @override required final String stateDirectory,
-  @override required final Map<String, String> environment,
+  required Map<String, String> environment,
   @override required final ServerClock clock,
   @override required final StartAbortSignal startAborted,
   @override required final BridgeHostInfo bridge,
@@ -35,6 +35,16 @@ class BridgePluginHostImpl({
   @override required final HostJsonStore store,
   required final Duration? Function() _resolveIdleTimeout,
 }) implements PluginHost {
+  Map<String, String> _environment = Map<String, String>.unmodifiable(environment);
+
+  @override
+  Map<String, String> get environment => _environment;
+
+  void addEnvironmentOverrides(Map<String, String> overrides) {
+    if (overrides.isEmpty) return;
+    _environment = Map<String, String>.unmodifiable({..._environment, ...overrides});
+  }
+
   /// Live view over the bridge's runtime-mutable per-plugin idle timeout, so
   /// a settings change reaches the plugin without a restart.
   @override

@@ -4,6 +4,13 @@ import "dart:io" as io;
 import "dart:math";
 
 import "package:http/http.dart" as http;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show
+        deviceCanvasAgentToolBootstrapFileEnvironment,
+        deviceCanvasAgentToolBootstrapSecretEnvironment,
+        deviceCanvasAgentToolReadyFileEnvironment,
+        deviceCanvasAgentToolRendezvousEnvironment,
+        writeRestrictedFile;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show HostPortService, PluginHost, SpawnedProcess;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
@@ -185,10 +192,34 @@ Future<SpawnedProcess> spawnOpenCodeProcess({
   required int port,
   required String? password,
   required String bindHost,
+  required Map<String, String> environmentOverrides,
 }) async {
-  final environment = <String, String>{
-    ...host.environment,
-  };
+  final bootstrapSecret = environmentOverrides[deviceCanvasAgentToolBootstrapSecretEnvironment];
+  final bootstrapFilePath = environmentOverrides[deviceCanvasAgentToolBootstrapFileEnvironment];
+  if ((bootstrapSecret == null || bootstrapSecret.isEmpty) !=
+      (bootstrapFilePath == null || bootstrapFilePath.isEmpty)) {
+    throw StateError("Device Canvas agent-tool bootstrap configuration is incomplete");
+  }
+  if (bootstrapSecret != null && bootstrapSecret.isNotEmpty && bootstrapFilePath != null) {
+    await writeRestrictedFile(filePath: bootstrapFilePath, contents: bootstrapSecret);
+  }
+  final readyFilePath = environmentOverrides[deviceCanvasAgentToolReadyFileEnvironment];
+  if (readyFilePath != null && readyFilePath.isNotEmpty) {
+    final readyFile = io.File(readyFilePath);
+    try {
+      readyFile.deleteSync();
+    } on io.FileSystemException {
+      if (readyFile.existsSync()) rethrow;
+    }
+  }
+  final childOverrides = <String, String>{...environmentOverrides}
+    ..remove(deviceCanvasAgentToolBootstrapSecretEnvironment);
+  final environment = <String, String>{...host.environment}
+    ..remove(deviceCanvasAgentToolBootstrapFileEnvironment)
+    ..remove(deviceCanvasAgentToolBootstrapSecretEnvironment)
+    ..remove(deviceCanvasAgentToolRendezvousEnvironment)
+    ..remove(deviceCanvasAgentToolReadyFileEnvironment)
+    ..addAll(childOverrides);
   if (password == null || password.isEmpty) {
     environment.removeWhere(
       (key, _) => key.toUpperCase() == "OPENCODE_SERVER_PASSWORD",
@@ -196,14 +227,30 @@ Future<SpawnedProcess> spawnOpenCodeProcess({
   } else {
     environment["OPENCODE_SERVER_PASSWORD"] = password;
   }
-  final process = await host.processes.spawn(
-    executable: executablePath,
-    arguments: <String>["serve", "--port", "$port", "--hostname", bindHost],
-    environment: environment,
-    workingDirectory: null,
-    runInShell: io.Platform.isWindows,
-  );
-  return DrainingSpawnedProcess(inner: process);
+  try {
+    final process = await host.processes.spawn(
+      executable: executablePath,
+      arguments: <String>["serve", "--port", "$port", "--hostname", bindHost],
+      environment: environment,
+      workingDirectory: null,
+      runInShell: io.Platform.isWindows,
+    );
+    process.exitCode.whenComplete(() => _removeFileIfPresent(bootstrapFilePath)).ignore();
+    return DrainingSpawnedProcess(inner: process);
+  } on Object {
+    _removeFileIfPresent(bootstrapFilePath);
+    rethrow;
+  }
+}
+
+void _removeFileIfPresent(String? filePath) {
+  if (filePath == null || filePath.isEmpty) return;
+  final file = io.File(filePath);
+  try {
+    file.deleteSync();
+  } on io.FileSystemException {
+    if (file.existsSync()) rethrow;
+  }
 }
 
 /// Probes OpenCode health on [port]: `GET /global/health` with Basic auth
@@ -246,6 +293,79 @@ Future<RuntimeHealthProbe> probeOpenCodeHealth({
   }
 }
 
+Future<RuntimeHealthProbe> _probeOpenCodeManagedHealth({
+  required int port,
+  required String? password,
+  required http.Client Function() clientFactory,
+  required String host,
+  required String? deviceCanvasToolsReadyFilePath,
+  required String deviceCanvasToolsInitializationDirectory,
+}) async {
+  final health = await probeOpenCodeHealth(
+    port: port,
+    password: password,
+    clientFactory: clientFactory,
+    host: host,
+  );
+  if (!health.healthy || deviceCanvasToolsReadyFilePath == null || deviceCanvasToolsReadyFilePath.isEmpty) {
+    return health;
+  }
+  final readyFile = io.File(deviceCanvasToolsReadyFilePath);
+  if (readyFile.existsSync() && readyFile.readAsStringSync() == "ready") return health;
+  final initialization = await _initializeOpenCodeDeviceCanvasTools(
+    port: port,
+    password: password,
+    clientFactory: clientFactory,
+    host: host,
+    directory: deviceCanvasToolsInitializationDirectory,
+  );
+  if (!initialization.healthy) return initialization;
+  try {
+    final ready = readyFile.readAsStringSync();
+    if (ready == "ready") return health;
+    return RuntimeHealthProbe.unhealthy(error: StateError("Device Canvas agent tools did not become ready"));
+  } on Object catch (error) {
+    return RuntimeHealthProbe.unhealthy(error: error);
+  }
+}
+
+Future<RuntimeHealthProbe> _initializeOpenCodeDeviceCanvasTools({
+  required int port,
+  required String? password,
+  required http.Client Function() clientFactory,
+  required String host,
+  required String directory,
+}) async {
+  final client = clientFactory();
+  try {
+    final uri = Uri(
+      scheme: "http",
+      host: host,
+      port: port,
+      path: "/experimental/tool/ids",
+      queryParameters: <String, String>{"directory": directory},
+    );
+    final request = http.Request("GET", uri);
+    if (password != null && password.isNotEmpty) {
+      request.headers["Authorization"] = "Basic ${base64Encode(utf8.encode("opencode:$password"))}";
+    }
+    final statusCode = await () async {
+      final response = await client.send(request);
+      await response.stream.drain<void>();
+      return response.statusCode;
+    }().timeout(const Duration(seconds: 5));
+    final healthy = statusCode == 200;
+    return RuntimeHealthProbe(
+      healthy: healthy,
+      error: healthy ? null : StateError("OpenCode tool initialization returned HTTP $statusCode"),
+    );
+  } on Object catch (error) {
+    return RuntimeHealthProbe.unhealthy(error: error);
+  } finally {
+    client.close();
+  }
+}
+
 /// Builds the "starting" ownership record from the post-spawn facts, mirroring
 /// the legacy `_buildRecord` field-for-field so the persisted bytes are
 /// identical.
@@ -279,7 +399,9 @@ ManagedRuntimeSpec<OpenCodeOwnershipRecord> buildOpenCodeManagedRuntimeSpec({
   required http.Client Function() probeClientFactory,
   required String bindHost,
   required String connectHost,
+  required Map<String, String> environmentOverrides,
 }) {
+  final deviceCanvasToolsReadyFilePath = environmentOverrides[deviceCanvasAgentToolReadyFileEnvironment];
   return ManagedRuntimeSpec<OpenCodeOwnershipRecord>(
     spawn: ({required int port}) => spawnOpenCodeProcess(
       host: host,
@@ -287,9 +409,16 @@ ManagedRuntimeSpec<OpenCodeOwnershipRecord> buildOpenCodeManagedRuntimeSpec({
       port: port,
       password: password,
       bindHost: bindHost,
+      environmentOverrides: environmentOverrides,
     ),
-    probeHealth: ({required int port}) =>
-        probeOpenCodeHealth(port: port, password: password, clientFactory: probeClientFactory, host: connectHost),
+    probeHealth: ({required int port}) => _probeOpenCodeManagedHealth(
+      port: port,
+      password: password,
+      clientFactory: probeClientFactory,
+      host: connectHost,
+      deviceCanvasToolsReadyFilePath: deviceCanvasToolsReadyFilePath,
+      deviceCanvasToolsInitializationDirectory: host.stateDirectory,
+    ),
     probePortBindable: ({required int port}) =>
         probeOpenCodePortBindable(ports: host.ports, port: port, bindHost: bindHost, connectHost: connectHost),
     buildRecord: (draft) => buildOpenCodeOwnershipRecord(draft: draft, bindHost: bindHost),

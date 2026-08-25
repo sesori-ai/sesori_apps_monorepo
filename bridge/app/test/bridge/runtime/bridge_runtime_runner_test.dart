@@ -1,6 +1,7 @@
 import "dart:io";
 
 import "package:sesori_bridge/src/runtime/bridge_runtime_runner.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_process_runner.dart";
@@ -53,6 +54,18 @@ void main() {
         isFalse,
       );
     });
+  });
+
+  test("plugin environment strips inherited Device Canvas capabilities", () {
+    final environment = BridgeRuntimeRunner.sanitizePluginEnvironment({
+      "PATH": "/usr/bin",
+      deviceCanvasAgentToolBootstrapFileEnvironment: "/tmp/bootstrap",
+      deviceCanvasAgentToolBootstrapSecretEnvironment: "secret",
+      deviceCanvasAgentToolRendezvousEnvironment: "/tmp/rendezvous",
+      deviceCanvasAgentToolReadyFileEnvironment: "/tmp/ready",
+    });
+
+    expect(environment, {"PATH": "/usr/bin"});
   });
 
   group("BridgeRuntimeRunner.resolveLocalMachineName", () {

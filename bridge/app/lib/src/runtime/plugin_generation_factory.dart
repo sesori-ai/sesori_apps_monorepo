@@ -53,6 +53,7 @@ class PluginGenerationFactory({
   required RuntimeFileApi runtimeFileApi,
   required final ServerClock _clock,
   required Map<String, String> environment,
+  required Map<String, Map<String, String>> environmentOverridesByPluginId,
   required final ProcessUser? _currentUser,
 
   /// Resolves the currently configured idle timeout for a plugin, in minutes.
@@ -61,6 +62,10 @@ class PluginGenerationFactory({
   required final int Function({required String pluginId}) _resolveIdleTimeoutMins,
 }) {
   final Map<String, String> _environment = Map<String, String>.unmodifiable(environment);
+  final Map<String, Map<String, String>> _environmentOverridesByPluginId = {
+    for (final entry in environmentOverridesByPluginId.entries)
+      entry.key: Map<String, String>.unmodifiable(entry.value),
+  };
   final Map<String, RuntimeFileApi> _fileApisByStateDirectory = <String, RuntimeFileApi>{
     runtimeFileApi.runtimeDirectory: runtimeFileApi,
   };
@@ -88,6 +93,10 @@ class PluginGenerationFactory({
       },
     );
     return controller.stream;
+  }
+
+  void setEnvironmentOverrides({required String pluginId, required Map<String, String> overrides}) {
+    _environmentOverridesByPluginId[pluginId] = Map<String, String>.unmodifiable(overrides);
   }
 
   void _scheduleDrain() {
@@ -146,6 +155,9 @@ class PluginGenerationFactory({
                     host.provisionedRuntimePath = binaryPath;
                   }
                 }
+                host.addEnvironmentOverrides(
+                  _environmentOverridesByPluginId[request.registration.descriptor.id] ?? const <String, String>{},
+                );
                 startSettlements.add(
                   _settleDescriptorStart(
                     request: request,

@@ -9,6 +9,7 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness, StringExtensions;
 
 import "../opencode_plugin_impl.dart";
+import "open_code_device_canvas_tools.dart";
 import "open_code_managed_api.dart";
 import "open_code_ownership_record.dart";
 import "open_code_record_mapper.dart";
@@ -340,21 +341,22 @@ class const OpenCodePluginDescriptor({
           : "Install OpenCode from Sesori, or install it locally and retry setup detection.";
     }
 
-    final selection = await ManagedRuntimeSelectionService(
-      manifest: manifest,
-      versionValidator: RuntimeVersionValidator(
-        commandExecutor: executor,
-        manifest: manifest,
-        probeTimeout: _versionProbeTimeout,
-      ),
-    ).select(
-      explicitExecutablePath: explicitBin,
-      fallbackExecutableCandidates: const [],
-      environment: environment,
-      stateDirectory: stateDirectory,
-      abortSignal: StartAbortSignal.never,
-      managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
-    );
+    final selection =
+        await ManagedRuntimeSelectionService(
+          manifest: manifest,
+          versionValidator: RuntimeVersionValidator(
+            commandExecutor: executor,
+            manifest: manifest,
+            probeTimeout: _versionProbeTimeout,
+          ),
+        ).select(
+          explicitExecutablePath: explicitBin,
+          fallbackExecutableCandidates: const [],
+          environment: environment,
+          stateDirectory: stateDirectory,
+          abortSignal: StartAbortSignal.never,
+          managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
+        );
     if (selection case ManagedRuntimeSelected(:final version)) {
       return PluginSetupReady.versioned(runtimeVersion: version.raw);
     }
@@ -463,6 +465,9 @@ class const OpenCodePluginDescriptor({
 
     final probeClientFactory = _probeClientFactory ?? http.Client.new;
     const mapper = OpenCodeRecordMapper();
+    final deviceCanvasToolEnvironment = config.flag(_OpenCodeConfigKey.noAutoStart)
+        ? const <String, String>{}
+        : await configureOpenCodeDeviceCanvasTools(host: host);
 
     final service = ManagedProcessService<OpenCodeOwnershipRecord>(
       ownershipRepository: HostJsonRuntimeOwnershipRepository<OpenCodeOwnershipRecord>(
@@ -500,6 +505,7 @@ class const OpenCodePluginDescriptor({
         probeClientFactory: probeClientFactory,
         bindHost: bindHost,
         connectHost: connectHost,
+        environmentOverrides: const <String, String>{},
       );
       try {
         handle = await service.attach(spec: spec, port: attachPort, startAborted: host.startAborted);
@@ -546,6 +552,7 @@ class const OpenCodePluginDescriptor({
           probeClientFactory: probeClientFactory,
           bindHost: bindHost,
           connectHost: connectHost,
+          environmentOverrides: deviceCanvasToolEnvironment,
         );
         handle = null;
       } else {
@@ -574,6 +581,7 @@ class const OpenCodePluginDescriptor({
           probeClientFactory: probeClientFactory,
           bindHost: bindHost,
           connectHost: connectHost,
+          environmentOverrides: deviceCanvasToolEnvironment,
         );
 
         // start() cleans up stale owned runtimes, selects a port, spawns, and

@@ -3,10 +3,11 @@ import "dart:io";
 import "package:drift/drift.dart";
 import "package:drift/native.dart";
 import "package:path/path.dart" as path;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show createHardenedDirectory, createHardenedFile;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../foundation/data_directory_hardening.dart";
 import "daos/catalog_hydrations_dao.dart";
 import "daos/device_canvas_claim_dao.dart";
 import "daos/projects_dao.dart";

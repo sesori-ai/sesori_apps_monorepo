@@ -5,10 +5,10 @@
 - **Plan slug:** `device-canvas-integration`
 - **Implementation base:** `upstream/main` at `5c50f38a`
 - **Current branch:** `device-canvas-integration-step-1`
-- **Series state:** Steps 1-5 implemented and verified; Step 6 is ready
-- **Current step:** add OpenCode-native simulator tools
-- **Next action:** bind list, claim, and release operations to the invoking
-  OpenCode session's canonical identity and verify real agent behavior
+- **Series state:** Steps 1-6 implemented and verified; Step 7 is ready
+- **Current step:** verify Phase 1 across Sesori and Device Canvas
+- **Next action:** run the complete Phase 1 release matrix and record the final
+  cross-repository acceptance evidence
 
 ## Locked Decisions
 
@@ -68,8 +68,8 @@
 | [x] | 3/12 - Connect local inventory | Sesori | Implemented locally; architecture and review gates passed |
 | [x] | 4/12 - Show claims and deep-link | Device Canvas | Implemented locally; protocol, IPC, and live-device verification passed |
 | [x] | 5/12 - Add client status/deep links | Sesori | Implemented locally; strict analysis, full suites, builds, and independent review passed |
-| [ ] | 6/12 - Add OpenCode tools | Sesori | Ready; Steps 2-5 service and client contracts verified |
-| [ ] | 7/12 - Verify Phase 1 | Both | Blocked on Step 6 |
+| [x] | 6/12 - Add OpenCode tools | Sesori | Implemented; strict analysis, full suites, production build, security review, and real-agent verification passed |
+| [ ] | 7/12 - Verify Phase 1 | Both | Ready; Step 6 real-agent and live Device Canvas verification passed |
 | [ ] | 8/12 - Prove media feasibility | Both | Blocked on Phase 1 acceptance |
 | [ ] | 9/12 - Authorize/signaling streams | Sesori | Blocked on Step 8 decisions |
 | [ ] | 10/12 - Provision TURN | Infrastructure | Blocked on Step 8 network decision |
@@ -100,7 +100,7 @@
 - [x] Same-session claim is idempotent.
 - [x] Different-session claim conflicts without stealing.
 - [x] Different sessions can own different devices concurrently.
-- [ ] Agent calls infer canonical session identity and cannot name another
+- [x] Agent calls infer canonical session identity and cannot name another
   session.
 - [x] Device Canvas and Bridge restart recover claims and presence correctly.
 - [x] Device stop/restart retains ownership while changing presence.
@@ -111,7 +111,7 @@
   project, and normalizes to the existing session-detail stack.
 - [x] Offline bridge and missing/wrong-account links fail safely.
 - [x] Old bridge/client/Device Canvas combinations degrade as documented.
-- [ ] OpenCode agent tools pass real-session end-to-end use.
+- [x] OpenCode agent tools pass real-session end-to-end use.
 
 ## Phase 2 Entry-Gate Checklist
 
@@ -252,6 +252,37 @@
 - `make build` passed in `bridge/app`; `zsh build.sh` and focused Swift protocol
   tests passed in Device Canvas; `plutil -lint Info.plist` passed.
 - Independent bridge and client reviews found no remaining findings.
+
+### Step 6 OpenCode-native simulator tools
+
+- Added backend-neutral list, claim, and release operations that resolve the
+  trusted OpenCode invocation session through `SessionRepository` before using
+  canonical `Session.id`; model input has no session, bridge, force, or
+  reassignment field.
+- Added exactly three managed-OpenCode native tools, typed bounded outcomes,
+  authenticated loopback transport, rotating in-memory bearer registration, and
+  owner-only one-time bootstrap delivery. Reserved capability variables are
+  stripped from inherited setup/generation environments and from child process
+  and shell environments.
+- OpenCode's native registry is process-static. Definitions remain visible after
+  a Device Canvas disconnect, but operations hard-disable with a typed
+  unavailable outcome and cannot mutate claims.
+- `make codegen`, workspace `make analyze`, full workspace `make test`, and the
+  bridge-app production `make build` passed. Focused service, transport,
+  generation, runtime-policy, and inherited-capability regressions passed.
+- Independent compatibility and security reviews found no remaining high- or
+  medium-severity findings after capability timing, inherited-environment, and
+  bootstrap-delivery hardening.
+- OpenCode `1.18.20` loaded exactly `list_simulators`, `claim_simulator`, and
+  `release_simulator`; a real model invocation called `list_simulators` and the
+  bridge received the exact invoking OpenCode session ID.
+- A disposable real-device end-to-end run booted an iPhone 17 Pro simulator,
+  launched the actual Device Canvas app, and used two distinct OpenCode agent
+  sessions. It verified list, initial and repeated claim, caller-relative
+  ownership, conflict without stealing, wrong-owner release rejection, owner
+  release, canonical ownership in the bridge database, and Device Canvas
+  disconnect/reconnect recovery. Temporary processes, state, and the simulator
+  were cleaned up.
 
 ## Open Product Confirmations
 

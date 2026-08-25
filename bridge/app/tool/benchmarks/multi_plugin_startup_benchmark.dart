@@ -104,6 +104,7 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
     runtimeFileApi: RuntimeFileApi(runtimeDirectory: runtimeDirectory.path),
     clock: const ServerClock(),
     environment: const <String, String>{},
+    environmentOverridesByPluginId: const <String, Map<String, String>>{},
     currentUser: null,
     resolveIdleTimeoutMins: ({required pluginId}) => 10,
   );

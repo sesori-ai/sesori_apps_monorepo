@@ -3,8 +3,9 @@ import "dart:io";
 import "package:drift/drift.dart";
 import "package:drift/native.dart";
 import "package:path/path.dart" as path;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show createHardenedDirectory, createHardenedFile;
 
-import "../../../foundation/data_directory_hardening.dart";
 import "chat_history_dao.dart";
 import "tables/history_messages_table.dart";
 import "tables/history_parts_table.dart";

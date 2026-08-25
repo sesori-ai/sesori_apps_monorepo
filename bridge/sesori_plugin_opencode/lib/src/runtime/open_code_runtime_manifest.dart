@@ -25,7 +25,9 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
   /// Minimum pre-installed OpenCode version the bridge will use as-is.
   /// Conservative on purpose: prefer the user's own compatible install and
   /// only download the managed runtime for genuinely old installs.
-  static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "1.14.0");
+  // Native tool definitions use the JSON-Schema adapter added in OpenCode
+  // 1.14.49 so the generated plugin remains dependency-free.
+  static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "1.14.49");
 
   /// The latest stable OpenCode release targeted by this plugin.
   static const String targetVersion = "1.18.19";

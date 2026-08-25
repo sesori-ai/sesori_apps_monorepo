@@ -5,8 +5,8 @@ import "dart:typed_data";
 import "package:crypto/crypto.dart";
 import "package:meta/meta.dart";
 import "package:path/path.dart" as path;
-
-import "../foundation/data_directory_hardening.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show createHardenedDirectory, hardenPath, ownerOnlyDirectoryMode, ownerOnlyFileMode;
 
 final class const AttachmentStorageScope({
   required final String pluginId,

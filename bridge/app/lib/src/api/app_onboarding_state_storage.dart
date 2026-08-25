@@ -1,8 +1,7 @@
 import "dart:io";
 
 import "package:path/path.dart" as path;
-
-import "../foundation/data_directory_hardening.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show writeRestrictedFile;
 
 String appOnboardingStateDirectoryPath({required String dataDirectory}) => path.join(dataDirectory, "app_onboarding");
 

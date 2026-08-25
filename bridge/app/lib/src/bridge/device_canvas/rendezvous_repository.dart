@@ -2,9 +2,10 @@ import "dart:convert";
 
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:path/path.dart" as path;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show createHardenedDirectory, hardenPath, ownerOnlyDirectoryMode, ownerOnlyFileMode;
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
-import "../../foundation/data_directory_hardening.dart";
 import "../../server/api/runtime_file_api.dart";
 import "protocol.dart";
 

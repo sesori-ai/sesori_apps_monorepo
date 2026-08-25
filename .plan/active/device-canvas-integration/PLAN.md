@@ -369,13 +369,18 @@ Tool results contain bounded metadata and typed outcomes. The adapter resolves
 the invoking backend session through `SessionRepository` before reaching the
 claim service. It never accepts `sessionId`, `bridgeId`, or force from model input.
 
-The first adapter is OpenCode through its native MCP/tool support. The adapter:
+The first adapter is OpenCode through its native tool support. The adapter:
 
-1. advertises tools only while the local integration is connected;
+1. registers exactly three tools only in bridge-managed OpenCode;
 2. binds each call to the backend session that invoked it;
 3. translates the binding to canonical `Session.id`;
 4. reports conflicts without exposing prompt or transcript content;
-5. removes or disables the tools when the integration becomes unavailable.
+5. hard-disables every operation when the integration becomes unavailable.
+
+OpenCode's current native registry is fixed for the process lifetime, so tool
+definitions may remain visible after Device Canvas disconnects. The bridge must
+return the typed unavailable outcome and perform no claim operation; it must not
+pretend that dynamic unregistration succeeded.
 
 Codex, Cursor/ACP, Claude, and Hermes adapters are separate follow-ups. A backend
 with no verified native registration seam does not advertise a pretend command
