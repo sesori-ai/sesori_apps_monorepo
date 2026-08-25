@@ -590,7 +590,19 @@ duplicate-emission nicety.
   reaches a rendered string. It also caught a real documentation defect this
   commit introduced: inserting `startCatalogScanFor` between `install()`'s doc
   comment and `install()` orphaned that comment. Fixed
-- **Step 6c PR:** pending
+- **Step 6c PR:** [#1113](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1113)
+  open
+- **Step 6c review comments:** both bot findings valid, fixed in `7a4e024ea4`.
+  The failed-start line said "Check the bridge log", which contradicts this
+  plan's own reason for retaining the `ApiError`: the request may never have
+  reached the bridge. Now neutral, because the app has no user-facing log
+  viewer either. The lists' failed row still names the bridge log and is
+  correct — that one comes from a bridge-side `CatalogImportFailed` event
+- **Step 6c doc reversal:** codex asked again for the regression document in the
+  same PR, and this time it was right where it was not on 6b. 6c is the last
+  implementation step, so nothing written now would be rewritten in step 7.
+  `plugin-setup-and-lifecycle.md` was reconciled here, leaving step 7 with
+  `projects-and-sessions.md` only
 - **Upstream change during 6c:** PR #1106 fixed the catalog refresh ordering
   seam this plan had recorded as an accepted residue, renaming the service's
   `settled` to `catalogChanged` and already updating part of
