@@ -55,8 +55,12 @@ child sessions with titles, activity, statuses, and unseen state.
   as a swipe target.
 - Pull-to-refresh provides visible drag and in-flight feedback in both the
   full-screen lists and the wide split-view session pane. On every platform,
-  releasing a pull while the refresh is pending keeps the pane content
-  displaced and its Cupertino indicator visible.
+  releasing an ordinary pull while its refresh is pending keeps the pane content
+  displaced and its Cupertino indicator visible. A pull that crossed the deeper
+  catalog-scan threshold is the exception: it stops holding the content the
+  moment that stage fires, and shows neither indicator nor caption afterwards,
+  because the scan row is what reports the run from then on. Its ordinary
+  refresh still runs, and still reports a failure.
 - A session created in a dedicated worktree receives a system prompt identifying
   that worktree, its initial branch, and base branch. The prompt requires all
   work to remain in that worktree, while permitting use of the initial branch,
