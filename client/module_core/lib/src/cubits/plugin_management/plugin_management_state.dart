@@ -2,6 +2,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../services/models/catalog_rescan_state.dart";
 import "../../services/plugin_management_service.dart";
 
 part "plugin_management_state.freezed.dart";
@@ -121,5 +122,14 @@ sealed class PluginManagementState with _$PluginManagementState {
 
     /// In-flight managed runtime installs, keyed by plugin id.
     required Map<String, PluginInstallProgress> installs,
+
+    /// Harnesses with a catalog scan in flight, whether this screen started it
+    /// or the lists did. Their scan action is not offered again while it runs.
+    required Set<String> scanningPluginIds,
+
+    /// Why a targeted scan was turned down, keyed by the harness the user
+    /// named. An accepted start is never recorded: the card reports it by
+    /// disabling its own action, and the aggregate row reports the run.
+    required Map<String, CatalogRescanStartResult> scanRejections,
   }) = PluginManagementReady;
 }

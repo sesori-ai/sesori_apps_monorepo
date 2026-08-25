@@ -3391,6 +3391,36 @@ abstract class AppLocalizations {
   /// **'Check your harnesses in Settings'**
   String get catalogScanNoHarnessDetail;
 
+  /// Settings action on a harness card that re-imports that one harness's catalog, the pointer-and-keyboard equivalent of the lists' deep pull.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan for sessions'**
+  String get harnessManagementScan;
+
+  /// Supporting line under the per-harness scan action, saying what scanning does.
+  ///
+  /// In en, this message translates to:
+  /// **'Import projects and sessions this harness has on disk'**
+  String get harnessManagementScanDescription;
+
+  /// Replaces the scan action's description when the bridge refused to import from this harness, usually because it is not running or its setup is incomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'This harness cannot be scanned right now'**
+  String get harnessManagementScanNotReady;
+
+  /// Replaces the scan action's description when the connected bridge is too old to import catalogs on request.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the bridge to scan from here'**
+  String get harnessManagementScanUnsupported;
+
+  /// Replaces the scan action's description when the request itself failed. Names no log, because the request may never have reached the bridge, and the client-side cause it is recorded against has no user-facing viewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the scan. Try again in a moment'**
+  String get harnessManagementScanFailed;
+
   /// Action on a finished scan row that clears it once the user has read the result.
   ///
   /// In en, this message translates to:
