@@ -54,10 +54,13 @@
 
 | Decision | Chosen | Rationale |
 |---|---|---|
-| Refresh model | Two-stage pull: soft unchanged, deep fires past `1.6 x triggerDistance` | A rescan boots every enabled harness backend, so it must be deliberate |
+| Refresh model | Two-stage pull: soft unchanged, deep fires past `1.8 x triggerDistance` | A rescan boots every enabled harness backend, so it must be deliberate. Raised from 1.6 in 6d: too easy to reach by accident |
 | Deep-pull commit | On crossing the threshold, not on release | `CupertinoSliverRefreshControl` fires `onRefresh` on crossing and never on release, so release semantics were unbuildable. Owner decision 2026-08-24 |
 | Gesture owner | One `module_prego` `PregoSliverRefreshControl` | Three hosts, only two of which use `PregoGlassScaffold`; the pane must not re-implement thresholds in `client/app` |
 | Row weight | Tinted card, distinct from the surrounding tiles | Reads as status rather than content, so it is never mistaken for an openable row |
+| Row component | Bespoke tinted card, not `PregoInlineAlertsNotifications` | 6b reused the inline alert to avoid building one; it paints `colors.fgPrimary`, so the row was a near-black slab over a light list. An alert interrupts, this reports |
+| Post-fire pull | The control renders nothing at all once the threshold is crossed | The row is already on screen reporting the run, so the spinner and caption narrated it twice |
+| Row height | Fixed across every state; the detail line is always rendered | The detail arrives one event after the row, and a line appearing under it moved the list a second time |
 | Running detail | The harness and its live session count | A "2 of 3" line goes still during a long single-harness scan, which is when reassurance matters most |
 | Copy | "Scan" led, sessions first, projects only in the result | Owner decision 2026-08-24: "rescan" named the mechanism, not the outcome |
 | Progress presentation | One aggregate row | Fixed height; the top of the list never reflows as harnesses finish at different times |
