@@ -47,7 +47,7 @@ void main() {
     final event = await delivered;
 
     expect(
-      event.part.attachment,
+      (event.part as MessagePartFile).attachment,
       isA<MessageAttachmentInlineImage>().having((image) => image.base64, "base64", base64Encode(imageBytes)),
       reason: "the local debug stream has no capability surface, so it keeps the released shape",
     );

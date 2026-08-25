@@ -339,11 +339,12 @@ class ChatHistoryService({
   ///
   /// The Orchestrator uses this single predicate so "needs an awaited capture"
   /// and "may be delivered as a reference" can never disagree.
-  bool requiresAwaitedAttachmentCapture({required MessagePart part}) {
-    if (part.attachment is MessageAttachmentInlineImage) return true;
-    final attachments = part.state?.attachments ?? const <MessageAttachment>[];
-    return attachments.any((attachment) => attachment is MessageAttachmentInlineImage);
-  }
+  bool requiresAwaitedAttachmentCapture({required MessagePart part}) => switch (part) {
+    MessagePartFile(:final attachment) => attachment is MessageAttachmentInlineImage,
+    MessagePartTool(:final state) =>
+      state?.attachments.any((attachment) => attachment is MessageAttachmentInlineImage) ?? false,
+    _ => false,
+  };
 
   /// Records a finalized part and returns it in every delivery shape.
   ///
@@ -431,15 +432,19 @@ class ChatHistoryService({
       return attachment;
     }
 
-    final state = part.state;
-    return part.copyWith(
-      attachment: part.attachment == null ? null : bound(attachment: part.attachment!),
-      state: state == null
-          ? null
-          : state.copyWith(
-              attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(),
-            ),
-    );
+    return switch (part) {
+      MessagePartFile(:final attachment) => part.copyWith(
+        attachment: attachment == null ? null : bound(attachment: attachment),
+      ),
+      MessagePartTool(:final state) => part.copyWith(
+        state: state == null
+            ? null
+            : state.copyWith(
+                attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(),
+              ),
+      ),
+      _ => part,
+    };
   }
 
   /// Finalizes tool parts left open after the session's turn ended, returning
@@ -501,8 +506,9 @@ class ChatHistoryService({
   bool _containsOpenToolPart({required ChatHistoryPage page}) {
     for (final message in page.messages) {
       for (final part in message.parts) {
-        if (part.type != MessagePartType.tool) continue;
-        final status = part.state?.status;
+        if (part is! MessagePartTool) continue;
+        final state = part.state;
+        final status = state?.status;
         if (status == ToolStatus.pending || status == ToolStatus.running) return true;
       }
     }

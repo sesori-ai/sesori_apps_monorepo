@@ -54,7 +54,20 @@ compaction commands; and selected message-part/tool-status construction.
   merging Step 27's review fixes forward.
 - Human-review follow-up replaced flattened `PluginMessagePart` fields with one
   Freezed variant per part type; bridge-wide `make analyze` passed.
+- Follow-up also replaced the shared `MessagePart` product with matching Freezed
+  variants. The released JSON discriminators, null-key omission, and decoding
+  of known legacy payloads with omitted variant fields remain unchanged.
 - Follow-up verification passed: full interface (160), Cursor (138), OMP (53),
   and DeepSeek (31) suites; focused OpenCode (11), ACP (138), Codex (155),
   Claude (33), Pi (44), and bridge app mapper/SSE/repository (157) suites.
+- Final shared-union verification passed: full shared suite (376), full bridge
+  app suite before the final persistence fixtures (2691, with 2 skips), full
+  module-core suite (1353), and affected mobile widget suites (181).
+- After the final database/archive compatibility fixtures and removal of the
+  obsolete shared type enum, affected bridge suites (66) and module-core suites
+  (47) passed; shared code generation and the full shared suite passed again.
+- Final analysis passed in shared, module core, the mobile app, and every bridge
+  workspace module. Architecture implementation review approved the shared
+  union and cross-layer migration with no findings; correctness review also had
+  no findings.
 - `git diff --check`: passed.

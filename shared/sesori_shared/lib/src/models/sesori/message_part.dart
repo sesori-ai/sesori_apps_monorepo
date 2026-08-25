@@ -87,54 +87,110 @@ List<MessageAttachment> _messageAttachmentsFromJson(Object? json) {
 }
 
 @JsonEnum()
-enum MessagePartType() {
-  @JsonValue("text")
-  text,
-  @JsonValue("reasoning")
-  reasoning,
-  @JsonValue("tool")
-  tool,
-  @JsonValue("subtask")
-  subtask,
-  @JsonValue("step-start")
-  stepStart,
-  @JsonValue("step-finish")
-  stepFinish,
-  @JsonValue("file")
-  file,
-  @JsonValue("snapshot")
-  snapshot,
-  @JsonValue("patch")
-  patch,
-  @JsonValue("agent")
-  agent,
-  @JsonValue("retry")
-  retry,
-  @JsonValue("compaction")
-  compaction,
-}
-
-@JsonEnum()
 enum MessageAttachmentDelivery() { inline, storedReference }
 
-@Freezed(fromJson: true, toJson: true)
-sealed class MessagePart with _$MessagePart {
-  const factory({
+@Freezed(unionKey: "type", fromJson: true, toJson: true)
+sealed class const MessagePart._() with _$MessagePart {
+  @FreezedUnionValue("text")
+  const factory text({
     required String id,
     required String sessionID,
     required String messageID,
-    required MessagePartType type,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit text.
+    // Remove nullability when the minimum supported bridge always sends it.
     required String? text,
+  }) = MessagePartText;
+
+  @FreezedUnionValue("reasoning")
+  const factory reasoning({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit text.
+    // Remove nullability when the minimum supported bridge always sends it.
+    required String? text,
+  }) = MessagePartReasoning;
+
+  @FreezedUnionValue("tool")
+  const factory tool({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the tool name.
+    // Remove nullability when the minimum supported bridge always sends it.
     required String? tool,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit tool state.
+    // Remove nullability when the minimum supported bridge always sends it.
     required ToolState? state,
+  }) = MessagePartTool;
+
+  @FreezedUnionValue("subtask")
+  const factory subtask({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the subtask prompt.
+    // Remove nullability when the minimum supported bridge always sends it.
     required String? prompt,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the subtask description.
+    // Remove nullability when the minimum supported bridge always sends it.
     required String? description,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the subtask agent.
+    // Remove nullability when the minimum supported bridge always sends it.
     required String? agent,
-    required String? agentName,
-    required int? attempt,
-    required String? retryError,
+  }) = MessagePartSubtask;
+
+  @FreezedUnionValue("step-start")
+  const factory stepStart({required String id, required String sessionID, required String messageID}) =
+      MessagePartStepStart;
+
+  @FreezedUnionValue("step-finish")
+  const factory stepFinish({required String id, required String sessionID, required String messageID}) =
+      MessagePartStepFinish;
+
+  @FreezedUnionValue("file")
+  const factory file({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the attachment.
+    // Remove nullability when the minimum supported bridge always sends it.
     @JsonKey(fromJson: _messageAttachmentFromJson) required MessageAttachment? attachment,
-  }) = _MessagePart;
+  }) = MessagePartFile;
+
+  @FreezedUnionValue("snapshot")
+  const factory snapshot({required String id, required String sessionID, required String messageID}) =
+      MessagePartSnapshot;
+
+  @FreezedUnionValue("patch")
+  const factory patch({required String id, required String sessionID, required String messageID}) = MessagePartPatch;
+
+  @FreezedUnionValue("agent")
+  const factory agent({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the agent name.
+    // Remove nullability when the minimum supported bridge always sends it.
+    required String? agentName,
+  }) = MessagePartAgent;
+
+  @FreezedUnionValue("retry")
+  const factory retry({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the retry attempt.
+    // Remove nullability when the minimum supported bridge always sends it.
+    required int? attempt,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the retry error.
+    // Remove nullability when the minimum supported bridge always sends it.
+    required String? retryError,
+  }) = MessagePartRetry;
+
+  @FreezedUnionValue("compaction")
+  const factory compaction({required String id, required String sessionID, required String messageID}) =
+      MessagePartCompaction;
 
   factory fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);
 }
@@ -229,7 +285,9 @@ sealed class ToolState with _$ToolState {
     required String? title,
     required String? output,
     required String? error,
-    // COMPATIBILITY 2026-07-30 (v1.6.1): Older bridges omit attachments, which means the tool returned none. Remove @Default and require attachments after the minimum supported bridge sends it.
+    // COMPATIBILITY 2026-07-30 (v1.6.1): Older bridges omit attachments,
+    // which means the tool returned none. Remove @Default and require
+    // attachments after the minimum supported bridge sends it.
     @JsonKey(fromJson: _messageAttachmentsFromJson) @Default(<MessageAttachment>[]) List<MessageAttachment> attachments,
   }) = _ToolState;
 

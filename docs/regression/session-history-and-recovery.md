@@ -37,6 +37,9 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
 - Binary and attachment payloads are never stored inline in database tables; they
   round-trip through spill storage and still render. A slow or stuck request
   never blocks unrelated requests, other plugins, key exchange, or reconnects.
+- Database rows and audit files written with the released flattened message-part
+  contract remain readable after the in-memory model becomes sealed variants,
+  including known part types whose variant-specific fields were omitted.
 - A tool part stranded in `pending`/`running` after its turn ended is finalized
   to a terminal error, for every backend. The sweep runs when the session goes
   idle (finalized parts are also delivered live as part updates) and on a
@@ -87,6 +90,8 @@ image parts converge by their own rules.
 - A session advanced outside Sesori keeps serving the old transcript, or stored
   transcripts are marked complete after a gap without a full re-sync.
 - A stale re-read moves an older retained message to the newest edge.
+- A released database row or audit file is rejected because a known message-part
+  payload omitted variant-specific data.
 - Pi falls back after an arbitrary RPC failure, shows an abandoned branch or
   summary payload, or exposes a private path, raw backend error, or hidden prompt
   prefix in mapped history.
@@ -110,6 +115,7 @@ image parts converge by their own rules.
 ## Sources
 
 Bridge chat-history service, repository, reconcile service, history listeners,
-SSE replay window, and routed request dispatch; Pi session process repository,
+SSE replay window, and routed request dispatch; database and audit compatibility
+tests under `bridge/app/test/bridge/services/`; Pi session process repository,
 storage API, and history mapper; shared pagination cursor; client detail load
 service and cubit.

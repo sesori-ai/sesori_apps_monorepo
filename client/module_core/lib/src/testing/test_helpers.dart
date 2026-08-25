@@ -681,21 +681,11 @@ MessageWithParts testMessageWithParts({String? id = _noString}) {
       time: null,
     ),
     parts: [
-      MessagePart(
+      MessagePart.text(
         id: "part-1",
         sessionID: "session-1",
         messageID: messageId,
-        type: MessagePartType.text,
         text: "Hello, world!",
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
-        attachment: null,
       ),
     ],
   );
@@ -909,5 +899,4 @@ class FakeCatalogRescanService() implements CatalogRescanService {
     await _state.close();
     await _settled.close();
   }
-
 }
