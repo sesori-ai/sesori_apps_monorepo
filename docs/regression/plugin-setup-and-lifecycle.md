@@ -67,7 +67,8 @@ idle suspension, the management snapshot, and lifecycle commands.
   snapshot changes only on real content change with a new token, and a terminal failure
   removes only that harness's routing and new-session choice.
 - Deliberate bridge shutdown enters each live harness's lifecycle shutdown before closing
-  its transport directly. Managed runtime monitors disarm before transport or process
+  its transport directly. Stdio transports close child stdin before graceful termination
+  and bounded force-kill. Managed runtime monitors disarm before transport or process
   teardown, so a clean owned-runtime exit is neither reported nor restarted as a crash.
 - Codex keeps its long-lived app-server connection active with a local in-memory RPC;
   idle keepalives never trigger remote model discovery, and stop when the plugin is disposed.
