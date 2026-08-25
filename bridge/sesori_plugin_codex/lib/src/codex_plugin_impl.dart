@@ -253,11 +253,7 @@ class CodexPlugin._({
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
     _approvalRegistry = null;
-    // Teardown emits a clearing event per pending prompt, and every approval
-    // emit re-syncs work state. Those land in a later microtask, so re-assert
-    // the disconnect's `unknown` afterwards instead of letting the sync — which
-    // now sees an empty registry — settle on a bogus `idle`.
-    unawaited(registry?.dispose().whenComplete(() => _workState.set(PluginWorkState.unknown)));
+    unawaited(registry?.dispose());
     _sessionStatuses.clear();
     _activeTurnByThread.clear();
     for (final sessionId in activeSessionIds) {
@@ -449,8 +445,9 @@ class CodexPlugin._({
   /// elicitations) through the [ApprovalRegistry] so they surface as
   /// bridge permission/question events.
   void _attachApprovalRegistry(CodexAppServerClient client) {
-    final registry = ApprovalRegistry(
-      emit: _emitApprovalEvent,
+    late final ApprovalRegistry registry;
+    registry = ApprovalRegistry(
+      emit: (event) => _emitApprovalEvent(registry: registry, event: event),
       respond: (id, result) => client.respondToServerRequest(id: id, result: result),
       respondError: (id, code, message) => client.respondToServerRequestWithError(
         id: id,
@@ -462,8 +459,8 @@ class CodexPlugin._({
     registry.attach(stream: client.serverRequests);
   }
 
-  void _emitApprovalEvent(BridgeSseEvent event) {
-    _syncWorkState();
+  void _emitApprovalEvent({required ApprovalRegistry registry, required BridgeSseEvent event}) {
+    if (identical(_approvalRegistry, registry)) _syncWorkState();
     _eventBuffer.add(event);
     _eventBuffer.add(const BridgeSseProjectUpdated());
   }

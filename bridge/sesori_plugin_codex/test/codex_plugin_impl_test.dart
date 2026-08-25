@@ -380,6 +380,12 @@ void main() {
       );
       await secondAsk.timeout(const Duration(seconds: 2));
 
+      final disconnectWorkStates = <PluginWorkState>[];
+      final workStateSubscription = plugin.workState.listen(disconnectWorkStates.add);
+      addTearDown(workStateSubscription.cancel);
+      await pumpEventQueue();
+      disconnectWorkStates.clear();
+
       final disconnected = plugin.events
           .where((event) => event is BridgeSseSessionIdle)
           .cast<BridgeSseSessionIdle>()
@@ -397,6 +403,7 @@ void main() {
       );
       await pumpEventQueue();
       expect(plugin.currentWorkState, PluginWorkState.unknown);
+      expect(disconnectWorkStates, isNot(contains(PluginWorkState.idle)));
     });
 
     test("dispose closes event buffer without error", () async {
