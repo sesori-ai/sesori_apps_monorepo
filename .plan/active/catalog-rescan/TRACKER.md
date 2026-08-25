@@ -636,4 +636,21 @@ duplicate-emission nicety.
   the scan state at report time rather than threading a flag through the
   gesture, so a fetch that resolved before the pull crossed 1.8x would still
   raise one toast
+- **Step 6d review comments:** three bot findings. Two were defects the polish
+  itself introduced and are fixed in `7a75b73be1`: `SizeTransition` only changes
+  layout, so the retained card kept its labels and its live action button
+  mounted at zero height where a keyboard could still reach them; and the reveal
+  ignored the OS reduced-motion preference that the router transitions, the
+  message list, the image viewer and `PregoActivityIndicator` all honour through
+  `context.isReducedMotion`. Both regression tests were confirmed to fail
+  without their fix — the reduced-motion one only after being rewritten, because
+  the first version asserted `greaterThan(0)` and `easeOutCubic` is already at
+  ~17% one frame in
+- **Step 6d toast narrowing:** the third finding was half right and the half it
+  got right was a regression: suppressing the refresh toast whenever a scan was
+  live also hid *failed* pulls. Now only a success is suppressed. Declined
+  tying suppression to the gesture that fired, which needs a flag threaded
+  through two stateless session hosts to restore a success confirmation for a
+  shallow pull taken during someone else's scan, where a progress row is already
+  on screen
 - **Final disposition:** pending
