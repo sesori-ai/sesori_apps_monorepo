@@ -150,46 +150,44 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
           abortSignal: StartAbortSignal.never,
           managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
         );
-    if (selection case ManagedRuntimeSelected(:final binaryPath, :final version)) {
-      final ready = await _probeReadiness(
-        binary: binaryPath,
-        stateDirectory: stateDirectory,
-        processes: processes,
-        environment: environment,
-      );
-      return ready
-          ? PluginSetupReady.versioned(runtimeVersion: version.raw)
-          : PluginSetupUnknown.versioned(
-              actionHint: "Run `sesori-deepseek-acp check --state-dir <path>` locally and complete DeepSeek provider setup, then retry.",
-              runtimeVersion: version.raw,
-            );
+    switch (selection) {
+      case ManagedRuntimeSelected(:final binaryPath, :final version):
+        final ready = await _probeReadiness(
+          binary: binaryPath,
+          stateDirectory: stateDirectory,
+          processes: processes,
+          environment: environment,
+        );
+        return ready
+            ? PluginSetupReady.versioned(runtimeVersion: version.raw)
+            : PluginSetupUnknown.versioned(
+                actionHint: "Run `sesori-deepseek-acp check --state-dir <path>` locally and complete DeepSeek provider setup, then retry.",
+                runtimeVersion: version.raw,
+              );
+      case ManagedRuntimeExplicitNotSelected(:final primaryRejection):
+        return switch (primaryRejection) {
+          ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => const PluginSetupRuntimeMissing(
+            actionHint: "Fix the configured DeepSeek adapter path, then restart the bridge.",
+          ),
+          ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
+            actionHint: "Update the configured DeepSeek adapter, then restart the bridge.",
+          ),
+          ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
+            actionHint: "The DeepSeek adapter version could not be verified. Check the configured installation.",
+          ),
+        };
+      case ManagedRuntimeAutomaticNotSelected(:final primaryRejection, :final managedRejection):
+        if (_isUnknownRejection(primaryRejection) || _isUnknownRejection(managedRejection)) {
+          return const PluginSetupUnknown(
+            actionHint: "The DeepSeek adapter version could not be verified. Check the local installation.",
+          );
+        }
+        return PluginSetupRuntimeMissing(
+          actionHint: _supportsManagedInstall(config: config)
+              ? "Install the Sesori DeepSeek adapter from Sesori, or install it locally and retry setup detection."
+              : "Install the Sesori DeepSeek adapter locally, then retry setup detection.",
+        );
     }
-
-    final notSelected = selection as ManagedRuntimeNotSelected;
-    if (explicit != null) {
-      return switch (notSelected.primaryRejection) {
-        ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => const PluginSetupRuntimeMissing(
-          actionHint: "Fix the configured DeepSeek adapter path, then restart the bridge.",
-        ),
-        ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
-          actionHint: "Update the configured DeepSeek adapter, then restart the bridge.",
-        ),
-        ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
-          actionHint: "The DeepSeek adapter version could not be verified. Check the configured installation.",
-        ),
-      };
-    }
-    final automatic = notSelected as ManagedRuntimeAutomaticNotSelected;
-    if (_isUnknownRejection(automatic.primaryRejection) || _isUnknownRejection(automatic.managedRejection)) {
-      return const PluginSetupUnknown(
-        actionHint: "The DeepSeek adapter version could not be verified. Check the local installation.",
-      );
-    }
-    return PluginSetupRuntimeMissing(
-      actionHint: _supportsManagedInstall(config: config)
-          ? "Install the Sesori DeepSeek adapter from Sesori, or install it locally and retry setup detection."
-          : "Install the Sesori DeepSeek adapter locally, then retry setup detection.",
-    );
   }
 
   bool _isUnknownRejection(ManagedRuntimeRejection rejection) => switch (rejection) {

@@ -238,13 +238,15 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] README documents managed/PATH/explicit install precedence, local provider setup,
   `DSH_HOME` ownership, isolated Sesori session state, telemetry-off, and sandbox/approval defaults
 - [x] No analytics event added: activation has no authoritative adoption outcome and backend identity is outside the approved analytics contract
+- [x] DeepSeek opts into the bridge workspace `no_slop_linter`; 22 initial findings resolved to zero
+- [x] DeepSeek package analysis and all 35 tests pass with the linter enabled
 - [x] Bridge app analysis and 6 focused registry/CLI tests pass
 - [x] Shared package analysis and all 361 tests pass
 - [x] Module Prego analysis and 20 branding tests pass
 - [x] Mobile and desktop shell analysis pass
 - [x] Architecture implementation review passed with no findings
 - [x] Synced with merged Step 13; focused bridge and client verification remains green
-- [x] Final changed-line count: 87, below the 1,000 soft target and 1,500 hard cap
+- [x] Final changed-line count: 293, below the 1,000 soft target and 1,500 hard cap
 - [x] PR #1110 opened against `main`
 
 Later implementation and live evidence is appended here by step. Never mark a
