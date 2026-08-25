@@ -1035,13 +1035,13 @@
   "@catalogScanPullCaption": {
     "description": "Caption under the pull-to-refresh spinner once the pull has passed the ordinary trigger, inviting the user to keep pulling to start a full catalog scan."
   },
-  "catalogScanDeepCaption": "Scanning for new sessions",
-  "@catalogScanDeepCaption": {
-    "description": "Caption under the pull-to-refresh spinner once the deep pull has fired and the catalog scan has already started."
-  },
   "catalogScanRunningTitle": "Scanning all harnesses",
   "@catalogScanRunningTitle": {
     "description": "Title of the row above a list while a catalog scan is in flight across every enabled harness."
+  },
+  "catalogScanStartingDetail": "Starting…",
+  "@catalogScanStartingDetail": {
+    "description": "Supporting line on the scan row between dispatch and the first progress event, when no harness has reported yet. Holds the line's place so the row does not change height when the real detail arrives."
   },
   "catalogScanRunningDetail": "{harness} — {sessions, plural, =1{1 session} other{{sessions} sessions}}",
   "@catalogScanRunningDetail": {

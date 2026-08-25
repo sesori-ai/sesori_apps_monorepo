@@ -3277,17 +3277,17 @@ abstract class AppLocalizations {
   /// **'Keep pulling to scan all harnesses'**
   String get catalogScanPullCaption;
 
-  /// Caption under the pull-to-refresh spinner once the deep pull has fired and the catalog scan has already started.
-  ///
-  /// In en, this message translates to:
-  /// **'Scanning for new sessions'**
-  String get catalogScanDeepCaption;
-
   /// Title of the row above a list while a catalog scan is in flight across every enabled harness.
   ///
   /// In en, this message translates to:
   /// **'Scanning all harnesses'**
   String get catalogScanRunningTitle;
+
+  /// Supporting line on the scan row between dispatch and the first progress event, when no harness has reported yet. Holds the line's place so the row does not change height when the real detail arrives.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting…'**
+  String get catalogScanStartingDetail;
 
   /// Supporting line on the running scan row: the harness currently being scanned and how many sessions it has reported so far.
   ///

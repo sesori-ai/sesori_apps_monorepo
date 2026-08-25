@@ -14,8 +14,10 @@ void main() {
     dismissCount = 0;
   });
 
-  Future<void> pumpRow(WidgetTester tester, CatalogRescanState scan) {
-    return tester.pumpWidget(
+  /// Pumps the row and runs its reveal to completion, so the card is at full
+  /// height and hittable. A live row spins forever, so this never settles.
+  Future<void> pumpRow(WidgetTester tester, CatalogRescanState scan) async {
+    await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -29,14 +31,41 @@ void main() {
         ),
       ),
     );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
   }
 
   group("CatalogScanRow", () {
-    testWidgets("renders nothing at all while idle", (tester) async {
+    testWidgets("takes no space at all while idle", (tester) async {
       await pumpRow(tester, const CatalogRescanState.idle());
 
-      expect(find.byType(PregoInlineAlertsNotifications), findsNothing);
-      expect(tester.getSize(find.byType(CatalogScanRow)).height, 0);
+      final loc = await AppLocalizations.delegate.load(const Locale("en"));
+      expect(find.text(loc.catalogScanRunningTitle), findsNothing);
+      expect(tester.getSize(find.byType(CatalogScanRow, skipOffstage: false)).height, 0);
+    });
+
+    // The detail line is rendered even before a harness reports, so the row
+    // does not shove the list down a second time when the first event lands.
+    testWidgets("keeps the same height from starting through running", (tester) async {
+      Future<double> heightFor(CatalogRescanState scan) async {
+        await pumpRow(tester, scan);
+        return tester.getSize(find.byType(CatalogScanRow)).height;
+      }
+
+      final starting = await heightFor(const CatalogRescanState.starting(pluginIds: {"codex"}));
+      final running = await heightFor(
+        const CatalogRescanState.running(activePluginName: "Codex", sessionsSeen: 148, pluginIds: {"codex"}),
+      );
+      final done = await heightFor(
+        const CatalogRescanState.succeeded(
+          harnessCount: 1,
+          counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 3),
+        ),
+      );
+
+      expect(starting, greaterThan(0));
+      expect(running, starting);
+      expect(done, starting);
     });
 
     testWidgets("reports the scan before any harness has reported progress", (tester) async {

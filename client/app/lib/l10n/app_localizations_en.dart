@@ -1747,10 +1747,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catalogScanPullCaption => 'Keep pulling to scan all harnesses';
 
   @override
-  String get catalogScanDeepCaption => 'Scanning for new sessions';
+  String get catalogScanRunningTitle => 'Scanning all harnesses';
 
   @override
-  String get catalogScanRunningTitle => 'Scanning all harnesses';
+  String get catalogScanStartingDetail => 'Starting…';
 
   @override
   String catalogScanRunningDetail(String harness, int sessions) {

@@ -361,6 +361,13 @@ class _ProjectListBodyState() extends State<_ProjectListBody> {
     final loc = context.loc;
     final success = await context.read<ProjectListCubit>().refreshProjects();
     if (!context.mounted) return;
+    // One pull, one report. The same gesture that reaches this also crosses the
+    // deeper threshold, and the scan row it started already says the list is
+    // being brought up to date — a toast beside it would announce the smaller
+    // half of the same action.
+    if (context.read<ProjectListCubit>().state case ProjectListLoaded(catalogScan: final scan) when scan.isLive) {
+      return;
+    }
     PregoPopupAlertPresenter.of(context).show(
       title: success ? loc.projectListRefreshSuccess : loc.projectListRefreshFailed,
       variant: success ? PregoPopupAlertsNotificationsVariant.success : PregoPopupAlertsNotificationsVariant.error,
