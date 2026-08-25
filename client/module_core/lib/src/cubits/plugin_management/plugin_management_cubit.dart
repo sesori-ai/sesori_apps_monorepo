@@ -209,7 +209,11 @@ class PluginManagementCubit({
     if (isClosed) return;
     _setScanRejection(
       pluginId: pluginId,
-      result: result is CatalogRescanStartAccepted ? null : result,
+      // A harness still in the live operation has no refusal to report. An
+      // uncertain start keeps it a member precisely because the request may
+      // have landed, so the card would otherwise pair a spinner with a line
+      // telling the user to try again. That run belongs to the aggregate row.
+      result: result is CatalogRescanStartAccepted || _scanningPluginIds.contains(pluginId) ? null : result,
     );
   }
 
@@ -568,8 +572,17 @@ class PluginManagementCubit({
     final current = state;
     if (current is! PluginManagementReady) return;
     final scanning = _scanningPluginIds;
-    if (const SetEquality<String>().equals(current.scanningPluginIds, scanning)) return;
-    emit(current.copyWith(scanningPluginIds: scanning));
+    // A harness entering a scan has an attempt in flight, which answers any
+    // earlier refusal — including when a list's pull started it rather than
+    // this card. Leaving it would spin a card beside its own contradiction and
+    // restore the refusal once the scan succeeded.
+    final rejections = Map<String, CatalogRescanStartResult>.of(current.scanRejections)
+      ..removeWhere((pluginId, _) => scanning.contains(pluginId));
+    if (const SetEquality<String>().equals(current.scanningPluginIds, scanning) &&
+        rejections.length == current.scanRejections.length) {
+      return;
+    }
+    emit(current.copyWith(scanningPluginIds: scanning, scanRejections: rejections));
   }
 
   void _onInstallProgress({required Map<String, PluginInstallProgress> installs}) {

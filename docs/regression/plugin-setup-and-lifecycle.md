@@ -110,8 +110,10 @@ idle suspension, the management snapshot, and lifecycle commands.
 - A scan the user aimed at one harness reports its own rejection on that harness's card,
   unlike the all-harness fan-out, which silently skips a harness it cannot import from.
   Not-importable, unsupported-bridge, and failed-request answers each read differently and
-  are replaced by the next attempt on that harness. The underlying request error is kept
-  for the local log and never rendered.
+  are cleared by the next attempt on that harness, whichever surface makes it. A start whose
+  outcome is unknown leaves the harness in the running scan rather than reporting a refusal
+  beside its own progress, so a card never pairs work in flight with a reason it failed. The
+  underlying request error is kept for the local log and never rendered.
 
 ## Regression Levels
 

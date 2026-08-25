@@ -858,6 +858,51 @@ void main() {
       );
     });
 
+    // A scan the lists started is still an attempt on this harness, so the
+    // refusal it answers must not outlive it.
+    test("a scan from another surface clears the refusal it answers", () async {
+      await ready();
+      rescan.stubStartResult(const CatalogRescanStartResult.notImportable());
+      await cubit.startCatalogScanFor(pluginId: "codex");
+      expect((cubit.state as PluginManagementReady).scanRejections, isNotEmpty);
+
+      rescan.emit(const CatalogRescanState.starting(pluginIds: {"codex"}));
+      await _settle();
+
+      expect((cubit.state as PluginManagementReady).scanRejections, isEmpty);
+    });
+
+    test("an unrelated harness keeps its refusal while another one scans", () async {
+      await ready();
+      rescan.stubStartResult(const CatalogRescanStartResult.notImportable());
+      await cubit.startCatalogScanFor(pluginId: "codex");
+
+      rescan.emit(const CatalogRescanState.starting(pluginIds: {"claude"}));
+      await _settle();
+
+      expect(
+        (cubit.state as PluginManagementReady).scanRejections,
+        {"codex": isA<CatalogRescanStartNotImportable>()},
+      );
+    });
+
+    // An uncertain start keeps the harness a member because the request may
+    // have landed, so the card must not pair a spinner with "try again".
+    test("records no refusal while the harness is still in the live operation", () async {
+      await ready();
+      rescan.stubStartResult(
+        CatalogRescanStartResult.failed(cause: ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null)),
+      );
+      rescan.emit(const CatalogRescanState.starting(pluginIds: {"codex"}));
+      await _settle();
+
+      await cubit.startCatalogScanFor(pluginId: "codex");
+
+      final state = cubit.state as PluginManagementReady;
+      expect(state.scanRejections, isEmpty);
+      expect(state.scanningPluginIds, {"codex"});
+    });
+
     // The screen rebuilds this cubit per visit and every snapshot rebuilds the
     // ready state, so both fields have to survive a rebuild that is not theirs.
     test("a snapshot rebuild keeps the scan fields", () async {
