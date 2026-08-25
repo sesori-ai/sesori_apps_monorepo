@@ -21,13 +21,16 @@ Future<void> refreshSessionList(BuildContext context) async {
   final loc = context.loc;
   final success = await context.read<SessionListCubit>().refreshSessions(waitForPrData: true);
   if (!context.mounted) return;
-  // One pull, one report — but only for a confirmation. A live scan row already
-  // says the list is being brought up to date, so a "Sessions updated" toast
-  // beside it announces the smaller half of the same action. A *failure* is
-  // never suppressed: the row reports the scan, not this read, and a pull that
-  // silently did nothing is worse than one toast too many.
+  // One pull, one report — but only for a confirmation. Keyed on the scan row
+  // showing anything at all, not on a scan being *live*: this read reaches the
+  // same bridge the scan is working, so it resolves after the scan finishes,
+  // by which point the row reads "Scan complete" and a live check would already
+  // have gone false. A *failure* is never suppressed: the row reports the scan,
+  // not this read, and a pull that silently did nothing is worse than one toast
+  // too many.
   if (success) {
-    if (context.read<SessionListCubit>().state case SessionListLoaded(catalogScan: final scan) when scan.isLive) {
+    if (context.read<SessionListCubit>().state case SessionListLoaded(catalogScan: final scan)
+        when scan is! CatalogRescanIdle) {
       return;
     }
   }

@@ -1031,9 +1031,9 @@
   "@projectsOnboardingWhyFaqReadAnswer": {
     "description": "DRAFT copy pending final wording. Answer to the 'can Sesori read my sessions' FAQ question."
   },
-  "catalogScanPullCaption": "Keep pulling to scan all harnesses",
+  "catalogScanPullCaption": "Keep pulling to find new sessions",
   "@catalogScanPullCaption": {
-    "description": "Caption under the pull-to-refresh spinner once the pull has passed the ordinary trigger, inviting the user to keep pulling to start a full catalog scan."
+    "description": "Caption under the pull-to-refresh spinner once the pull has passed the ordinary trigger, inviting the user to keep pulling to start a full catalog scan. Names what the user gets rather than the mechanism: scanning harnesses is how it works, not what it is for."
   },
   "catalogScanRunningTitle": "Scanning all harnesses",
   "@catalogScanRunningTitle": {

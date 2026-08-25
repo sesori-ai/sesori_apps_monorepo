@@ -656,8 +656,18 @@ duplicate-emission nicety.
   through two stateless session hosts to restore a success confirmation for a
   shallow pull taken during someone else's scan, where a progress row is already
   on screen
-- **Step 6f origin:** owner report from a running build — after release the
-  list stayed pushed down until the scan finished. 6d made the held area empty
+- **Step 6f origin:** two owner reports from a running build, one root cause.
+  The pull's own read reaches the same bridge the scan just put to work, so it
+  resolves only when the scan does. That held the list open (below), and it also
+  defeated 6d's toast suppression: the guard asked whether a scan was *live* at
+  toast time, and by then the row already read "Scan complete", so every deep
+  pull confirmed itself on top of the row reporting the same run. The guard now
+  asks whether the row is showing anything at all. Failures are still never
+  suppressed
+- **Step 6f copy:** "Keep pulling to scan all harnesses" named the mechanism
+  rather than the outcome. Now "Keep pulling to find new sessions"
+- **Step 6f held pull:** after release the list stayed pushed down until the
+  scan finished. 6d made the held area empty
   but left the extent: `CupertinoSliverRefreshControl` holds the pull open for
   exactly as long as `onRefresh` runs, and that refresh reaches the same bridge
   the scan just put to work, so it resolved only when the scan did. The control

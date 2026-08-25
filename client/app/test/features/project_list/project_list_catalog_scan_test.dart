@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -134,6 +136,49 @@ void main() {
 
     await gesture.up();
     await tester.pumpAndSettle();
+  });
+
+  // The pull's own read reaches the same bridge the scan is working, so it
+  // resolves only once the scan has finished — by which point the row already
+  // reads "Scan complete" and a check for a *live* scan has gone false. The
+  // pull then confirmed itself on top of the row reporting the same run.
+  testWidgets("does not confirm a pull whose read outlived the scan it started", (tester) async {
+    final loc = await pumpLoadedList(tester);
+
+    final held = Completer<ApiResponse<Projects>>();
+    when(() => mockProjectRepository.listProjects()).thenAnswer((_) => held.future);
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("My Project")));
+    await pullFurtherUntil(tester, gesture, () => rescanService.startAllCalls > 0);
+    await gesture.up();
+    await tester.pump();
+
+    // The scan finishes first; the pull's read is still in flight.
+    await emitScan(
+      tester,
+      const CatalogRescanState.succeeded(
+        harnessCount: 1,
+        counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 4),
+      ),
+    );
+    held.complete(ApiResponse.success(Projects(data: [testProjectSummary(name: "My Project")])));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text(loc.projectListRefreshSuccess), findsNothing);
+    expect(find.text(loc.catalogScanCompleteTitle), findsOneWidget);
+
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("still confirms an ordinary pull when no scan is being reported", (tester) async {
+    final loc = await pumpLoadedList(tester);
+
+    await tester.drag(find.text("My Project"), const Offset(0, 120));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text(loc.projectListRefreshSuccess), findsOneWidget);
   });
 
   testWidgets("reports a running scan above the list without displacing it", (tester) async {
