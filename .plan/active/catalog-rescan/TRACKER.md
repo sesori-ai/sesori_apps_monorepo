@@ -546,6 +546,24 @@ duplicate-emission nicety.
 - **Carried to step 7/8:** `CatalogRescanDelta.isEmpty`
   (`catalog_rescan_state.dart:20`) has had no consumer since step 4 shipped it.
   Delete it unless 6c adopts it
+- **Step 6b review comments:** three of four bot findings were valid and fixed
+  in `e30a20bb7d`. `startAll()` returned silently for a loading, failed, or
+  absent management snapshot and for a snapshot naming no routable harness, so
+  a deep pull said a scan had started and then showed nothing — a persistent
+  dead end, not a transient one, because a failed snapshot answers that way
+  until it is reloaded. Added `CatalogRescanNoHarness`, published under the same
+  `_members.isEmpty` guard `unsupported` uses. The row's live region also
+  covered the running state, whose `sessionsSeen` changes per enumerated
+  session, so a screen reader would have been interrupted once per session
+  across a whole scan; it is now scoped to phase and terminal transitions. And a
+  counts clause is dropped at zero rather than joined, so a scan finding only a
+  new project no longer read `No new sessions in 2 new projects`
+- **Step 6b declined finding:** codex asked for
+  `docs/regression/projects-and-sessions.md` in this PR, citing the AGENTS.md
+  rule. Declined and left unresolved: step 7 owns that reconciliation for
+  behaviour 6b and 6c both contribute to, and writing it now means rewriting it
+  twice. The staleness window between 6b and step 7 is real rather than
+  theoretical, because 6b is what makes scanning user-reachable
 - **Step 6b PR:** [#1103](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1103)
   open
 - **Final disposition:** pending
