@@ -72,7 +72,6 @@ class const PregoBrandLogo({
     final id when id == Harness.hermes.name => "Hermes Agent",
     final id when id == Harness.pi.name => "Pi",
     final id when id == Harness.omp.name => "Oh My Pi",
-    final id when id == Harness.deepseek.name => "DeepSeek",
     _ => pluginId,
   };
 }
