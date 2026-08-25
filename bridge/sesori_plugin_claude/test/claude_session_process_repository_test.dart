@@ -111,6 +111,59 @@ void main() {
       await subscription.cancel();
     });
 
+    test("correlates an unmarked decorated image echo with its prompt", () async {
+      await _ensure(repository, createNew: true);
+      final process = harness.processes.single;
+      final promptIds = <String?>[];
+      final subscription = repository.events
+          .where((event) => event is ClaudeSessionProcessMessage)
+          .cast<ClaudeSessionProcessMessage>()
+          .where((event) => event.message is ClaudeUserMessage)
+          .listen((event) => promptIds.add(event.promptId));
+      final turn = repository.sendTurn(
+        sessionId: testSessionId,
+        parts: const [
+          PluginPromptPart.text(text: "inspect this"),
+          PluginPromptPart.fileData(mime: "image/JPEG", base64: "aA==", filename: "image.jpg"),
+        ],
+        promptId: "prompt-image",
+      );
+      final written = await waitForFrame(process, "user");
+
+      process.emit(_decoratedImageEcho(written: written, uuid: "echo-image"));
+      await pump();
+
+      expect(promptIds, ["prompt-image"]);
+      process.emit(_result());
+      expect(await turn.outcome, isA<ClaudeTurnCompleted>());
+      await subscription.cancel();
+    });
+
+    test("does not correlate an unmarked text user message", () async {
+      await _ensure(repository, createNew: true);
+      final process = harness.processes.single;
+      final promptIds = <String?>[];
+      final subscription = repository.events
+          .where((event) => event is ClaudeSessionProcessMessage)
+          .cast<ClaudeSessionProcessMessage>()
+          .where((event) => event.message is ClaudeUserMessage)
+          .listen((event) => promptIds.add(event.promptId));
+      final turn = repository.sendTurn(
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "ordinary text")],
+        promptId: "prompt-text",
+      );
+      final written = await waitForFrame(process, "user");
+
+      process.emit({...written, "uuid": "unmarked-text"});
+      await pump();
+
+      expect(promptIds, [null]);
+      process.emit(_result());
+      expect(await turn.outcome, isA<ClaudeTurnCompleted>());
+      await subscription.cancel();
+    });
+
     test("a late replay does not make an idle process look active", () async {
       await _ensure(repository, createNew: true);
       final process = harness.processes.single;
@@ -290,6 +343,33 @@ Map<String, Object?> _replayOf(Map<String, Object?> written, {required String uu
   "uuid": uuid,
   "isReplay": true,
 };
+
+Map<String, Object?> _decoratedImageEcho({required Map<String, Object?> written, required String uuid}) {
+  final message = (written["message"]! as Map).cast<String, Object?>();
+  final content = (message["content"]! as List).cast<Object?>();
+  final image = (content[1]! as Map).cast<String, Object?>();
+  final source = (image["source"]! as Map).cast<String, Object?>();
+  return {
+    ...written,
+    "uuid": uuid,
+    "message": {
+      ...message,
+      "content": [
+        content.first,
+        {
+          ...image,
+          "cache_control": {"type": "ephemeral"},
+          "source": {
+            ...source,
+            "media_type": "image/jpeg",
+            "data": "aA",
+            "cache_control": {"type": "ephemeral"},
+          },
+        },
+      ],
+    },
+  };
+}
 
 final class _ProcessHarness() {
   final List<ClaudeLaunchSpec> specs = [];

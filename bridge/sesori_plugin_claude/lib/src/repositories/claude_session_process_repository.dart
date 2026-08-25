@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:collection";
+import "dart:convert";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
@@ -204,8 +205,8 @@ final class ClaudeSessionProcessRepository({
 
     process.interrupted = false;
     // A resident process can absorb several stdin messages into one agent turn.
-    // Replayed user frames mark which queued messages joined that turn, and its
-    // result settles exactly that started prefix.
+    // User echoes mark which queued messages joined that turn, and its result
+    // settles exactly that started prefix.
     final turnWasActive = process.turnActive;
     final pending = _PendingTurn(
       promptId: promptId,
@@ -382,12 +383,17 @@ final class ClaudeSessionProcessRepository({
 
   String? _trackTurnMessage({required _ResidentProcess process, required ClaudeStreamMessage message}) {
     switch (message) {
-      case ClaudeUserMessage(parentToolUseId: null, raw: {"isReplay": true}):
+      case ClaudeUserMessage(parentToolUseId: null):
+        // Claude normally marks stdin echoes with `isReplay`, but attachment
+        // echoes can omit it. Their full image source still identifies the
+        // bridge-dispatched turn; unmarked text stays uncorrelated.
+        final isReplay = message.raw["isReplay"] == true;
         for (final pending in process.pendingTurns) {
           final replayContent = pending.replayContent;
           if (pending.replayObserved ||
               replayContent == null ||
-              !_sameJsonValue(replayContent, message.message["content"])) {
+              (!isReplay && !_containsImageContent(replayContent)) ||
+              !_samePromptContent(replayContent, message.message["content"])) {
             continue;
           }
           pending.replayObserved = true;
@@ -439,22 +445,65 @@ final class ClaudeSessionProcessRepository({
   }
 }
 
-bool _sameJsonValue(Object? left, Object? right) {
-  if (left is List && right is List) {
-    if (left.length != right.length) return false;
-    for (var index = 0; index < left.length; index++) {
-      if (!_sameJsonValue(left[index], right[index])) return false;
+/// Matches an echoed stdin payload to the prompt that wrote it.
+///
+/// Claude decorates image blocks on some stream-json paths (for example with
+/// cache directives), although the image source itself is unchanged. Compare
+/// image blocks by their semantic source fields so that decoration cannot
+/// strand the queued prompt; all other values retain exact JSON matching.
+bool _samePromptContent(Object? expected, Object? actual) {
+  if (expected is List && actual is List) {
+    if (expected.length != actual.length) return false;
+    for (var index = 0; index < expected.length; index++) {
+      if (!_samePromptContent(expected[index], actual[index])) return false;
     }
     return true;
   }
-  if (left is Map && right is Map) {
-    if (left.length != right.length) return false;
-    for (final entry in left.entries) {
-      if (!right.containsKey(entry.key) || !_sameJsonValue(entry.value, right[entry.key])) return false;
+  if (expected is Map && actual is Map) {
+    if (expected["type"] == "image" && actual["type"] == "image") {
+      return _sameImageContent(
+        expected: expected.cast<Object?, Object?>(),
+        actual: actual.cast<Object?, Object?>(),
+      );
+    }
+    if (expected.length != actual.length) return false;
+    for (final entry in expected.entries) {
+      if (!actual.containsKey(entry.key) || !_samePromptContent(entry.value, actual[entry.key])) return false;
     }
     return true;
   }
-  return left == right;
+  return expected == actual;
+}
+
+bool _containsImageContent(Object? content) =>
+    content is List && content.any((block) => block is Map && block["type"] == "image");
+
+bool _sameImageContent({
+  required Map<Object?, Object?> expected,
+  required Map<Object?, Object?> actual,
+}) {
+  final expectedSource = expected["source"];
+  final actualSource = actual["source"];
+  if (expectedSource is! Map || actualSource is! Map) return false;
+  final expectedType = expectedSource["type"];
+  final actualType = actualSource["type"];
+  if (expectedType != actualType || expectedType != "base64") return false;
+  final expectedMime = expectedSource["media_type"];
+  final actualMime = actualSource["media_type"];
+  if (expectedMime is! String ||
+      actualMime is! String ||
+      expectedMime.trim().toLowerCase() != actualMime.trim().toLowerCase()) {
+    return false;
+  }
+  final expectedData = expectedSource["data"];
+  final actualData = actualSource["data"];
+  if (expectedData is! String || actualData is! String) return false;
+  if (expectedData == actualData) return true;
+  try {
+    return base64.normalize(expectedData) == base64.normalize(actualData);
+  } on FormatException {
+    return false;
+  }
 }
 
 List<Map<String, Object?>> _promptContent(List<PluginPromptPart> parts) => [
