@@ -1057,8 +1057,10 @@ reviewer of one PR can see what belongs to it.
   and its terminal states, the post-success list refresh, failure rows
   persisting until dismissal, cancellation, new-item reporting with its
   older-bridge fallback, and the recovery read discarding terminal statuses.
-- `docs/regression/plugin-setup-and-lifecycle.md`: record the per-harness
-  `Rescan` action, its `isRoutable` enablement rule, and its targeted rejection.
+- `docs/regression/plugin-setup-and-lifecycle.md`: already reconciled in step
+  6c, which recorded the per-harness scan action, its `isRoutable` rule, its
+  targeted rejection, and its L3/L4 coverage. Step 7 only re-checks it against
+  the shipped behaviour.
 - Record the required plugin, platform, compatibility, recovery, freshness, and
   setup-state matrix in both.
 

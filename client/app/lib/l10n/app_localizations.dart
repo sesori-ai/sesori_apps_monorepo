@@ -3415,10 +3415,10 @@ abstract class AppLocalizations {
   /// **'Update the bridge to scan from here'**
   String get harnessManagementScanUnsupported;
 
-  /// Replaces the scan action's description when the request itself failed. The underlying error is kept for the local log rather than shown.
+  /// Replaces the scan action's description when the request itself failed. Names no log, because the request may never have reached the bridge, and the client-side cause it is recorded against has no user-facing viewer.
   ///
   /// In en, this message translates to:
-  /// **'Could not start the scan. Check the bridge log for details'**
+  /// **'Could not start the scan. Try again in a moment'**
   String get harnessManagementScanFailed;
 
   /// Action on a finished scan row that clears it once the user has read the result.

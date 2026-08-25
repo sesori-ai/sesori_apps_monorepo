@@ -1174,9 +1174,9 @@
   "@harnessManagementScanUnsupported": {
     "description": "Replaces the scan action's description when the connected bridge is too old to import catalogs on request."
   },
-  "harnessManagementScanFailed": "Could not start the scan. Check the bridge log for details",
+  "harnessManagementScanFailed": "Could not start the scan. Try again in a moment",
   "@harnessManagementScanFailed": {
-    "description": "Replaces the scan action's description when the request itself failed. The underlying error is kept for the local log rather than shown."
+    "description": "Replaces the scan action's description when the request itself failed. Names no log, because the request may never have reached the bridge, and the client-side cause it is recorded against has no user-facing viewer."
   },
   "catalogScanDismiss": "Dismiss",
   "@catalogScanDismiss": {

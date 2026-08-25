@@ -1860,7 +1860,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessManagementScanUnsupported => 'Update the bridge to scan from here';
 
   @override
-  String get harnessManagementScanFailed => 'Could not start the scan. Check the bridge log for details';
+  String get harnessManagementScanFailed => 'Could not start the scan. Try again in a moment';
 
   @override
   String get catalogScanDismiss => 'Dismiss';
