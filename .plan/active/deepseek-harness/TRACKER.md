@@ -3,11 +3,11 @@
 ## Current State
 
 - **Plan slug:** `deepseek-harness`
-- **Plan status:** Steps 1-11 merged; Step 12/16 open for review; Step 13/16 started locally
+- **Plan status:** Steps 1-12 merged; Step 13/16 implemented and verifying
 - **Current repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current branch:** `deepseek-harness/step-13-managed-runtime`
-- **Current open PR:** [runtime PR #9](https://github.com/sesori-ai/sesori-deepseek-acp/pull/9)
-- **Next action:** merge/tag Step 12, then pin its published release in Step 13
+- **Current open PR:** none
+- **Next action:** finish verification and open the Step 13 managed-runtime PR
 - **Implementation started:** yes
 - **Retirement:** blocked until every required row in `PLAN.md` passes
 
@@ -26,8 +26,8 @@
 | [x] | 9/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek sessions and history [step 9/16]` | Complex replay and identity flow | 1,450 | [PR #1094](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1094) merged |
 | [x] | 10/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek turns and interactions [step 10/16]` | Complex events, questions, and permissions | 1,450 | [PR #1097](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1097) merged |
 | [x] | 11/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): expose options and lifecycle [step 11/16]` | Moderate plugin API and lifecycle composition | 1,350 | [PR #1100](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1100) merged |
-| [ ] | 12/16 | deepseek adapter | `🚧 [deepseek-harness] build(runtime): release the managed DeepSeek adapter [step 12/16]` | Complex supply chain and six-platform release | 1,300 | [runtime PR #9](https://github.com/sesori-ai/sesori-deepseek-acp/pull/9) open; final CI passes at `15a38ee` |
-| [ ] | 13/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): install the managed DeepSeek runtime [step 13/16]` | Moderate managed-runtime integration | 1,250 | Started locally; publication remains blocked on Step 12 |
+| [x] | 12/16 | deepseek adapter | `🚧 [deepseek-harness] build(runtime): release the managed DeepSeek adapter [step 12/16]` | Complex supply chain and six-platform release | 1,300 | [runtime PR #9](https://github.com/sesori-ai/sesori-deepseek-acp/pull/9) merged; extractor-safe [v0.1.1 release](https://github.com/sesori-ai/sesori-deepseek-acp/releases/tag/v0.1.1) published after [PR #10](https://github.com/sesori-ai/sesori-deepseek-acp/pull/10) |
+| [ ] | 13/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): install the managed DeepSeek runtime [step 13/16]` | Moderate managed-runtime integration | 1,250 | Implemented and verified locally; PR preparation pending |
 | [ ] | 14/16 | apps monorepo | `⚙️ [deepseek-harness] feat(app): activate DeepSeek Harness [step 14/16]` | Moderate registry/client activation | 1,000 | Pending Step 13 |
 | [ ] | 15/16 | apps monorepo | `🌱 [deepseek-harness] docs: document DeepSeek regression coverage [step 15/16]` | Straight documentation reconciliation | 600 | Pending Step 14 |
 | [ ] | 16/16 | apps monorepo | `🌱 [deepseek-harness] docs: verify DeepSeek and retire the plan [step 16/16]` | Trivial evidence/retirement changes after a complex external verification run | 700 | Pending Step 15 |
@@ -195,7 +195,36 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] Architecture implementation review passed after adding independent Node digest pins
 - [x] Final PR head `15a38ee`: all six matching-native package/smoke jobs,
   cross-repository conformance, and aggregate checksum-set verification pass
-- [ ] Immutable release assets and aggregate checksum manifest published after merge/tag
+- [x] PR #9 merged as `b7bf472fd2f8df66bc04ba978d764598fc669b91`
+- [x] Annotated `v0.1.0` tag points at the exact merge commit
+- [x] Tag workflow `32772789900` passed all six package/smoke jobs and publication
+- [x] Stable, non-draft [v0.1.0 release](https://github.com/sesori-ai/sesori-deepseek-acp/releases/tag/v0.1.0)
+  publishes six archives plus `checksums.txt`; every GitHub asset digest matches
+  its aggregate checksum entry
+
+### Step 13/16
+
+- [x] Stable `0.1.0` PATH floor and `0.1.1` managed version pinned after publication
+- [x] All six immutable `v0.1.1` archive SHA-256 values pinned in a package-directory manifest
+- [x] Explicit, supported PATH, then exact managed-runtime precedence uses shared runtime services
+- [x] Install capability is platform-aware and disabled by an explicit adapter path
+- [x] DeepSeek `check --state-dir` remains side-effect-free setup validation after runtime selection
+- [x] `dart pub get`
+- [x] DeepSeek `dart analyze --fatal-infos`
+- [x] DeepSeek `dart test`: 35 tests pass
+- [x] Shared managed-runtime provisioning selection/install/cleaner suite: 39 tests pass,
+  covering checksum failure, abort, package adoption, and stale-version sweep
+- [x] `git diff --check`
+- [x] Architecture implementation review passed with no findings
+- [x] Real managed-install smoke exposed npm `.bin` symlinks in `v0.1.0`; secure extraction rejected the archive before adoption
+- [x] Runtime PR #10 merged as `4ae635d1c3a6a0829722e8363dd564cc582c1f6e`; annotated `v0.1.1` points at that exact commit
+- [x] Tag workflow `32820418706` passes all six package jobs, aggregate verification, and publication
+- [x] Stable, non-draft [v0.1.1 release](https://github.com/sesori-ai/sesori-deepseek-acp/releases/tag/v0.1.1)
+  publishes six archives plus `checksums.txt`; every GitHub asset digest matches
+  its aggregate checksum entry
+- [x] Real managed install plus ACP smoke passes through download, checksum,
+  secure extraction, package adoption, version/readiness probes, ACP health, and shutdown
+- [ ] Final changed-line count and PR evidence
 
 Later implementation and live evidence is appended here by step. Never mark a
 regression row passed without the boundary and matrix required by `PLAN.md`.
