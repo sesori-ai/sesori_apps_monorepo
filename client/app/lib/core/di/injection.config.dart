@@ -77,6 +77,8 @@ import 'package:sesori_mobile/core/platform/singular/singular_attribution_client
     as _i681;
 import 'package:sesori_mobile/core/platform/singular/singular_static_adapter.dart'
     as _i776;
+import 'package:sesori_mobile/core/platform/singular_attribution_startup.dart'
+    as _i853;
 import 'package:sesori_mobile/core/platform/temporary_directory_client.dart'
     as _i908;
 import 'package:sesori_mobile/core/routing/deep_link_service.dart' as _i902;
@@ -179,6 +181,11 @@ extension GetItInjectableX on _i174.GetIt {
       () => firebaseRegisterModule.disabledFirebaseMessagingStaticAdapter,
       registerFor: {_firebaseDisabled},
     );
+    gh.lazySingleton<_i853.SingularAttributionStartup>(
+      () => _i853.SingularAttributionStartup(
+        singular: gh<_i776.SingularStaticAdapter>(),
+      ),
+    );
     gh.lazySingleton<_i948.AnalyticsClient>(
       () => _i901.NoOpAnalyticsClient(),
       registerFor: {_firebaseDisabled},
@@ -191,11 +198,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i553.FailureReporter>(
       () => _i534.CrashlyticsFailureReporter(gh<_i141.FirebaseCrashlytics>()),
       registerFor: {_firebaseEnabled},
-    );
-    gh.lazySingleton<_i948.AttributionClient>(
-      () => _i681.SingularAttributionClient(
-        singular: gh<_i776.SingularStaticAdapter>(),
-      ),
     );
     gh.lazySingleton<_i948.PushMessagingSource>(
       () => _i483.NoOpPushMessagingSource(),
@@ -255,6 +257,12 @@ extension GetItInjectableX on _i174.GetIt {
         audioFormat: gh<_i430.AudioFormatConfig>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i948.AttributionClient>(
+      () => _i681.SingularAttributionClient(
+        startup: gh<_i853.SingularAttributionStartup>(),
+        singular: gh<_i776.SingularStaticAdapter>(),
+      ),
     );
     return this;
   }

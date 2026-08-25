@@ -1,8 +1,8 @@
 import "package:injectable/injectable.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../foundation/models/attribution/attribution_event.dart";
 import "../foundation/models/product_analytics/analytics_runtime_capability.dart";
+import "../foundation/models/product_analytics/attribution_event.dart";
 import "../foundation/models/product_analytics/installation_analytics_event.dart";
 import "../logging/logging.dart";
 import "../repositories/analytics_repository.dart";
@@ -30,18 +30,14 @@ class InstallationAnalyticsService({
     required AuthProvider provider,
     required AccountStatus accountStatus,
   }) async {
-    final results = <AnalyticsDeliveryResult>[
-      await _log(
+    final results = await Future.wait([
+      _log(
         event: InstallationAnalyticsEvent.loginAttemptCompleted(
           provider: _analyticsProvider(provider: provider),
         ),
       ),
-    ];
-
-    if (accountStatus == AccountStatus.created) {
-      results.add(await _attributionRepository.logEvent(event: AttributionEvent.accountCreated));
-    }
-    results.add(await _attributionRepository.logEvent(event: AttributionEvent.accountLogin));
+      _logAttribution(accountStatus: accountStatus),
+    ]);
 
     return results.every((result) => result == AnalyticsDeliveryResult.acceptedBySdk)
         ? AnalyticsDeliveryResult.acceptedBySdk
@@ -74,6 +70,18 @@ class InstallationAnalyticsService({
     LoginAttemptFailureCause.timeout => AnalyticsLoginFailureKind.timeout,
     LoginAttemptFailureCause.unknown => AnalyticsLoginFailureKind.unknown,
   };
+
+  Future<AnalyticsDeliveryResult> _logAttribution({required AccountStatus accountStatus}) async {
+    final results = <AnalyticsDeliveryResult>[];
+    if (accountStatus == AccountStatus.created) {
+      results.add(await _attributionRepository.logEvent(event: AttributionEvent.accountCreated));
+    }
+    results.add(await _attributionRepository.logEvent(event: AttributionEvent.accountLogin));
+
+    return results.every((result) => result == AnalyticsDeliveryResult.acceptedBySdk)
+        ? AnalyticsDeliveryResult.acceptedBySdk
+        : AnalyticsDeliveryResult.failed;
+  }
 
   Future<AnalyticsDeliveryResult> _log({required InstallationAnalyticsEvent event}) async {
     if (!_capability.isEnabled) {

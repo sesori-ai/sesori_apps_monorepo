@@ -16,6 +16,15 @@ class _RecordingAnalyticsRepository() extends Mock implements AnalyticsRepositor
   }
 }
 
+class _DeferredAnalyticsRepository() extends Mock implements AnalyticsRepository {
+  final completion = Completer<AnalyticsDeliveryResult>();
+
+  @override
+  Future<AnalyticsDeliveryResult> logInstallationEvent({required InstallationAnalyticsEvent event}) {
+    return completion.future;
+  }
+}
+
 class _RecordingAttributionRepository() extends Mock implements AttributionRepository {
   final events = <AttributionEvent>[];
   AnalyticsDeliveryResult result = AnalyticsDeliveryResult.acceptedBySdk;
@@ -117,6 +126,31 @@ void main() {
       AttributionEvent.accountCreated,
       AttributionEvent.accountLogin,
     ]);
+  });
+
+  test("Singular delivery does not wait for a stalled installation sink", () async {
+    final repository = _DeferredAnalyticsRepository();
+    final attributionRepository = _RecordingAttributionRepository();
+    final service = InstallationAnalyticsService(
+      capability: const AnalyticsRuntimeCapability.enabled(),
+      repository: repository,
+      attributionRepository: attributionRepository,
+    );
+
+    final completion = service.loginAttemptCompleted(
+      provider: AuthProvider.google,
+      accountStatus: AccountStatus.created,
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(attributionRepository.events, [
+      AttributionEvent.accountCreated,
+      AttributionEvent.accountLogin,
+    ]);
+    expect(repository.completion.isCompleted, isFalse);
+
+    repository.completion.complete(AnalyticsDeliveryResult.acceptedBySdk);
+    expect(await completion, AnalyticsDeliveryResult.acceptedBySdk);
   });
 
   test("existing and unknown account statuses report login without registration", () async {

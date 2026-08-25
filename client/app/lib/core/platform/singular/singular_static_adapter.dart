@@ -17,17 +17,8 @@ class SingularStaticAdapter {
 
   final void Function(SingularConfig config) _start;
   final void Function(String eventName) _event;
-  bool _isStarted = false;
 
-  bool get isStarted => _isStarted;
+  void start({required SingularConfig config}) => _start(config);
 
-  void start({required SingularConfig config}) {
-    _start(config);
-    _isStarted = true;
-  }
-
-  void event({required String eventName}) {
-    if (!_isStarted) return;
-    _event(eventName);
-  }
+  void event({required String eventName}) => _event(eventName);
 }

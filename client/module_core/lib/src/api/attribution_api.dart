@@ -1,6 +1,6 @@
 import "package:injectable/injectable.dart";
 
-import "../foundation/models/attribution/attribution_event.dart";
+import "../foundation/models/product_analytics/attribution_event.dart";
 import "../foundation/platform/attribution_client.dart";
 
 @lazySingleton

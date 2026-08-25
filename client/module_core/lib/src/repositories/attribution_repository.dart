@@ -2,7 +2,7 @@ import "package:injectable/injectable.dart";
 import "package:meta/meta.dart";
 
 import "../api/attribution_api.dart";
-import "../foundation/models/attribution/attribution_event.dart";
+import "../foundation/models/product_analytics/attribution_event.dart";
 import "../logging/logging.dart";
 import "models/analytics_delivery_result.dart";
 

@@ -19,7 +19,6 @@ import "core/extensions/appearance_mode_x.dart";
 import "core/extensions/build_context_x.dart";
 import "core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "core/platform/firebase_analytics_startup.dart";
-import "core/platform/singular/singular_static_adapter.dart";
 import "core/platform/singular_attribution_startup.dart";
 import "core/routing/app_router.dart";
 import "core/routing/deep_link_service.dart";
@@ -185,9 +184,9 @@ Future<AnalyticsRuntimeCapability> _createAnalyticsRuntimeCapability({
 }
 
 Future<void> _startSingularAttribution() async {
-  SingularAttributionStartup(singular: getIt<SingularStaticAdapter>()).start(
+  getIt<SingularAttributionStartup>().start(
     isSupportedPlatform: _supportsSingular,
-    isEligibleBuild: await _measurementIneligibilityReason(authSession: getIt<AuthSession>()) == null,
+    ineligibilityReason: await _measurementIneligibilityReason(authSession: getIt<AuthSession>()),
     sdkKey: _singularSdkKeyDefine,
     sdkSecret: _singularSdkSecretDefine,
   );
