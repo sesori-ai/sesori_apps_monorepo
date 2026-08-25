@@ -195,8 +195,6 @@ class PluginManagementCubit({
     replacePendingConfirmation: false,
   );
 
-  /// Installs the harness' managed runtime. The bridge accepts immediately;
-  /// phase progress arrives through [PluginManagementReady.installs].
   /// Rescans one harness's catalog, reporting a rejection on its own card.
   ///
   /// Unlike the lists' aggregate scan, the user named this harness, so a
@@ -228,6 +226,8 @@ class PluginManagementCubit({
     emit(current.copyWith(scanRejections: next));
   }
 
+  /// Installs the harness' managed runtime. The bridge accepts immediately;
+  /// phase progress arrives through [PluginManagementReady.installs].
   Future<void> install({required String pluginId}) => _runCommand(
     pluginId: pluginId,
     request: const PluginLifecycleCommandRequest.install(),
