@@ -243,7 +243,9 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] Module Prego analysis and 20 branding tests pass
 - [x] Mobile and desktop shell analysis pass
 - [x] Architecture implementation review passed with no findings
-- [ ] Sync with merged Step 13, final changed-line count, and PR evidence
+- [x] Synced with merged Step 13; focused bridge and client verification remains green
+- [x] Final changed-line count: 87, below the 1,000 soft target and 1,500 hard cap
+- [ ] PR evidence
 
 Later implementation and live evidence is appended here by step. Never mark a
 regression row passed without the boundary and matrix required by `PLAN.md`.
