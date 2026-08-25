@@ -171,6 +171,61 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  // The row clears itself four seconds after a success, and the pull's own read
+  // can wait longer than that for the bridge. Asking the row whether to confirm
+  // therefore fails a second way: by the time the read returns there is no row
+  // left to defer to.
+  testWidgets("does not confirm a deep pull whose read outlived the row itself", (tester) async {
+    final loc = await pumpLoadedList(tester);
+
+    final held = Completer<ApiResponse<Projects>>();
+    when(() => mockProjectRepository.listProjects()).thenAnswer((_) => held.future);
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("My Project")));
+    await pullFurtherUntil(tester, gesture, () => rescanService.startAllCalls > 0);
+    await gesture.up();
+    await tester.pump();
+
+    // The scan finishes, is reported, and its row then clears on its own timer
+    // — all while the pull's read is still in flight.
+    await emitScan(
+      tester,
+      const CatalogRescanState.succeeded(
+        harnessCount: 1,
+        counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 4),
+      ),
+    );
+    await emitScan(tester, const CatalogRescanState.idle());
+
+    held.complete(ApiResponse.success(Projects(data: [testProjectSummary(name: "My Project")])));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text(loc.projectListRefreshSuccess), findsNothing);
+
+    await tester.pumpAndSettle();
+  });
+
+  // A pull that started nothing is an ordinary refresh, whatever some other
+  // scan happens to be doing at the time.
+  testWidgets("still confirms a pull taken while someone else's scan is reported", (tester) async {
+    final loc = await pumpLoadedList(tester);
+
+    await emitScan(
+      tester,
+      const CatalogRescanState.succeeded(
+        harnessCount: 1,
+        counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 2),
+      ),
+    );
+
+    await tester.drag(find.text("My Project"), const Offset(0, 120));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text(loc.projectListRefreshSuccess), findsOneWidget);
+  });
+
   testWidgets("still confirms an ordinary pull when no scan is being reported", (tester) async {
     final loc = await pumpLoadedList(tester);
 

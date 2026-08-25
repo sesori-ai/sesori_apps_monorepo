@@ -19,21 +19,21 @@ const _actionDispatcher = SessionListActionDispatcher();
 /// refresh action lives here, next to the content.
 Future<void> refreshSessionList(BuildContext context) async {
   final loc = context.loc;
-  final success = await context.read<SessionListCubit>().refreshSessions(waitForPrData: true);
+  final cubit = context.read<SessionListCubit>();
+  // Read before the refresh, compared after: the question is whether *this*
+  // gesture also started a scan, and only the gesture can answer it. Asking the
+  // presented scan instead was wrong twice over — it has already finished by
+  // the time this read returns, and it clears itself on a timer a slow read
+  // outlives.
+  final scansBefore = cubit.catalogScanStarts;
+  final success = await cubit.refreshSessions(waitForPrData: true);
   if (!context.mounted) return;
-  // One pull, one report — but only for a confirmation. Keyed on the scan row
-  // showing anything at all, not on a scan being *live*: this read reaches the
-  // same bridge the scan is working, so it resolves after the scan finishes,
-  // by which point the row reads "Scan complete" and a live check would already
-  // have gone false. A *failure* is never suppressed: the row reports the scan,
-  // not this read, and a pull that silently did nothing is worse than one toast
-  // too many.
-  if (success) {
-    if (context.read<SessionListCubit>().state case SessionListLoaded(catalogScan: final scan)
-        when scan is! CatalogRescanIdle) {
-      return;
-    }
-  }
+  // One pull, one report — but only for a confirmation. The scan this same pull
+  // started reports itself in the row above the list, so a "Sessions updated"
+  // toast beside it announces the smaller half of one action. A *failure* is
+  // never suppressed: the row reports the scan, not this read, and a pull that
+  // silently did nothing is worse than one toast too many.
+  if (success && cubit.catalogScanStarts != scansBefore) return;
 
   PregoPopupAlertPresenter.of(context).show(
     title: success ? loc.sessionListRefreshSuccess : loc.sessionListRefreshFailed,

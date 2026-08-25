@@ -29,6 +29,9 @@ void main() {
     when(() => cubit.state).thenReturn(
       const SessionListState.loaded(sessions: [], baseBranch: null, repoSlug: null),
     );
+    // Read either side of a pull's own refresh, to tell a gesture that also
+    // started a catalog scan from one that did not.
+    when(() => cubit.catalogScanStarts).thenReturn(0);
   });
 
   // Renders the real panel at a fixed width; the header sits inside the panel's

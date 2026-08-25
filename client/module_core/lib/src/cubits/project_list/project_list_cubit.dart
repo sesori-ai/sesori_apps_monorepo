@@ -869,8 +869,22 @@ class ProjectListCubit(
     _ensureCatalogRefresh();
   }
 
+  /// How many catalog scans this list has started.
+  ///
+  /// Not part of the state: it drives no rendering, and emitting it would
+  /// rebuild the list for something no widget shows. A pull reads it before its
+  /// own refresh and again after, which is what tells the two apart — the same
+  /// gesture having started a scan, or a scan someone else started that happens
+  /// to be running. The presented scan cannot answer that: it clears itself on
+  /// a timer that a slow read outlives.
+  int get catalogScanStarts => _catalogScanStarts;
+  int _catalogScanStarts = 0;
+
   /// Starts a catalog scan across every harness this bridge can import from.
-  void startCatalogScan() => unawaited(_catalogRescanService.startAll());
+  void startCatalogScan() {
+    _catalogScanStarts++;
+    unawaited(_catalogRescanService.startAll());
+  }
 
   /// Stops the scan in flight.
   void cancelCatalogScan() => unawaited(_catalogRescanService.cancel());

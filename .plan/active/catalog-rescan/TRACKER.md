@@ -664,6 +664,14 @@ duplicate-emission nicety.
   pull confirmed itself on top of the row reporting the same run. The guard now
   asks whether the row is showing anything at all. Failures are still never
   suppressed
+- **Step 6f seam fix:** three rounds of findings landed on the same seam — the
+  toast guard reading presentation state at completion rather than identifying
+  the gesture. The row-based guard failed in both directions: it missed a deep
+  pull whose read outlived the row's own four-second clear, and it suppressed an
+  ordinary pull taken while an unrelated scan was still reported. Both cubits
+  now count the scans they start, and a pull compares that count either side of
+  its own refresh. Both cases have tests, each confirmed to fail against the
+  row-based guard
 - **Step 6f copy:** "Keep pulling to scan all harnesses" named the mechanism
   rather than the outcome. Now "Keep pulling to find new sessions"
 - **Step 6f held pull:** after release the list stayed pushed down until the
