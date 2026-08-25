@@ -1,4 +1,5 @@
-import "package:flutter/rendering.dart";
+import "dart:async";
+
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -92,7 +93,9 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
         state.olderMessagesCursor == null &&
         !state.isLoadingOlderMessages &&
         state.sendingSubmission == null &&
-        state.queuedMessages.isEmpty;
+        state.queuedMessages.isEmpty &&
+        state.awaitingBridgeSubmissions.isEmpty &&
+        state.bridgeQueuedPrompts.isEmpty;
     final questionCount = state.pendingQuestions.fold<int>(0, (sum, q) => sum + q.questions.length);
 
     // The scaffold lets this view fill the full height behind the transparent
@@ -117,6 +120,13 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           messages: state.messages,
                           sendingSubmission: state.sendingSubmission,
                           queuedMessages: state.queuedMessages,
+                          bridgeQueuedPrompts: state.bridgeQueuedPrompts,
+                          awaitingBridgeSubmissions: state.awaitingBridgeSubmissions,
+                          onCancelBridgeQueuedPrompt: widget.readOnly
+                              ? null
+                              : (promptId) => unawaited(
+                                  context.read<SessionDetailCubit>().cancelBridgeQueuedPrompt(promptId: promptId),
+                                ),
                           isLoadingOlderMessages: state.isLoadingOlderMessages,
                           streamingText: state.streamingText,
                           children: state.children,
@@ -192,8 +202,8 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
             bottom: 0,
             left: 0,
             right: 0,
-            child: _MeasureSize(
-              onChange: (size) {
+            child: PregoSizeObserver(
+              onSizeChanged: (size) {
                 if (!mounted) return;
                 _bottomControlsHeight.value = size.height;
               },
@@ -225,7 +235,9 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                       hasMessages:
                           state.hasRenderableMessages ||
                           state.sendingSubmission != null ||
-                          state.queuedMessages.isNotEmpty,
+                          state.queuedMessages.isNotEmpty ||
+                          state.awaitingBridgeSubmissions.isNotEmpty ||
+                          state.bridgeQueuedPrompts.isNotEmpty,
                       attachmentsSupported: state.supportsPromptAttachments,
                       isBusy: hasActiveWork(
                         sessionStatus: state.sessionStatus,
@@ -283,32 +295,4 @@ bool hasActiveWork({
 }) {
   return sessionStatus is! SessionStatusIdle ||
       childStatuses.values.any((s) => s is SessionStatusBusy || s is SessionStatusRetry);
-}
-
-/// Reports its child's measured size via [onChange] after each layout pass.
-/// Used to feed the floating composer's height to the message list so the
-/// newest message and the "jump to latest" pill rest clear of it. [onChange]
-/// is invoked post-frame so listeners may safely call `setState`.
-class const _MeasureSize({required final ValueChanged<Size> onChange, required super.child})
-    extends SingleChildRenderObjectWidget {
-  @override
-  RenderObject createRenderObject(BuildContext context) => _MeasureSizeRenderBox(onChange);
-
-  @override
-  void updateRenderObject(BuildContext context, _MeasureSizeRenderBox renderObject) {
-    renderObject.onChange = onChange;
-  }
-}
-
-class _MeasureSizeRenderBox(var ValueChanged<Size> onChange) extends RenderProxyBox {
-  Size? _lastReported;
-
-  @override
-  void performLayout() {
-    super.performLayout();
-    final size = child?.size ?? Size.zero;
-    if (size == _lastReported) return;
-    _lastReported = size;
-    WidgetsBinding.instance.addPostFrameCallback((_) => onChange(size));
-  }
 }

@@ -128,7 +128,7 @@ void main() {
       ),
       () => analytics.logScreenView(
         screenName: "session_detail",
-        screenClass: "GoRouter",
+        screenClass: "session_detail",
       ),
     ]);
     verifyNoMoreInteractions(analytics);
@@ -138,7 +138,7 @@ void main() {
     when(
       () => analytics.logScreenView(
         screenName: "settings",
-        screenClass: "GoRouter",
+        screenClass: "settings",
       ),
     ).thenAnswer((_) async => throw StateError("native mirror failed"));
 
@@ -166,7 +166,7 @@ void main() {
       ),
       () => analytics.logScreenView(
         screenName: "settings",
-        screenClass: "GoRouter",
+        screenClass: "settings",
       ),
     ]);
     verifyNoMoreInteractions(analytics);

@@ -1,6 +1,6 @@
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
-import "package:sesori_bridge/src/bridge/routing/post_agents_handler.dart";
+import "package:sesori_bridge/src/repositories/agent_repository.dart";
+import "package:sesori_bridge/src/routing/post_agents_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -45,9 +45,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/agent"),
         body: const PluginProjectIdRequest(projectId: "/repo", pluginId: "fake"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastAgentsProjectId, equals("/repo"));

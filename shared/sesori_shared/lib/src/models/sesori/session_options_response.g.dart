@@ -15,6 +15,7 @@ _SessionOptionsResponse _$SessionOptionsResponseFromJson(Map json) =>
       commands: CommandListResponse.fromJson(
         Map<String, dynamic>.from(json['commands'] as Map),
       ),
+      stale: json['stale'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$SessionOptionsResponseToJson(
@@ -23,4 +24,5 @@ Map<String, dynamic> _$SessionOptionsResponseToJson(
   'agents': instance.agents.toJson(),
   'providers': instance.providers.toJson(),
   'commands': instance.commands.toJson(),
+  'stale': instance.stale,
 };

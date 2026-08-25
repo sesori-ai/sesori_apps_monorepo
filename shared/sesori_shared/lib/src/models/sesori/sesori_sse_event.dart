@@ -6,6 +6,7 @@ import "message_part.dart";
 import "plugin_management.dart";
 import "project_activity_summary.dart";
 import "question.dart";
+import "queued_prompt.dart";
 import "session.dart";
 import "session_status.dart";
 
@@ -149,6 +150,18 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required String arguments,
     required String messageID,
   }) = SesoriCommandExecuted;
+
+  /// Full replacement of the session's bridge-owned queued-prompt list.
+  ///
+  /// Emitted whenever the queue changes (accept, cancel, dispatch, abort,
+  /// failure). Carries the complete current list rather than a delta so a
+  /// missed event self-heals on the next one.
+  @FreezedUnionValue("session.queued-prompts")
+  @Implements<SesoriSessionEvent>()
+  const factory sessionQueuedPrompts({
+    required String sessionID,
+    required List<QueuedSessionPrompt> prompts,
+  }) = SesoriSessionQueuedPrompts;
 
   // ---------------------------------------------------------------------------
   // Message — all implement SesoriSessionEvent
@@ -335,7 +348,7 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required String sessionId,
     required bool unseen,
     required bool projectHasUnseenChanges,
-    // COMPATIBILITY 2026-08-13 (v1.9.0): Older bridges omit lastUserActivityAt, which means no durable marker is known. Remove this comment after the minimum supported bridge always sends this field.
+    // COMPATIBILITY 2026-08-13 (v1.8.0): Older bridges omit lastUserActivityAt, which means no durable marker is known. Remove this comment after the minimum supported bridge always sends this field.
     required int? lastUserActivityAt,
   }) = SesoriSessionUnseenChanged;
 

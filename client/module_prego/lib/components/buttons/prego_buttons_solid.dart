@@ -869,11 +869,15 @@ class const _LoadingSpinner({required final Color color, required final double s
     switch (Theme.of(context).platform) {
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
+        // Compact button states stay painter-backed rather than embedding a platform view.
+        // ignore: no_slop_linter/avoid_flutter_spinners
         return CupertinoActivityIndicator(color: color, radius: size / 2);
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
       case TargetPlatform.linux:
       case TargetPlatform.windows:
+        // Compact button states stay painter-backed rather than embedding a platform view.
+        // ignore: no_slop_linter/avoid_flutter_spinners
         return CircularProgressIndicator(
           constraints: BoxConstraints.tight(Size(size, size)),
           strokeWidth: 2,

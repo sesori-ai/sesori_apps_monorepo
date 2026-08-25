@@ -1,5 +1,5 @@
-import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -140,8 +140,13 @@ void main() {
   });
 }
 
-Message _message({required String id}) =>
-    Message.user(id: id, sessionID: "ses_a", agent: null, time: const MessageTime(created: 1, completed: null));
+Message _message({required String id}) => Message.user(
+  promptId: null,
+  id: id,
+  sessionID: "ses_a",
+  agent: null,
+  time: const MessageTime(created: 1, completed: null),
+);
 
 MessageWithParts _messageWithParts({required String id}) => MessageWithParts(
   info: _message(id: id),

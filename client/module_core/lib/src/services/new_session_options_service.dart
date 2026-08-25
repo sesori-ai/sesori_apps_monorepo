@@ -29,9 +29,21 @@ sealed class NewSessionOptionsData with _$NewSessionOptionsData {
 
 sealed class const NewSessionOptionsLoadResult();
 
-enum NewSessionOptionsLoadMode() { dynamicLoad, forcedRefresh }
+/// What asked for a load: the screen opening or reconnecting, the user pressing
+/// refresh, or a stale-reported cache being brought up to date in the
+/// background. A silent refresh reaches the bridge as a forced one; the
+/// distinction is that nobody is waiting on it, so it must not overwrite what
+/// the user does while it runs.
+enum NewSessionOptionsLoadMode() { dynamicLoad, forcedRefresh, silentRefresh }
 
-final class const NewSessionOptionsLoaded({required final NewSessionOptionsData options, required final NewSessionOptionsSource source}) extends NewSessionOptionsLoadResult;
+/// Loaded options, and whether the bridge served them from a snapshot old
+/// enough to be worth refreshing behind the user's back. Only a cache the
+/// bridge chose not to rediscover is stale; anything just discovered is not.
+final class const NewSessionOptionsLoaded({
+    required final NewSessionOptionsData options,
+    required final NewSessionOptionsSource source,
+    required final bool isStale,
+  }) extends NewSessionOptionsLoadResult;
 
 final class const NewSessionOptionsUnsupported() extends NewSessionOptionsLoadResult;
 
@@ -62,7 +74,11 @@ class NewSessionOptionsService({
       if (mode == NewSessionOptionsLoadMode.dynamicLoad) {
         return previousOptions == null
             ? const NewSessionOptionsUnsupported()
-            : NewSessionOptionsLoaded(options: previousOptions, source: NewSessionOptionsSource.legacy);
+            : NewSessionOptionsLoaded(
+                options: previousOptions,
+                source: NewSessionOptionsSource.legacy,
+                isStale: false,
+              );
       }
       return await _loadLegacy(
         projectId: projectId,
@@ -75,18 +91,21 @@ class NewSessionOptionsService({
     final result = await _sessionRepository.loadSessionOptions(
       projectId: projectId,
       pluginId: pluginId,
-      mode: mode == NewSessionOptionsLoadMode.forcedRefresh
-          ? SessionOptionsRequestMode.forceRefresh
-          : SessionOptionsRequestMode.dynamic,
+      mode: switch (mode) {
+        NewSessionOptionsLoadMode.dynamicLoad => SessionOptionsRequestMode.dynamic,
+        NewSessionOptionsLoadMode.forcedRefresh ||
+        NewSessionOptionsLoadMode.silentRefresh => SessionOptionsRequestMode.forceRefresh,
+      },
     );
     return switch (result) {
-      SessionOptionsRepositoryAvailable(:final catalog) => NewSessionOptionsLoaded(
+      SessionOptionsRepositoryAvailable(:final catalog, :final isStale) => NewSessionOptionsLoaded(
         options: _resolve(
           catalog: catalog,
           restoredSelection: restoredSelection,
           previousOptions: previousOptions,
         ),
         source: NewSessionOptionsSource.aggregate,
+        isStale: isStale,
       ),
       SessionOptionsRepositoryUnsupported() => const NewSessionOptionsUnsupported(),
       SessionOptionsRepositoryCacheUnavailable() => const NewSessionOptionsUnavailable(),
@@ -104,6 +123,15 @@ class NewSessionOptionsService({
       SessionOptionsRepositoryRefreshFailedUnavailable() => switch (mode) {
         NewSessionOptionsLoadMode.dynamicLoad => const NewSessionOptionsLoadFailureUnavailable(),
         NewSessionOptionsLoadMode.forcedRefresh => const NewSessionOptionsRefreshFailureUnavailable(),
+        // A refresh nobody asked for must not take working options away. The
+        // bridge served these moments ago, so the honest answer is that the
+        // update failed, not that there is nothing left to choose from.
+        NewSessionOptionsLoadMode.silentRefresh => previousOptions == null
+            ? const NewSessionOptionsRefreshFailureUnavailable()
+            : NewSessionOptionsFailureRetained(
+                options: previousOptions,
+                source: NewSessionOptionsSource.aggregate,
+              ),
       },
       SessionOptionsRepositoryFailure(:final error) => _transientFailure(
         error: error,
@@ -129,6 +157,7 @@ class NewSessionOptionsService({
             previousOptions: previousOptions,
           ),
           source: NewSessionOptionsSource.legacy,
+          isStale: false,
         );
       case LegacySessionOptionsRepositoryPartial(:final catalog, :final errors):
         _logLegacyErrors(errors);
@@ -154,6 +183,7 @@ class NewSessionOptionsService({
             previousOptions: previousOptions,
           ),
           source: NewSessionOptionsSource.legacy,
+          isStale: false,
         );
       case LegacySessionOptionsRepositoryFailure(:final errors):
         _logLegacyErrors(errors);
@@ -244,12 +274,10 @@ class NewSessionOptionsService({
     required NewSessionVariantIntent? variantIntent,
   }) {
     if (model == null || variantIntent == null) return model;
-    return switch (variantIntent) {
-      NewSessionDefaultVariantIntent() => model.copyWith(variant: null),
-      NewSessionNamedVariantIntent(:final id) => model.copyWith(
-        variant: availableVariants(providers: providers, model: model).any((variant) => variant.id == id) ? id : null,
-      ),
-    };
+    final id = variantIntent.id;
+    return availableVariants(providers: providers, model: model).any((variant) => variant.id == id)
+        ? model.copyWith(variant: id)
+        : model;
   }
 
   NewSessionOptionsData? selectAgent({
@@ -305,7 +333,7 @@ class NewSessionOptionsService({
         ? previousVariant
         : agentVariant != null && variants.any((variant) => variant.id == agentVariant)
         ? agentVariant
-        : null;
+        : variants.firstOrNull?.id;
     final selectedAgentModel = _applyVariantIntent(
       providers: options.providers,
       model: requested.copyWith(variant: selectedVariant),
@@ -325,19 +353,17 @@ class NewSessionOptionsService({
 
   NewSessionOptionsData? selectVariant({
     required NewSessionOptionsData options,
-    required SessionVariant? variant,
+    required SessionVariant variant,
   }) {
     final model = options.selectedAgentModel;
     if (model == null) return null;
-    if (variant != null && !options.availableVariants.any((available) => available.id == variant.id)) {
-      return null;
-    }
+    if (!options.availableVariants.any((available) => available.id == variant.id)) return null;
     return NewSessionOptionsData(
       agents: options.agents,
       providers: options.providers,
       commands: options.commands,
       selectedAgent: options.selectedAgent,
-      selectedAgentModel: model.copyWith(variant: variant?.id),
+      selectedAgentModel: model.copyWith(variant: variant.id),
       stagedCommand: options.stagedCommand,
       availableVariants: options.availableVariants,
     );
@@ -396,7 +422,7 @@ class NewSessionOptionsService({
     final variants = availableVariants(providers: providers, model: model);
     final variant = model.variant;
     return model.copyWith(
-      variant: variant != null && variants.any((available) => available.id == variant) ? variant : null,
+      variant: variants.any((available) => available.id == variant) ? variant : variants.firstOrNull?.id,
     );
   }
 
@@ -407,7 +433,10 @@ class NewSessionOptionsService({
         defaultModelID: provider.defaultModelID,
       );
       if (model != null) {
-        return AgentModel(providerID: provider.id, modelID: model.id, variant: null);
+        return _validatedModel(
+          providers: providers,
+          model: AgentModel(providerID: provider.id, modelID: model.id, variant: null),
+        );
       }
     }
     return null;

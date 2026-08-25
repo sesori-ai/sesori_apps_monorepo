@@ -7,17 +7,37 @@ import "package:test/test.dart";
 
 /// An [AcpPlugin] whose [applyTurnSelection] blocks on a test-controlled gate,
 /// so a test can land an abort while a turn is mid-selection.
+class _PromptHookPlugin({
+  required super.id,
+  required super.agentDisplayName,
+  required super.launchSpec,
+  required super.launchDirectory,
+  required super.eventMapper,
+  required super.commandTracker,
+  required super.sessionOptionsService,
+  required super.processFactory,
+}) extends TestAcpPlugin {
+  @override
+  Map<String, dynamic> outboundPromptMeta({
+    required String sessionId,
+    required String messageId,
+  }) => {
+    "identity": {"sessionId": sessionId, "messageId": messageId},
+  };
+
+  Future<AcpStdioClient> borrowConnectedClient() => requireConnectedClient();
+}
+
 class _GatedSelectionPlugin({
-    required super.id,
-    required super.agentDisplayName,
-    required super.launchSpec,
-    required super.launchDirectory,
-    required super.eventMapper,
-    required super.contentMapper,
-    required super.commandTracker,
-    required super.sessionOptionsService,
-    required AcpProcessFactory super.processFactory,
-  }) extends TestAcpPlugin {
+  required super.id,
+  required super.agentDisplayName,
+  required super.launchSpec,
+  required super.launchDirectory,
+  required super.eventMapper,
+  required super.commandTracker,
+  required super.sessionOptionsService,
+  required super.processFactory,
+}) extends TestAcpPlugin {
   Completer<void>? selectionGate;
 
   @override
@@ -30,6 +50,35 @@ class _GatedSelectionPlugin({
   }) async {
     final gate = selectionGate;
     if (gate != null) await gate.future;
+  }
+}
+
+class _FlushControlledAcpProcess() extends FakeAcpProcess {
+  final _FlushControlledIOSink _controlledStdin = _FlushControlledIOSink();
+
+  @override
+  _FlushControlledIOSink get stdin => _controlledStdin;
+
+  @override
+  List<Map<String, dynamic>> get written => _controlledStdin.frames;
+
+  Completer<void> holdNextFlush() => _controlledStdin.holdNextFlush();
+}
+
+class _FlushControlledIOSink() extends CapturingIOSink {
+  Completer<void>? _nextFlush;
+
+  Completer<void> holdNextFlush() {
+    final gate = Completer<void>();
+    _nextFlush = gate;
+    return gate;
+  }
+
+  @override
+  Future<void> flush() {
+    final gate = _nextFlush;
+    _nextFlush = null;
+    return gate?.future ?? Future<void>.value();
   }
 }
 
@@ -47,40 +96,19 @@ class _GatedSelectionPlugin({
 ///    turn is in flight.
 void main() {
   group("AcpPlugin turn serialization", () {
-    late FakeAcpProcess fake;
+    late _FlushControlledAcpProcess fake;
     late AcpPlugin plugin;
     final emitted = <BridgeSseEvent>[];
     final streamErrors = <Object>[];
     const cwd = "/repo";
+    var promptSequence = 0;
 
     setUp(() {
-      fake = FakeAcpProcess();
-      final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
-      plugin = TestAcpPlugin(
-        id: "acp",
-        agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
-        launchDirectory: cwd,
-        contentMapper: const AcpContentMapper(),
-        eventMapper: AcpEventMapper(
-          launchDirectory: cwd,
-          agentId: "acp",
-          pluginId: "acp",
-          configurationTracker: configurationTracker,
-          contentMapper: const AcpContentMapper(),
-        ),
-        commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
-        processFactory: (_) async => fake,
-      );
+      fake = _FlushControlledAcpProcess();
+      plugin = composeTestAcpPlugin(processFactory: (_) async => fake, launchDirectory: cwd);
       emitted.clear();
       streamErrors.clear();
+      promptSequence = 0;
       plugin.events.listen(emitted.add, onError: streamErrors.add);
     });
 
@@ -140,34 +168,153 @@ void main() {
       return session.id;
     }
 
-    Future<void> sendPrompt(String sessionId, String text) => plugin.sendPrompt(
-      sessionId: sessionId,
-      parts: [PluginPromptPart.text(text: text)],
-      variant: null,
-      agent: null,
-      model: null,
-    );
+    Future<String> sendPrompt(String sessionId, String text) async {
+      final promptId = "prompt-${++promptSequence}";
+      await plugin.sendPrompt(
+        promptId: promptId,
+        sessionId: sessionId,
+        parts: [PluginPromptPart.text(text: text)],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      return promptId;
+    }
 
     int busyCount() => emitted.whereType<BridgeSseSessionStatus>().length;
     int idleCount() => emitted.whereType<BridgeSseSessionIdle>().length;
 
-    test("an accepted prompt is emitted immediately as a user message", () async {
+    test("prompt hooks expose live client and preserve prompt identity", () async {
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
+      final hookPlugin = _PromptHookPlugin(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchDirectory: cwd,
+        eventMapper: AcpEventMapper(
+          launchDirectory: cwd,
+          pluginId: "acp",
+          configurationTracker: configurationTracker,
+        ),
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
+        processFactory: (_) async => fake,
+      );
+      await plugin.dispose();
+      plugin = hookPlugin;
+      plugin.events.listen(emitted.add, onError: streamErrors.add);
+
+      final borrowing = hookPlugin.borrowConnectedClient();
+      respondTo(await waitForFrame("initialize"), {
+        "protocolVersion": 1,
+        "agentCapabilities": {"loadSession": false},
+        "authMethods": <Object?>[],
+      });
+      expect(await borrowing, same(hookPlugin.client));
+      final sessionId = await createSession(cwd, "s1");
+      final firstId = await sendPrompt(sessionId, "first");
+      final first = await waitForFrameCount("session/prompt", 1);
+
+      expect((first["params"] as Map)["_meta"], {
+        "identity": {"sessionId": sessionId, "messageId": "$firstId-user"},
+      });
+      expect(
+        emitted
+            .whereType<BridgeSseMessageUpdated>()
+            .where((event) => event.info["promptId"] == firstId)
+            .single
+            .info["id"],
+        "$firstId-user",
+      );
+      respondTo(first, {"stopReason": "end_turn"});
+    });
+
+    test("a prompt becomes a user message only when its ACP frame is dispatched", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
       emitted.clear();
 
-      await sendPrompt(sessionId, "visible immediately");
-      await pump();
+      final promptId = await sendPrompt(sessionId, "visible on dispatch");
+      final prompt = await waitForFrame("session/prompt");
 
       final message = emitted.whereType<BridgeSseMessageUpdated>().single;
       expect(message.info["role"], "user");
+      expect(message.info["promptId"], promptId);
       expect(
         emitted.whereType<BridgeSseMessagePartUpdated>().single.part.text,
-        "visible immediately",
+        "visible on dispatch",
+      );
+      final queueUpdates = emitted.whereType<BridgeSseQueuedPromptsUpdated>().toList();
+      expect(queueUpdates.first.prompts.single.id, promptId);
+      expect(queueUpdates.last.prompts, isEmpty);
+      expect(emitted.indexOf(message), lessThan(emitted.indexOf(queueUpdates.last)));
+
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
+    test("a prompt remains queued until its ACP frame flushes", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      final flush = fake.holdNextFlush();
+      final promptId = await sendPrompt(sessionId, "wait for flush");
+      final prompt = await waitForFrame("session/prompt");
+      await pump();
+
+      expect((await plugin.getQueuedPrompts(sessionId: sessionId)).single.id, promptId);
+      expect(
+        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == promptId),
+        isEmpty,
+      );
+      expect(
+        await plugin.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId),
+        isFalse,
+        reason: "the frame write has started and can no longer be withdrawn",
       );
 
-      final prompt = await waitForFrame("session/prompt");
+      flush.complete();
+      for (var i = 0; i < 20 && (await plugin.getQueuedPrompts(sessionId: sessionId)).isNotEmpty; i++) {
+        await pump();
+      }
+
+      expect(await plugin.getQueuedPrompts(sessionId: sessionId), isEmpty);
+      expect(
+        emitted
+            .whereType<BridgeSseMessageUpdated>()
+            .singleWhere((event) => event.info["promptId"] == promptId)
+            .info["promptId"],
+        promptId,
+      );
       respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
+    test("a failed ACP frame flush never marks the prompt sent", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      final flush = fake.holdNextFlush();
+      final promptId = await sendPrompt(sessionId, "broken pipe");
+      await waitForFrame("session/prompt");
+      flush.completeError(StateError("broken pipe"));
+      for (var i = 0; i < 20 && idleCount() == 0; i++) {
+        await pump();
+      }
+
+      expect(await plugin.getQueuedPrompts(sessionId: sessionId), isEmpty);
+      expect(
+        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == promptId),
+        isEmpty,
+      );
+      expect(emitted.whereType<BridgeSseSessionError>(), hasLength(1));
+      expect(streamErrors, isEmpty);
     });
 
     test("an initial create prompt emits its user-visible text only once", () async {
@@ -218,12 +365,59 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
+    for (final attachmentOnly in [false, true]) {
+      test(
+        "an initial ${attachmentOnly ? "attachment-only" : "mixed"} prompt dispatches and projects images",
+        () async {
+          await connect();
+          emitted.clear();
+
+          final creating = plugin.createSession(
+            directory: cwd,
+            parentSessionId: null,
+            parts: [
+              const PluginPromptPart.text(text: "[SYSTEM CONTEXT — IMPORTANT] internal"),
+              if (!attachmentOnly) const PluginPromptPart.text(text: "visible prompt"),
+              const PluginPromptPart.fileData(
+                mime: "image/png",
+                base64: "AA==",
+                filename: "/private/image.png",
+              ),
+            ],
+            userVisibleText: attachmentOnly ? null : "visible prompt",
+            variant: null,
+            agent: null,
+            model: null,
+          );
+          respondTo(await waitForFrame("session/new"), {"sessionId": "s1"});
+          await creating;
+
+          final prompt = await waitForFrame("session/prompt");
+          final content = (prompt["params"] as Map)["prompt"] as List;
+          expect(content.where((block) => (block as Map)["type"] == "image"), hasLength(1));
+          final projected = emitted.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
+          expect(projected.map((part) => part.type), [
+            if (!attachmentOnly) PluginMessagePartType.text,
+            PluginMessagePartType.file,
+          ]);
+          expect(
+            projected.where((part) => part.type == PluginMessagePartType.file).single.attachment,
+            isA<PluginMessageAttachmentInlineImage>(),
+          );
+          expect(emitted.toString(), isNot(contains("SYSTEM CONTEXT")));
+          expect(emitted.toString(), isNot(contains("/private/image.png")));
+          respondTo(prompt, {"stopReason": "end_turn"});
+        },
+      );
+    }
+
     test("a command emits only its user-visible arguments", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
       emitted.clear();
 
       await plugin.sendCommand(
+        promptId: "prompt-1",
         sessionId: sessionId,
         command: "review",
         arguments: "[SYSTEM CONTEXT — IMPORTANT] internal\n\nuser arguments",
@@ -335,7 +529,7 @@ void main() {
       final firstPrompt = await waitForFrame("session/prompt");
       expect(busyCount(), 1);
 
-      await sendPrompt(sessionId, "second");
+      final secondPromptId = await sendPrompt(sessionId, "second");
       for (var i = 0; i < 10; i++) {
         await pump();
       }
@@ -344,6 +538,12 @@ void main() {
         hasLength(1),
         reason: "the second prompt must wait for the first turn to complete",
       );
+      expect((await plugin.getQueuedPrompts(sessionId: sessionId)).single.id, secondPromptId);
+      expect(
+        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == secondPromptId),
+        isEmpty,
+        reason: "an adapter-owned prompt must remain queued, not sent",
+      );
       expect(busyCount(), 1, reason: "queued turn keeps the one busy signal");
       expect(idleCount(), 0);
 
@@ -351,6 +551,14 @@ void main() {
       final secondPrompt = await waitForFrameCount("session/prompt", 2);
       expect((secondPrompt["params"] as Map)["sessionId"], sessionId);
       await pump();
+      expect(await plugin.getQueuedPrompts(sessionId: sessionId), isEmpty);
+      expect(
+        emitted
+            .whereType<BridgeSseMessageUpdated>()
+            .singleWhere((event) => event.info["promptId"] == secondPromptId)
+            .info["promptId"],
+        secondPromptId,
+      );
       expect(
         idleCount(),
         0,
@@ -369,31 +577,82 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.idle);
     });
 
+    test("a queued prompt can be cancelled before ACP dispatch", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+
+      await sendPrompt(sessionId, "first");
+      final firstPrompt = await waitForFrame("session/prompt");
+      final queuedPromptId = await sendPrompt(sessionId, "cancel me");
+      expect((await plugin.getQueuedPrompts(sessionId: sessionId)).single.id, queuedPromptId);
+
+      expect(
+        await plugin.cancelQueuedPrompt(sessionId: sessionId, promptId: queuedPromptId),
+        isTrue,
+      );
+      expect(await plugin.getQueuedPrompts(sessionId: sessionId), isEmpty);
+
+      respondTo(firstPrompt, {"stopReason": "end_turn"});
+      for (var i = 0; i < 10; i++) {
+        await pump();
+      }
+      expect(frames("session/prompt"), hasLength(1));
+      expect(
+        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == queuedPromptId),
+        isEmpty,
+      );
+    });
+
+    test("a retried ACP prompt id remains one turn while disconnected", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+
+      await sendPrompt(sessionId, "first");
+      final firstPrompt = await waitForFrame("session/prompt");
+      Future<void> sendRetry() => plugin.sendPrompt(
+        promptId: "retry-id",
+        sessionId: sessionId,
+        parts: const [PluginPromptPart.text(text: "only once")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      await sendRetry();
+      await sendRetry();
+      expect(await plugin.getQueuedPrompts(sessionId: sessionId), hasLength(1));
+
+      respondTo(firstPrompt, {"stopReason": "end_turn"});
+      final retriedPrompt = await waitForFrameCount("session/prompt", 2);
+      await sendRetry();
+      await pump();
+      expect(frames("session/prompt"), hasLength(2));
+
+      respondTo(retriedPrompt, {"stopReason": "end_turn"});
+      for (var i = 0; i < 10; i++) {
+        await pump();
+      }
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      await plugin.resetConnectionAfterExit();
+      await sendRetry();
+      await plugin.sendCommand(
+        sessionId: sessionId,
+        promptId: "retry-id",
+        command: "deploy",
+        arguments: "",
+        userVisibleArguments: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(frames("initialize"), hasLength(1));
+    });
+
     test("queued reconnect authentication failure surfaces on the event stream", () async {
       var processStarts = 0;
       await plugin.dispose();
-      final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
-      plugin = TestAcpPlugin(
-        id: "acp",
-        agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+      plugin = composeTestAcpPlugin(
         launchDirectory: cwd,
-        contentMapper: const AcpContentMapper(),
-        eventMapper: AcpEventMapper(
-          launchDirectory: cwd,
-          agentId: "acp",
-          pluginId: "acp",
-          configurationTracker: configurationTracker,
-          contentMapper: const AcpContentMapper(),
-        ),
-        commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
         processFactory: (_) async {
           processStarts++;
           if (processStarts == 1) return fake;
@@ -510,13 +769,10 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        contentMapper: const AcpContentMapper(),
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
-          agentId: "acp",
           pluginId: "acp",
           configurationTracker: configurationTracker,
-          contentMapper: const AcpContentMapper(),
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(
@@ -558,6 +814,7 @@ void main() {
       final gate = Completer<void>();
       gated.selectionGate = gate;
       await gated.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PluginPromptPart.text(text: "hi")],
         variant: null,
@@ -582,20 +839,29 @@ void main() {
       await connect();
       final sessionId = await createSession(cwd, "s1");
 
-      await sendPrompt(sessionId, "hi");
+      final flush = fake.holdNextFlush();
+      final promptId = await sendPrompt(sessionId, "hi");
       final promptFrame = await waitForFrame("session/prompt");
 
       await plugin.deleteSession(sessionId);
       expect(frames("session/cancel"), hasLength(1));
+      final queueUpdateCount = emitted.whereType<BridgeSseQueuedPromptsUpdated>().length;
 
-      // The cancelled prompt settles after the delete: its accounting must not
-      // re-create the deleted session's status entry or emit idle for it.
+      // The prompt flushes and settles after the delete: neither dispatch nor
+      // accounting may publish lifecycle events for the detached session.
+      flush.complete();
+      await pump();
       respondTo(promptFrame, {"stopReason": "cancelled"});
       for (var i = 0; i < 10; i++) {
         await pump();
       }
       expect(await plugin.getSessionStatuses(), isEmpty);
       expect(emitted.whereType<BridgeSseSessionIdle>(), isEmpty);
+      expect(
+        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == promptId),
+        isEmpty,
+      );
+      expect(emitted.whereType<BridgeSseQueuedPromptsUpdated>(), hasLength(queueUpdateCount));
     });
 
     test("a queued turn retries a transiently failed resume-load at dispatch", () async {
@@ -731,28 +997,8 @@ void main() {
       // dead client.
       final fakes = [FakeAcpProcess(), FakeAcpProcess()];
       final spawned = <FakeAcpProcess>[];
-      final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
-      final respawning = TestAcpPlugin(
-        id: "acp",
-        agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+      final respawning = composeTestAcpPlugin(
         launchDirectory: cwd,
-        contentMapper: const AcpContentMapper(),
-        eventMapper: AcpEventMapper(
-          launchDirectory: cwd,
-          agentId: "acp",
-          pluginId: "acp",
-          configurationTracker: configurationTracker,
-          contentMapper: const AcpContentMapper(),
-        ),
-        commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
         processFactory: (_) async {
           final next = fakes.removeAt(0);
           spawned.add(next);
@@ -813,7 +1059,9 @@ void main() {
       });
       await creating;
 
+      var respawnPromptSequence = 0;
       Future<void> send(String text) => respawning.sendPrompt(
+        promptId: "respawn-prompt-${++respawnPromptSequence}",
         sessionId: "s1",
         parts: [PluginPromptPart.text(text: text)],
         variant: null,

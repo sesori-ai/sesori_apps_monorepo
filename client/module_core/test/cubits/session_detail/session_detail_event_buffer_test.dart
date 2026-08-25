@@ -11,26 +11,18 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
-import "package:sesori_dart_core/src/platform/notification_canceller.dart";
-import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
 
-class MockNotificationCanceller() extends Mock implements NotificationCanceller;
-
-class MockPermissionRepository() extends Mock implements PermissionRepository;
-
-class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadService;
-
 const _sessionId = "session-1";
 
 void main() {
   const connectedStatus = ConnectionStatus.connected(
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
-    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
+    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
   );
 
   setUpAll(() {
@@ -138,6 +130,7 @@ void main() {
       completer.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -147,7 +140,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -155,7 +148,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
       await _awaitLoaded(cubit);
@@ -165,6 +157,63 @@ void main() {
       expect(state.messages.length, 1);
       expect(state.messages.first.info.id, "msg-1");
       expect(state.agent, "build");
+    });
+
+    test("a live error updates assistant model attribution", () async {
+      final mockLoadService = MockSessionDetailLoadService();
+      when(
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer(
+        (_) async => const SessionDetailLoadResult.loaded(
+          snapshot: SessionDetailSnapshot(
+            bridgeQueuedPrompts: [],
+            projectId: "project-1",
+            pluginId: "opencode",
+            supportsPromptAttachments: false,
+            messages: [],
+            olderMessagesCursor: null,
+            pendingQuestions: [],
+            pendingPermissions: [],
+            childSessions: [],
+            statuses: {},
+            agents: [],
+            providerData: null,
+            commands: [],
+            canonicalSessionTitle: null,
+            promptDefaults: null,
+            isRootSession: true,
+            isArchived: false,
+          ),
+        ),
+      );
+      final cubit = createCubit(loadService: mockLoadService);
+      await _awaitLoaded(cubit);
+
+      sessionEvents.add(
+        const SesoriMessageUpdated(
+          info: Message.error(
+            id: "msg-error",
+            sessionID: _sessionId,
+            agent: "build",
+            modelID: "test-model",
+            providerID: "sesori-local",
+            errorName: "ProviderError",
+            errorMessage: "request failed",
+            time: null,
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.agent, "build");
+      expect(
+        state.assistantAgentModel,
+        const AgentModel(providerID: "sesori-local", modelID: "test-model", variant: null),
+      );
     });
 
     test("buffers global SSE events during loading and replays after loaded", () async {
@@ -206,6 +255,7 @@ void main() {
       completer.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -215,7 +265,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -223,7 +273,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
       await _awaitLoaded(cubit);
@@ -269,6 +318,7 @@ void main() {
       loadCompleter.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -278,7 +328,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -286,7 +336,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
 
@@ -321,6 +370,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -330,7 +380,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -338,7 +388,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
       final responses = <Completer<ApiResponse<CommandListResponse>>>[];
@@ -390,6 +439,7 @@ void main() {
       final mockLoadService = MockSessionDetailLoadService();
       SessionDetailSnapshot snapshot({required bool? supportsPromptAttachments}) {
         return SessionDetailSnapshot(
+          bridgeQueuedPrompts: const [],
           projectId: "project-1",
           pluginId: "codex",
           supportsPromptAttachments: supportsPromptAttachments,
@@ -399,7 +449,7 @@ void main() {
           pendingPermissions: const <PendingPermission>[],
           childSessions: const <Session>[],
           statuses: const <String, SessionStatus>{},
-          agents: const <AgentInfo?>[],
+          agents: const <AgentInfo>[],
           providerData: null,
           commands: const <CommandInfo>[],
           canonicalSessionTitle: null,
@@ -417,7 +467,6 @@ void main() {
       ).thenAnswer(
         (_) async => SessionDetailLoadResult.loaded(
           snapshot: snapshot(supportsPromptAttachments: true),
-          isBridgeConnected: true,
         ),
       );
       when(
@@ -428,7 +477,6 @@ void main() {
       ).thenAnswer(
         (_) async => SessionDetailLoadResult.loaded(
           snapshot: snapshot(supportsPromptAttachments: null),
-          isBridgeConnected: true,
         ),
       );
 
@@ -443,11 +491,11 @@ void main() {
           projectId: any(named: "projectId"),
         ),
       );
-      for (var i = 0; i < 100; i++) {
-        final state = cubit.state;
-        if (state is SessionDetailLoaded && !state.isRefreshing) break;
-        await Future<void>.delayed(const Duration(milliseconds: 5));
-      }
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && !state.isRefreshing,
+        description: "completed refresh",
+      );
 
       final refreshed = cubit.state as SessionDetailLoaded;
       expect(refreshed.isRefreshing, isFalse);
@@ -458,6 +506,7 @@ void main() {
       final mockLoadService = MockSessionDetailLoadService();
       final refreshes = <Completer<SessionDetailLoadResult>>[];
       const snapshot = SessionDetailSnapshot(
+        bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "codex",
         supportsPromptAttachments: true,
@@ -467,7 +516,7 @@ void main() {
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
         statuses: <String, SessionStatus>{},
-        agents: <AgentInfo?>[],
+        agents: <AgentInfo>[],
         providerData: null,
         commands: <CommandInfo>[],
         canonicalSessionTitle: null,
@@ -483,7 +532,6 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: snapshot,
-          isBridgeConnected: true,
         ),
       );
       when(
@@ -499,6 +547,7 @@ void main() {
       var sendCalls = 0;
       when(
         () => mockSessionRepository.sendMessage(
+          promptId: any(named: "promptId"),
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           attachments: any(named: "attachments"),
@@ -545,7 +594,6 @@ void main() {
       refreshes.first.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: snapshot,
-          isBridgeConnected: true,
         ),
       );
       await _awaitCondition(() => refreshes.length == 2);
@@ -554,12 +602,9 @@ void main() {
       refreshes[1].complete(
         const SessionDetailLoadResult.loaded(
           snapshot: snapshot,
-          isBridgeConnected: true,
         ),
       );
-      for (var i = 0; i < 100 && sendCalls < 2; i++) {
-        await Future<void>.delayed(const Duration(milliseconds: 5));
-      }
+      await _awaitCondition(() => sendCalls == 2);
 
       expect(sendCalls, 2);
       expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
@@ -576,6 +621,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -585,7 +631,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -593,11 +639,11 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
       when(
         () => mockSessionRepository.sendMessage(
+          promptId: any(named: "promptId"),
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           attachments: any(named: "attachments"),
@@ -638,6 +684,7 @@ void main() {
       final mockLoadService = MockSessionDetailLoadService();
       final firstAttempt = Completer<ApiResponse<void>>();
       const snapshot = SessionDetailSnapshot(
+        bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "opencode",
         supportsPromptAttachments: false,
@@ -647,7 +694,7 @@ void main() {
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
         statuses: <String, SessionStatus>{},
-        agents: <AgentInfo?>[],
+        agents: <AgentInfo>[],
         providerData: null,
         commands: <CommandInfo>[],
         canonicalSessionTitle: null,
@@ -663,7 +710,6 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: snapshot,
-          isBridgeConnected: true,
         ),
       );
       when(
@@ -674,12 +720,12 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: snapshot,
-          isBridgeConnected: true,
         ),
       );
       var sendCalls = 0;
       when(
         () => mockSessionRepository.sendMessage(
+          promptId: any(named: "promptId"),
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           attachments: any(named: "attachments"),
@@ -724,6 +770,7 @@ void main() {
     test("stale pre-disconnect refresh cannot authorize a queued attachment", () async {
       final mockLoadService = MockSessionDetailLoadService();
       const supportedSnapshot = SessionDetailSnapshot(
+        bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "codex",
         supportsPromptAttachments: true,
@@ -733,7 +780,7 @@ void main() {
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
         statuses: <String, SessionStatus>{},
-        agents: <AgentInfo?>[],
+        agents: <AgentInfo>[],
         providerData: null,
         commands: <CommandInfo>[],
         canonicalSessionTitle: null,
@@ -742,6 +789,7 @@ void main() {
         isArchived: false,
       );
       const unsupportedSnapshot = SessionDetailSnapshot(
+        bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "codex",
         supportsPromptAttachments: false,
@@ -751,7 +799,7 @@ void main() {
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
         statuses: <String, SessionStatus>{},
-        agents: <AgentInfo?>[],
+        agents: <AgentInfo>[],
         providerData: null,
         commands: <CommandInfo>[],
         canonicalSessionTitle: null,
@@ -767,7 +815,6 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: supportedSnapshot,
-          isBridgeConnected: true,
         ),
       );
       final refreshes = <Completer<SessionDetailLoadResult>>[];
@@ -784,6 +831,7 @@ void main() {
       var sendCalls = 0;
       when(
         () => mockSessionRepository.sendMessage(
+          promptId: any(named: "promptId"),
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           attachments: any(named: "attachments"),
@@ -826,7 +874,6 @@ void main() {
       refreshes.first.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: supportedSnapshot,
-          isBridgeConnected: true,
         ),
       );
       await _awaitCondition(() => refreshes.length == 2);
@@ -836,7 +883,6 @@ void main() {
       refreshes[1].complete(
         const SessionDetailLoadResult.loaded(
           snapshot: unsupportedSnapshot,
-          isBridgeConnected: true,
         ),
       );
       await _awaitCondition(() {
@@ -866,6 +912,7 @@ void main() {
     test("stale pre-disconnect failure cannot overwrite the reconnect load", () async {
       final mockLoadService = MockSessionDetailLoadService();
       const snapshot = SessionDetailSnapshot(
+        bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "codex",
         supportsPromptAttachments: true,
@@ -875,7 +922,7 @@ void main() {
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
         statuses: <String, SessionStatus>{},
-        agents: <AgentInfo?>[],
+        agents: <AgentInfo>[],
         providerData: null,
         commands: <CommandInfo>[],
         canonicalSessionTitle: null,
@@ -891,7 +938,6 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: snapshot,
-          isBridgeConnected: true,
         ),
       );
       final refreshes = <Completer<SessionDetailLoadResult>>[];
@@ -931,7 +977,6 @@ void main() {
       refreshes[1].complete(
         const SessionDetailLoadResult.loaded(
           snapshot: snapshot,
-          isBridgeConnected: true,
         ),
       );
       await _awaitLoaded(cubit);
@@ -972,7 +1017,11 @@ void main() {
       );
 
       // Wait for the failure state to be emitted
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailFailed,
+        description: "SessionDetailFailed",
+      );
       expect(cubit.state, isA<SessionDetailFailed>());
 
       // Now reload manually — the old buffered event should NOT be replayed
@@ -989,6 +1038,7 @@ void main() {
       reloadedCompleter.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -998,7 +1048,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -1006,7 +1056,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
       await _awaitLoaded(cubit);
@@ -1034,7 +1083,11 @@ void main() {
       final cubit = createCubit(loadService: mockLoadService);
 
       // Wait for the failure state
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailFailed,
+        description: "SessionDetailFailed",
+      );
       expect(cubit.state, isA<SessionDetailFailed>());
 
       // Emit an event while in failed state — should be dropped
@@ -1063,6 +1116,7 @@ void main() {
       reloadedCompleter.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -1072,7 +1126,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -1080,7 +1134,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
       await _awaitLoaded(cubit);
@@ -1101,6 +1154,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -1110,7 +1164,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -1118,7 +1172,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
 
@@ -1182,6 +1235,7 @@ void main() {
       );
 
       SessionDetailSnapshot snapshot({required List<MessageWithParts> messages}) => SessionDetailSnapshot(
+        bridgeQueuedPrompts: const [],
         projectId: "project-1",
         pluginId: "opencode",
         supportsPromptAttachments: false,
@@ -1191,7 +1245,7 @@ void main() {
         pendingPermissions: const <PendingPermission>[],
         childSessions: const <Session>[],
         statuses: const <String, SessionStatus>{},
-        agents: const <AgentInfo?>[],
+        agents: const <AgentInfo>[],
         providerData: null,
         commands: const <CommandInfo>[],
         canonicalSessionTitle: null,
@@ -1208,7 +1262,6 @@ void main() {
       ).thenAnswer(
         (_) async => SessionDetailLoadResult.loaded(
           snapshot: snapshot(messages: const []),
-          isBridgeConnected: true,
         ),
       );
       when(
@@ -1250,6 +1303,7 @@ void main() {
             messages: [
               MessageWithParts(
                 info: const Message.user(
+                  promptId: null,
                   id: "message-1",
                   sessionID: _sessionId,
                   agent: "build",
@@ -1259,7 +1313,6 @@ void main() {
               ),
             ],
           ),
-          isBridgeConnected: true,
         ),
       );
       await _awaitCondition(() {
@@ -1284,6 +1337,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -1293,7 +1347,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -1301,7 +1355,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
 
@@ -1331,6 +1384,7 @@ void main() {
       sessionEvents.add(
         const SesoriMessageUpdated(
           info: Message.user(
+            promptId: null,
             id: "message-1",
             sessionID: _sessionId,
             agent: "build",
@@ -1355,6 +1409,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -1364,7 +1419,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -1372,7 +1427,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
 
@@ -1415,6 +1469,7 @@ void main() {
       sessionEvents.add(
         const SesoriMessageUpdated(
           info: Message.user(
+            promptId: null,
             id: "message-1",
             sessionID: _sessionId,
             agent: "build",
@@ -1450,6 +1505,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -1459,7 +1515,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -1467,7 +1523,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
 
@@ -1476,6 +1531,7 @@ void main() {
       sessionEvents.add(
         const SesoriMessageUpdated(
           info: Message.user(
+            promptId: null,
             id: "message-1",
             sessionID: _sessionId,
             agent: "build",
@@ -1524,6 +1580,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -1533,7 +1590,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -1541,7 +1598,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
 
@@ -1550,6 +1606,7 @@ void main() {
       sessionEvents.add(
         const SesoriMessageUpdated(
           info: Message.user(
+            promptId: null,
             id: "z-user",
             sessionID: _sessionId,
             agent: "build",
@@ -1570,6 +1627,7 @@ void main() {
       const messages = <MessageWithParts>[
         MessageWithParts(
           info: Message.user(
+            promptId: null,
             id: "user-1",
             sessionID: _sessionId,
             agent: "build",
@@ -1597,6 +1655,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -1606,7 +1665,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -1614,7 +1673,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
 
@@ -1623,6 +1681,7 @@ void main() {
       sessionEvents.add(
         const SesoriMessageUpdated(
           info: Message.user(
+            promptId: null,
             id: "user-2",
             sessionID: _sessionId,
             agent: "build",
@@ -1664,6 +1723,7 @@ void main() {
       completer.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
@@ -1673,7 +1733,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -1681,7 +1741,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
       await _awaitLoaded(cubit);
@@ -1696,33 +1755,31 @@ void main() {
 }
 
 Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
-  for (var i = 0; i < 100; i++) {
-    if (cubit.state is SessionDetailLoaded) return;
-    await Future<void>.delayed(const Duration(milliseconds: 5));
-  }
-  fail("Timed out waiting for SessionDetailLoaded; current state: ${cubit.state}");
+  await awaitState(
+    cubit: cubit,
+    predicate: (state) => state is SessionDetailLoaded,
+    description: "SessionDetailLoaded",
+  );
 }
 
 Future<void> _awaitLoadedWithCommand(
   SessionDetailCubit cubit, {
   required String command,
 }) async {
-  for (var i = 0; i < 100; i++) {
-    final state = cubit.state;
-    if (state is SessionDetailLoaded &&
+  await awaitState(
+    cubit: cubit,
+    predicate: (state) =>
+        state is SessionDetailLoaded &&
         !state.isRefreshing &&
-        state.availableCommands.any((item) => item.name == command)) {
-      return;
-    }
-    await Future<void>.delayed(const Duration(milliseconds: 5));
-  }
-  fail("Timed out waiting for '$command'; current state: ${cubit.state}");
+        state.availableCommands.any((item) => item.name == command),
+    description: "available command '$command'",
+  );
 }
 
 Future<void> _awaitCondition(bool Function() condition) async {
   for (var i = 0; i < 100; i++) {
     if (condition()) return;
-    await Future<void>.delayed(const Duration(milliseconds: 5));
+    await Future<void>.delayed(Duration.zero);
   }
   fail("Timed out waiting for condition");
 }

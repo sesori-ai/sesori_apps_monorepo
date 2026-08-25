@@ -4,7 +4,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "package:path/path.dart" as path;
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
-import "../../api/data_directory_hardening.dart";
+import "../../foundation/data_directory_hardening.dart";
 import "../../server/api/runtime_file_api.dart";
 import "protocol.dart";
 

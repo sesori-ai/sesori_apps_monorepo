@@ -36,11 +36,14 @@ class Log._() {
   static void i(String message) => _write(LogLevel.info, message, null, null);
 
   /// Log a warning-level message.
+  // ignore: no_slop_linter/prefer_required_named_parameters, logging APIs keep the primary message positional
   static void w(String message, [Object? error, StackTrace? st]) => _write(LogLevel.warning, message, error, st);
 
   /// Log an error-level message.
+  // ignore: no_slop_linter/prefer_required_named_parameters, logging APIs keep the primary message positional
   static void e(String message, [Object? error, StackTrace? st]) => _write(LogLevel.error, message, error, st);
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, private logging sink mirrors the public logging APIs
   static void _write(
     LogLevel msgLevel,
     String rawMessage,
@@ -72,13 +75,13 @@ class Log._() {
     // All diagnostic logs go to stderr so the log stream stays separate from
     // user-facing output (which [Console] writes to stdout) and can be
     // silenced without making the bridge unoperable.
-    stderr.writeln(_colorizeForLevel(msgLevel, buffer.toString()));
+    stderr.writeln(_colorizeForLevel(msgLevel: msgLevel, text: buffer.toString()));
   }
 
   /// Colorizes log lines by severity when stderr is an interactive terminal:
   /// verbose is gray, debug is light blue, warning is yellow, and error is red.
   /// Info lines are written without color.
-  static String _colorizeForLevel(LogLevel msgLevel, String text) {
+  static String _colorizeForLevel({required LogLevel msgLevel, required String text}) {
     switch (msgLevel) {
       case LogLevel.verbose:
         return AnsiColorFormatter.colorize(text: text, color: AnsiColor.gray, out: stderr);

@@ -1,12 +1,12 @@
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/device_canvas/integration_state.dart";
-import "package:sesori_bridge/src/bridge/repositories/device_canvas_claim_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
-import "package:sesori_bridge/src/bridge/services/device_canvas_claim_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
+import "package:sesori_bridge/src/repositories/device_canvas_claim_repository.dart";
+import "package:sesori_bridge/src/repositories/project_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_repository.dart";
+import "package:sesori_bridge/src/services/device_canvas_claim_service.dart";
+import "package:sesori_bridge/src/services/session_unseen_service.dart";
+import "package:sesori_bridge/src/services/session_view_tracker.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_filesystem_api.dart";

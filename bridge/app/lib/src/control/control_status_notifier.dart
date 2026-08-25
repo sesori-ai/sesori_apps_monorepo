@@ -4,8 +4,8 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../bridge/relay_client.dart";
 import "../foundation/control_channel_client.dart";
+import "../foundation/relay_client.dart";
 
 /// Owns ALL outbound status-class control sends in supervised mode: it
 /// observes the bridge's live state streams and pushes `status` /

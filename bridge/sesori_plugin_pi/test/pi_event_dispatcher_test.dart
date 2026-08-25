@@ -90,6 +90,81 @@ void main() {
     expect(finalEvents.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part), replay.parts);
   });
 
+  test("registering a steering prompt preserves the active assistant stream and prompt order", () {
+    dispatcher.registerPrompt(
+      sessionId: sessionId,
+      promptId: "prompt-1",
+      executionText: "private first",
+      userVisibleText: "first",
+    );
+    final firstUser = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_end", {
+        "message": {
+          "role": "user",
+          "content": [
+            {"type": "text", "text": "private first"},
+          ],
+          "timestamp": 90,
+        },
+      }),
+    );
+    dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_start", {"message": _assistant(content: const [], timestamp: 100)}),
+    );
+    final beforeSteer = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_update", {
+        "assistantMessageEvent": {"type": "text_delta", "contentIndex": 0, "delta": "before "},
+      }),
+    );
+
+    dispatcher.registerPrompt(
+      sessionId: sessionId,
+      promptId: "prompt-2",
+      executionText: "private second",
+      userVisibleText: "second",
+    );
+    final afterSteer = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_update", {
+        "assistantMessageEvent": {"type": "text_delta", "contentIndex": 0, "delta": "after"},
+      }),
+    );
+    dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_end", {
+        "message": _assistant(
+          content: [
+            {"type": "text", "text": "before after"},
+          ],
+          timestamp: 100,
+          stopReason: "stop",
+        ),
+      }),
+    );
+    final steeringUser = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_end", {
+        "message": {
+          "role": "user",
+          "content": [
+            {"type": "text", "text": "private second"},
+          ],
+          "timestamp": 110,
+        },
+      }),
+    );
+
+    expect((firstUser.first as BridgeSseMessageUpdated).info["promptId"], "prompt-1");
+    expect(firstUser.whereType<BridgeSseMessagePartUpdated>().single.part.text, "first");
+    expect(beforeSteer.whereType<BridgeSseMessagePartDelta>().single.messageID, "pi:session:assistant:100:1");
+    expect(afterSteer.whereType<BridgeSseMessagePartDelta>().single.messageID, "pi:session:assistant:100:1");
+    expect((steeringUser.first as BridgeSseMessageUpdated).info["promptId"], "prompt-2");
+    expect(steeringUser.whereType<BridgeSseMessagePartUpdated>().single.part.text, "second");
+  });
+
   test("user message finals equal cold replay", () {
     final raw = {
       "role": "user",
@@ -506,7 +581,7 @@ void main() {
     expect(events.whereType<BridgeSseMessagePartUpdated>().single.part.text, "Extension result");
   });
 
-  test("retry, compaction, and only agent_settled produce status lifecycle", () {
+  test("retry and compaction map lifecycle while only agent_settled emits idle", () {
     final retry = dispatcher.map(
       sessionId: sessionId,
       event: _event("auto_retry_start", {"attempt": 2, "delayMs": 500}),
@@ -524,6 +599,10 @@ void main() {
       sessionId: sessionId,
       event: _event("agent_end", {"willRetry": false}),
     );
+    final compacting = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_start", {"reason": "threshold"}),
+    );
     final compacted = dispatcher.map(
       sessionId: sessionId,
       event: _event("compaction_end", {"aborted": false, "willRetry": false}),
@@ -539,12 +618,26 @@ void main() {
     expect(agentEnd, isEmpty);
     expect((autoRetryResumed.single as BridgeSseSessionStatus).status, {"runtimeType": "busy"});
     expect((summarizationResumed.single as BridgeSseSessionStatus).status, {"runtimeType": "busy"});
+    expect(compacting.whereType<BridgeSseSessionStatus>().single.status, {"runtimeType": "busy"});
+    final runningMessage = compacting.whereType<BridgeSseMessageUpdated>().single;
+    expect(runningMessage.info["id"], "pi:session:compaction:compaction:1");
+    final runningPart = compacting.whereType<BridgeSseMessagePartUpdated>().single.part;
+    expect(runningPart.state?.status, PluginToolStatus.running);
+    expect(runningPart.state?.title, "Compacting context");
     expect(compacted.whereType<BridgeSseSessionCompacted>(), hasLength(1));
-    expect(compacted.whereType<BridgeSseMessagePartUpdated>().single.part.state?.title, "Context compacted");
+    expect(compacted.whereType<BridgeSseMessageUpdated>().single.info["id"], runningMessage.info["id"]);
+    final completedPart = compacted.whereType<BridgeSseMessagePartUpdated>().single.part;
+    expect(completedPart.id, runningPart.id);
+    expect(completedPart.state?.status, PluginToolStatus.completed);
+    expect(completedPart.state?.title, "Context compacted");
     expect(settled.whereType<BridgeSseSessionIdle>(), hasLength(1));
   });
 
-  test("recovering compaction failures stay local while Pi retries", () {
+  test("recovering compaction failures keep the running card while Pi retries", () {
+    dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_start", {"reason": "overflow"}),
+    );
     final events = dispatcher.map(
       sessionId: sessionId,
       event: _event("compaction_end", {
@@ -555,7 +648,80 @@ void main() {
       }),
     );
 
+    expect(events.whereType<BridgeSseMessageRemoved>(), isEmpty);
     expect(events.whereType<BridgeSseSessionError>(), isEmpty);
+  });
+
+  test("successful overflow compaction completes before Pi retries the agent", () {
+    final compacting = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_start", {"reason": "overflow"}),
+    );
+    final compacted = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_end", {
+        "reason": "overflow",
+        "aborted": false,
+        "willRetry": true,
+      }),
+    );
+
+    expect(compacted.whereType<BridgeSseSessionCompacted>(), hasLength(1));
+    expect(
+      compacted.whereType<BridgeSseMessageUpdated>().single.info["id"],
+      compacting.whereType<BridgeSseMessageUpdated>().single.info["id"],
+    );
+    expect(
+      compacted.whereType<BridgeSseMessagePartUpdated>().single.part.state?.status,
+      PluginToolStatus.completed,
+    );
+  });
+
+  test("terminal compaction failures remove the running card and preserve its replay identity", () {
+    final compacting = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_start", {"reason": "threshold"}),
+    );
+    final messageId = compacting.whereType<BridgeSseMessageUpdated>().single.info["id"];
+
+    final failed = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_end", {
+        "reason": "threshold",
+        "errorMessage": "provider detail",
+        "aborted": false,
+        "willRetry": false,
+      }),
+    );
+    final restarted = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_start", {"reason": "threshold"}),
+    );
+
+    expect(failed.whereType<BridgeSseMessageRemoved>().single.messageID, messageId);
+    expect(failed.whereType<BridgeSseSessionError>(), hasLength(1));
+    expect(restarted.whereType<BridgeSseMessageUpdated>().single.info["id"], messageId);
+  });
+
+  test("running compaction identity survives history hydration before completion", () {
+    final compacting = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_start", {"reason": "threshold"}),
+    );
+    final messageId = compacting.whereType<BridgeSseMessageUpdated>().single.info["id"];
+    identities.hydrate<void>(sessionId: sessionId, map: (_) {});
+
+    final compacted = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_end", {"aborted": false, "willRetry": false}),
+    );
+    final next = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_start", {"reason": "threshold"}),
+    );
+
+    expect(compacted.whereType<BridgeSseMessageUpdated>().single.info["id"], messageId);
+    expect(next.whereType<BridgeSseMessageUpdated>().single.info["id"], "pi:session:compaction:compaction:2");
   });
 
   test("interleaved sessions and unknown variants keep state isolated", () {

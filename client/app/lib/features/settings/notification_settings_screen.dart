@@ -55,9 +55,9 @@ class const _NotificationSettingsBody() extends StatelessWidget {
               vertical: _contentTopPadding,
             ),
             child: switch (state) {
-              NotificationPreferencesLoading() => const Padding(
-                padding: EdgeInsetsDirectional.only(top: PregoSpacing.x4l),
-                child: Center(child: CircularProgressIndicator()),
+              NotificationPreferencesLoading() => Padding(
+                padding: const EdgeInsetsDirectional.only(top: PregoSpacing.x4l),
+                child: Center(child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)),
               ),
               NotificationPreferencesAccountUnavailable() => const _NotificationPreferencesUnavailable(),
               NotificationPreferencesLoadFailed() => const _NotificationPreferencesFailure(),
@@ -88,7 +88,6 @@ class const _NotificationSettingsBody() extends StatelessWidget {
                           subtitle: loc.notificationCategoryConnectionStatusDescription,
                           preferences: preferences,
                           updatingCategories: updatingCategories,
-                          isLast: true,
                         ),
                       ],
                     ),
@@ -105,7 +104,6 @@ class const _NotificationSettingsBody() extends StatelessWidget {
                           subtitle: null,
                           preferences: preferences,
                           updatingCategories: updatingCategories,
-                          isLast: true,
                         ),
                       ],
                     ),
@@ -126,15 +124,10 @@ class const _NotificationSettingsBody() extends StatelessWidget {
 class const _NotificationPreferencesUnavailable() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return PregoGroupedRows(
-      children: [
-        PregoGroupedRow(
-          icon: TablerRegular.info_circle,
-          title: Text(context.loc.notificationPreferencesUnavailableTitle),
-          subtitle: Text(context.loc.notificationPreferencesUnavailableDescription),
-          isLast: true,
-        ),
-      ],
+    return PregoGroupedNoticeRow(
+      icon: TablerRegular.info_circle,
+      title: Text(context.loc.notificationPreferencesUnavailableTitle),
+      subtitle: Text(context.loc.notificationPreferencesUnavailableDescription),
     );
   }
 }
@@ -142,22 +135,17 @@ class const _NotificationPreferencesUnavailable() extends StatelessWidget {
 class const _NotificationPreferencesFailure() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return PregoGroupedRows(
-      children: [
-        PregoGroupedRow(
-          icon: TablerRegular.alert_triangle,
-          title: Text(context.loc.notificationPreferencesLoadFailedTitle),
-          subtitle: Text(context.loc.notificationPreferencesLoadFailedDescription),
-          trailing: PregoButtonsSolid(
+    return PregoGroupedNoticeRow(
+      icon: TablerRegular.alert_triangle,
+      title: Text(context.loc.notificationPreferencesLoadFailedTitle),
+      subtitle: Text(context.loc.notificationPreferencesLoadFailedDescription),
+      trailing: PregoButtonsSolid(
             key: const Key("notification_preferences_retry"),
             label: context.loc.notificationPreferencesRetry,
             hierarchy: PregoButtonsSolidHierarchy.tertiary,
             size: PregoButtonsSolidSize.sm,
             onPressed: context.read<NotificationPreferencesCubit>().retry,
-          ),
-          isLast: true,
-        ),
-      ],
+      ),
     );
   }
 }
@@ -168,7 +156,6 @@ class const _NotificationToggleRow({
   required final String? subtitle,
   required final Map<NotificationCategory, bool> preferences,
   required final Set<NotificationCategory> updatingCategories,
-  final bool isLast = false,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -204,7 +191,6 @@ class const _NotificationToggleRow({
         subtitle: subtitle != null ? Text(subtitle) : null,
         trailing: trailing,
         onTap: isUpdating ? null : () => toggle(enabled: !enabled),
-        isLast: isLast,
       ),
     );
   }

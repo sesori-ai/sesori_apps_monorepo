@@ -1,7 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../bridge/routing/request_handler.dart";
 import "../repositories/bridge_settings_repository.dart";
+import "request_handler.dart";
 
 class GetBridgeSettingsHandler({required final BridgeSettingsRepository _settingsRepository})
     extends GetRequestHandler<BridgeSettingsResponse> {
@@ -9,9 +9,6 @@ class GetBridgeSettingsHandler({required final BridgeSettingsRepository _setting
 
   @override
   Future<BridgeSettingsResponse> handle(
-    RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
-  }) => _settingsRepository.readCommittedResponse();
+    RelayRequest request,
+  ) => _settingsRepository.readCommittedResponse();
 }

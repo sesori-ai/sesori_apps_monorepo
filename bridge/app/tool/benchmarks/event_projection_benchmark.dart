@@ -3,17 +3,18 @@ import "dart:ffi" show Abi;
 import "dart:io";
 
 import "package:args/args.dart";
+import "package:cryptography/cryptography.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/mappers/session_event_mapper.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/repositories/trackers/session_event_tracker.dart";
-import "package:sesori_bridge/src/bridge/services/session_event_service.dart";
-import "package:sesori_bridge/src/bridge/sse/bridge_event_mapper.dart";
-import "package:sesori_bridge/src/bridge/sse/sse_event_delivery.dart";
-import "package:sesori_bridge/src/bridge/sse/sse_manager.dart";
+import "package:sesori_bridge/src/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/repositories/trackers/session_event_tracker.dart";
+import "package:sesori_bridge/src/services/session_event_service.dart";
+import "package:sesori_bridge/src/sse/bridge_event_mapper.dart";
+import "package:sesori_bridge/src/sse/sse_event_delivery.dart";
+import "package:sesori_bridge/src/sse/sse_manager.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -76,7 +77,6 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
       runtime = createBenchmarkPluginRuntime(plugins: [plugin]);
       repository = SessionRepository(
         runtime: runtime,
-        bridgeDerivedProjectPluginIds: const {},
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
@@ -99,6 +99,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
         replayWindow: const Duration(minutes: 1),
         onBytesSent: (_) {},
         failureReporter: failureReporter,
+        encryptor: RelayCryptoService().createSessionEncryptor(SecretKey(List<int>.filled(32, 0))),
       );
       final scenario = await _measureKnownRootUpdates(
         database: database,
@@ -312,6 +313,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
       lastAgent: null,
       lastAgentModel: null,
       pluginId: _pluginId,
+      preservePullRequestScope: false,
     );
   }
 

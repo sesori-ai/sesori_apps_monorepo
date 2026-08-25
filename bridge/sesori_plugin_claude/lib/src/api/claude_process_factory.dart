@@ -88,38 +88,3 @@ final class _HostClaudeProcessHandle({
     }
   }
 }
-
-/// Default factory: spawns a real OS process via [io.Process.start].
-///
-/// `runInShell` on Windows is required because an npm-installed `claude` is a
-/// `.cmd` shim rather than a native executable.
-Future<ClaudeProcessHandle> defaultClaudeProcessFactory(ClaudeLaunchSpec spec) async {
-  final process = await io.Process.start(
-    spec.binaryPath,
-    spec.arguments,
-    workingDirectory: spec.workingDirectory,
-    // includeParentEnvironment defaults to true, so these entries merge over
-    // the inherited environment. That inheritance is what lets the CLI find the
-    // user's existing login.
-    environment: spec.environment,
-    runInShell: io.Platform.isWindows,
-  );
-  return _RealClaudeProcess(process);
-}
-
-class _RealClaudeProcess(final io.Process _process) implements ClaudeProcessHandle {
-  @override
-  Stream<List<int>> get stdout => _process.stdout;
-
-  @override
-  Stream<List<int>> get stderr => _process.stderr;
-
-  @override
-  io.IOSink get stdin => _process.stdin;
-
-  @override
-  Future<int> get exitCode => _process.exitCode;
-
-  @override
-  bool kill([io.ProcessSignal signal = io.ProcessSignal.sigterm]) => _process.kill(signal);
-}

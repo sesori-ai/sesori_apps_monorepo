@@ -1,11 +1,10 @@
 import "dart:async";
 
 import "package:flutter/gestures.dart";
-import "package:flutter_chat_core/flutter_chat_core.dart" as chat_core;
-import "package:flutter_chat_ui/flutter_chat_ui.dart" as chat_ui;
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "assistant_message_card.dart";
@@ -18,47 +17,11 @@ import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
 import "user_message_card.dart";
 
-/// Chat-style message list for the session detail screen, rendered with
-/// the flyerhq `flutter_chat_ui` v2 stack (`Chat` +
-/// `ChatAnimatedListReversed` + `InMemoryChatController`).
+/// Chat-style message list for the session detail screen.
 ///
-/// Integration model:
-///
-/// - The [chat_core.ChatController] holds **content-stable index
-///   entries** only — one `CustomMessage(id, authorId)` per domain
-///   message, plus synthetic retry-error and transient-submission rows. All
-///   visible content (message parts, streaming text, tool state) is
-///   resolved from the cubit-provided widget props inside the row
-///   builders, keyed by message id. Token deltas therefore never
-///   round-trip through the controller: `setMessages` diffs (by id +
-///   freezed equality) emit operations only when the message *set*
-///   changes, and in-place content updates flow through ordinary
-///   widget rebuilds.
-/// - Every per-row default of the package is replaced: the row wrapper
-///   (`chatMessageBuilder` returns the bare child — no bubble, no
-///   alignment, no gestures), the composer (the prompt input lives
-///   outside this widget), the scroll-to-bottom button and the empty
-///   state (both owned by this feature already).
-///
-/// Scroll behaviour — "follow / detach" (unchanged semantics):
-///
-/// - The list is reversed, so the newest message renders at the visual
-///   bottom (scroll offset `0`).
-/// - While **following**, a coalesced post-frame `jumpTo(0)` runs via
-///   the [ScrollFollowTracker] — race-free pin-to-edge. The package's
-///   own auto-scroll is disabled (`shouldScrollToEndWhenSendingMessage:
-///   false`; the at-bottom variant is a no-op for reversed lists).
-/// - While **detached** (user dragged / trackpad-scrolled / pan-zoomed
-///   away from the bottom), the full set of rendered inputs
-///   (`messages`, transient submissions, `streamingText`, `children`,
-///   `childStatuses`) is
-///   snapshotted AND controller syncing is suspended, so nothing below
-///   (or above) the user's viewport can grow, shrink, or reorder under
-///   them. Both freezes lift the moment the user reattaches.
-///
-/// Gesture plumbing and the detached overlay toggle live in
-/// [FollowDetachScrollable]; this widget owns message rendering, the
-/// detached snapshot, and the follow/chat controller lifecycles.
+/// The reversed list keeps newest content at scroll offset zero. While following,
+/// [ScrollFollowTracker] pins it there. While detached, rendered inputs are
+/// snapshotted so live changes cannot move the viewport.
 class const SessionDetailMessageList({
   super.key,
   required final String? projectId,
@@ -66,6 +29,13 @@ class const SessionDetailMessageList({
   required final List<MessageWithParts> messages,
   required final QueuedSessionSubmission? sendingSubmission,
   required final List<QueuedSessionSubmission> queuedMessages,
+
+  /// Accepted sends the bridge has not listed yet — rendered as read-only
+  /// queued bubbles so the prompt never blanks between its acceptance
+  /// response and the bridge's queue event.
+  final List<QueuedSessionSubmission> awaitingBridgeSubmissions = const [],
+  required final List<QueuedSessionPrompt> bridgeQueuedPrompts,
+  final void Function(String promptId)? onCancelBridgeQueuedPrompt,
   required final Map<String, String> streamingText,
   required final List<Session> children,
   required final Map<String, SessionStatus> childStatuses,
@@ -105,7 +75,7 @@ typedef _DetachedSnapshot = ({
   String? retryErrorMessage,
 });
 
-typedef _TransientSubmission = ({QueuedSessionSubmission submission, bool isSending});
+typedef _TransientSubmission = ({QueuedSessionSubmission submission, bool isSending, bool awaitingBridge});
 
 class _SessionDetailMessageListState() extends State<SessionDetailMessageList> with SingleTickerProviderStateMixin {
   static const _kListViewKey = Key("session-detail-message-list-view");
@@ -117,34 +87,31 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// rarer/longer labels ellipsize in [MessageTimestampReveal].
   static const double _kMaxReveal = 108;
 
-  /// Horizontal travel before a drag is treated as a timestamp peek
-  /// rather than a scroll. Kept below `kTouchSlop` so the peek engages
-  /// promptly, but only when horizontal travel clearly dominates.
-  static const double _kRevealEngageSlop = 8;
+  /// Disallowed-direction or vertical-dominant travel that releases the
+  /// pending timestamp gesture. Kept below `kTouchSlop` so small vertical and
+  /// rightward-first drags remain available to the transcript.
+  static const double _kRevealPendingRejectionSlop = 8;
 
-  /// Synthetic controller-entry id for the shimmering retry-error row
-  /// pinned at the newest edge. Domain message ids come from the
-  /// assistant backend and cannot collide with this.
+  static const Set<PointerDeviceKind> _kRevealPointerDevices = {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.invertedStylus,
+    PointerDeviceKind.trackpad,
+    PointerDeviceKind.unknown,
+  };
+
+  /// Synthetic id for the shimmering retry-error row pinned at the newest
+  /// edge. Domain message ids come from the assistant backend and cannot
+  /// collide with this.
   static const _kRetryErrorRowId = "session-detail-retry-error-row";
-  static const _kTransientSubmissionRowPrefix = "session-detail-transient-submission-";
+  static const _kPromptRowPrefix = "session-detail-prompt-";
 
-  static const _kUserAuthorId = "user";
-  static const _kAgentAuthorId = "agent";
-
-  /// Metadata key carrying each entry's domain role. Assistant and error
-  /// messages share [_kAgentAuthorId], so without this discriminator a
-  /// message flipping from assistant to error mid-stream (same id, same
-  /// authorId) would be value-equal to its previous entry — the
-  /// controller diff would emit no update and the on-screen row would
-  /// stay the stale assistant card until the screen is remounted.
-  static const _kRoleMetadataKey = "role";
-  static const _kUserRole = "user";
-  static const _kAssistantRole = "assistant";
-  static const _kErrorRole = "error";
-  static const _kTransientSubmissionRole = "transient-submission";
+  /// Distance from the oldest edge at which the next older page starts
+  /// loading — about one phone viewport, so scrolling back through history
+  /// has its page ready instead of stopping dead at the edge.
+  static const double _kOlderPagePrefetchExtent = 600;
 
   late final ScrollFollowTracker _follow;
-  late final chat_core.InMemoryChatController _chatController;
 
   /// Shared 0..1 progress for the horizontal timestamp-reveal "peek".
   /// Set directly while the user drags; springs back to 0 on release.
@@ -152,29 +119,18 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// drag moves the whole transcript in lockstep.
   late final AnimationController _revealController;
 
-  /// Pointer-tracking state for the reveal "peek" gesture (see
-  /// [_onRevealPointerMove]). `_revealPointer` is the active pointer id;
-  /// `_revealEngaged`/`_revealRejected` latch the horizontal-vs-vertical
-  /// decision for the duration of one gesture.
-  int? _revealPointer;
-  Offset _revealStart = Offset.zero;
-  bool _revealEngaged = false;
-  bool _revealRejected = false;
+  /// Captured on horizontal-drag down, before the outer trackpad listener can
+  /// detach. Once the horizontal recognizer wins, suppression restores this
+  /// state and keeps the timestamp peek from disturbing follow mode.
   bool _revealStartedFollowing = false;
 
-  /// True while a trackpad pan-zoom owns the reveal. The pointer-drag and
-  /// pan-zoom paths share the engage/reject latches above, so exactly one
-  /// may drive the peek at a time: whichever gesture starts first claims
-  /// ownership (`_revealPointer` for finger/stylus, this flag for
-  /// trackpad) and the other path no-ops until it releases. Guards against
-  /// a stray pan on a touchscreen-plus-trackpad device resetting the
-  /// latches — or springing the gutter shut — mid touch drag.
-  bool _revealPanActive = false;
+  bool _revealDragActive = false;
+  bool _revealDetachSuppressed = false;
 
   /// Snapshot taken at the moment of detach. `null` means "not frozen
   /// — use live `widget.*` props".
   _DetachedSnapshot? _snapshot;
-  bool _olderPageRequestInFlight = false;
+  bool _loadOlderCallbackInFlight = false;
 
   /// Cache for the id → data-source-index map consumed by the row
   /// builder. Keyed on a content signature of `(length, firstId,
@@ -190,33 +146,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   int? _indexSignature;
   Map<String, int> _indexById = const <String, int>{};
 
-  /// Cache for the chat package theme derived from the app theme. Deriving it
-  /// allocates a full style set, and this widget rebuilds on every streaming
-  /// flush — recompute only when the underlying [ThemeData] changes.
-  (ThemeData, chat_core.ChatTheme)? _chatThemeCache;
-
-  /// The chat controller needs string IDs; object identity keeps one row stable
-  /// as the queue moves the same submission from pending to sending.
-  final Expando<String> _transientSubmissionEntryIds = Expando<String>();
-  int _nextTransientSubmissionEntryId = 0;
-
   @override
   void initState() {
     super.initState();
-    _olderPageRequestInFlight = widget.isLoadingOlderMessages;
     _follow = ScrollFollowTracker(edge: ScrollFollowEdge.min);
     _follow.addListener(_onFollowChanged);
     _revealController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 220),
-    );
-    _chatController = chat_core.InMemoryChatController(
-      messages: _chatEntriesFor(
-        messages: widget.messages,
-        sendingSubmission: widget.sendingSubmission,
-        queuedMessages: widget.queuedMessages,
-        hasRetryError: widget.retryErrorMessage != null,
-      ),
     );
   }
 
@@ -225,40 +162,25 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _follow.removeListener(_onFollowChanged);
     _follow.dispose();
     _revealController.dispose();
-    _chatController.dispose();
     super.dispose();
   }
 
   @override
   void didUpdateWidget(SessionDetailMessageList oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.isLoadingOlderMessages) {
-      _olderPageRequestInFlight = true;
-    }
-    final olderPageRequestCompleted = _olderPageRequestInFlight && !widget.isLoadingOlderMessages;
-    // While detached the controller is intentionally left stale so the
-    // list structure cannot shift under the reader; `_onFollowChanged`
-    // re-syncs on reattach.
+    final olderPageRequestCompleted = oldWidget.isLoadingOlderMessages && !widget.isLoadingOlderMessages;
+    // While detached the snapshot keeps the list structure from shifting
+    // under the reader; `_onFollowChanged` restores live inputs on reattach.
     //
     // Older pages are the exception: the reader is detached precisely
     // because they scrolled back for them, and they are prepended *above*
     // the viewport, so rendering them cannot shift what is being read.
     // Freezing them would leave the page loaded but invisible until the
     // user returned to the newest message.
-    if (_follow.following) {
-      if (olderPageRequestCompleted) _olderPageRequestInFlight = false;
-      _syncChatController();
-      return;
-    }
+    if (_follow.following) return;
     final frozen = _snapshot;
     final transientSubmissionsChanged = !_transientSubmissionsMatch(oldWidget: oldWidget);
     if (frozen != null && transientSubmissionsChanged) {
-      _syncChatControllerTo(
-        messages: frozen.messages,
-        sendingSubmission: widget.sendingSubmission,
-        queuedMessages: widget.queuedMessages,
-        hasRetryError: frozen.retryErrorMessage != null,
-      );
       if (_hasNewTransientSubmission(oldWidget: oldWidget)) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted || _follow.following) return;
@@ -267,7 +189,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       }
     }
     if (!olderPageRequestCompleted) return;
-    _olderPageRequestInFlight = false;
     if (frozen == null) return;
     final prepended = _prependedOlderMessages(frozen: frozen);
     if (prepended.isEmpty) return;
@@ -293,14 +214,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // history old enough to be paged back to has finished streaming and has
     // no running child work.
     //
-    // Sync to the frozen list, not the live one, so the controller and the
-    // render agree on both the rows and the retry state.
-    _syncChatControllerTo(
-      messages: merged,
-      sendingSubmission: widget.sendingSubmission,
-      queuedMessages: widget.queuedMessages,
-      hasRetryError: frozen.retryErrorMessage != null,
-    );
   }
 
   /// History prepended above the frozen transcript, in order. Empty when this
@@ -321,7 +234,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     setState(() {
       if (_follow.following) {
         _snapshot = null;
-        _syncChatController();
       } else {
         _snapshot ??= (
           messages: List<MessageWithParts>.unmodifiable(widget.messages),
@@ -340,6 +252,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     for (var i = 0; i < widget.queuedMessages.length; i++) {
       if (!identical(oldWidget.queuedMessages[i], widget.queuedMessages[i])) return false;
     }
+    if (oldWidget.bridgeQueuedPrompts.length != widget.bridgeQueuedPrompts.length) return false;
+    for (var i = 0; i < widget.bridgeQueuedPrompts.length; i++) {
+      if (oldWidget.bridgeQueuedPrompts[i] != widget.bridgeQueuedPrompts[i]) return false;
+    }
+    if (oldWidget.awaitingBridgeSubmissions.length != widget.awaitingBridgeSubmissions.length) return false;
+    for (var i = 0; i < widget.awaitingBridgeSubmissions.length; i++) {
+      if (!identical(oldWidget.awaitingBridgeSubmissions[i], widget.awaitingBridgeSubmissions[i])) return false;
+    }
     return true;
   }
 
@@ -347,118 +267,61 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final previous = <QueuedSessionSubmission>{
       ?oldWidget.sendingSubmission,
       ...oldWidget.queuedMessages,
+      // A fast acceptance can move a send straight to the parked surface
+      // between two builds; it is still the reader's new submission.
+      ...oldWidget.awaitingBridgeSubmissions,
     };
     return [
       ?widget.sendingSubmission,
       ...widget.queuedMessages,
+      ...widget.awaitingBridgeSubmissions,
     ].any((submission) => !previous.contains(submission));
   }
 
-  /// Mirrors the domain transcript into the chat controller. Entries
-  /// are value-equal for unchanged messages, so the controller's
-  /// diff-based `setMessages` emits insert/remove operations only for
-  /// genuine set changes — streaming emits are filtered out by the
-  /// cheap id comparison below and never touch the animated list.
-  void _syncChatController() {
-    _syncChatControllerTo(
-      messages: widget.messages,
-      sendingSubmission: widget.sendingSubmission,
-      queuedMessages: widget.queuedMessages,
-      hasRetryError: widget.retryErrorMessage != null,
-    );
-  }
-
-  void _syncChatControllerTo({
+  List<String> _rowIdsFor({
     required List<MessageWithParts> messages,
     required QueuedSessionSubmission? sendingSubmission,
     required List<QueuedSessionSubmission> queuedMessages,
+    required List<QueuedSessionPrompt> bridgeQueuedPrompts,
+    required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
     required bool hasRetryError,
   }) {
-    final target = _chatEntriesFor(
-      messages: messages,
-      sendingSubmission: sendingSubmission,
-      queuedMessages: queuedMessages,
-      hasRetryError: hasRetryError,
-    );
-    final current = _chatController.messages;
-    if (_entriesMatch(current: current, target: target)) return;
-    unawaited(
-      _chatController
-          .setMessages(target, animated: false)
-          .catchError(
-            (Object error, StackTrace stack) => loge("Failed to sync chat controller messages", error, stack),
-          ),
-    );
-  }
-
-  bool _entriesMatch({
-    required List<chat_core.Message> current,
-    required List<chat_core.Message> target,
-  }) {
-    if (current.length != target.length) return false;
-    for (var i = 0; i < target.length; i++) {
-      if (current[i].id != target[i].id) return false;
-      // A same-id entry can still change role in place (assistant→error);
-      // that must not be filtered out as a streaming-only emit, or the
-      // controller never learns the row needs to swap to the error card.
-      if (current[i].metadata?[_kRoleMetadataKey] != target[i].metadata?[_kRoleMetadataKey]) return false;
-    }
-    return true;
-  }
-
-  List<chat_core.Message> _chatEntriesFor({
-    required List<MessageWithParts> messages,
-    required QueuedSessionSubmission? sendingSubmission,
-    required List<QueuedSessionSubmission> queuedMessages,
-    required bool hasRetryError,
-  }) {
-    return <chat_core.Message>[
+    final deliveredPromptIds = <String>{
       for (final message in messages)
         if (message.hasRenderableUserContent)
-          chat_core.Message.custom(
-            id: message.info.id,
-            authorId: switch (message.info) {
-              MessageUser() => _kUserAuthorId,
-              MessageAssistant() => _kAgentAuthorId,
-              MessageError() => _kAgentAuthorId,
-            },
-            // Role discriminates assistant from error under the shared
-            // agent authorId, so a live assistant→error transition on the
-            // same message id is no longer value-equal and forces the row
-            // to re-render as the error card.
-            metadata: <String, String>{
-              _kRoleMetadataKey: switch (message.info) {
-                MessageUser() => _kUserRole,
-                MessageAssistant() => _kAssistantRole,
-                MessageError() => _kErrorRole,
-              },
-            },
-          ),
-      if (hasRetryError) const chat_core.Message.custom(id: _kRetryErrorRowId, authorId: _kAgentAuthorId),
-      if (sendingSubmission != null) _chatEntryFor(submission: sendingSubmission),
-      for (final submission in queuedMessages) _chatEntryFor(submission: submission),
+          if (message.info case MessageUser(promptId: final promptId?)) promptId,
+    };
+    final entries = <String>[
+      for (final message in messages)
+        if (message.hasRenderableUserContent) _entryIdForMessage(info: message.info),
+      if (hasRetryError) _kRetryErrorRowId,
+      for (final prompt in bridgeQueuedPrompts)
+        if (!deliveredPromptIds.contains(prompt.id)) "$_kPromptRowPrefix${prompt.id}",
+      for (final submission in awaitingBridgeSubmissions)
+        if (!deliveredPromptIds.contains(submission.promptId)) "$_kPromptRowPrefix${submission.promptId}",
+      if (sendingSubmission != null && !deliveredPromptIds.contains(sendingSubmission.promptId))
+        "$_kPromptRowPrefix${sendingSubmission.promptId}",
+      for (final submission in queuedMessages)
+        if (!deliveredPromptIds.contains(submission.promptId)) "$_kPromptRowPrefix${submission.promptId}",
+    ];
+    final seenIds = <String>{};
+    return [
+      for (final entry in entries)
+        if (seenIds.add(entry)) entry,
     ];
   }
 
-  chat_core.Message _chatEntryFor({required QueuedSessionSubmission submission}) {
-    return chat_core.Message.custom(
-      id: _entryIdFor(submission: submission),
-      authorId: _kUserAuthorId,
-      metadata: const <String, String>{
-        _kRoleMetadataKey: _kTransientSubmissionRole,
-      },
-    );
-  }
+  String _entryIdForMessage({required Message info}) => switch (info) {
+    MessageUser(promptId: final promptId?) => "$_kPromptRowPrefix$promptId",
+    MessageUser() || MessageAssistant() || MessageError() => info.id,
+  };
 
-  String _entryIdFor({required QueuedSessionSubmission submission}) {
-    final existing = _transientSubmissionEntryIds[submission];
-    if (existing != null) return existing;
-    final id = "$_kTransientSubmissionRowPrefix${_nextTransientSubmissionEntryId++}";
-    _transientSubmissionEntryIds[submission] = id;
-    return id;
+  static String? _bridgePromptDisplayText(QueuedSessionPrompt prompt) {
+    final command = prompt.command;
+    final text = prompt.text;
+    if (command == null) return text;
+    return text == null ? "/$command" : "/$command $text";
   }
-
-  static Future<chat_core.User?> _resolveUser(String id) async => chat_core.User(id: id);
 
   @override
   Widget build(BuildContext context) {
@@ -474,12 +337,26 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
     final indexById = _indexByIdFor(messages: messages);
     final transientSubmissions = <String, _TransientSubmission>{
+      for (final submission in widget.awaitingBridgeSubmissions)
+        "$_kPromptRowPrefix${submission.promptId}": (submission: submission, isSending: false, awaitingBridge: true),
       if (sendingSubmission != null)
-        _entryIdFor(submission: sendingSubmission): (submission: sendingSubmission, isSending: true),
+        "$_kPromptRowPrefix${sendingSubmission.promptId}": (
+          submission: sendingSubmission,
+          isSending: true,
+          awaitingBridge: false,
+        ),
       for (final submission in queuedMessages)
-        _entryIdFor(submission: submission): (submission: submission, isSending: false),
+        "$_kPromptRowPrefix${submission.promptId}": (submission: submission, isSending: false, awaitingBridge: false),
     };
 
+    final rowIds = _rowIdsFor(
+      messages: messages,
+      sendingSubmission: sendingSubmission,
+      queuedMessages: queuedMessages,
+      bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
+      awaitingBridgeSubmissions: widget.awaitingBridgeSubmissions,
+      hasRetryError: retryErrorMessage != null,
+    );
     // Coalesced post-frame pin-to-edge while following. The scheduler
     // collapses repeated calls within a frame and the jump is skipped
     // when `position.pixels` is already at the edge.
@@ -494,16 +371,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         // Lift the pill clear of the floating composer overlaid below.
         bottomInset: widget.bottomInset,
       ),
-      // Horizontal "peek" gesture: slide the transcript left to reveal
-      // each message's timestamp on the right. Driven by a raw [Listener]
-      // rather than a drag GestureDetector on purpose — a competing
-      // horizontal drag recognizer would join the gesture arena and stop
-      // the list's vertical scroll recognizer from being the sole member,
-      // which would break small-drag detach. The Listener never joins the
-      // arena, so vertical scrolling is untouched; we disambiguate
-      // direction ourselves and only steer the reveal on horizontal-
-      // dominant gestures. `translucent` so the whole list area is tracked
-      // while taps and selection still reach the cards below.
+      // Horizontal "peek" gesture: slide the transcript left to reveal each
+      // message's timestamp on the right. This participates in the gesture
+      // arena so a nested horizontal scrollable, such as a fenced code block,
+      // wins exclusively. Early cross-axis rejection preserves the list's
+      // eager small-vertical-drag detach behavior.
       //
       // Input source is chosen by the pointer's *device kind*, not the
       // OS — so a desktop touchscreen still peeks by finger and an
@@ -515,47 +387,40 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       //   path ignores the mouse kind) so it keeps selecting message
       //   text; hijacking it for the peek would make selection impossible.
       //
-      // Both handler sets are always bound; each only fires for its own
-      // device kind, so they never compete.
-      child: Listener(
-        behavior: HitTestBehavior.translucent,
-        onPointerDown: _onRevealPointerDown,
-        onPointerMove: _onRevealPointerMove,
-        onPointerUp: _onRevealPointerUp,
-        onPointerCancel: _onRevealPointerCancel,
-        onPointerPanZoomStart: _onRevealPanZoomStart,
-        onPointerPanZoomUpdate: _onRevealPanZoomUpdate,
-        onPointerPanZoomEnd: _onRevealPanZoomEnd,
-        child: chat_ui.Chat(
-          key: _kListViewKey,
-          currentUserId: _kUserAuthorId,
-          resolveUser: _resolveUser,
-          chatController: _chatController,
-          theme: _chatThemeFor(theme: Theme.of(context)),
-          backgroundColor: Colors.transparent,
-          builders: chat_core.Builders(
-            // Full-row control: drop the package's bubble/alignment/
-            // gesture wrapper and render our cards bare, exactly as the
-            // previous ListView did.
-            chatMessageBuilder: (
-              context,
-              message,
-              index,
-              animation,
-              child, {
-              bool? isRemoved,
-              required bool isSentByMe,
-              chat_core.MessageGroupStatus? groupStatus,
-            }) => child,
-            customMessageBuilder:
-                (
-                  context,
-                  message,
-                  index, {
-                  required bool isSentByMe,
-                  chat_core.MessageGroupStatus? groupStatus,
-                }) => _buildRow(
-                  entry: message,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: _onScrollNotification,
+        child: PregoHorizontalDragGestureDetector(
+          behavior: HitTestBehavior.translucent,
+          supportedDevices: _kRevealPointerDevices,
+          onHorizontalDragDown: _onRevealDragDown,
+          onHorizontalDragStart: _onRevealDragStart,
+          onHorizontalDragUpdate: _onRevealDragUpdate,
+          onHorizontalDragEnd: _onRevealDragEnd,
+          onHorizontalDragCancel: _onRevealDragCancel,
+          pendingRejectionSlop: _kRevealPendingRejectionSlop,
+          direction: PregoHorizontalDragDirection.left,
+          dragStartBehavior: DragStartBehavior.down,
+          child: ListView.builder(
+            key: _kListViewKey,
+            reverse: true,
+            controller: _follow.scrollController,
+            padding: EdgeInsetsDirectional.only(top: 8 + widget.topInset, bottom: 8 + widget.bottomInset),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: rowIds.length,
+            findChildIndexCallback: (key) {
+              if (key case ValueKey<String>(value: final rowId)) {
+                final domainIndex = rowIds.indexOf(rowId);
+                return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
+              }
+              return null;
+            },
+            itemBuilder: (context, index) {
+              final entryId = rowIds[rowIds.length - index - 1];
+              return KeyedSubtree(
+                key: ValueKey(entryId),
+                child: _buildRow(
+                  entryId: entryId,
                   messages: messages,
                   indexById: indexById,
                   transientSubmissions: transientSubmissions,
@@ -564,32 +429,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                   childStatuses: childStatuses,
                   retryErrorMessage: retryErrorMessage,
                 ),
-            // The prompt input and tasks bar live outside this widget; reserve
-            // no composer space inside the list.
-            composerBuilder: (context) => const SizedBox.shrink(),
-            // Follow/detach owns the jump affordance via the overlay pill.
-            scrollToBottomBuilder: (context, animation, onPressed) => const SizedBox.shrink(),
-            // The loaded view renders its own empty state before this
-            // widget is ever mounted.
-            emptyChatListBuilder: (context) => const SizedBox.shrink(),
-            chatAnimatedListBuilder: (context, itemBuilder) => chat_ui.ChatAnimatedListReversed(
-              itemBuilder: itemBuilder,
-              scrollController: _follow.scrollController,
-              insertAnimationDuration: Duration.zero,
-              removeAnimationDuration: Duration.zero,
-              shouldScrollToEndWhenSendingMessage: false,
-              topPadding: 8 + widget.topInset,
-              bottomPadding: 8 + widget.bottomInset,
-              handleSafeArea: false,
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-              // Always allow overscroll/bounce, even when the transcript is
-              // shorter than the viewport, so the list never feels locked.
-              physics: const AlwaysScrollableScrollPhysics(),
-              // The list is reversed, so "end" is the top: scrolling back
-              // through history is what asks for the older page. Null once
-              // the start is loaded, which stops the package asking again.
-              onEndReached: widget.onLoadOlderMessages,
-            ),
+              );
+            },
           ),
         ),
       ),
@@ -597,7 +438,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   }
 
   Widget _buildRow({
-    required chat_core.CustomMessage entry,
+    required String entryId,
     required List<MessageWithParts> messages,
     required Map<String, int> indexById,
     required Map<String, _TransientSubmission> transientSubmissions,
@@ -606,31 +447,69 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required Map<String, SessionStatus> childStatuses,
     required String? retryErrorMessage,
   }) {
-    if (entry.id == _kRetryErrorRowId) {
+    if (entryId == _kRetryErrorRowId) {
       if (retryErrorMessage == null) return const SizedBox.shrink();
       // Synthetic row: no timestamp, but it still slides with the rest.
       return _revealable(createdAtMs: null, child: RetryErrorMessageCard(message: retryErrorMessage));
     }
-    final transientSubmission = transientSubmissions[entry.id];
+    if (entryId.startsWith(_kPromptRowPrefix)) {
+      // One row serves the prompt's whole lifecycle. Resolve the most settled
+      // state first: the delivered message, else the bridge-queued entry, else
+      // the locally staged submission. A mid-handoff frame (entry updated
+      // before the next widget rebuild, or vice versa) then renders the
+      // previous state instead of collapsing to an empty box.
+      final index = indexById[entryId];
+      if (index != null && index < messages.length && messages[index].hasRenderableUserContent) {
+        final message = messages[index];
+        return _revealable(
+          createdAtMs: message.info.time?.created,
+          child: _animatedPromptRow(child: UserMessageCard(message: message)),
+        );
+      }
+      final promptId = entryId.substring(_kPromptRowPrefix.length);
+      final prompt = widget.bridgeQueuedPrompts.where((candidate) => candidate.id == promptId).firstOrNull;
+      if (prompt != null) {
+        final onCancel = widget.onCancelBridgeQueuedPrompt;
+        return _revealable(
+          createdAtMs: prompt.createdAt,
+          child: _animatedPromptRow(
+            child: QueuedMessageBubble(
+              key: ValueKey(entryId),
+              displayText: _bridgePromptDisplayText(prompt),
+              isCommand: prompt.command != null,
+              attachmentCount: prompt.attachmentCount,
+              presentation: onCancel == null
+                  ? const QueuedMessageBubblePresentation.pendingReadOnly()
+                  : QueuedMessageBubblePresentation.pending(onCancel: () => onCancel(prompt.id)),
+            ),
+          ),
+        );
+      }
+    }
+    final transientSubmission = transientSubmissions[entryId];
     if (transientSubmission != null) {
       final submission = transientSubmission.submission;
       final onCancelQueuedMessage = widget.onCancelQueuedMessage;
       return _revealable(
         createdAtMs: null,
-        child: QueuedMessageBubble(
-          key: ObjectKey(submission),
-          submission: submission,
-          presentation: transientSubmission.isSending
-              ? const QueuedMessageBubblePresentation.sending()
-              : onCancelQueuedMessage == null
-              ? const QueuedMessageBubblePresentation.pendingReadOnly()
-              : QueuedMessageBubblePresentation.pending(
-                  onCancel: () => _cancelQueuedSubmission(submission: submission),
-                ),
+        child: _animatedPromptRow(
+          child: QueuedMessageBubble(
+            key: ValueKey(entryId),
+            displayText: submission.displayText,
+            isCommand: submission.isCommand,
+            attachmentCount: submission.attachments.length,
+            presentation: transientSubmission.isSending
+                ? const QueuedMessageBubblePresentation.sending()
+                : transientSubmission.awaitingBridge || onCancelQueuedMessage == null
+                ? const QueuedMessageBubblePresentation.pendingReadOnly()
+                : QueuedMessageBubblePresentation.pending(
+                    onCancel: () => _cancelQueuedSubmission(submission: submission),
+                  ),
+          ),
         ),
       );
     }
-    final index = indexById[entry.id];
+    final index = indexById[entryId];
     if (index == null || index >= messages.length) return const SizedBox.shrink();
     final message = messages[index];
     if (!message.hasRenderableUserContent) {
@@ -659,6 +538,21 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     onCancelQueuedMessage(index);
   }
 
+  /// Eases a prompt row's height as it moves between its sending, queued,
+  /// and sent renderings, whose status rows differ in height — without this
+  /// each hop snaps and reads as a flash in the bottom-pinned list.
+  Widget _animatedPromptRow({required Widget child}) {
+    // No wrapper at all under reduced motion: a zero-duration AnimatedSize
+    // re-dirties itself inside its own layout pass.
+    if (context.isReducedMotion) return child;
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeInOutCubic,
+      alignment: AlignmentDirectional.topEnd,
+      child: child,
+    );
+  }
+
   /// Wraps a row so the shared horizontal drag reveals its timestamp.
   Widget _revealable({required int? createdAtMs, required Widget child}) {
     return MessageTimestampReveal(
@@ -669,137 +563,92 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     );
   }
 
-  void _onRevealPointerDown(PointerDownEvent event) {
-    // The first pointer owns the peek for its whole lifetime; ignore
-    // secondary touches so a stray second finger can't strand the
-    // gesture state (and the detach suppression) on the wrong pointer.
-    if (_revealPointer != null) return;
-    // A trackpad pan already owns the reveal — don't let a concurrent
-    // touch claim the shared latches out from under it.
-    if (_revealPanActive) return;
-    // A mouse press-and-drag is the text-selection gesture, so never
-    // hijack it for the peek — regardless of OS. (A trackpad click also
-    // reports as a mouse pointer; its two-finger swipe arrives separately
-    // via the pan-zoom path.) Finger and stylus drags drive the peek.
-    if (event.kind == PointerDeviceKind.mouse) return;
-    _revealPointer = event.pointer;
-    _revealStart = event.position;
-    _revealEngaged = false;
-    _revealRejected = false;
-    // Remember whether we were following when the gesture began: only
-    // then is a detach during this gesture "spurious" and worth undoing.
+  void _onRevealDragDown(DragDownDetails details) {
     _revealStartedFollowing = _follow.following;
   }
 
-  void _onRevealPointerMove(PointerMoveEvent event) {
-    if (event.pointer != _revealPointer || _revealRejected) return;
-
-    if (!_revealEngaged) {
-      // Disambiguate direction once the pointer clears the slop. Vertical,
-      // ambiguous, and rightward drags are left untouched: the scrollable
-      // keeps its eager small-drag detach, and a rightward drag stays free
-      // for the system back-swipe and any future gestures. The gutter is
-      // on the right, so only a clear leftward drag opens it.
-      final dx = event.position.dx - _revealStart.dx;
-      final dy = event.position.dy - _revealStart.dy;
-      if (dx.abs() < _kRevealEngageSlop && dy.abs() < _kRevealEngageSlop) return;
-      if (dy.abs() >= dx.abs() || dx > 0) {
-        _revealRejected = true;
-        return;
-      }
-      _revealEngaged = true;
-      // Take over any in-flight spring-back so the manual drag doesn't
-      // fight the closing animation. (Done here, not on pointer-down, so a
-      // vertical scroll that follows a release still springs shut.)
-      _revealController.stop();
-      // The scrollable fires a spurious drag-start as it claims the
-      // pointer. Only undo/suppress the resulting detach when we began
-      // the gesture following — otherwise the user was deliberately
-      // scrolled up reading history, and force-re-attaching here would
-      // discard their snapshot and teleport them to the newest edge.
-      if (_revealStartedFollowing) {
-        _follow.suppressDetach();
-      }
+  void _onRevealDragStart(DragStartDetails details) {
+    _revealDragActive = true;
+    _revealController.stop();
+    if (_revealStartedFollowing) {
+      _follow.suppressDetach();
+      _revealDetachSuppressed = true;
     }
+  }
 
-    // Dragging left (negative dx) opens the gutter further; dragging back
-    // right closes it. Normalise the per-move pixel delta by the gutter
-    // width and clamp to [0, 1].
-    final next = (_revealController.value - event.delta.dx / _kMaxReveal).clamp(0.0, 1.0);
+  void _onRevealDragUpdate(DragUpdateDetails details) {
+    final next = (_revealController.value - (details.primaryDelta ?? 0) / _kMaxReveal).clamp(0.0, 1.0);
     _revealController.value = next;
   }
 
-  void _onRevealPointerUp(PointerUpEvent event) {
-    if (event.pointer != _revealPointer) return;
+  void _onRevealDragEnd(DragEndDetails details) => _endReveal();
+
+  void _onRevealDragCancel() {
+    if (!_revealDragActive) {
+      scheduleMicrotask(() {
+        if (mounted && !_revealDragActive) _revealStartedFollowing = false;
+      });
+      return;
+    }
     _endReveal();
   }
 
-  void _onRevealPointerCancel(PointerCancelEvent event) {
-    if (event.pointer != _revealPointer) return;
-    _endReveal();
+  bool _onScrollNotification(ScrollNotification notification) {
+    final loadOlderMessages = widget.onLoadOlderMessages;
+    // Prefetch on scroll updates nearing the oldest edge, so paging back
+    // through history feels continuous. The scroll-end check is the fallback
+    // for a transcript too short to scroll: clamping physics emits no update
+    // at zero extent, only the end notification.
+    final nearingOldestEdge = switch (notification) {
+      ScrollUpdateNotification(:final metrics) => metrics.extentAfter < _kOlderPagePrefetchExtent,
+      ScrollEndNotification(:final metrics) => metrics.extentAfter == 0,
+      _ => false,
+    };
+    if (nearingOldestEdge &&
+        notification.metrics.axis == Axis.vertical &&
+        !_loadOlderCallbackInFlight &&
+        !widget.isLoadingOlderMessages &&
+        loadOlderMessages != null) {
+      _loadOlderCallbackInFlight = true;
+      unawaited(_loadOlderMessages(loadOlderMessages));
+    }
+    return _onNestedScrollNotification(notification);
   }
 
-  // ---------------------------------------------------------------------------
-  // Trackpad reveal: horizontal two-finger pan-zoom. Mirrors the touch
-  // pointer-drag path above (slop, horizontal-dominant gating, detach
-  // suppression, spring-back) but reads the cumulative `pan` and
-  // per-event `panDelta` from the pan-zoom stream instead of raw pointer
-  // positions. Reuses the same engage/reject/started-following latches as
-  // the pointer path, so a [_revealPanActive] / `_revealPointer`
-  // ownership handshake keeps the two from clobbering each other when a
-  // device has both a touchscreen and a trackpad.
-  // ---------------------------------------------------------------------------
-
-  void _onRevealPanZoomStart(PointerPanZoomStartEvent event) {
-    // A finger/stylus drag already owns the reveal — don't reset its
-    // latches from under it (see [_revealPanActive]).
-    if (_revealPointer != null) return;
-    _revealPanActive = true;
-    _revealEngaged = false;
-    _revealRejected = false;
-    _revealStartedFollowing = _follow.following;
+  Future<void> _loadOlderMessages(Future<void> Function() loadOlderMessages) async {
+    try {
+      await loadOlderMessages();
+    } catch (error, stackTrace) {
+      loge("Failed to load older session messages", error, stackTrace);
+    } finally {
+      if (mounted) _loadOlderCallbackInFlight = false;
+    }
   }
 
-  void _onRevealPanZoomUpdate(PointerPanZoomUpdateEvent event) {
-    if (!_revealPanActive || _revealRejected) return;
-
-    if (!_revealEngaged) {
-      // Same direction disambiguation as the touch path: only a clear
-      // leftward pan opens the right-hand gutter; vertical, ambiguous and
-      // rightward pans are left for the list's own scroll handling.
-      final dx = event.pan.dx;
-      final dy = event.pan.dy;
-      if (dx.abs() < _kRevealEngageSlop && dy.abs() < _kRevealEngageSlop) return;
-      if (dy.abs() >= dx.abs() || dx > 0) {
-        _revealRejected = true;
-        return;
-      }
-      _revealEngaged = true;
-      _revealController.stop();
-      // The list's scroll plumbing detaches on pan-zoom start; undo that
-      // for a horizontal peek, but only when we began following (see the
-      // touch path for the rationale).
-      if (_revealStartedFollowing) {
-        _follow.suppressDetach();
-      }
+  bool _onNestedScrollNotification(ScrollNotification notification) {
+    if (notification is! ScrollStartNotification ||
+        notification.metrics.axis != Axis.horizontal ||
+        !_revealStartedFollowing ||
+        _revealDragActive) {
+      return false;
     }
 
-    final next = (_revealController.value - event.panDelta.dx / _kMaxReveal).clamp(0.0, 1.0);
-    _revealController.value = next;
-  }
-
-  void _onRevealPanZoomEnd(PointerPanZoomEndEvent event) {
-    // Ignore a pan that never claimed the reveal (a finger drag owned it).
-    if (!_revealPanActive) return;
-    _endReveal();
+    // A nested horizontal scrollable won after trackpad pan-start detached the
+    // transcript. Restore the follow state captured by drag-down; vertical
+    // scroll notifications deliberately leave that detach intact.
+    _follow.suppressDetach();
+    _follow.releaseDetachSuppression();
+    _revealStartedFollowing = false;
+    return false;
   }
 
   void _endReveal() {
-    _revealPointer = null;
-    _revealPanActive = false;
-    _revealEngaged = false;
-    _revealRejected = false;
-    _follow.releaseDetachSuppression();
+    _revealDragActive = false;
+    _revealStartedFollowing = false;
+    if (_revealDetachSuppressed) {
+      _revealDetachSuppressed = false;
+      _follow.releaseDetachSuppression();
+    }
     if (_revealController.value == 0) return;
     // Spring the gutter shut, honouring the OS reduce-motion preference
     // like the rest of the app's decorative animations.
@@ -810,49 +659,32 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     }
   }
 
-  chat_core.ChatTheme _chatThemeFor({required ThemeData theme}) {
-    final cached = _chatThemeCache;
-    if (cached != null && identical(cached.$1, theme)) return cached.$2;
-    final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
-    final derived = chat_core.ChatTheme(
-      colors: chat_core.ChatColors(
-        primary: colorScheme.primary,
-        onPrimary: colorScheme.onPrimary,
-        surface: colorScheme.surface,
-        onSurface: colorScheme.onSurface,
-        surfaceContainerLow: colorScheme.surfaceContainerLow,
-        surfaceContainer: colorScheme.surfaceContainer,
-        surfaceContainerHigh: colorScheme.surfaceContainerHigh,
-      ),
-      typography: chat_core.ChatTypography(
-        bodyLarge: textTheme.bodyLarge ?? const TextStyle(),
-        bodyMedium: textTheme.bodyMedium ?? const TextStyle(),
-        bodySmall: textTheme.bodySmall ?? const TextStyle(),
-        labelLarge: textTheme.labelLarge ?? const TextStyle(),
-        labelMedium: textTheme.labelMedium ?? const TextStyle(),
-        labelSmall: textTheme.labelSmall ?? const TextStyle(),
-      ),
-      shape: const BorderRadius.all(Radius.circular(12)),
-    );
-    _chatThemeCache = (theme, derived);
-    return derived;
-  }
-
   Map<String, int> _indexByIdFor({required List<MessageWithParts> messages}) {
     final signature = _signatureOf(messages: messages);
     if (signature == _indexSignature) return _indexById;
     _indexSignature = signature;
     return _indexById = <String, int>{
       for (var i = 0; i < messages.length; i++) messages[i].info.id: i,
+      for (var i = 0; i < messages.length; i++)
+        if (messages[i].info case MessageUser(promptId: final promptId?)) "$_kPromptRowPrefix$promptId": i,
     };
   }
 
   int _signatureOf({required List<MessageWithParts> messages}) {
     // Hash every id so the cache invalidates on any structural change —
     // including a middle insert/delete/replace that preserves length and the
-    // first/last ids. Cheap for chat-sized transcripts and bounded by maxLines
-    // at the render layer.
-    return Object.hashAll(messages.map((m) => m.info.id));
+    // first/last ids. A user message's promptId is part of the map's keys
+    // (the stable prompt row resolves through it), so it participates too:
+    // a live upsert that stamps promptId onto an existing id must rebuild.
+    // Cheap for chat-sized transcripts and bounded by maxLines at the render
+    // layer.
+    return Object.hashAll(
+      messages.map(
+        (m) => switch (m.info) {
+          MessageUser(:final id, :final promptId) => Object.hash(id, promptId),
+          MessageAssistant(:final id) || MessageError(:final id) => id,
+        },
+      ),
+    );
   }
 }

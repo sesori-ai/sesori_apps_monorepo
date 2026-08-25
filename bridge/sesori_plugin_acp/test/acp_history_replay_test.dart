@@ -18,30 +18,7 @@ void main() {
 
     setUp(() {
       fake = FakeAcpProcess();
-      final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
-      plugin = TestAcpPlugin(
-        id: "acp",
-        agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
-        launchDirectory: cwd,
-        contentMapper: const AcpContentMapper(),
-        eventMapper: AcpEventMapper(
-          launchDirectory: cwd,
-          agentId: "acp",
-          pluginId: "acp",
-          configurationTracker: configurationTracker,
-          contentMapper: const AcpContentMapper(),
-        ),
-        commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
-        processFactory: (_) async => fake,
-      );
+      plugin = composeTestAcpPlugin(processFactory: (_) async => fake, launchDirectory: cwd);
       // Prime the session's directory so the replay skips the live warm-up
       // enumeration and the only client it spins up is the replay client.
       plugin.primeSessionDirectory(sessionId: sessionId, directory: cwd);
@@ -219,6 +196,13 @@ void main() {
 
       final messages = await loading;
       expect(messages, hasLength(3));
+      // Replayed messages carry the same `agent` the live mapper stamps (the
+      // plugin id, "acp"), not the display name ("ACP") — otherwise a reloaded
+      // session would report a different agent than it did live.
+      expect(
+        messages.first.info,
+        isA<PluginMessageAssistant>().having((message) => message.agent, "agent", "acp"),
+      );
       expect(messages.first.parts.map((part) => part.type), [
         PluginMessagePartType.text,
         PluginMessagePartType.file,
@@ -326,29 +310,9 @@ void main() {
       final liveFake = FakeAcpProcess();
       final replayFake = FakeAcpProcess();
       final availableFakes = [liveFake, replayFake];
-      final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
-      final createdPlugin = TestAcpPlugin(
-        id: "acp",
-        agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
-        launchDirectory: cwd,
-        contentMapper: const AcpContentMapper(),
-        eventMapper: AcpEventMapper(
-          launchDirectory: cwd,
-          agentId: "acp",
-          pluginId: "acp",
-          configurationTracker: configurationTracker,
-          contentMapper: const AcpContentMapper(),
-        ),
-        commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
+      final createdPlugin = composeTestAcpPlugin(
         processFactory: (_) async => availableFakes.removeAt(0),
+        launchDirectory: cwd,
       );
       final emitted = <BridgeSseEvent>[];
       final eventSubscription = createdPlugin.events.listen(emitted.add);

@@ -45,6 +45,6 @@ Widget? buildProjectNavSubtitle(BuildContext context) {
       infoMessage: repoSlug,
       infoSemanticLabel: loc.sessionListRepoInfoSemantics,
     ),
-    SessionListLoaded() || SessionListFailed() || SessionListStaleProject() => null,
+    SessionListLoaded() || SessionListFailed() => null,
   };
 }

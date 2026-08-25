@@ -2,6 +2,7 @@ import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/src/repositories/trackers/acp_tool_content_tracker.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageCollectionBytes;
 import "package:test/test.dart";
@@ -150,32 +151,28 @@ AcpMappedInlineImageContentBlock _inline({
   required int decodedBytes,
 }) {
   return AcpMappedInlineImageContentBlock(
-    attachment:
-        PluginMessageAttachment.inlineImage(
-              mime: "image/png",
-              base64: "AA==",
-              filename: filename,
-            )
-            as PluginMessageAttachmentInlineImage,
+    attachment: PluginMessageAttachment.inlineImage(
+      mime: "image/png",
+      base64: "AA==",
+      filename: filename,
+    ) as PluginMessageAttachmentInlineImage,
     decodedBytes: decodedBytes,
   );
 }
 
 AcpMappedMetadataImageContentBlock _metadata() {
   return const AcpMappedMetadataImageContentBlock(
-    attachment:
-        PluginMessageAttachment.metadata(
-              mime: "image/png",
-              filename: "private.png",
-            )
-            as PluginMessageAttachmentMetadata,
+    attachment: PluginMessageAttachment.metadata(
+      mime: "image/png",
+      filename: "private.png",
+    ) as PluginMessageAttachmentMetadata,
     reason: AcpImageDegradationReason.invalid,
   );
 }
 
 String _captureWarnings(void Function() action) {
   final previousLevel = Log.level;
-  final stderr = _BufferingStdout();
+  final stderr = BufferingStdout();
   try {
     Log.level = LogLevel.warning;
     IOOverrides.runZoned(action, stderr: () => stderr);
@@ -183,16 +180,4 @@ String _captureWarnings(void Function() action) {
     Log.level = previousLevel;
   }
   return stderr.text;
-}
-
-class _BufferingStdout() implements Stdout {
-  final StringBuffer _buffer = StringBuffer();
-
-  String get text => _buffer.toString();
-
-  @override
-  void writeln([Object? object = ""]) => _buffer.writeln(object);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
 }

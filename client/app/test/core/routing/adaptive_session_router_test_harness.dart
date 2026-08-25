@@ -7,6 +7,8 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
+import "package:sesori_dart_core/src/repositories/plugin_preference_repository.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
 import "package:sesori_mobile/core/routing/app_router.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
@@ -86,7 +88,7 @@ class AdaptiveSessionRouterTestHarness() {
     maxDurationReachedController = StreamController<void>.broadcast();
     rootNavigatorKey = GlobalKey<NavigatorState>();
 
-    when(() => connectionService.events).thenAnswer((_) => const Stream<SseEvent>.empty());
+    when(() => connectionService.events).thenAnswer((_) => const Stream.empty());
     when(() => connectionService.status).thenAnswer((_) => statusController.stream);
     when(() => connectionService.currentStatus).thenReturn(_connectedStatus);
     when(() => connectionService.sessionEvents(any())).thenAnswer((_) => sessionEventsController.stream);
@@ -188,7 +190,6 @@ class AdaptiveSessionRouterTestHarness() {
           sessionsByProject: sessionsByProject,
           childSessionsBySession: childSessionsBySession,
         ),
-        isBridgeConnected: true,
       );
     }
 
@@ -251,7 +252,6 @@ class AdaptiveSessionRouterTestHarness() {
     );
     getIt.registerSingleton<BridgeRepository>(bridgeRepository);
     getIt.registerSingleton<RegisteredBridgesService>(registeredBridgesService);
-    getIt.registerSingleton<SessionService>(SessionService(repository: sessionRepository));
     getIt.registerSingleton<SessionRepository>(sessionRepository);
     getIt.registerSingleton<NewSessionOptionsService>(
       NewSessionOptionsService(
@@ -323,8 +323,8 @@ class AdaptiveSessionRouterTestHarness() {
   }
 
   static const ConnectionStatus _connectedStatus = ConnectionStatus.connected(
-    config: ServerConnectionConfig(relayHost: "relay.example.com"),
-    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
+    config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
   );
 }
 
@@ -375,6 +375,7 @@ SessionDetailSnapshot _buildDetailSnapshot({
   );
 
   return SessionDetailSnapshot(
+    bridgeQueuedPrompts: const [],
     projectId: projectId,
     pluginId: "opencode",
     supportsPromptAttachments: false,

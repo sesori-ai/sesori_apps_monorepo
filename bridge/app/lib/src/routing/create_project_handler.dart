@@ -1,0 +1,48 @@
+import "package:path/path.dart" as p;
+import "package:sesori_shared/sesori_shared.dart";
+
+import "../repositories/filesystem_repository.dart";
+import "../services/project_initialization_service.dart";
+import "../services/project_mutation_service.dart";
+import "request_handler.dart";
+
+/// Handles `POST /project/create` — creates a new project directory with git init.
+class CreateProjectHandler({required final ProjectMutationService _projectMutationService})
+    extends BodyRequestHandler<ProjectPathRequest, Project> {
+  this
+    : super(
+        HttpMethod.post,
+        "/project/create",
+        fromJson: ProjectPathRequest.fromJson,
+      );
+
+  @override
+  Future<Project> handle(
+    RelayRequest request, {
+    required ProjectPathRequest body,
+  }) async {
+    final path = body.path;
+
+    if (path.isEmpty) {
+      throw buildErrorResponse(request, 400, "path must not be empty");
+    }
+    if (!p.isAbsolute(path)) {
+      throw buildErrorResponse(request, 400, "path must be absolute");
+    }
+    if (p.split(path).contains("..")) {
+      throw buildErrorResponse(request, 400, "path traversal not allowed");
+    }
+
+    try {
+      return await _projectMutationService.createProject(path: path);
+    } on FilesystemPermissionDeniedException {
+      throw buildErrorResponse(request, 403, "permission denied: $path");
+    } on ProjectParentMissingException {
+      throw buildErrorResponse(request, 400, "parent directory does not exist");
+    } on ProjectDirectoryExistsException {
+      throw buildErrorResponse(request, 409, "directory already exists");
+    } on ProjectGitSetupException {
+      throw buildErrorResponse(request, 500, "Git setup failed");
+    }
+  }
+}

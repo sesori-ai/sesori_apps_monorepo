@@ -17,30 +17,7 @@ void main() {
     setUp(() {
       fake = FakeAcpProcess();
       emitted = [];
-      final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
-      plugin = TestAcpPlugin(
-        id: "acp",
-        agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
-        launchDirectory: cwd,
-        contentMapper: const AcpContentMapper(),
-        eventMapper: AcpEventMapper(
-          launchDirectory: cwd,
-          agentId: "acp",
-          pluginId: "acp",
-          configurationTracker: configurationTracker,
-          contentMapper: const AcpContentMapper(),
-        ),
-        commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
-        processFactory: (_) async => fake,
-      );
+      plugin = composeTestAcpPlugin(processFactory: (_) async => fake, launchDirectory: cwd);
       plugin.events.listen(emitted.add);
     });
 
@@ -101,6 +78,7 @@ void main() {
       // Dispatch a prompt and withhold the session/prompt response so the turn
       // stays in flight (ACP has no turn-complete event: busy == future pending).
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: sessionId,
         parts: const [PluginPromptPart.text(text: "hi")],
         variant: null,

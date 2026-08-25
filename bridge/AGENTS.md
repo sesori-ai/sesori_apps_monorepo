@@ -14,7 +14,7 @@ One-off benchmark executables belong under the owning package's
 `tool/benchmarks/` directory, never under `lib/`, `bin/`, or another production
 source directory.
 
-Bridge CI runs `dart analyze --fatal-infos`, which is stricter than `make analyze` — info-level lints (e.g. `directives_ordering` import sorting) fail CI. Before pushing, run `dart analyze --fatal-infos` from each changed module dir (e.g. `bridge/app/`).
+`make analyze` and Bridge CI both run `dart analyze --fatal-infos`, so info-level lints (e.g. `directives_ordering` import sorting) fail locally and in CI alike.
 
 From `bridge/app/`:
 - `make build` — build the host-native CLI bundle
@@ -35,9 +35,12 @@ Dependencies flow in one direction:
 3. `sesori_plugin_runtime` — depends on interface; **plugin-only** managed-runtime supervision (`ManagedProcessService`, `ManagedRuntimeMonitor`, ownership/restart/intent). Used by plugins to supervise their backend process; the main app does not depend on it.
 4. `sesori_plugin_opencode` and `sesori_plugin_codex` — depend on interface + foundation + runtime + `sesori_shared`
 5. `sesori_plugin_acp` — ACP protocol plugin base; depends on interface + foundation + `sesori_shared`
-6. `sesori_plugin_cursor` — Cursor descriptor/adapter; depends on interface + foundation + ACP
-7. `sesori_plugin_omp` — Oh My Pi adapter; depends on interface + foundation + ACP
-8. `app` — depends on interface + foundation + registered concrete plugins + `sesori_shared` (NOT runtime)
+6. `sesori_plugin_cursor` — Cursor descriptor/adapter; depends on interface + foundation + runtime + ACP + `sesori_shared`
+7. `sesori_plugin_omp` — Oh My Pi adapter; depends on interface + foundation + runtime + ACP
+8. `sesori_plugin_claude` — Claude Code adapter; depends on interface + foundation + `sesori_shared`
+9. `sesori_plugin_hermes` — Hermes ACP adapter; depends on interface + foundation + ACP
+10. `sesori_plugin_pi` — Pi adapter; depends on interface + foundation + runtime + `sesori_shared`
+11. `app` — depends on interface + foundation + registered concrete plugins + `sesori_shared` (NOT runtime)
 
 When changing shared types, update in this order.
 
@@ -63,9 +66,9 @@ no-op for remote/attach plugins.
 The managed runtime is pinned in `sesori_plugin_opencode/lib/src/runtime/open_code_runtime_manifest.dart`:
 
 1. Pick the new `vX.Y.Z` release of `anomalyco/opencode`.
-2. Update `bundledVersion`.
+2. Update `targetVersion`; `bundledVersion` derives the exact managed pin from it.
 3. Replace all six per-platform `sha256` values from that release's asset digests — GitHub's release API exposes each asset's `digest: "sha256:…"` (`opencode-darwin-{arm64,x64}.zip`, `opencode-linux-{arm64,x64}.tar.gz`, `opencode-windows-{arm64,x64}.zip`).
-4. Raise `minSupportedVersion` only when new bridge code needs a newer OpenCode API than older PATH installs provide (keep it conservative — prefer the user's own install, and never force a download that would migrate a newer OpenCode's local DB).
+4. Preserve `minPathVersion` for target refreshes. Raise it only for a separate explicit requirement where new bridge code needs a newer OpenCode API than older PATH installs provide (keep it conservative — prefer the user's own install, and never force a download that would migrate a newer OpenCode's local DB).
 
 ## Testing
 
@@ -96,7 +99,7 @@ Root `AGENTS.md` has the full suffix vocabulary. Concrete bridge examples:
 
 - **Tool wrappers** use `Api`: `GhCliApi` (gh), `GitCliApi` (git), `SesoriServerApi` (HTTP)
 - **Transport wrappers** use `Client`: `RelayClient`, `PushNotificationClient`
-- **Layer 3 orchestration** uses `Service`: `WorktreeService`, `MetadataService`, `TokenService`
+- **Layer 3 orchestration** uses `Service`: `WorktreeService`, `SessionCreationService`, `PluginLifecycleService`
 - **Pipeline choke points** use `Dispatcher`: `PushDispatcher` (owns only outbound push sends: immediate sends, completion sends, rate limiting, payload building, and client disposal)
 - **Stream-driven triggers** use `Listener`: `CompletionPushListener`, `MaintenancePushListener`
 - **State derived from events** uses `Tracker`: `ActiveSessionTracker`, `PushSessionStateTracker`
@@ -113,7 +116,7 @@ Ask this before extracting any new bridge class: **Would this class still deserv
 Only create an interface if **at least one** of these is true:
 
 1. It has **multiple production implementations** (e.g., platform-specific variants, different backend adapters)
-2. It splits a class into **semantic single-purpose use-cases** (e.g., `AccessTokenReader` vs `AccessTokenWriter` to limit write surface)
+2. It splits a class into **semantic single-purpose use-cases** (e.g., `AccessTokenProvider` exposing read access without the refresh surface)
 3. It is **defined in a shared layer** and implemented in another (e.g., `ErrorReporter` in shared, implemented by app)
 
 **Never** create a 1:1 interface for a concrete class just for testability. In Dart 3, `implements` works on **any class**, so `class FakeFoo implements Foo` is the correct approach for test fakes.
@@ -127,7 +130,7 @@ Only create an interface if **at least one** of these is true:
 
 ### API Classes Are Per-Tool, Not Per-Use-Case
 
-One API class wraps one external binary/tool. Use separate classes for separate tools (for example, `GhCliApi` for `gh`, `GitCliApi` for `git`). Do not merge tool wrappers just because features are related. Within one tool wrapper, keep all operations together instead of splitting by use-case. This also applies to external providers — e.g., a `GithubApi` wrapping GitHub's web API is separate from `GhCliApi`.
+One API class wraps one external binary/tool. Use separate classes for separate tools (for example, `GhCliApi` for `gh`, `GitCliApi` for `git`). Do not merge tool wrappers just because features are related. Within one tool wrapper, keep all operations together instead of splitting by use-case. This also applies to external providers — e.g., `GitHubReleasesApi` wrapping GitHub's web API is separate from `GhCliApi`.
 
 The root sealed-platform-capability preference is the narrow exception. When
 one package-internal capability has mutually exclusive platform

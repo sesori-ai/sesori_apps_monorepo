@@ -32,7 +32,7 @@ void main() {
       );
 
       final observed = options as PluginSessionOptionsDiscoveryObserved;
-      expect(observed.options.agents.map((agent) => agent.name), ["Default", "Plan"]);
+      expect(observed.options.agents.map((agent) => agent.name), ["Agent", "Plan"]);
       expect(observed.options.providers.providers.single.models, hasLength(2));
       expect(observed.options.commands.single.name, "review");
       expect(harness.processes, hasLength(1));
@@ -120,7 +120,7 @@ void main() {
         ],
         userVisibleText: "visible prompt",
         variant: null,
-        agent: "Default",
+        agent: "Agent",
         model: (providerID: "anthropic", modelID: "default"),
       );
       final process = harness.processes.single;
@@ -160,6 +160,46 @@ void main() {
       await subscription.cancel();
     });
 
+    test("rejects a stale agent selection before enqueueing", () async {
+      await harness.createSession();
+
+      await expectLater(
+        harness.plugin.sendPrompt(
+          promptId: "prompt-1",
+          sessionId: testSessionId,
+          parts: const [PluginPromptPart.text(text: "hello")],
+          variant: null,
+          agent: "Default",
+          model: (providerID: "anthropic", modelID: "default"),
+        ),
+        throwsA(
+          isA<PluginStaleOptionsException>()
+              .having((error) => error.statusCode, "status", 409)
+              .having((error) => error.message, "message", "unsupported Claude agent"),
+        ),
+      );
+      expect(await harness.plugin.getQueuedPrompts(sessionId: testSessionId), isEmpty);
+    });
+
+    test("rejects unsupported selections on session creation", () async {
+      await expectLater(
+        harness.plugin.createSession(
+          directory: "/tmp/project",
+          parentSessionId: null,
+          parts: const [],
+          userVisibleText: null,
+          variant: null,
+          agent: "Default",
+          model: (providerID: "anthropic", modelID: "default"),
+        ),
+        throwsA(
+          isA<PluginOperationException>()
+              .having((error) => error.statusCode, "status", 400)
+              .having((error) => error.message, "message", "unsupported Claude agent"),
+        ),
+      );
+    });
+
     test("dispatches a slash command as an accepted queued turn", () async {
       await harness.createSession();
       final first = harness.processes.single;
@@ -170,6 +210,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendCommand(
+        promptId: "prompt-1",
         sessionId: testSessionId,
         command: "review",
         arguments: "${_worktreeContext.trimRight()}\n\nsrc",
@@ -189,7 +230,7 @@ void main() {
       await subscription.cancel();
     });
 
-    test("creates an empty session and reports command initialization failure", () async {
+    test("creates an empty session and surfaces command initialization failure as a session error", () async {
       await harness.close();
       harness = _PluginHarness(failInitialize: true);
       final session = await harness.plugin.createSession(
@@ -198,26 +239,33 @@ void main() {
         parts: const [],
         userVisibleText: null,
         variant: null,
-        agent: "Default",
+        agent: "Agent",
         model: (providerID: "anthropic", modelID: "default"),
       );
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
 
-      await expectLater(
-        harness.plugin.sendCommand(
-          sessionId: session.id,
-          command: "review",
-          arguments: "src",
-          userVisibleArguments: "src",
-          variant: null,
-          agent: "Default",
-          model: (providerID: "anthropic", modelID: "default"),
-        ),
-        throwsA(
-          isA<PluginOperationException>()
-              .having((error) => error.operation, "operation", "sendCommand")
-              .having((error) => error.cause, "cause", isNotNull),
-        ),
+      // Accepted at enqueue: the spawn failure surfaces on the event stream
+      // (queue removal plus session error), not as a send failure.
+      await harness.plugin.sendCommand(
+        promptId: "prompt-1",
+        sessionId: session.id,
+        command: "review",
+        arguments: "src",
+        userVisibleArguments: "src",
+        variant: null,
+        agent: "Agent",
+        model: (providerID: "anthropic", modelID: "default"),
       );
+      for (var attempt = 0; attempt < 100; attempt++) {
+        if (events.whereType<BridgeSseSessionError>().isNotEmpty) break;
+        await pump();
+      }
+
+      expect(events.whereType<BridgeSseSessionError>().single.sessionID, session.id);
+      expect(events.whereType<BridgeSseQueuedPromptsUpdated>().last.prompts, isEmpty);
+      expect(await harness.plugin.getQueuedPrompts(sessionId: session.id), isEmpty);
+      await subscription.cancel();
     });
 
     test("renders a follow-up prompt from its replayed user frame", () async {
@@ -230,10 +278,11 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "follow-up")],
         variant: null,
-        agent: "Default",
+        agent: "Agent",
         model: (providerID: "anthropic", modelID: "default"),
       );
       await _waitForUserText(first, "follow-up");
@@ -252,7 +301,134 @@ void main() {
       await subscription.cancel();
     });
 
-    test("respawns between turns when launch-only effort changes", () async {
+    test("queues a steering prompt, stamps its echo, and consumes the entry after the message", () async {
+      await harness.createSession();
+      final first = harness.processes.single;
+      await waitForFrame(first, "user");
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      // Accepted instantly while the first turn is still running.
+      await harness.plugin.sendPrompt(
+        promptId: "prm_steer",
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "steer it")],
+        variant: null,
+        agent: "Agent",
+        model: (providerID: "anthropic", modelID: "default"),
+      );
+      final entry = (await harness.plugin.getQueuedPrompts(sessionId: testSessionId)).single;
+      expect(entry.id, "prm_steer");
+      expect(entry.text, "steer it");
+      expect(entry.command, isNull);
+      expect(entry.attachmentCount, 0);
+      await pump();
+      expect(
+        events.whereType<BridgeSseQueuedPromptsUpdated>().last.prompts.single.id,
+        "prm_steer",
+      );
+
+      await _waitForUserText(first, "steer it");
+      final written = first.written.lastWhere((frame) => frame["type"] == "user");
+      expect(written["priority"], "next");
+      first.emit(_replayOf(written, uuid: "replay-steer"));
+      await pump();
+      await pump();
+
+      final messageIndex = events.indexWhere(
+        (event) => event is BridgeSseMessageUpdated && event.info["id"] == "replay-steer",
+      );
+      final message = events[messageIndex] as BridgeSseMessageUpdated;
+      expect(message.info["promptId"], "prm_steer");
+      final emptyQueueIndex = events.indexWhere(
+        (event) => event is BridgeSseQueuedPromptsUpdated && event.prompts.isEmpty,
+      );
+      expect(emptyQueueIndex, greaterThan(messageIndex), reason: "the message must land before its entry disappears");
+      expect(await harness.plugin.getQueuedPrompts(sessionId: testSessionId), isEmpty);
+
+      first.emit(_result());
+      await pump();
+      await subscription.cancel();
+    });
+
+    test("queues a steering command and consumes the entry after its synthetic message", () async {
+      await harness.createSession();
+      final first = harness.processes.single;
+      await waitForFrame(first, "user");
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      await harness.plugin.sendCommand(
+        promptId: "prm_cmd",
+        sessionId: testSessionId,
+        command: "review",
+        arguments: "src",
+        userVisibleArguments: "src",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final queued = await harness.plugin.getQueuedPrompts(sessionId: testSessionId);
+      expect(queued.single.command, "review");
+      expect(queued.single.text, "src");
+      expect(_userTexts(first), isNot(contains("/review src")), reason: "commands wait for the active turn");
+
+      first.emit(_result());
+      await _waitForUserText(first, "/review src");
+      await pump();
+      await pump();
+
+      final messageIndex = events.indexWhere(
+        (event) =>
+            event is BridgeSseMessageUpdated && event.info["role"] == "user" && event.info["promptId"] == "prm_cmd",
+      );
+      expect(messageIndex, greaterThanOrEqualTo(0));
+      final emptyQueueIndex = events.indexWhere(
+        (event) => event is BridgeSseQueuedPromptsUpdated && event.prompts.isEmpty,
+      );
+      expect(emptyQueueIndex, greaterThan(messageIndex));
+      expect(await harness.plugin.getQueuedPrompts(sessionId: testSessionId), isEmpty);
+
+      first.emit(_result());
+      await pump();
+      await subscription.cancel();
+    });
+
+    test("a replay that maps to nothing keeps the queued prompt visible", () async {
+      await harness.createSession();
+      final first = harness.processes.single;
+      await waitForFrame(first, "user");
+      first.emit(_result());
+      await pump();
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      await harness.plugin.sendPrompt(
+        promptId: "prm_unmappable",
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "no uuid")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await _waitForUserText(first, "no uuid");
+      final written = first.written.lastWhere((frame) => frame["type"] == "user");
+      // An uuid-less replay produces no visible message; releasing the queued
+      // entry here would erase the prompt from the transcript entirely.
+      first.emit(_replayOf(written, uuid: ""));
+      await pump();
+      await pump();
+
+      expect(
+        events.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == "prm_unmappable"),
+        isEmpty,
+      );
+      final queued = await harness.plugin.getQueuedPrompts(sessionId: testSessionId);
+      expect(queued.single.id, "prm_unmappable");
+      await subscription.cancel();
+    });
+
+    test("a late echo after abort is not stamped with the aborted prompt id", () async {
       await harness.createSession();
       final first = harness.processes.single;
       await waitForFrame(first, "user");
@@ -260,12 +436,74 @@ void main() {
       await pump();
 
       await harness.plugin.sendPrompt(
+        promptId: "prm_aborted",
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "interrupted early")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await _waitForUserText(first, "interrupted early");
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      final written = first.written.lastWhere((frame) => frame["type"] == "user");
+      first.emit(_replayOf(written, uuid: "late-echo"));
+      final abort = harness.plugin.abortSession(sessionId: testSessionId);
+      final interrupt = await _waitForControl(first, "interrupt");
+      first.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      await abort;
+      await pump();
+      await pump();
+
+      // A buffered frame delivered while abort clears the queue must not
+      // inherit the aborted turn's identity.
+      final lateEchoes = events.whereType<BridgeSseMessageUpdated>().where((event) => event.info["id"] == "late-echo");
+      expect(lateEchoes, hasLength(1));
+      expect(lateEchoes.single.info["promptId"], isNull);
+      await subscription.cancel();
+    });
+
+    test("cancelQueuedPrompt removes a pending steering prompt before dispatch", () async {
+      await harness.createSession();
+      final first = harness.processes.single;
+      await waitForFrame(first, "user");
+
+      await harness.plugin.sendPrompt(
+        promptId: "prm_cancel",
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "never runs")],
+        variant: const PluginSessionVariant(id: "high"),
+        agent: null,
+        model: null,
+      );
+      expect(await harness.plugin.cancelQueuedPrompt(sessionId: testSessionId, promptId: "prm_cancel"), isTrue);
+      expect(await harness.plugin.cancelQueuedPrompt(sessionId: testSessionId, promptId: "prm_cancel"), isFalse);
+      expect(await harness.plugin.getQueuedPrompts(sessionId: testSessionId), isEmpty);
+
+      first.emit(_result());
+      await pump();
+      final userFrames = first.written.where((frame) => frame["type"] == "user");
+      expect(userFrames, hasLength(1), reason: "the cancelled prompt must never reach the CLI");
+    });
+
+    test("respawns between turns when launch-only effort changes", () async {
+      await harness.createSession();
+      final first = harness.processes.single;
+      await waitForFrame(first, "user");
+
+      await harness.plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "deeper")],
         variant: const PluginSessionVariant(id: "high"),
-        agent: "Default",
+        agent: "Agent",
         model: (providerID: "anthropic", modelID: "default"),
       );
+      await pump();
+      expect(harness.processes, hasLength(1));
+      expect(_userTexts(first), isNot(contains("deeper")), reason: "effort is launch-only");
+
+      first.emit(_result());
       for (var attempt = 0; attempt < 50 && harness.processes.length < 2; attempt++) {
         await pump();
       }
@@ -279,6 +517,7 @@ void main() {
     test("throws not found instead of creating a process for an unknown session", () async {
       await expectLater(
         harness.plugin.sendPrompt(
+          promptId: "prompt-1",
           sessionId: otherTestSessionId,
           parts: const [PluginPromptPart.text(text: "hello")],
           variant: null,
@@ -302,7 +541,7 @@ void main() {
       await harness.plugin.deleteSession(session.id);
 
       expect(process.killed, isTrue);
-      expect(await harness.plugin.getSessions("/tmp/project"), isEmpty);
+      expect(await harness.plugin.getSessions(projectId: "/tmp/project", start: null, limit: null), isEmpty);
       expect(await harness.plugin.getSessionStatuses(), isEmpty);
       await expectLater(
         harness.plugin.deleteSession(session.id),
@@ -324,7 +563,7 @@ void main() {
         ),
       );
 
-      expect(await harness.plugin.getSessions("/tmp/project"), isEmpty);
+      expect(await harness.plugin.getSessions(projectId: "/tmp/project", start: null, limit: null), isEmpty);
       expect(await harness.plugin.getSessionStatuses(), isEmpty);
     });
 
@@ -351,6 +590,27 @@ void main() {
       expect(retry.next, DateTime.utc(2026, 8, 11, 12).millisecondsSinceEpoch + 1000);
       expect(events.whereType<BridgeSseSessionStatus>().last.status["next"], retry.next);
       expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isTrue);
+
+      // The retried request streaming again is the recovery signal; the turn
+      // is still running, so the session returns to busy rather than idle.
+      process.emit({
+        "type": "stream_event",
+        "session_id": testSessionId,
+        "uuid": "stream-1",
+        "parent_tool_use_id": null,
+        "event": {
+          "type": "message_start",
+          "message": {"id": "msg-recovered", "model": "claude-opus-5"},
+        },
+      });
+      await pump();
+
+      expect((await harness.plugin.getSessionStatuses())[testSessionId], isA<PluginSessionStatusBusy>());
+      expect(
+        shared.SessionStatus.fromJson(events.whereType<BridgeSseSessionStatus>().last.status),
+        isA<shared.SessionStatusBusy>(),
+      );
+      expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isFalse);
       await subscription.cancel();
     });
 
@@ -441,7 +701,7 @@ void main() {
 
       final defaults = events.whereType<BridgeSseSessionPromptDefaultsChanged>().single;
       expect(defaults.sessionID, testSessionId);
-      expect(defaults.agent, "Default");
+      expect(defaults.agent, "Agent");
       expect(defaults.model, isNull);
 
       process.emit(_result());
@@ -450,6 +710,7 @@ void main() {
         process,
       ).where((subtype) => subtype == "set_permission_mode").length;
       await harness.plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "plan again")],
         variant: null,
@@ -521,7 +782,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
       processes: processRepository,
       approvals: approvals,
       clock: const _NeverIdleClock(),
-      idleTimeout: const Duration(minutes: 5),
+      resolveIdleTimeout: () => const Duration(minutes: 5),
     );
     const content = ClaudeContentMapper();
     final transcripts = ClaudeTranscriptCatalogRepository(
@@ -560,15 +821,22 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
 
   String _nextId() => _testIds[_idIndex++];
 
-  Future<PluginSession> createSession() => plugin.createSession(
-    directory: "/tmp/project",
-    parentSessionId: null,
-    parts: const [PluginPromptPart.text(text: "hello")],
-    userVisibleText: "hello",
-    variant: null,
-    agent: "Default",
-    model: (providerID: "anthropic", modelID: "default"),
-  );
+  Future<PluginSession> createSession() async {
+    final session = await plugin.createSession(
+      directory: "/tmp/project",
+      parentSessionId: null,
+      parts: const [PluginPromptPart.text(text: "hello")],
+      userVisibleText: "hello",
+      variant: null,
+      agent: "Agent",
+      model: (providerID: "anthropic", modelID: "default"),
+    );
+    final process = processes.last;
+    final written = process.written.lastWhere((frame) => frame["type"] == "user");
+    process.emit(_replayOf(written, uuid: "initial-${session.id}"));
+    await pump();
+    return session;
+  }
 
   Future<void> close() async {
     await plugin.dispose();

@@ -29,13 +29,16 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
   /// `role: "error"` shape via [AssistantMessageMapper]; forwarding the raw
   /// OpenCode payload would keep `role: "assistant"` and the phone would drop
   /// the error, leaving a blank turn until the session is re-opened.
-  Map<String, dynamic> _mapMessageInfo(Message info) {
+  Map<String, dynamic> _mapMessageInfo(Message info, {required String? promptId}) {
     final pluginMessage = switch (info) {
       UserMessage(:final id, :final sessionID, :final agent, :final time) => PluginMessage.user(
         id: id,
         sessionID: sessionID,
         agent: agent,
         time: PluginMessageTime(created: time.created.toInt(), completed: null),
+        // Set for a message this bridge's own send created; a message authored
+        // anywhere else (the OpenCode TUI, another tool) has none.
+        promptId: promptId,
       ),
       AssistantMessage() => _assistantMessageMapper.map(info),
       // Unknown roles from a newer OpenCode server: fall through to the raw
@@ -51,9 +54,11 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
   ///
   /// [displaySessionId] is the already-resolved root session for permission/
   /// question events (see [OpenCodePlugin._displaySessionIdForEvent]); it is
-  /// null for all other event types. Kept as a passed-in value so this mapper
-  /// stays a pure, dependency-free transformation.
-  BridgeSseEvent? map(SseEventData event, {String? displaySessionId}) {
+  /// null for all other event types. [promptId] is likewise resolved by the
+  /// plugin (see [OpenCodePlugin._promptIdForEvent]) for the user message its
+  /// own send created. Both are passed-in values so this mapper stays a pure,
+  /// dependency-free transformation.
+  BridgeSseEvent? map(SseEventData event, {String? displaySessionId, String? promptId}) {
     return switch (event) {
       SseServerConnected() => const BridgeSseServerConnected(),
       SseServerHeartbeat() => const BridgeSseServerHeartbeat(),
@@ -79,7 +84,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
         arguments: arguments,
         messageID: messageID,
       ),
-      SseMessageUpdated(:final info) => BridgeSseMessageUpdated(info: _mapMessageInfo(info)),
+      SseMessageUpdated(:final info) => BridgeSseMessageUpdated(info: _mapMessageInfo(info, promptId: promptId)),
       SseMessageRemoved(:final sessionID, :final messageID) => BridgeSseMessageRemoved(
         sessionID: sessionID,
         messageID: messageID,

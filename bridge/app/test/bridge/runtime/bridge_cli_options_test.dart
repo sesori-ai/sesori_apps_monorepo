@@ -2,7 +2,7 @@ import "dart:io";
 
 import "package:args/args.dart";
 import "package:path/path.dart" as path;
-import "package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart";
+import "package:sesori_bridge/src/runtime/bridge_cli_options.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -22,6 +22,12 @@ void main() {
     final options = _parseOptions(args: const []);
 
     expect(options.authBackendUrl, "https://api.sesori.com");
+  });
+
+  test("auth backend removes every trailing slash at composition", () {
+    final options = _parseOptions(args: ["--auth-backend", "https://auth.example.test///"]);
+
+    expect(options.authBackendUrl, "https://auth.example.test");
   });
 
   test("debug port is parsed when present", () {

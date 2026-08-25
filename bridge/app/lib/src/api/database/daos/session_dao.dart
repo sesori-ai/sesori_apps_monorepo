@@ -164,6 +164,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     required String? lastAgent,
     required AgentModel? lastAgentModel,
     required String pluginId,
+    required bool preservePullRequestScope,
   }) async {
     final project = await (select(
       projectsTable,
@@ -171,8 +172,6 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     if (project == null) {
       throw StateError("Cannot insert session for unknown project $projectId");
     }
-    final existing = await getSession(sessionId: sessionId);
-    final preservePullRequestScope = existing?.projectId == projectId && existing?.branchName == branchName;
     final directory = worktreePath ?? project.path;
     await into(sessionTable).insert(
       SessionTableCompanion(
@@ -409,6 +408,12 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
         pluginId: Value(pluginId),
         catalogTitle: Value(catalogTitle),
       ),
+    );
+  }
+
+  Future<void> setParentSessionId({required String sessionId, required String parentSessionId}) async {
+    await (update(sessionTable)..where((table) => table.sessionId.equals(sessionId))).write(
+      SessionTableCompanion(parentSessionId: Value(parentSessionId)),
     );
   }
 

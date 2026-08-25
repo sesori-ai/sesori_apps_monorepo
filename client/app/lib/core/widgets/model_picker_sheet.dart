@@ -1,5 +1,4 @@
 import "dart:async";
-import "dart:math" as math;
 
 import "package:flutter/foundation.dart";
 import "package:go_router/go_router.dart";
@@ -45,10 +44,6 @@ class const ModelPickerSheet({
     bool fullScreen = false,
     bool autofocusSearch = false,
   }) {
-    // Status-bar inset, captured before presenting: the modal route strips
-    // the top inset from both `padding` and `viewPadding`, so inside the
-    // sheet it reads as 0.
-    final topInset = MediaQuery.paddingOf(context).top;
     return showPregoBottomSheet<void>(
       context: context,
       title: context.loc.sessionDetailSelectModel,
@@ -58,32 +53,17 @@ class const ModelPickerSheet({
       // the whole sheet lifted above the indicator.
       contentPadding: EdgeInsetsDirectional.zero,
       handleBottomSafeArea: false,
-      builder: (sheetContext) {
-        // Granular getters (not MediaQuery.of) so this builder only depends on
-        // the height/insets it actually reads, rather than rebuilding on every
-        // unrelated MediaQueryData change (text scale, brightness, …).
-        final screenHeight = MediaQuery.heightOf(sheetContext);
-        final keyboard = MediaQuery.viewInsetsOf(sheetContext).bottom;
-        // The body hosts its own scroll view, so it needs a bounded height.
-        // The keyboard inset is subtracted (the sheet re-adds it below the
-        // body) so the search field stays visible while typing. Full screen:
-        // fill from just below the sheet header to the bottom edge.
-        final maxBody = screenHeight - topInset - PregoBottomSheet.contentTopInset - keyboard;
-        final height = fullScreen ? maxBody : math.min(screenHeight * 0.7 - keyboard, maxBody);
-        return SizedBox(
-          height: math.max(height, screenHeight * 0.3),
-          child: ModelPickerSheet(
-            providers: providers,
-            selectedProviderID: selectedProviderID,
-            selectedModelID: selectedModelID,
-            autofocusSearch: autofocusSearch,
-            onModelChanged: ({required String providerID, required String modelID}) {
-              onModelChanged(providerID: providerID, modelID: modelID);
-              context.pop();
-            },
-          ),
-        );
-      },
+      bodySize: fullScreen ? PregoBottomSheetBodySize.full : PregoBottomSheetBodySize.seventyPercent,
+      builder: (_) => ModelPickerSheet(
+        providers: providers,
+        selectedProviderID: selectedProviderID,
+        selectedModelID: selectedModelID,
+        autofocusSearch: autofocusSearch,
+        onModelChanged: ({required String providerID, required String modelID}) {
+          onModelChanged(providerID: providerID, modelID: modelID);
+          context.pop();
+        },
+      ),
     );
   }
 
@@ -199,7 +179,7 @@ class _ModelPickerSheetState() extends State<ModelPickerSheet> {
           const SizedBox(height: 4),
           Expanded(
             child: switch (_rows) {
-              null => const Center(child: CircularProgressIndicator()),
+              null => Center(child: PregoActivityIndicator(color: prego.colors.fgBrandPrimary)),
               final rows => _buildModelList(context: context, rows: rows),
             },
           ),

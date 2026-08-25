@@ -7,6 +7,7 @@ import "package:sesori_shared/sesori_shared.dart" show Harness;
 import "api/codex_app_server_api.dart";
 import "api/models/codex_correlatable_item_event_dto.dart";
 import "api/models/codex_image_bearing_item_dto.dart";
+import "api/models/codex_rollout_dto.dart";
 import "api/parsers/codex_command_execution_parser.dart";
 import "api/parsers/codex_file_change_parser.dart";
 import "api/parsers/codex_image_bearing_item_parser.dart";
@@ -103,6 +104,10 @@ class CodexPlugin._({
   /// notification. This closes the response-to-notification gap without
   /// exposing codex turn identifiers outside the plugin.
   final Set<String> _provisionalAcceptedTurnThreadIds = {};
+
+  /// In-flight turn requests authorize the next authoritative `turn/started`
+  /// to replace a stale active id left behind by a missing terminal event.
+  final Map<String, int> _pendingTurnRequestRevisionByThread = {};
 
   /// Advances whenever authoritative turn evidence wins a `turn/start`
   /// response race, preventing that response from restoring stale busy state.
@@ -237,13 +242,14 @@ class CodexPlugin._({
     final hadVisibleActivity =
         activeSessionIds.isNotEmpty ||
         _sessionStatuses.keys.any(
-          (sessionId) => registry?.hasPendingInput(sessionId) ?? false,
+          (sessionId) => registry?.hasPendingInput(sessionId: sessionId) ?? false,
         );
     _connectFuture = null;
     _client = null;
     _sessionService.detachAppServerRepositories();
     _rolloutTailer.stopAll();
     _toolLifecycleTracker.clear();
+    _eventMapper.resetLiveItemTimes();
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
     _approvalRegistry = null;
@@ -257,6 +263,7 @@ class CodexPlugin._({
       _eventBuffer.add(const BridgeSseProjectUpdated());
     }
     _provisionalAcceptedTurnThreadIds.clear();
+    _pendingTurnRequestRevisionByThread.clear();
     _turnEvidenceRevisionByThread.keys.toList().forEach(_advanceTurnEvidenceRevision);
     _workState.set(PluginWorkState.unknown);
     _onDisconnected?.call();
@@ -345,6 +352,7 @@ class CodexPlugin._({
           )
         : _toolLifecycleTracker.observeCorrelatableAppServerItem(
             event: correlatableItem,
+            notification: notification,
           );
     if (command != null && projectedTool != null && !_deletedThreadIds.contains(command.threadId)) {
       try {
@@ -404,6 +412,25 @@ class CodexPlugin._({
           )
           .forEach(_eventBuffer.add);
     }
+    if (append.line case CodexRolloutEventMessageLineDto(
+      :final timestamp,
+      payload: CodexRolloutTaskCompleteEventDto(
+        :final turnId,
+        error: final error?,
+      ),
+    )) {
+      final message = error.message;
+      if (turnId.isNotEmpty && message.trim().isNotEmpty) {
+        _eventBuffer.add(
+          _eventMapper.mapRolloutTerminalError(
+            threadId: append.sessionId,
+            turnId: turnId,
+            message: message,
+            timestamp: timestamp,
+          ),
+        );
+      }
+    }
   }
 
   void _maintainThreadStarted(CodexThreadRecord thread) {
@@ -418,8 +445,9 @@ class CodexPlugin._({
   /// elicitations) through the [ApprovalRegistry] so they surface as
   /// bridge permission/question events.
   void _attachApprovalRegistry(CodexAppServerClient client) {
-    final registry = ApprovalRegistry(
-      emit: _emitApprovalEvent,
+    late final ApprovalRegistry registry;
+    registry = ApprovalRegistry(
+      emit: (event) => _emitApprovalEvent(registry: registry, event: event),
       respond: (id, result) => client.respondToServerRequest(id: id, result: result),
       respondError: (id, code, message) => client.respondToServerRequestWithError(
         id: id,
@@ -428,11 +456,11 @@ class CodexPlugin._({
       ),
     );
     _approvalRegistry = registry;
-    registry.attach(client.serverRequests);
+    registry.attach(stream: client.serverRequests);
   }
 
-  void _emitApprovalEvent(BridgeSseEvent event) {
-    _syncWorkState();
+  void _emitApprovalEvent({required ApprovalRegistry registry, required BridgeSseEvent event}) {
+    if (identical(_approvalRegistry, registry)) _syncWorkState();
     _eventBuffer.add(event);
     _eventBuffer.add(const BridgeSseProjectUpdated());
   }
@@ -450,11 +478,16 @@ class CodexPlugin._({
   void _sendKeepalive() {
     final client = _client;
     if (client == null) return;
-    // `model/list` is a cheap local capability query (no model inference, so no
-    // usage cost). The response is irrelevant — the point is the traffic; a
-    // failure (e.g. transport already gone) is swallowed.
+    // Keep this local-only: `model/list` can refresh Codex's remote model cache,
+    // turning weak connectivity into a repeated child-process timeout.
     unawaited(
-      client.request(method: "model/list", timeout: _keepaliveInterval).catchError((Object _) => null),
+      client
+          .request(
+            method: "thread/loaded/list",
+            params: const <String, dynamic>{},
+            timeout: _keepaliveInterval,
+          )
+          .catchError((Object _) => null),
     );
   }
 
@@ -471,13 +504,18 @@ class CodexPlugin._({
 
     final activeTurnId = _activeTurnByThread[threadId];
     final notificationTurnId = _notificationTurnId(notification.params);
+    final hasPendingTurnRequest = _hasCurrentPendingTurnRequest(threadId);
+    if (notification.method == "turn/started" &&
+        (_provisionalAcceptedTurnThreadIds.contains(threadId) || hasPendingTurnRequest)) {
+      return false;
+    }
     if (activeTurnId != null && notificationTurnId != null && activeTurnId != notificationTurnId) {
       return true;
     }
     return notification.method == "thread/status/changed" &&
         _eventMapper.isIdleThreadStatus(notification.params["status"]) &&
         notificationTurnId == null &&
-        (activeTurnId != null || _provisionalAcceptedTurnThreadIds.contains(threadId));
+        (activeTurnId != null || _provisionalAcceptedTurnThreadIds.contains(threadId) || hasPendingTurnRequest);
   }
 
   String? _notificationTurnId(Map<String, dynamic> params) {
@@ -513,8 +551,10 @@ class CodexPlugin._({
         return _setSessionStatus(threadId, const PluginSessionStatus.idle());
       case "thread/status/changed":
         if (threadId == null) return false;
-        if (!_recordAuthoritativeTurnEvidence(threadId)) return false;
         final idle = _eventMapper.isIdleThreadStatus(params["status"]);
+        if ((idle || !_hasCurrentPendingTurnRequest(threadId)) && !_recordAuthoritativeTurnEvidence(threadId)) {
+          return false;
+        }
         if (idle) _activeTurnByThread.remove(threadId);
         return _setSessionStatus(
           threadId,
@@ -525,7 +565,7 @@ class CodexPlugin._({
         if (!_deletedThreadIds.contains(threadId)) {
           _recordAuthoritativeTurnEvidence(threadId);
         }
-        _approvalRegistry?.cancelForSession(threadId);
+        _approvalRegistry?.cancelForSession(sessionId: threadId);
         _activeTurnByThread.remove(threadId);
         final wasActive = _isActiveStatus(_sessionStatuses.remove(threadId));
         // The app-server unloaded this thread; a later turn must resume it.
@@ -590,10 +630,10 @@ class CodexPlugin._({
   void primeSessionDirectory({required String sessionId, required String directory}) {}
 
   @override
-  Future<List<PluginSession>> getSessions(
-    String projectId, {
-    int? start,
-    int? limit,
+  Future<List<PluginSession>> getSessions({
+    required String projectId,
+    required int? start,
+    required int? limit,
   }) async => await _sessionService.getSessions(
     projectId: projectId,
     start: start,
@@ -656,6 +696,9 @@ class CodexPlugin._({
       // applied on this first turn (and sticks for subsequent ones).
       await _startTurn(
         threadId: threadId,
+        // A session's first turn carries no client prompt id; its echo simply
+        // stays unattributed, exactly as before.
+        promptId: null,
         parts: parts,
         variant: variant,
         collaborationMode: CodexCollaborationMode.fromAgent(agent: agent),
@@ -671,6 +714,7 @@ class CodexPlugin._({
   @override
   Future<void> sendPrompt({
     required String sessionId,
+    required String promptId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
     required String? agent,
@@ -679,6 +723,7 @@ class CodexPlugin._({
     await _connectedClient();
     await _startTurn(
       threadId: sessionId,
+      promptId: promptId,
       parts: parts,
       model: model,
       variant: variant,
@@ -687,8 +732,15 @@ class CodexPlugin._({
   }
 
   @override
+  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
+
+  @override
   Future<void> sendCommand({
     required String sessionId,
+    required String promptId,
     required String command,
     required String arguments,
     required String? userVisibleArguments,
@@ -701,12 +753,14 @@ class CodexPlugin._({
       _eventMapper.setThreadModel(sessionId, model.modelID);
     }
     _rolloutTailer.start(sessionId: sessionId);
-    final evidenceRevision = _turnEvidenceRevisionByThread[sessionId] ?? 0;
+    final evidenceRevision = _recordPendingTurnRequest(sessionId);
     try {
       final dispatch = await _sessionService.sendCommand(
         threadId: sessionId,
         command: command,
         arguments: arguments,
+        // See _startTurn: Codex echoes this on the command's user item.
+        clientUserMessageId: promptId,
         model: model?.modelID,
         effort: variant?.id,
         collaborationMode: CodexCollaborationMode.fromAgent(agent: agent),
@@ -726,9 +780,18 @@ class CodexPlugin._({
           turnId: turnId,
           evidenceRevision: evidenceRevision,
         );
+      } else {
+        _clearPendingTurnRequest(
+          threadId: sessionId,
+          evidenceRevision: evidenceRevision,
+        );
       }
       _syncWorkState();
     } on Object {
+      _clearPendingTurnRequest(
+        threadId: sessionId,
+        evidenceRevision: evidenceRevision,
+      );
       _rolloutTailer.stop(sessionId: sessionId);
       rethrow;
     }
@@ -736,7 +799,7 @@ class CodexPlugin._({
 
   @override
   Future<void> abortSession({required String sessionId}) async {
-    _approvalRegistry?.cancelForSession(sessionId);
+    _approvalRegistry?.cancelForSession(sessionId: sessionId);
     final turnId = _activeTurnByThread[sessionId];
     if (turnId == null) {
       _syncWorkState();
@@ -747,6 +810,7 @@ class CodexPlugin._({
       _syncWorkState();
       return;
     }
+    var backendAlreadyIdle = false;
     try {
       await client.request(
         method: "turn/interrupt",
@@ -755,10 +819,90 @@ class CodexPlugin._({
     } on CodexRpcException catch (error) {
       // If the turn already completed before our interrupt arrived,
       // codex returns a "not found" — treat as already-aborted.
-      if (error.code != -32602) rethrow;
+      final noActiveTurn = error.code == -32600 && error.message == "no active turn to interrupt";
+      if (error.code != -32602 && !noActiveTurn) rethrow;
+      backendAlreadyIdle = true;
+      await _queueAlreadyIdleTurnReconciliation(
+        sessionId: sessionId,
+        turnId: turnId,
+      );
     } finally {
-      _activeTurnByThread.remove(sessionId);
+      if (!backendAlreadyIdle && _activeTurnByThread[sessionId] == turnId) {
+        _activeTurnByThread.remove(sessionId);
+      }
       _syncWorkState();
+    }
+  }
+
+  Future<void> _queueAlreadyIdleTurnReconciliation({
+    required String sessionId,
+    required String turnId,
+  }) async {
+    final terminal = CodexServerNotification(
+      method: "turn/completed",
+      params: {
+        "threadId": sessionId,
+        "turn": {"id": turnId, "status": "interrupted"},
+      },
+    );
+    int? retiredTurnRevision;
+    final drain = _notificationWork.then<void>((_) async {
+      if (_activeTurnByThread[sessionId] != turnId) return;
+      if (!_recordAuthoritativeTurnEvidence(sessionId)) return;
+      _activeTurnByThread.remove(sessionId);
+      retiredTurnRevision = _turnEvidenceRevisionByThread[sessionId];
+      await _finishAlreadyIdleTurn(
+        sessionId: sessionId,
+        terminal: terminal,
+      );
+    });
+    final guardedDrain = drain.catchError((Object error, StackTrace stackTrace) {
+      Log.e(
+        "[codex] failed to drain an already-completed abort for $sessionId/$turnId",
+        error,
+        stackTrace,
+      );
+    });
+    _notificationWork = guardedDrain;
+    await guardedDrain;
+
+    final revision = retiredTurnRevision;
+    if (revision == null) return;
+    final reconciliation = _notificationWork.then<void>((_) {
+      if ((_turnEvidenceRevisionByThread[sessionId] ?? 0) != revision || _activeTurnByThread.containsKey(sessionId)) {
+        return;
+      }
+      final activityChanged = _setSessionStatus(sessionId, const PluginSessionStatus.idle());
+      _eventMapper.map(terminal).forEach(_eventBuffer.add);
+      if (activityChanged) _eventBuffer.add(const BridgeSseProjectUpdated());
+    });
+    final guarded = reconciliation.catchError((Object error, StackTrace stackTrace) {
+      Log.e(
+        "[codex] failed to reconcile an already-completed abort for $sessionId/$turnId",
+        error,
+        stackTrace,
+      );
+    });
+    _notificationWork = guarded;
+    await guarded;
+  }
+
+  Future<void> _finishAlreadyIdleTurn({
+    required String sessionId,
+    required CodexServerNotification terminal,
+  }) async {
+    try {
+      await _rolloutTailer.finish(sessionId: sessionId);
+    } on Object catch (error, stackTrace) {
+      _rolloutTailer.stop(sessionId: sessionId);
+      Log.w(
+        "[codex] failed to drain the completed rollout while reconciling abort for $sessionId",
+        error,
+        stackTrace,
+      );
+    }
+    for (final tool in _toolLifecycleTracker.observeTerminalNotification(notification: terminal)) {
+      _eventMapper.mapProjectedTool(threadId: sessionId, tool: tool).forEach(_eventBuffer.add);
     }
   }
 
@@ -787,6 +931,7 @@ class CodexPlugin._({
 
   Future<void> _startTurn({
     required String threadId,
+    required String? promptId,
     required List<PluginPromptPart> parts,
     ({String providerID, String modelID})? model,
     PluginSessionVariant? variant,
@@ -807,16 +952,23 @@ class CodexPlugin._({
     // Capture the current EOF before Codex can append this turn's response
     // items. `start` is idempotent when turn/started arrives afterwards.
     _rolloutTailer.start(sessionId: threadId);
-    final evidenceRevision = _turnEvidenceRevisionByThread[threadId] ?? 0;
+    final evidenceRevision = _recordPendingTurnRequest(threadId);
     try {
       final dispatch = await _sessionService.startTurn(
         threadId: threadId,
         parts: parts,
+        // Codex echoes this on the user item it publishes, so that item can
+        // carry the prompt id back to clients.
+        clientUserMessageId: promptId,
         model: model?.modelID,
         effort: effort == null || effort.isEmpty ? null : effort,
         collaborationMode: collaborationMode,
       );
       if (!dispatch.started) {
+        _clearPendingTurnRequest(
+          threadId: threadId,
+          evidenceRevision: evidenceRevision,
+        );
         _rolloutTailer.stop(sessionId: threadId);
         return;
       }
@@ -838,6 +990,10 @@ class CodexPlugin._({
       }
       _syncWorkState();
     } on Object {
+      _clearPendingTurnRequest(
+        threadId: threadId,
+        evidenceRevision: evidenceRevision,
+      );
       _rolloutTailer.stop(sessionId: threadId);
       rethrow;
     }
@@ -851,13 +1007,19 @@ class CodexPlugin._({
     if (_deletedThreadIds.contains(threadId) || (_turnEvidenceRevisionByThread[threadId] ?? 0) != evidenceRevision) {
       return;
     }
-    _activeTurnByThread[threadId] = turnId;
-    _provisionalAcceptedTurnThreadIds.add(threadId);
+    // COMPATIBILITY 2026-08-20 (Codex app-server <=0.147): a steered input can
+    // return a fresh submission id instead of the existing active turn id.
+    // Preserve authoritative lifecycle evidence until its terminal event.
+    if (!_activeTurnByThread.containsKey(threadId)) {
+      _activeTurnByThread[threadId] = turnId;
+      _provisionalAcceptedTurnThreadIds.add(threadId);
+    }
   }
 
   bool _recordAuthoritativeTurnEvidence(String threadId) {
     if (_deletedThreadIds.contains(threadId)) return false;
     _provisionalAcceptedTurnThreadIds.remove(threadId);
+    _pendingTurnRequestRevisionByThread.remove(threadId);
     _advanceTurnEvidenceRevision(threadId);
     return true;
   }
@@ -865,7 +1027,26 @@ class CodexPlugin._({
   void _recordAuthoritativeThreadCreation(String threadId) {
     _deletedThreadIds.remove(threadId);
     _provisionalAcceptedTurnThreadIds.remove(threadId);
+    _pendingTurnRequestRevisionByThread.remove(threadId);
     _advanceTurnEvidenceRevision(threadId);
+  }
+
+  int _recordPendingTurnRequest(String threadId) {
+    final revision = _turnEvidenceRevisionByThread[threadId] ?? 0;
+    _pendingTurnRequestRevisionByThread[threadId] = revision;
+    return revision;
+  }
+
+  bool _hasCurrentPendingTurnRequest(String threadId) =>
+      _pendingTurnRequestRevisionByThread[threadId] == (_turnEvidenceRevisionByThread[threadId] ?? 0);
+
+  void _clearPendingTurnRequest({
+    required String threadId,
+    required int evidenceRevision,
+  }) {
+    if (_pendingTurnRequestRevisionByThread[threadId] == evidenceRevision) {
+      _pendingTurnRequestRevisionByThread.remove(threadId);
+    }
   }
 
   void _advanceTurnEvidenceRevision(String threadId) {
@@ -983,6 +1164,7 @@ class CodexPlugin._({
   Future<void> deleteSession(String sessionId) async {
     _deletedThreadIds.add(sessionId);
     _provisionalAcceptedTurnThreadIds.remove(sessionId);
+    _pendingTurnRequestRevisionByThread.remove(sessionId);
     _advanceTurnEvidenceRevision(sessionId);
     if (_activeTurnByThread.containsKey(sessionId)) {
       try {
@@ -991,7 +1173,7 @@ class CodexPlugin._({
         // Continue with delete even if the abort raced.
       }
     }
-    _approvalRegistry?.cancelForSession(sessionId);
+    _approvalRegistry?.cancelForSession(sessionId: sessionId);
     await _sessionService.deleteSession(sessionId: sessionId);
     _activeTurnByThread.remove(sessionId);
     _sessionStatuses.remove(sessionId);
@@ -1070,12 +1252,12 @@ class CodexPlugin._({
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({
     required String sessionId,
-  }) async => _approvalRegistry?.pendingForSession(sessionId) ?? const [];
+  }) async => _approvalRegistry?.pendingForSession(sessionId: sessionId) ?? const [];
 
   @override
   Future<List<PluginPendingPermission>> getPendingPermissions({
     required String sessionId,
-  }) async => _approvalRegistry?.pendingPermissionsForSession(sessionId) ?? const [];
+  }) async => _approvalRegistry?.pendingPermissionsForSession(sessionId: sessionId) ?? const [];
 
   @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({
@@ -1089,7 +1271,7 @@ class CodexPlugin._({
     // session (not yet flushed to its rollout) is still scoped correctly.
     final target = normalizeProjectDirectory(directory: projectId);
     final sessionIds = _sessionStatuses.keys.where((id) => _directoryForSession(id) == target).toList(growable: false);
-    return registry.pendingForProject(sessionIds);
+    return registry.pendingForProject(sessionIds: sessionIds);
   }
 
   @override
@@ -1100,7 +1282,7 @@ class CodexPlugin._({
   }) async {
     final registry = _approvalRegistry;
     if (registry == null) return;
-    registry.replyQuestion(questionId, answers);
+    registry.replyQuestion(requestId: questionId, answers: answers);
   }
 
   @override
@@ -1110,7 +1292,7 @@ class CodexPlugin._({
   }) async {
     // sessionId is unused: the approval registry keys pending requests by their
     // bridge request id alone (codex requests are globally unique per session).
-    _approvalRegistry?.rejectQuestion(questionId);
+    _approvalRegistry?.rejectQuestion(requestId: questionId);
   }
 
   @override
@@ -1119,7 +1301,7 @@ class CodexPlugin._({
     required String sessionId,
     required PluginPermissionReply reply,
   }) async {
-    _approvalRegistry?.replyPermission(requestId, reply);
+    _approvalRegistry?.replyPermission(requestId: requestId, reply: reply);
   }
 
   @override
@@ -1132,7 +1314,7 @@ class CodexPlugin._({
     final byProject = <String, List<PluginActiveSession>>{};
     for (final entry in _sessionStatuses.entries) {
       final running = _isActiveStatus(entry.value);
-      final awaitingInput = registry?.hasPendingInput(entry.key) ?? false;
+      final awaitingInput = registry?.hasPendingInput(sessionId: entry.key) ?? false;
       if (!running && !awaitingInput) continue;
       (byProject[_directoryForSession(entry.key)] ??= []).add(
         PluginActiveSession(

@@ -7,6 +7,7 @@ import "models/openapi/agent.g.dart";
 import "models/openapi/command.g.dart";
 import "models/openapi/config_providers_response.g.dart";
 import "models/openapi/global_session.g.dart";
+import "models/openapi/part.g.dart";
 import "models/openapi/permission_request.g.dart";
 import "models/openapi/project.g.dart";
 import "models/openapi/provider_list_response.g.dart";
@@ -17,7 +18,6 @@ import "models/openapi/session_status.g.dart";
 import "models/question_reply_body.dart";
 import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
-import "models/summarize_body.dart";
 import "models/update_project_body.dart";
 import "open_code_raw_http_client.dart";
 
@@ -234,14 +234,14 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     return decoded.map(SessionMessagesResponseItem.fromJson).toList();
   }
 
-  Future<void> sendPrompt({
+  Future<SessionMessagesResponseItem?> sendPrompt({
     required String sessionId,
     required SendPromptBody body,
     // 100% required for this endpoint
     // because otherwise it picks the CWD of where bridge is running
     required String? directory,
   }) async {
-    await _client.post(
+    final response = await _client.post(
       // A no-reply prompt may be immediately followed by a dependent request,
       // so wait for OpenCode to persist it instead of forking prompt_async.
       path: "/session/$sessionId/${body.noReply ? "message" : "prompt_async"}",
@@ -250,6 +250,38 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
         _directoryOpenCodeHeader: ?directory,
       },
       body: jsonEncode(body.toJson()),
+    );
+    if (!body.noReply) return null;
+    return SessionMessagesResponseItem.fromJson(jsonDecodeMap(response.body));
+  }
+
+  Future<void> updateMessagePart({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+    required Part part,
+    required String? directory,
+  }) async {
+    await _client.patch(
+      path: "/session/$sessionId/message/$messageId/part/$partId",
+      headers: {
+        "content-type": "application/json",
+        _directoryOpenCodeHeader: ?directory,
+      },
+      body: jsonEncode(part.toJson()),
+    );
+  }
+
+  Future<void> deleteMessage({
+    required String sessionId,
+    required String messageId,
+    required String? directory,
+  }) async {
+    await _client.delete(
+      path: "/session/$sessionId/message/$messageId",
+      headers: {
+        _directoryOpenCodeHeader: ?directory,
+      },
     );
   }
 
@@ -277,30 +309,6 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
   }) async {
     await _client.post(
       path: "/session/$sessionId/command",
-      headers: {
-        "content-type": "application/json",
-        _directoryOpenCodeHeader: ?directory,
-      },
-      body: jsonEncode(body.toJson()),
-      timeout: null,
-    );
-  }
-
-  /// Triggers AI compaction of a session via `POST /session/:id/summarize`.
-  ///
-  /// WARNING: like [sendCommand], this OpenCode endpoint is **synchronous** —
-  /// the HTTP response does not complete until the compaction agent run has
-  /// finished, which can take minutes. Callers that must not block on the run
-  /// (see [OpenCodeService]) are responsible for detaching; this Layer 1 method
-  /// stays a dumb HTTP call. Sent with `timeout: null` for the same reason as
-  /// [sendCommand].
-  Future<void> summarize({
-    required String sessionId,
-    required SummarizeBody body,
-    required String? directory,
-  }) async {
-    await _client.post(
-      path: "/session/$sessionId/summarize",
       headers: {
         "content-type": "application/json",
         _directoryOpenCodeHeader: ?directory,

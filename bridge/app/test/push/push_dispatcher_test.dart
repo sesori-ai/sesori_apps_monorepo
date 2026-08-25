@@ -2,7 +2,6 @@ import "dart:io";
 
 import "package:fake_async/fake_async.dart";
 import "package:http/http.dart" as http;
-import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/completion_push_listener.dart";
 import "package:sesori_bridge/src/push/maintenance_push_listener.dart";
@@ -16,6 +15,8 @@ import "package:sesori_bridge/src/push/push_session_state_tracker_types.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, LogLevel;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
+import "../helpers/test_helpers.dart";
 
 void main() {
   group("PushDispatcher", () {
@@ -286,6 +287,8 @@ void main() {
                     id: "root",
                     mainAgentRunning: false,
                     childSessionIds: ["child"],
+                    lastUserActivityAt: null,
+                    updatedAt: null,
                   ),
                 ],
               ),
@@ -495,14 +498,6 @@ void main() {
         expect(harness.notifier.abortedRootCount, equals(0));
       });
     });
-
-    test("dispose closes the push notification client transport", () async {
-      final harness = _newHarness();
-
-      await harness.dispatcher.dispose();
-
-      expect(harness.client.disposeCallCount, equals(1));
-    });
   });
 }
 
@@ -580,23 +575,17 @@ class ThrowingPushSessionStateTracker({required super.now, final bool throwFindP
 
 class FakePushNotificationClient() extends PushNotificationClient {
   final List<SendNotificationPayload> sentPayloads = [];
-  int disposeCallCount = 0;
 
   this
     : super(
         authBackendURL: "https://example.com",
-        tokenRefreshManager: _FakeTokenRefresher(),
+        tokenRefreshManager: FakeTokenRefresher(token: "token"),
         client: http.Client(),
       );
 
   @override
   Future<void> sendNotification(SendNotificationPayload payload) async {
     sentPayloads.add(payload);
-  }
-
-  @override
-  Future<void> dispose() async {
-    disposeCallCount += 1;
   }
 }
 
@@ -616,13 +605,6 @@ class FakePushRateLimiter({var bool shouldAllowSend = true, super.now}) extends 
       sessionId: sessionId,
       rateLimitKey: rateLimitKey,
     );
-  }
-}
-
-class _FakeTokenRefresher() implements TokenRefresher {
-  @override
-  Future<String> getAccessToken({bool forceRefresh = false}) async {
-    return "token";
   }
 }
 

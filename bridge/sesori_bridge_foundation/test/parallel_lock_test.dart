@@ -1,6 +1,6 @@
-import "dart:async" show Completer;
+import "dart:async" show Completer, unawaited;
 
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ParallelLock;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show KeyedParallelLock, ParallelLock;
 import "package:test/test.dart";
 
 void main() {
@@ -51,5 +51,77 @@ void main() {
     );
 
     expect(await lock.use(operation: () => 42), 42);
+  });
+
+  test("idle captures only operations submitted before access", () async {
+    final lock = ParallelLock(maxParallelOperations: 1);
+    final first = Completer<void>();
+    final second = Completer<void>();
+    unawaited(lock.use<void>(operation: () => first.future));
+    final idle = lock.idle;
+    unawaited(lock.use<void>(operation: () => second.future));
+
+    first.complete();
+    await idle;
+    expect(second.isCompleted, isFalse);
+    second.complete();
+    await lock.idle;
+  });
+
+  test("keyed lock serializes each key and keeps different keys independent", () async {
+    final lock = KeyedParallelLock<String>();
+    final first = Completer<void>();
+    final started = <String>[];
+    final operations = [
+      lock.use<void>(
+        key: "a",
+        operation: () async {
+          started.add("a1");
+          await first.future;
+        },
+      ),
+      lock.use<void>(key: "a", operation: () async => started.add("a2")),
+      lock.use<void>(key: "b", operation: () async => started.add("b1")),
+    ];
+
+    await Future<void>.delayed(Duration.zero);
+    expect(started, ["a1", "b1"]);
+    first.complete();
+    await Future.wait(operations);
+    expect(started, ["a1", "b1", "a2"]);
+  });
+
+  test("keyed lock accepts a synchronous callback", () async {
+    final lock = KeyedParallelLock<String>();
+
+    expect(await lock.use(key: "a", operation: () => 42), 42);
+  });
+
+  test("keyed lock recovers after errors and idle has snapshot semantics", () async {
+    final lock = KeyedParallelLock<String>();
+    final first = Completer<void>();
+    final later = Completer<void>();
+    final failed = lock.use<void>(
+      key: "a",
+      operation: () async {
+        await first.future;
+        throw StateError("failed");
+      },
+    );
+    final idle = lock.idle;
+    final subsequent = lock.use<int>(
+      key: "a",
+      operation: () async {
+        await later.future;
+        return 42;
+      },
+    );
+
+    first.complete();
+    await expectLater(failed, throwsStateError);
+    await idle;
+    later.complete();
+    expect(await subsequent, 42);
+    await lock.idleFor(key: "a");
   });
 }

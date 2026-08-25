@@ -1,0 +1,51 @@
+[
+  {
+    "tag_name": "v2.10.0",
+    "draft": false,
+    "prerelease": false,
+    "assets": [
+      {"name": "sesori-bridge-linux-x64.tar.gz", "browser_download_url": "https://downloads.example/v2.10.0/archive"},
+      {"name": "sesori-bridge-windows-x64.zip", "browser_download_url": "https://downloads.example/v2.10.0/archive.zip"},
+      {"name": "checksums.txt", "browser_download_url": "https://downloads.example/v2.10.0/checksums"}
+    ]
+  },
+  {
+    "tag_name": "v3.0.0",
+    "draft": false,
+    "prerelease": false,
+    "assets": [
+      {"name": "sesori-bridge-linux-x64.tar.gz", "browser_download_url": "https://downloads.example/v3.0.0/archive"},
+      {"name": "sesori-bridge-windows-x64.zip", "browser_download_url": "https://downloads.example/v3.0.0/archive.zip"}
+    ]
+  },
+  {
+    "tag_name": "v20.0.0.1",
+    "draft": false,
+    "prerelease": false,
+    "assets": [
+      {"name": "sesori-bridge-linux-x64.tar.gz", "browser_download_url": "https://downloads.example/v20.0.0.1/archive"},
+      {"name": "sesori-bridge-windows-x64.zip", "browser_download_url": "https://downloads.example/v20.0.0.1/archive.zip"},
+      {"name": "checksums.txt", "browser_download_url": "https://downloads.example/v20.0.0.1/checksums"}
+    ]
+  },
+  {
+    "tag_name": "v99.0.0",
+    "draft": false,
+    "prerelease": true,
+    "assets": [
+      {"name": "sesori-bridge-linux-x64.tar.gz"},
+      {"name": "sesori-bridge-windows-x64.zip"},
+      {"name": "checksums.txt"}
+    ]
+  },
+  {
+    "tag_name": "repo-v50.0.0",
+    "draft": false,
+    "prerelease": false,
+    "assets": [
+      {"name": "sesori-bridge-linux-x64.tar.gz"},
+      {"name": "sesori-bridge-windows-x64.zip"},
+      {"name": "checksums.txt"}
+    ]
+  }
+]

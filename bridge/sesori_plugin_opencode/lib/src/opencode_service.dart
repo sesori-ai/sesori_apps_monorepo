@@ -33,7 +33,8 @@ class OpenCodeService(
   ///
   /// OpenCode does not list `/compact` in `GET /command` — it is a client-side
   /// built-in in OpenCode's own TUI/web — so the plugin synthesizes it here and
-  /// routes its invocation to the summarize endpoint in [sendCommand].
+  /// routes its invocation through a native compaction message in
+  /// [sendCompaction].
   static const String compactionCommandName = "compact";
 
   static const PluginCommand _compactionCommand = PluginCommand(
@@ -57,7 +58,7 @@ class OpenCodeService(
   final Set<String> _parentIdLookupsInFlight = {};
 
   /// [commandDispatchFastFailWindow] bounds how long [sendCommand] waits on
-  /// OpenCode's synchronous command/summarize endpoints before treating the run
+  /// OpenCode's synchronous command endpoint before treating the run
   /// as accepted and detaching (see [sendCommand]). Genuine dispatch rejections
   /// (unknown command/session, missing model, server down) surface from
   /// localhost within milliseconds, so 1s is enough to catch them while keeping
@@ -294,6 +295,7 @@ class OpenCodeService(
         await repository.sendPrompt(
           sessionId: session.id,
           directory: session.directory,
+          messageId: null,
           parts: parts,
           agent: agent,
           variant: variant,
@@ -318,6 +320,7 @@ class OpenCodeService(
 
   Future<void> sendPrompt({
     required String sessionId,
+    required String? messageId,
     required List<PluginPromptPart> parts,
     required String? agent,
     required PluginSessionVariant? variant,
@@ -327,6 +330,7 @@ class OpenCodeService(
     await repository.sendPrompt(
       sessionId: sessionId,
       directory: directory,
+      messageId: messageId,
       parts: parts,
       agent: agent,
       variant: variant,
@@ -335,8 +339,96 @@ class OpenCodeService(
     _markTurnAccepted(sessionId: sessionId);
   }
 
+  Future<String> reserveMessage({
+    required String sessionId,
+    required String? agent,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID})? model,
+  }) {
+    final directory = _getTrackedDirectory(sessionId: sessionId);
+    return repository.reserveMessage(
+      sessionId: sessionId,
+      directory: directory,
+      agent: agent,
+      variant: variant,
+      model: model,
+    );
+  }
+
+  Future<({String messageId, String partId, String? guidanceMessageId, ({String providerID, String modelID}) model})>
+  reserveCompactionMessage({
+    required String sessionId,
+    required String arguments,
+    required String? userVisibleArguments,
+    required String? agent,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    final directory = _getTrackedDirectory(sessionId: sessionId);
+    final selectedModel = _requireCompactionModel(model: model, sessionId: sessionId);
+    final instructions = arguments.normalize();
+    String? guidanceMessageId;
+    if (instructions != null) {
+      // OpenCode parents a compaction summary to the latest user message, so
+      // guidance must be persisted before reserving the compaction marker.
+      guidanceMessageId = await repository.addCompactionInstructions(
+        sessionId: sessionId,
+        directory: directory,
+        messageId: null,
+        instructions: instructions,
+        agent: agent,
+        variant: variant,
+        model: selectedModel,
+      );
+    }
+    final ({String messageId, String partId}) reservation;
+    try {
+      reservation = await repository.reserveCompactionMessage(
+        sessionId: sessionId,
+        directory: directory,
+        userVisibleArguments: userVisibleArguments,
+        agent: agent,
+        variant: variant,
+        model: selectedModel,
+      );
+    } on Object catch (error, stackTrace) {
+      if (guidanceMessageId != null) {
+        try {
+          await repository.deleteMessage(
+            sessionId: sessionId,
+            directory: directory,
+            messageId: guidanceMessageId,
+          );
+        } on Object catch (cleanupError, cleanupStackTrace) {
+          Log.w(
+            "failed to remove unused compaction guidance $guidanceMessageId",
+            cleanupError,
+            cleanupStackTrace,
+          );
+        }
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+    return (
+      messageId: reservation.messageId,
+      partId: reservation.partId,
+      guidanceMessageId: guidanceMessageId,
+      model: selectedModel,
+    );
+  }
+
+  Future<void> deleteReservedMessage({required String sessionId, required String messageId}) {
+    final directory = _getTrackedDirectory(sessionId: sessionId);
+    return repository.deleteMessage(
+      sessionId: sessionId,
+      directory: directory,
+      messageId: messageId,
+    );
+  }
+
   Future<void> sendCommand({
     required String sessionId,
+    required String messageId,
     required String command,
     required String arguments,
     required String? agent,
@@ -344,30 +436,19 @@ class OpenCodeService(
     required ({String providerID, String modelID})? model,
   }) async {
     final directory = _getTrackedDirectory(sessionId: sessionId);
-    // The artificial "compact" command (see [compactionCommandName]) has no
-    // OpenCode command counterpart — route it to the summarize endpoint, which
-    // performs manual compaction. Everything else is a real slash command.
-    final sendFuture = command == compactionCommandName
-        ? _compact(
-            sessionId: sessionId,
-            directory: directory,
-            arguments: arguments,
-            agent: agent,
-            variant: variant,
-            model: _requireCompactionModel(model: model, sessionId: sessionId),
-          )
-        : repository.sendCommand(
-            sessionId: sessionId,
-            directory: directory,
-            command: command,
-            arguments: arguments,
-            agent: agent,
-            variant: variant,
-            model: model,
-          );
-    // OpenCode's POST /session/:id/command and /summarize endpoints are both
-    // synchronous — they respond only after the agent run completes, and no
-    // async variant exists upstream (see OpenCodeApi.sendCommand/summarize).
+    final sendFuture = repository.sendCommand(
+      sessionId: sessionId,
+      directory: directory,
+      messageId: messageId,
+      command: command,
+      arguments: arguments,
+      agent: agent,
+      variant: variant,
+      model: model,
+    );
+    // OpenCode's POST /session/:id/command endpoint is synchronous — it
+    // responds only after the agent run completes, and no async variant exists
+    // upstream (see OpenCodeApi.sendCommand).
     // The BridgePluginApi contract requires sendCommand to complete once the
     // command is accepted, so dispatch with a fast-fail window: failures
     // raised within the window (unknown command/agent, missing session,
@@ -402,49 +483,48 @@ class OpenCodeService(
     );
   }
 
-  int _markTurnAccepted({required String sessionId}) {
-    return tracker.markTurnAccepted(sessionId: sessionId);
-  }
-
-  Future<void> _compact({
+  Future<void> sendCompaction({
     required String sessionId,
-    required String? directory,
-    required String arguments,
+    required String messageId,
+    required String partId,
     required String? agent,
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID}) model,
   }) async {
-    final instructions = arguments.normalize();
-    if (instructions != null) {
-      // OpenCode's summarize payload has no instructions field. A no-reply
-      // prompt persists the guidance as context without running the agent.
-      await repository.addCompactionInstructions(
-        sessionId: sessionId,
-        directory: directory,
-        instructions: instructions,
-        agent: agent,
-        variant: variant,
-        model: model,
-      );
-    }
-    await repository.summarize(
+    final directory = _getTrackedDirectory(sessionId: sessionId);
+    await repository.convertReservedPartToCompaction(
       sessionId: sessionId,
       directory: directory,
+      messageId: messageId,
+      partId: partId,
+    );
+    await repository.sendPrompt(
+      sessionId: sessionId,
+      directory: directory,
+      messageId: messageId,
+      parts: const [],
+      agent: agent,
+      variant: variant,
       model: model,
     );
+    _markTurnAccepted(sessionId: sessionId);
   }
 
-  /// Compaction needs an explicit provider/model (OpenCode's summarize payload
-  /// has no server-side default). The session model is normally threaded in
-  /// from the mobile prompt request; if it is absent we fail loudly rather than
-  /// silently dropping the compaction.
+  int _markTurnAccepted({required String sessionId}) {
+    return tracker.markTurnAccepted(sessionId: sessionId);
+  }
+
+  /// Compaction needs an explicit provider/model because its reserved user
+  /// message becomes the parent of the compaction summary. The session model is
+  /// normally threaded in from the mobile prompt request; if it is absent we
+  /// fail loudly rather than silently dropping the compaction.
   ({String providerID, String modelID}) _requireCompactionModel({
     required ({String providerID, String modelID})? model,
     required String sessionId,
   }) {
     if (model == null) {
       throw PluginApiException(
-        "POST /session/$sessionId/summarize",
+        "POST /session/$sessionId/message",
         400,
         message: "compaction requires a model selection",
       );

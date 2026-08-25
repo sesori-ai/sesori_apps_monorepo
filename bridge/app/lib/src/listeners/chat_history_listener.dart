@@ -1,10 +1,11 @@
 import "dart:async";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../bridge/services/chat_history_service.dart";
-import "../bridge/services/session_event_dispatcher.dart";
+import "../services/chat_history_service.dart";
+import "../services/session_event_dispatcher.dart";
 
 /// Persists finalized message events into the chat history store.
 ///
@@ -22,27 +23,24 @@ class ChatHistoryListener({
   required final ChatHistoryService _chatHistoryService,
 }) {
   StreamSubscription<NormalizedSourcedBridgeEvent>? _subscription;
-  final Set<Future<void>> _pendingCaptures = {};
+  final PendingOperations _pendingCaptures = PendingOperations();
   Future<void>? _disposeFuture;
   bool _disposed = false;
 
   void start() {
     if (_subscription != null || _disposed) return;
     _subscription = _source.listen(
-      (sourced) => _track(
-        capture: _capture(pluginId: sourced.pluginId, event: sourced.event),
+      // Keeps the write observable to [dispose], so shutdown does not close
+      // the database out from under a finalized event still being persisted.
+      (sourced) => unawaited(
+        _pendingCaptures.track(
+          operation: _capture(pluginId: sourced.pluginId, event: sourced.event),
+        ),
       ),
       // Source errors are surfaced by the dispatcher's own consumers; capture
       // simply has nothing to store for a failed event.
       onError: (Object _) {},
     );
-  }
-
-  /// Keeps the write observable to [dispose], so shutdown does not close the
-  /// database out from under a finalized event still being persisted.
-  void _track({required Future<void> capture}) {
-    _pendingCaptures.add(capture);
-    unawaited(capture.whenComplete(() => _pendingCaptures.remove(capture)));
   }
 
   Future<void> _capture({required String pluginId, required BridgeSseEvent event}) {
@@ -73,6 +71,6 @@ class ChatHistoryListener({
     await _subscription?.cancel();
     // Capture never throws (failures are logged and drop the synced marker),
     // so waiting cannot fail teardown.
-    await Future.wait(_pendingCaptures.toList(growable: false));
+    await _pendingCaptures.drain();
   }
 }

@@ -1,17 +1,18 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
-import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
-import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/routing/send_prompt_handler.dart";
+import "package:sesori_bridge/src/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/session_prompt_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
@@ -71,6 +72,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s1",
           parts: [PromptPart.text(text: "Hello")],
           variant: null,
@@ -78,9 +80,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
@@ -90,6 +89,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s1",
           parts: [
             PromptPart.text(text: "Hello"),
@@ -100,9 +100,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendPromptParts, isNotNull);
@@ -116,6 +113,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s1",
           parts: [PromptPart.text(text: "Hello")],
           variant: null,
@@ -123,9 +121,6 @@ void main() {
           model: PromptModel(providerID: "openai", modelID: "gpt-4o"),
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendPromptAgent, equals("planner"));
@@ -150,6 +145,7 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s-defaults-prompt",
           parts: [PromptPart.text(text: "Hello")],
           variant: SessionVariant(id: "xhigh"),
@@ -157,9 +153,6 @@ void main() {
           model: PromptModel(providerID: "openai", modelID: "gpt-5"),
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, equals(const SuccessEmptyResponse()));
@@ -176,6 +169,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s42",
           parts: [PromptPart.text(text: "Ship it")],
           variant: null,
@@ -186,9 +180,6 @@ void main() {
           ),
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendPromptSessionId, equals("backend-s42"));
@@ -203,6 +194,7 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s1",
           parts: [PromptPart.text(text: "Hello")],
           variant: null,
@@ -210,9 +202,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, equals(const SuccessEmptyResponse()));
@@ -222,6 +211,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s1",
           parts: [PromptPart.text(text: "Hello")],
           variant: null,
@@ -229,9 +219,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
@@ -243,6 +230,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s7",
           parts: [PromptPart.text(text: "review this")],
           variant: SessionVariant(id: "xhigh"),
@@ -250,9 +238,6 @@ void main() {
           model: null,
           command: "review",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendPromptSessionId, isNull);
@@ -268,6 +253,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s8",
           parts: [
             PromptPart.filePath(mime: "text/plain", path: "/tmp/f.txt", filename: null),
@@ -277,9 +263,6 @@ void main() {
           model: null,
           command: "attach",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendCommandSessionId, equals("backend-s8"));
@@ -292,6 +275,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s8",
           parts: [PromptPart.text(text: "   ")],
           variant: null,
@@ -299,9 +283,6 @@ void main() {
           model: null,
           command: "attach",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendCommandUserVisibleArguments, isNull);
@@ -311,6 +292,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s10",
           parts: [PromptPart.text(text: "review this")],
           variant: null,
@@ -318,9 +300,6 @@ void main() {
           model: PromptModel(providerID: "openai", modelID: "gpt-5.4"),
           command: "review",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendPromptSessionId, isNull);
@@ -346,6 +325,7 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s-defaults-command",
           parts: [PromptPart.text(text: "review this")],
           variant: SessionVariant(id: "high"),
@@ -353,9 +333,6 @@ void main() {
           model: PromptModel(providerID: "anthropic", modelID: "claude-sonnet"),
           command: "review",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, equals(const SuccessEmptyResponse()));
@@ -397,6 +374,7 @@ void main() {
         () => localHandler.handle(
           makeRequest("POST", "/session/prompt_async"),
           body: const SendPromptRequest(
+            promptId: null,
             sessionId: "s-failing-prompt",
             parts: [PromptPart.text(text: "Hello")],
             variant: SessionVariant(id: "new-variant"),
@@ -404,9 +382,6 @@ void main() {
             model: PromptModel(providerID: "new-provider", modelID: "new-model"),
             command: null,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<StateError>()),
       );
@@ -449,6 +424,7 @@ void main() {
         () => localHandler.handle(
           makeRequest("POST", "/session/prompt_async"),
           body: const SendPromptRequest(
+            promptId: null,
             sessionId: "s-failing-command",
             parts: [PromptPart.text(text: "review this")],
             variant: SessionVariant(id: "new-variant"),
@@ -456,9 +432,6 @@ void main() {
             model: PromptModel(providerID: "new-provider", modelID: "new-model"),
             command: "review",
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<StateError>()),
       );
@@ -489,6 +462,7 @@ void main() {
       final response = await localHandler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s-update-fails",
           parts: [PromptPart.text(text: "Hello")],
           variant: SessionVariant(id: "xhigh"),
@@ -496,9 +470,6 @@ void main() {
           model: PromptModel(providerID: "openai", modelID: "gpt-5"),
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, equals(const SuccessEmptyResponse()));
@@ -511,6 +482,7 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          promptId: null,
           sessionId: "s9",
           parts: [PromptPart.text(text: "Hello")],
           variant: null,
@@ -518,9 +490,6 @@ void main() {
           model: PromptModel(providerID: "openai", modelID: "gpt-5.4"),
           command: "   ",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendPromptSessionId, equals("backend-s9"));
@@ -535,6 +504,7 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/session/prompt_async"),
           body: const SendPromptRequest(
+            promptId: null,
             sessionId: "",
             parts: [PromptPart.text(text: "Hello")],
             variant: null,
@@ -542,21 +512,19 @@ void main() {
             model: null,
             command: null,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
     });
 
     test("missing binding returns 404 before plugin I/O", () async {
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/prompt_async",
           body: jsonEncode(
             const SendPromptRequest(
+              promptId: null,
               sessionId: "missing",
               parts: [PromptPart.text(text: "Hello")],
               variant: null,
@@ -566,9 +534,6 @@ void main() {
             ).toJson(),
           ),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, 404);
@@ -586,12 +551,13 @@ void main() {
         agentModel: null,
       );
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/prompt_async",
           body: jsonEncode(
             const SendPromptRequest(
+              promptId: null,
               sessionId: "stale-plugin-session",
               parts: [PromptPart.text(text: "Hello")],
               variant: null,
@@ -601,14 +567,39 @@ void main() {
             ).toJson(),
           ),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, 503);
       expect(plugin.lastSendPromptSessionId, isNull);
       expect(plugin.lastSendCommandSessionId, isNull);
+    });
+
+    test("stale options rejection returns 409 with the recognizable error body", () async {
+      plugin.sendPromptError = const PluginStaleOptionsException("sendPrompt", message: "unsupported Claude agent");
+
+      final response = await handler.routeForTest(
+        makeRequest(
+          "POST",
+          "/session/prompt_async",
+          body: jsonEncode(
+            const SendPromptRequest(
+              promptId: null,
+              sessionId: "s1",
+              parts: [PromptPart.text(text: "Hello")],
+              variant: null,
+              agent: "removed-agent",
+              model: null,
+              command: null,
+            ).toJson(),
+          ),
+        ),
+      );
+
+      expect(response.status, 409);
+      expect(response.headers["content-type"], "application/json");
+      final parsed = SendPromptErrorResponse.fromJson(jsonDecode(response.body!) as Map<String, dynamic>);
+      expect(parsed.code, SendPromptErrorCode.staleSessionOptions);
+      expect(parsed.message, "unsupported Claude agent");
     });
   });
 }
@@ -619,6 +610,7 @@ SessionPromptService _buildPromptService(SessionRepository repository) {
     sessionRepository: repository,
     dispatcher: dispatcher,
     archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
+    sessionOptionsService: FakeSessionOptionsService(),
   );
   addTearDown(dispatcher.dispose);
   addTearDown(service.dispose);
@@ -652,6 +644,7 @@ Future<void> _insertStoredSession({
 class _ThrowingSendPromptPlugin() extends FakeBridgePlugin {
   @override
   Future<void> sendPrompt({
+    required String promptId,
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
@@ -665,6 +658,7 @@ class _ThrowingSendPromptPlugin() extends FakeBridgePlugin {
 class _ThrowingSendCommandPlugin() extends FakeBridgePlugin {
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,
@@ -678,23 +672,21 @@ class _ThrowingSendCommandPlugin() extends FakeBridgePlugin {
 }
 
 class _ThrowingUpdateSessionRepository({
-    required BridgePluginApi plugin,
-    required AppDatabase database,
-    required super.unseenCalculator,
-  }) extends SessionRepository {
+  required BridgePluginApi plugin,
+  required AppDatabase database,
+  required super.unseenCalculator,
+}) extends SessionRepository {
   int updatePromptDefaultsCallCount = 0;
 
-  this : super(
-         runtime: createTestPluginRuntime(plugins: [plugin]),
-         bridgeDerivedProjectPluginIds: {
-           if (plugin is BridgeDerivedProjectsPluginApi) plugin.id,
-         },
-         sessionDao: database.sessionDao,
-         projectsDao: database.projectsDao,
-         pullRequestDao: database.pullRequestDao,
-         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
-         aggregateSourceDeadline: const Duration(seconds: 5),
-       );
+  this
+    : super(
+        runtime: createTestPluginRuntime(plugins: [plugin]),
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+        pullRequestDao: database.pullRequestDao,
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        aggregateSourceDeadline: const Duration(seconds: 5),
+      );
 
   @override
   Future<void> updatePromptDefaults({

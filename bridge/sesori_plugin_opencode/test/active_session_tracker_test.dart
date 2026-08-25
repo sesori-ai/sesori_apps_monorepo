@@ -4,6 +4,9 @@ import "package:opencode_plugin/opencode_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "support/fake_open_code_api.dart";
+import "support/open_code_fixtures.dart";
+
 void main() {
   group("ActiveSessionTracker", () {
     test("empty tracker has empty activeSessions", () {
@@ -49,16 +52,7 @@ void main() {
       test("SSE session.created populates getSessionDirectory", () async {
         final tracker = await _coldStartedTracker(
           projects: [
-            const Project(
-              time: ProjectTime(created: 0, updated: 0, initialized: null),
-              sandboxes: <String>[],
-              vcs: null,
-              name: null,
-              icon: null,
-              commands: null,
-              id: "p1",
-              worktree: "/projects/foo",
-            ),
+            openCodeProject(id: "p1", worktree: "/projects/foo"),
           ],
         );
 
@@ -76,16 +70,7 @@ void main() {
       test("SSE session.updated preserves raw directory", () async {
         final tracker = await _coldStartedTracker(
           projects: [
-            const Project(
-              time: ProjectTime(created: 0, updated: 0, initialized: null),
-              sandboxes: <String>[],
-              vcs: null,
-              name: null,
-              icon: null,
-              commands: null,
-              id: "p1",
-              worktree: "/projects/foo",
-            ),
+            openCodeProject(id: "p1", worktree: "/projects/foo"),
           ],
         );
 
@@ -107,16 +92,7 @@ void main() {
       test("SSE session.deleted removes from getSessionDirectory", () async {
         final tracker = await _coldStartedTracker(
           projects: [
-            const Project(
-              time: ProjectTime(created: 0, updated: 0, initialized: null),
-              sandboxes: <String>[],
-              vcs: null,
-              name: null,
-              icon: null,
-              commands: null,
-              id: "p1",
-              worktree: "/projects/foo",
-            ),
+            openCodeProject(id: "p1", worktree: "/projects/foo"),
           ],
         );
 
@@ -131,16 +107,7 @@ void main() {
       test("coldStart populates getSessionDirectory for all fetched sessions", () async {
         final tracker = await _coldStartedTracker(
           projects: [
-            const Project(
-              time: ProjectTime(created: 0, updated: 0, initialized: null),
-              sandboxes: <String>[],
-              vcs: null,
-              name: null,
-              icon: null,
-              commands: null,
-              id: "p1",
-              worktree: "/projects/foo",
-            ),
+            openCodeProject(id: "p1", worktree: "/projects/foo"),
           ],
           sessions: [
             _session("s1", "/projects/foo"),
@@ -329,16 +296,7 @@ void main() {
       test("coldStart populates active statuses from busy/retry sessions", () async {
         final tracker = await _coldStartedTracker(
           projects: [
-            const Project(
-              time: ProjectTime(created: 0, updated: 0, initialized: null),
-              sandboxes: <String>[],
-              vcs: null,
-              name: null,
-              icon: null,
-              commands: null,
-              id: "p1",
-              worktree: "/projects/foo",
-            ),
+            openCodeProject(id: "p1", worktree: "/projects/foo"),
           ],
           sessions: [
             _session("s1", "/projects/foo"),
@@ -363,16 +321,7 @@ void main() {
       test("SSE busy event adds to active statuses", () async {
         final tracker = await _coldStartedTracker(
           projects: [
-            const Project(
-              time: ProjectTime(created: 0, updated: 0, initialized: null),
-              sandboxes: <String>[],
-              vcs: null,
-              name: null,
-              icon: null,
-              commands: null,
-              id: "p1",
-              worktree: "/projects/foo",
-            ),
+            openCodeProject(id: "p1", worktree: "/projects/foo"),
           ],
         );
 
@@ -388,16 +337,7 @@ void main() {
       test("SSE idle event removes from active statuses", () async {
         final tracker = await _coldStartedTracker(
           projects: [
-            const Project(
-              time: ProjectTime(created: 0, updated: 0, initialized: null),
-              sandboxes: <String>[],
-              vcs: null,
-              name: null,
-              icon: null,
-              commands: null,
-              id: "p1",
-              worktree: "/projects/foo",
-            ),
+            openCodeProject(id: "p1", worktree: "/projects/foo"),
           ],
           sessions: [_session("s1", "/projects/foo")],
           statuses: {"s1": const SessionStatusBusy()},
@@ -420,16 +360,7 @@ void main() {
       test("reset clears active statuses", () async {
         final tracker = await _coldStartedTracker(
           projects: [
-            const Project(
-              time: ProjectTime(created: 0, updated: 0, initialized: null),
-              sandboxes: <String>[],
-              vcs: null,
-              name: null,
-              icon: null,
-              commands: null,
-              id: "p1",
-              worktree: "/projects/foo",
-            ),
+            openCodeProject(id: "p1", worktree: "/projects/foo"),
           ],
           sessions: [_session("s1", "/projects/foo")],
           statuses: {"s1": const SessionStatusBusy()},
@@ -2610,79 +2541,17 @@ SseEventData _childSessionCreated(String id, String parentId, String directory) 
 
 SseEventData _sessionUpdated(String id, String directory) {
   return SseEventData.sessionUpdated(
-    info: Session(
-      slug: "slug",
-      title: "title",
-      version: "v",
-      workspaceID: null,
-      path: null,
-      summary: null,
-      cost: null,
-      tokens: null,
-      share: null,
-      agent: null,
-      model: null,
-      metadata: null,
-      permission: null,
-      revert: null,
-      parentID: null,
-      time: const SessionTime(created: 0, updated: 0, compacting: null, archived: null),
-      id: id,
-      projectID: "project",
-      directory: directory,
-    ),
+    info: openCodeSession(id: id, directory: directory, projectID: "project"),
   );
 }
 
 SseEventData _sessionDeleted(String id, [String directory = ""]) {
   return SseEventData.sessionDeleted(
-    info: Session(
-      slug: "slug",
-      title: "title",
-      version: "v",
-      workspaceID: null,
-      path: null,
-      summary: null,
-      cost: null,
-      tokens: null,
-      share: null,
-      agent: null,
-      model: null,
-      metadata: null,
-      permission: null,
-      revert: null,
-      parentID: null,
-      time: const SessionTime(created: 0, updated: 0, compacting: null, archived: null),
-      id: id,
-      projectID: "project",
-      directory: directory,
-    ),
+    info: openCodeSession(id: id, directory: directory, projectID: "project"),
   );
 }
 
-Session _session(String id, String directory) {
-  return Session(
-    slug: "slug",
-    title: "title",
-    version: "v",
-    workspaceID: null,
-    path: null,
-    parentID: null,
-    summary: null,
-    cost: null,
-    tokens: null,
-    share: null,
-    agent: null,
-    model: null,
-    metadata: null,
-    permission: null,
-    revert: null,
-    time: const SessionTime(created: 0, updated: 0, compacting: null, archived: null),
-    id: id,
-    projectID: "project",
-    directory: directory,
-  );
-}
+Session _session(String id, String directory) => openCodeSession(id: id, directory: directory, projectID: "project");
 
 SseEventData _sessionBusy(String id) {
   return SseEventData.sessionStatus(
@@ -2750,10 +2619,11 @@ OpenCodeRepository _fakeRepository({
   Map<String, SessionStatus>? statuses,
 }) {
   return OpenCodeRepository(
-    _FakeApi(
-      projects: projects,
-      sessions: sessions,
-      statuses: statuses,
+    FakeOpenCodeApi(
+      projects: projects ?? const [],
+      sessions: sessions ?? const [],
+      statuses: statuses ?? const {},
+      filterRootSessions: true,
     ),
   );
 }
@@ -2776,164 +2646,7 @@ Future<ActiveSessionTracker> _coldStartedTracker({
   return tracker;
 }
 
-class _FakeApi({
-  List<Project>? projects,
-  List<Session>? sessions,
-  Map<String, SessionStatus>? statuses,
-}) implements OpenCodeApi {
-  final List<Project> _projects = projects ?? [];
-  final List<Session> _sessions = sessions ?? [];
-  final Map<String, SessionStatus> _statuses = statuses ?? {};
-
-  @override
-  Future<bool> healthCheck() async => true;
-
-  @override
-  Future<List<Project>> listProjects() async => _projects;
-
-  @override
-  Future<List<Session>> listRootSessions() async => _sessions;
-
-  @override
-  Future<List<Session>> listSessions({String? directory, required bool roots}) async =>
-      roots ? _sessions.where((s) => s.parentID == null).toList() : _sessions;
-
-  @override
-  Future<List<Command>> listCommands({required String? directory}) async => const [];
-
-  @override
-  Future<void> summarize({
-    required String sessionId,
-    required SummarizeBody body,
-    required String? directory,
-  }) async {}
-
-  @override
-  Future<Session> createSession({required String directory, String? parentSessionId}) async =>
-      throw UnimplementedError();
-
-  @override
-  Future<Session> getSession({required String sessionId, required String? directory}) async =>
-      throw UnimplementedError();
-
-  @override
-  Future<Session> updateSession({
-    required String sessionId,
-    required Map<String, dynamic> body,
-    required String? directory,
-  }) async => throw UnimplementedError();
-
-  @override
-  Future<void> deleteSession({required String sessionId, required String? directory}) async {}
-
-  @override
-  Future<void> removeWorktree({
-    required String directory,
-    required String worktreePath,
-  }) async {}
-
-  @override
-  Future<void> sendPrompt({
-    required String sessionId,
-    required SendPromptBody body,
-    required String? directory,
-  }) async {}
-
-  @override
-  Future<void> sendCommand({
-    required String sessionId,
-    required SendCommandBody body,
-    required String? directory,
-  }) async {}
-
-  @override
-  Future<void> abortSession({required String sessionId, required String? directory}) async {}
-
-  @override
-  Future<List<Agent>> listAgents({required String directory}) async => [];
-
-  @override
-  Future<List<QuestionRequest>> getPendingQuestions({required String? directory}) async => [];
-
-  @override
-  Future<List<PermissionRequest>> getPendingPermissions({required String? directory}) async => [];
-
-  @override
-  Future<void> replyToQuestion({
-    required String questionId,
-    required String? directory,
-    required QuestionReplyBody body,
-  }) async {}
-
-  @override
-  Future<void> replyToPermission({
-    required String requestId,
-    required String? directory,
-    required PluginPermissionReply reply,
-  }) async {}
-
-  @override
-  Future<void> rejectQuestion({
-    required String questionId,
-    required String? directory,
-  }) async {}
-
-  @override
-  Future<Project> getProject({required String directory}) async => throw UnimplementedError();
-
-  @override
-  Future<List<Session>> getChildren({
-    required String sessionId,
-    required String? directory,
-  }) async => [];
-
-  @override
-  Future<List<SessionMessagesResponseItem>> getMessages({
-    required String sessionId,
-    required String? directory,
-  }) async => [];
-
-  @override
-  Future<List<GlobalSession>> listAllSessions({
-    required String? directory,
-    required bool roots,
-  }) async => [];
-
-  @override
-  Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async {
-    if (directory == null) return _statuses;
-    final sessionIdsInDirectory = _sessions
-        .where((s) => s.directory == directory || s.directory.startsWith("$directory/"))
-        .map((s) => s.id)
-        .toSet();
-    return Map.fromEntries(
-      _statuses.entries.where((e) => sessionIdsInDirectory.contains(e.key)),
-    );
-  }
-
-  @override
-  Future<ProviderListResponse> listProviders() async =>
-      const ProviderListResponse(all: [], defaultValue: {}, connected: []);
-
-  @override
-  Future<ConfigProvidersResponse> listConfigProviders({required String? directory}) async =>
-      const ConfigProvidersResponse(providers: [], defaultValue: {});
-
-  @override
-  Future<Project> updateProject({
-    required String projectId,
-    required String directory,
-    required UpdateProjectBody body,
-  }) async => throw UnimplementedError();
-
-  @override
-  Future<Session> forkSession({
-    required String sessionId,
-    required String directory,
-  }) async => throw UnimplementedError();
-}
-
-class _GatedStatusApi() extends _FakeApi {
+class _GatedStatusApi() extends FakeOpenCodeApi {
   this : super(statuses: {"session": const SessionStatusIdle()});
 
   final Completer<void> statusRequested = Completer<void>();

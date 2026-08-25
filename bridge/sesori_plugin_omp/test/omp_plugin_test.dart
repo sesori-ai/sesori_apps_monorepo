@@ -80,6 +80,7 @@ void main() {
     }
 
     Future<void> send(String sessionId, String text) => plugin.sendPrompt(
+      promptId: "prompt-1",
       sessionId: sessionId,
       parts: [PluginPromptPart.text(text: text)],
       variant: null,
@@ -112,8 +113,9 @@ void main() {
       expect(await connecting, isTrue);
     });
 
-    test("uses OMP's process-wide and fail-closed policies", () {
-      expect(plugin.serializesPromptsProcessWide, isTrue);
+    test("uses OMP's per-session and fail-closed policies", () {
+      expect(plugin.serializesPromptsProcessWide, isFalse);
+      expect(plugin.cancelsActiveTurnForQueuedInput, isTrue);
       expect(plugin.failsTurnOnSelectionError, isTrue);
       expect(plugin.supportsFormElicitation, isTrue);
     });
@@ -147,6 +149,7 @@ void main() {
       await creating;
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "session-1",
         parts: const [PluginPromptPart.text(text: "private prompt")],
         variant: null,
@@ -198,14 +201,14 @@ void main() {
       respond(launchDirectoryFrame, {"sessions": <Object?>[]});
       expect(await global, isEmpty);
 
-      final project = plugin.getSessions("/repo");
+      final project = plugin.getSessions(projectId: "/repo", start: null, limit: null);
       final cwdFrame = await waitForFrame(AcpMethods.sessionList, count: 3);
       expect(cwdFrame["params"], {"cwd": "/repo"});
       respond(cwdFrame, {"sessions": <Object?>[]});
       expect(await project, isEmpty);
     });
 
-    test("serializes prompts and routes sessionless forms to the active turn", () async {
+    test("runs sessions concurrently and routes forms by explicit session id", () async {
       await connect();
       final first = await create("first");
       final second = await create("second");
@@ -213,14 +216,15 @@ void main() {
       await send(first.id, "one");
       final firstPrompt = await waitForFrame(AcpMethods.sessionPrompt);
       await send(second.id, "two");
-      await Future<void>.delayed(Duration.zero);
-      expect(frames(AcpMethods.sessionPrompt), hasLength(1));
+      final secondPrompt = await waitForFrame(AcpMethods.sessionPrompt, count: 2);
+      expect((secondPrompt["params"] as Map)["sessionId"], second.id);
 
       fake.emit({
         "jsonrpc": "2.0",
         "id": 41,
         "method": AcpMethods.elicitationCreate,
         "params": {
+          "sessionId": first.id,
           "mode": "form",
           "message": "Configure extension",
           "requestedSchema": {
@@ -248,9 +252,48 @@ void main() {
       });
 
       respond(firstPrompt, {"stopReason": "end_turn"});
-      final secondPrompt = await waitForFrame(AcpMethods.sessionPrompt, count: 2);
-      expect((secondPrompt["params"] as Map)["sessionId"], second.id);
       respond(secondPrompt, {"stopReason": "end_turn"});
+    });
+
+    test("a prompt queued on the active session cancels that turn before dispatch", () async {
+      await connect();
+      final session = await create("session");
+
+      await plugin.sendPrompt(
+        promptId: "prompt-1",
+        sessionId: session.id,
+        parts: const [PluginPromptPart.text(text: "keep searching")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final firstPrompt = await waitForFrame(AcpMethods.sessionPrompt);
+
+      await plugin.sendPrompt(
+        promptId: "prompt-2",
+        sessionId: session.id,
+        parts: const [PluginPromptPart.text(text: "stop")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final cancel = await waitForFrame(AcpMethods.sessionCancel);
+      expect(cancel["params"], {"sessionId": session.id});
+      expect(frames(AcpMethods.sessionPrompt), hasLength(1));
+      expect((await plugin.getQueuedPrompts(sessionId: session.id)).single.id, "prompt-2");
+
+      respond(firstPrompt, {"stopReason": "cancelled"});
+      final replacement = await waitForFrame(AcpMethods.sessionPrompt, count: 2);
+      expect((replacement["params"] as Map)["sessionId"], session.id);
+      expect(await plugin.getQueuedPrompts(sessionId: session.id), isEmpty);
+      expect(
+        events
+            .whereType<BridgeSseMessageUpdated>()
+            .singleWhere((event) => event.info["promptId"] == "prompt-2")
+            .info["role"],
+        "user",
+      );
+      respond(replacement, {"stopReason": "end_turn"});
     });
 
     test("maps live reasoning, tools, images, and final text", () async {
@@ -312,6 +355,12 @@ void main() {
           PluginMessagePartType.text,
         ]),
       );
+      final finalizedReasoning = parts.indexWhere(
+        (part) => part.type == PluginMessagePartType.reasoning && part.text == "Thinking",
+      );
+      final tool = parts.indexWhere((part) => part.type == PluginMessagePartType.tool);
+      expect(finalizedReasoning, isNonNegative);
+      expect(finalizedReasoning, lessThan(tool));
       expect(parts.where((part) => part.type == PluginMessagePartType.tool).single.state?.output, "tool output");
       final image = parts.where((part) => part.type == PluginMessagePartType.file).single.attachment!;
       expect(image, isA<PluginMessageAttachmentInlineImage>());

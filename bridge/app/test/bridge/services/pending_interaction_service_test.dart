@@ -1,18 +1,19 @@
 import "dart:async";
 
-import "package:sesori_bridge/src/api/bridge_settings_api.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
-import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
-import "package:sesori_bridge/src/bridge/services/pending_interaction_service.dart";
-import "package:sesori_bridge/src/bridge/services/permission_auto_approval_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
+import "package:sesori_bridge/src/repositories/models/session_operation.dart";
+import "package:sesori_bridge/src/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/repositories/permission_repository.dart";
+import "package:sesori_bridge/src/repositories/question_repository.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/services/pending_interaction_service.dart";
+import "package:sesori_bridge/src/services/permission_auto_approval_service.dart";
+import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
+import "../../helpers/in_memory_bridge_settings_api.dart";
 
 void main() {
   group("PendingInteractionService", () {
@@ -31,7 +32,10 @@ void main() {
       });
       permissionRepository = _PermissionRepository();
       questionRepository = _QuestionRepository();
-      settingsRepository = BridgeSettingsRepository(api: _BridgeSettingsApi());
+      settingsRepository = BridgeSettingsRepository(
+        defaultEditorApi: null,
+        api: InMemoryBridgeSettingsApi(config: '{"yolo":true,"pullRequestRefreshIntervalSeconds":30}'),
+      );
       await settingsRepository.loadSettings();
       dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       service = PendingInteractionService(
@@ -39,7 +43,6 @@ void main() {
         questionRepository: questionRepository,
         dispatcher: dispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
-        legacyMissingPluginId: "legacy",
       );
       autoApproval = PermissionAutoApprovalService(
         sessionRepository: sessionRepository,
@@ -114,7 +117,9 @@ void main() {
       sessionRepository.activitySummaries = const [
         ProjectActivitySummary(
           id: "project",
-          activeSessions: [ActiveSession(id: "session-one", awaitingInput: true)],
+          activeSessions: [
+            ActiveSession(id: "session-one", awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
+          ],
         ),
       ];
       permissionRepository.pendingPermissions = const [
@@ -150,6 +155,92 @@ void main() {
       await scan;
 
       expect(permissionRepository.requestIds, ["first"]);
+    });
+
+    test("a resolved snapshot approves each permission and hides the approved ones", () async {
+      const permission = PendingPermission(
+        id: "first",
+        sessionID: "session-one",
+        displaySessionId: null,
+        tool: "tool",
+        description: "first",
+      );
+      permissionRepository.onReply = ({required requestId, required sessionId, required reply}) async {
+        permissionRepository.requestIds.add(requestId);
+      };
+
+      final unresolved = await autoApproval.resolveSnapshot(permissions: const [permission]);
+
+      expect(unresolved, isEmpty);
+      expect(permissionRepository.requestIds, ["first"]);
+    });
+
+    test("a snapshot permission whose approval fails stays visible", () async {
+      const failing = PendingPermission(
+        id: "failing",
+        sessionID: "session-one",
+        displaySessionId: null,
+        tool: "tool",
+        description: "failing",
+      );
+      const working = PendingPermission(
+        id: "working",
+        sessionID: "session-one",
+        displaySessionId: null,
+        tool: "tool",
+        description: "working",
+      );
+      permissionRepository.onReply = ({required requestId, required sessionId, required reply}) async {
+        if (requestId == "failing") throw StateError("backend rejected the reply");
+        permissionRepository.requestIds.add(requestId);
+      };
+
+      final unresolved = await autoApproval.resolveSnapshot(permissions: const [failing, working]);
+
+      expect(unresolved.map((permission) => permission.id), ["failing"]);
+      expect(permissionRepository.requestIds, ["working"]);
+    });
+
+    test("disabling yolo mid-snapshot keeps the remaining permissions visible", () async {
+      const first = PendingPermission(
+        id: "first",
+        sessionID: "session-one",
+        displaySessionId: null,
+        tool: "tool",
+        description: "first",
+      );
+      const second = PendingPermission(
+        id: "second",
+        sessionID: "session-one",
+        displaySessionId: null,
+        tool: "tool",
+        description: "second",
+      );
+      permissionRepository.onReply = ({required requestId, required sessionId, required reply}) async {
+        permissionRepository.requestIds.add(requestId);
+        await settingsRepository.updateYolo(enabled: false);
+      };
+
+      final unresolved = await autoApproval.resolveSnapshot(permissions: const [first, second]);
+
+      expect(permissionRepository.requestIds, ["first"]);
+      expect(unresolved.map((permission) => permission.id), ["second"]);
+    });
+
+    test("the snapshot passes through untouched when yolo is off", () async {
+      await settingsRepository.updateYolo(enabled: false);
+      const permission = PendingPermission(
+        id: "first",
+        sessionID: "session-one",
+        displaySessionId: null,
+        tool: "tool",
+        description: "first",
+      );
+
+      final unresolved = await autoApproval.resolveSnapshot(permissions: const [permission]);
+
+      expect(unresolved, [permission]);
+      expect(permissionRepository.requestIds, isEmpty);
     });
   });
 }
@@ -220,19 +311,4 @@ class _QuestionRepository() implements QuestionRepository {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _BridgeSettingsApi() implements BridgeSettingsApi {
-  String config = '{"yolo":true,"pullRequestRefreshIntervalSeconds":30}';
-
-  @override
-  String get configFilePath => "/tmp/config.json";
-
-  @override
-  Future<String?> readConfig() async => config;
-
-  @override
-  Future<void> writeConfig(String jsonContent) async {
-    config = jsonContent;
-  }
 }

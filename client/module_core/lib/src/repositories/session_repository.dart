@@ -1,10 +1,11 @@
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
-import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_shared/sesori_shared.dart" hide SessionCleanupRejection;
 
 import "../api/session_api.dart";
 import "../foundation/models/composer/composer_attachment.dart";
 import "../foundation/models/session_options/session_options_request_mode.dart";
+import "models/session_cleanup_rejection.dart";
 import "models/session_options_repository_result.dart";
 
 @lazySingleton
@@ -15,12 +16,22 @@ class SessionRepository({
     required String sessionId,
     required bool deleteWorktree,
     required bool force,
-  }) {
-    return _api.archiveSession(
-      sessionId: sessionId,
-      deleteWorktree: deleteWorktree,
-      force: force,
-    );
+  }) async {
+    try {
+      return await _api.archiveSession(
+        sessionId: sessionId,
+        deleteWorktree: deleteWorktree,
+        force: force,
+      );
+    } on SessionCleanupApiRejectedException catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        SessionCleanupRejectedException(
+          rejection: SessionCleanupRejection(issues: error.rejection.issues),
+          innerError: error,
+        ),
+        stackTrace,
+      );
+    }
   }
 
   Future<ApiResponse<Session>> renameSession({required String sessionId, required String title}) {
@@ -31,12 +42,22 @@ class SessionRepository({
     required String sessionId,
     required bool deleteWorktree,
     required bool force,
-  }) {
-    return _api.deleteSession(
-      sessionId: sessionId,
-      deleteWorktree: deleteWorktree,
-      force: force,
-    );
+  }) async {
+    try {
+      return await _api.deleteSession(
+        sessionId: sessionId,
+        deleteWorktree: deleteWorktree,
+        force: force,
+      );
+    } on SessionCleanupApiRejectedException catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        SessionCleanupRejectedException(
+          rejection: SessionCleanupRejection(issues: error.rejection.issues),
+          innerError: error,
+        ),
+        stackTrace,
+      );
+    }
   }
 
   Future<ApiResponse<void>> abortSession({required String sessionId}) {
@@ -172,6 +193,7 @@ class SessionRepository({
           providersConnectedOnly: data.providers.connectedOnly,
           commands: data.commands.items,
         ),
+        isStale: data.stale,
       ),
       ErrorResponse(:final error) => _mapSessionOptionsError(error: error),
     };
@@ -217,15 +239,16 @@ class SessionRepository({
       text: text,
       attachments: attachments,
       agent: agent,
-      model: model,
+      model: _normalizeModel(model: model),
       variant: variant,
-      command: command,
+      command: command?.normalize(),
       dedicatedWorktree: dedicatedWorktree,
     );
   }
 
   Future<ApiResponse<void>> sendMessage({
     required String sessionId,
+    required String promptId,
     required String text,
     required List<ComposerAttachment> attachments,
     required String? agent,
@@ -235,12 +258,43 @@ class SessionRepository({
   }) {
     return _api.sendMessage(
       sessionId: sessionId,
+      promptId: promptId,
       text: text,
       attachments: attachments,
       agent: agent,
-      model: model,
+      model: _normalizeModel(model: model),
       variant: variant,
-      command: command,
+      command: command?.normalize(),
     );
+  }
+
+  PromptModel? _normalizeModel({required PromptModel? model}) {
+    final normalizedProviderID = model?.providerID.normalize();
+    final normalizedModelID = model?.modelID.normalize();
+    if (normalizedProviderID == null || normalizedModelID == null) return null;
+    return PromptModel(providerID: normalizedProviderID, modelID: normalizedModelID);
+  }
+
+  static bool isStalePromptOptionsError({required ApiError error}) {
+    if (error case NonSuccessCodeError(:final rawErrorString)) {
+      if (rawErrorString != null) {
+        try {
+          final parsed = SendPromptErrorResponse.fromJson(jsonDecodeMap(rawErrorString));
+          return parsed.code == SendPromptErrorCode.staleSessionOptions;
+        } on Object {
+          // Older bridges answer with plain-text errors, which are not this
+          // structured stale-options signal.
+        }
+      }
+    }
+    return false;
+  }
+
+  Future<ApiResponse<QueuedPromptResponse>> getQueuedPrompts({required String sessionId}) {
+    return _api.getQueuedPrompts(sessionId: sessionId);
+  }
+
+  Future<ApiResponse<void>> cancelQueuedPrompt({required String sessionId, required String promptId}) {
+    return _api.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId);
   }
 }

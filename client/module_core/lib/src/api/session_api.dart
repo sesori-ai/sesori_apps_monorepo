@@ -10,7 +10,7 @@ import "../logging/logging.dart";
 import "../utils/bounded_json_encoder.dart";
 import "client/relay_http_client.dart";
 
-class const SessionCleanupRejectedException({required final SessionCleanupRejection rejection}) implements Exception;
+class const SessionCleanupApiRejectedException({required final SessionCleanupRejection rejection}) implements Exception;
 
 @lazySingleton
 class SessionApi({required final RelayHttpApiClient _client}) {
@@ -136,6 +136,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
 
   Future<ApiResponse<void>> sendMessage({
     required String sessionId,
+    required String promptId,
     required String text,
     required List<ComposerAttachment> attachments,
     required String? agent,
@@ -153,7 +154,27 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         model: model,
         variant: variant,
         command: command,
+        promptId: promptId,
       ),
+    );
+  }
+
+  /// The bridge-owned queued prompts for a session. Old bridges without the
+  /// route answer an error, which callers degrade to an empty list.
+  Future<ApiResponse<QueuedPromptResponse>> getQueuedPrompts({required String sessionId}) {
+    return _client.post(
+      "/session/queued_prompts",
+      fromJson: QueuedPromptResponse.fromJson,
+      body: SessionIdRequest(sessionId: sessionId),
+    );
+  }
+
+  /// Cancels a bridge-queued prompt before it dispatches to the harness.
+  Future<ApiResponse<void>> cancelQueuedPrompt({required String sessionId, required String promptId}) {
+    return _client.post(
+      "/session/prompt/cancel",
+      fromJson: SuccessEmptyResponse.fromJson,
+      body: CancelQueuedPromptRequest(sessionId: sessionId, promptId: promptId),
     );
   }
 
@@ -234,8 +255,8 @@ class SessionApi({required final RelayHttpApiClient _client}) {
           throw const FormatException("invalid cleanup rejection json");
         }
         final rejection = SessionCleanupRejection.fromJson(jsonDecodeMap(rawBody));
-        throw SessionCleanupRejectedException(rejection: rejection);
-      } on SessionCleanupRejectedException {
+        throw SessionCleanupApiRejectedException(rejection: rejection);
+      } on SessionCleanupApiRejectedException {
         rethrow;
       } on Object catch (e) {
         logw("Failed to parse 409 cleanup rejection body: ${e.toString()}");

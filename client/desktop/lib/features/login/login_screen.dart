@@ -3,6 +3,7 @@ import "dart:async";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
 
@@ -122,7 +123,10 @@ class const _StatusRow({required final String message}) extends StatelessWidget 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+        SizedBox.square(
+          dimension: 16,
+          child: PregoActivityIndicator(color: Theme.of(context).colorScheme.primary),
+        ),
         const SizedBox(width: 12),
         Flexible(child: Text(message)),
       ],

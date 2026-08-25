@@ -23,11 +23,8 @@ class const BackgroundTasksHeader({
       onTap: onTap,
       showDivider: false,
       leading: hasRunning
-          // The leading slot is a tight 32px wide but leaves its height free. A
-          // CircularProgressIndicator has no intrinsic size and paints to its box
-          // without preserving aspect ratio, so it renders as an oval. Center
-          // re-loosens the constraints around a fixed square so the spinner
-          // stays a 16px circle.
+          // The leading slot is a tight 32px wide but leaves its height free.
+          // Center re-loosens those constraints around a fixed 16px square.
           ? Center(
               heightFactor: 1,
               child: SizedBox.square(

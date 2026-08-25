@@ -22,7 +22,7 @@ class _MockConnectionService() extends Mock implements ConnectionService;
 class _MockRegisteredBridgesService() extends Mock implements RegisteredBridgesService;
 
 const _config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token");
-const _health = HealthResponse(healthy: true, version: "1.0.0", filesystemAccessDegraded: null);
+const _health = HealthResponse(healthy: true, version: "1.0.0", filesystemAccessDegraded: false);
 const _connected = ConnectionStatus.connected(config: _config, health: _health);
 
 void main() {

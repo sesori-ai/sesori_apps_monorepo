@@ -114,7 +114,7 @@ class CursorSessionOptionsService({
     if (models.isEmpty) return const PluginProvidersResult(providers: []);
     return PluginProvidersResult(
       providers: [
-        PluginProvider.custom(
+        PluginProvider(
           id: _providerId,
           name: "Cursor",
           authType: PluginProviderAuthType.unknown,

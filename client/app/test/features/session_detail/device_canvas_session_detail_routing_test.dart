@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -31,7 +29,6 @@ void main() {
   late _MockDeviceCanvasService deviceCanvasService;
   late _RecordingRouteDispatcher routeDispatcher;
   late BehaviorSubject<ConnectionStatus> connectionStatuses;
-  late StreamController<SseEvent> events;
 
   setUp(() async {
     await getIt.reset();
@@ -41,14 +38,13 @@ void main() {
     routeDispatcher = _RecordingRouteDispatcher();
     connectionStatuses = BehaviorSubject<ConnectionStatus>.seeded(
       ConnectionStatus.connected(
-        config: const ServerConnectionConfig(relayHost: "relay.example.com"),
+        config: const ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
         health: testHealthResponse(),
       ),
     );
-    events = StreamController<SseEvent>.broadcast();
 
     when(() => connectionService.status).thenAnswer((_) => connectionStatuses.stream);
-    when(() => connectionService.events).thenAnswer((_) => events.stream);
+    when(() => connectionService.events).thenAnswer((_) => const Stream.empty());
     when(() => registeredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
     when(() => deviceCanvasService.getSessionStatus(sessionId: "session-1")).thenAnswer(
       (_) async => const DeviceCanvasStatusSupported(
@@ -71,7 +67,6 @@ void main() {
   tearDown(() async {
     await getIt.reset();
     await connectionStatuses.close();
-    await events.close();
   });
 
   testWidgets("normalizes a verified projectless link to the canonical project stack", (tester) async {

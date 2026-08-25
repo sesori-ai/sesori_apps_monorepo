@@ -1,9 +1,9 @@
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
-import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
-import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
-import "package:sesori_bridge/src/bridge/routing/filesystem_suggestions_handler.dart";
+import "package:sesori_bridge/src/api/filesystem_api.dart";
+import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
+import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/routing/filesystem_suggestions_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -49,9 +49,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/filesystem/suggestions"),
         body: FilesystemSuggestionsRequest(maxResults: 20, prefix: tempDir.path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(result.data, hasLength(1));
       final entry = result.data.first;
@@ -68,9 +65,6 @@ void main() {
             maxResults: 20,
             prefix: "/nonexistent/path/that/does/not/exist",
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(
           isA<RelayResponse>().having((r) => r.status, "status", equals(404)),
@@ -82,9 +76,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/filesystem/suggestions"),
         body: const FilesystemSuggestionsRequest(maxResults: 20, prefix: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(result.data, isNotEmpty);
       for (final entry in result.data) {
@@ -98,9 +89,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/filesystem/suggestions"),
           body: const FilesystemSuggestionsRequest(maxResults: 20, prefix: "/some/../etc/passwd"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(
           isA<RelayResponse>().having((r) => r.status, "status", equals(400)),
@@ -113,9 +101,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/filesystem/suggestions"),
           body: const FilesystemSuggestionsRequest(maxResults: 20, prefix: "relative/path"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(
           isA<RelayResponse>().having((r) => r.status, "status", equals(400)),
@@ -128,9 +113,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/filesystem/suggestions"),
           body: const FilesystemSuggestionsRequest(maxResults: 20, prefix: ""),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(
           isA<RelayResponse>().having((r) => r.status, "status", equals(400)),
@@ -145,9 +127,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/filesystem/suggestions"),
         body: FilesystemSuggestionsRequest(maxResults: 20, prefix: tempDir.path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(result.data.length, lessThanOrEqualTo(20));
     });
@@ -158,9 +137,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/filesystem/suggestions"),
         body: FilesystemSuggestionsRequest(maxResults: 20, prefix: tempDir.path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(result.data, hasLength(1));
       expect(result.data.first.name, equals("subdir"));
@@ -172,9 +148,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/filesystem/suggestions"),
         body: FilesystemSuggestionsRequest(maxResults: 20, prefix: tempDir.path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(result.data, hasLength(1));
       expect(result.data.first.isGitRepo, isTrue);
@@ -186,9 +159,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/filesystem/suggestions"),
         body: FilesystemSuggestionsRequest(maxResults: 20, prefix: tempDir.path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(result.data, hasLength(1));
       expect(result.data.first.name, equals("visible"));

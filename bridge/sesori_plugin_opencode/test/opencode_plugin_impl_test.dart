@@ -6,6 +6,32 @@ import "package:opencode_plugin/opencode_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+enum _OptionDiscoveryRequest() { agents, providers }
+
+/// Waits until [count] events of type [T] have been delivered, or fails.
+///
+/// These tests drive a real loopback `HttpServer`, so SSE bytes arrive on
+/// socket I/O rather than on the microtask queue. `pumpEventQueue` bounds the
+/// number of event-loop turns, not delivery, so on a loaded machine it can
+/// return before the bytes land — which is exactly how this suite flaked on CI.
+Future<void> _awaitEvents<T>(
+  List<BridgeSseEvent> events, {
+  required int count,
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (events.whereType<T>().length < count) {
+    if (DateTime.now().isAfter(deadline)) {
+      fail(
+        "timed out waiting for $count $T event(s); got ${events.whereType<T>().length}",
+      );
+    }
+    await pumpEventQueue();
+  }
+  // Let any trailing event settle so "exactly N" assertions stay meaningful.
+  await pumpEventQueue();
+}
+
 void main() {
   group("OpenCodePlugin", () {
     late _FakeOpenCodeServer server;
@@ -26,7 +52,7 @@ void main() {
 
     test("dispose during an in-flight initialize never starts the SSE stream", () async {
       server.holdProjects = Completer<void>();
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, autoInitialize: false);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
       // Hold the cold-start at the gated GET /project, then dispose while it
       // is still in flight — the late _sseConnection.start() must not revive
@@ -47,7 +73,7 @@ void main() {
 
     test("initialize waits until the SSE listener is connected", () async {
       server.holdSseResponse = Completer<void>();
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, autoInitialize: false);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
       addTearDown(plugin.dispose);
       var completed = false;
       final initialize = plugin.initialize().whenComplete(() => completed = true);
@@ -65,7 +91,7 @@ void main() {
 
     test("dispose unblocks initialize while the SSE listener is connecting", () async {
       server.holdSseResponse = Completer<void>();
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, autoInitialize: false);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
       final initialize = plugin.initialize();
       while (!server.requestLog.contains("GET /global/event")) {
         await Future<void>.delayed(const Duration(milliseconds: 5));
@@ -77,7 +103,7 @@ void main() {
 
     test("first SSE connection retries a failed cold start", () async {
       server.projectFailuresRemaining = 1;
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, autoInitialize: false);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
       addTearDown(plugin.dispose);
       final recovered = plugin.events.firstWhere((event) => event is BridgeSseProjectUpdated);
 
@@ -89,6 +115,7 @@ void main() {
 
     test("getProjects maps internal projects to plugin projects", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final projects = await plugin.getProjects();
 
@@ -107,8 +134,9 @@ void main() {
 
     test("getSessions maps internal sessions to plugin sessions", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
-      final sessions = await plugin.getSessions("/repo");
+      final sessions = await plugin.getSessions(projectId: "/repo", start: null, limit: null);
 
       expect(sessions, hasLength(2));
 
@@ -127,6 +155,7 @@ void main() {
 
     test("getProjects seeds sandbox aliases so moved-location sessions canonicalize without a lookup", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       // A restarted plugin serving a previously-moved project: the backend's
       // project list already records the live location as a sandbox, and no
       // per-directory project lookup has happened yet.
@@ -142,13 +171,14 @@ void main() {
 
       await plugin.getProjects();
 
-      final sessions = await plugin.getSessions("/moved/repo");
+      final sessions = await plugin.getSessions(projectId: "/moved/repo", start: null, limit: null);
       final moved = sessions.firstWhere((session) => session.id == "s-moved");
       expect(moved.projectID, equals("/repo"));
     });
 
     test("getProject at a moved live directory registers an alias that canonicalizes session mapping", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       // The folder moved: /repo is still the project's root worktree, and the
       // backend records the live location as a sandbox.
       server.addSandbox(projectKey: "p1", sandbox: "/moved/repo");
@@ -170,7 +200,7 @@ void main() {
       expect(project.directory, equals("/moved/repo"));
       expect(project.activity, isNull);
 
-      final sessions = await plugin.getSessions("/moved/repo");
+      final sessions = await plugin.getSessions(projectId: "/moved/repo", start: null, limit: null);
       final moved = sessions.firstWhere((session) => session.id == "s-moved");
       // Without the alias this would fall back to the requested directory.
       expect(moved.projectID, equals("/repo"));
@@ -178,6 +208,7 @@ void main() {
 
     test("getCommands delegates through service and includes the synthetic compact command", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final commands = await plugin.getCommands(projectId: "/repo");
 
@@ -189,6 +220,7 @@ void main() {
 
     test("getSessionOptions delegates the complete coherent aggregate", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final result = await plugin.getSessionOptions(
         projectId: "project-1",
@@ -199,6 +231,8 @@ void main() {
       expect(options.completeness, PluginSessionOptionsCompleteness.complete);
       expect(options.agents, isNotEmpty);
       expect(options.providers.providers, isNotEmpty);
+      expect(server.lastAgentDirectoryHeader, "project-1");
+      expect(server.lastProvidersDirectoryHeader, "project-1");
       expect(
         options.commands.map((command) => command.name),
         contains(OpenCodeService.compactionCommandName),
@@ -207,6 +241,7 @@ void main() {
 
     test("createSession creates the session then sends the first prompt", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       await server.waitForSseConnection();
       server.requestLog.clear();
 
@@ -235,10 +270,12 @@ void main() {
 
     test("sendPrompt resolves tracked directory before sending", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       await server.waitForSseConnection();
       server.requestLog.clear();
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Continue")],
         agent: null,
@@ -246,8 +283,21 @@ void main() {
         model: null,
       );
 
-      expect(server.requestLog, equals(["POST /session/s-root/prompt_async"]));
+      expect(
+        server.requestLog,
+        equals([
+          "POST /session/s-root/message",
+          "POST /session/s-root/prompt_async",
+        ]),
+      );
       expect(server.lastPromptDirectoryHeader, equals("/repo"));
+      expect(
+        server.noReplyMessageBodies.single,
+        equals({
+          "parts": <dynamic>[],
+          "noReply": true,
+        }),
+      );
       expect(
         server.lastPromptBody?['parts'],
         equals([
@@ -255,6 +305,54 @@ void main() {
         ]),
       );
       expect(server.lastPromptBody?.containsKey('variant'), isFalse);
+      expect(server.lastPromptBody?['messageID'], equals(server.reservedMessageIds.single));
+    });
+
+    test("stamps the prompt id on the echo of the message it named", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
+      await server.waitForSseConnection();
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      await plugin.sendPrompt(
+        promptId: "prm_1",
+        sessionId: "s-root",
+        parts: const [PluginPromptPart.text(text: "Continue")],
+        agent: null,
+        variant: null,
+        model: null,
+      );
+      final messageId = server.lastPromptBody?['messageID'] as String;
+
+      Map<String, dynamic> userMessage({required String id}) => {
+        "id": id,
+        "sessionID": "s-root",
+        "role": "user",
+        "agent": "build",
+        "time": {"created": 1},
+        "model": {"providerID": "openai", "modelID": "gpt-5.4"},
+      };
+      Future<void> emitMessage(String id) => server.emitRawSse(
+        jsonEncode({
+          "directory": "/repo",
+          "payload": {
+            "type": "message.updated",
+            "properties": {"info": userMessage(id: id)},
+          },
+        }),
+      );
+      await emitMessage(messageId);
+      await emitMessage(messageId);
+      await emitMessage("msg_typed_in_the_tui");
+      await _awaitEvents<BridgeSseMessageUpdated>(events, count: 3);
+
+      final stamped = events.whereType<BridgeSseMessageUpdated>().toList();
+      expect(stamped, hasLength(3));
+      expect(stamped[0].info["promptId"], equals("prm_1"));
+      expect(stamped[1].info["promptId"], equals("prm_1"));
+      expect(stamped[2].info.containsKey("promptId"), isFalse);
     });
 
     test("sendPrompt marks an accepted turn busy before SSE arrives", () async {
@@ -265,12 +363,14 @@ void main() {
           if (!connected.isCompleted) connected.complete();
         },
       );
+      await plugin.initialize();
       addTearDown(plugin.dispose);
       await connected.future;
       await server.waitForSseConnection();
       expect(plugin.currentWorkState, PluginWorkState.idle);
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Continue")],
         agent: null,
@@ -291,11 +391,13 @@ void main() {
         },
         onDisconnected: disconnected.complete,
       );
+      await plugin.initialize();
       addTearDown(plugin.dispose);
       await connected.future;
       await server.waitForSseConnection();
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Continue")],
         agent: null,
@@ -319,6 +421,7 @@ void main() {
         },
         onDisconnected: disconnected.complete,
       );
+      await plugin.initialize();
       addTearDown(plugin.dispose);
       await connected.future;
       expect(plugin.currentWorkState, PluginWorkState.idle);
@@ -338,12 +441,14 @@ void main() {
           if (!connected.isCompleted) connected.complete();
         },
       );
+      await plugin.initialize();
       addTearDown(plugin.dispose);
       await connected.future;
       server.promptStatusCode = HttpStatus.internalServerError;
 
       await expectLater(
         plugin.sendPrompt(
+          promptId: "prompt-1",
           sessionId: "s-root",
           parts: const [PluginPromptPart.text(text: "Continue")],
           agent: null,
@@ -356,13 +461,150 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.idle);
     });
 
+    final staleSelectionCases =
+        <
+          ({
+            String name,
+            String? agent,
+            PluginSessionVariant? variant,
+            ({String providerID, String modelID})? model,
+            String expectedMessage,
+            _OptionDiscoveryRequest discoveryRequest,
+          })
+        >[
+          (
+            name: "agent",
+            agent: "removed-agent",
+            variant: null,
+            model: null,
+            expectedMessage: "OpenCode no longer offers the selected agent.",
+            discoveryRequest: _OptionDiscoveryRequest.agents,
+          ),
+          (
+            name: "model",
+            agent: null,
+            variant: null,
+            model: (providerID: "anthropic", modelID: "removed-model"),
+            expectedMessage: "OpenCode no longer offers the selected model.",
+            discoveryRequest: _OptionDiscoveryRequest.providers,
+          ),
+          (
+            name: "variant",
+            agent: null,
+            variant: const PluginSessionVariant(id: "medium"),
+            model: (providerID: "anthropic", modelID: "claude-3-opus"),
+            expectedMessage: "OpenCode no longer offers the selected variant.",
+            discoveryRequest: _OptionDiscoveryRequest.providers,
+          ),
+        ];
+
+    for (final testCase in staleSelectionCases) {
+      test("classifies a removed ${testCase.name} after a generic reservation failure", () async {
+        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
+        addTearDown(plugin.dispose);
+        await server.waitForSseConnection();
+        server
+          ..failNoReplyMessageNumber = 1
+          ..noReplyMessageFailureStatusCode = HttpStatus.internalServerError;
+        server.requestLog.clear();
+
+        await expectLater(
+          plugin.sendPrompt(
+            promptId: "prompt-stale-${testCase.name}",
+            sessionId: "s-root",
+            parts: const [PluginPromptPart.text(text: "Continue")],
+            agent: testCase.agent,
+            variant: testCase.variant,
+            model: testCase.model,
+          ),
+          throwsA(
+            isA<PluginStaleOptionsException>()
+                .having((error) => error.operation, "operation", "sendPrompt")
+                .having((error) => error.message, "message", testCase.expectedMessage)
+                .having(
+                  (error) => error.cause,
+                  "cause",
+                  isA<PluginApiException>().having(
+                    (error) => error.statusCode,
+                    "statusCode",
+                    HttpStatus.internalServerError,
+                  ),
+                ),
+          ),
+        );
+
+        expect(
+          server.requestLog,
+          equals([
+            "POST /session/s-root/message",
+            switch (testCase.discoveryRequest) {
+              _OptionDiscoveryRequest.agents => "GET /agent",
+              _OptionDiscoveryRequest.providers => "GET /config/providers",
+            },
+          ]),
+        );
+        expect(server.requestLog, isNot(contains("POST /session/s-root/prompt_async")));
+        switch (testCase.discoveryRequest) {
+          case _OptionDiscoveryRequest.agents:
+            expect(server.lastAgentDirectoryHeader, "/repo");
+          case _OptionDiscoveryRequest.providers:
+            expect(server.lastProvidersDirectoryHeader, "/repo");
+        }
+      });
+    }
+
+    test("preserves a generic reservation failure when the selected agent remains available", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
+      addTearDown(plugin.dispose);
+      await server.waitForSseConnection();
+      server
+        ..failNoReplyMessageNumber = 1
+        ..noReplyMessageFailureStatusCode = HttpStatus.internalServerError;
+      server.requestLog.clear();
+
+      await expectLater(
+        plugin.sendPrompt(
+          promptId: "prompt-backend-failure",
+          sessionId: "s-root",
+          parts: const [PluginPromptPart.text(text: "Continue")],
+          agent: "build",
+          variant: null,
+          model: null,
+        ),
+        throwsA(
+          isA<PluginApiException>().having(
+            (error) => error.statusCode,
+            "statusCode",
+            HttpStatus.internalServerError,
+          ),
+        ),
+      );
+
+      expect(
+        server.requestLog,
+        equals([
+          "POST /session/s-root/message",
+          "GET /agent",
+        ]),
+      );
+      expect(server.lastAgentDirectoryHeader, "/repo");
+    });
+
     test("sendCommand detaches with the tracked directory and marks the turn busy", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
+      addTearDown(plugin.dispose);
       await server.waitForSseConnection();
       server.requestLog.clear();
       server.holdCommand = Completer<void>();
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
 
       await plugin.sendCommand(
+        promptId: "prompt-1",
         sessionId: "s-root",
         command: "/review-work",
         arguments: "recent changes",
@@ -372,11 +614,18 @@ void main() {
         model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 
-      expect(server.requestLog, equals(["POST /session/s-root/command"]));
+      expect(
+        server.requestLog,
+        equals([
+          "POST /session/s-root/message",
+          "POST /session/s-root/command",
+        ]),
+      );
       expect(server.lastCommandDirectoryHeader, equals("/repo"));
       expect(
         server.lastCommandBody,
         equals({
+          "messageID": server.reservedMessageIds.single,
           "command": "/review-work",
           "arguments": "recent changes",
           "agent": "reviewer",
@@ -385,16 +634,250 @@ void main() {
         }),
       );
       expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      final messageId = server.reservedMessageIds.single;
+      for (final created in [1, 2]) {
+        await server.emitRawSse(
+          jsonEncode({
+            "directory": "/repo",
+            "payload": {
+              "type": "message.updated",
+              "properties": {
+                "info": {
+                  "id": messageId,
+                  "sessionID": "s-root",
+                  "role": "user",
+                  "agent": "reviewer",
+                  "time": {"created": created},
+                  "model": {"providerID": "openai", "modelID": "gpt-4.1"},
+                },
+              },
+            },
+          }),
+        );
+      }
+      await _awaitEvents<BridgeSseMessageUpdated>(events, count: 2);
+
+      expect(
+        events.whereType<BridgeSseMessageUpdated>().map((event) => event.info["promptId"]),
+        equals(["prompt-1", "prompt-1"]),
+      );
       server.holdCommand!.complete();
+    });
+
+    test("definite prompt refusal removes its correlation and reserved message", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
+      await server.waitForSseConnection();
+      server.promptStatusCode = HttpStatus.badRequest;
+
+      await expectLater(
+        plugin.sendPrompt(
+          promptId: "prompt-rejected",
+          sessionId: "s-root",
+          parts: const [PluginPromptPart.text(text: "Continue")],
+          agent: null,
+          variant: null,
+          model: null,
+        ),
+        throwsA(isA<PluginApiException>().having((error) => error.statusCode, "statusCode", 400)),
+      );
+
+      final messageId = server.reservedMessageIds.single;
+      expect(server.deletedMessageIds, equals([messageId]));
+
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+      await server.emitRawSse(
+        jsonEncode({
+          "directory": "/repo",
+          "payload": {
+            "type": "message.updated",
+            "properties": {
+              "info": {
+                "id": messageId,
+                "sessionID": "s-root",
+                "role": "user",
+                "agent": "build",
+                "time": {"created": 1},
+                "model": {"providerID": "openai", "modelID": "gpt-5.4"},
+              },
+            },
+          },
+        }),
+      );
+      await _awaitEvents<BridgeSseMessageUpdated>(events, count: 1);
+
+      final echoed = events.whereType<BridgeSseMessageUpdated>().single;
+      expect(echoed.info.containsKey("promptId"), isFalse);
+    });
+
+    test("bare compact reuses a correlated server message and native compaction part", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
+      await server.waitForSseConnection();
+      server.requestLog.clear();
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      await plugin.sendCommand(
+        promptId: "prompt-compact",
+        sessionId: "s-root",
+        command: OpenCodeService.compactionCommandName,
+        arguments: "",
+        userVisibleArguments: null,
+        agent: "build",
+        variant: null,
+        model: (providerID: "openai", modelID: "gpt-5.4"),
+      );
+
+      final messageId = server.reservedMessageIds.single;
+      expect(
+        server.requestLog,
+        equals([
+          "POST /session/s-root/message",
+          "PATCH /session/s-root/message/$messageId/part/prt_server_1",
+          "POST /session/s-root/prompt_async",
+        ]),
+      );
+      expect(
+        server.noReplyMessageBodies.single["parts"],
+        equals([
+          {"type": "text", "text": ""},
+        ]),
+      );
+      expect(
+        server.lastUpdatedPart,
+        equals({
+          "id": "prt_server_1",
+          "sessionID": "s-root",
+          "messageID": messageId,
+          "type": "compaction",
+          "auto": false,
+        }),
+      );
+      expect(server.lastPromptBody?["messageID"], equals(messageId));
+      expect(server.lastPromptBody?["parts"], isEmpty);
+
+      await server.emitRawSse(
+        jsonEncode({
+          "directory": "/repo",
+          "payload": {
+            "type": "message.updated",
+            "properties": {
+              "info": {
+                "id": messageId,
+                "sessionID": "s-root",
+                "role": "user",
+                "agent": "build",
+                "time": {"created": 1},
+                "model": {"providerID": "openai", "modelID": "gpt-5.4"},
+              },
+            },
+          },
+        }),
+      );
+      await _awaitEvents<BridgeSseMessageUpdated>(events, count: 1);
+
+      final compactEcho = events.whereType<BridgeSseMessageUpdated>().single;
+      expect(compactEcho.info["promptId"], equals("prompt-compact"));
+    });
+
+    test("compact guidance is persisted before reserving the marker", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
+      await server.waitForSseConnection();
+      server.requestLog.clear();
+
+      await plugin.sendCommand(
+        promptId: "prompt-compact",
+        sessionId: "s-root",
+        command: OpenCodeService.compactionCommandName,
+        arguments: "  Keep auth decisions  ",
+        userVisibleArguments: "Keep auth decisions",
+        agent: "build",
+        variant: null,
+        model: (providerID: "openai", modelID: "gpt-5.4"),
+      );
+
+      expect(server.noReplyMessageBodies, hasLength(2));
+      expect(
+        server.noReplyMessageBodies.first["parts"],
+        equals([
+          {"type": "text", "text": "Keep auth decisions", "synthetic": true},
+        ]),
+      );
+      expect(
+        server.noReplyMessageBodies.last["parts"],
+        equals([
+          {"type": "text", "text": ""},
+          {"type": "text", "text": "Keep auth decisions"},
+        ]),
+      );
+      expect(server.lastPromptBody?["messageID"], equals(server.reservedMessageIds.last));
+    });
+
+    test("compact removes guidance when marker reservation is rejected", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
+      addTearDown(plugin.dispose);
+      await server.waitForSseConnection();
+      server.failNoReplyMessageNumber = 2;
+
+      await expectLater(
+        plugin.sendCommand(
+          promptId: "prompt-compact",
+          sessionId: "s-root",
+          command: OpenCodeService.compactionCommandName,
+          arguments: "Keep auth decisions",
+          userVisibleArguments: "Keep auth decisions",
+          agent: "build",
+          variant: null,
+          model: (providerID: "openai", modelID: "gpt-5.4"),
+        ),
+        throwsA(isA<PluginApiException>().having((error) => error.statusCode, "statusCode", 400)),
+      );
+
+      expect(server.reservedMessageIds, equals(["msg_server_1"]));
+      expect(server.deletedMessageIds, equals(["msg_server_1"]));
+    });
+
+    test("compact removes guidance and marker when conversion is rejected", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
+      addTearDown(plugin.dispose);
+      await server.waitForSseConnection();
+      server.messagePartStatusCode = HttpStatus.badRequest;
+
+      await expectLater(
+        plugin.sendCommand(
+          promptId: "prompt-compact",
+          sessionId: "s-root",
+          command: OpenCodeService.compactionCommandName,
+          arguments: "Keep auth decisions",
+          userVisibleArguments: "Keep auth decisions",
+          agent: "build",
+          variant: null,
+          model: (providerID: "openai", modelID: "gpt-5.4"),
+        ),
+        throwsA(isA<PluginApiException>().having((error) => error.statusCode, "statusCode", 400)),
+      );
+
+      expect(server.reservedMessageIds, equals(["msg_server_1", "msg_server_2"]));
+      expect(server.deletedMessageIds, equals(["msg_server_1", "msg_server_2"]));
     });
 
     test("detached sendCommand failure revokes provisional plugin busy", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       addTearDown(plugin.dispose);
       await server.waitForSseConnection();
       server.holdCommand = Completer<void>();
 
       await plugin.sendCommand(
+        promptId: "prompt-1",
         sessionId: "s-root",
         command: "/review-work",
         arguments: "",
@@ -415,6 +898,7 @@ void main() {
 
     test("getSessionMessages maps raw messages to plugin messages", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-1");
 
@@ -433,6 +917,7 @@ void main() {
 
     test("getSessionMessages exposes normalized file parts and filters snapshots", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-filter");
 
@@ -461,6 +946,7 @@ void main() {
 
     test("getSessionMessages shows automatic compaction user messages", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-new-parts-filter");
 
@@ -474,6 +960,7 @@ void main() {
 
     test("getSessionMessages agent part carries agentName", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-agent-part");
 
@@ -485,6 +972,7 @@ void main() {
 
     test("getSessionMessages retry part carries attempt and retryError", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-retry-part");
 
@@ -497,6 +985,7 @@ void main() {
 
     test("getSessionMessages truncates tool output to 500 chars", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-tool-long");
 
@@ -509,6 +998,7 @@ void main() {
 
     test("getSessionMessages keeps short tool output unchanged", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-tool-short");
 
@@ -518,13 +1008,14 @@ void main() {
 
     test("getProviders with connectedOnly false returns config providers with variants", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final result = await plugin.getProviders(projectId: "project-1");
 
       expect(result.providers, hasLength(2));
 
       final anthropic = result.providers.firstWhere((p) => p.id == "anthropic");
-      expect(anthropic, isA<PluginProviderAnthropic>());
+      expect(anthropic.id, equals("anthropic"));
       expect(anthropic.name, equals("Anthropic"));
       expect(anthropic.authType, equals(PluginProviderAuthType.apiKey));
       expect(anthropic.models, hasLength(2));
@@ -545,13 +1036,14 @@ void main() {
       expect(sonnet.releaseDate, equals(DateTime(2024, 6, 1)));
 
       final custom = result.providers.firstWhere((p) => p.id == "my-custom");
-      expect(custom, isA<PluginProviderCustom>());
+      expect(custom.id, equals("my-custom"));
       expect(custom.name, equals("My Custom Provider"));
       expect(custom.authType, equals(PluginProviderAuthType.unknown));
     });
 
     test("getProviders with connectedOnly true still returns config providers", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final result = await plugin.getProviders(projectId: "project-1");
 
@@ -561,18 +1053,20 @@ void main() {
 
     test("getProviders maps known provider IDs to correct union variants", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final result = await plugin.getProviders(projectId: "project-1");
 
       final anthropic = result.providers.firstWhere((p) => p.id == "anthropic");
-      expect(anthropic, isA<PluginProviderAnthropic>());
+      expect(anthropic.id, equals("anthropic"));
 
       final custom = result.providers.firstWhere((p) => p.id == "my-custom");
-      expect(custom, isA<PluginProviderCustom>());
+      expect(custom.id, equals("my-custom"));
     });
 
     test("events stream emits bridge events", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       // Wait for the actual event instead of a blind delay.
       // _initialize() emits BridgeSseProjectUpdated after coldStart().
@@ -584,6 +1078,7 @@ void main() {
 
     test("forced interruption includes an accepted prompt before busy SSE arrives", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       addTearDown(plugin.dispose);
       await server.waitForSseConnection();
       final initialProjectUpdated = Completer<void>();
@@ -602,6 +1097,7 @@ void main() {
       addTearDown(subscription.cancel);
       await initialProjectUpdated.future;
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "long task")],
         agent: null,
@@ -640,6 +1136,7 @@ void main() {
 
     test("unknown and malformed SSE frames are ignored without emitting bridge events", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       await server.waitForSseConnection();
 
       final events = <BridgeSseEvent>[];
@@ -680,6 +1177,7 @@ void main() {
 
     test("sync SSE frames are swallowed without emitting bridge events", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       await server.waitForSseConnection();
 
       final events = <BridgeSseEvent>[];
@@ -744,6 +1242,7 @@ void main() {
       };
 
       final plugin = OpenCodePlugin(serverUrl: dynamicServer.baseUrl);
+      await plugin.initialize();
       await dynamicServer.waitForSseConnection();
 
       // Now change the API response to omit the child — as if OpenCode
@@ -772,6 +1271,7 @@ void main() {
       };
 
       final plugin = OpenCodePlugin(serverUrl: dynamicServer.baseUrl);
+      await plugin.initialize();
       await dynamicServer.waitForSseConnection();
 
       // API now returns idle — stale relative to the tracker.
@@ -788,6 +1288,7 @@ void main() {
     group("renameSession", () {
       test("sends PATCH with title body and returns updated session", () async {
         final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
         await server.waitForSseConnection();
         server.requestLog.clear();
 
@@ -802,6 +1303,7 @@ void main() {
     group("archiveSession", () {
       test("sends PATCH with time.archived body", () async {
         final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
         await server.waitForSseConnection();
         server.requestLog.clear();
 
@@ -819,6 +1321,7 @@ void main() {
     group("renameProject", () {
       test("resolves worktree to project UUID then sends PATCH with name", () async {
         final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
         await server.waitForSseConnection();
         server.requestLog.clear();
 
@@ -998,12 +1501,22 @@ class _FakeOpenCodeServer() {
   int projectFailuresRemaining = 0;
   Map<String, dynamic>? lastPromptBody;
   String? lastPromptDirectoryHeader;
+  final List<Map<String, dynamic>> noReplyMessageBodies = [];
+  final List<String> reservedMessageIds = [];
+  Map<String, dynamic>? lastUpdatedPart;
+  final List<String> deletedMessageIds = [];
   Map<String, dynamic>? lastCommandBody;
   String? lastCommandDirectoryHeader;
+  String? lastAgentDirectoryHeader;
+  String? lastProvidersDirectoryHeader;
   String? lastCreatedSessionParentId;
   Completer<void>? holdCommand;
   int promptStatusCode = HttpStatus.ok;
   int commandStatusCode = HttpStatus.ok;
+  int messagePartStatusCode = HttpStatus.ok;
+  int? failNoReplyMessageNumber;
+  int noReplyMessageFailureStatusCode = HttpStatus.badRequest;
+  int _nextMessageNumber = 1;
   bool acceptSseConnections = true;
   final List<String> abortedSessionIds = [];
   final Completer<String> _firstAbort = Completer<String>();
@@ -1155,7 +1668,7 @@ class _FakeOpenCodeServer() {
       }
 
       if (request.method == "GET" && path == "/agent") {
-        expect(request.headers.value("x-opencode-directory"), equals("project-1"));
+        lastAgentDirectoryHeader = request.headers.value("x-opencode-directory");
         await _sendJson(request.response, [
           {
             "name": "build",
@@ -1212,6 +1725,68 @@ class _FakeOpenCodeServer() {
           await request.response.close();
           return;
         }
+        await _sendJson(request.response, true);
+        return;
+      }
+
+      final messageCollectionMatch = RegExp(r"^/session/([^/]+)/message$").firstMatch(path);
+      if (messageCollectionMatch != null && request.method == "POST") {
+        final sessionId = messageCollectionMatch.group(1)!;
+        final rawBody = await utf8.decoder.bind(request).join();
+        final body = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
+        noReplyMessageBodies.add(body);
+        if (noReplyMessageBodies.length == failNoReplyMessageNumber) {
+          request.response.statusCode = noReplyMessageFailureStatusCode;
+          request.response.write("message failed");
+          await request.response.close();
+          return;
+        }
+        final messageId = (body["messageID"] as String?) ?? "msg_server_${_nextMessageNumber++}";
+        reservedMessageIds.add(messageId);
+        final requestParts =
+            (body["parts"] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? const <Map<String, dynamic>>[];
+        final responseParts = <Map<String, dynamic>>[
+          for (var index = 0; index < requestParts.length; index++)
+            {
+              "id": "prt_server_${index + 1}",
+              "sessionID": sessionId,
+              "messageID": messageId,
+              ...requestParts[index],
+            },
+        ];
+        await _sendJson(request.response, {
+          "info": {
+            "id": messageId,
+            "sessionID": sessionId,
+            "role": "user",
+            "time": {"created": _nextMessageNumber},
+            "agent": body["agent"] ?? "build",
+            "model": body["model"] ?? {"providerID": "openai", "modelID": "gpt-5.4"},
+          },
+          "parts": responseParts,
+        });
+        return;
+      }
+
+      final messagePartMatch = RegExp(
+        r"^/session/([^/]+)/message/([^/]+)/part/([^/]+)$",
+      ).firstMatch(path);
+      if (messagePartMatch != null && request.method == "PATCH") {
+        final rawBody = await utf8.decoder.bind(request).join();
+        lastUpdatedPart = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
+        if (messagePartStatusCode != HttpStatus.ok) {
+          request.response.statusCode = messagePartStatusCode;
+          request.response.write("part update failed");
+          await request.response.close();
+          return;
+        }
+        await _sendJson(request.response, lastUpdatedPart!);
+        return;
+      }
+
+      final messageMatch = RegExp(r"^/session/([^/]+)/message/([^/]+)$").firstMatch(path);
+      if (messageMatch != null && request.method == "DELETE") {
+        deletedMessageIds.add(messageMatch.group(2)!);
         await _sendJson(request.response, true);
         return;
       }
@@ -1304,7 +1879,7 @@ class _FakeOpenCodeServer() {
       }
 
       if (request.method == "GET" && path == "/config/providers") {
-        expect(request.headers.value("x-opencode-directory"), equals("project-1"));
+        lastProvidersDirectoryHeader = request.headers.value("x-opencode-directory");
         await _sendJson(request.response, {
           "providers": [
             {

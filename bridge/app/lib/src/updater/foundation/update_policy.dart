@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:http/http.dart' show ClientException;
 import 'package:path/path.dart' as p;
 
 bool isNpmInstall({required String executablePath}) {
@@ -40,10 +42,6 @@ bool isCiEnvironment({required Map<String, String> environment}) {
   return ciVars.any((varName) => environment.containsKey(varName));
 }
 
-bool isInteractiveTerminal() {
-  return stdout.hasTerminal;
-}
-
 bool isUpdateDisabled({required Map<String, String> environment}) {
   return environment.containsKey('SESORI_NO_UPDATE');
 }
@@ -80,6 +78,14 @@ bool shouldSkipUpdates({
 /// auth rejections, etc.) are genuine and surfaced with reinstall guidance.
 bool isRetryableHttpStatus(int statusCode) {
   return statusCode >= 500 || statusCode == 429 || statusCode == 408;
+}
+
+bool isTransientNetworkError(Object error) {
+  return error is SocketException ||
+      error is HandshakeException ||
+      error is TimeoutException ||
+      error is HttpException ||
+      error is ClientException;
 }
 
 String? unsupportedPackageRuntimeMessage({

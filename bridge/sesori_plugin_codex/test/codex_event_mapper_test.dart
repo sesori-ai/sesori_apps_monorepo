@@ -10,6 +10,8 @@ import "package:codex_plugin/src/api/parsers/codex_image_bearing_item_parser.dar
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:codex_plugin/src/repositories/codex_tool_lifecycle_tracker.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_user_content_mapper.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
@@ -24,6 +26,7 @@ void main() {
     const projectCwd = "/repo/app";
     const imageAttachmentMapper = CodexImageAttachmentMapper();
     const imageBearingItemParser = CodexImageBearingItemParser();
+    const userContentMapper = CodexUserContentMapper();
     const rolloutToolMapper = CodexRolloutToolMapper(
       imageAttachmentMapper: imageAttachmentMapper,
     );
@@ -33,6 +36,7 @@ void main() {
       imageAttachmentMapper: imageAttachmentMapper,
       imageBearingItemParser: imageBearingItemParser,
       rolloutToolMapper: rolloutToolMapper,
+      userContentMapper: userContentMapper,
     );
     final rolloutLifecycle = _ToolLifecycleHarness(
       eventMapper: mapper,
@@ -189,6 +193,7 @@ void main() {
         imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
+        userContentMapper: userContentMapper,
       )..setThreadDirectory("t-9", "/repo/app/packages/ui");
 
       final events = scopedMapper.map(
@@ -209,6 +214,7 @@ void main() {
         imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
+        userContentMapper: userContentMapper,
       );
       mapThreadStarted(
         activityMapper,
@@ -256,6 +262,7 @@ void main() {
         imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
+        userContentMapper: userContentMapper,
       );
       mapThreadStarted(
         activityMapper,
@@ -355,6 +362,373 @@ void main() {
       expect(part.text, "hey");
     });
 
+    test("item userMessage carries the prompt id codex echoes as clientId", () {
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "turnId": "u-1",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user",
+              "clientId": "prm_1",
+              "content": [
+                {"type": "text", "text": "hey", "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      final parsed = shared.Message.fromJson((events[0] as BridgeSseMessageUpdated).info);
+      expect((parsed as shared.MessageUser).promptId, "prm_1");
+    });
+
+    test("item userMessage typed in the codex CLI stays unattributed", () {
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "turnId": "u-1",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user",
+              "content": [
+                {"type": "text", "text": "hey", "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      final parsed = shared.Message.fromJson((events[0] as BridgeSseMessageUpdated).info);
+      expect((parsed as shared.MessageUser).promptId, isNull);
+    });
+
+    test("item userMessage hides bridge context while preserving authored content", () {
+      const worktreeContext = """
+[SYSTEM CONTEXT \u2014 IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---
+""";
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-user-content",
+            "turnId": "u-user-content",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user-content",
+              "clientId": "prm_user_content",
+              "content": [
+                {"type": "text", "text": worktreeContext, "text_elements": <Object?>[]},
+                {"type": "text", "text": "visible prompt", "text_elements": <Object?>[]},
+                {"type": "image", "url": "data:image/png;base64,AA=="},
+              ],
+            },
+          },
+        ),
+      );
+
+      expect(events, hasLength(3));
+      final user = shared.Message.fromJson((events.first as BridgeSseMessageUpdated).info) as shared.MessageUser;
+      expect(user.promptId, "prm_user_content");
+      final parts = events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
+      expect(parts.first.type, PluginMessagePartType.text);
+      expect(parts.first.text, "visible prompt");
+      expect(parts.first.text, isNot(contains("SYSTEM CONTEXT")));
+      expect(parts.last.type, PluginMessagePartType.file);
+      final image = parts.last.attachment! as PluginMessageAttachmentInlineImage;
+      expect(image.mime, "image/png");
+      expect(image.base64, "AA==");
+    });
+
+    test("item userMessage preserves authored whitespace after bridge context", () {
+      const text =
+          """
+[SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---
+"""
+          "    authored text  \n";
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-user-whitespace",
+            "turnId": "u-user-whitespace",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user-whitespace",
+              "content": [
+                {"type": "text", "text": text, "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      final part = (events.last as BridgeSseMessagePartUpdated).part;
+      expect(part.text, "    authored text  \n");
+    });
+
+    test("item userMessage hides bridge context inside a command invocation", () {
+      const text =
+          r"""
+$review [SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---
+
+"""
+          "    authored arguments  \n";
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-command-context",
+            "turnId": "u-command-context",
+            "item": {
+              "type": "userMessage",
+              "id": "i-command-context",
+              "content": [
+                {"type": "text", "text": text, "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      final part = (events.last as BridgeSseMessagePartUpdated).part;
+      expect(
+        part.text,
+        r"$review     authored arguments  "
+        "\n",
+      );
+    });
+
+    test("item userMessage hides bridge context from an argumentless command", () {
+      const text = r"""
+$review [SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---""";
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-argumentless-command-context",
+            "turnId": "u-argumentless-command-context",
+            "item": {
+              "type": "userMessage",
+              "id": "i-argumentless-command-context",
+              "content": [
+                {"type": "text", "text": text, "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      final part = (events.last as BridgeSseMessagePartUpdated).part;
+      expect(part.text, r"$review ");
+    });
+
+    test("item userMessage preserves authored marker-shaped content", () {
+      const text = """
+[SYSTEM CONTEXT — IMPORTANT]
+Authored explanation.
+
+---
+authored conclusion
+""";
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-user-marker",
+            "turnId": "u-user-marker",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user-marker",
+              "content": [
+                {"type": "text", "text": text, "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      final part = (events.last as BridgeSseMessagePartUpdated).part;
+      expect(part.text, text);
+    });
+
+    test("item userMessage keeps an attachment-only prompt after hiding bridge context", () {
+      const worktreeContext = """
+[SYSTEM CONTEXT \u2014 IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---
+""";
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-user-attachment",
+            "turnId": "u-user-attachment",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user-attachment",
+              "content": [
+                {"type": "text", "text": worktreeContext, "text_elements": <Object?>[]},
+                {"type": "image", "url": "data:image/png;base64,AA=="},
+              ],
+            },
+          },
+        ),
+      );
+
+      expect(events, hasLength(2));
+      final part = (events.last as BridgeSseMessagePartUpdated).part;
+      expect(part.type, PluginMessagePartType.file);
+      expect(part.attachment, isA<PluginMessageAttachmentInlineImage>());
+    });
+
+    test("item lifecycle timestamps survive live message updates", () {
+      const threadId = "t-timestamps";
+      final userStarted = mapper.map(
+        const CodexServerNotification(
+          method: "item/started",
+          params: {
+            "threadId": threadId,
+            "startedAtMs": 1779293100123,
+            "item": {"type": "userMessage", "id": "i-user-time", "content": <Object?>[]},
+          },
+        ),
+      );
+      final userCompleted = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": threadId,
+            "completedAtMs": 1779293100456,
+            "item": {"type": "userMessage", "id": "i-user-time", "content": <Object?>[]},
+          },
+        ),
+      );
+      final assistantStarted = mapper.map(
+        const CodexServerNotification(
+          method: "item/started",
+          params: {
+            "threadId": threadId,
+            "startedAtMs": 1779293101000,
+            "item": {"type": "agentMessage", "id": "i-agent-time", "text": ""},
+          },
+        ),
+      );
+      final assistantCompleted = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": threadId,
+            "completedAtMs": 1779293102000,
+            "item": {"type": "agentMessage", "id": "i-agent-time", "text": "done"},
+          },
+        ),
+      );
+
+      final startedUser = shared.Message.fromJson((userStarted.first as BridgeSseMessageUpdated).info);
+      final completedUser = shared.Message.fromJson((userCompleted.first as BridgeSseMessageUpdated).info);
+      final startedAssistant = shared.Message.fromJson((assistantStarted.first as BridgeSseMessageUpdated).info);
+      final completedAssistant = shared.Message.fromJson((assistantCompleted.first as BridgeSseMessageUpdated).info);
+      expect(startedUser.time, const shared.MessageTime(created: 1779293100123, completed: null));
+      expect(completedUser.time, startedUser.time);
+      expect(startedAssistant.time, const shared.MessageTime(created: 1779293101000, completed: null));
+      expect(
+        completedAssistant.time,
+        const shared.MessageTime(created: 1779293101000, completed: 1779293102000),
+      );
+    });
+
+    test("late native tool completion keeps its start time after turn completion", () {
+      const threadId = "t-late-tool-time";
+      mapper.map(
+        const CodexServerNotification(
+          method: "item/started",
+          params: {
+            "threadId": threadId,
+            "startedAtMs": 1779293103000,
+            "item": {
+              "type": "commandExecution",
+              "id": "i-late-tool-time",
+              "command": "sleep 1",
+              "status": "inProgress",
+            },
+          },
+        ),
+      );
+      mapper.map(
+        const CodexServerNotification(
+          method: "turn/completed",
+          params: {
+            "threadId": threadId,
+            "turn": {"id": "u-late-tool-time"},
+          },
+        ),
+      );
+
+      final completed = mapper.map(
+        const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": threadId,
+            "completedAtMs": 1779293104000,
+            "item": {
+              "type": "commandExecution",
+              "id": "i-late-tool-time",
+              "command": "sleep 1",
+              "status": "completed",
+            },
+          },
+        ),
+      );
+
+      expect(
+        shared.Message.fromJson((completed.first as BridgeSseMessageUpdated).info).time,
+        const shared.MessageTime(created: 1779293103000, completed: 1779293104000),
+      );
+    });
+
     test("contextCompaction emits a durable tool lifecycle and completion signal", () {
       final started = mapper.map(
         const CodexServerNotification(
@@ -428,6 +802,7 @@ void main() {
         imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
+        userContentMapper: userContentMapper,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
       // thread/started carries the provider; the mapper remembers it per thread.
@@ -468,6 +843,7 @@ void main() {
         imageAttachmentMapper: imageAttachmentMapper,
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
+        userContentMapper: userContentMapper,
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
       mapThreadStarted(
@@ -651,6 +1027,10 @@ void main() {
       expect(
         (running[1] as BridgeSseMessagePartUpdated).part.state?.title,
         "/usr/bin/false",
+      );
+      expect(
+        shared.Message.fromJson((running[0] as BridgeSseMessageUpdated).info).time,
+        shared.MessageTime(created: DateTime.utc(2026, 7, 23, 8).millisecondsSinceEpoch, completed: null),
       );
       final rawPart = (completed[1] as BridgeSseMessagePartUpdated).part;
       final latePart = (lateItem[1] as BridgeSseMessagePartUpdated).part;
@@ -895,11 +1275,27 @@ void main() {
           line: running,
         );
 
+      rolloutLifecycle.map(
+        const CodexServerNotification(
+          method: "item/started",
+          params: {
+            "threadId": "t-completed",
+            "startedAtMs": 1779293200000,
+            "item": {
+              "type": "commandExecution",
+              "id": "call-completed",
+              "status": "inProgress",
+            },
+          },
+        ),
+      );
+
       final events = rolloutLifecycle.map(
         const CodexServerNotification(
           method: "item/completed",
           params: {
             "threadId": "t-completed",
+            "completedAtMs": 1779293201000,
             "item": {
               "type": "commandExecution",
               "id": "call-completed",
@@ -912,6 +1308,10 @@ void main() {
 
       final part = (events[1] as BridgeSseMessagePartUpdated).part;
       expect(part.state?.status, PluginToolStatus.completed);
+      expect(
+        shared.Message.fromJson((events[0] as BridgeSseMessageUpdated).info).time,
+        const shared.MessageTime(created: 1779293200000, completed: 1779293201000),
+      );
       rolloutLifecycle.clearRolloutTurn(threadId: "t-completed");
     });
 
@@ -1437,6 +1837,37 @@ void main() {
       expect((events.single as BridgeSseSessionError).sessionID, "t-1");
     });
 
+    test("failed turn/completed emits a visible error message", () {
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "turn/completed",
+          params: {
+            "threadId": "t-quota",
+            "turn": {
+              "id": "u-quota",
+              "status": "failed",
+              "error": {
+                "message": "You've hit your usage limit.",
+                "codexErrorInfo": "usageLimitExceeded",
+              },
+              "startedAt": 1700000005,
+              "completedAt": 1700000010,
+            },
+          },
+        ),
+      );
+
+      expect(events, hasLength(3));
+      final event = events[1] as BridgeSseMessageUpdated;
+      final message = shared.Message.fromJson(event.info) as shared.MessageError;
+      expect(message.id, "u-quota");
+      expect(message.sessionID, "t-quota");
+      expect(message.errorName, "CodexError");
+      expect(message.errorMessage, "You've hit your usage limit.");
+      expect(message.time, const shared.MessageTime(created: 1700000010000, completed: 1700000010000));
+      expect(parseAsSesori(event), isA<shared.SesoriMessageUpdated>());
+    });
+
     test("notifications with no bridge analog are dropped", () {
       for (final method in const [
         "account/rateLimits/updated",
@@ -1450,6 +1881,22 @@ void main() {
           reason: "$method should be dropped",
         );
       }
+    });
+
+    test("skills/changed invalidates the command catalog", () {
+      final events = mapper.map(
+        const CodexServerNotification(method: "skills/changed", params: {}),
+      );
+
+      expect(events, const [BridgeSseCommandCatalogUpdated()]);
+    });
+
+    test("MCP startup changes invalidate MCP tools", () {
+      final events = mapper.map(
+        const CodexServerNotification(method: "mcpServer/startupStatus/updated", params: {}),
+      );
+
+      expect(events, const [BridgeSseMcpToolsChanged()]);
     });
 
     test("regression: real bug-log payloads parse cleanly", () {
@@ -1541,6 +1988,7 @@ class _ToolLifecycleHarness({
           )
         : _toolTracker.observeCorrelatableAppServerItem(
             event: correlatableItem,
+            notification: notification,
           );
     final threadId = correlatableItem?.threadId ?? notification.params["threadId"];
     if (tool == null || threadId is! String) {
@@ -1560,7 +2008,7 @@ class _ToolLifecycleHarness({
 
 String _captureWarnings(void Function() action) {
   final previousLevel = Log.level;
-  final stderr = _BufferingStdout();
+  final stderr = BufferingStdout();
   try {
     Log.level = LogLevel.warning;
     IOOverrides.runZoned(action, stderr: () => stderr);
@@ -1568,16 +2016,4 @@ String _captureWarnings(void Function() action) {
     Log.level = previousLevel;
   }
   return stderr.text;
-}
-
-class _BufferingStdout() implements Stdout {
-  final StringBuffer _buffer = StringBuffer();
-
-  String get text => _buffer.toString();
-
-  @override
-  void writeln([Object? object = ""]) => _buffer.writeln(object);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
 }

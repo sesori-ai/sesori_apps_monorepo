@@ -3,8 +3,8 @@ import "dart:convert";
 import "dart:io";
 
 import "package:path/path.dart" as p;
-import "package:sesori_bridge/src/bridge/runtime/plugin_generation_factory.dart";
-import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
+import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";
+import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
 import "package:sesori_bridge/src/server/api/runtime_file_api.dart";
 import "package:sesori_bridge/src/server/host/plugin_state_directory.dart";
 import "package:sesori_bridge/src/server/repositories/process_repository.dart";
@@ -105,6 +105,7 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
     clock: const ServerClock(),
     environment: const <String, String>{},
     currentUser: null,
+    resolveIdleTimeoutMins: ({required pluginId}) => 10,
   );
   final runtime =
       PluginRuntime(
@@ -325,7 +326,6 @@ class _FakePluginApi(@override final String id) extends NativeProjectsPluginApi 
   @override
   Stream<BridgeSseEvent> get events => _eventsController.stream;
 
-  @override
   Future<void> dispose() => _eventsController.close();
 
   @override

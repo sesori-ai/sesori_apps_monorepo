@@ -28,6 +28,7 @@ class SseEvent({required final SesoriSseEvent data, final String? directory}) {
     SesoriTodoUpdated(:final sessionID) => sessionID,
     SesoriPermissionReplied(:final sessionID) => sessionID,
     SesoriSessionPromptDefaultsChanged(:final sessionID) => sessionID,
+    SesoriSessionQueuedPrompts(:final sessionID) => sessionID,
     SesoriServerConnected() ||
     SesoriServerHeartbeat() ||
     SesoriServerInstanceDisposed() ||

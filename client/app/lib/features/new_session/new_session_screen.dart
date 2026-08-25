@@ -30,7 +30,7 @@ class const NewSessionScreen({
     return BlocProvider(
       create: (_) => NewSessionCubit(
         connectionService: getIt<ConnectionService>(),
-        sessionService: getIt<SessionService>(),
+        sessionRepository: getIt<SessionRepository>(),
         newSessionPluginService: getIt<NewSessionPluginService>(),
         newSessionOptionsService: getIt<NewSessionOptionsService>(),
         projectRepository: getIt<ProjectRepository>(),
@@ -87,6 +87,7 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
   bool _dedicatedWorktree = true;
   bool _navigatingToCreatedSession = false;
   bool _isSending = false;
+  Future<void>? _refreshPress;
   late final ValueNotifier<PregoComposerSurfaceStyle> _composerSurfaceStyle;
   late PregoPopupAlertPresenter _popupAlertPresenter;
   late String _launchingInBackgroundMessage;
@@ -128,11 +129,37 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
     context.pop();
   }
 
+  /// Runs the refresh action and keeps it on screen while the press is still
+  /// working. Every load it can start also clears the condition that put the
+  /// action there, so without this the only feedback for the press would be
+  /// the action vanishing — at the one moment the user is watching it.
+  ///
+  /// Only the newest press governs: the harness chooser stays live during a
+  /// refresh, so a second press can begin while the first is still outstanding,
+  /// and the first finishing must not retire the action the second is running.
+  Future<void> _refreshOptions() async {
+    final press = context.read<NewSessionCubit>().refreshOptions();
+    // Block bodies: an arrow would hand setState the assigned Future, which it
+    // rejects as asynchronous work.
+    setState(() {
+      _refreshPress = press;
+    });
+    try {
+      await press;
+    } finally {
+      if (mounted && identical(_refreshPress, press)) {
+        setState(() {
+          _refreshPress = null;
+        });
+      }
+    }
+  }
+
   Widget? _buildErrorBanner(NewSessionState state) {
     final prego = context.prego;
     final loc = context.loc;
-    return switch (state) {
-      NewSessionRestoringSubmission(:final reason) || NewSessionCreationError(:final reason) => Padding(
+    return switch (state.phase) {
+      NewSessionPhaseRestoringSubmission(:final reason) || NewSessionPhaseCreationError(:final reason) => Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,14 +175,14 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
           ],
         ),
       ),
-      NewSessionDiscoveryError(:final reason) => Padding(
+      NewSessionPhaseDiscoveryError(:final reason) => Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 4),
         child: Text(
           reason.localizedMessage(loc),
           style: TextStyle(color: prego.colors.fgErrorPrimary),
         ),
       ),
-      NewSessionIdle() || NewSessionSending() || NewSessionCreated() => null,
+      NewSessionPhaseIdle() || NewSessionPhaseSending() || null => null,
     };
   }
 
@@ -183,13 +210,18 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
 
   /// Where the harness options came from, or why they are missing.
   ///
-  /// Null while a load is still in flight or before a routable harness is
-  /// known — there is nothing honest to say yet. The same answer gates the
-  /// floating refresh action, so the explanation and the way to act on it
-  /// appear and disappear together.
+  /// Null before a routable harness is known, or while a first load has
+  /// nothing to describe yet — there is nothing honest to say. A refresh over
+  /// options already on screen keeps describing those, so the line does not
+  /// blink out and shift the rows under it for the length of the load.
   ({String message, bool isFailure})? _resolveOptionsStatus({required AgentModelData? data}) {
     final plugin = data?.plugin;
-    if (data == null || plugin == null || !plugin.isRoutable || data.isLoading) return null;
+    if (data == null ||
+        plugin == null ||
+        !plugin.isRoutable ||
+        data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.loading) {
+      return null;
+    }
 
     final loc = context.loc;
     if (data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable) {
@@ -208,15 +240,17 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
       ),
       NewSessionOptionsUnavailableState() => (message: loc.newSessionOptionsUnavailable, isFailure: false),
       NewSessionOptionsUnsupportedState() ||
-      NewSessionOptionsAvailableState(source: NewSessionOptionsSource.legacy) => (
+      NewSessionOptionsAvailableState(source: NewSessionOptionsSource.legacy) ||
+      NewSessionOptionsRefreshingState(source: NewSessionOptionsSource.legacy) => (
         message: loc.newSessionOptionsLegacyBridge,
         isFailure: false,
       ),
-      NewSessionOptionsAvailableState(source: NewSessionOptionsSource.aggregate) => (
+      NewSessionOptionsAvailableState(source: NewSessionOptionsSource.aggregate) ||
+      NewSessionOptionsRefreshingState(source: NewSessionOptionsSource.aggregate) => (
         message: loc.newSessionOptionsCached,
         isFailure: false,
       ),
-      NewSessionOptionsLoadingState() || NewSessionOptionsRefreshingState() => null,
+      NewSessionOptionsLoadingState() => null,
     };
   }
 
@@ -243,14 +277,19 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
   /// it acts on. Floating rather than in flow: a cramped viewport — landscape
   /// with a multiline draft — must still spend its height on the composer.
   ///
-  /// When harness discovery itself failed before identifying a harness, it
-  /// retries discovery instead and says so. A confirmed empty harness list has
-  /// its own notice and no refresh action.
-  Widget _buildOptionsRefresh({
-    required NewSessionCubit cubit,
-    required bool isHarnessDiscovery,
-    required bool isProjectUnavailable,
-  }) {
+  /// It is one action with one name in every state. Which load it actually
+  /// repeats — harness discovery, the project check, or the options themselves
+  /// — is the cubit's to decide; naming that split here would ask the user to
+  /// track a distinction they cannot act on. The line above the composer
+  /// already says what is missing. A confirmed empty harness list has its own
+  /// notice and no refresh action.
+  /// It spins while a press is running and the answers on screen are still
+  /// unsettled, rather than for the whole life of the press. A press outlives
+  /// its own subject — the harness chooser stays live during a refresh, and the
+  /// harness left behind may take as long as it likes to answer — so a spinner
+  /// tied to the press alone would sit over another harness's settled options,
+  /// on an action the user then cannot press.
+  Widget _buildOptionsRefresh({required NewSessionCubit cubit, required bool isLoading}) {
     return Positioned(
       bottom: _refreshBottomGap,
       left: 0,
@@ -258,15 +297,12 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
       child: Center(
         child: PregoButtonsSolid(
           key: const Key("new_session_options_refresh"),
-          label: isHarnessDiscovery
-              ? context.loc.newSessionHarnessesRefresh
-              : isProjectUnavailable
-              ? context.loc.newSessionProjectRefresh
-              : context.loc.newSessionOptionsRefresh,
+          label: context.loc.newSessionOptionsRefresh,
           hierarchy: PregoButtonsSolidHierarchy.tertiary,
           size: PregoButtonsSolidSize.sm,
           leadingIcon: TablerRegular.refresh,
-          onPressed: cubit.canRefreshOptions ? cubit.refreshOptions : null,
+          isLoading: isLoading,
+          onPressed: cubit.canRefreshOptions ? _refreshOptions : null,
         ),
       ),
     );
@@ -338,20 +374,18 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
     final cubit = context.watch<NewSessionCubit>();
     final state = cubit.state;
     final loc = context.loc;
-    final isSending = state is NewSessionSending;
+    final isSending = state.phase is NewSessionPhaseSending;
     final composerData = state.agentModelData;
     final needsHarnessDiscovery = cubit.needsHarnessDiscovery;
     final hasNoHarnesses = cubit.hasNoHarnesses;
-    final isProjectUnavailable =
-        composerData?.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable;
     final optionsStatus = _resolveOptionsStatus(data: composerData);
-    final restoringSubmission = switch (state) {
-      NewSessionRestoringSubmission(:final submission) => submission,
-      NewSessionIdle() ||
-      NewSessionSending() ||
-      NewSessionCreationError() ||
-      NewSessionDiscoveryError() ||
-      NewSessionCreated() => null,
+    final restoringSubmission = switch (state.phase) {
+      NewSessionPhaseRestoringSubmission(:final submission) => submission,
+      NewSessionPhaseIdle() ||
+      NewSessionPhaseSending() ||
+      NewSessionPhaseCreationError() ||
+      NewSessionPhaseDiscoveryError() ||
+      null => null,
     };
     final restoredAttachments = switch (restoringSubmission) {
       NewSessionTextSubmissionSnapshot(:final attachments) => attachments,
@@ -359,8 +393,9 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
     };
     // A confirmed empty harness list is explained by the notice and has no
     // refresh action. Keep discovery retry available only when discovery failed
-    // before the bridge could confirm what it runs.
-    final showsRefresh = (needsHarnessDiscovery && !hasNoHarnesses) || optionsStatus != null;
+    // before the bridge could confirm what it runs. A press of its own keeps it
+    // on screen: the load it started is exactly what the user wants to watch.
+    final showsRefresh = (needsHarnessDiscovery && !hasNoHarnesses) || optionsStatus != null || _refreshPress != null;
     final optionsBottomPadding = showsRefresh
         ? _optionsBottomPadding + _refreshBandHeight(context)
         : _optionsBottomPadding;
@@ -460,8 +495,7 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
                               if (showsRefresh)
                                 _buildOptionsRefresh(
                                   cubit: cubit,
-                                  isHarnessDiscovery: needsHarnessDiscovery,
-                                  isProjectUnavailable: isProjectUnavailable,
+                                  isLoading: _refreshPress != null && (composerData?.isLoading ?? false),
                                 ),
                             ],
                           ),

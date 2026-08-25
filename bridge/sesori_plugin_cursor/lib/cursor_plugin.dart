@@ -2,6 +2,8 @@
 //
 // Drives `cursor-agent acp` over the generic ACP machinery (acp_plugin),
 // adding Cursor's `cursor/*` extensions and its configOptions model picker.
+export "package:acp_plugin/acp_plugin.dart" show defaultAcpProcessFactory;
+
 export "src/api/cursor_session_storage_api.dart";
 export "src/cursor_approval_registry.dart";
 export "src/cursor_binary.dart";

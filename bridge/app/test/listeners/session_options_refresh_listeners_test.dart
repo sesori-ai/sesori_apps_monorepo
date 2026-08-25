@@ -1,10 +1,10 @@
 import "dart:async";
 
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
-import "package:sesori_bridge/src/bridge/services/session_options_service.dart";
 import "package:sesori_bridge/src/listeners/session_options_changed_refresh_listener.dart";
 import "package:sesori_bridge/src/listeners/session_options_creation_refresh_listener.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
+import "package:sesori_bridge/src/services/session_options_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -211,6 +211,12 @@ class _FakeSessionOptionsService() implements SessionOptionsService {
       failure: SessionOptionsKnownRefreshFailure(),
     );
   }
+
+  @override
+  Future<void> invalidateRejectedSelection({
+    required String pluginId,
+    required String projectId,
+  }) async {}
 }
 
 class _FakePluginRuntime() implements PluginRuntime {

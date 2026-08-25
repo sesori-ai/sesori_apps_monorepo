@@ -40,7 +40,7 @@ void main() {
         isTrue,
       );
 
-      final asked = events.single as BridgeSsePermissionAsked;
+      final asked = events.whereType<BridgeSsePermissionAsked>().single;
       expect(asked.requestID, "br-1");
       expect(asked.sessionID, "session-1");
       expect(asked.tool, "Write");
@@ -59,7 +59,16 @@ void main() {
         "behavior": "allow",
         "updatedInput": {"file_path": "a.dart"},
       });
-      expect(events.last, isA<BridgeSsePermissionReplied>());
+      expect(events.whereType<BridgeSsePermissionReplied>(), hasLength(1));
+    });
+
+    test("every approval transition invalidates the activity summary", () {
+      handle(sessionId: "session-1", message: _permission());
+      expect(events.whereType<BridgeSseProjectUpdated>(), hasLength(1));
+
+      expect(registry.replyPermission(id: "br-1", reply: PluginPermissionReply.once), isTrue);
+      expect(registry.hasPendingInput(sessionId: "session-1"), isFalse);
+      expect(events.whereType<BridgeSseProjectUpdated>(), hasLength(2));
     });
 
     test("always sends only session-scoped addRules suggestions", () {
@@ -173,7 +182,7 @@ void main() {
         ),
       );
 
-      final asked = events.single as BridgeSseQuestionAsked;
+      final asked = events.whereType<BridgeSseQuestionAsked>().single;
       expect(asked.questions.single.question, "Which strategy?");
       expect(asked.questions.single.options.map((option) => option.label), ["Unit", "Integration"]);
       expect(
@@ -207,7 +216,7 @@ void main() {
         ),
       );
 
-      final asked = events.single as BridgeSseQuestionAsked;
+      final asked = events.whereType<BridgeSseQuestionAsked>().single;
       expect(asked.questions.single.question, contains("Implement it"));
       registry.replyQuestion(
         id: "br-1",

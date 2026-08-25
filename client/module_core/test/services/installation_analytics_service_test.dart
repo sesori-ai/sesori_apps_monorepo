@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:test/test.dart";
 
 class _RecordingAnalyticsRepository() extends Mock implements AnalyticsRepository {
@@ -38,12 +39,8 @@ void main() {
     expect(repository.events.single.parameters, isNot(contains("user_key")));
   });
 
-  test("debug, unsupported, and legacy-clear-failed runtimes emit nothing", () async {
-    for (final reason in [
-      AnalyticsRuntimeDisabledReason.debugOrProfile,
-      AnalyticsRuntimeDisabledReason.unsupportedPlatform,
-      AnalyticsRuntimeDisabledReason.identitySafetyPreconditionFailed,
-    ]) {
+  test("disabled runtimes emit nothing", () async {
+    for (final reason in AnalyticsRuntimeDisabledReason.values) {
       final repository = _RecordingAnalyticsRepository();
       final service = InstallationAnalyticsService(
         capability: AnalyticsRuntimeCapability.disabled(reason: reason),

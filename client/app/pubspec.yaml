@@ -17,9 +17,9 @@ resolution: workspace
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.8.0+1
+version: 1.8.1+1
 environment:
-  sdk: ^3.13.0-0
+  sdk: ^3.13.1
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -33,23 +33,19 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   intl: any
-  material_ui: ^1.0.0
+  material_ui: ^1.0.1
   cupertino_ui: ^1.0.0
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.9
-  liquid_glass_widgets: ^0.22.1
+  liquid_glass_widgets: ^0.30.1
   http: ^1.6.0
   freezed_annotation: ^3.1.0
   json_annotation: ^4.12.0
-  collection: ^1.19.1
   rxdart: ^0.28.0
   flutter_bloc: ^9.1.1
   # Before updating go_router, check its release notes for a fix to
   # https://github.com/flutter/flutter/issues/191132. Once fixed, remove the
   # explicit MaterialPage workaround in lib/core/routing/app_router.dart.
-  go_router: ^17.3.0
+  go_router: ^17.5.0
   get_it: ^9.2.1
   injectable: ^3.0.0
   flutter_markdown_plus: ^1.0.12
@@ -62,10 +58,7 @@ dependencies:
     path: ../module_core
   theme_prego:
     path: ../module_prego
-  cryptography: ^2.9.0
-  cryptography_flutter: ^2.3.4
-  web_socket_channel: ^3.0.3
-  flutter_secure_storage: ^10.3.1
+  flutter_secure_storage: ^11.0.0
   app_links: ^7.2.1
   url_launcher: ^6.3.2
   share_plus: ^13.3.0
@@ -80,17 +73,15 @@ dependencies:
   path_provider: ^2.1.6
   re_highlight: ^0.0.3
   wakelock_plus: ^1.7.0
-  firebase_core: ^4.12.1
-  firebase_analytics: ^12.4.5
-  firebase_crashlytics: ^5.2.6
-  firebase_messaging: ^16.4.3
-  flutter_local_notifications: ^22.2.0
+  firebase_core: ^4.13.0
+  firebase_analytics: ^12.4.6
+  firebase_crashlytics: ^5.2.7
+  firebase_messaging: ^16.5.0
+  flutter_local_notifications: ^22.3.0
   flutter_svg: ^2.3.0
   sign_in_with_apple: ^8.1.0
   crypto: ^3.0.7
-  vector_graphics: ^1.2.2
-  flutter_chat_ui: ^2.11.1
-  flutter_chat_core: ^2.9.0
+  vector_graphics: ^1.2.3
   image_picker: ^1.2.3
   flutter_keyboard_visibility:
     git:
@@ -99,13 +90,14 @@ dependencies:
       path: flutter_keyboard_visibility
 
 dev_dependencies:
+  cryptography: ^2.9.0
   flutter_test:
     sdk: flutter
   no_slop_linter:
     path: "../../shared/no_slop_linter"
   freezed: 4.0.0-dev.3
-  json_serializable: ^6.14.0
-  injectable_generator: ^3.1.2
+  json_serializable: ^6.14.1
+  injectable_generator: ^3.1.3
   bloc_test: ^10.0.0
   build_runner: ^2.16.0
   mocktail: ^1.0.5
@@ -118,7 +110,7 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   fake_async: ^1.3.3
-  vector_graphics_compiler: ^1.2.6
+  vector_graphics_compiler: ^1.3.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

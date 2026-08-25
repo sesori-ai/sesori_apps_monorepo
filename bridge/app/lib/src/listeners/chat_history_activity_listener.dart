@@ -1,9 +1,10 @@
 import "dart:async";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
-import "../bridge/services/chat_history_service.dart";
 import "../repositories/catalog_import_repository.dart";
+import "../services/chat_history_service.dart";
 
 /// Feeds backend activity observed by a catalog import into the history
 /// store's staleness marks, so a session advanced through the backend's own
@@ -13,7 +14,7 @@ class ChatHistoryActivityListener({
   required final ChatHistoryService _chatHistoryService,
 }) {
   StreamSubscription<List<SessionBackendActivity>>? _subscription;
-  final Set<Future<void>> _pendingWrites = {};
+  final PendingOperations _pendingWrites = PendingOperations();
   Future<void>? _disposeFuture;
   bool _disposed = false;
 
@@ -27,8 +28,7 @@ class ChatHistoryActivityListener({
   /// Keeps the write observable to [dispose], so shutdown does not close the
   /// database out from under an in-flight staleness update.
   void _track({required Future<void> write}) {
-    _pendingWrites.add(write);
-    unawaited(write.whenComplete(() => _pendingWrites.remove(write)));
+    unawaited(_pendingWrites.track(operation: write));
   }
 
   Future<void> _record({required List<SessionBackendActivity> activity}) async {
@@ -58,6 +58,6 @@ class ChatHistoryActivityListener({
     _disposed = true;
     await _subscription?.cancel();
     // _record never throws: each failure is logged and skipped.
-    await Future.wait(_pendingWrites.toList(growable: false));
+    await _pendingWrites.drain();
   }
 }

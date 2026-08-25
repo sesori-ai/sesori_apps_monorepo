@@ -7,7 +7,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart" show ApiResponse;
 import "package:sesori_dart_core/sesori_dart_core.dart" show ConnectionOverlayCubit, DiffCubit, DiffState;
 import "package:sesori_dart_core/sesori_dart_core.dart"
-    show ConnectionService, ProductAnalyticsService, SessionRepository;
+    show CatalogRescanService, ConnectionService, ProductAnalyticsService, SessionRepository;
 import "package:sesori_mobile/features/session_diffs/session_diffs_body.dart";
 import "package:sesori_mobile/features/session_diffs/session_diffs_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
@@ -92,6 +92,7 @@ void main() {
     stubProductAnalyticsService(service: analyticsService);
     getIt.registerSingleton<SessionRepository>(mockRepo);
     getIt.registerSingleton<ConnectionService>(mockConnectionService);
+    getIt.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
     getIt.registerSingleton<ProductAnalyticsService>(analyticsService);
   });
 

@@ -24,14 +24,6 @@ sealed class const PluginOption({
 
   /// One-line help text shown in `--help` output.
   required final String help,
-
-  /// Legacy, un-prefixed flag names that still resolve to this option for
-  /// backwards compatibility (e.g. `["port"]` so `--port` keeps working after
-  /// the canonical flag became `--opencode-port`).
-  ///
-  /// The bridge registers each alias as a hidden flag and emits a deprecation
-  /// warning when one is used. Empty for options with no legacy spelling.
-  final List<String> deprecatedAliases = const <String>[],
 });
 
 /// A boolean CLI flag (e.g. `--no-auto-start`).
@@ -44,7 +36,6 @@ final class const PluginFlagOption({
 
   /// Whether the parser also accepts a `--no-<name>` inversion.
   required final bool negatable,
-  super.deprecatedAliases,
 }) extends PluginOption;
 
 /// A CLI option that takes a string value (e.g. `--port 4096`).
@@ -65,7 +56,6 @@ final class const PluginValueOption({
   /// non-empty value — strictly before the startup mutex, so a typed value
   /// the user got wrong can never terminate a healthy resident bridge.
   required final PluginOptionValueValidator? validate,
-  super.deprecatedAliases,
 }) extends PluginOption {
   /// An option whose value must parse as an integer (e.g. `--port`).
   ///
@@ -78,7 +68,6 @@ final class const PluginValueOption({
     required String help,
     required String? defaultsTo,
     required String? valueHelp,
-    List<String> deprecatedAliases = const <String>[],
   }) : this(
          name: name,
          help: help,
@@ -86,12 +75,12 @@ final class const PluginValueOption({
          allowedValues: null,
          valueHelp: valueHelp,
          validate: validateInteger,
-         deprecatedAliases: deprecatedAliases,
        );
 
   /// Built-in [validate] hook requiring an integer value. Delegates to
   /// [PluginConfig.parseIntegerOption] so the parse rule and error message
   /// have a single source of truth.
+  // ignore: no_slop_linter/prefer_required_named_parameters, validator callback signature
   static void validateInteger(String name, String value) {
     PluginConfig.parseIntegerOption(name, value);
   }

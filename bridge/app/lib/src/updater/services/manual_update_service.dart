@@ -1,7 +1,3 @@
-import 'dart:async';
-import 'dart:io' show HttpException, SocketException;
-
-import 'package:http/http.dart' show ClientException;
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 
 import '../foundation/github_rate_limit_exception.dart';
@@ -12,7 +8,6 @@ import '../models/release_info.dart';
 import '../models/update_apply_outcome.dart';
 import '../models/update_install_result.dart';
 import '../models/update_resolution.dart';
-import '../models/update_result.dart';
 import '../repositories/release_repository.dart';
 import 'update_apply_service.dart';
 import 'update_install_service.dart';
@@ -51,30 +46,26 @@ class ManualUpdateService({
       resolution = await _releaseRepository.resolveUpdate();
     } on GitHubRateLimitException catch (error) {
       return ExplicitUpdateFailed(reason: _rateLimitReason(error), logPath: null);
-    } on SocketException catch (error) {
-      return ExplicitUpdateFailed(reason: "couldn't reach GitHub: $error", logPath: null);
-    } on TimeoutException catch (error) {
-      return ExplicitUpdateFailed(reason: 'the release check timed out: $error', logPath: null);
-    } on HttpException catch (error) {
-      return ExplicitUpdateFailed(reason: 'a network error occurred: $error', logPath: null);
-    } on ClientException catch (error) {
-      return ExplicitUpdateFailed(reason: 'a network error occurred: $error', logPath: null);
     } on Object catch (error) {
+      if (isTransientNetworkError(error)) {
+        return ExplicitUpdateFailed(reason: "couldn't reach GitHub: $error", logPath: null);
+      }
       return ExplicitUpdateFailed(reason: error.toString(), logPath: null);
     }
 
-    final ReleaseInfo? latest = resolution.latestEligible;
-    final SemanticVersion? latestVersion = resolution.latestVersion;
-    if (latest == null || latestVersion == null) {
+    final latest = resolution.latest;
+    if (latest == null) {
       return ExplicitUpdateNoEligibleRelease(track: _track);
     }
 
+    final release = latest.release;
+    final latestVersion = latest.version;
     final SemanticVersion current = resolution.currentVersion;
     final int comparison = latestVersion.compareTo(current);
 
     if (!force) {
       if (comparison > 0) {
-        return await _stageAndApply(release: latest, fromVersion: current, kind: UpdateAppliedKind.upgrade);
+        return await _stageAndApply(release: release, fromVersion: current, kind: UpdateAppliedKind.upgrade);
       }
       if (comparison == 0) {
         return ExplicitUpdateAlreadyLatest(version: current.toString(), track: _track);
@@ -93,7 +84,7 @@ class ManualUpdateService({
     }
 
     return await _stageAndApply(
-      release: latest,
+      release: release,
       fromVersion: current,
       kind: comparison > 0
           ? UpdateAppliedKind.upgrade
@@ -135,47 +126,30 @@ class ManualUpdateService({
       return ExplicitUpdateFailed(reason: error.toString(), logPath: null);
     }
 
-    final String? stagingPath = staged.stagingPath;
-    if (staged.result != UpdateResult.success || stagingPath == null) {
-      return ExplicitUpdateFailed(reason: _stageFailureReason(staged.result), logPath: null);
-    }
+    switch (staged) {
+      case UpdateInstallStageFailed(:final result):
+        return ExplicitUpdateFailed(reason: result.userFacingReason, logPath: null);
+      case UpdateInstallStaged(:final stagingPath):
+        final UpdateApplyOutcome applyOutcome;
+        try {
+          applyOutcome = await _updateApplyService.apply(release: release, stagingPath: stagingPath);
+        } on Object catch (error) {
+          return ExplicitUpdateFailed(reason: error.toString(), logPath: null);
+        }
 
-    final UpdateApplyOutcome applyOutcome;
-    try {
-      applyOutcome = await _updateApplyService.apply(release: release, stagingPath: stagingPath);
-    } on Object catch (error) {
-      return ExplicitUpdateFailed(reason: error.toString(), logPath: null);
-    }
-
-    switch (applyOutcome) {
-      case UpdateApplied(:final version):
-        return ExplicitUpdateApplied(
-          fromVersion: fromVersion.toString(),
-          toVersion: version,
-          kind: kind,
-          track: _track,
-        );
-      case UpdateApplyLockBusy():
-        return const ExplicitUpdateLockBusy();
-      case UpdateApplyFailed(:final reason, :final logPath):
-        return ExplicitUpdateFailed(reason: reason, logPath: logPath);
-    }
-  }
-
-  String _stageFailureReason(UpdateResult result) {
-    switch (result) {
-      case UpdateResult.permissionDenied:
-        return "can't write to the install directory (permission denied)";
-      case UpdateResult.checksumFailed:
-        return 'the downloaded archive failed checksum verification';
-      case UpdateResult.downloadFailed:
-        return 'the release archive could not be downloaded or extracted';
-      case UpdateResult.networkError:
-        return "couldn't reach GitHub";
-      case UpdateResult.alreadyLocked:
-        return 'another update is already in progress';
-      case UpdateResult.success:
-        return 'an unexpected error occurred';
+        switch (applyOutcome) {
+          case UpdateApplied(:final version):
+            return ExplicitUpdateApplied(
+              fromVersion: fromVersion.toString(),
+              toVersion: version,
+              kind: kind,
+              track: _track,
+            );
+          case UpdateApplyLockBusy():
+            return const ExplicitUpdateLockBusy();
+          case UpdateApplyFailed(:final reason, :final logPath):
+            return ExplicitUpdateFailed(reason: reason, logPath: logPath);
+        }
     }
   }
 

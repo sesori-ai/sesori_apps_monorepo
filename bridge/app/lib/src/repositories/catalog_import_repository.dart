@@ -12,9 +12,10 @@ import "../api/database/daos/session_dao.dart";
 import "../api/database/tables/catalog_hydrations_table.dart";
 import "../api/database/tables/projects_table.dart";
 import "../api/database/tables/session_table.dart";
-import "../bridge/runtime/plugin_runtime.dart";
+import "../runtime/plugin_runtime.dart";
 import "models/catalog_import_control.dart";
 import "project_catalog_identity_calculator.dart";
+import "random_hex_id.dart";
 
 /// Backend-owned activity for one session, as reported by the backend itself.
 ///
@@ -30,7 +31,16 @@ class CatalogImportRepository({
     required final CatalogHydrationsDao _catalogHydrationsDao,
     required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
   }) {
-  static const int projectionVersion = 1;
+  /// Invalidates every durable hydration marker written by an earlier version.
+  ///
+  /// The marker at a given version means "this plugin's catalog was fully
+  /// hydrated once", and an automatic import short-circuits whenever one
+  /// exists. Bumped to 2 for issue #961: markers written before v1.8.0 can
+  /// describe a catalog produced by superseded discovery, and the marker was
+  /// the only thing preventing a corrected import from ever running. Bumping
+  /// re-hydrates each plugin exactly once; the merge is non-destructive and
+  /// tombstoned sessions stay deleted.
+  static const int projectionVersion = 2;
   static const int _responsivenessBatchSize = 512;
   static final Random _secureRandom = Random.secure();
 
@@ -63,7 +73,7 @@ class CatalogImportRepository({
     required CatalogImportControl control,
   }) async* {
     final publicationFinished = Completer<void>();
-    ({int projectsImported, int sessionsImported, int completedAt})? result;
+    ({int projectsImported, int sessionsImported, CatalogImportNewItems newItems, int completedAt})? result;
     try {
       await for (final event in _runtime.useStream<Object>(
         pluginId: pluginId,
@@ -110,6 +120,7 @@ class CatalogImportRepository({
       pluginId: pluginId,
       projectsImported: completed.projectsImported,
       sessionsImported: completed.sessionsImported,
+      newItems: completed.newItems,
       completedAt: completed.completedAt,
     );
   }
@@ -169,7 +180,7 @@ class CatalogImportRepository({
             return;
           }
           final projectPath = _normalizeRequiredPath(project.directory);
-          final roots = await plugin.getSessions(projectPath);
+          final roots = await plugin.getSessions(projectId: projectPath, start: null, limit: null);
           if (control.cancellationRequested) {
             yield CatalogImportProgress.cancelled(pluginId: pluginId);
             return;
@@ -324,7 +335,8 @@ class CatalogImportRepository({
     await publicationFinished;
   }
 
-  Future<({int projectsImported, int sessionsImported, int completedAt})> _publishCatalog({
+  Future<({int projectsImported, int sessionsImported, CatalogImportNewItems newItems, int completedAt})>
+  _publishCatalog({
     required _CatalogImportObservation observation,
     required CatalogImportControl control,
   }) {
@@ -390,6 +402,11 @@ class CatalogImportRepository({
 
         final projectRows = <ProjectDto>[];
         final importedProjectIdByPath = <String, String>{};
+        // Rows this import introduced, as opposed to rows the catalog already
+        // held. Both counters read a fact the loops already compute, so no
+        // extra enumeration or query is needed.
+        var projectsAdded = 0;
+        var sessionsAdded = 0;
         for (final observation in publicationProjects.values) {
           final existing = _projectCatalogIdentityCalculator.calculate(
             projectsById: projectsById,
@@ -397,6 +414,7 @@ class CatalogImportRepository({
             preferredProjectId: observation.preferredId,
             observedPath: observation.path,
           );
+          if (existing == null) projectsAdded++;
           final row = _mergeProjectRow(
             observation: observation,
             existing: existing,
@@ -464,6 +482,7 @@ class CatalogImportRepository({
             projectId: row.projectId,
           );
           sessionsImported++;
+          if (existing == null) sessionsAdded++;
           if (sessionRows.length == _responsivenessBatchSize) {
             requireCurrentGeneration();
             await _sessionDao.upsertSessionRows(rows: sessionRows);
@@ -490,6 +509,7 @@ class CatalogImportRepository({
         return (
           projectsImported: projectRows.length,
           sessionsImported: sessionsImported,
+          newItems: CatalogImportNewItems(projects: projectsAdded, sessions: sessionsAdded),
           completedAt: completedAt,
         );
       }),
@@ -563,11 +583,11 @@ class CatalogImportRepository({
 
   String _allocateSessionId({required Set<String> reservedIds}) {
     while (true) {
-      final buffer = StringBuffer("ses_");
-      for (var index = 0; index < 16; index++) {
-        buffer.write(_secureRandom.nextInt(256).toRadixString(16).padLeft(2, "0"));
-      }
-      final candidate = buffer.toString();
+      final candidate = generateRandomHexId(
+        secureRandom: _secureRandom,
+        prefix: "ses_",
+        byteLength: 16,
+      );
       if (reservedIds.add(candidate)) return candidate;
     }
   }

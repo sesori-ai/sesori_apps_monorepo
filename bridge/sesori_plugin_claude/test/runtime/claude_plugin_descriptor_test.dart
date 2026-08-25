@@ -20,11 +20,12 @@ void main() {
       expect(descriptor.supportsPromptAttachments, isTrue);
       expect(descriptor.options.single.name, "bin");
       expect(ClaudePluginDescriptor.minVersion, "2.1.221");
+      expect(ClaudePluginDescriptor.targetVersion, "2.1.237");
     });
 
     test("reports ready after ordered version and typed auth probes", () async {
       final processes = _ProcessService([
-        _ProbeProcess(stdoutText: "2.1.226 (Claude Code)\n", exitCode: Future.value(0)),
+        _ProbeProcess(stdoutText: "2.1.237 (Claude Code)\n", exitCode: Future.value(0)),
         _ProbeProcess(
           stdoutText: jsonEncode({
             "loggedIn": true,
@@ -42,7 +43,7 @@ void main() {
         stateDirectory: "/state",
       );
 
-      expect(status, const PluginSetupReady.versioned(runtimeVersion: "2.1.226"));
+      expect(status, const PluginSetupReady.versioned(runtimeVersion: "2.1.237"));
       expect(processes.arguments, [
         const ["--version"],
         const ["auth", "status"],
@@ -86,7 +87,7 @@ void main() {
 
     test("reports authentication required from loggedIn false only", () async {
       final processes = _ProcessService([
-        _ProbeProcess(stdoutText: "2.1.221 (Claude Code)\n", exitCode: Future.value(0)),
+        _ProbeProcess(stdoutText: "2.1.237 (Claude Code)\n", exitCode: Future.value(0)),
         _ProbeProcess(
           stdoutText: '{"loggedIn":false,"email":"private@example.com"}',
           exitCode: Future.value(1),
@@ -101,13 +102,13 @@ void main() {
       );
 
       _expectNonReady<PluginSetupAuthenticationRequired>(status);
-      expect(status.runtimeVersion, "2.1.221");
+      expect(status.runtimeVersion, "2.1.237");
       expect(status.actionHint, isNot(contains("private@example.com")));
     });
 
     test("reports unknown for malformed auth without exposing its payload", () async {
       final processes = _ProcessService([
-        _ProbeProcess(stdoutText: "2.1.221 (Claude Code)\n", exitCode: Future.value(0)),
+        _ProbeProcess(stdoutText: "2.1.237 (Claude Code)\n", exitCode: Future.value(0)),
         _ProbeProcess(stdoutText: "private-account-output", exitCode: Future.value(0)),
       ]);
 
@@ -119,7 +120,7 @@ void main() {
       );
 
       _expectNonReady<PluginSetupUnknown>(status);
-      expect(status.runtimeVersion, "2.1.221");
+      expect(status.runtimeVersion, "2.1.237");
       expect(status.actionHint, isNot(contains("private-account-output")));
     });
 

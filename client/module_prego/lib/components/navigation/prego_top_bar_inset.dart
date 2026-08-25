@@ -27,6 +27,48 @@ double pregoTopBarInsetOf({
   return scope.baseInset + scope.bannerHeight.value;
 }
 
+final Expando<_PregoRootTopBarInsets> _pregoRootTopBarInsetsByOverlay = Expando<_PregoRootTopBarInsets>();
+
+/// Opaque identity for one mounted root-inset publisher. This seam is kept out
+/// of the package barrel and used only by Prego scaffold/presenter internals.
+final class PregoRootTopBarInsetOwner();
+
+/// Publishes the current root inset for [owner]. A newly mounted publisher
+/// becomes active; updates from an older mounted scaffold retain its place so
+/// a covered route cannot displace the topmost route during a shared rebuild.
+void publishPregoRootTopBarInset({
+  required OverlayState overlay,
+  required PregoRootTopBarInsetOwner owner,
+  required double inset,
+}) {
+  final insets = _pregoRootTopBarInsetsByOverlay[overlay] ??= _PregoRootTopBarInsets();
+  insets.publish(owner: owner, inset: inset);
+}
+
+/// Removes [owner] and restores the previous mounted scaffold when the active
+/// route unmounts.
+void clearPregoRootTopBarInset({required OverlayState overlay, required PregoRootTopBarInsetOwner owner}) {
+  _pregoRootTopBarInsetsByOverlay[overlay]?.clear(owner: owner);
+}
+
+/// Returns the active top-bar inset published for [overlay], or `null` when no
+/// Prego scaffold is mounted in that overlay.
+double? pregoRootTopBarInsetFor(OverlayState overlay) => _pregoRootTopBarInsetsByOverlay[overlay]?.activeInset;
+
+final class _PregoRootTopBarInsets() {
+  final Map<PregoRootTopBarInsetOwner, double> _mounted = <PregoRootTopBarInsetOwner, double>{};
+
+  double? get activeInset => _mounted.isEmpty ? null : _mounted.values.last;
+
+  void publish({required PregoRootTopBarInsetOwner owner, required double inset}) {
+    _mounted[owner] = inset;
+  }
+
+  void clear({required PregoRootTopBarInsetOwner owner}) {
+    _mounted.remove(owner);
+  }
+}
+
 /// Rebuilds [builder] as the enclosing top-navigation banner changes height.
 class const PregoTopBarInsetBuilder({
   super.key,

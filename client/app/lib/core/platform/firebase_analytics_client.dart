@@ -2,6 +2,9 @@ import "package:firebase_analytics/firebase_analytics.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
+import "../di/firebase_register_module.dart";
+
+@firebaseEnabledEnvironment
 @LazySingleton(as: AnalyticsClient)
 class FirebaseAnalyticsClient({
   required final FirebaseAnalytics _analytics,
@@ -23,7 +26,10 @@ class FirebaseAnalyticsClient({
     );
     if (event case ProductScreenViewedEvent(:final screen)) {
       try {
-        await _analytics.logScreenView(screenName: screen.wireValue, screenClass: "GoRouter");
+        // Vendor reports key screens by class by default, and a Flutter app
+        // has no native screen class to report — carry the pinned screen
+        // identity in both dimensions so neither reads as a constant.
+        await _analytics.logScreenView(screenName: screen.wireValue, screenClass: screen.wireValue);
       } on Object catch (error, stackTrace) {
         logw("Failed to mirror product analytics screen view", error, stackTrace);
       }

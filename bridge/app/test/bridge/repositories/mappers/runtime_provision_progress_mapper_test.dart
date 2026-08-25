@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/repositories/mappers/runtime_provision_progress_mapper.dart";
+import "package:sesori_bridge/src/repositories/mappers/runtime_provision_progress_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";

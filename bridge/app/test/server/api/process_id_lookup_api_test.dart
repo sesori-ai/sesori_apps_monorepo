@@ -1,14 +1,14 @@
-import "dart:async";
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/server/api/process_id_lookup_api.dart";
 import "package:test/test.dart";
+
+import "../../helpers/fake_process_runner.dart";
 
 void main() {
   group("ProcessIdLookupApi (POSIX)", () {
     test("exact-matches the executable name and parses process ids", () async {
-      final runner = _RecordingProcessRunner(stdout: "123\n456\n");
+      final runner = RecordingProcessRunner(stdout: "123\n456\n");
       final api = ProcessIdLookupApi.forPlatform(
         isWindows: false,
         processRunner: runner,
@@ -27,7 +27,7 @@ void main() {
     test("returns an empty list when pgrep finds no matches", () async {
       final api = ProcessIdLookupApi.forPlatform(
         isWindows: false,
-        processRunner: _RecordingProcessRunner(exitCode: 1),
+        processRunner: RecordingProcessRunner(exitCode: 1),
       );
 
       expect(
@@ -39,7 +39,7 @@ void main() {
     test("throws when pgrep fails", () async {
       final api = ProcessIdLookupApi.forPlatform(
         isWindows: false,
-        processRunner: _RecordingProcessRunner(
+        processRunner: RecordingProcessRunner(
           exitCode: 2,
           stderr: "invalid pattern",
         ),
@@ -55,7 +55,7 @@ void main() {
       for (final stdout in <String>["not-a-pid\n", "0\n", "-1\n"]) {
         final api = ProcessIdLookupApi.forPlatform(
           isWindows: false,
-          processRunner: _RecordingProcessRunner(stdout: stdout),
+          processRunner: RecordingProcessRunner(stdout: stdout),
         );
 
         await expectLater(
@@ -68,9 +68,9 @@ void main() {
 
   group("ProcessIdLookupApi (Windows)", () {
     test("filters tasklist by image name and parses process ids", () async {
-      final runner = _RecordingProcessRunner(
+      final runner = RecordingProcessRunner(
         stdout:
-            '"sesori-bridge.exe","321","Console","1","12,345 K"\r\n'
+            '"sesori-""bridge.exe","321","Console","1","12,345 K"\r\n'
             '"sesori-bridge.exe","654","Console","1","98,765 K"\r\n',
       );
       final api = ProcessIdLookupApi.forPlatform(
@@ -100,7 +100,7 @@ void main() {
     test("returns an empty list when tasklist finds no matches", () async {
       final api = ProcessIdLookupApi.forPlatform(
         isWindows: true,
-        processRunner: _RecordingProcessRunner(
+        processRunner: RecordingProcessRunner(
           stdout: "INFO: No tasks are running which match the specified criteria.\r\n",
         ),
       );
@@ -114,7 +114,7 @@ void main() {
     test("ignores malformed tasklist rows", () async {
       final api = ProcessIdLookupApi.forPlatform(
         isWindows: true,
-        processRunner: _RecordingProcessRunner(
+        processRunner: RecordingProcessRunner(
           stdout:
               '"sesori-bridge.exe","not-a-pid"\r\n'
               '"sesori-bridge.exe","0"\r\n',
@@ -130,7 +130,7 @@ void main() {
     test("throws when tasklist fails", () async {
       final api = ProcessIdLookupApi.forPlatform(
         isWindows: true,
-        processRunner: _RecordingProcessRunner(exitCode: 1, stderr: "boom"),
+        processRunner: RecordingProcessRunner(exitCode: 1, stderr: "boom"),
       );
 
       await expectLater(
@@ -139,34 +139,4 @@ void main() {
       );
     });
   });
-}
-
-class _RecordingProcessRunner({final int exitCode = 0, final String stdout = "", final String stderr = ""})
-    implements ProcessRunner {
-  String? executable;
-  List<String>? arguments;
-  Map<String, String>? environment;
-
-  @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    Duration timeout = const Duration(seconds: 15),
-  }) async {
-    this.executable = executable;
-    this.arguments = arguments;
-    this.environment = environment;
-    return ProcessResult(1, exitCode, stdout, stderr);
-  }
-
-  @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) {
-    throw UnimplementedError();
-  }
 }

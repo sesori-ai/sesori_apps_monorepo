@@ -1,7 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../bridge/routing/request_handler.dart";
 import "../services/pull_request_refresh_settings_service.dart";
+import "request_handler.dart";
 
 class GetPullRequestRefreshSettingsHandler({required final PullRequestRefreshSettingsService _settingsService})
     extends GetRequestHandler<PullRequestRefreshSettingsResponse> {
@@ -10,9 +10,6 @@ class GetPullRequestRefreshSettingsHandler({required final PullRequestRefreshSet
 
   @override
   Future<PullRequestRefreshSettingsResponse> handle(
-    RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
-  }) => _settingsService.readCommittedSettings();
+    RelayRequest request,
+  ) => _settingsService.readCommittedSettings();
 }

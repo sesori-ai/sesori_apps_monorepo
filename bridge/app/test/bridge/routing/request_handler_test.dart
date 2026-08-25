@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/routing/request_handler.dart";
+import "package:sesori_bridge/src/routing/request_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -10,9 +10,7 @@ class _StubHandler(super.method, super.path) extends RequestHandlerBase {
   @override
   Future<RelayResponse> handleInternal(
     RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
+    required RequestTargetParams targetParams,
   }) async => RelayResponse(
     id: request.id,
     status: 200,
@@ -27,11 +25,8 @@ class _ThrowingGetHandler(final Object _error) extends GetRequestHandler<Object>
 
   @override
   Future<Object> handle(
-    RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
-  }) async => throw _error;
+    RelayRequest request,
+  ) async => throw _error;
 }
 
 void main() {
@@ -137,26 +132,13 @@ void main() {
       expect(p.queryParams, isEmpty);
     });
 
-    test("extracts fragment", () {
-      final h = _StubHandler(HttpMethod.get, "/project");
-      final p = h.extractParams(makeRequest("GET", "/project#my-section"));
-      expect(p.fragment, equals("my-section"));
-    });
-
-    test("fragment is null when absent", () {
-      final h = _StubHandler(HttpMethod.get, "/project");
-      final p = h.extractParams(makeRequest("GET", "/project"));
-      expect(p.fragment, isNull);
-    });
-
-    test("extracts path params alongside query params and fragment", () {
+    test("extracts path params alongside query params", () {
       final h = _StubHandler(HttpMethod.get, "/session/:id/message");
       final p = h.extractParams(
         makeRequest("GET", "/session/s42/message?limit=5#anchor"),
       );
       expect(p.pathParams, equals({"id": "s42"}));
       expect(p.queryParams, equals({"limit": "5"}));
-      expect(p.fragment, equals("anchor"));
     });
 
     test("catch-all (*) path yields empty pathParams", () {
@@ -170,12 +152,7 @@ void main() {
   group("GetRequestHandler error mapping", () {
     Future<RelayResponse> respond(Object error) {
       final request = makeRequest("GET", "/throw");
-      return _ThrowingGetHandler(error).handleInternal(
-        request,
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
-      );
+      return _ThrowingGetHandler(error).routeForTest(request);
     }
 
     test("PluginApiException keeps its upstream status", () async {
@@ -191,6 +168,18 @@ void main() {
     test("PluginOperationException without a status maps to 502, not 500", () async {
       final response = await respond(const PluginOperationException("createSession", message: "cli exited 1"));
       expect(response.status, 502);
+    });
+
+    test("thrown success responses map to 500", () async {
+      final response = await respond(
+        const RelayResponse(id: "response-id", status: 200, headers: {}, body: null),
+      );
+      expect(response.status, 500);
+    });
+
+    test("thrown error responses return directly", () async {
+      const thrown = RelayResponse(id: "response-id", status: 409, headers: {}, body: "conflict");
+      expect(await respond(thrown), same(thrown));
     });
 
     test("unknown errors still map to 500", () async {

@@ -90,7 +90,10 @@ class const DeviceCanvasStatusBanner({
                     ),
                   ),
                   if (state is DeviceCanvasSessionLoading)
-                    const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    SizedBox.square(
+                      dimension: 18,
+                      child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
+                    )
                   else if (state is DeviceCanvasSessionFailure)
                     Tooltip(
                       message: context.loc.sessionDetailRetry,
@@ -152,7 +155,9 @@ class const _DeviceCanvasSheet({required final bool readOnly}) extends Stateless
           DeviceCanvasSessionLoading() => Center(
             child: Semantics(
               label: context.loc.deviceCanvasLoading,
-              child: const ExcludeSemantics(child: CircularProgressIndicator()),
+              child: ExcludeSemantics(
+                child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
+              ),
             ),
           ),
           DeviceCanvasSessionDisconnected() => _DeviceCanvasMessage(message: context.loc.deviceCanvasDisconnected),
@@ -303,10 +308,13 @@ class const _DeviceCanvasDeviceRow({
           if (mutatingThisDevice)
             Semantics(
               label: context.loc.deviceCanvasUpdatingDevice(title),
-              child: const ExcludeSemantics(
+              child: ExcludeSemantics(
                 child: Padding(
-                  padding: EdgeInsets.all(8),
-                  child: SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                  padding: const EdgeInsets.all(8),
+                  child: SizedBox.square(
+                    dimension: 18,
+                    child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
+                  ),
                 ),
               ),
             )

@@ -5,6 +5,7 @@
 // - `avoid_implicit_tostring`: Prevents implicit toString() in string interpolation
 // - `avoid_dynamic_return_type`: Prevents implicit/dynamic return types on functions
 // - `avoid_legacy_flutter_design_imports`: Forbids SDK Material/Cupertino imports
+// - `avoid_flutter_spinners`: Forbids direct Flutter spinner widgets
 // - `prefer_specific_type`: Forbids usage of `dynamic` type (except fromJson/toJson)
 // - `avoid_hardcoded_colors`: Forbids Color() and Colors.xxx, use theme colorScheme
 // - `avoid_hardcoded_text_styles`: Forbids TextStyle(), use theme textTheme
@@ -34,6 +35,7 @@ import 'src/rules/avoid_as_cast_rule.dart';
 import 'src/rules/avoid_bang_operator_rule.dart';
 import 'src/rules/avoid_dartz_tuple_rule.dart';
 import 'src/rules/avoid_dynamic_return_type_rule.dart';
+import 'src/rules/avoid_flutter_spinners_rule.dart';
 import 'src/rules/prefer_specific_type_rule.dart';
 import 'src/rules/avoid_hardcoded_colors_rule.dart';
 import 'src/rules/avoid_hardcoded_text_styles_rule.dart';
@@ -62,6 +64,7 @@ class _NoSlopLinterPlugin extends Plugin {
     registry.registerWarningRule(AvoidBangOperatorRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidDartzTupleRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidDynamicReturnTypeRule(ignoreTestFiles: true));
+    registry.registerWarningRule(AvoidFlutterSpinnersRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidImplicitTostringRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidLegacyFlutterDesignImportsRule(ignoreTestFiles: false));
     registry.registerWarningRule(AvoidMutableClassFieldsRule(ignoreTestFiles: true));

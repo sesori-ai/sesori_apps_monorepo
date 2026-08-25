@@ -253,9 +253,6 @@ class _FakePushDispatcher() implements PushDispatcher {
   void dispatchImmediateIfApplicable(SesoriSseEvent event) {
     immediateEvents.add(event);
   }
-
-  @override
-  Future<void> dispose() async {}
 }
 
 Session _session({

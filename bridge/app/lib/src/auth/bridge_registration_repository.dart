@@ -1,9 +1,9 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "bridge_registration_api.dart";
+import "auth_api.dart";
 
 /// Repository over the auth server's `/auth/bridges` endpoints.
-class BridgeRegistrationRepository({required final BridgeRegistrationApi _api}) {
+class BridgeRegistrationRepository({required final AuthApi _api}) {
   /// Registers (or re-registers) this bridge and returns its [BridgeSummary].
   Future<BridgeSummary> register({
     required String name,

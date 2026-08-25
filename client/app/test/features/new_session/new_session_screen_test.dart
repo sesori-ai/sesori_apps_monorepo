@@ -12,6 +12,9 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
+import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
+import "package:sesori_dart_core/src/repositories/plugin_preference_repository.dart";
 import "package:sesori_mobile/capabilities/media/composer_image_picker.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
 import "package:sesori_mobile/features/new_session/new_session_plugin_chooser.dart";
@@ -232,7 +235,7 @@ Future<void> enterTextAndSend({required WidgetTester tester, required String tex
 }
 
 void main() {
-  late MockSessionService sessionService;
+  late MockSessionRepository sessionService;
   late MockSessionRepository sessionRepository;
   late MockPluginRepository pluginRepository;
   late MockPluginPreferenceRepository pluginPreferenceRepository;
@@ -252,15 +255,15 @@ void main() {
   setUp(() async {
     KeyboardVisibilityTesting.setVisibilityForTesting(false);
     await GetIt.instance.reset();
-    sessionService = MockSessionService();
+    sessionService = MockSessionRepository();
     sessionRepository = MockSessionRepository();
     pluginRepository = MockPluginRepository();
     pluginPreferenceRepository = MockPluginPreferenceRepository();
     connectionService = MockConnectionService();
     connectionStatus = BehaviorSubject.seeded(
       const ConnectionStatus.connected(
-        config: ServerConnectionConfig(relayHost: "relay.example.com"),
-        health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+        health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false),
       ),
     );
     projectRepository = MockProjectRepository();
@@ -345,6 +348,7 @@ void main() {
           SuccessResponse(data: final commandData),
         ) =>
           SessionOptionsRepositoryAvailable(
+            isStale: false,
             catalog: SessionOptionsCatalog(
               agents: agentData.agents,
               providers: providerData.items,
@@ -424,7 +428,7 @@ void main() {
       ),
     ).thenAnswer((_) async {});
 
-    GetIt.instance.registerSingleton<SessionService>(sessionService);
+    GetIt.instance.registerSingleton<SessionRepository>(sessionService);
     GetIt.instance.registerSingleton<PluginRepository>(pluginRepository);
     GetIt.instance.registerSingleton<NewSessionPluginService>(
       NewSessionPluginService(
@@ -439,6 +443,7 @@ void main() {
       ),
     );
     GetIt.instance.registerSingleton<ConnectionService>(connectionService);
+    GetIt.instance.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
     GetIt.instance.registerSingleton<ProjectRepository>(projectRepository);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
     GetIt.instance.registerSingleton<ComposerImagePicker>(imagePicker);
@@ -516,7 +521,9 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
     expect(find.text(loc.newSessionProjectUnavailable), findsOneWidget);
-    expect(find.widgetWithText(PregoButtonsSolid, loc.newSessionProjectRefresh), findsOneWidget);
+    // The status line above names what is missing; the action keeps the one
+    // name it has in every state.
+    expect(find.widgetWithText(PregoButtonsSolid, loc.newSessionOptionsRefresh), findsOneWidget);
     expect(
       tester
           .widget<IgnorePointer>(
@@ -616,8 +623,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -640,8 +646,7 @@ void main() {
         pluginId: "plugin-1",
         text: "use backend defaults",
         agent: null,
-        providerID: null,
-        modelID: null,
+        model: null,
         variant: null,
         command: null,
         dedicatedWorktree: true,
@@ -666,6 +671,106 @@ void main() {
     expect(find.text(loc.newSessionOptionsRefreshFailedUnavailable), findsNothing);
   });
 
+  testWidgets("refresh action stops spinning for a harness the user left behind", (tester) async {
+    when(pluginRepository.listPlugins).thenAnswer(
+      (_) async => ApiResponse.success(
+        PluginDiscoverySnapshot(
+          bridgeId: null,
+          supportsSessionOptions: true,
+          plugins: const [
+            PluginMetadata(
+              id: "plugin-1",
+              displayName: "First Tool",
+              isDefault: true,
+              state: PluginLifecycleState.ready,
+              actionHint: null,
+            ),
+            PluginMetadata(
+              id: "plugin-2",
+              displayName: "Second Tool",
+              isDefault: false,
+              state: PluginLifecycleState.ready,
+              actionHint: null,
+            ),
+          ],
+        ),
+      ),
+    );
+    // The first harness's refresh never answers.
+    final stranded = Completer<SessionOptionsRepositoryResult>();
+    when(
+      () => sessionRepository.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        mode: any(named: "mode"),
+      ),
+    ).thenAnswer((invocation) async {
+      return invocation.namedArguments[#mode] == SessionOptionsRequestMode.forceRefresh
+          ? await stranded.future
+          : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false);
+    });
+    when(
+      () => sessionRepository.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-2",
+        mode: any(named: "mode"),
+      ),
+    ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false));
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final refreshAction = find.byKey(const Key("new_session_options_refresh"));
+
+    await tester.tap(refreshAction);
+    await tester.pump();
+    expect(tester.widget<PregoButtonsSolid>(refreshAction).isLoading, isTrue);
+
+    // Explicit pumps throughout: pumpAndSettle never returns while the
+    // indeterminate spinner is on screen.
+    await tester.tap(find.byKey(const Key("new_session_plugin_trigger")));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(_harnessRow("plugin-2"));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    // The second harness has its own settled options; the first harness's
+    // request is still outstanding and must not hold this action hostage.
+    expect(tester.widget<PregoButtonsSolid>(refreshAction).isLoading, isFalse);
+    expect(tester.widget<PregoButtonsSolid>(refreshAction).onPressed, isNotNull);
+  });
+
+  testWidgets("refresh action stays in view and spins while its load runs", (tester) async {
+    final refreshed = Completer<SessionOptionsRepositoryResult>();
+    when(
+      () => sessionRepository.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        mode: any(named: "mode"),
+      ),
+    ).thenAnswer((invocation) async {
+      final mode = invocation.namedArguments[#mode]! as SessionOptionsRequestMode;
+      return mode == SessionOptionsRequestMode.forceRefresh
+          ? await refreshed.future
+          : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false);
+    });
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final refreshAction = find.byKey(const Key("new_session_options_refresh"));
+
+    await tester.tap(refreshAction);
+    await tester.pump();
+
+    expect(refreshAction, findsOneWidget);
+    expect(tester.widget<PregoButtonsSolid>(refreshAction).isLoading, isTrue);
+
+    refreshed.complete(SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<PregoButtonsSolid>(refreshAction).isLoading, isFalse);
+  });
+
   testWidgets("retained refresh failure keeps cached options visible", (tester) async {
     when(
       () => sessionRepository.loadSessionOptions(
@@ -677,7 +782,7 @@ void main() {
       final mode = invocation.namedArguments[#mode]! as SessionOptionsRequestMode;
       return mode == SessionOptionsRequestMode.forceRefresh
           ? const SessionOptionsRepositoryRefreshFailedRetained()
-          : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog());
+          : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false);
     });
 
     await tester.pumpWidget(_buildApp());
@@ -704,7 +809,7 @@ void main() {
       final mode = invocation.namedArguments[#mode]! as SessionOptionsRequestMode;
       return mode == SessionOptionsRequestMode.forceRefresh
           ? const SessionOptionsRepositoryRefreshFailedUnavailable()
-          : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog());
+          : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false);
     });
 
     await tester.pumpWidget(_buildApp());
@@ -728,9 +833,7 @@ void main() {
     await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
 
-    // Tapping the variant pill opens a popup listing the Default option plus
-    // the model's variants.
-    expect(_pickerMenuItem("Default"), findsOneWidget);
+    // Tapping the variant pill opens a popup listing the model's variants.
     expect(_pickerMenuItem("xhigh"), findsOneWidget);
 
     await tester.tap(_pickerMenuItem("xhigh"));
@@ -903,7 +1006,7 @@ void main() {
 
     expect(find.byIcon(Icons.smart_toy_outlined), findsNothing);
     expect(find.widgetWithText(PregoPickerButton, "Claude 3.5 Sonnet"), findsOneWidget);
-    expect(find.widgetWithText(PregoPickerButton, "Default"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
   });
 
   testWidgets("scrolls plugin and worktree options while keeping the composer pinned", (tester) async {
@@ -1101,8 +1204,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1151,11 +1253,11 @@ void main() {
       ..add(const ConnectionStatus.disconnected())
       ..add(
         const ConnectionStatus.connected(
-          config: ServerConnectionConfig(relayHost: "relay.example.com"),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
           health: HealthResponse(
             healthy: true,
             version: "test",
-            filesystemAccessDegraded: null,
+            filesystemAccessDegraded: false,
           ),
         ),
       );
@@ -1231,11 +1333,11 @@ void main() {
       ..add(const ConnectionStatus.disconnected())
       ..add(
         const ConnectionStatus.connected(
-          config: ServerConnectionConfig(relayHost: "relay.example.com"),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
           health: HealthResponse(
             healthy: true,
             version: "test",
-            filesystemAccessDegraded: null,
+            filesystemAccessDegraded: false,
           ),
         ),
       );
@@ -1299,8 +1401,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1363,11 +1464,11 @@ void main() {
       ..add(const ConnectionStatus.disconnected())
       ..add(
         const ConnectionStatus.connected(
-          config: ServerConnectionConfig(relayHost: "relay.example.com"),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
           health: HealthResponse(
             healthy: true,
             version: "test",
-            filesystemAccessDegraded: null,
+            filesystemAccessDegraded: false,
           ),
         ),
       );
@@ -1398,7 +1499,7 @@ void main() {
 
     expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
     final refresh = find.byKey(const Key("new_session_options_refresh"));
-    expect(tester.widget<PregoButtonsSolid>(refresh).label, loc.newSessionHarnessesRefresh);
+    expect(tester.widget<PregoButtonsSolid>(refresh).label, loc.newSessionOptionsRefresh);
     expect(tester.widget<PregoButtonsSolid>(refresh).onPressed, isNotNull);
     // The bridge never confirmed an empty harness list, so the error banner is
     // the honest explanation and discovery remains retryable.
@@ -1472,7 +1573,7 @@ void main() {
     expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
   });
 
-  testWidgets("selecting Default clears the displayed variant", (tester) async {
+  testWidgets("selecting another variant updates the displayed variant", (tester) async {
     when(
       () => sessionService.listProviders(
         projectId: any(named: "projectId"),
@@ -1513,12 +1614,11 @@ void main() {
     await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
 
-    // Select Default (null variant).
-    await tester.tap(_pickerMenuItem("Default"));
+    // Select the model's other variant.
+    await tester.tap(_pickerMenuItem("low"));
     await tester.pumpAndSettle();
 
-    // The UI should now show "Default".
-    expect(find.widgetWithText(PregoPickerButton, "Default"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "low"), findsOneWidget);
     expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
   });
 
@@ -1555,8 +1655,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1592,8 +1691,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1618,8 +1716,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1636,8 +1733,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1680,8 +1776,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1729,8 +1824,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1767,8 +1861,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1828,8 +1921,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1865,7 +1957,7 @@ void main() {
     expect(tester.widget<PromptInput>(find.byType(PromptInput)).restorationKey, isNull);
     expect(
       tester.element(find.byType(PromptInput)).read<NewSessionCubit>().state,
-      isA<NewSessionCreationError>(),
+      isA<NewSessionComposing>().having((state) => state.phase, "phase", isA<NewSessionPhaseCreationError>()),
     );
     expect(creationCalls, 1);
     expect(identical(submittedAttachments.single.single, attachment), isTrue);
@@ -1888,8 +1980,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),

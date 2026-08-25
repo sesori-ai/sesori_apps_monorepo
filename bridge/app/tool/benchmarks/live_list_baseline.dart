@@ -8,13 +8,13 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
-import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
-import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/api/filesystem_api.dart";
+import "package:sesori_bridge/src/api/git_cli_api.dart";
+import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge/src/repositories/project_repository.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "benchmark_plugin_runtime.dart";
@@ -290,15 +290,10 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
           expectedRowsReturned: 1,
           pluginCounters: pluginCounters,
           operation: () async {
-            final projectId = await sessionRepository.findProjectIdForSession(sessionId: detailSessionId);
-            if (projectId != _projectDirectory) {
-              throw StateError("session detail resolved project $projectId; expected $_projectDirectory");
+            final session = await sessionRepository.getCatalogSession(sessionId: detailSessionId);
+            if (session?.projectID != _projectDirectory) {
+              throw StateError("session detail resolved project ${session?.projectID}; expected $_projectDirectory");
             }
-            final session = await sessionRepository.getSessionForProject(
-              projectId: _projectDirectory,
-              sessionId: detailSessionId,
-              verifiedGithubLogin: null,
-            );
             if (session?.id != detailSessionId) {
               throw StateError("session detail returned ${session?.id}; expected $detailSessionId");
             }
@@ -427,10 +422,6 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
   }) {
     return SessionRepository(
       runtime: createBenchmarkPluginRuntime(plugins: plugins.values),
-      bridgeDerivedProjectPluginIds: {
-        for (final entry in plugins.entries)
-          if (entry.value is BridgeDerivedProjectsPluginApi) entry.key,
-      },
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
@@ -750,7 +741,7 @@ class _ThrowingBenchmarkPlugin({@override required final String id})
   Future<PluginProject> getProject(String projectId) => _throwListRead(read: "project detail");
 
   @override
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) =>
+  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) =>
       _throwListRead(read: "root sessions");
 
   @override

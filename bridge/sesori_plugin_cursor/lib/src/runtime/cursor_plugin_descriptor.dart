@@ -1,4 +1,3 @@
-import "dart:async";
 import "dart:io" as io;
 
 import "package:acp_plugin/acp_plugin.dart";
@@ -10,7 +9,8 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
         ChecksumValidator,
         CommandResult,
         HostProcessCommandExecutor,
-        PlatformTarget;
+        PlatformTarget,
+        stripAnsi;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness;
@@ -63,13 +63,14 @@ CursorPlugin _defaultBuildPlugin({
 /// The optional constructor parameters are test seams; the registered instance
 /// is `const CursorPluginDescriptor()`.
 class const CursorPluginDescriptor({
-    final CursorPluginFactory? _buildPlugin,
-    final Duration _connectBudget = const Duration(seconds: 15),
-    final Duration _versionProbeTimeout = const Duration(seconds: 10),
-    /// Test seam for existing-runtime resolution. Production builds a default in
-    /// [ensureRuntime] from the host's process service.
-    final ManagedRuntimeProvisionService? _provisionService,
-  }) extends BridgePluginDescriptor {
+  final CursorPluginFactory? _buildPlugin,
+  final Duration _connectBudget = const Duration(seconds: 15),
+  final Duration _versionProbeTimeout = const Duration(seconds: 10),
+
+  /// Test seam for existing-runtime resolution. Production builds a default in
+  /// [ensureRuntime] from the host's process service.
+  final ManagedRuntimeProvisionService? _provisionService,
+}) extends BridgePluginDescriptor {
   /// Minimum Cursor CLI build the bridge supports, owned by
   /// [CursorRuntimeManifest.minPathVersion]. Earlier builds (e.g.
   /// `2026.05.28`) advertise the `acp` model picker and `session/load` but
@@ -152,7 +153,7 @@ class const CursorPluginDescriptor({
       Log.w("[cursor] platform detection failed; managed install unavailable", error, stackTrace);
       return false;
     }
-    return const CursorRuntimeManifest().assetFor(target: target) != null;
+    return const CursorRuntimeManifest().supportsManagedInstallOn(target: target);
   }
 
   /// Resolves an existing Cursor CLI (a recent-enough PATH install or the
@@ -165,17 +166,23 @@ class const CursorPluginDescriptor({
 
     final injected = _provisionService;
     if (injected != null) {
-      yield* injected.provision(host: host);
+      yield* injected.provision(host: host, explicitExecutablePath: null);
       return;
     }
-    yield* _buildDefaultProvisionService(host: host).provision(host: host);
+    yield* _buildDefaultProvisionService(host: host).provision(host: host, explicitExecutablePath: null);
   }
 
   ManagedRuntimeProvisionService _buildDefaultProvisionService({required PluginHost host}) {
     const manifest = CursorRuntimeManifest();
     return ManagedRuntimeProvisionService(
       manifest: manifest,
-      versionValidator: _versionValidatorFor(processes: host.processes),
+      selectionService: ManagedRuntimeSelectionService(
+        manifest: manifest,
+        versionValidator: _versionValidatorFor(
+          processes: host.processes,
+          maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+        ),
+      ),
       // Cursor has no desktop-app-bundled CLI to fall back to.
       fallbackExecutableCandidates: const [],
     );
@@ -199,7 +206,10 @@ class const CursorPluginDescriptor({
     try {
       final installService = ManagedRuntimeInstallService(
         manifest: manifest,
-        versionValidator: _versionValidatorFor(processes: processes),
+        versionValidator: _versionValidatorFor(
+          processes: processes,
+          maxCapturedOutputCharactersPerStream: null,
+        ),
         installService: RuntimeInstallService(
           downloadClient: BinaryDownloadClient(httpClient: httpClient),
           checksumValidator: ChecksumValidator(),
@@ -222,12 +232,15 @@ class const CursorPluginDescriptor({
 
   /// Version probing for the Cursor CLI. Its `--version` prints a bare calendar
   /// build (`2026.08.11-e8db854`), which the shared validator parses.
-  RuntimeVersionValidator _versionValidatorFor({required HostProcessService processes}) {
+  RuntimeVersionValidator _versionValidatorFor({
+    required HostProcessService processes,
+    required int? maxCapturedOutputCharactersPerStream,
+  }) {
     return RuntimeVersionValidator(
       commandExecutor: HostProcessCommandExecutor(
         processes: processes,
         runInShell: io.Platform.isWindows,
-        maxCapturedOutputCharactersPerStream: null,
+        maxCapturedOutputCharactersPerStream: maxCapturedOutputCharactersPerStream,
       ),
       manifest: const CursorRuntimeManifest(),
       probeTimeout: _versionProbeTimeout,
@@ -242,30 +255,20 @@ class const CursorPluginDescriptor({
     required String stateDirectory,
   }) async {
     final explicitBin = _explicitBin(config);
-    var executablePath = explicitBin ?? CursorBinary.defaultBinary;
-    final runtime = await _probeCursorRuntime(
-      executablePath: executablePath,
-      processes: processes,
-      environment: environment,
-    );
-    /// The pinned managed runtime's version when it is already installed and
-    /// runnable, or null. Only consulted without an explicit `--cursor-bin`,
-    /// which is authoritative when set.
-    Future<String?> managedRuntimeVersion() async {
-      if (explicitBin != null) return null;
-      const manifest = CursorRuntimeManifest();
-      final managedPath = manifest.managedBinaryPath(stateDirectory: stateDirectory);
-      final managed = await _probeCursorRuntime(
-        executablePath: managedPath,
+    final selection = await ManagedRuntimeSelectionService(
+      manifest: const CursorRuntimeManifest(),
+      versionValidator: _versionValidatorFor(
         processes: processes,
-        environment: environment,
-      );
-      if (managed is! _CursorRuntimeReady) return null;
-      // The auth probe below must run against the binary that actually
-      // resolved, not the PATH name that failed.
-      executablePath = managedPath;
-      return managed.version;
-    }
+        maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+      ),
+    ).select(
+      explicitExecutablePath: explicitBin,
+      fallbackExecutableCandidates: const [],
+      environment: environment,
+      stateDirectory: stateDirectory,
+      abortSignal: StartAbortSignal.never,
+      managedVersionPolicy: ManagedRuntimeVersionPolicy.minimum,
+    );
 
     /// What to tell the user when nothing usable was found and Sesori can
     /// install the runtime itself.
@@ -279,41 +282,32 @@ class const CursorPluginDescriptor({
           : "Install the Cursor CLI from Sesori, or install it locally and retry setup detection.";
     }
 
-    final String runtimeVersion;
-    switch (runtime) {
-      case _CursorRuntimeReady(:final version):
-        runtimeVersion = version;
-      case _CursorRuntimeMissing():
-        final managedVersion = await managedRuntimeVersion();
-        if (managedVersion == null) {
-          return PluginSetupRuntimeMissing(
-            actionHint: explicitBin != null
-                ? "Fix the configured Cursor CLI path, then restart the bridge."
-                : missingRuntimeHint(),
-          );
-        }
-        runtimeVersion = managedVersion;
-      case _CursorRuntimeOutdated():
-        final managedVersion = await managedRuntimeVersion();
-        if (managedVersion == null) {
-          // Without an explicit binary a managed install fixes this, so it is
-          // reported as a missing runtime (installable) rather than
-          // unavailable — matching OpenCode and Codex.
-          if (explicitBin == null) return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
-          return const PluginSetupUnavailable(
+    if (selection is ManagedRuntimeNotSelected) {
+      if (explicitBin != null) {
+        return switch (selection.primaryRejection) {
+          ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => const PluginSetupRuntimeMissing(
+            actionHint: "Fix the configured Cursor CLI path, then restart the bridge.",
+          ),
+          ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
             actionHint: "The configured Cursor CLI is too old. Update it and restart the bridge.",
-          );
-        }
-        runtimeVersion = managedVersion;
-      case _CursorRuntimeUnknown() || _CursorRuntimeUnrecognized():
-        final managedVersion = await managedRuntimeVersion();
-        if (managedVersion == null) {
-          return const PluginSetupUnknown(
+          ),
+          ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
             actionHint: "Cursor setup could not be determined. Verify the local CLI and retry.",
-          );
-        }
-        runtimeVersion = managedVersion;
+          ),
+        };
+      }
+      if (selection.primaryRejection case ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) ||
+          ManagedRuntimeVersionRejected()) {
+        return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
+      }
+      return const PluginSetupUnknown(
+        actionHint: "Cursor setup could not be determined. Verify the local CLI and retry.",
+      );
     }
+    final selected = selection as ManagedRuntimeSelected;
+    final executablePath = selected.binaryPath;
+    final runtimeVersion = selected.version.raw;
+    Log.d("[cursor] available: '$executablePath --version' -> $runtimeVersion");
 
     if (environment["CURSOR_API_KEY"]?.trim().isNotEmpty ?? false) {
       return PluginSetupReady.versioned(runtimeVersion: runtimeVersion);
@@ -357,60 +351,9 @@ class const CursorPluginDescriptor({
     );
   }
 
-  Future<_CursorRuntimeProbe> _probeCursorRuntime({
-    required String executablePath,
-    required HostProcessService processes,
-    required Map<String, String> environment,
-  }) async {
-    final executor = HostProcessCommandExecutor(
-      processes: processes,
-      runInShell: io.Platform.isWindows,
-      maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
-    );
-    final CommandResult result;
-    try {
-      result = await executor.run(
-        executablePath,
-        const ["--version"],
-        environment: environment,
-        timeout: _versionProbeTimeout,
-      );
-    } on TimeoutException {
-      // The probe launched but never exited (executor force-killed it):
-      // installed but not answering.
-      Log.d(
-        "[cursor] availability probe '$executablePath --version' did not exit within "
-        "${_versionProbeTimeout.inSeconds}s",
-      );
-      return const _CursorRuntimeUnknown();
-    } on Object catch (error) {
-      // Spawn could not launch — almost always ENOENT: not installed / not on PATH.
-      Log.d("[cursor] availability probe could not launch '$executablePath --version': $error");
-      return const _CursorRuntimeMissing();
-    }
-
-    if (result.exitCode != 0) {
-      Log.d("[cursor] availability probe '$executablePath --version' exited with code ${result.exitCode}");
-      return const _CursorRuntimeUnknown();
-    }
-
-    const manifest = CursorRuntimeManifest();
-    final parsed = manifest.parseVersion(value: result.stdout.trim().split(RegExp(r"\s+")).first);
-    if (parsed == null) {
-      return const _CursorRuntimeUnrecognized();
-    }
-    if (parsed.compareTo(manifest.minPathVersion) < 0) {
-      Log.w("[cursor] Cursor CLI ${parsed.raw} is below the supported minimum ${manifest.minPathVersion.raw}");
-      return const _CursorRuntimeOutdated();
-    }
-    final version = parsed.raw;
-    Log.d("[cursor] available: '$executablePath --version' -> $version");
-    return _CursorRuntimeReady(version: version);
-  }
-
   String _normalizedStatusOutput(CommandResult result) {
     final combined = "${result.stdout}\n${result.stderr}";
-    return combined.replaceAll(RegExp(r"\x1B\[[0-?]*[ -/]*[@-~]"), "").trim().toLowerCase();
+    return stripAnsi(value: combined).trim().toLowerCase();
   }
 
   @override
@@ -450,48 +393,10 @@ class const CursorPluginDescriptor({
       processFactory: processFactory,
       sessionCleanupService: sessionCleanupService,
     );
-
-    final plugin = AcpBridgePlugin(
-      plugin: cursor,
-      clock: host.clock,
-      endpoint: "$binaryPath acp",
-    );
-
-    // Rolls back the spawned agent and surfaces an abort that arrived while
-    // connecting rather than returning a live plugin.
-    Future<Never> rollbackAborted() async {
-      try {
-        await plugin.shutdown(budget: null);
-      } on Object catch (error) {
-        Log.e("[cursor] rollback after aborted start failed: $error");
-      }
-      throw const PluginStartAbortedException();
-    }
-
-    // Eagerly spawn the agent and run the ACP handshake (bounded), so the first
-    // mobile request is fast and the status reflects reality. A timeout/failure
-    // leaves the plugin degraded rather than failing the bridge.
-    await plugin.connect(budget: _connectBudget, startAborted: host.startAborted);
-
-    if (host.startAborted.isAborted) {
-      await rollbackAborted();
-    }
-
-    return plugin;
+    // Eagerly spawns the agent and runs the ACP handshake (bounded), so the
+    // first mobile request is fast and the status reflects reality; a
+    // timeout/failure leaves the plugin degraded rather than failing the bridge,
+    // and an abort that lands while connecting is rolled back.
+    return await AcpBridgePlugin.start(plugin: cursor, host: host, connectBudget: _connectBudget);
   }
 }
-
-/// Outcome of the Cursor availability probe. Only [_CursorRuntimeReady]
-/// carries the selected runtime version, so a version can never accompany a
-/// rejected or unresolved runtime.
-sealed class const _CursorRuntimeProbe();
-
-final class const _CursorRuntimeReady({required final String version}) extends _CursorRuntimeProbe;
-
-final class const _CursorRuntimeMissing() extends _CursorRuntimeProbe;
-
-final class const _CursorRuntimeOutdated() extends _CursorRuntimeProbe;
-
-final class const _CursorRuntimeUnknown() extends _CursorRuntimeProbe;
-
-final class const _CursorRuntimeUnrecognized() extends _CursorRuntimeProbe;

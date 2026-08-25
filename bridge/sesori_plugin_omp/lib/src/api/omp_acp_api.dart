@@ -6,7 +6,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../omp_binary.dart";
 
-/// Layer-1 ACP operations used by OMP's bounded isolated workflows.
+/// Layer-1 ACP operations used by OMP's bounded isolated workflows: owns one
+/// scratch `omp acp` lease (process plus optional isolated session directory)
+/// and exposes the typed standard requests on it.
 class OmpAcpApi({
   required final String _binaryPath,
   required final AcpProcessFactory _processFactory,
@@ -18,11 +20,7 @@ class OmpAcpApi({
   Directory? _sessionDirectory;
   bool _disposed = false;
 
-  Stream<AcpNotification> get notifications {
-    final client = _client;
-    if (client == null) throw StateError("OMP ACP lease is not open");
-    return client.notifications;
-  }
+  Stream<AcpNotification> get notifications => _openClient().notifications;
 
   Future<AcpInitializeResult> open({
     required String cwd,
@@ -50,84 +48,55 @@ class OmpAcpApi({
     );
     _client = client;
     await client.connect().timeout(_remaining(timeout: timeout, stopwatch: stopwatch));
-    final raw = await client.request(
-      method: AcpMethods.initialize,
-      params: buildInitializeParams(
-        clientName: "sesori-bridge",
-        clientVersion: "0.0.0",
-        formElicitation: false,
-      ),
+    // Same handshake as the live plugin minus form elicitation, which these
+    // scratch flows never answer.
+    return await AcpAgentApi(client: client).initialize(
+      formElicitation: false,
+      capabilityMeta: null,
+      authMethodId: OmpBinary.acpAuthMethodId,
       timeout: _remaining(timeout: timeout, stopwatch: stopwatch),
     );
-    final result = AcpInitializeResult.fromJson(
-      raw is Map ? raw.cast<String, dynamic>() : const {},
-    );
-    if (result.protocolVersion != acpProtocolVersion) {
-      throw StateError(
-        "OMP negotiated ACP v${result.protocolVersion}; expected v$acpProtocolVersion",
-      );
-    }
-    if (result.requiresAuth) {
-      await client.request(
-        method: AcpMethods.authenticate,
-        params: const {"methodId": "agent"},
-        timeout: _remaining(timeout: timeout, stopwatch: stopwatch),
-      );
-    }
-    return result;
   }
 
   Future<AcpNewSessionResult> newSession({
     required String cwd,
     required Duration timeout,
-  }) async => await _sessionResult(
-    method: AcpMethods.sessionNew,
-    params: {"cwd": cwd, "mcpServers": const <Object?>[]},
-    timeout: timeout,
-  );
+  }) => _api().newSession(cwd: cwd, timeout: timeout);
 
   Future<AcpNewSessionResult> setConfigOption({
     required String sessionId,
     required String configId,
     required String value,
     required Duration timeout,
-  }) async => await _sessionResult(
-    method: AcpMethods.sessionSetConfigOption,
-    params: {"sessionId": sessionId, "configId": configId, "value": value},
-    timeout: timeout,
-  );
+  }) async {
+    final result = await _api().setConfigOption(
+      sessionId: sessionId,
+      configId: configId,
+      value: value,
+      timeout: timeout,
+    );
+    if (result == null) throw StateError("OMP returned no config state");
+    return result;
+  }
 
   Future<AcpSessionListResult> listSessionsPage({
     required String? cwd,
     required String? cursor,
     required Duration timeout,
-  }) async {
-    final raw = await _request(
-      method: AcpMethods.sessionList,
-      params: {"cwd": ?cwd, "cursor": ?cursor},
-      timeout: timeout,
-    );
-    return AcpSessionListResult.fromJson(
-      raw is Map ? raw.cast<String, dynamic>() : const {},
-    );
-  }
+  }) => _api().listSessionsPage(cwd: cwd, cursor: cursor, timeout: timeout);
 
   Future<AcpNewSessionResult> resumeSession({
     required String sessionId,
     required String cwd,
     required Duration timeout,
-  }) async => await _sessionResult(
-    method: AcpMethods.sessionResume,
-    params: {"sessionId": sessionId, "cwd": cwd, "mcpServers": const <Object?>[]},
-    timeout: timeout,
-  );
+  }) => _api().resumeSession(sessionId: sessionId, cwd: cwd, timeout: timeout);
 
   Future<AcpPromptResult> prompt({
     required String sessionId,
     required String text,
     required Duration timeout,
   }) async {
-    final raw = await _request(
+    final raw = await _openClient().request(
       method: AcpMethods.sessionPrompt,
       params: {
         "sessionId": sessionId,
@@ -143,11 +112,7 @@ class OmpAcpApi({
   Future<void> closeSession({
     required String sessionId,
     required Duration timeout,
-  }) => _request(
-    method: AcpMethods.sessionClose,
-    params: {"sessionId": sessionId},
-    timeout: timeout,
-  );
+  }) => _api().closeSession(sessionId: sessionId, timeout: timeout);
 
   Future<Directory> createScratchDirectory({required String prefix}) => _createScratch(prefix: prefix);
 
@@ -177,27 +142,14 @@ class OmpAcpApi({
     await settle();
   }
 
-  Future<AcpNewSessionResult> _sessionResult({
-    required String method,
-    required Map<String, dynamic> params,
-    required Duration timeout,
-  }) async {
-    final raw = await _request(method: method, params: params, timeout: timeout);
-    return AcpNewSessionResult.fromJson(
-      raw is Map ? raw.cast<String, dynamic>() : const {},
-    );
-  }
+  AcpAgentApi _api() => AcpAgentApi(client: _openClient());
 
-  Future<dynamic> _request({
-    required String method,
-    required Object? params,
-    required Duration timeout,
-  }) {
+  AcpStdioClient _openClient() {
     final client = _client;
     if (client == null || !client.isConnected) {
       throw StateError("OMP ACP lease is not open");
     }
-    return client.request(method: method, params: params, timeout: timeout);
+    return client;
   }
 
   Future<Directory> _createScratch({required String prefix}) async {

@@ -16,6 +16,30 @@ void main() {
       expect(spec.arguments, ["--mode", "rpc", "--approve", "--session-id", "sesori.session-1"]);
     });
 
+    test("builds the exact parent-fork RPC argument vector", () {
+      final parentPath = Platform.isWindows ? r"C:\sessions\parent.jsonl" : "/sessions/parent.jsonl";
+      final spec = PiLaunchSpec(
+        binaryPath: "pi",
+        workingDirectory: "/tmp/project",
+        launch: PiForkedSession(sessionId: "child", parentSessionPath: parentPath),
+        environment: const {},
+      );
+
+      expect(spec.arguments, [
+        "--mode",
+        "rpc",
+        "--approve",
+        "--fork",
+        parentPath,
+        "--session-id",
+        "child",
+      ]);
+      expect(
+        () => PiForkedSession(sessionId: "child", parentSessionPath: "sessions/parent.jsonl"),
+        throwsArgumentError,
+      );
+    });
+
     test("builds the exact no-session probe argument vector", () {
       final spec = PiLaunchSpec(
         binaryPath: "pi",

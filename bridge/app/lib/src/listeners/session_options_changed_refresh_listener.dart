@@ -1,15 +1,16 @@
 import "dart:async";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "../bridge/runtime/plugin_runtime.dart";
-import "../bridge/services/session_options_service.dart";
+import "../runtime/plugin_runtime.dart";
+import "../services/session_options_service.dart";
 
 class SessionOptionsChangedRefreshListener({
   required final PluginRuntime _runtime,
   required final SessionOptionsService _service,
 }) {
-  final Set<Future<void>> _pending = {};
+  final PendingOperations _pending = PendingOperations();
   StreamSubscription<SourcedPluginRuntimeEvent>? _subscription;
   Future<void>? _disposeFuture;
   bool _disposed = false;
@@ -42,12 +43,11 @@ class SessionOptionsChangedRefreshListener({
   Future<void> _dispose() async {
     _disposed = true;
     await _subscription?.cancel();
-    await Future.wait(_pending.toList(growable: false));
+    await _pending.drain();
   }
 
   void _track(Future<void> operation) {
-    _pending.add(operation);
-    unawaited(operation.whenComplete(() => _pending.remove(operation)));
+    unawaited(_pending.track(operation: operation));
   }
 
   Future<void> _refresh({

@@ -1,4 +1,7 @@
 class const SendCommandBody({
+  /// Existing server-named user-message id the command should reuse, or null
+  /// to let OpenCode name a new message.
+  required final String? messageID,
   required final String command,
   required final String arguments,
   required final String? agent,
@@ -8,6 +11,7 @@ class const SendCommandBody({
   Map<String, dynamic> toJson() {
     final selectedModel = model;
     return {
+      "messageID": ?messageID,
       "command": command,
       "arguments": arguments,
       "agent": ?agent,

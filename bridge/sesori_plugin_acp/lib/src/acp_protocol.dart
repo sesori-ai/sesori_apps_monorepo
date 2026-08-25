@@ -12,6 +12,11 @@ part "acp_protocol.g.dart";
 /// The ACP protocol version this bridge implements.
 const int acpProtocolVersion = 1;
 
+/// The `clientInfo` identity every Sesori ACP connection (live plugin and
+/// isolated scratch processes alike) reports at `initialize`.
+const String acpClientName = "sesori-bridge";
+const String acpClientVersion = "0.0.0";
+
 /// Standard ACP JSON-RPC method names.
 abstract final class AcpMethods() {
   static const String initialize = "initialize";
@@ -140,6 +145,7 @@ sealed class AcpSessionInfo with _$AcpSessionInfo {
     /// scanned.
     required String? cwd,
     required String? title,
+    @JsonKey(name: "_meta") @Default(null) Map<String, dynamic>? metadata,
 
     /// Last-activity time in epoch milliseconds (see [AcpTimestampMsConverter]).
     @AcpTimestampMsConverter() @JsonKey(name: "updatedAt") required int? updatedAtMs,
@@ -244,13 +250,11 @@ Map<String, dynamic> buildClientCapabilities({
   };
 }
 
-/// Builds `initialize` params.
+/// Builds `initialize` params. The client identity is fixed
+/// ([acpClientName]/[acpClientVersion]); only the capabilities vary per agent.
 Map<String, dynamic> buildInitializeParams({
-  required String clientName,
-  required String clientVersion,
   required bool formElicitation,
-  String? clientTitle,
-  Map<String, dynamic>? capabilityMeta,
+  required Map<String, dynamic>? capabilityMeta,
 }) {
   return <String, dynamic>{
     "protocolVersion": acpProtocolVersion,
@@ -259,9 +263,8 @@ Map<String, dynamic> buildInitializeParams({
       meta: capabilityMeta,
     ),
     "clientInfo": {
-      "name": clientName,
-      "title": clientTitle,
-      "version": clientVersion,
+      "name": acpClientName,
+      "version": acpClientVersion,
     },
   };
 }

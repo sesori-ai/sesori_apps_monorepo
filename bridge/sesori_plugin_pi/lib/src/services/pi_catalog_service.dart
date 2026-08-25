@@ -8,14 +8,28 @@ class PiCatalogService({
   required final PiBackendCatalogRepository _repository,
   required final PiCatalogTracker _tracker,
   required final Duration _totalTimeout,
-  required final int _maxModels,
 }) {
   this {
     if (_totalTimeout <= Duration.zero) throw ArgumentError.value(_totalTimeout, "totalTimeout", "must be positive");
-    if (_maxModels <= 0) throw ArgumentError.value(_maxModels, "maxModels", "must be positive");
   }
 
-  final Map<String, Future<PluginSessionOptionsDiscoveryResult>> _inFlight = {};
+  final Map<String, Future<_PiCatalogProbeOutcome>> _inFlight = {};
+
+  Future<bool> healthCheck() => _repository.healthCheck();
+
+  Future<List<PluginCommand>> getCommands({required String projectId}) async =>
+      (await requireOptions(projectId: projectId)).commands;
+
+  Future<PluginSessionOptions> requireOptions({required String projectId}) async {
+    final normalized = normalizeProjectDirectory(directory: projectId);
+    final tracked = _tracker.snapshotFor(projectId: normalized);
+    if (tracked != null) return tracked;
+    final outcome = await _coalescedProbe(projectId: normalized);
+    return switch (outcome.result) {
+      PluginSessionOptionsDiscoveryObserved(:final options) => options,
+      PluginSessionOptionsDiscoveryFailed() => _throwDiscoveryFailure(outcome: outcome),
+    };
+  }
 
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required String projectId,
@@ -28,13 +42,13 @@ class PiCatalogService({
         return Future.value(PluginSessionOptionsDiscoveryResult.observed(options: tracked));
       }
     }
-    return _coalescedProbe(projectId: normalized);
+    return _coalescedProbe(projectId: normalized).then((outcome) => outcome.result);
   }
 
-  Future<PluginSessionOptionsDiscoveryResult> _coalescedProbe({required String projectId}) {
+  Future<_PiCatalogProbeOutcome> _coalescedProbe({required String projectId}) {
     final pending = _inFlight[projectId];
     if (pending != null) return pending;
-    late final Future<PluginSessionOptionsDiscoveryResult> operation;
+    late final Future<_PiCatalogProbeOutcome> operation;
     operation = _probe(projectId: projectId).whenComplete(() {
       if (identical(_inFlight[projectId], operation)) _inFlight.remove(projectId);
     });
@@ -42,12 +56,11 @@ class PiCatalogService({
     return operation;
   }
 
-  Future<PluginSessionOptionsDiscoveryResult> _probe({required String projectId}) async {
+  Future<_PiCatalogProbeOutcome> _probe({required String projectId}) async {
     try {
       final probe = await _repository.probe(
         projectId: projectId,
         totalTimeout: _totalTimeout,
-        maxModels: _maxModels,
       );
       final snapshot = PluginSessionOptions(
         agents: probe.agents,
@@ -58,10 +71,35 @@ class PiCatalogService({
             : PluginSessionOptionsCompleteness.partial,
       );
       _tracker.replace(projectId: projectId, snapshot: snapshot);
-      return PluginSessionOptionsDiscoveryResult.observed(options: snapshot);
+      return (
+        result: PluginSessionOptionsDiscoveryResult.observed(options: snapshot),
+        error: null,
+        stackTrace: null,
+      );
     } on Object catch (error, stack) {
       Log.w("[pi] project catalog probe failed", error, stack);
-      return const PluginSessionOptionsDiscoveryResult.failed();
+      return (
+        result: const PluginSessionOptionsDiscoveryResult.failed(),
+        error: error,
+        stackTrace: stack,
+      );
     }
   }
+
+  Never _throwDiscoveryFailure({required _PiCatalogProbeOutcome outcome}) {
+    final error = PluginOperationException(
+      "discover Pi options",
+      message: "Pi session options are unavailable.",
+      cause: outcome.error,
+    );
+    final stackTrace = outcome.stackTrace;
+    if (stackTrace == null) throw error;
+    Error.throwWithStackTrace(error, stackTrace);
+  }
 }
+
+typedef _PiCatalogProbeOutcome = ({
+  PluginSessionOptionsDiscoveryResult result,
+  Object? error,
+  StackTrace? stackTrace,
+});

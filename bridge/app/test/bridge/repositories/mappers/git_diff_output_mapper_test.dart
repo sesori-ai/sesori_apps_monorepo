@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/repositories/mappers/git_diff_output_mapper.dart";
+import "package:sesori_bridge/src/repositories/mappers/git_diff_output_mapper.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 

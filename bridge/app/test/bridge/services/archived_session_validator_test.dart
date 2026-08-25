@@ -1,6 +1,6 @@
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/services/archived_session_validator.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -39,6 +39,7 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "fake",
+        preservePullRequestScope: false,
       );
     });
 
@@ -72,6 +73,5 @@ void main() {
         ),
       );
     });
-
   });
 }

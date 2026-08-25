@@ -13,6 +13,8 @@
     "session.children",
     "session.fork",
     "session.messages",
+    "session.deleteMessage",
+    "part.update",
     "session.prompt_async",
     "session.command",
     "session.abort",

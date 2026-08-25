@@ -197,7 +197,6 @@ SessionDetailState _loaded(DeviceCanvasSessionState deviceCanvas) => SessionDeta
   selectedAgentModel: null,
   stagedCommand: null,
   isRefreshing: false,
-  retryErrorMessage: null,
   deviceCanvas: deviceCanvas,
 );
 

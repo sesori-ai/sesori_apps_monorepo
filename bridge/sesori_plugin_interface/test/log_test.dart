@@ -1,5 +1,6 @@
 import "dart:io";
 
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -23,8 +24,8 @@ void main() {
           Log.w("w-msg");
           Log.e("e-msg");
         },
-        stdout: () => _CapturingStdout(out),
-        stderr: () => _CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: out),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(out, isEmpty, reason: "diagnostic logs must never pollute stdout");
@@ -43,8 +44,8 @@ void main() {
           Log.w("warning");
           Log.e("error");
         },
-        stdout: () => _CapturingStdout(<String>[]),
-        stderr: () => _CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: <String>[]),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(err, hasLength(2), reason: "only warning and error pass at the warning level");
@@ -56,8 +57,8 @@ void main() {
 
       IOOverrides.runZoned(
         () => _LogCaller().emit(),
-        stdout: () => _CapturingStdout(<String>[]),
-        stderr: () => _CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: <String>[]),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(err, hasLength(1));
@@ -75,8 +76,8 @@ void main() {
 
       IOOverrides.runZoned(
         () => _LogCaller().emit(),
-        stdout: () => _CapturingStdout(<String>[]),
-        stderr: () => _CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: <String>[]),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(err, hasLength(1));
@@ -94,8 +95,8 @@ void main() {
 
       IOOverrides.runZoned(
         () => Log.w("operation failed", StateError("useful failure"), StackTrace.fromString("useful stack")),
-        stdout: () => _CapturingStdout(<String>[]),
-        stderr: () => _CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: <String>[]),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(err.single, contains("Bad state: useful failure"));
@@ -111,8 +112,8 @@ void main() {
           Log.w("w-msg");
           Log.e("e-msg");
         },
-        stdout: () => _CapturingStdout(<String>[]),
-        stderr: () => _CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: <String>[]),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(err, hasLength(2));
@@ -131,12 +132,3 @@ class _LogCaller() {
 }
 
 /// Captures [writeln] calls; [IOOverrides] swaps it in for stdout/stderr.
-class _CapturingStdout(final List<String> lines) implements Stdout {
-  @override
-  void writeln([Object? object = ""]) {
-    lines.add(object.toString());
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}

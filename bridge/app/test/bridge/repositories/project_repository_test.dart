@@ -3,19 +3,20 @@ import "dart:async";
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/project_activity.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_activity_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
+import "package:sesori_bridge/src/repositories/models/project_activity.dart";
+import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
+import "package:sesori_bridge/src/repositories/project_activity_repository.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge/src/repositories/project_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/services/project_activity_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
+import "../../helpers/fakes/fake_derived_bridge_plugin.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
 
@@ -721,6 +722,7 @@ void main() {
         );
         await db.sessionDao.insertSession(
           pluginId: plugin.id,
+          preservePullRequestScope: false,
           sessionId: "shared-session",
           backendSessionId: "shared-session",
           projectId: directory,
@@ -927,7 +929,11 @@ void main() {
         _session("/tmp/proj/alpha", id: "kept", created: 1, updated: 1),
         _session("/tmp/proj/deleted-only", id: "gone", created: 1, updated: 1),
       ];
-      await db.sessionDao.insertSessionTombstone(backendSessionId: "gone", pluginId: "codex", deletedAt: 1);
+      await db.sessionDao.insertSessionTombstone(
+        backendSessionId: "gone",
+        pluginId: "codex",
+        deletedAt: 1,
+      );
       await db.projectsDao.setActivity(projectId: "/tmp/proj/alpha", createdAt: 1, updatedAt: 2);
       await db.projectsDao.setActivity(projectId: "/tmp/proj/deleted-only", createdAt: 1, updatedAt: 1);
 
@@ -1102,6 +1108,7 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "codex",
+        preservePullRequestScope: false,
       );
       // The plugin, however, only knows the session by its worktree cwd.
       plugin.sessions = [
@@ -1117,7 +1124,6 @@ void main() {
       // the existing persisted timestamp.
       expect(result.single.time?.updated, persistedActivity!.updatedAt);
     });
-
   });
 
   group("ProjectRepository getRemoteIdentity", () {
@@ -1217,6 +1223,12 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   int getProjectsCallCount = 0;
 
   @override
+  String get id => "fake";
+
+  @override
+  Stream<BridgeSseEvent> get events => throw UnimplementedError();
+
+  @override
   Future<List<PluginProject>> getProjects() async {
     getProjectsCallCount++;
     if (getProjectsFuture case final future?) return await future;
@@ -1226,160 +1238,16 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   }
 
   @override
-  String get id => "fake";
-
-  @override
-  Stream<BridgeSseEvent> get events => throw UnimplementedError();
-
-  @override
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) => throw UnimplementedError();
-
-  @override
-  Future<PluginSession> createSession({
-    required String directory,
-    required String? parentSessionId,
-    required List<PluginPromptPart> parts,
-    required String? userVisibleText,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<PluginSession> renameSession({required String sessionId, required String title}) => throw UnimplementedError();
-
-  @override
   Future<PluginProject> renameProject({required String projectId, required String name}) async {
     lastRenameProjectId = projectId;
     return projectResult;
   }
 
   @override
-  Future<void> deleteSession(String sessionId) => throw UnimplementedError();
-
-  @override
-  Future<void> archiveSession({required String sessionId}) => throw UnimplementedError();
-
-  @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<List<PluginSession>> getChildSessions(String sessionId) => throw UnimplementedError();
-
-  @override
-  Future<Map<String, PluginSessionStatus>> getSessionStatuses() => throw UnimplementedError();
-
-  @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) => throw UnimplementedError();
-
-  @override
-  Future<List<PluginCommand>> getCommands({required String? projectId}) async => <PluginCommand>[];
-
-  @override
-  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
-    required String projectId,
-    required PluginSessionOptionsDiscoveryMode discoveryMode,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<void> sendPrompt({
-    required String sessionId,
-    required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<void> sendCommand({
-    required String sessionId,
-    required String command,
-    required String arguments,
-    required String? userVisibleArguments,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {}
-
-  @override
-  Future<void> abortSession({required String sessionId}) => throw UnimplementedError();
-
-  @override
-  Future<List<PluginAgent>> getAgents({required String projectId}) => throw UnimplementedError();
-
-  @override
-  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async => [];
-
-  @override
-  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) => throw UnimplementedError();
-
-  @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) => throw UnimplementedError();
-
-  @override
-  Future<void> replyToQuestion({
-    required String questionId,
-    required String sessionId,
-    required List<List<String>> answers,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<void> rejectQuestion({required String questionId, required String? sessionId}) => throw UnimplementedError();
-
-  @override
-  Future<void> replyToPermission({
-    required String requestId,
-    required String sessionId,
-    required PluginPermissionReply reply,
-  }) => throw UnimplementedError();
-
-  @override
   Future<PluginProject> getProject(String projectId) async {
     lastGetProjectId = projectId;
     return projectResult;
   }
-
-  @override
-  Future<bool> healthCheck() => throw UnimplementedError();
-
-  @override
-  Future<PluginProvidersResult> getProviders({required String projectId}) => throw UnimplementedError();
-
-  @override
-  List<PluginProjectActivitySummary> getActiveSessionsSummary() => throw UnimplementedError();
-
-  @override
-  Future<void> dispose() => throw UnimplementedError();
-}
-
-/// A derive-style plugin: exposes its sessions through
-/// [BridgeDerivedProjectsPluginApi.listAllSessions], mirroring how Codex/ACP
-/// plugins are shaped — it has no project members at all, so the bridge
-/// derivation path is what's exercised.
-class _FakeDerivedPlugin(var List<PluginSession> sessions) implements BridgeDerivedProjectsPluginApi {
-  /// Points at a session directory used by the tests so the launch-folder seed
-  /// doesn't introduce an extra project the assertions don't expect.
-  String launchDir = "/tmp/proj/alpha";
-
-  /// The hint set received on the most recent [listAllSessions] call.
-  Set<String>? receivedKnownDirectories;
-  int listAllSessionsCallCount = 0;
-
-  @override
-  String get id => "codex";
-
-  @override
-  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
-    listAllSessionsCallCount++;
-    receivedKnownDirectories = knownDirectories;
-    return sessions;
-  }
-
-  @override
-  String get launchDirectory => launchDir;
 
   @override
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
@@ -1389,6 +1257,17 @@ class _FakeDerivedPlugin(var List<PluginSession> sessions) implements BridgeDeri
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// A derive-style plugin: exposes its sessions through
+/// [BridgeDerivedProjectsPluginApi.listAllSessions], mirroring how Codex/ACP
+/// plugins are shaped — it has no project members at all, so the bridge
+/// derivation path is what's exercised.
+class _FakeDerivedPlugin(final List<PluginSession> initialSessions) extends FakeDerivedBridgePlugin {
+  this : super(id: "codex", launchDirectory: "/tmp/proj/alpha", allSessions: initialSessions);
+
+  List<PluginSession> get sessions => allSessions;
+  set sessions(List<PluginSession> value) => allSessions = value;
 }
 
 class _CountingProjectsDao({required AppDatabase database}) extends ProjectsDao {

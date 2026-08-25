@@ -20,17 +20,11 @@ void main() {
   test("POST returns a typed challenge and DELETE cancels", () async {
     final service = _FakePluginLifecycleService();
     final request = makeRequest("POST", "/plugin/codex/authentication");
-    final started = await PostPluginAuthenticationHandler(lifecycleService: service).handleInternal(
+    final started = await PostPluginAuthenticationHandler(lifecycleService: service).routeForTest(
       request,
-      pathParams: const {"id": "codex"},
-      queryParams: const {},
-      fragment: null,
     );
-    final cancelled = await DeletePluginAuthenticationHandler(lifecycleService: service).handleInternal(
+    final cancelled = await DeletePluginAuthenticationHandler(lifecycleService: service).routeForTest(
       makeRequest("DELETE", "/plugin/codex/authentication"),
-      pathParams: const {"id": "codex"},
-      queryParams: const {},
-      fragment: null,
     );
 
     expect(started.status, 200);
@@ -50,18 +44,12 @@ void main() {
     final service = _FakePluginLifecycleService();
     final handler = PostPluginAuthenticationHandler(lifecycleService: service);
     service.error = const PluginManagementPluginNotFoundException("missing");
-    final missing = await handler.handleInternal(
+    final missing = await handler.routeForTest(
       makeRequest("POST", "/plugin/missing/authentication"),
-      pathParams: const {"id": "missing"},
-      queryParams: const {},
-      fragment: null,
     );
     service.error = const PluginAuthenticationConflictException(_conflict);
-    final conflict = await handler.handleInternal(
+    final conflict = await handler.routeForTest(
       makeRequest("POST", "/plugin/codex/authentication"),
-      pathParams: const {"id": "codex"},
-      queryParams: const {},
-      fragment: null,
     );
 
     expect(missing.status, 404);
@@ -71,11 +59,8 @@ void main() {
 
   test("DELETE maps typed unsupported conflicts", () async {
     final service = _FakePluginLifecycleService()..cancelError = const PluginAuthenticationConflictException(_conflict);
-    final response = await DeletePluginAuthenticationHandler(lifecycleService: service).handleInternal(
+    final response = await DeletePluginAuthenticationHandler(lifecycleService: service).routeForTest(
       makeRequest("DELETE", "/plugin/codex/authentication"),
-      pathParams: const {"id": "codex"},
-      queryParams: const {},
-      fragment: null,
     );
 
     expect(response.status, 409);

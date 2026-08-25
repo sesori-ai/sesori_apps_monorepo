@@ -15,6 +15,26 @@ enum _LegacyOptionsFailureSource() { agents, providers, commands }
 void main() {
   setUpAll(registerAllFallbackValues);
 
+  test("recognizes the structured stale prompt options error", () {
+    final error = ApiError.nonSuccessCode(
+      errorCode: 409,
+      rawErrorString: jsonEncode(
+        const SendPromptErrorResponse(
+          code: SendPromptErrorCode.staleSessionOptions,
+          message: "unsupported agent",
+        ).toJson(),
+      ),
+    );
+
+    expect(SessionRepository.isStalePromptOptionsError(error: error), isTrue);
+  });
+
+  test("does not classify legacy plain-text send failures as stale options", () {
+    final error = ApiError.nonSuccessCode(errorCode: 400, rawErrorString: "unsupported agent");
+
+    expect(SessionRepository.isStalePromptOptionsError(error: error), isFalse);
+  });
+
   test("session detail flows route through session api and repository", () async {
     final api = MockSessionApi();
     final repository = SessionRepository(api: api);
@@ -53,7 +73,7 @@ void main() {
       (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
     );
     when(
-      () => api.sendMessage(
+      () => api.sendMessage(promptId: any(named: "promptId"),
         attachments: const [],
         sessionId: "session-1",
         text: "hello",
@@ -86,7 +106,7 @@ void main() {
     await repository.listAgents(projectId: "project-1", pluginId: "plugin-1");
     await repository.listProviders(projectId: "project-1", pluginId: "plugin-1");
     await repository.listCommands(projectId: "project-1", pluginId: "plugin-1");
-    await repository.sendMessage(
+    await repository.sendMessage(promptId: "prompt-1",
       attachments: const [],
       sessionId: "session-1",
       text: "hello",
@@ -113,7 +133,7 @@ void main() {
     verify(() => api.listProviders(projectId: "project-1", pluginId: "plugin-1")).called(1);
     verify(() => api.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
     verify(
-      () => api.sendMessage(
+      () => api.sendMessage(promptId: "prompt-1",
         attachments: const [],
         sessionId: "session-1",
         text: "hello",

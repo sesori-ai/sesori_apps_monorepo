@@ -10,8 +10,6 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
-import "package:sesori_dart_core/src/platform/notification_canceller.dart";
-import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
@@ -21,15 +19,11 @@ import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
 
-class MockNotificationCanceller() extends Mock implements NotificationCanceller;
-
-class MockPermissionRepository() extends Mock implements PermissionRepository;
-
 void main() {
   const sessionId = "session-1";
   const connectedStatus = ConnectionStatus.connected(
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
-    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
+    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
   );
 
   setUpAll(() {
@@ -39,7 +33,7 @@ void main() {
   });
 
   group("SessionDetailCubit permission handling", () {
-    late MockSessionService mockSessionService;
+    late MockSessionRepository mockSessionService;
     late MockSessionRepository mockSessionRepository;
     late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
@@ -53,7 +47,7 @@ void main() {
     late BehaviorSubject<ConnectionStatus> connectionStatus;
 
     setUp(() {
-      mockSessionService = MockSessionService();
+      mockSessionService = MockSessionRepository();
       mockSessionRepository = MockSessionRepository();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
@@ -75,7 +69,7 @@ void main() {
       when(() => mockConnectionService.events).thenAnswer((_) => globalEvents.stream);
       when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus);
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
-      delegateSessionRepositoryToService(repository: mockSessionRepository, service: mockSessionService);
+      delegateSessionRepository(repository: mockSessionRepository, source: mockSessionService);
       when(
         () => mockNotificationCanceller.cancelForSession(
           sessionId: any(named: "sessionId"),
@@ -146,12 +140,19 @@ void main() {
         description: "Allow writing file",
       );
 
+      final permissionSeen = Completer<void>();
       final seenPermissions = <SesoriPermissionAsked>[];
-      final sub = cubit.permissionStream.listen(seenPermissions.add);
+      final sub = cubit.permissionStream.listen((permission) {
+        seenPermissions.add(permission);
+        permissionSeen.complete();
+      });
       addTearDown(sub.cancel);
 
       sessionEvents.add(permission);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await permissionSeen.future.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => fail("Timed out waiting for permission stream delivery"),
+      );
 
       final loaded = cubit.state as SessionDetailLoaded;
       expect(loaded.pendingPermissions, [permission]);
@@ -182,7 +183,11 @@ void main() {
 
       sessionEvents.add(permission);
       sessionEvents.add(permission);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.pendingPermissions.isNotEmpty,
+        description: "permission added",
+      );
 
       final loaded = cubit.state as SessionDetailLoaded;
       expect(loaded.pendingPermissions, hasLength(1));
@@ -221,7 +226,11 @@ void main() {
           description: "Allow writing file",
         ),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.pendingPermissions.isNotEmpty,
+        description: "permission added",
+      );
 
       final resultFuture = cubit.replyToPermission(
         requestId: "perm-123",
@@ -278,7 +287,11 @@ void main() {
           description: "Allow writing file",
         ),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.pendingPermissions.isNotEmpty,
+        description: "permission added",
+      );
 
       final result = await cubit.replyToPermission(
         requestId: "perm-123",
@@ -287,7 +300,13 @@ void main() {
       );
 
       expect(result, isFalse);
-      verify(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
@@ -447,7 +466,13 @@ void main() {
 
     test("non-loaded state buffers permission events and replays after loaded", () async {
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
-      when(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).thenAnswer((_) => messagesCompleter.future);
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).thenAnswer((_) => messagesCompleter.future);
 
       final cubit = _buildCubit(
         sessionId: sessionId,
@@ -469,11 +494,13 @@ void main() {
         description: "Allow writing file",
       );
       sessionEvents.add(permission);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await pumpEventQueue();
 
       expect(cubit.state, const SessionDetailState.loading());
 
-      messagesCompleter.complete(ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)));
+      messagesCompleter.complete(
+        ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+      );
       await _awaitLoaded(cubit);
 
       // The buffered permission event should have been replayed after load
@@ -539,12 +566,19 @@ void main() {
         description: "Run ls",
       );
 
+      final permissionSeen = Completer<void>();
       final seen = <SesoriPermissionAsked>[];
-      final sub = cubit.permissionStream.listen(seen.add);
+      final sub = cubit.permissionStream.listen((permission) {
+        seen.add(permission);
+        permissionSeen.complete();
+      });
       addTearDown(sub.cancel);
 
       globalEvents.add(SseEvent(data: childPermission));
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await permissionSeen.future.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => fail("Timed out waiting for child permission stream delivery"),
+      );
 
       final loaded = cubit.state as SessionDetailLoaded;
       expect(loaded.pendingPermissions, [childPermission]);
@@ -561,7 +595,11 @@ void main() {
           ),
         ),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.pendingPermissions.isEmpty,
+        description: "permission removed",
+      );
       expect((cubit.state as SessionDetailLoaded).pendingPermissions, isEmpty);
     });
 
@@ -590,9 +628,23 @@ void main() {
           ),
         ),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+      const relevantPermission = SesoriPermissionAsked(
+        requestID: "perm-control",
+        sessionID: "child-1",
+        displaySessionId: sessionId,
+        tool: "bash",
+        description: "Run pwd",
+      );
+      globalEvents.add(SseEvent(data: relevantPermission));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) =>
+            state is SessionDetailLoaded &&
+            state.pendingPermissions.any((permission) => permission.requestID == relevantPermission.requestID),
+        description: "relevant permission processed after unrelated permission",
+      );
 
-      expect((cubit.state as SessionDetailLoaded).pendingPermissions, isEmpty);
+      expect((cubit.state as SessionDetailLoaded).pendingPermissions, [relevantPermission]);
     });
 
     test("rejecting a surfaced child question targets the child (owner) session", () async {
@@ -681,6 +733,7 @@ void main() {
       // Nothing reached the wire, and the refused prompt was not queued either.
       verifyNever(
         () => mockSessionRepository.sendMessage(
+          promptId: any(named: "promptId"),
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           attachments: any(named: "attachments"),
@@ -704,7 +757,12 @@ void main() {
           answers: any(named: "answers"),
         ),
       );
-      verifyNever(() => mockSessionService.rejectQuestion(requestId: any(named: "requestId"), sessionId: any(named: "sessionId")));
+      verifyNever(
+        () => mockSessionService.rejectQuestion(
+          requestId: any(named: "requestId"),
+          sessionId: any(named: "sessionId"),
+        ),
+      );
       expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
     });
   });
@@ -738,9 +796,13 @@ SessionDetailCubit _buildCubit({
   );
 }
 
-void _stubLoadApis(MockSessionService service, {required String sessionId}) {
+void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
   when(
-    () => service.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
+    () => service.getMessages(
+      sessionId: any(named: "sessionId"),
+      limit: any(named: "limit"),
+      before: any(named: "before"),
+    ),
   ).thenAnswer(
     (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(
       ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
@@ -836,9 +898,9 @@ ProviderListResponse _providers() {
 }
 
 Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
-  for (var i = 0; i < 100; i++) {
-    if (cubit.state is SessionDetailLoaded) return;
-    await Future<void>.delayed(const Duration(milliseconds: 1));
-  }
-  fail("Timed out waiting for SessionDetailLoaded; current state: ${cubit.state}");
+  await awaitState(
+    cubit: cubit,
+    predicate: (state) => state is SessionDetailLoaded,
+    description: "SessionDetailLoaded",
+  );
 }

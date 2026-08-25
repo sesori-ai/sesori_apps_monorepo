@@ -7,6 +7,7 @@ final class CodexProjectedTool({
   required final String? title,
   required final PluginToolStatus status,
   required final String? output,
+  required final PluginMessageTime? time,
   required List<PluginMessageAttachment> attachments,
 }) {
   final List<PluginMessageAttachment> attachments = List.unmodifiable(attachments);

@@ -17,6 +17,10 @@ class const SessionListPanel({
   required final SessionMenuEntriesBuilder sessionMenuEntries,
   required final VoidCallback onNewSession,
   final VoidCallback? onBack,
+    /// The optional second stage of this pane's pull-to-refresh. Introduced
+  /// here rather than with its consumer so the pane's own gesture is testable
+  /// before anything wires it up.
+  final PregoDeepRefresh? deepRefresh,
 }) extends StatelessWidget {
   /// Header width below which the labelled "New session" button collapses to an
   /// icon-only button so the title keeps a usable width.
@@ -123,9 +127,19 @@ class const SessionListPanel({
   /// pull-to-refresh (only once the list has loaded).
   Widget _buildScrollableContent(BuildContext context, {required SessionListState state}) {
     final isRefreshing = state is SessionListLoaded && state.isRefreshing;
-    Widget scrollView = CustomScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
+    final canRefresh = state is SessionListLoaded;
+    return CustomScrollView(
+      physics: canRefresh
+          ? const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics())
+          : const AlwaysScrollableScrollPhysics(),
       slivers: [
+        if (canRefresh)
+          PregoSliverRefreshControl(
+            onRefresh: () => refreshSessionList(context),
+            deepRefresh: deepRefresh,
+            decorate: null,
+            onPulledExtentChanged: null,
+          ),
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
         SessionListContent(
           projectName: projectName,
@@ -135,13 +149,6 @@ class const SessionListPanel({
         ),
       ],
     );
-    if (state is SessionListLoaded) {
-      scrollView = RefreshIndicator(
-        onRefresh: () => refreshSessionList(context),
-        child: scrollView,
-      );
-    }
-    return scrollView;
   }
 
   String _title({required AppLocalizations loc}) => switch (projectName) {

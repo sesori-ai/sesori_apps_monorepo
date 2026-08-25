@@ -4,8 +4,8 @@ import "dart:typed_data";
 import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
 import "package:sesori_bridge/src/api/models/archived_session_file_dto.dart";
 import "package:sesori_bridge/src/auth/bridge_id_provider.dart";
-import "package:sesori_bridge/src/bridge/repositories/chat_history_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/repositories/chat_history_repository.dart";
+import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -323,6 +323,7 @@ Future<void> _export({required TestChatHistory history}) {
 }
 
 Message _message({required String id}) => Message.user(
+  promptId: null,
   id: id,
   sessionID: "ses_a",
   agent: null,

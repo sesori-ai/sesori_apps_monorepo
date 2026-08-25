@@ -59,7 +59,11 @@ void main() {
       addTearDown(repository.dispose);
       final connecting = repository.ensureResident(sessionId: "session", knownDirectories: const {});
       final initial = await waitForCommand(process: process, type: "get_entries");
-      process.emitResponse(id: initial["id"]! as String, command: "get_entries", data: _historyJson(text: "first"));
+      process.emitResponse(
+        id: initial["id"]! as String,
+        command: "get_entries",
+        data: _historyJson(text: "first"),
+      );
       await connecting;
 
       final pending = repository.loadHistory(sessionId: "session", knownDirectories: const {});
@@ -68,7 +72,11 @@ void main() {
         identities.forSession(sessionId: "session").next(role: PiMessageIdentityRole.user, timestamp: 1),
         "pi:session:user:1:2",
       );
-      process.emitResponse(id: replay["id"]! as String, command: "get_entries", data: _historyJson(text: "first"));
+      process.emitResponse(
+        id: replay["id"]! as String,
+        command: "get_entries",
+        data: _historyJson(text: "first"),
+      );
       await pending;
 
       expect(
@@ -137,7 +145,7 @@ void main() {
     test("missing session throws cause-preserving not found without starting a process", () async {
       var starts = 0;
       final repository = _repository(
-        storageApi: _FakeStorageApi(missing: true),
+        storageApi: _MissingProcessStorage(),
         processFactory: ({required spec}) async {
           starts++;
           return FakePiProcess();
@@ -173,7 +181,7 @@ void main() {
         ].map(jsonEncode).join("\n"),
       );
       final process = FakePiProcess();
-      final storage = _FakeStorageApi(path: path);
+      final storage = _ProcessStorage(path: path);
       final repository = _repository(
         storageApi: storage,
         processFactory: ({required spec}) async {
@@ -204,7 +212,7 @@ void main() {
 
     test("does not fall back for arbitrary send failure", () async {
       final process = FakePiProcess(stdinWritesFail: true);
-      final storage = _FakeStorageApi();
+      final storage = _ProcessStorage();
       final repository = _repository(
         storageApi: storage,
         processFactory: ({required spec}) async => process,
@@ -229,7 +237,7 @@ void main() {
     });
 
     test("falls back when exact no-model startup surfaces as stdin failure", () async {
-      final storage = _FakeStorageApi(
+      final storage = _ProcessStorage(
         history: PiSessionFileHistoryDto(
           header: const PiSessionFileHeaderDto(version: 3, id: "session"),
           entries: [_fileUserEntry(id: "entry", parentId: null, text: "from file", timestamp: 1)],
@@ -329,7 +337,7 @@ void main() {
     });
 
     test("migrates v1 file entries into a linear active branch", () async {
-      final storage = _FakeStorageApi(
+      final storage = _ProcessStorage(
         history: PiSessionFileHistoryDto(
           header: const PiSessionFileHeaderDto(version: null, id: "session"),
           entries: [
@@ -345,7 +353,7 @@ void main() {
     });
 
     test("migrates v2 hookMessage role to visible custom content", () async {
-      final storage = _FakeStorageApi(
+      final storage = _ProcessStorage(
         history: PiSessionFileHistoryDto(
           header: const PiSessionFileHeaderDto(version: 2, id: "session"),
           entries: [
@@ -417,7 +425,7 @@ PiSessionProcessRepository _repository({
   Duration startupExitTimeout = const Duration(seconds: 5),
   Duration historyRpcTimeout = const Duration(minutes: 2),
 }) {
-  final storage = storageApi ?? _FakeStorageApi();
+  final storage = storageApi ?? _ProcessStorage();
   return PiSessionProcessRepository(
     storageApi: storage,
     historyStorageApi: _FakeHistoryStorageApi(storageApi: storage),
@@ -428,6 +436,7 @@ PiSessionProcessRepository _repository({
     identityTracker: identityTracker ?? PiMessageIdentityTracker(pluginId: "pi"),
     startupExitTimeout: startupExitTimeout,
     historyRpcTimeout: historyRpcTimeout,
+    promptRpcTimeout: const Duration(minutes: 30),
   );
 }
 
@@ -478,7 +487,7 @@ PiSessionFileEntryDto _fileUserEntry({
   ),
 );
 
-Future<List<PluginMessageWithParts>> _loadFileFallback({required _FakeStorageApi storage}) {
+Future<List<PluginMessageWithParts>> _loadFileFallback({required _ProcessStorage storage}) {
   final process = FakePiProcess();
   return _repository(
     storageApi: storage,
@@ -490,19 +499,27 @@ Future<List<PluginMessageWithParts>> _loadFileFallback({required _FakeStorageApi
   ).loadHistory(sessionId: "session", knownDirectories: const {});
 }
 
-final class _FakeStorageApi({
-  bool missing = false,
+final class _MissingProcessStorage() implements PiSessionStorageApi {
+  @override
+  Future<void> clearPendingNewSession({required String sessionId, required Set<String> knownDirectories}) async {}
+
+  @override
+  Future<PiResolvedSession?> resolveSession({required String sessionId, required Set<String> knownDirectories}) async =>
+      null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+final class _ProcessStorage({
   final String path = "/exact/session.jsonl",
   final PiSessionFileHistoryDto? history,
 }) implements PiSessionStorageApi {
-  final bool _missing = missing;
-
   @override
   Future<void> clearPendingNewSession({required String sessionId, required Set<String> knownDirectories}) async {}
 
   @override
   Future<PiResolvedSession?> resolveSession({required String sessionId, required Set<String> knownDirectories}) async {
-    if (_missing) return null;
     return PiResolvedSession(
       metadata: PiSessionMetadata(
         id: sessionId,
@@ -523,7 +540,7 @@ final class _FakeStorageApi({
 final class _FakeHistoryStorageApi({required super.storageApi}) extends PiSessionHistoryStorageApi {
   @override
   Future<PiSessionFileHistoryDto> readSessionHistory({required String path}) {
-    if (storageApi case _FakeStorageApi(:final history?)) return Future.value(history);
+    if (storageApi case _ProcessStorage(:final history?)) return Future.value(history);
     return PiSessionHistoryStorageApi(
       storageApi: PiSessionStorageApi(environment: const {}),
     ).readSessionHistory(path: path);

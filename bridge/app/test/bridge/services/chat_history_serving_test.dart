@@ -1,7 +1,7 @@
 import "dart:async";
 
-import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -114,6 +114,30 @@ void main() {
       expect(served.map((message) => message.info.id), contains("filler-24"));
     });
 
+    test("a multi-session purge reserves every listed lane when submitted", () async {
+      final fetchGate = Completer<void>();
+      final repository = _FakeSessionRepository(transcript: const [])..fetchGate = fetchGate.future;
+      final history = createTestChatHistory(sessionRepository: repository);
+      final busy = history.service.backfillSession(sessionId: "ses_a");
+      await Future<void>.delayed(Duration.zero);
+
+      final purge = history.service.purgeSessionsHistory(sessionIds: ["ses_a", "ses_b"]);
+      final capture = history.service.captureMessage(
+        sessionId: "ses_b",
+        message: _message(id: "after-purge"),
+      );
+      fetchGate.complete();
+      await Future.wait([busy, purge, capture]);
+
+      expect(
+        (await history.repository.getSessionMessages(
+          sessionId: "ses_b",
+          storageScope: testAttachmentStorageScope(sessionId: "ses_b"),
+        )).messages.map((message) => message.info.id),
+        ["after-purge"],
+      );
+    });
+
     test("activity queued before a read still forces the re-read", () async {
       final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
       final history = createTestChatHistory(sessionRepository: repository);
@@ -184,8 +208,13 @@ void main() {
   });
 }
 
-Message _message({required String id}) =>
-    Message.user(id: id, sessionID: "ses_a", agent: null, time: const MessageTime(created: 1, completed: null));
+Message _message({required String id}) => Message.user(
+  promptId: null,
+  id: id,
+  sessionID: "ses_a",
+  agent: null,
+  time: const MessageTime(created: 1, completed: null),
+);
 
 MessagePart _part({required String id, required String messageId}) => MessagePart(
   id: id,
@@ -215,16 +244,21 @@ class _FakeSessionRepository({required var List<MessageWithParts> transcript, fi
 
   /// Runs while the fetch is in flight, so a test can interleave live events.
   void Function()? onFetch;
+  Future<void>? fetchGate;
 
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
     fetchCount++;
     onFetch?.call();
+    await fetchGate;
     await Future<void>.delayed(Duration.zero);
     final failure = error;
     if (failure != null) throw failure;
     return transcript;
   }
+
+  @override
+  Future<SessionStatus?> getSessionStatus({required String sessionId}) async => const SessionStatus.idle();
 
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => StoredSession(

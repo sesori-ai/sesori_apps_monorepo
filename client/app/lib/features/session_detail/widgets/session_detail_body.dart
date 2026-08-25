@@ -33,6 +33,7 @@ class const SessionDetailBody({
 class _SessionDetailBodyState() extends State<SessionDetailBody> {
   StreamSubscription<SesoriQuestionAsked>? _questionSub;
   StreamSubscription<SesoriPermissionAsked>? _permissionSub;
+  StreamSubscription<SessionDetailNotice>? _noticeSub;
 
   @override
   void initState() {
@@ -40,6 +41,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     final cubit = context.read<SessionDetailCubit>();
     _questionSub = cubit.questionStream.listen((question) => mounted ? _showQuestionModal(question) : null);
     _permissionSub = cubit.permissionStream.listen((permission) => mounted ? _showPermissionModal(permission) : null);
+    _noticeSub = cubit.noticeStream.listen((notice) => mounted ? _showNotice(notice) : null);
     cubit.clearNotifications();
   }
 
@@ -47,7 +49,23 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
   void dispose() {
     _questionSub?.cancel();
     _permissionSub?.cancel();
+    _noticeSub?.cancel();
     super.dispose();
+  }
+
+  void _showNotice(SessionDetailNotice notice) {
+    if (!_isCurrentPage) return;
+    final (title, variant) = switch (notice) {
+      SessionDetailNotice.promptOptionsUpdated => (
+        context.loc.sessionDetailPromptOptionsUpdated,
+        PregoPopupAlertsNotificationsVariant.warning,
+      ),
+      SessionDetailNotice.promptOptionsRecoveryFailed => (
+        context.loc.sessionDetailPromptOptionsRecoveryFailed,
+        PregoPopupAlertsNotificationsVariant.error,
+      ),
+    };
+    PregoPopupAlertPresenter.of(context).show(title: title, variant: variant);
   }
 
   @override

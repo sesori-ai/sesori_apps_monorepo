@@ -1,8 +1,8 @@
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/device_canvas/integration_state.dart";
 import "package:sesori_bridge/src/bridge/device_canvas/protocol.dart";
-import "package:sesori_bridge/src/bridge/repositories/device_canvas_claim_repository.dart";
-import "package:sesori_bridge/src/bridge/services/device_canvas_claim_service.dart";
+import "package:sesori_bridge/src/repositories/device_canvas_claim_repository.dart";
+import "package:sesori_bridge/src/services/device_canvas_claim_service.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
@@ -482,5 +482,6 @@ Future<void> _insertSession({required AppDatabase db, required String sessionId}
     baseCommit: null,
     lastAgent: null,
     lastAgentModel: null,
+    preservePullRequestScope: false,
   );
 }

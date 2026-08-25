@@ -1,17 +1,17 @@
 import "dart:io";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
-import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
-import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
-import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
-import "package:sesori_bridge/src/bridge/routing/create_project_handler.dart";
-import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
-import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
-import "package:sesori_bridge/src/bridge/services/project_mutation_service.dart";
+import "package:sesori_bridge/src/api/filesystem_api.dart";
+import "package:sesori_bridge/src/api/git_cli_api.dart";
+import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
+import "package:sesori_bridge/src/foundation/process_runner.dart";
+import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/repositories/worktree_repository.dart";
+import "package:sesori_bridge/src/routing/create_project_handler.dart";
+import "package:sesori_bridge/src/services/project_activity_service.dart";
+import "package:sesori_bridge/src/services/project_initialization_service.dart";
+import "package:sesori_bridge/src/services/project_mutation_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -96,9 +96,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/project/create"),
         body: ProjectPathRequest(path: path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(Directory(path).existsSync(), isTrue);
@@ -123,9 +120,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/project/create"),
         body: ProjectPathRequest(path: path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.id, equals(path));
@@ -144,9 +138,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/create"),
           body: ProjectPathRequest(path: existing.path),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(409))),
       );
@@ -157,9 +148,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/create"),
           body: const ProjectPathRequest(path: ""),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -170,9 +158,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/create"),
           body: const ProjectPathRequest(path: "relative/project"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -183,9 +168,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/create"),
           body: ProjectPathRequest(path: "${tempDir.path}/../escape"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -198,9 +180,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/create"),
           body: ProjectPathRequest(path: path),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -213,9 +192,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/project/create"),
         body: ProjectPathRequest(path: path),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.id, path);

@@ -1,7 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../bridge/routing/request_handler.dart";
 import "../services/catalog_import_service.dart";
+import "request_handler.dart";
 
 class StartCatalogImportHandler({required final CatalogImportService _service})
     extends BodyRequestHandler<CatalogImportRequest, SuccessEmptyResponse> {
@@ -16,9 +16,6 @@ class StartCatalogImportHandler({required final CatalogImportService _service})
   Future<SuccessEmptyResponse> handle(
     RelayRequest request, {
     required CatalogImportRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     try {
       _service.start(pluginId: body.pluginId, trigger: CatalogImportTrigger.explicit);

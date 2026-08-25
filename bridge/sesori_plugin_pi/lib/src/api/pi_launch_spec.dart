@@ -12,6 +12,18 @@ final class PiNewSession({required final String sessionId}) extends PiSessionLau
   }
 }
 
+final class PiForkedSession({required final String sessionId, required final String parentSessionPath})
+    extends PiSessionLaunch {
+  this {
+    if (!isValidPiSessionId(sessionId: sessionId)) {
+      throw ArgumentError.value(sessionId, "sessionId", "must be a valid Pi session ID");
+    }
+    if (!path.isAbsolute(parentSessionPath)) {
+      throw ArgumentError.value(parentSessionPath, "parentSessionPath", "must be absolute");
+    }
+  }
+}
+
 final class const PiNoSession() extends PiSessionLaunch;
 
 /// Resumes the session stored at an exact absolute JSONL path.
@@ -49,6 +61,15 @@ class PiLaunchSpec({
   List<String> get arguments => switch (launch) {
     PiNoSession() => ["--mode", "rpc", "--no-session", "--approve"],
     PiNewSession(:final sessionId) => ["--mode", "rpc", "--approve", "--session-id", sessionId],
+    PiForkedSession(:final sessionId, :final parentSessionPath) => [
+      "--mode",
+      "rpc",
+      "--approve",
+      "--fork",
+      parentSessionPath,
+      "--session-id",
+      sessionId,
+    ],
     PiResumedSession(:final sessionPath) => ["--mode", "rpc", "--approve", "--session", sessionPath],
   };
 }

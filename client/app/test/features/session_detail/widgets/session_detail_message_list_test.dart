@@ -1,10 +1,15 @@
+import "dart:async";
+
 import "package:flutter/gestures.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/core/widgets/code_block.dart";
 import "package:sesori_mobile/features/session_detail/widgets/message_timestamp_reveal.dart";
+import "package:sesori_mobile/features/session_detail/widgets/queued_message_bubble.dart";
 import "package:sesori_mobile/features/session_detail/widgets/retry_error_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_message_list.dart";
+import "package:sesori_mobile/features/session_detail/widgets/user_message_card.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -14,8 +19,11 @@ class const _SessionDetailMessageListHarness({
   required final List<MessageWithParts> initialMessages,
   required final Map<String, String> initialStreamingText,
   final List<QueuedSessionSubmission> initialQueuedMessages = const [],
+  final List<QueuedSessionPrompt> initialBridgeQueuedPrompts = const [],
   final String? initialRetryErrorMessage,
   final Future<void> Function()? onLoadOlderMessages,
+  final TargetPlatform? platform,
+  final EdgeInsets systemGestureInsets = EdgeInsets.zero,
 }) extends StatefulWidget {
   @override
   State<_SessionDetailMessageListHarness> createState() => _SessionDetailMessageListHarnessState();
@@ -25,7 +33,9 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   late List<MessageWithParts> _messages;
   late Map<String, String> _streamingText;
   late List<QueuedSessionSubmission> _queuedMessages;
+  late List<QueuedSessionPrompt> _bridgeQueuedPrompts;
   QueuedSessionSubmission? _sendingSubmission;
+  final List<String> cancelledBridgePromptIds = [];
   late String? _retryErrorMessage;
   bool _isLoadingOlderMessages = false;
   int? lastCancelledQueuedMessageIndex;
@@ -36,11 +46,16 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     _messages = widget.initialMessages;
     _streamingText = widget.initialStreamingText;
     _queuedMessages = widget.initialQueuedMessages;
+    _bridgeQueuedPrompts = widget.initialBridgeQueuedPrompts;
     _retryErrorMessage = widget.initialRetryErrorMessage;
   }
 
   void startLoadingOlderMessages() {
     setState(() => _isLoadingOlderMessages = true);
+  }
+
+  void finishLoadingOlderMessages() {
+    setState(() => _isLoadingOlderMessages = false);
   }
 
   void prependOlderMessages({required List<MessageWithParts> older}) {
@@ -86,15 +101,39 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     });
   }
 
+  /// Mirrors the cubit's atomic queued→sent swap: the delivered user message
+  /// lands and the bridge entry leaves in one state emission.
+  void deliverBridgePrompt({
+    required String promptId,
+    required MessageWithParts message,
+    required int insertionIndex,
+  }) {
+    setState(() {
+      _messages = [..._messages]..insert(insertionIndex, message);
+      _bridgeQueuedPrompts = [..._bridgeQueuedPrompts.where((prompt) => prompt.id != promptId)];
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: ThemeData(extensions: [PregoDesignSystem.light]),
-      darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
+      theme: ThemeData(platform: widget.platform, extensions: [PregoDesignSystem.light]),
+      darkTheme: ThemeData(platform: widget.platform, extensions: [PregoDesignSystem.dark]),
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(systemGestureInsets: widget.systemGestureInsets),
+        child: child!,
+      ),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: SessionDetailMessageList(
+          bridgeQueuedPrompts: _bridgeQueuedPrompts,
+          onCancelBridgeQueuedPrompt: (promptId) {
+            cancelledBridgePromptIds.add(promptId);
+            setState(
+              () => _bridgeQueuedPrompts = [..._bridgeQueuedPrompts.where((prompt) => prompt.id != promptId)],
+            );
+          },
           projectId: null,
           bridgeId: null,
           onLoadOlderMessages: widget.onLoadOlderMessages,
@@ -119,12 +158,13 @@ MessageWithParts _message({
   required String text,
   String? partId,
   int? createdAtMs,
+  String? promptId,
 }) {
   final resolvedPartId = partId ?? "$messageId-part";
   final time = createdAtMs == null ? null : MessageTime(created: createdAtMs, completed: null);
 
   final info = role == "user"
-      ? Message.user(id: messageId, sessionID: "session-1", agent: null, time: time)
+      ? Message.user(promptId: promptId, id: messageId, sessionID: "session-1", agent: null, time: time)
       : Message.assistant(
           id: messageId,
           sessionID: "session-1",
@@ -158,6 +198,7 @@ MessageWithParts _message({
 
 const _emptyUserMessage = MessageWithParts(
   info: Message.user(
+    promptId: null,
     id: "empty-user",
     sessionID: "session-1",
     agent: null,
@@ -187,13 +228,7 @@ const _jumpToLatestKey = Key("session-detail-jump-to-latest");
 Finder _messageKey(String messageId) => find.byKey(ValueKey(messageId));
 
 ScrollPosition _position(WidgetTester tester) {
-  // The list key sits on the flutter_chat_ui `Chat` widget; the actual
-  // scrollable is the `CustomScrollView` built by `ChatAnimatedListReversed`,
-  // wired to the feature's own follow/detach scroll controller.
-  final scrollView = tester.widget<CustomScrollView>(
-    find.descendant(of: find.byKey(_listViewKey), matching: find.byType(CustomScrollView)),
-  );
-  return scrollView.controller!.position;
+  return tester.widget<ListView>(find.byKey(_listViewKey)).controller!.position;
 }
 
 Future<void> _pumpListUpdate(WidgetTester tester) async {
@@ -220,6 +255,146 @@ Future<void> _detachViewport(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets("renders bridge-queued prompts as cancellable queued bubbles", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: const [],
+        initialStreamingText: const {},
+        initialBridgeQueuedPrompts: const [
+          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 0, createdAt: 100),
+          QueuedSessionPrompt(id: "prm_2", text: "src", command: "review", attachmentCount: 0, createdAt: 200),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text("steer it"), findsOneWidget);
+    expect(find.text("/review src"), findsOneWidget);
+    expect(find.text("Cancel"), findsNWidgets(2));
+
+    await tester.tap(
+      find.descendant(
+        of: find.ancestor(of: find.text("steer it"), matching: find.byType(QueuedMessageBubble)),
+        matching: find.text("Cancel"),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(harnessKey.currentState?.cancelledBridgePromptIds, ["prm_1"]);
+    expect(find.text("steer it"), findsNothing);
+    expect(find.text("/review src"), findsOneWidget);
+  });
+
+  testWidgets("a bridge-queued prompt transforms into its message without a blank frame", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [_message(messageId: "assistant-1", role: "assistant", text: "working on it")],
+        initialStreamingText: const {},
+        initialBridgeQueuedPrompts: const [
+          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 0, createdAt: 100),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text("steer it"), findsOneWidget);
+    expect(find.byType(QueuedMessageBubble), findsOneWidget);
+
+    harnessKey.currentState?.deliverBridgePrompt(
+      promptId: "prm_1",
+      message: _message(messageId: "replay-user-1", role: "user", text: "steer it", promptId: "prm_1"),
+      insertionIndex: 1,
+    );
+
+    // The prompt's text must stay on screen through every frame of the
+    // handoff — the row transforms in place, it never blinks out.
+    await tester.pump();
+    expect(find.text("steer it"), findsOneWidget);
+    await tester.pump();
+    expect(find.text("steer it"), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text("steer it"), findsOneWidget);
+    expect(find.byType(QueuedMessageBubble), findsNothing);
+    expect(find.byType(UserMessageCard), findsOneWidget);
+  });
+
+  testWidgets("a moved delivered prompt keeps its row state", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [
+          _message(messageId: "assistant-1", role: "assistant", text: "First reply"),
+          _message(messageId: "assistant-2", role: "assistant", text: "Second reply"),
+        ],
+        initialStreamingText: const {},
+        initialBridgeQueuedPrompts: const [
+          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 0, createdAt: 100),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    final promptRow = find.ancestor(of: find.text("steer it"), matching: find.byType(AnimatedSize));
+    final before = tester.state(promptRow);
+
+    harnessKey.currentState!.deliverBridgePrompt(
+      promptId: "prm_1",
+      message: _message(messageId: "delivered", role: "user", text: "steer it", promptId: "prm_1"),
+      insertionIndex: 1,
+    );
+    await tester.pump();
+
+    expect(tester.state(promptRow), same(before));
+  });
+
+  testWidgets("moving a delivered bridge prompt through assistant rows keeps every row unique", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [
+          _message(messageId: "assistant-before", role: "assistant", text: "Before steer", createdAtMs: 100),
+          _message(messageId: "assistant-after-1", role: "assistant", text: "First reply", createdAtMs: 300),
+          _message(messageId: "assistant-after-2", role: "assistant", text: "Second reply", createdAtMs: 400),
+        ],
+        initialStreamingText: const {},
+        initialBridgeQueuedPrompts: const [
+          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 0, createdAt: 200),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    harnessKey.currentState?.deliverBridgePrompt(
+      promptId: "prm_1",
+      message: _message(
+        messageId: "replay-user-1",
+        role: "user",
+        text: "steer it",
+        promptId: "prm_1",
+        createdAtMs: 200,
+      ),
+      insertionIndex: 1,
+    );
+
+    for (var frame = 0; frame < 3; frame++) {
+      await tester.pump();
+      expect(find.text("steer it"), findsOneWidget);
+      expect(find.text("Before steer"), findsOneWidget);
+      expect(find.text("First reply"), findsOneWidget);
+      expect(find.text("Second reply"), findsOneWidget);
+    }
+    await tester.pumpAndSettle();
+    expect(find.byType(UserMessageCard), findsOneWidget);
+    expect(find.text("First reply"), findsOneWidget);
+    expect(find.text("Second reply"), findsOneWidget);
+    expect(tester.getTopLeft(find.text("Before steer")).dy, lessThan(tester.getTopLeft(find.text("steer it")).dy));
+    expect(tester.getTopLeft(find.text("steer it")).dy, lessThan(tester.getTopLeft(find.text("First reply")).dy));
+  });
+
   testWidgets("does not render a user envelope until it has visible parts", (tester) async {
     final key = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
@@ -340,6 +515,118 @@ void main() {
     }
 
     expect(requested, greaterThan(0), reason: "reaching the oldest message must load the next page");
+  });
+
+  testWidgets("nearing the oldest edge prefetches the older page before reaching it", (tester) async {
+    var requested = 0;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+        onLoadOlderMessages: () async => requested++,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Small increments so the scroll never lands exactly on the edge: the
+    // request must come from a mid-scroll update inside the prefetch band.
+    for (var attempt = 0; attempt < 60 && requested == 0; attempt++) {
+      await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 200));
+      await tester.pump();
+    }
+
+    expect(requested, 1);
+    expect(
+      _position(tester).extentAfter,
+      greaterThan(0),
+      reason: "the older page must be requested before the scroll reaches the oldest edge",
+    );
+  });
+
+  testWidgets("older-page requests do not overlap and retry after completion", (tester) async {
+    final completions = <Completer<void>>[];
+    var requested = 0;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+        onLoadOlderMessages: () {
+          requested++;
+          final completion = Completer<void>();
+          completions.add(completion);
+          return completion.future;
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (var attempt = 0; attempt < 12 && requested == 0; attempt++) {
+      await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 600));
+      await tester.pump();
+    }
+    await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 100));
+    await tester.pump();
+    expect(requested, 1);
+
+    completions.single.complete();
+    await tester.pump();
+    await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 100));
+    await tester.pump();
+    expect(requested, 2);
+  });
+
+  testWidgets("older-page request retries after error without an unhandled exception", (tester) async {
+    var requested = 0;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+        onLoadOlderMessages: () async {
+          requested++;
+          throw StateError("load failed");
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (var attempt = 0; attempt < 12 && requested == 0; attempt++) {
+      await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 600));
+      await tester.pump();
+    }
+    await tester.pump();
+    await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 100));
+    await tester.pump();
+
+    expect(requested, 2);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("parent loading state suppresses older-page requests", (tester) async {
+    final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+    var requested = 0;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: key,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+        onLoadOlderMessages: () async => requested++,
+      ),
+    );
+    await tester.pumpAndSettle();
+    key.currentState!.startLoadingOlderMessages();
+    await tester.pump();
+
+    for (var attempt = 0; attempt < 12; attempt++) {
+      await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 600));
+      await tester.pump();
+    }
+    expect(requested, 0);
+
+    key.currentState!.finishLoadingOlderMessages();
+    await tester.pump();
+    await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 100));
+    await tester.pump();
+    expect(requested, 1);
   });
 
   testWidgets("detached viewport stays stable when a new newest message arrives", (tester) async {
@@ -527,6 +814,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     const submission = QueuedSessionSubmission.text(
+      promptId: "prompt-1",
       text: "Queued while reading history",
       inputMode: ComposerInputMode.typed,
       attachments: [],
@@ -566,6 +854,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     const submission = QueuedSessionSubmission.text(
+      promptId: "prompt-1",
       text: "New prompt from history",
       inputMode: ComposerInputMode.typed,
       attachments: [],
@@ -596,6 +885,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     const submission = QueuedSessionSubmission.text(
+      promptId: "prompt-1",
       text: "Queued before reconnect",
       inputMode: ComposerInputMode.typed,
       attachments: [],
@@ -624,6 +914,9 @@ void main() {
     await _pumpListUpdate(tester);
 
     expect(find.text("Sending"), findsOneWidget);
+    // The outgoing status rail cross-fades out; settle it before asserting
+    // the cancel affordance is gone.
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.widgetWithText(TextButton, "Cancel"), findsNothing);
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
   });
@@ -633,6 +926,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     const submission = QueuedSessionSubmission.text(
+      promptId: "prompt-1",
       text: "Direct sending prompt",
       inputMode: ComposerInputMode.typed,
       attachments: [],
@@ -732,7 +1026,11 @@ void main() {
     // gesture to increasing scroll offset (i.e. scrolling toward older
     // content, away from the newest-at-bottom edge).
     final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
-    await gesture.moveBy(const Offset(0, 300));
+    // Establish vertical intent first so the timestamp recognizer leaves the
+    // arena, matching the stream of move events produced by a real drag.
+    await gesture.moveBy(const Offset(0, 12));
+    await tester.pump();
+    await gesture.moveBy(const Offset(0, 288));
     await tester.pump();
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
     expect(_position(tester).pixels, greaterThan(20));
@@ -764,7 +1062,7 @@ void main() {
     expect(_position(tester).pixels, greaterThan(20));
   });
 
-  // --- New-architecture coverage: chat-controller resync and content paths ---
+  // --- Reattach and content-update coverage ---
 
   testWidgets("reattach catches up on messages that arrived while detached", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
@@ -782,8 +1080,7 @@ void main() {
 
     await _detachViewport(tester);
 
-    // Arrives while frozen: neither the snapshot nor the suspended
-    // chat-controller sync may surface it yet.
+    // Arrives while frozen: the detached snapshot must not surface it yet.
     harnessKey.currentState!.appendNewestMessage(
       _message(
         messageId: "user-while-detached",
@@ -794,8 +1091,7 @@ void main() {
     await _pumpListUpdate(tester);
     expect(_messageKey("user-while-detached"), findsNothing);
 
-    // Reattaching must resync the controller and reveal the message at
-    // the newest edge.
+    // Reattaching must reveal the message at the newest edge.
     await tester.tap(find.byKey(_jumpToLatestKey));
     await tester.pumpAndSettle();
 
@@ -886,8 +1182,7 @@ void main() {
     expect(find.textContaining("Streaming start", findRichText: true), findsOneWidget);
     expect(find.textContaining("freshly streamed token", findRichText: true), findsNothing);
 
-    // Content updates bypass the chat controller entirely — they must
-    // reach the visible row through the rebuilt builders on the very
+    // Content updates must reach the visible row through the rebuilt list on the very
     // next frame while the list stays pinned to the newest edge.
     harnessKey.currentState!.updateStreamingText(
       partId: streamingPartId,
@@ -950,6 +1245,161 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
+  });
+
+  testWidgets("iOS system-back edge does not peek timestamps", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final created = DateTime.now().millisecondsSinceEpoch;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        platform: TargetPlatform.iOS,
+        initialMessages: [
+          for (var i = 0; i < 12; i++)
+            _message(
+              messageId: "u$i",
+              role: "user",
+              text: _multilineText(label: "Message $i", lines: 6),
+              createdAtMs: created,
+            ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final textFinder = find.textContaining("Message 11").first;
+    final restX = tester.getTopLeft(textFinder).dx;
+    final y = tester.getCenter(find.byKey(_listViewKey)).dy;
+
+    final edgeGesture = await tester.startGesture(Offset(40, y));
+    await edgeGesture.moveBy(const Offset(-160, 0));
+    await tester.pump();
+    expect(tester.getTopLeft(textFinder).dx, restX);
+    await edgeGesture.up();
+
+    final contentGesture = await tester.startGesture(Offset(140, y));
+    await contentGesture.moveBy(const Offset(-160, 0));
+    await tester.pump();
+    expect(tester.getTopLeft(textFinder).dx, lessThan(restX));
+    await contentGesture.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("Android gesture navigation keeps both system-back edges out of timestamp peeks", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final created = DateTime.now().millisecondsSinceEpoch;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        platform: TargetPlatform.android,
+        systemGestureInsets: const EdgeInsets.symmetric(horizontal: 24),
+        initialMessages: [
+          for (var i = 0; i < 12; i++)
+            _message(
+              messageId: "u$i",
+              role: "user",
+              text: _multilineText(label: "Message $i", lines: 6),
+              createdAtMs: created,
+            ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final textFinder = find.textContaining("Message 11").first;
+    final restX = tester.getTopLeft(textFinder).dx;
+    final y = tester.getCenter(find.byKey(_listViewKey)).dy;
+
+    final startEdgeGesture = await tester.startGesture(Offset(40, y));
+    await startEdgeGesture.moveBy(const Offset(-160, 0));
+    await tester.pump();
+    expect(tester.getTopLeft(textFinder).dx, restX);
+    await startEdgeGesture.up();
+
+    final endEdgeGesture = await tester.startGesture(Offset(860, y));
+    await endEdgeGesture.moveBy(const Offset(-160, 0));
+    await tester.pump();
+    expect(tester.getTopLeft(textFinder).dx, restX);
+    await endEdgeGesture.up();
+
+    final contentGesture = await tester.startGesture(Offset(450, y));
+    await contentGesture.moveBy(const Offset(-160, 0));
+    await tester.pump();
+    expect(tester.getTopLeft(textFinder).dx, lessThan(restX));
+    await contentGesture.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("a fenced code block scrolls horizontally without peeking timestamps", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final created = DateTime.now().millisecondsSinceEpoch;
+    final longCode = List.filled(16, "final horizontalOverflow = true; ").join();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [
+          ..._userMessages(count: 10),
+          _message(
+            messageId: "assistant-code",
+            role: "assistant",
+            text: "```dart\n$longCode\n```",
+            createdAtMs: created,
+          ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final codeBlockFinder = find.byType(CodeBlock);
+    expect(codeBlockFinder, findsOneWidget);
+    final horizontalScrollableFinder = find.descendant(
+      of: codeBlockFinder,
+      matching: find.byWidgetPredicate(
+        (widget) => widget is Scrollable && axisDirectionToAxis(widget.axisDirection) == Axis.horizontal,
+      ),
+    );
+    expect(horizontalScrollableFinder, findsOneWidget);
+
+    final codeBlockRestX = tester.getTopLeft(codeBlockFinder).dx;
+    final transcriptRestPixels = _position(tester).pixels;
+    final horizontalPosition = tester.state<ScrollableState>(horizontalScrollableFinder).position;
+    expect(horizontalPosition.pixels, 0);
+
+    final gesture = await tester.startGesture(tester.getCenter(find.byType(SingleChildScrollView)));
+    for (var i = 0; i < 6; i++) {
+      await gesture.moveBy(const Offset(-40, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    expect(horizontalPosition.pixels, greaterThan(0));
+    expect(tester.getTopLeft(codeBlockFinder).dx, closeTo(codeBlockRestX, 0.5));
+    expect(_position(tester).pixels, transcriptRestPixels);
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    final touchScrollPixels = horizontalPosition.pixels;
+    final trackpad = await tester.createGesture(kind: PointerDeviceKind.trackpad);
+    final trackpadOrigin = tester.getCenter(find.byType(SingleChildScrollView));
+    await trackpad.panZoomStart(trackpadOrigin);
+    for (var i = 1; i <= 6; i++) {
+      await trackpad.panZoomUpdate(trackpadOrigin, pan: Offset(40.0 * i, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    expect(horizontalPosition.pixels, lessThan(touchScrollPixels));
+    expect(tester.getTopLeft(codeBlockFinder).dx, closeTo(codeBlockRestX, 0.5));
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+
+    await trackpad.panZoomEnd();
+    await tester.pumpAndSettle();
   });
 
   testWidgets("peeking timestamps while detached does not snap back to the latest edge", (tester) async {
@@ -1093,7 +1543,7 @@ void main() {
     expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
   });
 
-  testWidgets("a rightward drag does not engage the peek (gutter is on the right)", (tester) async {
+  testWidgets("a rightward-first drag yields when it turns into a vertical scroll", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -1124,6 +1574,12 @@ void main() {
     await tester.pump();
 
     expect(tester.getTopLeft(textFinder).dx, restX, reason: "rightward drag must not open the timestamp gutter");
+
+    await gesture.moveBy(const Offset(0, 300));
+    await tester.pump();
+
+    expect(_position(tester).pixels, greaterThan(20));
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
 
     await gesture.up();
     await tester.pumpAndSettle();

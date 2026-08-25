@@ -363,13 +363,8 @@ void main() {
         connectHost: "127.0.0.1",
       );
 
-      expect(spec.recordTiming, equals(RuntimeRecordTiming.intentSideFile));
-      expect(spec.validateRuntime, isNull);
-      expect(spec.failOnEarlyChildExit, isTrue);
-      final health = spec.healthPolicy;
-      expect(health, isA<HealthDeadlinePolicy>());
-      expect((health as HealthDeadlinePolicy).deadline, equals(const Duration(seconds: 30)));
-      expect(health.pollInterval, equals(const Duration(milliseconds: 500)));
+      expect(spec.healthPolicy.deadline, equals(const Duration(seconds: 30)));
+      expect(spec.healthPolicy.pollInterval, equals(const Duration(milliseconds: 500)));
     });
 
     test("routes the health probe to the connect host, not the bind host", () async {

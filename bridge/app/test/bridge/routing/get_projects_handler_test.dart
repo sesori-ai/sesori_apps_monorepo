@@ -1,8 +1,8 @@
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/routing/get_projects_handler.dart";
-import "package:sesori_bridge/src/bridge/services/project_activity_service.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/routing/get_projects_handler.dart";
+import "package:sesori_bridge/src/services/project_activity_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -65,9 +65,6 @@ void main() {
     test("returns typed projects response", () async {
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(response, isA<Projects>());
     });
@@ -75,9 +72,6 @@ void main() {
     test("returns empty list when plugin has no projects", () async {
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(response.data, isEmpty);
       expect(plugin.getProjectsCallCount, 0);
@@ -96,9 +90,6 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final project = response.data[0];
@@ -120,9 +111,6 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final time = response.data[0].time;
@@ -138,9 +126,6 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final row = await projectsDao.getProject(projectId: "p1");
@@ -159,9 +144,6 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.data.length, equals(3));
@@ -181,9 +163,6 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("GET", "/projects"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final ids = response.data.map((item) => item.id).toList();

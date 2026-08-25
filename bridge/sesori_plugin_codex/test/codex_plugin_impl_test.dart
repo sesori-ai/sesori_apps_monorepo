@@ -60,14 +60,14 @@ void main() {
           clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
           keepaliveInterval: const Duration(seconds: 30),
         );
-        expect(await plugin.getSessions("/repo/example"), isEmpty);
+        expect(await plugin.getSessions(projectId: "/repo/example", start: null, limit: null), isEmpty);
         expect(await plugin.getSessionMessages("s-1"), isEmpty);
         expect(await plugin.getSessionStatuses(), isEmpty);
         expect(plugin.getActiveSessionsSummary(), isEmpty);
         // With no config, rollout history, or live connection, Codex exposes
         // only Default because Plan requires a resolved model.
         final agents = await plugin.getAgents(projectId: "/repo/example");
-        expect(agents.map((agent) => agent.name), equals(["Default"]));
+        expect(agents.map((agent) => agent.name), equals(["Agent"]));
         expect(agents.every((agent) => agent.model == null), isTrue);
         expect(
           (await plugin.getProviders(projectId: "/repo/example")).providers,
@@ -142,9 +142,9 @@ void main() {
         );
 
         final agents = await plugin.getAgents(projectId: "/repo/example");
-        expect(agents.map((agent) => agent.name), equals(["Default", "Plan"]));
+        expect(agents.map((agent) => agent.name), equals(["Agent", "Plan"]));
         final agent = agents.first;
-        expect(agent.name, equals("Default"));
+        expect(agent.name, equals("Agent"));
         expect(agent.model?.modelID, equals("gpt-5.4-codex"));
         expect(agent.model?.providerID, equals("openai"));
         expect(agents.last.model, equals(agent.model));
@@ -362,6 +362,30 @@ void main() {
       );
       await busyAgain.timeout(const Duration(seconds: 2));
 
+      // Leave a prompt outstanding so teardown emits its clearing event, whose
+      // work-state sync must not overwrite the disconnect's `unknown`.
+      final secondAsk = plugin.events.where((event) => event is BridgeSsePermissionAsked).first;
+      socket.add(
+        jsonEncode({
+          "jsonrpc": "2.0",
+          "id": 100,
+          "method": "item/commandExecution/requestApproval",
+          "params": {
+            "threadId": "t-running",
+            "turnId": "turn-2",
+            "itemId": "item-2",
+            "command": "ls -la",
+          },
+        }),
+      );
+      await secondAsk.timeout(const Duration(seconds: 2));
+
+      final disconnectWorkStates = <PluginWorkState>[];
+      final workStateSubscription = plugin.workState.listen(disconnectWorkStates.add);
+      addTearDown(workStateSubscription.cancel);
+      await pumpEventQueue();
+      disconnectWorkStates.clear();
+
       final disconnected = plugin.events
           .where((event) => event is BridgeSseSessionIdle)
           .cast<BridgeSseSessionIdle>()
@@ -377,6 +401,9 @@ void main() {
         await plugin.getPendingPermissions(sessionId: "t-running"),
         isEmpty,
       );
+      await pumpEventQueue();
+      expect(plugin.currentWorkState, PluginWorkState.unknown);
+      expect(disconnectWorkStates, isNot(contains(PluginWorkState.idle)));
     });
 
     test("dispose closes event buffer without error", () async {

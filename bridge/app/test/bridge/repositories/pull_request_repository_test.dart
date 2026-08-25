@@ -1,12 +1,13 @@
 import "package:sesori_bridge/src/api/database/daos/pull_request_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
-import "package:sesori_bridge/src/bridge/repositories/mappers/stored_session_mapper.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
-import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/api/gh_pull_request.dart";
+import "package:sesori_bridge/src/repositories/mappers/stored_session_mapper.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_target.dart";
+import "package:sesori_bridge/src/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
+import "package:sesori_bridge/src/repositories/pull_request_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -495,6 +496,7 @@ Future<void> _insertRoot({
 }) {
   return database.sessionDao.insertSession(
     pluginId: "opencode",
+    preservePullRequestScope: false,
     sessionId: sessionId,
     backendSessionId: sessionId,
     projectId: "X",
@@ -571,14 +573,17 @@ PullRequestTargetSelected _selectedPullRequest({
       githubRepositoryIdentity: repositoryIdentity,
       branchName: branchName,
     ),
-    number: number,
-    url: "https://github.com/$repositoryIdentity/pull/$number",
-    title: "Test PR $number",
-    createdAt: DateTime.fromMillisecondsSinceEpoch(number, isUtc: true),
-    state: PrState.open,
-    mergeableStatus: PrMergeableStatus.mergeable,
-    reviewDecision: PrReviewDecision.reviewRequired,
-    checkStatus: PrCheckStatus.success,
+    pullRequest: GhPullRequest(
+      number: number,
+      url: "https://github.com/$repositoryIdentity/pull/$number",
+      title: "Test PR $number",
+      createdAt: DateTime.fromMillisecondsSinceEpoch(number, isUtc: true),
+      state: PrState.open,
+      headRefName: branchName,
+      mergeable: PrMergeableStatus.mergeable,
+      reviewDecision: PrReviewDecision.reviewRequired,
+      statusCheckRollup: PrCheckStatus.success,
+    ),
   );
 }
 

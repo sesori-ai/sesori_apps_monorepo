@@ -52,13 +52,17 @@ content the transcript renders live and after reload.
   subscriptions. Opening a stored image keeps its thumbnail visible while the
   original loads and decodes. Stored thumbnails preserve the source aspect ratio;
   only the square collection presentation center-crops them, and the Hero flight
-  reveals the full thumbnail before the decoded original fades in without
-  resetting viewer state. Copy, share, and save enable only after that decode
-  succeeds. Failure retains the thumbnail with an explicit accessible original
-  retry; closing the viewer releases Cubit bytes and evicts the full-resolution
-  image provider from Flutter's image cache, and scrolling never starts an
-  original request. Reduced motion skips the viewer route and image-swap
-  animations.
+  reveals the full thumbnail while resizing toward its contained bounds. The
+  decoded original then fades in without resetting viewer state. Copy, share,
+  and save enable only after that decode succeeds. Failure retains the thumbnail
+  with an explicit accessible original retry; closing the viewer releases Cubit
+  bytes and evicts the full-resolution image provider from Flutter's image cache,
+  and scrolling never starts an original request. Reduced motion skips the
+  viewer route and image-swap animations.
+- The viewer closes through its close button, a free-form drag, a hardware
+  Escape key, and system back. Back closes only the viewer and keeps the session
+  open, including when the Android back gesture delivers a second pop while the
+  viewer is still fading out.
 - User, tool, and each maximal contiguous run of assistant file attachments use
   the same left-aligned square collection, capped at 320 px and constrained by
   the available parent width. One attachment spans the collection, two split a
@@ -89,7 +93,7 @@ content the transcript renders live and after reload.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, unknown-variant, typed stored-rendition request, scoped coalescing, timeout, sensitive-response redaction, persistent thumbnail cache, corruption recovery, bounded pruning, and auth cleanup behavior holds in its owning suites; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; stored thumbnails preserve aspect ratio while attachment collections retain center-cropped square layouts and chronology; stored viewers morph that crop into the contained thumbnail, fade in the decoded original, preserve viewer state, gate original actions, retry decode/load failures, and evict/release originals on close. |
+| L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, unknown-variant, typed stored-rendition request, scoped coalescing, timeout, sensitive-response redaction, persistent thumbnail cache, corruption recovery, bounded pruning, and auth cleanup behavior holds in its owning suites; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; stored thumbnails preserve aspect ratio while attachment collections retain center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, gate original actions, retry decode/load failures, and evict/release originals on close. |
 | L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: staged composer images sent and echoed per attachment-capable plugin; a failed current-route creation restores exact attachment identities with the rest of the draft while background failure does not; generated and tool-output images display, text/image/text order is preserved live and after reload, and viewer copy/share/save works. |
 | L4 Extended | Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. |
@@ -124,10 +128,10 @@ live, after paging back, or after a reopen, and vary the plugin.
   without an accessible retry action.
 - A stored viewer fetches an original before opening, blanks the cached
   thumbnail while loading or after load/decode failure, opens a permanently
-  cropped thumbnail instead of revealing its original aspect ratio, jumps when
+  cropped thumbnail instead of revealing its original aspect ratio, expands the
+  crop beyond the full image's fitted bounds during the Hero flight, jumps when
   the original appears, resets zoom or drag, enables actions before original
-  decode succeeds, or retains original bytes/provider cache entries after
-  closing.
+  decode succeeds, or retains original bytes/provider cache entries after closing.
 - The composer offers or sends attachments to an unsupporting backend, retains
   staged images after switching to one, or the viewer acts on the wrong image.
 - Failed creation loses, duplicates, or persists submitted attachment bytes;

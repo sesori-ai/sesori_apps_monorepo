@@ -1,23 +1,24 @@
 import "dart:async";
 
-import "package:sesori_bridge/src/api/bridge_settings_api.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/services/pull_request_refresh_settings_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../helpers/in_memory_bridge_settings_api.dart";
+
 void main() {
   group("PullRequestRefreshSettingsService", () {
-    late _MemoryBridgeSettingsApi api;
+    late InMemoryBridgeSettingsApi api;
     late BridgeSettingsRepository repository;
     late PullRequestRefreshSettingsService service;
 
     setUp(() async {
-      api = _MemoryBridgeSettingsApi(
+      api = InMemoryBridgeSettingsApi(
         config: '{"pullRequestRefreshIntervalSeconds":30}',
       );
-      repository = BridgeSettingsRepository(api: api);
+      repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
       await repository.loadSettings();
       service = PullRequestRefreshSettingsService(bridgeSettingsRepository: repository);
     });
@@ -132,25 +133,4 @@ void main() {
       await subscription.cancel();
     });
   });
-}
-
-class _MemoryBridgeSettingsApi({required var String? config}) implements BridgeSettingsApi {
-  int writeCount = 0;
-  Completer<void>? writeStarted;
-  Completer<void>? releaseWrite;
-
-  @override
-  String get configFilePath => "/tmp/config.json";
-
-  @override
-  Future<String?> readConfig() async => config;
-
-  @override
-  Future<void> writeConfig(String jsonContent) async {
-    writeStarted?.complete();
-    final release = releaseWrite;
-    if (release != null) await release.future;
-    config = jsonContent;
-    writeCount++;
-  }
 }

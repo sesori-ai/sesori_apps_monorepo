@@ -33,24 +33,18 @@ void main() {
       final handler = StartCatalogImportHandler(service: service);
       final completed = service.progress.firstWhere((status) => status is CatalogImportCompleted);
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/plugin/import",
           body: jsonEncode(const CatalogImportRequest(pluginId: "selected").toJson()),
         ),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
 
       expect(response.status, 200);
       await completed;
-      final getResponse = await GetCatalogImportStatusesHandler(service: service).handleInternal(
+      final getResponse = await GetCatalogImportStatusesHandler(service: service).routeForTest(
         makeRequest("GET", "/plugin/import"),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
       final decoded = CatalogImportStatusesResponse.fromJson(jsonDecodeMap(getResponse.body!));
       expect(decoded.statuses.single, isA<CatalogImportCompleted>());
@@ -62,17 +56,11 @@ void main() {
       addTearDown(service.dispose);
       final requestBody = jsonEncode(const CatalogImportRequest(pluginId: "other").toJson());
 
-      final postResponse = await StartCatalogImportHandler(service: service).handleInternal(
+      final postResponse = await StartCatalogImportHandler(service: service).routeForTest(
         makeRequest("POST", "/plugin/import", body: requestBody),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
-      final deleteResponse = await CancelCatalogImportHandler(service: service).handleInternal(
+      final deleteResponse = await CancelCatalogImportHandler(service: service).routeForTest(
         makeRequest("DELETE", "/plugin/import", body: requestBody),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
 
       expect(postResponse.status, 404);
@@ -88,15 +76,12 @@ void main() {
       service.start(pluginId: "selected", trigger: CatalogImportTrigger.explicit);
       await repository.started.future;
 
-      final response = await CancelCatalogImportHandler(service: service).handleInternal(
+      final response = await CancelCatalogImportHandler(service: service).routeForTest(
         makeRequest(
           "DELETE",
           "/plugin/import",
           body: jsonEncode(const CatalogImportRequest(pluginId: "selected").toJson()),
         ),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
       release.complete();
 
@@ -148,6 +133,7 @@ class _HandlerCatalogImportRepository({final Completer<void>? release}) implemen
         pluginId: "selected",
         projectsImported: 0,
         sessionsImported: 0,
+        newItems: CatalogImportNewItems(projects: 0, sessions: 0),
         completedAt: 1,
       );
     }

@@ -57,7 +57,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 1,
-            stdoutBytes: utf8.encode("codex 0.146.0\n"),
+            stdoutBytes: utf8.encode("codex 0.148.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -75,7 +75,7 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.146.0"));
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.148.0"));
       expect(processes.spawnedExecutables, ["codex", "codex"]);
       expect(processes.spawnedArguments, [
         const ["--version"],
@@ -138,7 +138,7 @@ void main() {
           const ProcessException("codex", ["--version"], "missing", 2),
           _ProbeProcess(
             pid: 3,
-            stdoutBytes: utf8.encode("codex-cli 0.146.0\n"),
+            stdoutBytes: utf8.encode("codex-cli 0.148.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -159,8 +159,67 @@ void main() {
             stateDirectory: stateDirectory,
           );
 
-      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.146.0"));
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.148.0"));
       expect(processes.spawnedExecutables, ["codex", appCli, appCli]);
+    });
+
+    test("reports an indeterminate desktop-app fallback probe", () async {
+      const manifest = CodexRuntimeManifest();
+      final managedBinaryPath = manifest.managedBinaryPath(stateDirectory: stateDirectory);
+      const appCli = "/Applications/ChatGPT.app/Contents/Resources/codex";
+      final processes = _ProbeProcessService(
+        spawnOutcomes: [
+          const ProcessException("codex", ["--version"], "missing", 2),
+          _ProbeProcess(
+            pid: 5,
+            stdoutBytes: const [],
+            exitCode: Future<int>.value(7),
+          ),
+          ProcessException(managedBinaryPath, const ["--version"], "missing", 2),
+        ],
+      );
+
+      final result =
+          await const CodexPluginDescriptor(
+            desktopAppCliCandidates: [appCli],
+          ).inspectSetup(
+            config: config,
+            processes: processes,
+            environment: const <String, String>{},
+            stateDirectory: stateDirectory,
+          );
+
+      expect(result, isA<PluginSetupUnknown>());
+      expect(processes.spawnedExecutables, ["codex", appCli, managedBinaryPath]);
+    });
+
+    test("keeps an indeterminate PATH probe when desktop fallbacks are absent", () async {
+      const manifest = CodexRuntimeManifest();
+      final managedBinaryPath = manifest.managedBinaryPath(stateDirectory: stateDirectory);
+      const appCli = "/Applications/ChatGPT.app/Contents/Resources/codex";
+      final processes = _ProbeProcessService(
+        spawnOutcomes: [
+          _ProbeProcess(
+            pid: 6,
+            stdoutBytes: const [],
+            exitCode: Future<int>.value(7),
+          ),
+          const ProcessException(appCli, ["--version"], "missing", 2),
+          ProcessException(managedBinaryPath, const ["--version"], "missing", 2),
+        ],
+      );
+
+      final result =
+          await const CodexPluginDescriptor(
+            desktopAppCliCandidates: [appCli],
+          ).inspectSetup(
+            config: config,
+            processes: processes,
+            environment: const <String, String>{},
+            stateDirectory: stateDirectory,
+          );
+
+      expect(result, isA<PluginSetupUnknown>());
     });
 
     test("skips an outdated desktop-app CLI in favor of the managed runtime", () async {
@@ -281,7 +340,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 3,
-            stdoutBytes: utf8.encode("codex 0.146.0\n"),
+            stdoutBytes: utf8.encode("codex 0.148.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -303,7 +362,7 @@ void main() {
         result,
         const PluginSetupAuthenticationRequired.versioned(
           actionHint: "Sign in to Codex, then retry setup detection.",
-          runtimeVersion: "0.146.0",
+          runtimeVersion: "0.148.0",
         ),
       );
       expect(processes.spawnedArguments, [
@@ -318,7 +377,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 5,
-            stdoutBytes: utf8.encode("codex 0.146.0\n"),
+            stdoutBytes: utf8.encode("codex 0.148.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -337,7 +396,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupUnknown>());
-      expect(result.runtimeVersion, "0.146.0");
+      expect(result.runtimeVersion, "0.148.0");
       expect(result.actionHint, isNot(contains("account-secret-output")));
     });
 
@@ -347,7 +406,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 7,
-            stdoutBytes: utf8.encode("codex 0.146.0\n"),
+            stdoutBytes: utf8.encode("codex 0.148.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -366,7 +425,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupUnknown>());
-      expect(result.runtimeVersion, "0.146.0");
+      expect(result.runtimeVersion, "0.148.0");
     });
   });
 }

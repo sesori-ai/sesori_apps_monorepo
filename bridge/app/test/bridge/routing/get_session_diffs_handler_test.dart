@@ -2,16 +2,16 @@ import "dart:convert";
 import "dart:io";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
-import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
-import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/mappers/git_diff_output_mapper.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_diff_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
-import "package:sesori_bridge/src/bridge/services/session_diff_service.dart";
+import "package:sesori_bridge/src/api/filesystem_api.dart";
+import "package:sesori_bridge/src/api/git_cli_api.dart";
+import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
+import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/repositories/mappers/git_diff_output_mapper.dart";
+import "package:sesori_bridge/src/repositories/session_diff_repository.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/routing/get_session_diffs_handler.dart";
+import "package:sesori_bridge/src/services/session_diff_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -74,15 +74,12 @@ void main() {
     });
 
     test("returns 404 when session is missing", () async {
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "missing")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(404));
@@ -94,6 +91,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
@@ -108,15 +106,12 @@ void main() {
         lastAgentModel: null,
       );
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -128,6 +123,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
@@ -142,15 +138,12 @@ void main() {
         lastAgentModel: null,
       );
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -162,6 +155,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
@@ -176,15 +170,12 @@ void main() {
         lastAgentModel: null,
       );
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -196,6 +187,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
@@ -217,15 +209,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(422));
@@ -236,6 +225,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
@@ -260,15 +250,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(422));
@@ -279,6 +266,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
@@ -303,15 +291,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(500));
@@ -322,6 +307,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
@@ -349,15 +335,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(500));
@@ -365,11 +348,8 @@ void main() {
     });
 
     test("returns 400 when request body is missing", () async {
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest("POST", "/session/diffs"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(400));
@@ -377,11 +357,8 @@ void main() {
     });
 
     test("returns 400 when sessionId is missing in body", () async {
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest("POST", "/session/diffs", body: "{}"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(400));

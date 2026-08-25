@@ -5,7 +5,7 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
-import '../foundation/filesystem_cleaner.dart';
+import '../../foundation/filesystem_cleaner.dart';
 import '../foundation/update_lock.dart';
 import '../models/release_info.dart';
 import '../models/update_apply_outcome.dart';

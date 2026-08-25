@@ -151,6 +151,12 @@ sealed class PluginMessage with _$PluginMessage {
     required String sessionID,
     required String? agent,
     required PluginMessageTime? time,
+
+    /// The `sendPrompt`/`sendCommand` prompt id this message fulfilled, when
+    /// known. Attached on the live event that consumes a queued prompt so
+    /// clients can swap the queued bubble for this message atomically.
+    /// History reads that cannot reconstruct it carry null.
+    required String? promptId,
   }) = PluginMessageUser;
 
   const factory assistant({

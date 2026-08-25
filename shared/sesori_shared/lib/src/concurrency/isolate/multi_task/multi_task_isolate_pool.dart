@@ -39,7 +39,7 @@ class MultiTaskIsolatePoolImpl({
     // - Active isolates are transient isolates that are currently running tasks and persistent isolates
     // - Inactive isolates are transient isolates that are not currently started
     final (activeIsolates, inactiveIsolates) = _isolates.partition(
-      (e) => e is MultiTaskTransientIsolate ? e.isActive : true,
+      condition: (e) => e is MultiTaskTransientIsolate ? e.isActive : true,
     );
 
     final topActiveIsolate = _getIsolateWithMinActiveTasks(activeIsolates);

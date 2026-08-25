@@ -37,6 +37,7 @@ const _emptyState = SessionDetailState.loaded(
   messages: [
     MessageWithParts(
       info: Message.user(
+        promptId: null,
         id: "empty-user-envelope",
         sessionID: "session-1",
         agent: null,
@@ -68,7 +69,6 @@ const _emptyState = SessionDetailState.loaded(
   selectedAgentModel: null,
   stagedCommand: null,
   isRefreshing: false,
-  retryErrorMessage: null,
 );
 
 const _nonEmptyState = SessionDetailState.loaded(
@@ -96,7 +96,6 @@ const _nonEmptyState = SessionDetailState.loaded(
   selectedAgentModel: null,
   stagedCommand: null,
   isRefreshing: false,
-  retryErrorMessage: null,
 );
 
 void main() {

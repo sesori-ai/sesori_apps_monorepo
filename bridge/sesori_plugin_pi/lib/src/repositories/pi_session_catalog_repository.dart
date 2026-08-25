@@ -4,15 +4,32 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Plugi
 import "../api/pi_session_storage_api.dart";
 
 final class PiSessionCatalogRepository({required final PiSessionStorageApi _storageApi}) {
-  final Map<String, String> _primedDirectories = {};
+  final Map<String, ({String directory, String? parentId})> _primedSessions = {};
+  final Map<String, PluginSession> _snapshotById = {};
   final Set<String> _knownDirectories = {};
 
+  Map<String, PluginSession> get sessionSnapshot => Map.unmodifiable(_snapshotById);
+
   void primeSessionDirectory({required String sessionId, required String directory}) {
+    recordPendingSession(
+      sessionId: sessionId,
+      directory: directory,
+      parentSessionId: _primedSessions[sessionId]?.parentId,
+    );
+  }
+
+  void recordPendingSession({
+    required String sessionId,
+    required String directory,
+    required String? parentSessionId,
+  }) {
     if (sessionId.isEmpty || directory.trim().isEmpty) return;
     final normalized = normalizeProjectDirectory(directory: directory);
-    _primedDirectories[sessionId] = normalized;
+    _primedSessions[sessionId] = (directory: normalized, parentId: parentSessionId);
     _knownDirectories.add(normalized);
   }
+
+  void forgetSession({required String sessionId}) => _primedSessions.remove(sessionId);
 
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) =>
       _readSessions(knownDirectories: knownDirectories);
@@ -63,22 +80,25 @@ final class PiSessionCatalogRepository({required final PiSessionStorageApi _stor
       for (final directory in knownDirectories)
         if (directory.trim().isNotEmpty) normalizeProjectDirectory(directory: directory),
     });
-    final scanDirectories = {..._knownDirectories, ..._primedDirectories.values};
+    final scanDirectories = {..._knownDirectories, ..._primedSessions.values.map((session) => session.directory)};
     final metadata = await _storageApi.listSessionMetadata(knownDirectories: scanDirectories);
     final observedIds = metadata.map((session) => session.id).toSet();
-    _primedDirectories.removeWhere((sessionId, _) => observedIds.contains(sessionId));
+    _primedSessions.removeWhere((sessionId, _) => observedIds.contains(sessionId));
     final sessions = <PluginSession>[
       for (final session in metadata) _toPluginSession(session),
-      for (final entry in _primedDirectories.entries)
+      for (final entry in _primedSessions.entries)
         PluginSession(
           id: entry.key,
-          projectID: entry.value,
-          directory: entry.value,
-          parentID: null,
+          projectID: entry.value.directory,
+          directory: entry.value.directory,
+          parentID: entry.value.parentId,
           title: null,
           time: null,
         ),
     ];
+    _snapshotById
+      ..clear()
+      ..addEntries(sessions.map((session) => MapEntry(session.id, session)));
     sessions.sort((left, right) {
       final leftUpdated = left.time?.updated;
       final rightUpdated = right.time?.updated;

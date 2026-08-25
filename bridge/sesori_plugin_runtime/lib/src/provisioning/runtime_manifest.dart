@@ -87,6 +87,10 @@ abstract class const RuntimeManifest() {
   /// [RuntimeAssetResolver].
   RuntimeAsset? assetFor({required PlatformTarget target});
 
+  /// Whether managed installation is available for [target]. Runtimes whose
+  /// asset choice is synchronous inherit the normal asset lookup behavior.
+  bool supportsManagedInstallOn({required PlatformTarget target}) => assetFor(target: target) != null;
+
   /// The download URL for [asset] at [bundledVersion].
   String downloadUrlFor({required RuntimeAsset asset});
 

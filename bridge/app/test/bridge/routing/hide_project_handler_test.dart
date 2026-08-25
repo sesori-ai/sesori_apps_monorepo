@@ -1,8 +1,8 @@
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/routing/hide_project_handler.dart";
-import "package:sesori_bridge/src/bridge/services/project_mutation_service.dart";
+import "package:sesori_bridge/src/repositories/project_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/routing/hide_project_handler.dart";
+import "package:sesori_bridge/src/services/project_mutation_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -50,9 +50,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/project/hide"),
         body: const ProjectIdRequest(projectId: "p1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final hiddenIds = await db.projectsDao.getHiddenProjectIds();
@@ -65,9 +62,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/project/hide"),
           body: const ProjectIdRequest(projectId: ""),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", 400)),
       );
@@ -78,9 +72,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/project/hide"),
         body: const ProjectIdRequest(projectId: projectId),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final hiddenIds = await db.projectsDao.getHiddenProjectIds();

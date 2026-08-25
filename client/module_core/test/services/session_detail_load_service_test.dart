@@ -17,7 +17,7 @@ import "../helpers/test_helpers.dart";
 void main() {
   const connectedStatus = ConnectionStatus.connected(
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
-    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
+    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
   );
 
   setUpAll(registerAllFallbackValues);
@@ -70,7 +70,6 @@ void main() {
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final loaded = result as SessionDetailLoadResultLoaded;
-      expect(loaded.isBridgeConnected, isTrue);
       expect(loaded.snapshot.messages, hasLength(1));
       expect(loaded.snapshot.agents, hasLength(1));
       expect(loaded.snapshot.providerData?.items, hasLength(1));
@@ -321,7 +320,7 @@ void main() {
           mode: SessionOptionsRequestMode.dynamic,
         ),
       ).thenAnswer(
-        (_) async => SessionOptionsRepositoryAvailable(catalog: _sessionOptionsCatalog()),
+        (_) async => SessionOptionsRepositoryAvailable(catalog: _sessionOptionsCatalog(), isStale: false),
       );
 
       final result = await service.load(sessionId: "session-1", projectId: "project-1");
@@ -478,6 +477,9 @@ void _stubRepositorySnapshot({
     () => repository.getPendingPermissions(sessionId: "session-1"),
   ).thenAnswer((_) async => ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])));
   when(
+    () => repository.getQueuedPrompts(sessionId: "session-1"),
+  ).thenAnswer((_) async => ApiResponse.success(const QueuedPromptResponse(data: <QueuedSessionPrompt>[])));
+  when(
     () => repository.getChildren(sessionId: "session-1"),
   ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
   when(() => repository.getSessionStatuses()).thenAnswer(
@@ -490,7 +492,7 @@ void _stubRepositorySnapshot({
       mode: SessionOptionsRequestMode.dynamic,
     ),
   ).thenAnswer(
-    (_) async => SessionOptionsRepositoryAvailable(catalog: _sessionOptionsCatalog()),
+    (_) async => SessionOptionsRepositoryAvailable(catalog: _sessionOptionsCatalog(), isStale: false),
   );
   stubSessionRepositoryGetSession(
     repository: repository,

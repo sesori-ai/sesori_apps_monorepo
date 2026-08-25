@@ -1,8 +1,8 @@
 import "dart:async";
 
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/services/session_event_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_event_service.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/services/session_event_dispatcher.dart";
+import "package:sesori_bridge/src/services/session_event_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -204,6 +204,63 @@ void main() {
     expect(output.single.generation, 2);
     await dispatcher.dispose();
   });
+
+  test("dispose drains accepted dispatches and rejects later work", () async {
+    final normalizeGate = Completer<void>();
+    final service = _GatedSessionEventService(normalizeGate: normalizeGate.future);
+    final dispatcher = SessionEventDispatcher(sessionEventService: service);
+    final source = service.captureSource(
+      pluginId: "plugin",
+      generation: 1,
+      event: const BridgeSseProjectUpdated(),
+    );
+    final dispatch = dispatcher.dispatchPluginEvent(
+      source: source,
+      allowDuringStop: false,
+      terminalHandoffConsumed: null,
+    );
+    var disposed = false;
+    final dispose = dispatcher.dispose().then((_) => disposed = true);
+
+    await Future<void>.delayed(Duration.zero);
+    expect(disposed, isFalse);
+    await expectLater(
+      dispatcher.dispatchLocalEvent(
+        source: (pluginId: "plugin", event: const BridgeSseProjectUpdated()),
+      ),
+      throwsStateError,
+    );
+    normalizeGate.complete();
+    await dispatch;
+    await dispose;
+  });
+
+  test("a failed dispatch reports its error and does not block later work", () async {
+    final cause = StateError("failed normalization");
+    final service = _GatedSessionEventService(normalizeGate: Future<void>.value())..normalizeError = cause;
+    final dispatcher = SessionEventDispatcher(sessionEventService: service);
+    final errors = <Object>[];
+    final subscription = dispatcher.events.listen((_) {}, onError: errors.add);
+    final source = service.captureSource(
+      pluginId: "plugin",
+      generation: 1,
+      event: const BridgeSseProjectUpdated(),
+    );
+
+    await dispatcher.dispatchPluginEvent(
+      source: source,
+      allowDuringStop: false,
+      terminalHandoffConsumed: null,
+    );
+    await dispatcher.dispatchLocalEvent(
+      source: (pluginId: "plugin", event: const BridgeSseProjectUpdated()),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(errors, [same(cause)]);
+    await subscription.cancel();
+    await dispatcher.dispose();
+  });
 }
 
 class _GatedSessionEventService({required final Future<void> _normalizeGate}) implements SessionEventService {
@@ -212,6 +269,7 @@ class _GatedSessionEventService({required final Future<void> _normalizeGate}) im
   bool eventGenerationCurrent = true;
   int currentGeneration = 1;
   List<NormalizedRuntimeEvent> bindingOutputs = const [];
+  Object? normalizeError;
 
   @override
   SourcedBridgeEvent captureSource({
@@ -228,6 +286,9 @@ class _GatedSessionEventService({required final Future<void> _normalizeGate}) im
     required bool allowDuringStop,
   }) async {
     await _normalizeGate;
+    final error = normalizeError;
+    normalizeError = null;
+    if (error != null) throw error;
     return [source.event];
   }
 

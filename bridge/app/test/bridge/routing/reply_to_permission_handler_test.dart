@@ -1,7 +1,7 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/routing/reply_to_permission_handler.dart";
+import "package:sesori_bridge/src/routing/reply_to_permission_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -40,7 +40,7 @@ void main() {
     test("returns 409 with the archived rejection body for an archived session", () async {
       await db.sessionDao.setArchived(sessionId: "ses-456", archivedAt: 7, updatedAt: 7, projectionUpdatedAt: 7);
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/permission/reply",
@@ -52,9 +52,6 @@ void main() {
             ).toJson(),
           ),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, 409);
@@ -81,9 +78,6 @@ void main() {
           sessionId: "ses-456",
           reply: PermissionReply.once,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastReplyToPermissionRequestId, equals("perm-123"));
@@ -99,9 +93,6 @@ void main() {
           sessionId: "ses-456",
           reply: PermissionReply.once,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, equals(const SuccessEmptyResponse()));
@@ -116,9 +107,6 @@ void main() {
             sessionId: "ses-456",
             reply: PermissionReply.once,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -133,9 +121,6 @@ void main() {
             sessionId: "",
             reply: PermissionReply.once,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );

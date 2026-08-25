@@ -104,7 +104,14 @@ void main() {
       addTearDown(service.onDispose);
       await _waitFor(() => service.snapshots.hasValue);
 
-      expect(await service.startAuthentication(pluginId: "codex"), isA<PluginAuthenticationStartFailure>());
+      expect(
+        await service.startAuthentication(pluginId: "codex"),
+        isA<PluginAuthenticationStartFailed>().having(
+          (result) => result.failure,
+          "failure",
+          isA<PluginAuthenticationFailureRequest>(),
+        ),
+      );
       expect(service.authenticationChallenges.value, isEmpty);
       connection.emitStatus(const ConnectionDisconnected());
       expect(service.authenticationChallenges.value, isEmpty);
@@ -166,9 +173,16 @@ void main() {
         pluginId: "codex",
         progress: const PluginAuthenticationProgress.completed(),
       );
-      start.complete(const PluginAuthenticationStartResult.uncertain());
+      start.complete(const PluginAuthenticationStartResult.failed(failure: PluginAuthenticationFailure.uncertain()));
 
-      expect(await result, isA<PluginAuthenticationStartUncertain>());
+      expect(
+        await result,
+        isA<PluginAuthenticationStartFailed>().having(
+          (result) => result.failure,
+          "failure",
+          isA<PluginAuthenticationFailureUncertain>(),
+        ),
+      );
       expect(terminals.single.progress, const PluginAuthenticationProgress.completed());
     });
 
@@ -394,34 +408,6 @@ void main() {
       newBridgeLoad.complete(_supported(_response(token: "b", bridgeId: "br_b")));
       await _waitFor(() => service.snapshots.value is PluginManagementLoadResultSupported);
       expect(_supportedResponse(service).bridgeId, "br_b");
-    });
-
-    test("legacy null identity is retained only within its proven connection epoch", () async {
-      final error = ApiError.generic();
-      final repository = _FakePluginRepository()
-        ..queueLoad(_supported(_response(token: "legacy", bridgeId: null)))
-        ..queueLoad(PluginManagementLoadResult.failure(error: error))
-        ..queueLoad(PluginManagementLoadResult.failure(error: error));
-      final connection = _FakeConnectionService(initialStatus: _connected);
-      final service = PluginManagementService(
-        pluginRepository: repository,
-        connectionService: connection,
-        productAnalyticsService: analytics,
-      );
-      addTearDown(() async {
-        await service.onDispose();
-        await connection.dispose();
-      });
-      await _waitFor(() => service.snapshots.hasValue);
-
-      await service.refresh();
-      expect(service.snapshots.value, isA<PluginManagementLoadResultSupported>());
-
-      connection
-        ..emitStatus(const ConnectionStatus.bridgeOffline(config: _config, health: _health))
-        ..emitStatus(_connected);
-      await _waitFor(() => repository.loadCalls == 3);
-      expect(service.snapshots.value, isA<PluginManagementLoadResultFailure>());
     });
 
     test("an unexpected bridge identity change is confirmed by one clean load", () async {
@@ -1220,13 +1206,13 @@ void main() {
   });
 }
 
-const _config = ServerConnectionConfig(relayHost: "relay.example.com");
+const _config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: null);
 const _health = HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false);
 const _connected = ConnectionStatus.connected(config: _config, health: _health);
 
 PluginManagementResponse _response({
   required String token,
-  String? bridgeId = "br_a",
+  String bridgeId = "br_a",
   int timeout = 10,
 }) {
   return PluginManagementResponse(

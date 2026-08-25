@@ -1,3 +1,4 @@
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show stripAnsi;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/models/claude_stream_message.dart";
@@ -140,8 +141,8 @@ final class ClaudeApprovalRegistry({
         ),
       };
       _pending[id] = pending;
-      _emit(
-        BridgeSseQuestionAsked(
+      _emitActivity(
+        event: BridgeSseQuestionAsked(
           id: id,
           sessionID: attributedSessionId,
           displaySessionId: attributedSessionId,
@@ -163,8 +164,8 @@ final class ClaudeApprovalRegistry({
       allowAlways: request["suppress_always_allow_rule"] != true,
     );
     _pending[id] = pending;
-    _emit(
-      BridgeSsePermissionAsked(
+    _emitActivity(
+      event: BridgeSsePermissionAsked(
         requestID: id,
         sessionID: attributedSessionId,
         displaySessionId: attributedSessionId,
@@ -255,8 +256,8 @@ final class ClaudeApprovalRegistry({
       if (allowedTools.isEmpty) _allowedTools.remove(entry.sessionId);
     }
     _pending.remove(id);
-    _emit(
-      BridgeSsePermissionReplied(
+    _emitActivity(
+      event: BridgeSsePermissionReplied(
         requestID: id,
         sessionID: entry.sessionId,
         displaySessionId: entry.sessionId,
@@ -280,7 +281,9 @@ final class ClaudeApprovalRegistry({
       return false;
     }
     _pending.remove(id);
-    _emit(BridgeSseQuestionReplied(requestID: id, sessionID: entry.sessionId, displaySessionId: entry.sessionId));
+    _emitActivity(
+      event: BridgeSseQuestionReplied(requestID: id, sessionID: entry.sessionId, displaySessionId: entry.sessionId),
+    );
     return true;
   }
 
@@ -289,7 +292,9 @@ final class ClaudeApprovalRegistry({
     if (entry is! _PendingQuestion) return false;
     if (!_deny(entry: entry, message: "User rejected the request.")) return false;
     _pending.remove(id);
-    _emit(BridgeSseQuestionRejected(requestID: id, sessionID: entry.sessionId, displaySessionId: entry.sessionId));
+    _emitActivity(
+      event: BridgeSseQuestionRejected(requestID: id, sessionID: entry.sessionId, displaySessionId: entry.sessionId),
+    );
     return true;
   }
 
@@ -321,8 +326,8 @@ final class ClaudeApprovalRegistry({
     }
     switch (entry) {
       case _PendingPermission():
-        _emit(
-          BridgeSsePermissionReplied(
+        _emitActivity(
+          event: BridgeSsePermissionReplied(
             requestID: entry.id,
             sessionID: entry.sessionId,
             displaySessionId: entry.sessionId,
@@ -330,14 +335,21 @@ final class ClaudeApprovalRegistry({
           ),
         );
       case _PendingQuestion():
-        _emit(
-          BridgeSseQuestionRejected(
+        _emitActivity(
+          event: BridgeSseQuestionRejected(
             requestID: entry.id,
             sessionID: entry.sessionId,
             displaySessionId: entry.sessionId,
           ),
         );
     }
+  }
+
+  /// Pending approvals feed the awaiting-input flag in the activity summary,
+  /// so invalidate that summary after every approval transition.
+  void _emitActivity({required BridgeSseEvent event}) {
+    _emit(event);
+    _emit(const BridgeSseProjectUpdated());
   }
 
   bool _deny({required _PendingApproval entry, required String message}) {
@@ -414,12 +426,9 @@ List<PluginQuestionInfo> _questions({
 
 String _description(Map<String, Object?> request) {
   final values = [request["title"], request["description"], request["decision_reason"]];
-  return values.map(_nonEmptyString).whereType<String>().map(_stripAnsi).firstOrNull ??
+  return values.map(_nonEmptyString).whereType<String>().map((value) => stripAnsi(value: value)).firstOrNull ??
       "Claude Code requested permission.";
 }
-
-String _stripAnsi(String value) =>
-    value.replaceAll(RegExp(r"\x1B(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1B\\))"), "");
 
 String? _nonEmptyString(Object? value) => value is String && value.isNotEmpty ? value : null;
 

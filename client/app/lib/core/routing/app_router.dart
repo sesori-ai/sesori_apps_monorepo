@@ -29,6 +29,10 @@ import "imperative_pane_route.dart";
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _sessionShellNavigatorKey = GlobalKey<NavigatorState>();
 
+/// The root navigator hosting every app route. Used to present app-wide UI
+/// (for example backend toast guidance) without a screen context.
+GlobalKey<NavigatorState> get appRootNavigatorKey => _rootNavigatorKey;
+
 const _newSessionRouteSegment = "new";
 const _sessionsRouteSegment = ":$projectIdPathParam/sessions";
 const _sessionDetailRouteSegment = ":$sessionIdPathParam";
@@ -245,16 +249,6 @@ extension BuildContextNavigation on BuildContext {
   void replaceRoute(AppRoute route) {
     // ignore: no_slop_linter/avoid_raw_go_router, typed wrapper implementation
     GoRouter.of(this).replace<void>(route.buildPath());
-  }
-}
-
-extension GoRouterNavigation on GoRouter {
-  void goRoute(AppRoute route) {
-    go(route.buildPath());
-  }
-
-  void replaceRoute(AppRoute route) {
-    replace<void>(route.buildPath());
   }
 }
 

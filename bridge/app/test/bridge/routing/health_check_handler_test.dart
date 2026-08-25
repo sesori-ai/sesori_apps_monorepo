@@ -1,5 +1,5 @@
-import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
-import "package:sesori_bridge/src/bridge/routing/health_check_handler.dart";
+import "package:sesori_bridge/src/repositories/health_repository.dart";
+import "package:sesori_bridge/src/routing/health_check_handler.dart";
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";
@@ -38,9 +38,6 @@ void main() {
     test("returns healthy response with version", () async {
       final response = await buildHandler().handle(
         makeRequest("GET", "/global/health"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(response.healthy, isTrue);
       expect(response.version, equals("9.9.9"));
@@ -50,9 +47,6 @@ void main() {
     test("reports filesystemAccessDegraded when access is not ok", () async {
       final response = await buildHandler(filesystemAccessOk: false).handle(
         makeRequest("GET", "/global/health"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(response.filesystemAccessDegraded, isTrue);
     });
@@ -61,9 +55,6 @@ void main() {
       plugin.throwOnHealthCheck = true;
       final response = await buildHandler().handle(
         makeRequest("GET", "/global/health"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.healthy, isTrue);

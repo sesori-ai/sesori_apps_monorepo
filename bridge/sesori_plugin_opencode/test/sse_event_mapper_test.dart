@@ -1,10 +1,12 @@
 import "package:opencode_plugin/src/models/openapi/assistant_message.g.dart";
-import "package:opencode_plugin/src/models/openapi/session.g.dart";
+import "package:opencode_plugin/src/models/openapi/user_message.g.dart";
 import "package:opencode_plugin/src/models/sse_event_data.g.dart";
 import "package:opencode_plugin/src/sse_event_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
+
+import "support/open_code_fixtures.dart";
 
 AssistantMessage _assistantMessage({required Object? error}) {
   return AssistantMessage(
@@ -30,6 +32,20 @@ AssistantMessage _assistantMessage({required Object? error}) {
     structured: null,
     variant: null,
     finish: null,
+  );
+}
+
+UserMessage _userMessage({required String id}) {
+  return UserMessage(
+    id: id,
+    sessionID: "session-1",
+    time: const UserMessageTime(created: 100),
+    format: null,
+    summary: null,
+    agent: "build",
+    model: const UserMessageModel(providerID: "openai", modelID: "gpt-4", variant: null),
+    system: null,
+    tools: null,
   );
 }
 
@@ -69,29 +85,13 @@ void main() {
     });
 
     test("maps session.created using provided canonical projectID", () {
-      const session = Session(
-        slug: "slug",
-        title: "title",
-        version: "v",
-        time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+      final session = openCodeSession(
         id: "session-1",
         projectID: "/repo",
         directory: "/repo/packages/foo",
-        workspaceID: null,
-        path: null,
-        parentID: null,
-        summary: null,
-        cost: null,
-        tokens: null,
-        share: null,
-        agent: null,
-        model: null,
-        metadata: null,
-        permission: null,
-        revert: null,
       );
 
-      final result = mapper.map(const SseEventData.sessionCreated(info: session));
+      final result = mapper.map(SseEventData.sessionCreated(info: session));
 
       expect(result, isNotNull);
       final event = result! as BridgeSseSessionCreated;
@@ -101,29 +101,13 @@ void main() {
     });
 
     test("maps session.updated using provided canonical projectID", () {
-      const session = Session(
-        slug: "slug",
-        title: "title",
-        version: "v",
-        time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+      final session = openCodeSession(
         id: "session-2",
         projectID: "/repo",
         directory: "/repo/packages/foo",
-        workspaceID: null,
-        path: null,
-        parentID: null,
-        summary: null,
-        cost: null,
-        tokens: null,
-        share: null,
-        agent: null,
-        model: null,
-        metadata: null,
-        permission: null,
-        revert: null,
       );
 
-      final result = mapper.map(const SseEventData.sessionUpdated(info: session));
+      final result = mapper.map(SseEventData.sessionUpdated(info: session));
 
       expect(result, isNotNull);
       final event = result! as BridgeSseSessionUpdated;
@@ -132,34 +116,33 @@ void main() {
     });
 
     test("maps session.deleted using provided canonical projectID", () {
-      const session = Session(
-        slug: "slug",
-        title: "title",
-        version: "v",
-        time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+      final session = openCodeSession(
         id: "session-3",
         projectID: "/repo",
         directory: "/repo/packages/foo",
-        workspaceID: null,
-        path: null,
-        parentID: null,
-        summary: null,
-        cost: null,
-        tokens: null,
-        share: null,
-        agent: null,
-        model: null,
-        metadata: null,
-        permission: null,
-        revert: null,
       );
 
-      final result = mapper.map(const SseEventData.sessionDeleted(info: session));
+      final result = mapper.map(SseEventData.sessionDeleted(info: session));
 
       expect(result, isNotNull);
       final event = result! as BridgeSseSessionDeleted;
       expect(event.info["projectID"], equals("/repo"));
       expect(event.info["directory"], equals("/repo/packages/foo"));
+    });
+
+    test("stamps the resolved prompt id on a user message", () {
+      final result = mapper.map(
+        SseEventData.messageUpdated(info: _userMessage(id: "msg-sent")),
+        promptId: "prm_1",
+      );
+
+      expect((result! as BridgeSseMessageUpdated).info["promptId"], equals("prm_1"));
+    });
+
+    test("leaves a user message with no resolved prompt unattributed", () {
+      final result = mapper.map(SseEventData.messageUpdated(info: _userMessage(id: "msg-from-tui")));
+
+      expect((result! as BridgeSseMessageUpdated).info.containsKey("promptId"), isFalse);
     });
   });
 }

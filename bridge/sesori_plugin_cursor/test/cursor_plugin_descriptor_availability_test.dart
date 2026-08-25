@@ -5,6 +5,7 @@ import "dart:io";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -80,6 +81,36 @@ void main() {
       ]);
     });
 
+    test("bounds captured version output during setup inspection", () async {
+      final processes = _ProbeProcessService(
+        processSequence: [
+          _ProbeProcess(
+            pid: 3,
+            stdoutBytes: utf8.encode("${List.filled(64 * 1024, "x").join()} 2026.07.23-e383d2b"),
+            exitCode: Future<int>.value(0),
+          ),
+          _ProbeProcess(
+            pid: 4,
+            stdoutBytes: utf8.encode("missing"),
+            exitCode: Future<int>.value(1),
+          ),
+        ],
+      );
+
+      final result = await const CursorPluginDescriptor().inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, isA<PluginSetupUnknown>());
+      expect(processes.spawnedArguments, [
+        const ["--version"],
+        const ["--version"],
+      ]);
+    });
+
     test("logs the successful runtime probe at the probe boundary", () async {
       final processes = _ProbeProcessService(
         processSequence: [
@@ -112,7 +143,7 @@ void main() {
               const PluginSetupReady.versioned(runtimeVersion: "2026.07.23-e383d2b"),
             );
           },
-          stderr: () => _CapturingStdout(stderrLines),
+          stderr: () => CapturingStdout(lines: stderrLines),
         );
       } finally {
         Log.level = previousLogLevel;
@@ -536,14 +567,4 @@ class _ProbeProcess({
 
   @override
   ProcessIdentity get identity => throw UnimplementedError();
-}
-
-class _CapturingStdout(final List<String> lines) implements Stdout {
-  @override
-  void writeln([Object? object = ""]) {
-    lines.add(object.toString());
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

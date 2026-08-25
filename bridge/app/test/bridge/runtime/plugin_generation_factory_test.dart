@@ -1,17 +1,18 @@
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_server_exception.dart";
-import "package:sesori_bridge/src/bridge/runtime/plugin_generation_factory.dart";
+import "package:sesori_bridge/src/runtime/bridge_runtime_server_exception.dart";
+import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";
 import "package:sesori_bridge/src/server/api/runtime_file_api.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
 import "package:sesori_bridge/src/server/host/plugin_state_directory.dart";
 import "package:sesori_bridge/src/server/models/bridge_startup_lock.dart";
-import "package:sesori_bridge/src/server/repositories/process_repository.dart";
 import "package:sesori_bridge/src/server/repositories/startup_mutex_repository.dart";
 import "package:sesori_bridge/src/server/services/bridge_instance_service.dart";
 import "package:sesori_bridge/src/updater/models/managed_runtime_paths.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
+
+import "../../helpers/fake_process_repository.dart";
 
 // The plugin-specific start flows (managed start, attach mode, ownership
 // records) live with OpenCodePluginDescriptor in sesori_plugin_opencode;
@@ -65,6 +66,7 @@ void main() {
         clock: const ServerClock(),
         environment: const <String, String>{"HOME": "/home/alex"},
         currentUser: ProcessUser.fromRawUser("alex"),
+        resolveIdleTimeoutMins: ({required pluginId}) => 10,
       );
       BridgePlugin? startedPlugin;
       await for (final event in factory.start(
@@ -144,6 +146,7 @@ void main() {
         clock: const ServerClock(),
         environment: const <String, String>{},
         currentUser: null,
+        resolveIdleTimeoutMins: ({required pluginId}) => 10,
       );
       await factory.enforceBridgeOwnership();
 
@@ -466,9 +469,6 @@ class _FakeBridgePluginApi() extends NativeProjectsPluginApi {
   Stream<BridgeSseEvent> get events => const Stream.empty();
 
   @override
-  Future<void> dispose() async {}
-
-  @override
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required String projectId,
     required PluginSessionOptionsDiscoveryMode discoveryMode,
@@ -480,19 +480,7 @@ class _FakeBridgePluginApi() extends NativeProjectsPluginApi {
 
 /// Never invoked in these tests: the host's process service is constructed
 /// but the fake descriptor short-circuits before any process work.
-class _FakeProcessRepository() implements ProcessRepository {
-  @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
+class _FakeProcessRepository() extends StrictFakeProcessRepository;
 
 class _FakeStartupMutexRepository() implements StartupMutexRepository {
   bool rejectLock = false;

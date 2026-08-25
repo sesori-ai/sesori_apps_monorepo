@@ -8,8 +8,6 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
-import "package:sesori_dart_core/src/platform/notification_canceller.dart";
-import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -17,18 +15,12 @@ import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
 
-class MockNotificationCanceller() extends Mock implements NotificationCanceller;
-
-class MockPermissionRepository() extends Mock implements PermissionRepository;
-
-class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadService;
-
 const _sessionId = "session-1";
 
 void main() {
   const connectedStatus = ConnectionStatus.connected(
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
-    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
+    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
   );
 
   setUpAll(() {
@@ -38,7 +30,7 @@ void main() {
   });
 
   test("disconnected startup reaches loaded automatically once connection becomes available", () async {
-    final mockSessionService = MockSessionService();
+    final mockSessionService = MockSessionRepository();
     final mockSessionRepository = MockSessionRepository();
     final mockProjectRepository = MockProjectRepository();
     final mockConnectionService = MockConnectionService();
@@ -75,7 +67,7 @@ void main() {
         reply: any(named: "reply"),
       ),
     ).thenAnswer((_) async => ApiResponse.success(null));
-    delegateSessionRepositoryToService(repository: mockSessionRepository, service: mockSessionService);
+    delegateSessionRepository(repository: mockSessionRepository, source: mockSessionService);
     stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: _sessionId);
     when(() => mockProjectRepository.findSessionContext(sessionId: _sessionId)).thenAnswer(
       (_) async => const ProjectSessionContext(
@@ -109,7 +101,13 @@ void main() {
     await _awaitLoaded(cubit);
 
     expect(cubit.state, isA<SessionDetailLoaded>());
-    verify(() => mockSessionService.getMessages(sessionId: _sessionId, limit: any(named: "limit"), before: any(named: "before"))).called(1);
+    verify(
+      () => mockSessionService.getMessages(
+        sessionId: _sessionId,
+        limit: any(named: "limit"),
+        before: any(named: "before"),
+      ),
+    ).called(1);
   });
 
   test("reloads immediately when waiting result arrives after connection already recovered", () async {
@@ -159,6 +157,7 @@ void main() {
     ).thenAnswer(
       (_) async => const SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
+          bridgeQueuedPrompts: [],
           projectId: "project-1",
           pluginId: "opencode",
           supportsPromptAttachments: false,
@@ -168,7 +167,7 @@ void main() {
           pendingPermissions: <PendingPermission>[],
           childSessions: <Session>[],
           statuses: <String, SessionStatus>{},
-          agents: <AgentInfo?>[],
+          agents: <AgentInfo>[],
           providerData: null,
           commands: <CommandInfo>[],
           canonicalSessionTitle: null,
@@ -176,7 +175,6 @@ void main() {
           isRootSession: true,
           isArchived: false,
         ),
-        isBridgeConnected: true,
       ),
     );
 
@@ -240,6 +238,7 @@ void main() {
 
     const loadedResult = SessionDetailLoadResult.loaded(
       snapshot: SessionDetailSnapshot(
+        bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "opencode",
         supportsPromptAttachments: false,
@@ -249,7 +248,7 @@ void main() {
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
         statuses: <String, SessionStatus>{},
-        agents: <AgentInfo?>[],
+        agents: <AgentInfo>[],
         providerData: null,
         commands: <CommandInfo>[],
         canonicalSessionTitle: null,
@@ -257,7 +256,6 @@ void main() {
         isRootSession: true,
         isArchived: false,
       ),
-      isBridgeConnected: true,
     );
 
     when(
@@ -318,10 +316,16 @@ void main() {
   });
 }
 
-void _stubLoadApis(MockSessionService service) {
+void _stubLoadApis(MockSessionRepository service) {
   when(
-    () => service.getMessages(sessionId: _sessionId, limit: any(named: "limit"), before: any(named: "before")),
-  ).thenAnswer((_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)));
+    () => service.getMessages(
+      sessionId: _sessionId,
+      limit: any(named: "limit"),
+      before: any(named: "before"),
+    ),
+  ).thenAnswer(
+    (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+  );
   when(
     () => service.getPendingQuestions(sessionId: _sessionId),
   ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
@@ -378,9 +382,9 @@ MessageWithParts _messageWithParts() {
 }
 
 Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
-  for (var i = 0; i < 100; i++) {
-    if (cubit.state is SessionDetailLoaded) return;
-    await Future<void>.delayed(const Duration(milliseconds: 5));
-  }
-  fail("Timed out waiting for SessionDetailLoaded; current state: ${cubit.state}");
+  await awaitState(
+    cubit: cubit,
+    predicate: (state) => state is SessionDetailLoaded,
+    description: "SessionDetailLoaded",
+  );
 }

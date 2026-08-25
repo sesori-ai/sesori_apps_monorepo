@@ -6,6 +6,7 @@ import "../codex_config_reader.dart";
 import "../models/codex_replay_tool_disposition.dart";
 import "codex_tool_lifecycle_tracker.dart";
 import "mappers/codex_rollout_tool_mapper.dart";
+import "mappers/codex_user_content_mapper.dart";
 import "models/codex_projected_tool.dart";
 
 final class CodexPreparedMessageRead({required Iterable<CodexRolloutLineDto> lines}) {
@@ -16,6 +17,7 @@ final class CodexPreparedMessageRead({required Iterable<CodexRolloutLineDto> lin
 class CodexMessageRepository({
   required final CodexRolloutApi _rolloutApi,
   required final CodexRolloutToolMapper _rolloutToolMapper,
+  required final CodexUserContentMapper _userContentMapper,
 }) {
   List<PluginMessageWithParts> readMessages({
     required String rolloutPath,
@@ -128,7 +130,9 @@ class CodexMessageRepository({
       if (line case CodexRolloutEventMessageLineDto(
         payload: CodexRolloutUserMessageEventDto(message: final submittedMessage),
       )) {
-        final submittedText = submittedMessage.isEmpty ? null : submittedMessage;
+        final submittedText = _userContentMapper.mapSubmittedText(
+          text: submittedMessage,
+        );
         _PendingUserMessage? pending;
         for (var index = pendingUserMessages.length - 1; index >= 0; index--) {
           final candidate = pendingUserMessages[index];
@@ -151,6 +155,7 @@ class CodexMessageRepository({
                 sessionID: sessionId,
                 agent: null,
                 time: _messageTimeFrom(lineTimestamp),
+                promptId: null,
               ),
               messageId: messageId,
               sessionId: sessionId,
@@ -159,6 +164,10 @@ class CodexMessageRepository({
             ),
           );
         } else {
+          if (submittedText == null && pending.attachments.isEmpty) {
+            pending.resolved = true;
+            continue;
+          }
           final legacyCounter = pending.legacyCounter ?? (messageCounter += 1);
           final messageId = _persistedOrLegacyMessageId(
             persistedId: pending.persistedId,
@@ -170,6 +179,7 @@ class CodexMessageRepository({
               sessionID: sessionId,
               agent: null,
               time: pending.time,
+              promptId: null,
             ),
             messageId: messageId,
             sessionId: sessionId,
@@ -178,6 +188,27 @@ class CodexMessageRepository({
           );
           pending.resolved = true;
         }
+      }
+      if (line
+          case CodexRolloutEventMessageLineDto(
+            payload: CodexRolloutTaskCompleteEventDto(:final turnId, error: final error?),
+          )
+          when error.message.trim().isNotEmpty) {
+        messages.add(
+          PluginMessageWithParts(
+            info: PluginMessage.error(
+              id: turnId,
+              sessionID: sessionId,
+              agent: "codex",
+              modelID: currentModel ?? config.model,
+              providerID: sessionProvider ?? config.modelProvider ?? "openai",
+              errorName: "CodexError",
+              errorMessage: error.message,
+              time: _messageTimeFrom(lineTimestamp),
+            ),
+            parts: const [],
+          ),
+        );
       }
 
       final CodexRolloutResponseItemDto payload;
@@ -349,6 +380,7 @@ class CodexMessageRepository({
                   sessionID: sessionId,
                   agent: null,
                   time: messageTime,
+                  promptId: null,
                 )
               : assistantInfo(id: messageId, time: messageTime);
           messages.add(
@@ -386,6 +418,7 @@ class CodexMessageRepository({
           sessionID: sessionId,
           agent: null,
           time: pending.time,
+          promptId: null,
         ),
         messageId: messageId,
         sessionId: sessionId,
@@ -410,12 +443,12 @@ class CodexMessageRepository({
   String? _userVisibleText({
     required List<CodexRolloutContentDto> content,
   }) {
-    final texts = [
-      for (final item in content)
-        if (item case CodexRolloutInputTextDto(:final text) when text.isNotEmpty && !_isGeneratedContext(text: text))
-          text,
-    ];
-    return texts.isEmpty ? null : texts.join();
+    return _userContentMapper.mapContentText(
+      textParts: [
+        for (final item in content)
+          if (item case CodexRolloutInputTextDto(:final text)) text,
+      ],
+    );
   }
 
   PluginMessageWithParts _textMessage({
@@ -527,25 +560,6 @@ class CodexMessageRepository({
       completed: null,
     );
   }
-}
-
-enum _GeneratedContextTag(final String wireName) {
-  recommendedPlugins("recommended_plugins"),
-  environmentContext("environment_context"),
-  turnAborted("turn_aborted");
-
-  bool wraps(String text) => text.startsWith("<$wireName>") && text.endsWith("</$wireName>");
-}
-
-final _generatedRepositoryInstructions = RegExp(
-  r"^# AGENTS\.md instructions(?: for [^\r\n]+)?\r?\n\r?\n"
-  r"<INSTRUCTIONS>(?:\r?\n)?[\s\S]*?(?:\r?\n)?</INSTRUCTIONS>$",
-);
-
-bool _isGeneratedContext({required String text}) {
-  final normalized = text.trim();
-  return _GeneratedContextTag.values.any((tag) => tag.wraps(normalized)) ||
-      _generatedRepositoryInstructions.hasMatch(normalized);
 }
 
 class _PendingUserMessage({

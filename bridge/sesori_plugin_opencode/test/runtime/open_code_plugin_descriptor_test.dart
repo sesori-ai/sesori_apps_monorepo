@@ -27,18 +27,6 @@ void main() {
       );
     });
 
-    test("keeps the pre-namespacing flags as deprecated aliases", () {
-      final aliasesByName = <String, List<String>>{
-        for (final option in descriptor.options) option.name: option.deprecatedAliases,
-      };
-      expect(aliasesByName["port"], equals(<String>["port"]));
-      expect(aliasesByName["no-auto-start"], equals(<String>["no-auto-start"]));
-      expect(aliasesByName["password"], equals(<String>["password"]));
-      // host is new and bin already namespaced to --opencode-bin: no aliases.
-      expect(aliasesByName["host"], isEmpty);
-      expect(aliasesByName["bin"], isEmpty);
-    });
-
     test("keeps attach mode resident and managed mode transient", () {
       expect(
         descriptor.residencyPolicy(
@@ -399,8 +387,8 @@ void main() {
       final plugin = await descriptor().start(host);
 
       expect(plugin.currentStatus, isA<PluginReady>());
-      expect(plugin.port, equals(51000));
-      expect(plugin.serverUrl, equals("http://127.0.0.1:51000"));
+      expect(int.parse(plugin.describe().details["port"]!), equals(51000));
+      expect(plugin.describe().endpoint, equals("http://127.0.0.1:51000"));
       expect(plugin.describe().details["mode"], equals("managed"));
       expect(plugin.describe().endpoint, equals("http://127.0.0.1:51000"));
       expect(apiRecorder.last!.initializeCalled, isTrue);
@@ -433,7 +421,7 @@ void main() {
       final plugin = await descriptor().start(wildcardHost);
 
       // 0.0.0.0 is not a connectable target, so the bridge dials loopback.
-      expect(plugin.serverUrl, equals("http://127.0.0.1:51000"));
+      expect(plugin.describe().endpoint, equals("http://127.0.0.1:51000"));
       // ...while OpenCode is actually told to bind the wildcard.
       final record = wildcardHost.ownershipRecord("owner-current");
       expect(
@@ -461,7 +449,7 @@ void main() {
 
       final plugin = await descriptor().start(concreteHost);
 
-      expect(plugin.serverUrl, equals("http://10.0.0.5:51000"));
+      expect(plugin.describe().endpoint, equals("http://10.0.0.5:51000"));
 
       await plugin.shutdown(budget: null);
     });
@@ -484,7 +472,7 @@ void main() {
       final plugin = await descriptor().start(wildcardHost);
 
       // :: resolves to ::1 (same address family), bracketed in the URL.
-      expect(plugin.serverUrl, equals("http://[::1]:51000"));
+      expect(plugin.describe().endpoint, equals("http://[::1]:51000"));
       final record = wildcardHost.ownershipRecord("owner-current");
       expect(
         record!["openCodeArgs"],
@@ -511,7 +499,7 @@ void main() {
 
       final plugin = await descriptor().start(ipv6Host);
 
-      expect(plugin.serverUrl, equals("http://[::1]:51000"));
+      expect(plugin.describe().endpoint, equals("http://[::1]:51000"));
 
       await plugin.shutdown(budget: null);
     });
@@ -534,7 +522,7 @@ void main() {
       final plugin = await descriptor().start(paddedHost);
 
       // Trimmed to the wildcard, which resolves to the loopback connect host.
-      expect(plugin.serverUrl, equals("http://127.0.0.1:51000"));
+      expect(plugin.describe().endpoint, equals("http://127.0.0.1:51000"));
       final record = paddedHost.ownershipRecord("owner-current");
       expect(
         record!["openCodeArgs"],
@@ -609,26 +597,6 @@ void main() {
 
       expect(plugin.currentStatus, isA<PluginFailed>());
       expect(host.processes.spawnedProcesses, hasLength(1), reason: "no child can spawn while the port is held");
-    });
-
-    test("records the start intent before spawn and clears it once the record exists", () async {
-      host.ports.defaultBindable = true;
-      String? intentDuringSpawn;
-      host.processes.onSpawn = () {
-        intentDuringSpawn = host.store.files["opencode-start-intent.json"];
-      };
-
-      final plugin = await descriptor().start(host);
-
-      expect(intentDuringSpawn, isNotNull, reason: "the intent side file must exist before the child does");
-      expect(jsonDecode(intentDuringSpawn!), containsPair("port", 51000));
-      expect(
-        host.store.files["opencode-start-intent.json"],
-        isNull,
-        reason: "the intent is resolved once the ownership record is written",
-      );
-
-      await plugin.shutdown(budget: null);
     });
 
     test("stale cleanup reclaims a runtime owned by a replaced bridge that still looks live", () async {
@@ -748,7 +716,7 @@ void main() {
       final plugin = await descriptor.start(host);
 
       expect(plugin.currentStatus, isA<PluginReady>());
-      expect(plugin.port, equals(4096));
+      expect(int.parse(plugin.describe().details["port"]!), equals(4096));
       expect(plugin.describe().details["mode"], equals("attached"));
       expect(host.ownershipRecord("owner-current"), isNull);
       expect(host.processes.spawnedProcesses, isEmpty);
@@ -777,7 +745,7 @@ void main() {
       final plugin = await descriptor.start(remoteHost);
 
       expect(plugin.currentStatus, isA<PluginReady>());
-      expect(plugin.serverUrl, equals("http://10.0.0.5:4096"));
+      expect(plugin.describe().endpoint, equals("http://10.0.0.5:4096"));
 
       await plugin.shutdown(budget: null);
     });
@@ -1024,6 +992,9 @@ class _FakeHost({@override required final PluginConfig config}) implements Plugi
   final String stateDirectory = "/runtime";
 
   @override
+  Duration? get pluginIdleTimeout => null;
+
+  @override
   String? provisionedRuntimePath;
 
   @override
@@ -1107,7 +1078,6 @@ class _FakeHostProcessService() implements HostProcessService {
   final List<Map<String, String>?> spawnEnvironments = <Map<String, String>?>[];
   final List<String> signals = <String>[];
   final Map<int, ProcessIdentity> inspectResults = <int, ProcessIdentity>{};
-  void Function()? onSpawn;
   int nextPid = 4242;
 
   @override
@@ -1118,7 +1088,6 @@ class _FakeHostProcessService() implements HostProcessService {
     required String? workingDirectory,
     required bool runInShell,
   }) async {
-    onSpawn?.call();
     spawnEnvironments.add(environment);
     final process = _FakeSpawnedProcess(pid: nextPid++, executablePath: executable);
     spawnedProcesses.add(process);

@@ -58,8 +58,26 @@ sealed class const ClaudeStreamMessage({
             raw: json,
           ),
           "task_progress" => ClaudeTaskProgressMessage.fromJson(json, sessionId: sessionId, uuid: uuid),
+          "hook_started" => ClaudeHookStartedMessage(
+            hookId: _stringOrNull(json["hook_id"]),
+            hookName: _stringOrNull(json["hook_name"]),
+            hookEvent: _stringOrNull(json["hook_event"]),
+            sessionId: sessionId,
+            uuid: uuid,
+            raw: json,
+          ),
+          // `hook_progress` shares the output shape and the same emitter, so it
+          // is modelled here rather than left to surface as a later unknown.
+          "hook_progress" || "hook_response" => ClaudeHookOutputMessage.fromJson(
+            json,
+            phase: subtype == "hook_progress" ? ClaudeHookPhase.progress : ClaudeHookPhase.response,
+            sessionId: sessionId,
+            uuid: uuid,
+          ),
           _ => ClaudeUnknownMessage(type: type, subtype: subtype, sessionId: sessionId, uuid: uuid, raw: json),
         };
+      case "tool_progress":
+        return ClaudeToolProgressMessage.fromJson(json, sessionId: sessionId, uuid: uuid);
       case "assistant":
         return ClaudeAssistantMessage.fromJson(json, sessionId: sessionId, uuid: uuid);
       case "user":
@@ -95,6 +113,10 @@ sealed class const ClaudeStreamMessage({
 String? _stringOrNull(Object? value) => value is String ? value : null;
 
 int? _intOrNull(Object? value) => value is num ? value.toInt() : null;
+
+double? _doubleOrNull(Object? value) => value is num ? value.toDouble() : null;
+
+bool? _boolOrNull(Object? value) => value is bool ? value : null;
 
 DateTime? _dateTimeOrNull(Object? value) => value is String ? DateTime.tryParse(value) : null;
 
@@ -202,6 +224,84 @@ final class const ClaudeTaskProgressMessage({
       raw: json,
     );
   }
+}
+
+/// `tool_progress` — periodic elapsed-time progress for a running tool call.
+final class const ClaudeToolProgressMessage({
+  required final String? toolUseId,
+  required final String? toolName,
+  required final String? parentToolUseId,
+  required final double? elapsedTimeSeconds,
+  required final String? taskId,
+  required final bool? heartbeat,
+  required final String? subagentType,
+  required super.sessionId,
+  required super.uuid,
+  required super.raw,
+}) extends ClaudeStreamMessage {
+  factory fromJson(
+    Map<String, Object?> json, {
+    required String? sessionId,
+    required String? uuid,
+  }) => ClaudeToolProgressMessage(
+    toolUseId: _stringOrNull(json["tool_use_id"]),
+    toolName: _stringOrNull(json["tool_name"]),
+    parentToolUseId: _stringOrNull(json["parent_tool_use_id"]),
+    elapsedTimeSeconds: _doubleOrNull(json["elapsed_time_seconds"]),
+    taskId: _stringOrNull(json["task_id"]),
+    heartbeat: _boolOrNull(json["heartbeat"]),
+    subagentType: _stringOrNull(json["subagent_type"]),
+    sessionId: sessionId,
+    uuid: uuid,
+    raw: json,
+  );
+}
+
+/// `system`/`hook_started` — a hook began running for a lifecycle event.
+final class const ClaudeHookStartedMessage({
+  required final String? hookId,
+  required final String? hookName,
+
+  /// The lifecycle event that triggered the hook, e.g. `PreToolUse`.
+  required final String? hookEvent,
+  required super.sessionId,
+  required super.uuid,
+  required super.raw,
+}) extends ClaudeStreamMessage;
+
+enum ClaudeHookPhase() { progress, response }
+
+/// `system`/`hook_progress` and `system`/`hook_response` — streamed and final
+/// output from a running hook. `exitCode` only arrives with the final frame.
+final class const ClaudeHookOutputMessage({
+  required final ClaudeHookPhase phase,
+  required final String? hookId,
+  required final String? hookName,
+  required final String? hookEvent,
+  required final String? stdout,
+  required final String? stderr,
+  required final int? exitCode,
+  required super.sessionId,
+  required super.uuid,
+  required super.raw,
+}) extends ClaudeStreamMessage {
+  factory fromJson(
+    Map<String, Object?> json, {
+    required ClaudeHookPhase phase,
+    required String? sessionId,
+    required String? uuid,
+  }) => ClaudeHookOutputMessage(
+    phase: phase,
+    hookId: _stringOrNull(json["hook_id"]),
+    hookName: _stringOrNull(json["hook_name"]),
+    hookEvent: _stringOrNull(json["hook_event"]),
+    stdout: _stringOrNull(json["stdout"]),
+    stderr: _stringOrNull(json["stderr"]),
+    exitCode: _intOrNull(json["exit_code"]),
+    sessionId: sessionId,
+    uuid: uuid,
+    raw: json,
+  );
 }
 
 enum ClaudeAssistantError() {

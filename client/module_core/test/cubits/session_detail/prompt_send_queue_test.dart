@@ -4,6 +4,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.d
 import "package:test/test.dart";
 
 const _first = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "first",
   inputMode: ComposerInputMode.typed,
@@ -11,6 +12,7 @@ const _first = QueuedSessionSubmission.text(
   agentModel: null,
 );
 const _second = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "second",
   inputMode: ComposerInputMode.typed,
@@ -18,6 +20,7 @@ const _second = QueuedSessionSubmission.text(
   agentModel: null,
 );
 const _same = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "same",
   inputMode: ComposerInputMode.typed,
@@ -25,6 +28,7 @@ const _same = QueuedSessionSubmission.text(
   agentModel: null,
 );
 const _other = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "other",
   inputMode: ComposerInputMode.typed,
@@ -32,6 +36,7 @@ const _other = QueuedSessionSubmission.text(
   agentModel: null,
 );
 const _a = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "a",
   inputMode: ComposerInputMode.typed,
@@ -39,6 +44,7 @@ const _a = QueuedSessionSubmission.text(
   agentModel: null,
 );
 const _b = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "b",
   inputMode: ComposerInputMode.typed,
@@ -46,6 +52,7 @@ const _b = QueuedSessionSubmission.text(
   agentModel: null,
 );
 const _c = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "c",
   inputMode: ComposerInputMode.typed,
@@ -53,6 +60,7 @@ const _c = QueuedSessionSubmission.text(
   agentModel: null,
 );
 const _existing = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "existing",
   inputMode: ComposerInputMode.typed,
@@ -60,6 +68,7 @@ const _existing = QueuedSessionSubmission.text(
   agentModel: null,
 );
 const _retried = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "retried",
   inputMode: ComposerInputMode.typed,
@@ -67,6 +76,7 @@ const _retried = QueuedSessionSubmission.text(
   agentModel: null,
 );
 const _msg1 = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "msg1",
   inputMode: ComposerInputMode.typed,
@@ -74,6 +84,7 @@ const _msg1 = QueuedSessionSubmission.text(
   agentModel: null,
 );
 const _msg2 = QueuedSessionSubmission.text(
+  promptId: "prompt-1",
   attachments: [],
   text: "msg2",
   inputMode: ComposerInputMode.typed,
@@ -153,6 +164,18 @@ void main() {
 
       expect(queue.active, isNull);
       expect(queue.items.map((e) => e.displayText), ["retried", "existing"]);
+    });
+
+    test("replacePending preserves FIFO while updating selections", () {
+      queue.enqueue(_a);
+      queue.enqueue(_b);
+
+      queue.replacePending(
+        update: (submission) => submission.withSelection(agent: "agent", agentModel: submission.agentModel),
+      );
+
+      expect(queue.items.map((item) => item.displayText), ["a", "b"]);
+      expect(queue.items.map((item) => item.agent), everyElement("agent"));
     });
 
     test("cancel removes by index and returns the message", () {

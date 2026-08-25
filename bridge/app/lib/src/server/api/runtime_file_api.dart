@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart' show KeyedParallelLock;
+
+import '../../foundation/filesystem_permission_validator.dart';
 
 /// Raw file persistence inside [runtimeDirectory].
 ///
@@ -12,8 +15,6 @@ import 'package:path/path.dart' as p;
 /// another file descriptor to the lock file being closed, so a second
 /// instance over the same directory would silently break the guarantee.
 class RuntimeFileApi({required final String runtimeDirectory}) {
-  static const String _ownershipFileName = 'opencode-processes.json';
-
   /// Suffix of the sidecar files [updateFile] takes its advisory lock on.
   ///
   /// Sidecars are created next to the data file and deliberately never
@@ -22,21 +23,9 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
   /// sidecar would reopen the same race.
   static const String updateLockSuffix = '.update-lock';
 
-  final Map<String, Future<void>> _updateChains = <String, Future<void>>{};
-
-  String get ownershipFilePath => p.join(runtimeDirectory, _ownershipFileName);
+  final KeyedParallelLock<String> _updateLock = KeyedParallelLock<String>();
 
   String get startupLockFilePath => p.join(runtimeDirectory, 'bridge-startup.lock');
-
-  Future<String?> readOwnershipFile() => readFile(name: _ownershipFileName);
-
-  Future<void> writeOwnershipFile({required String contents}) =>
-      writeFile(name: _ownershipFileName, contents: contents);
-
-  Future<void> deleteOwnershipFile() => deleteFile(name: _ownershipFileName);
-
-  Future<void> renameOwnershipFile({required String fileName}) =>
-      renameFile(fromName: _ownershipFileName, toName: fileName);
 
   Future<String?> readFile({required String name}) async {
     final file = File(p.join(runtimeDirectory, name));
@@ -47,7 +36,7 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
     try {
       return await file.readAsString();
     } on FileSystemException catch (error) {
-      if (_isFileMissing(error: error) || !file.existsSync()) {
+      if (const FilesystemPermissionValidator().isFileMissing(error) || !file.existsSync()) {
         return null;
       }
       rethrow;
@@ -80,7 +69,7 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
     try {
       await file.delete();
     } on FileSystemException catch (error) {
-      if (_isFileMissing(error: error) || !file.existsSync()) {
+      if (const FilesystemPermissionValidator().isFileMissing(error) || !file.existsSync()) {
         return;
       }
       rethrow;
@@ -110,19 +99,10 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
     required String name,
     required FutureOr<String?> Function(String? current) transform,
   }) {
-    final previous = _updateChains[name] ?? Future<void>.value();
-    final completer = Completer<void>();
-    _updateChains[name] = completer.future;
-    return previous.then((_) async {
-      try {
-        return await _lockedUpdate(name: name, transform: transform);
-      } finally {
-        completer.complete();
-        if (identical(_updateChains[name], completer.future)) {
-          unawaited(_updateChains.remove(name));
-        }
-      }
-    });
+    return _updateLock.use(
+      key: name,
+      operation: () => _lockedUpdate(name: name, transform: transform),
+    );
   }
 
   Future<String?> _lockedUpdate({
@@ -182,7 +162,7 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
     try {
       await lockFile.delete();
     } on FileSystemException catch (error) {
-      if (_isFileMissing(error: error) || !lockFile.existsSync()) {
+      if (const FilesystemPermissionValidator().isFileMissing(error) || !lockFile.existsSync()) {
         return;
       }
       rethrow;
@@ -198,7 +178,7 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
     try {
       return await lockFile.readAsString();
     } on FileSystemException catch (error) {
-      if (_isFileMissing(error: error) || !lockFile.existsSync()) {
+      if (const FilesystemPermissionValidator().isFileMissing(error) || !lockFile.existsSync()) {
         return null;
       }
       rethrow;
@@ -212,15 +192,5 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
     }
 
     await directory.create(recursive: true);
-  }
-
-  static bool _isFileMissing({required FileSystemException error}) {
-    final int? code = error.osError?.errorCode;
-    if (code == 2) {
-      return true;
-    }
-
-    final String message = '${error.osError?.message ?? ''} ${error.message}'.toLowerCase();
-    return message.contains('no such file') || message.contains('cannot find the file');
   }
 }

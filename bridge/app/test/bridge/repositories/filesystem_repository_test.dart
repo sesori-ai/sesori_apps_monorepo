@@ -1,8 +1,8 @@
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
-import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
-import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/api/filesystem_api.dart";
+import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
+import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
 import "package:test/test.dart";
 
 void main() {

@@ -1,7 +1,7 @@
 import "dart:convert";
 
-import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
-import "package:sesori_bridge/src/bridge/routing/get_session_messages_handler.dart";
+import "package:sesori_bridge/src/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/routing/get_session_messages_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -45,9 +45,6 @@ void main() {
           () => handler.handle(
             makeRequest("POST", "/session/messages"),
             body: SessionMessagesRequest(sessionId: "session-1", limit: limit, before: null),
-            pathParams: const {},
-            queryParams: const {},
-            fragment: null,
           ),
           throwsA(isA<RelayResponse>().having((response) => response.status, "status", 400)),
         );
@@ -59,9 +56,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/session/messages"),
           body: const SessionMessagesRequest(sessionId: "", limit: null, before: null),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -71,9 +65,6 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "session-xyz", limit: null, before: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(plugin.lastGetMessagesSessionId, equals("session-xyz"));
     });
@@ -82,9 +73,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(response, isA<MessageWithPartsResponse>());
     });
@@ -93,9 +81,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(response.messages, isEmpty);
     });
@@ -104,6 +89,7 @@ void main() {
       plugin.messagesResult = [
         const PluginMessageWithParts(
           info: PluginMessage.user(
+            promptId: null,
             id: "m1",
             sessionID: "s1",
             agent: null,
@@ -127,9 +113,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.messages.length, equals(2));
@@ -139,6 +122,7 @@ void main() {
       plugin.messagesResult = [
         PluginMessageWithParts(
           info: const PluginMessage.user(
+            promptId: null,
             id: "m1",
             sessionID: "s1",
             agent: null,
@@ -172,9 +156,6 @@ void main() {
       final inlineResponse = await handler.handle(
         makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
       expect(inlineResponse.messages.single.parts.single.attachment, isA<MessageAttachmentInlineImage>());
 
@@ -186,9 +167,6 @@ void main() {
           before: null,
           attachmentDelivery: MessageAttachmentDelivery.storedReference,
         ),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
 
       expect(
@@ -200,15 +178,12 @@ void main() {
     test("handleInternal returns 502 for upstream incompatibility", () async {
       plugin.throwOnGetMessagesError = PluginApiException("GET /session/s1/message", 502);
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/messages",
           body: jsonEncode(const SessionMessagesRequest(sessionId: "s1", limit: null, before: null).toJson()),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(502));

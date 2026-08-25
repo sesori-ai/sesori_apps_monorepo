@@ -1,7 +1,7 @@
 import "dart:convert";
 
-import "package:sesori_bridge/src/bridge/routing/post_session_options_handler.dart";
-import "package:sesori_bridge/src/bridge/services/session_options_service.dart";
+import "package:sesori_bridge/src/routing/post_session_options_handler.dart";
+import "package:sesori_bridge/src/services/session_options_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -185,13 +185,7 @@ Future<RelayResponse> _send({
   required String? body,
 }) {
   final request = makeRequest("POST", path, body: body);
-  final params = handler.extractParams(request);
-  return handler.handleInternal(
-    request,
-    pathParams: params.pathParams,
-    queryParams: params.queryParams,
-    fragment: params.fragment,
-  );
+  return handler.routeForTest(request);
 }
 
 void _expectError(
@@ -255,6 +249,12 @@ class _FakeSessionOptionsService() implements SessionOptionsService {
     );
     return _complete();
   }
+
+  @override
+  Future<void> invalidateRejectedSelection({
+    required String pluginId,
+    required String projectId,
+  }) async {}
 
   Future<SessionOptionsOutcome> _complete() async {
     final failure = error;

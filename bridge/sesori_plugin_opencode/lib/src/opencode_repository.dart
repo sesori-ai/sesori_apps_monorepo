@@ -16,15 +16,18 @@ import "package:sesori_shared/sesori_shared.dart" show StringExtensions, maxTran
 
 import "message_part_mapper.dart";
 import "models/openapi/command.g.dart";
+import "models/openapi/compaction_part.g.dart";
 import "models/openapi/global_session.g.dart";
 import "models/openapi/permission_request.g.dart";
 import "models/openapi/project.g.dart";
 import "models/openapi/question_request.g.dart";
 import "models/openapi/session.g.dart";
+import "models/openapi/session_messages_response_item.g.dart";
+import "models/openapi/text_part.g.dart";
+import "models/openapi/user_message.g.dart";
 import "models/question_reply_body.dart";
 import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
-import "models/summarize_body.dart";
 import "models/update_project_body.dart";
 import "opencode_api.dart";
 import "plugin_model_mapper.dart";
@@ -139,68 +142,182 @@ class OpenCodeRepository(final OpenCodeApi _api) {
   Future<void> sendPrompt({
     required String sessionId,
     required String? directory,
+    required String? messageId,
     required List<PluginPromptPart> parts,
     required String? agent,
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
-  }) {
-    return _sendPrompt(
+  }) async {
+    await _sendPrompt(
       sessionId: sessionId,
       directory: directory,
+      messageId: messageId,
       parts: parts,
       agent: agent,
       variant: variant,
       model: model,
       noReply: false,
+      syntheticText: false,
     );
   }
 
-  /// Adds user-provided compaction guidance to the session without starting a
-  /// separate agent run. The following summarize call consumes it as context.
-  Future<void> addCompactionInstructions({
+  /// Asks OpenCode to allocate an ordered user-message id on its own host.
+  /// The empty message is not renderable; the real prompt or command reuses it
+  /// immediately after the caller records its correlation.
+  Future<String> reserveMessage({
     required String sessionId,
     required String? directory,
+    required String? agent,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    final response = await _sendPrompt(
+      sessionId: sessionId,
+      directory: directory,
+      messageId: null,
+      parts: const [],
+      agent: agent,
+      variant: variant,
+      model: model,
+      noReply: true,
+      syntheticText: false,
+    );
+    final info = response?.info;
+    if (info is! UserMessage) {
+      throw StateError("OpenCode did not return the reserved user message for session $sessionId");
+    }
+    return info.id;
+  }
+
+  /// Reserves a server-named message with an inert part that can be converted
+  /// into OpenCode's native manual-compaction task before the turn starts.
+  Future<({String messageId, String partId})> reserveCompactionMessage({
+    required String sessionId,
+    required String? directory,
+    required String? userVisibleArguments,
+    required String? agent,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID}) model,
+  }) async {
+    final response = await _sendPrompt(
+      sessionId: sessionId,
+      directory: directory,
+      messageId: null,
+      parts: [
+        const PluginPromptPart.text(text: ""),
+        if (userVisibleArguments?.trim() case final visibleArguments? when visibleArguments.isNotEmpty)
+          PluginPromptPart.text(text: visibleArguments),
+      ],
+      agent: agent,
+      variant: variant,
+      model: model,
+      noReply: true,
+      syntheticText: false,
+    );
+    final info = response?.info;
+    final part = switch (response?.parts) {
+      [final TextPart part, ...] => part,
+      _ => null,
+    };
+    if (info is! UserMessage || part == null) {
+      throw StateError("OpenCode did not return the reserved compaction message for session $sessionId");
+    }
+    return (messageId: info.id, partId: part.id);
+  }
+
+  /// Adds user-provided compaction guidance to the session without starting a
+  /// separate agent run. The following compaction turn consumes it as context.
+  Future<String> addCompactionInstructions({
+    required String sessionId,
+    required String? directory,
+    required String? messageId,
     required String instructions,
     required String? agent,
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID}) model,
-  }) {
-    return _sendPrompt(
+  }) async {
+    final response = await _sendPrompt(
       sessionId: sessionId,
       directory: directory,
+      messageId: messageId,
       parts: [PluginPromptPart.text(text: instructions)],
       agent: agent,
       variant: variant,
       model: model,
       noReply: true,
+      syntheticText: true,
     );
+    final info = response?.info;
+    if (info is! UserMessage) {
+      throw StateError("OpenCode did not return the compaction guidance message for session $sessionId");
+    }
+    return info.id;
   }
 
-  Future<void> _sendPrompt({
+  Future<SessionMessagesResponseItem?> _sendPrompt({
     required String sessionId,
     required String? directory,
+    required String? messageId,
     required List<PluginPromptPart> parts,
     required String? agent,
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
     required bool noReply,
+    required bool syntheticText,
   }) {
     return _api.sendPrompt(
       sessionId: sessionId,
       directory: directory?.normalize(),
       body: SendPromptBody(
+        messageID: messageId,
         parts: parts,
         agent: agent,
         variant: variant?.id,
         model: model,
         noReply: noReply,
+        syntheticText: syntheticText,
       ),
+    );
+  }
+
+  Future<void> convertReservedPartToCompaction({
+    required String sessionId,
+    required String? directory,
+    required String messageId,
+    required String partId,
+  }) {
+    return _api.updateMessagePart(
+      sessionId: sessionId,
+      messageId: messageId,
+      partId: partId,
+      directory: directory?.normalize(),
+      part: CompactionPart(
+        id: partId,
+        sessionID: sessionId,
+        messageID: messageId,
+        auto: false,
+        overflow: null,
+        tailStartId: null,
+      ),
+    );
+  }
+
+  Future<void> deleteMessage({
+    required String sessionId,
+    required String? directory,
+    required String messageId,
+  }) {
+    return _api.deleteMessage(
+      sessionId: sessionId,
+      messageId: messageId,
+      directory: directory?.normalize(),
     );
   }
 
   Future<void> sendCommand({
     required String sessionId,
     required String? directory,
+    required String? messageId,
     required String command,
     required String arguments,
     required String? agent,
@@ -211,30 +328,12 @@ class OpenCodeRepository(final OpenCodeApi _api) {
       sessionId: sessionId,
       directory: directory?.normalize(),
       body: SendCommandBody(
+        messageID: messageId,
         command: command,
         arguments: arguments,
         agent: agent,
         variant: variant?.id,
         model: model,
-      ),
-    );
-  }
-
-  /// Triggers manual compaction of [sessionId] via the summarize endpoint.
-  ///
-  /// Unlike [sendCommand], OpenCode's summarize payload needs the provider and
-  /// model as separate, non-optional fields, so [model] is required here.
-  Future<void> summarize({
-    required String sessionId,
-    required String? directory,
-    required ({String providerID, String modelID}) model,
-  }) {
-    return _api.summarize(
-      sessionId: sessionId,
-      directory: directory?.normalize(),
-      body: SummarizeBody(
-        providerID: model.providerID,
-        modelID: model.modelID,
       ),
     );
   }

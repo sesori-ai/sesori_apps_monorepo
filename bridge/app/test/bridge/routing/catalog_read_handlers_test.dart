@@ -3,12 +3,12 @@ import "dart:convert";
 
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/routing/get_child_sessions_handler.dart";
-import "package:sesori_bridge/src/bridge/routing/get_session_handler.dart";
-import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
+import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/routing/get_child_sessions_handler.dart";
+import "package:sesori_bridge/src/routing/get_session_handler.dart";
+import "package:sesori_bridge/src/routing/get_sessions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -52,6 +52,7 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "offline-plugin",
+        preservePullRequestScope: false,
       );
       await database.sessionDao.insertObservedChild(
         sessionId: "child",
@@ -88,27 +89,18 @@ void main() {
           .handle(
             makeRequest("POST", "/sessions"),
             body: const SessionListRequest(projectId: "project", start: null, limit: null),
-            pathParams: {},
-            queryParams: {},
-            fragment: null,
           )
           .timeout(const Duration(seconds: 1));
       final detail = await detailHandler
           .handle(
             makeRequest("POST", "/session/detail"),
             body: const SessionIdRequest(sessionId: "root"),
-            pathParams: {},
-            queryParams: {},
-            fragment: null,
           )
           .timeout(const Duration(seconds: 1));
       final children = await childrenHandler
           .handle(
             makeRequest("POST", "/session/children"),
             body: const SessionIdRequest(sessionId: "root"),
-            pathParams: {},
-            queryParams: {},
-            fragment: null,
           )
           .timeout(const Duration(seconds: 1));
 
@@ -159,9 +151,6 @@ void main() {
         return detailHandler.handle(
           makeRequest("POST", "/session/detail"),
           body: const SessionIdRequest(sessionId: "root"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         );
       }
 
@@ -219,9 +208,6 @@ void main() {
       final detail = await detailHandler.handle(
         makeRequest("POST", "/session/detail"),
         body: const SessionIdRequest(sessionId: "root"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(detail.id, "root");
@@ -231,35 +217,31 @@ void main() {
     });
 
     test("unknown detail and parent ids remain 404s without plugin calls", () async {
+      final prSyncService = FakePrSyncService();
       final detailHandler = GetSessionHandler(
         sessionRepository: repository,
-        prSyncService: FakePrSyncService(),
+        prSyncService: prSyncService,
       );
       final childrenHandler = GetChildSessionsHandler(sessionRepository: repository);
 
-      final detail = await detailHandler.handleInternal(
+      final detail = await detailHandler.routeForTest(
         makeRequest(
           "POST",
           "/session/detail",
           body: jsonEncode(const SessionIdRequest(sessionId: "missing").toJson()),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
-      final children = await childrenHandler.handleInternal(
+      final children = await childrenHandler.routeForTest(
         makeRequest(
           "POST",
           "/session/children",
           body: jsonEncode(const SessionIdRequest(sessionId: "missing").toJson()),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(detail.status, 404);
       expect(children.status, 404);
+      expect(prSyncService.identityVerificationCallCount, 0);
       expect(plugin.calls, 0);
     });
   });
@@ -284,7 +266,7 @@ class _NeverCompletingPlugin() implements NativeProjectsPluginApi {
   }
 
   @override
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) {
+  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) {
     calls++;
     return Completer<List<PluginSession>>().future;
   }

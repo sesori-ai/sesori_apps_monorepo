@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
+
 class BridgeSettingsApi({String? homeDirectory}) {
   final String _homeDirectory = homeDirectory ?? _resolveHomeDirectory();
 
@@ -23,18 +25,7 @@ class BridgeSettingsApi({String? homeDirectory}) {
     await File(configFilePath).writeAsString(jsonContent);
   }
 
-  static String _resolveHomeDirectory() {
-    final home = Platform.environment['HOME'];
-    final userProfile = Platform.environment['USERPROFILE'];
-    final homeDirectory = (home != null && home.isNotEmpty)
-        ? home
-        : (userProfile != null && userProfile.isNotEmpty)
-        ? userProfile
-        : null;
-    if (homeDirectory == null) {
-      throw StateError('Unable to determine home directory');
-    }
-
-    return homeDirectory;
-  }
+  static String _resolveHomeDirectory() =>
+      resolveUserHomeDirectory(environment: Platform.environment) ??
+      (throw StateError('Unable to determine home directory'));
 }

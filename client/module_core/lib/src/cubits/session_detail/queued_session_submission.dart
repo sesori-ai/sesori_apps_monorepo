@@ -5,6 +5,7 @@ import "../../foundation/models/composer/composer_draft.dart";
 
 sealed class const QueuedSessionSubmission() {
   const factory text({
+    required String promptId,
     required String text,
     required ComposerInputMode inputMode,
     required List<ComposerAttachment> attachments,
@@ -13,12 +14,16 @@ sealed class const QueuedSessionSubmission() {
   }) = QueuedTextSubmission;
 
   const factory command({
+    required String promptId,
     required String text,
     required String command,
     required String? agent,
     required AgentModel? agentModel,
   }) = QueuedCommandSubmission;
 
+  /// Stable identity for this prompt across retries: the bridge queues,
+  /// dedupes, and stamps the eventual transcript message under it.
+  String get promptId;
   String get text;
   String? get command;
   ComposerInputMode get inputMode;
@@ -38,9 +43,32 @@ sealed class const QueuedSessionSubmission() {
       : text;
 
   bool get isCommand => command != null;
+
+  QueuedSessionSubmission withSelection({
+    required String? agent,
+    required AgentModel? agentModel,
+  }) => switch (this) {
+    QueuedTextSubmission(:final promptId, :final text, :final inputMode, :final attachments) =>
+      QueuedSessionSubmission.text(
+        promptId: promptId,
+        text: text,
+        inputMode: inputMode,
+        attachments: attachments,
+        agent: agent,
+        agentModel: agentModel,
+      ),
+    QueuedCommandSubmission(:final promptId, :final text, :final command) => QueuedSessionSubmission.command(
+      promptId: promptId,
+      text: text,
+      command: command,
+      agent: agent,
+      agentModel: agentModel,
+    ),
+  };
 }
 
 final class const QueuedTextSubmission({
+  @override required final String promptId,
   @override required final String text,
   @override required final ComposerInputMode inputMode,
   @override required final List<ComposerAttachment> attachments,
@@ -52,6 +80,7 @@ final class const QueuedTextSubmission({
 }
 
 final class const QueuedCommandSubmission({
+  @override required final String promptId,
   @override required final String text,
   @override required final String command,
   @override required final String? agent,

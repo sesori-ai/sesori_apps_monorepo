@@ -7,7 +7,6 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
-import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/composer_draft.dart";
@@ -16,6 +15,7 @@ import "../../logging/logging.dart";
 import "../../repositories/composer_draft_repository.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
+import "../../repositories/session_repository.dart";
 import "../../services/models/new_session_backend_scope.dart";
 import "../../services/models/new_session_options_source.dart";
 import "../../services/models/new_session_selection_intent.dart";
@@ -28,7 +28,7 @@ import "new_session_submission_snapshot.dart";
 
 class NewSessionCubit({
   required final ConnectionService _connectionService,
-  required final SessionService _sessionService,
+  required final SessionRepository _sessionRepository,
   required final NewSessionPluginService _newSessionPluginService,
   required final NewSessionOptionsService _newSessionOptionsService,
   required final ProjectRepository _projectRepository,
@@ -39,13 +39,16 @@ class NewSessionCubit({
 }) extends Cubit<NewSessionState> {
   this
     : super(
-        NewSessionState.idle(
-          availablePlugins: const [],
-          selectedPlugin: null,
-          options: const NewSessionOptionsLoadingState(source: null),
-          backendScope: _selectionTracker.backendScope.invalidate(),
-          isPluginDiscoveryInFlight: false,
-          projectWorktreeCapability: NewSessionProjectWorktreeCapability.loading,
+        NewSessionState.composing(
+          config: NewSessionComposeConfig(
+            availablePlugins: const [],
+            selectedPlugin: null,
+            options: const NewSessionOptionsLoadingState(source: null),
+            backendScope: _selectionTracker.backendScope.invalidate(),
+            isPluginDiscoveryInFlight: false,
+            projectWorktreeCapability: NewSessionProjectWorktreeCapability.loading,
+          ),
+          phase: const NewSessionPhase.idle(),
         ),
       ) {
     _wasConnected = _connectionService.currentStatus is ConnectionConnected;
@@ -59,6 +62,7 @@ class NewSessionCubit({
   late bool _wasConnected;
   int _loadGeneration = 0;
   int _projectLoadGeneration = 0;
+  ({int generation, NewSessionOptionsData? startedFrom, Future<void> refresh})? _silentRefresh;
 
   void _onConnectionStatusChanged(ConnectionStatus status) {
     if (isClosed) return;
@@ -76,7 +80,7 @@ class NewSessionCubit({
         );
       }
     }
-    if (!reconnected || state is NewSessionSending || state is NewSessionCreated) return;
+    if (!reconnected || state.phase is NewSessionPhaseSending || state is NewSessionCreated) return;
     unawaited(_discoverPlugins());
     unawaited(_loadProjectCapability());
   }
@@ -171,37 +175,26 @@ class NewSessionCubit({
   }) {
     if (isClosed) return;
     final current = state;
-    final next = switch (current) {
-      NewSessionRestoringSubmission(:final submission, :final reason) => NewSessionState.restoringSubmission(
-        submission: submission,
-        reason: reason,
-        availablePlugins: availablePlugins,
-        selectedPlugin: selectedPlugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: false,
-        projectWorktreeCapability: projectWorktreeCapability,
-      ),
-      NewSessionCreationError(:final reason) => NewSessionState.creationError(
-        reason: reason,
-        availablePlugins: availablePlugins,
-        selectedPlugin: selectedPlugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: false,
-        projectWorktreeCapability: projectWorktreeCapability,
-      ),
-      NewSessionIdle() || NewSessionDiscoveryError() => NewSessionState.idle(
-        availablePlugins: availablePlugins,
-        selectedPlugin: selectedPlugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: false,
-        projectWorktreeCapability: projectWorktreeCapability,
-      ),
-      NewSessionSending() || NewSessionCreated() => null,
+    if (current is! NewSessionComposing) return;
+    final phase = switch (current.phase) {
+      NewSessionPhaseIdle() || NewSessionPhaseDiscoveryError() => const NewSessionPhase.idle(),
+      NewSessionPhaseRestoringSubmission() || NewSessionPhaseCreationError() => current.phase,
+      NewSessionPhaseSending() => null,
     };
-    if (next != null) emit(next);
+    if (phase == null) return;
+    emit(
+      current.copyWith(
+        config: NewSessionComposeConfig(
+          availablePlugins: availablePlugins,
+          selectedPlugin: selectedPlugin,
+          options: options,
+          backendScope: backendScope,
+          isPluginDiscoveryInFlight: false,
+          projectWorktreeCapability: projectWorktreeCapability,
+        ),
+        phase: phase,
+      ),
+    );
   }
 
   void _emitDiscoveryError({required RemoteFailureReason reason}) {
@@ -221,11 +214,17 @@ class NewSessionCubit({
     };
     final backendScope =
         data?.backendScope.invalidate() ?? const NewSessionBackendScope.unverified(lastIdentifiedBridgeId: null);
-    final next = switch (state) {
-      NewSessionRestoringSubmission(:final submission, reason: final creationReason) =>
-        NewSessionState.restoringSubmission(
-          submission: submission,
-          reason: creationReason,
+    final current = state;
+    if (current is! NewSessionComposing) return;
+    final phase = switch (current.phase) {
+      NewSessionPhaseIdle() || NewSessionPhaseDiscoveryError() => NewSessionPhase.discoveryError(reason: reason),
+      NewSessionPhaseRestoringSubmission() || NewSessionPhaseCreationError() => current.phase,
+      NewSessionPhaseSending() => null,
+    };
+    if (phase == null) return;
+    emit(
+      current.copyWith(
+        config: NewSessionComposeConfig(
           availablePlugins: data?.plugins ?? const [],
           selectedPlugin: data?.plugin,
           options: options,
@@ -233,27 +232,9 @@ class NewSessionCubit({
           isPluginDiscoveryInFlight: false,
           projectWorktreeCapability: data?.projectWorktreeCapability ?? NewSessionProjectWorktreeCapability.unavailable,
         ),
-      NewSessionCreationError(reason: final creationReason) => NewSessionState.creationError(
-        reason: creationReason,
-        availablePlugins: data?.plugins ?? const [],
-        selectedPlugin: data?.plugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: false,
-        projectWorktreeCapability: data?.projectWorktreeCapability ?? NewSessionProjectWorktreeCapability.unavailable,
+        phase: phase,
       ),
-      NewSessionIdle() || NewSessionDiscoveryError() => NewSessionState.discoveryError(
-        reason: reason,
-        availablePlugins: data?.plugins ?? const [],
-        selectedPlugin: data?.plugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: false,
-        projectWorktreeCapability: data?.projectWorktreeCapability ?? NewSessionProjectWorktreeCapability.unavailable,
-      ),
-      NewSessionSending() || NewSessionCreated() => null,
-    };
-    if (next != null) emit(next);
+    );
   }
 
   Future<void> _loadProjectCapability() async {
@@ -301,7 +282,7 @@ class NewSessionCubit({
   void selectPlugin({required String pluginId}) {
     final current = state;
     final data = current.agentModelData;
-    if (current is NewSessionSending ||
+    if (current.phase is NewSessionPhaseSending ||
         current is NewSessionCreated ||
         data == null ||
         !data.backendScope.isVerified ||
@@ -353,7 +334,7 @@ class NewSessionCubit({
     final data = current.agentModelData;
     final plugin = data?.plugin;
     final source = data?.optionsState.source;
-    if (current is NewSessionSending ||
+    if (current.phase is NewSessionPhaseSending ||
         current is NewSessionCreated ||
         !(data?.backendScope.isVerified ?? false) ||
         data == null ||
@@ -364,8 +345,25 @@ class NewSessionCubit({
       return;
     }
 
-    final generation = ++_loadGeneration;
     final previousOptions = data.optionsState.data;
+    // A background refresh that can still deliver is already asking the bridge
+    // for exactly this list. Surface it instead of starting a second discovery
+    // that would race it. One that can no longer apply — a superseded selection,
+    // or options the user has since edited — would leave this refresh running
+    // forever, so start a fresh one instead.
+    final pending = _silentRefresh;
+    if (pending != null && pending.generation == _loadGeneration && identical(pending.startedFrom, previousOptions)) {
+      _emitStateUpdate(
+        options: _loadingState(previousOptions: previousOptions, source: source),
+        backendScope: null,
+        isPluginDiscoveryInFlight: false,
+        projectWorktreeCapability: null,
+      );
+      await pending.refresh;
+      return;
+    }
+
+    final generation = ++_loadGeneration;
     _emitStateUpdate(
       options: _loadingState(previousOptions: previousOptions, source: source),
       backendScope: null,
@@ -378,6 +376,37 @@ class NewSessionCubit({
       mode: NewSessionOptionsLoadMode.forcedRefresh,
       previousOptions: previousOptions,
       source: source,
+    );
+  }
+
+  /// Brings a cache the bridge served without rediscovering up to date, with no
+  /// loading state — the options on screen stay usable and simply change if the
+  /// backend's answer did. The pending work is held against the selection that
+  /// started it, so an explicit refresh for that same selection joins it rather
+  /// than paying for discovery twice.
+  void _refreshSilently({
+    required String pluginId,
+    required int generation,
+    required NewSessionOptionsSource source,
+  }) {
+    // A reconnect can rediscover and serve the same still-stale cache while the
+    // first background refresh is in flight. One is enough.
+    if (_silentRefresh?.generation == generation) return;
+
+    final startedFrom = state.agentModelData?.optionsState.data;
+    final refresh = _loadOptions(
+      pluginId: pluginId,
+      generation: generation,
+      mode: NewSessionOptionsLoadMode.silentRefresh,
+      previousOptions: startedFrom,
+      source: source,
+    );
+    final pending = (generation: generation, startedFrom: startedFrom, refresh: refresh);
+    _silentRefresh = pending;
+    unawaited(
+      refresh.whenComplete(() {
+        if (_silentRefresh == pending) _silentRefresh = null;
+      }),
     );
   }
 
@@ -406,6 +435,7 @@ class NewSessionCubit({
         error,
         stackTrace,
       );
+      if (!_canApplySilently(mode: mode, startedFrom: previousOptions)) return;
       _emitStateUpdate(
         options: previousOptions != null
             ? NewSessionOptionsFailureRetainedState(options: previousOptions, source: source)
@@ -418,6 +448,7 @@ class NewSessionCubit({
     }
 
     if (!_canApplyLoad(generation: generation, pluginId: pluginId)) return;
+    if (!_canApplySilently(mode: mode, startedFrom: previousOptions)) return;
     // The bridge answers these with an opaque error code rather than an
     // exception, so without this the screen renders a failure no log explains.
     if (result
@@ -453,6 +484,25 @@ class NewSessionCubit({
       isPluginDiscoveryInFlight: false,
       projectWorktreeCapability: null,
     );
+    if (result case NewSessionOptionsLoaded(isStale: true) when mode == NewSessionOptionsLoadMode.dynamicLoad) {
+      _refreshSilently(pluginId: pluginId, generation: generation, source: source);
+    }
+  }
+
+  /// Whether a background refresh may still apply its answer.
+  ///
+  /// Its catalog was resolved against the agent, model, variant, and staged
+  /// command as they stood when it started, and the user could keep editing
+  /// throughout. If they did, their choice outranks a list they never asked to
+  /// reload — the refresh is dropped rather than reverting them. Every edit
+  /// replaces the options instance, so identity is the whole test. A refresh
+  /// the user asked for is theirs to receive either way.
+  bool _canApplySilently({
+    required NewSessionOptionsLoadMode mode,
+    required NewSessionOptionsData? startedFrom,
+  }) {
+    if (mode != NewSessionOptionsLoadMode.silentRefresh) return true;
+    return identical(state.agentModelData?.optionsState.data, startedFrom);
   }
 
   NewSessionOptionsLoadState _loadingState({
@@ -464,12 +514,12 @@ class NewSessionCubit({
 
   bool _canApplyLoad({required int generation, required String? pluginId}) {
     if (isClosed || generation != _loadGeneration) return false;
-    if (pluginId == null && (state is NewSessionSending || state is NewSessionCreated)) return false;
+    if (pluginId == null && (state.phase is NewSessionPhaseSending || state is NewSessionCreated)) return false;
     return pluginId == null || state.agentModelData?.plugin?.id == pluginId;
   }
 
   bool get _canEditComposer {
-    if (state is NewSessionSending || state is NewSessionCreated) return false;
+    if (state.phase is NewSessionPhaseSending || state is NewSessionCreated) return false;
     final data = state.agentModelData;
     return data != null && !data.isLoading && (data.plugin?.isRoutable ?? false);
   }
@@ -480,7 +530,7 @@ class NewSessionCubit({
   /// not exist. Held back while discovery is in flight, which the screen is
   /// already reporting on its own.
   bool get needsHarnessDiscovery {
-    if (state is NewSessionSending || state is NewSessionCreated) return false;
+    if (state.phase is NewSessionPhaseSending || state is NewSessionCreated) return false;
     final data = state.agentModelData;
     return data != null && data.plugins.isEmpty && !data.isPluginDiscoveryInFlight;
   }
@@ -529,55 +579,20 @@ class NewSessionCubit({
     required NewSessionProjectWorktreeCapability projectWorktreeCapability,
   }) {
     if (isClosed) return;
-    final next = switch (state) {
-      NewSessionIdle() => NewSessionState.idle(
-        availablePlugins: availablePlugins,
-        selectedPlugin: selectedPlugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
-        projectWorktreeCapability: projectWorktreeCapability,
+    final current = state;
+    if (current is! NewSessionComposing) return;
+    emit(
+      current.copyWith(
+        config: NewSessionComposeConfig(
+          availablePlugins: availablePlugins,
+          selectedPlugin: selectedPlugin,
+          options: options,
+          backendScope: backendScope,
+          isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
+          projectWorktreeCapability: projectWorktreeCapability,
+        ),
       ),
-      NewSessionSending(:final submission) => NewSessionState.sending(
-        submission: submission,
-        availablePlugins: availablePlugins,
-        selectedPlugin: selectedPlugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
-        projectWorktreeCapability: projectWorktreeCapability,
-      ),
-      NewSessionRestoringSubmission(:final submission, :final reason) => NewSessionState.restoringSubmission(
-        submission: submission,
-        reason: reason,
-        availablePlugins: availablePlugins,
-        selectedPlugin: selectedPlugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
-        projectWorktreeCapability: projectWorktreeCapability,
-      ),
-      NewSessionCreationError(:final reason) => NewSessionState.creationError(
-        reason: reason,
-        availablePlugins: availablePlugins,
-        selectedPlugin: selectedPlugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
-        projectWorktreeCapability: projectWorktreeCapability,
-      ),
-      NewSessionDiscoveryError(:final reason) => NewSessionState.discoveryError(
-        reason: reason,
-        availablePlugins: availablePlugins,
-        selectedPlugin: selectedPlugin,
-        options: options,
-        backendScope: backendScope,
-        isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
-        projectWorktreeCapability: projectWorktreeCapability,
-      ),
-      NewSessionCreated() => null,
-    };
-    if (next != null) emit(next);
+    );
   }
 
   void _replaceOptionsData({required NewSessionOptionsData options}) {
@@ -657,7 +672,7 @@ class NewSessionCubit({
     }
   }
 
-  void selectVariant(SessionVariant? variant) {
+  void selectVariant(SessionVariant variant) {
     if (!_canEditComposer) return;
     final options = state.agentModelData?.optionsState.data;
     if (options == null) return;
@@ -669,9 +684,7 @@ class NewSessionCubit({
       _selectionTracker.recordVariant(
         projectId: _projectId,
         pluginId: pluginId,
-        variant: variant == null
-            ? const NewSessionDefaultVariantIntent()
-            : NewSessionNamedVariantIntent(id: variant.id),
+        variant: NewSessionVariantIntent(id: variant.id),
       );
     }
   }
@@ -688,7 +701,7 @@ class NewSessionCubit({
   void clearStagedCommand() {
     final current = state;
     if (current is NewSessionCreated) return;
-    if (current is! NewSessionSending && !_canEditComposer) return;
+    if (current.phase is! NewSessionPhaseSending && !_canEditComposer) return;
     final options = current.agentModelData?.optionsState.data;
     if (options == null) return;
     _replaceOptionsData(options: _newSessionOptionsService.clearStagedCommand(options: options));
@@ -701,7 +714,7 @@ class NewSessionCubit({
     required List<ComposerAttachment> attachments,
   }) async {
     final current = state;
-    if (current is NewSessionSending || current is NewSessionCreated) return;
+    if (current.phase is NewSessionPhaseSending || current is NewSessionCreated) return;
     final config = current.agentModelData;
     final selectedPlugin = config?.plugin;
     if (config == null ||
@@ -749,14 +762,16 @@ class NewSessionCubit({
       pluginId: pluginId,
     );
     emit(
-      NewSessionState.sending(
-        submission: submission,
-        availablePlugins: config.plugins,
-        selectedPlugin: selectedPlugin,
-        options: config.optionsState,
-        backendScope: config.backendScope,
-        isPluginDiscoveryInFlight: false,
-        projectWorktreeCapability: config.projectWorktreeCapability,
+      NewSessionState.composing(
+        config: NewSessionComposeConfig(
+          availablePlugins: config.plugins,
+          selectedPlugin: selectedPlugin,
+          options: config.optionsState,
+          backendScope: config.backendScope,
+          isPluginDiscoveryInFlight: false,
+          projectWorktreeCapability: config.projectWorktreeCapability,
+        ),
+        phase: NewSessionPhase.sending(submission: submission),
       ),
     );
 
@@ -769,7 +784,7 @@ class NewSessionCubit({
       ),
     );
     final selectedVariant = selectedAgentModel?.variant;
-    final response = await _sessionService.createSessionWithMessage(
+    final response = await _sessionRepository.createSessionWithMessage(
       projectId: _projectId,
       pluginId: pluginId,
       text: draft.text,
@@ -778,8 +793,9 @@ class NewSessionCubit({
         NewSessionCommandSubmissionSnapshot() => const [],
       },
       agent: options?.selectedAgent,
-      providerID: selectedAgentModel?.providerID,
-      modelID: selectedAgentModel?.modelID,
+      model: selectedAgentModel == null
+          ? null
+          : PromptModel(providerID: selectedAgentModel.providerID, modelID: selectedAgentModel.modelID),
       variant: selectedVariant == null ? null : SessionVariant(id: selectedVariant),
       command: switch (submission) {
         NewSessionTextSubmissionSnapshot() => null,
@@ -829,15 +845,19 @@ class NewSessionCubit({
           ),
         };
         emit(
-          NewSessionState.restoringSubmission(
-            submission: submission,
-            reason: error.remoteFailureReason,
-            availablePlugins: latest.plugins,
-            selectedPlugin: latest.plugin,
-            options: restoredOptions,
-            backendScope: latest.backendScope,
-            isPluginDiscoveryInFlight: false,
-            projectWorktreeCapability: latest.projectWorktreeCapability,
+          NewSessionState.composing(
+            config: NewSessionComposeConfig(
+              availablePlugins: latest.plugins,
+              selectedPlugin: latest.plugin,
+              options: restoredOptions,
+              backendScope: latest.backendScope,
+              isPluginDiscoveryInFlight: false,
+              projectWorktreeCapability: latest.projectWorktreeCapability,
+            ),
+            phase: NewSessionPhase.restoringSubmission(
+              submission: submission,
+              reason: error.remoteFailureReason,
+            ),
           ),
         );
         if (!latest.backendScope.isVerified && _wasConnected) {
@@ -880,18 +900,10 @@ class NewSessionCubit({
 
   void acknowledgeRestoredSubmission({required NewSessionSubmissionSnapshot submission}) {
     final current = state;
-    if (current is! NewSessionRestoringSubmission || !identical(current.submission, submission)) return;
-    emit(
-      NewSessionState.creationError(
-        reason: current.reason,
-        availablePlugins: current.availablePlugins,
-        selectedPlugin: current.selectedPlugin,
-        options: current.options,
-        backendScope: current.backendScope,
-        isPluginDiscoveryInFlight: current.isPluginDiscoveryInFlight,
-        projectWorktreeCapability: current.projectWorktreeCapability,
-      ),
-    );
+    if (current is! NewSessionComposing) return;
+    final phase = current.phase;
+    if (phase is! NewSessionPhaseRestoringSubmission || !identical(phase.submission, submission)) return;
+    emit(current.copyWith(phase: NewSessionPhase.creationError(reason: phase.reason)));
   }
 
   ComposerDraft get composerDraft => _composerDraft;

@@ -15,28 +15,8 @@ void main() {
 
     setUp(() {
       fakes.clear();
-      final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
-      plugin = TestAcpPlugin(
-        id: "acp",
-        agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+      plugin = composeTestAcpPlugin(
         launchDirectory: cwd,
-        contentMapper: const AcpContentMapper(),
-        eventMapper: AcpEventMapper(
-          launchDirectory: cwd,
-          agentId: "acp",
-          pluginId: "acp",
-          configurationTracker: configurationTracker,
-          contentMapper: const AcpContentMapper(),
-        ),
-        commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
         processFactory: (_) async {
           final fake = FakeAcpProcess();
           fakes.add(fake);
@@ -125,6 +105,7 @@ void main() {
           .having((error) => error.statusCode, "statusCode", 503)
           .having((error) => error.actionHint, "actionHint", isNotEmpty);
       final sending = plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "session-1",
         parts: const [PluginPromptPart.text(text: "hello")],
         variant: null,
@@ -195,6 +176,7 @@ void main() {
 
     test("a process exit during authentication remains a connection failure", () async {
       final sending = plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "session-1",
         parts: const [PluginPromptPart.text(text: "hello")],
         variant: null,

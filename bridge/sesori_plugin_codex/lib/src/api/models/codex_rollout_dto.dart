@@ -102,16 +102,26 @@ sealed class CodexRolloutEventDto with _$CodexRolloutEventDto {
   @FreezedUnionValue("task_complete")
   const factory taskComplete({
     @JsonKey(name: "turn_id") required String turnId,
+    required CodexRolloutErrorDto? error,
   }) = CodexRolloutTaskCompleteEventDto;
 
   @FreezedUnionValue("turn_aborted")
   const factory turnAborted({
-    @JsonKey(name: "turn_id") required String turnId,
+    @JsonKey(name: "turn_id") required String? turnId,
   }) = CodexRolloutTurnAbortedEventDto;
 
   const factory unknown() = CodexRolloutUnknownEventDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CodexRolloutEventDtoFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: false)
+sealed class CodexRolloutErrorDto with _$CodexRolloutErrorDto {
+  const factory({
+    required String message,
+  }) = _CodexRolloutErrorDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$CodexRolloutErrorDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)

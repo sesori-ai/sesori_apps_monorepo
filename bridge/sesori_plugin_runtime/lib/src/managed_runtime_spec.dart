@@ -34,65 +34,21 @@ class const RuntimeRecordDraft({
   required final DateTime startedAt,
   });
 
-/// How the supervisor paces health confirmation after a spawn.
-///
-/// The legacy spec is [RuntimeHealthPolicy.attemptCount]; the hardened
-/// deadline-based pacing ([RuntimeHealthPolicy.deadline]) becomes the default
-/// only when the real descriptor opts in at the flip. The legacy test suite
-/// hard-asserts exact delay sequences, so pacing must be configurable rather
-/// than replaced.
-sealed class const RuntimeHealthPolicy() {
-  /// Legacy pacing: up to [attempts] probes, each preceded by [delay].
-  const factory attemptCount({
-    required int attempts,
-    required Duration delay,
-  }) = HealthAttemptCountPolicy;
-
-  /// Deadline pacing: probe every [pollInterval] until healthy or until
-  /// [deadline] elapses (host clock).
-  factory deadline({
-    required Duration deadline,
-    required Duration pollInterval,
-  }) = HealthDeadlinePolicy;
-}
-
-class const HealthAttemptCountPolicy({required final int attempts, required final Duration delay}) extends RuntimeHealthPolicy {
-  this
-    : assert(attempts > 0, "attempts must be positive"),
-      super();
-
-}
-
-class HealthDeadlinePolicy({required final Duration deadline, required final Duration pollInterval}) extends RuntimeHealthPolicy {
+/// How the supervisor paces health confirmation after a spawn: probe every
+/// [pollInterval] until healthy or until [deadline] elapses (host clock).
+class RuntimeHealthPolicy({required final Duration deadline, required final Duration pollInterval}) {
   // Not const: the parameter guards below compare Durations, which is not a
   // constant-evaluable operation. The policy is built at runtime anyway.
   this
     : assert(!deadline.isNegative, "deadline must be non-negative"),
-      assert(pollInterval > Duration.zero, "pollInterval must be positive"),
-      super();
+      assert(pollInterval > Duration.zero, "pollInterval must be positive");
 
-}
-
-/// When the supervisor writes the ownership record relative to spawn.
-enum RuntimeRecordTiming() {
-  /// Legacy: the record is written only after spawn, once a real pid exists.
-  /// The frozen schema's runtime pid is required non-null, so there is no
-  /// representable pre-spawn state in the ownership file itself.
-  afterSpawn,
-
-  /// Hardened: an intent record is written to a bridge-private side file
-  /// before spawn and resolved after. Activated in a later migration step;
-  /// the supervisor rejects it until then.
-  intentSideFile,
 }
 
 /// Where the supervisor obtains the listening port for a start.
 sealed class const RuntimePortPolicy() {
   /// A single, caller-chosen port.
-  const factory explicit({
-    required int port,
-    bool preProbeBindable,
-  }) = ExplicitPortPolicy;
+  const factory explicit({required int port}) = ExplicitPortPolicy;
 
   /// Dynamic discovery across [candidates]: probe each for bindability and
   /// start on the first that works, up to [maxAttempts] examined candidates.
@@ -102,17 +58,10 @@ sealed class const RuntimePortPolicy() {
     required int reservedPort,
     required int minPort,
     required int maxPort,
-    bool failFastOnSpawnError,
   }) = DynamicPortPolicy;
 }
 
-class const ExplicitPortPolicy({
-  required final int port,
-  /// Hardened (default off): probe bindability before spawning and fail with
-  /// a diagnosed error when the port is already held. Off reproduces the
-  /// legacy behavior of spawning straight onto the explicit port.
-  final bool preProbeBindable = false,
-}) extends RuntimePortPolicy {
+class const ExplicitPortPolicy({required final int port}) extends RuntimePortPolicy {
   this : super();
 
 }
@@ -134,10 +83,6 @@ class const DynamicPortPolicy({
     /// Inclusive bounds of the dynamic range.
   required final int minPort,
     required final int maxPort,
-    /// Hardened (default off): treat a spawn error as fatal and stop instead of
-  /// retrying the next candidate. Off reproduces the legacy behavior of
-  /// retrying on any start error (e.g. a bind race).
-  final bool failFastOnSpawnError = false,
   }) extends RuntimePortPolicy {
   this : assert(maxAttempts > 0, "maxAttempts must be positive"),
        super();
@@ -145,8 +90,8 @@ class const DynamicPortPolicy({
 }
 
 /// Everything a [ManagedProcessService] needs to start (or attach to) one
-/// managed runtime, expressed as seams so the same supervisor serves the
-/// legacy in-place wrapper, the eventual host-backed plugin, and tests.
+/// managed runtime, expressed as seams so one supervisor serves every plugin
+/// that owns a runtime process, plus tests.
 ///
 /// The seams ([spawn], [probeHealth], [probePortBindable]) are supplied as
 /// functions rather than service objects so a plugin (or a legacy adapter)
@@ -161,23 +106,14 @@ class const ManagedRuntimeSpec<R>({
   /// than throw, but the supervisor tolerates a thrown probe (treated as
   /// unhealthy) so a transient connection error simply retries.
   required final Future<RuntimeHealthProbe> Function({required int port}) probeHealth,
-    /// Whether [port] can currently be bound (used for dynamic discovery and
-  /// the optional explicit pre-probe).
+    /// Whether [port] can currently be bound — used for dynamic discovery and
+  /// for the pre-spawn probe on an explicit port.
   required final Future<bool> Function({required int port}) probePortBindable,
     /// Maps the post-spawn facts into the plugin's concrete ownership record at
   /// the "starting" status.
   required final R Function(RuntimeRecordDraft draft) buildRecord,
     required final RuntimePortPolicy portPolicy,
     required final RuntimeHealthPolicy healthPolicy,
-    final RuntimeRecordTiming recordTiming = RuntimeRecordTiming.afterSpawn,
-    /// Optional post-health validation, run after the first healthy probe and
-  /// before the record flips to "ready". A throw fails the start (with
-  /// rollback). Null reproduces the legacy behavior of no extra validation.
-  final Future<void> Function({required int port})? validateRuntime,
-    /// Hardened (default off): if the spawned child exits before the first
-  /// healthy probe, fail the start regardless of probe success — a healthy
-  /// response after our child died means an unrelated process holds the port.
-  final bool failOnEarlyChildExit = false,
   });
 
 /// The outcome of a successful [ManagedProcessService.start] or

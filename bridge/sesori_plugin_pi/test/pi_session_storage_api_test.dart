@@ -880,17 +880,47 @@ void main() {
   });
 
   group("pending new sessions", () {
+    test("deleting a globally resolved session clears its project-local marker", () async {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final project = fixture.directory("pending-project");
+      final globalRoot = fixture.directory("global-sessions");
+      fixture.directory(p.join("pending-project", ".pi"));
+      File(p.join(fixture.agentDirectory, "settings.json")).writeAsStringSync(jsonEncode({"sessionDir": globalRoot}));
+      File(p.join(project, ".pi", "settings.json")).writeAsStringSync(
+        jsonEncode({"sessionDir": "project-sessions"}),
+      );
+      final api = fixture.api();
+      await api.writePendingNewSession(sessionId: "secure-id", cwd: project, parentSessionPath: null);
+      fixture.writeSession(
+        root: globalRoot,
+        id: "secure-id",
+        cwd: project,
+      );
+
+      await api.deleteSession(sessionId: "secure-id", directory: null);
+
+      expect(await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {project}), isNull);
+    });
+
     test("persists and clears caller-owned session markers", () async {
       final fixture = _StorageFixture();
       addTearDown(fixture.dispose);
       final cwd = fixture.directory("pending-project");
       final api = fixture.api();
 
-      await api.writePendingNewSession(sessionId: "secure-id", cwd: cwd);
+      final parentPath = p.join(fixture.root.path, "parent.jsonl");
+      await api.writePendingNewSession(
+        sessionId: "secure-id",
+        cwd: cwd,
+        parentSessionPath: parentPath,
+      );
 
       expect(
         await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {cwd}),
-        isA<PiPendingNewSession>().having((marker) => marker.cwd, "cwd", p.normalize(p.absolute(cwd))),
+        isA<PiPendingNewSession>()
+            .having((marker) => marker.cwd, "cwd", p.normalize(p.absolute(cwd)))
+            .having((marker) => marker.parentSessionPath, "parent", p.normalize(p.absolute(parentPath))),
       );
       await api.clearPendingNewSession(sessionId: "secure-id", knownDirectories: {cwd});
       expect(await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {cwd}), isNull);
@@ -906,7 +936,7 @@ void main() {
       final api = fixture.api();
 
       final warnings = await _captureWarnings(() async {
-        await api.writePendingNewSession(sessionId: "secure-id", cwd: project);
+        await api.writePendingNewSession(sessionId: "secure-id", cwd: project, parentSessionPath: null);
         await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {project});
         await api.clearPendingNewSession(sessionId: "secure-id", knownDirectories: {project});
       });
@@ -926,7 +956,7 @@ void main() {
         "secure-id.pending",
       );
       final api = fixture.api();
-      await api.writePendingNewSession(sessionId: "secure-id", cwd: project);
+      await api.writePendingNewSession(sessionId: "secure-id", cwd: project, parentSessionPath: null);
       File(markerPath).writeAsStringSync("relative-private-value");
 
       final warnings = await _captureWarnings(() async {
@@ -948,12 +978,12 @@ void main() {
       final api = fixture.api();
 
       await expectLater(
-        api.writePendingNewSession(sessionId: "../escape", cwd: fixture.root.path),
+        api.writePendingNewSession(sessionId: "../escape", cwd: fixture.root.path, parentSessionPath: null),
         throwsArgumentError,
       );
       for (final cwd in ["${fixture.root.path}\nother", "${fixture.root.path}\rother"]) {
         await expectLater(
-          api.writePendingNewSession(sessionId: "secure-id", cwd: cwd),
+          api.writePendingNewSession(sessionId: "secure-id", cwd: cwd, parentSessionPath: null),
           throwsArgumentError,
         );
       }

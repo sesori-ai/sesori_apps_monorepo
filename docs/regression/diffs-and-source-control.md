@@ -32,8 +32,10 @@ that baseline, and the branch and worktree facts a session carries.
   initial dedicated branch without moving the worktree; durable and current
   branch facts then update together through the existing session update. Other
   live current-branch and PR refreshes belong to pull request monitoring. A
-  mutating tool emits the diff refresh signal, and diffs stay encrypted from the
-  relay.
+  mutating tool emits the diff refresh signal; bursts during an in-flight read
+  coalesce into one trailing refresh, a failed event-driven refresh retries
+  after a delay while the diff screen remains open, and diffs stay encrypted
+  from the relay.
 
 ## Regression Levels
 
@@ -75,9 +77,9 @@ and in-place sessions, and default versus explicit base branches.
 
 ## Sources
 
-- Bridge: `bridge/app/lib/src/bridge/` session-diff and worktree services,
-  `repositories/session_diff_repository.dart`, `api/git_cli_api.dart`, and the
-  diff and base-branch handlers
+- Bridge: `bridge/app/lib/src/services/` session-diff and worktree services,
+  `bridge/app/lib/src/repositories/session_diff_repository.dart`,
+  `bridge/app/lib/src/api/git_cli_api.dart`, and the diff and base-branch handlers
 - Contract: `shared/sesori_shared/lib/src/models/sesori/file_diff.dart`
 - Client: `client/module_core/lib/src/cubits/session_diffs/`,
   `client/app/lib/features/session_diffs/`

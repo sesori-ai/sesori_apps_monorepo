@@ -17,10 +17,14 @@ import "services/cursor_session_options_service.dart";
 import "trackers/cursor_catalog_tracker.dart";
 
 /// Cursor backend over ACP plus Cursor's config-option model picker.
+///
+/// Cursor uses standard ACP cancellation to stop an active turn before a
+/// same-session follow-up dispatches. Its selection writes are best-effort
+/// (`_setConfig` never throws), so `failsTurnOnSelectionError` is moot and left
+/// at the base default.
 class CursorPlugin._({
   required super.launchSpec,
   required super.launchDirectory,
-  required super.contentMapper,
   required CursorEventMapper mapper,
   required final CursorCatalogService _catalogService,
   required final AcpCommandListener _catalogCommandListener,
@@ -30,7 +34,7 @@ class CursorPlugin._({
   required super.commandTracker,
   required super.sessionOptionsService,
   required final CursorSessionCleanupService _sessionCleanupService,
-  super.processFactory,
+  required super.processFactory,
 }) extends AcpPlugin implements PersistedSessionCleanupApi {
   static final String pluginId = Harness.cursor.name;
   static const String _providerId = "cursor";
@@ -39,7 +43,7 @@ class CursorPlugin._({
     String binaryPath = CursorBinary.defaultBinary,
     String? launchDirectory,
     String? apiEndpoint,
-    AcpProcessFactory? processFactory,
+    required AcpProcessFactory processFactory,
     required CursorSessionCleanupService sessionCleanupService,
   }) {
     final cwd = launchDirectory ?? Directory.current.path;
@@ -63,7 +67,6 @@ class CursorPlugin._({
     final commandTracker = AcpCommandTracker();
     final stagedCommandTracker = AcpCommandTracker();
     final configurationTracker = AcpSessionConfigurationTracker();
-    const contentMapper = AcpContentMapper();
     final acpSessionOptionsService = AcpSessionOptionsService(
       configurationTracker: configurationTracker,
       commandTracker: commandTracker,
@@ -96,7 +99,6 @@ class CursorPlugin._({
       launchDirectory: cwd,
       pluginId: pluginId,
       configurationTracker: configurationTracker,
-      contentMapper: contentMapper,
       generatedImageReader: const CursorGeneratedImageReader(),
       activeSessionResolver: () => plugin.activeTurnSessionId,
     );
@@ -104,7 +106,6 @@ class CursorPlugin._({
       launchSpec: launchSpec,
       launchDirectory: cwd,
       mapper: mapper,
-      contentMapper: contentMapper,
       processFactory: processFactory,
       catalogService: catalogService,
       catalogCommandListener: catalogCommandListener,
@@ -130,28 +131,13 @@ class CursorPlugin._({
   String? _appliedThoughtLevelId;
 
   @override
-  String get clientName => "sesori-bridge";
+  String? get authMethodId => CursorBinary.acpAuthMethodId;
 
   @override
-  String get clientVersion => "0.0.0";
+  Map<String, dynamic>? get initializeCapabilityMeta => CursorBinary.acpCapabilityMeta;
 
   @override
-  String? get authMethodId => "cursor_login";
-
-  @override
-  Map<String, dynamic>? get initializeCapabilityMeta => const {"parameterizedModelPicker": true};
-
-  @override
-  bool get supportsFormElicitation => false;
-
-  @override
-  bool get serializesPromptsProcessWide => false;
-
-  @override
-  bool get failsTurnOnSelectionError => false;
-
-  @override
-  Duration get sessionCloseSettlementTimeout => const Duration(seconds: 5);
+  bool get cancelsActiveTurnForQueuedInput => true;
 
   @override
   AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) {
@@ -166,8 +152,8 @@ class CursorPlugin._({
   @override
   void captureSessionConfig(
     AcpNewSessionResult result, {
-    String? sessionId,
-    bool fromNewSession = false,
+    required String? sessionId,
+    required bool fromNewSession,
   }) {
     final capture = _catalogService.captureSessionConfig(
       result: result,

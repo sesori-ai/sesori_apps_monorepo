@@ -3,11 +3,10 @@ import "dart:io";
 
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/auth/token_refresher.dart";
-import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
-import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
-import "package:sesori_bridge/src/bridge/orchestrator.dart";
-import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/foundation/process_runner.dart";
+import "package:sesori_bridge/src/foundation/relay_client.dart";
+import "package:sesori_bridge/src/models/bridge_config.dart";
+import "package:sesori_bridge/src/orchestrator.dart";
 import "package:sesori_bridge/src/repositories/plugin_lifecycle_repository.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -30,31 +29,28 @@ void main() {
     final bridgeSettingsRepository = createTestBridgeSettingsRepository();
     final lifecycleService =
         PluginLifecycleService(
-            lifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
-            preferredDefaultPluginId: legacyMissingPluginId,
-            bridgeSettingsRepository: bridgeSettingsRepository,
-            idleTimerScheduler: const PluginIdleTimerScheduler(),
-            bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
-          )
-          ..registerPlugins(
-            plugins: const [
-              (
-                id: "opencode",
-                displayName: "OpenCode",
-                activationPolicy: PluginActivationPolicy.onDemand,
-                residencyPolicy: PluginResidencyPolicy.transient,
-                sessionOptionsScope: PluginSessionOptionsScope.project,
-                managementCapabilities: defaultManagementCapabilities,
-                supportsPromptAttachments: false,
-              ),
-            ],
-          )
-          ..initialize(
-            disabledPluginIds: const {"opencode"},
-            setupById: const {
-              "opencode": PluginSetupNotInspected(),
-            },
-          );
+          lifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
+          preferredDefaultPluginId: legacyMissingPluginId,
+          bridgeSettingsRepository: bridgeSettingsRepository,
+          idleTimerScheduler: const PluginIdleTimerScheduler(),
+          bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+          plugins: const [
+            (
+              id: "opencode",
+              displayName: "OpenCode",
+              activationPolicy: PluginActivationPolicy.onDemand,
+              residencyPolicy: PluginResidencyPolicy.transient,
+              sessionOptionsScope: PluginSessionOptionsScope.project,
+              managementCapabilities: defaultManagementCapabilities,
+              supportsPromptAttachments: false,
+            ),
+          ],
+        )..initialize(
+          disabledPluginIds: const {"opencode"},
+          setupById: const {
+            "opencode": PluginSetupNotInspected(),
+          },
+        );
     final httpClient = http.Client();
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -70,7 +66,6 @@ void main() {
         yolo: false,
       ),
       client: relayClient,
-      legacyMissingPluginId: "opencode",
       pluginLifecycleService: lifecycleService,
       pluginRuntime: pluginRuntime,
       bridgeSettingsRepository: bridgeSettingsRepository,
@@ -82,7 +77,7 @@ void main() {
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(""),
-      tokenRefresher: _FakeTokenRefresher(),
+      tokenRefresher: FakeTokenRefresher(token: "token"),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),
       restartService: buildTestRestartService(),
@@ -149,7 +144,6 @@ void main() {
         yolo: false,
       ),
       client: relayClient,
-      legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
@@ -161,7 +155,7 @@ void main() {
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(""),
-      tokenRefresher: _FakeTokenRefresher(),
+      tokenRefresher: FakeTokenRefresher(token: "token"),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),
       restartService: buildTestRestartService(),
@@ -207,7 +201,6 @@ void main() {
           yolo: false,
         ),
         client: _ThrowingConnectRelayClient(connectGate: connectGate.future),
-        legacyMissingPluginId: plugin.id,
         pluginLifecycleService: lifecycleService,
         pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
         bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
@@ -219,7 +212,7 @@ void main() {
         httpClient: httpClient,
         processRunner: ProcessRunner(),
         accessTokenProvider: FakeAccessTokenProvider(""),
-        tokenRefresher: _FakeTokenRefresher(),
+        tokenRefresher: FakeTokenRefresher(token: "token"),
         bridgeRegistrationService: createFakeBridgeRegistrationService(),
         failureReporter: FakeFailureReporter(),
         restartService: buildTestRestartService(),
@@ -242,8 +235,14 @@ void main() {
       expect(await localPluginEvent.timeout(const Duration(seconds: 2)), isA<SesoriVcsBranchUpdated>());
       connectGate.complete();
 
-      await expectLater(startFuture, throwsA(isA<Exception>()));
-      await expectLater(stopped, throwsA(isA<Exception>()));
+      await expectLater(
+        startFuture,
+        throwsA(isA<StateError>().having((error) => error.message, "message", "connect failed")),
+      );
+      await expectLater(
+        stopped,
+        throwsA(isA<StateError>().having((error) => error.message, "message", "connect failed")),
+      );
       await expectLater(localWireEventsDone, completes);
       await expectLater(session.start(), throwsA(isA<StateError>()));
 
@@ -306,7 +305,7 @@ class _TestHarness._({
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
     final failureReporter = CapturingFailureReporter();
-    final tokenRefresher = _FakeTokenRefresher();
+    final tokenRefresher = FakeTokenRefresher(token: "token");
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
@@ -324,7 +323,6 @@ class _TestHarness._({
         yolo: false,
       ),
       client: relayClient,
-      legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
@@ -384,6 +382,12 @@ class _TestHarness._({
 }
 
 class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
+  @override
+  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
+
   final _controller = StreamController<BridgeSseEvent>.broadcast();
 
   int subscribeCount = 0;
@@ -412,10 +416,10 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
   Future<List<PluginProject>> getProjects() async => [];
 
   @override
-  Future<List<PluginSession>> getSessions(
-    String worktree, {
-    int? start,
-    int? limit,
+  Future<List<PluginSession>> getSessions({
+    required String projectId,
+    required int? start,
+    required int? limit,
   }) async => [];
 
   @override
@@ -480,6 +484,7 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
 
   @override
   Future<void> sendPrompt({
+    required String promptId,
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
@@ -547,6 +552,7 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
 
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,
@@ -561,7 +567,6 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
     required String projectId,
   }) async => const PluginProvidersResult(providers: []);
 
-  @override
   Future<void> dispose() async {}
 }
 
@@ -578,9 +583,4 @@ class _ThrowingConnectRelayClient({required final Future<void> _connectGate}) ex
     await _connectGate;
     throw StateError("connect failed");
   }
-}
-
-class _FakeTokenRefresher() implements TokenRefresher {
-  @override
-  Future<String> getAccessToken({bool forceRefresh = false}) async => "token";
 }

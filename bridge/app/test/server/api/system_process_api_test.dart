@@ -1,14 +1,15 @@
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/server/api/system_process_api.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_process_runner.dart";
+
 void main() {
   group("SystemProcessApi (Windows)", () {
     test("inspectProcess issues a PID-scoped tasklist filter", () async {
-      final runner = _RecordingProcessRunner(
+      final runner = RecordingProcessRunner(
         stdout: '"sesori-bridge.exe","321","Console","1","12,345 K","Running","HOST\\alex","0:00:01","N/A"\r\n',
       );
       final api = SystemProcessApi(
@@ -34,7 +35,7 @@ void main() {
     });
 
     test("inspectProcess returns null when tasklist reports no matching task", () async {
-      final runner = _RecordingProcessRunner(
+      final runner = RecordingProcessRunner(
         stdout: "INFO: No tasks are running which match the specified criteria.\r\n",
       );
       final api = SystemProcessApi(
@@ -51,7 +52,7 @@ void main() {
     });
 
     test("inspectProcess throws on non-zero tasklist exit", () async {
-      final runner = _RecordingProcessRunner(exitCode: 1, stderr: "boom");
+      final runner = RecordingProcessRunner(exitCode: 1, stderr: "boom");
       final api = SystemProcessApi(
         processRunner: runner,
         clock: const ServerClock(),
@@ -66,7 +67,7 @@ void main() {
     });
 
     test("inspectProcess returns null for a non-positive PID without shelling out", () async {
-      final runner = _RecordingProcessRunner();
+      final runner = RecordingProcessRunner();
       final api = SystemProcessApi(
         processRunner: runner,
         clock: const ServerClock(),
@@ -82,7 +83,7 @@ void main() {
 
   group("SystemProcessApi (POSIX)", () {
     test("inspectProcess issues a PID-scoped ps query and parses one identity", () async {
-      final runner = _RecordingProcessRunner(
+      final runner = RecordingProcessRunner(
         stdout: "  321 alex     Mon Jun 22 09:15:01 2026 /usr/local/bin/sesori-bridge --relay wss://relay\n",
       );
       final api = SystemProcessApi(
@@ -116,7 +117,7 @@ void main() {
     test("inspectProcess returns null (without throwing) when ps exits non-zero with no stderr", () async {
       // A vanished pid: `ps -p` exits non-zero with empty stdout AND empty
       // stderr. That is the legitimate "no such process" signal.
-      final runner = _RecordingProcessRunner(exitCode: 1, stdout: "", stderr: "");
+      final runner = RecordingProcessRunner(exitCode: 1, stdout: "", stderr: "");
       final api = SystemProcessApi(
         processRunner: runner,
         clock: const ServerClock(),
@@ -135,7 +136,7 @@ void main() {
       // collapsed to null — callers rely on POSIX self-inspection errors
       // staying fatal so the startup lock is never poisoned with a
       // marker-less fallback identity.
-      final runner = _RecordingProcessRunner(exitCode: 1, stdout: "", stderr: "ps: unknown option");
+      final runner = RecordingProcessRunner(exitCode: 1, stdout: "", stderr: "ps: unknown option");
       final api = SystemProcessApi(
         processRunner: runner,
         clock: const ServerClock(),
@@ -150,7 +151,7 @@ void main() {
     });
 
     test("inspectProcess returns null when ps yields no matching row", () async {
-      final runner = _RecordingProcessRunner(stdout: "\n");
+      final runner = RecordingProcessRunner(stdout: "\n");
       final api = SystemProcessApi(
         processRunner: runner,
         clock: const ServerClock(),
@@ -162,7 +163,7 @@ void main() {
     });
 
     test("inspectProcess returns null for a non-positive PID without shelling out", () async {
-      final runner = _RecordingProcessRunner();
+      final runner = RecordingProcessRunner();
       final api = SystemProcessApi(
         processRunner: runner,
         clock: const ServerClock(),
@@ -175,36 +176,4 @@ void main() {
       expect(runner.calls, isEmpty);
     });
   });
-}
-
-class _RecordedCall({
-  required final String executable,
-  required final List<String> arguments,
-  required final Map<String, String>? environment,
-});
-
-class _RecordingProcessRunner({final int exitCode = 0, final String stdout = "", final String stderr = ""})
-    implements ProcessRunner {
-  final List<_RecordedCall> calls = <_RecordedCall>[];
-
-  @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
-    String? workingDirectory,
-    Map<String, String>? environment,
-    Duration timeout = const Duration(seconds: 15),
-  }) async {
-    calls.add(_RecordedCall(executable: executable, arguments: arguments, environment: environment));
-    return ProcessResult(1, exitCode, stdout, stderr);
-  }
-
-  @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) {
-    throw UnimplementedError();
-  }
 }

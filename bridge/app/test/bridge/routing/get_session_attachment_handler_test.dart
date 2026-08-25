@@ -3,8 +3,8 @@ import "dart:io";
 import "dart:typed_data";
 
 import "package:image/image.dart" as image;
-import "package:sesori_bridge/src/bridge/routing/get_session_attachment_handler.dart";
-import "package:sesori_bridge/src/bridge/services/chat_history_service.dart";
+import "package:sesori_bridge/src/routing/get_session_attachment_handler.dart";
+import "package:sesori_bridge/src/services/chat_history_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -37,9 +37,6 @@ void main() {
           attachmentId: digest,
           rendition: SessionAttachmentRendition.original,
         ),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
 
       expect(response.mime, "image/png");
@@ -93,7 +90,7 @@ void main() {
       );
       final handler = GetSessionAttachmentHandler(chatHistoryService: history.service);
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/attachment",
@@ -105,9 +102,6 @@ void main() {
             ).toJson(),
           ),
         ),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
 
       expect(response.status, 200);
@@ -117,7 +111,7 @@ void main() {
     test("handleInternal keeps storage paths out of failure responses", () async {
       final handler = GetSessionAttachmentHandler(chatHistoryService: _FileFailingChatHistoryService());
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/attachment",
@@ -129,9 +123,6 @@ void main() {
             ).toJson(),
           ),
         ),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
 
       expect(response.status, 500);
@@ -149,9 +140,6 @@ Future<void> _expectStatus({
     () => handler.handle(
       makeRequest("POST", "/session/attachment"),
       body: request,
-      pathParams: const {},
-      queryParams: const {},
-      fragment: null,
     ),
     throwsA(isA<RelayResponse>().having((response) => response.status, "status", status)),
   );

@@ -4,14 +4,12 @@ import "dart:typed_data";
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
-import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
-
-class MockRelayHttpApiClient() extends Mock implements RelayHttpApiClient;
+import "../helpers/test_helpers.dart";
 
 void main() {
   setUpAll(() => registerFallbackValue(Duration.zero));
@@ -312,6 +310,7 @@ void main() {
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
       await api.sendMessage(
+        promptId: "prompt-1",
         attachments: const [],
         sessionId: "session-1",
         text: "hello",
@@ -347,6 +346,7 @@ void main() {
         filename: "screenshot.png",
       );
       await api.sendMessage(
+        promptId: "prompt-1",
         sessionId: "session-1",
         text: "look at this",
         attachments: [attachment],
@@ -384,6 +384,7 @@ void main() {
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
       await api.sendMessage(
+        promptId: "prompt-1",
         sessionId: "session-1",
         text: "",
         attachments: [

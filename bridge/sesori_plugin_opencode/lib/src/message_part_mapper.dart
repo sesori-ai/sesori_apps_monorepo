@@ -54,6 +54,7 @@ class const MessagePartMapper() {
   }
 
   PluginMessagePart _mapPart(Part raw) => switch (raw) {
+    TextPart(synthetic: true) => _unknownPart(raw),
     TextPart() => _part(
       id: raw.id,
       sessionID: raw.sessionID,

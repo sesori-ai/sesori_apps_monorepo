@@ -4,10 +4,10 @@ import "dart:typed_data";
 
 import "package:sesori_bridge/src/api/archived_session_storage.dart";
 import "package:sesori_bridge/src/api/models/archived_session_file_dto.dart";
-import "package:sesori_bridge/src/bridge/repositories/chat_history_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/services/chat_history_reconcile_service.dart";
+import "package:sesori_bridge/src/repositories/chat_history_repository.dart";
+import "package:sesori_bridge/src/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/services/chat_history_reconcile_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -450,8 +450,13 @@ Map<String, dynamic> _storedSessionJson() => {
   "updatedAt": 2,
 };
 
-Message _message({required String id}) =>
-    Message.user(id: id, sessionID: "ses_a", agent: null, time: const MessageTime(created: 1, completed: null));
+Message _message({required String id}) => Message.user(
+  promptId: null,
+  id: id,
+  sessionID: "ses_a",
+  agent: null,
+  time: const MessageTime(created: 1, completed: null),
+);
 
 MessagePart _part({
   required String id,

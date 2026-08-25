@@ -2,13 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
+import 'package:sesori_bridge/src/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
-import 'package:sesori_bridge/src/server/foundation/process_match.dart';
 import 'package:sesori_bridge/src/server/host/bridge_host_process_service.dart';
 import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:test/test.dart';
+
+import '../../helpers/fake_process_repository.dart';
 
 void main() {
   group('BridgeHostProcessService', () {
@@ -391,16 +392,7 @@ class _FakeServerClock() implements ServerClock {
   Future<void> delay({required Duration duration}) async {}
 }
 
-class _FakeProcessRepository() implements ProcessRepository {
-  @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) async {
-    throw UnimplementedError();
-  }
-
+class _FakeProcessRepository() extends StrictFakeProcessRepository {
   final Map<int, List<ProcessIdentity?>> inspectResults = <int, List<ProcessIdentity?>>{};
   Object? inspectError;
   SignalResult? gracefulResult;
@@ -430,10 +422,5 @@ class _FakeProcessRepository() implements ProcessRepository {
   Future<SignalResult> sendForceSignal({required int pid}) async {
     signalRequests.add('force:$pid');
     return forceResult!;
-  }
-
-  @override
-  Future<ProcessMatch?> inspectProcessMatch({required int pid}) {
-    throw UnimplementedError();
   }
 }

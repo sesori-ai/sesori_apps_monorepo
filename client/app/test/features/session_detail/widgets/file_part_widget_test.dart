@@ -3,6 +3,7 @@ import "dart:convert";
 import "dart:typed_data";
 import "dart:ui" show SemanticsAction;
 
+import "package:flutter/services.dart" show LogicalKeyboardKey;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
@@ -38,8 +39,8 @@ const _authUser = AuthUser(
   providerUsername: "alice",
 );
 const _pngBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==";
-const _widePngBase64 =
-    "iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAYAAAB/qH1jAAAAEklEQVR4nGP4z8DwHxkzoAsAAA8hD/EEN8afAAAAAElFTkSuQmCC";
+const _portraitPngBase64 =
+    "iVBORw0KGgoAAAANSUhEUgAAAAIAAAAECAIAAAArjXluAAAACXBIWXMAAAABAAAAAQBPJcTWAAAAEElEQVR4nGP8wwACLAxYKAAbdAEKX4LcXQAAAABJRU5ErkJggg==";
 
 class _FakeImageSaver() implements ImageSaver {
   Uint8List? savedBytes;
@@ -93,6 +94,58 @@ Widget _app({required Widget child, ThemeMode themeMode = ThemeMode.light}) {
 Future<void> _finishAsyncDecode({required WidgetTester tester}) async {
   await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
   await tester.pumpAndSettle();
+}
+
+Future<GoRouter> _pumpSessionShellApp({
+  required WidgetTester tester,
+  required MessageAttachment attachment,
+  required GlobalKey<NavigatorState> rootNavigatorKey,
+  required GlobalKey<NavigatorState> sessionNavigatorKey,
+}) async {
+  final router = GoRouter(
+    navigatorKey: rootNavigatorKey,
+    initialLocation: "/sessions/chat",
+    routes: [
+      ShellRoute(
+        navigatorKey: sessionNavigatorKey,
+        builder: (_, _, child) => Scaffold(
+          body: Row(
+            children: [
+              const SizedBox(
+                width: 300,
+                child: Center(child: Text("Session list pane")),
+              ),
+              Expanded(child: child),
+            ],
+          ),
+        ),
+        routes: [
+          GoRoute(
+            path: "/sessions",
+            builder: (_, _) => const Scaffold(body: Text("Session list route")),
+            routes: [
+              GoRoute(
+                path: "chat",
+                builder: (_, _) => Scaffold(
+                  body: FilePartWidget(sessionId: "session-1", attachment: attachment),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
+  await tester.pumpWidget(
+    MaterialApp.router(
+      routerConfig: router,
+      theme: ThemeData(extensions: [PregoDesignSystem.light]),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+    ),
+  );
+  return router;
 }
 
 Future<void> _openImageViewer({required WidgetTester tester}) async {
@@ -396,8 +449,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    final indicator = tester.widget<CircularProgressIndicator>(find.byType(CircularProgressIndicator));
-    expect(indicator.value, isNotNull);
+    expect(find.byType(PregoActivityIndicator), findsOneWidget);
     expect(find.byType(AspectRatio), findsOneWidget);
     expect(find.text("image/png / 8 bytes"), findsOneWidget);
   });
@@ -765,10 +817,10 @@ void main() {
     expect(find.text("Image copied to clipboard"), findsOneWidget);
   });
 
-  testWidgets("Hero flight reveals the contained image from the square crop", (tester) async {
+  testWidgets("Hero flight targets the contained image bounds from the square crop", (tester) async {
     const attachment = MessageAttachment.inlineImage(
       mime: "image/png",
-      base64: _widePngBase64,
+      base64: _portraitPngBase64,
       filename: "flight.png",
     );
     await tester.pumpWidget(
@@ -805,10 +857,16 @@ void main() {
       closeTo(1, 0.001),
     );
 
+    await tester.pump(const Duration(milliseconds: 129));
+    expect(tester.getSize(crop).aspectRatio, closeTo(0.5, 0.05));
+
     await tester.pumpAndSettle();
     expect(crop, findsNothing);
     expect(full, findsNothing);
-    expect(tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey)).fit, BoxFit.contain);
+    final displayed = find.byKey(ImageAttachmentViewer.imageKey);
+    expect(tester.widget<Image>(displayed).fit, BoxFit.contain);
+    expect(tester.getSize(displayed).aspectRatio, closeTo(0.5, 0.001));
+    expect(tester.getSize(displayed).height, tester.getSize(find.byType(InteractiveViewer)).height);
   });
 
   testWidgets("reduced motion skips image viewer route transitions", (tester) async {
@@ -890,48 +948,11 @@ void main() {
     );
     final rootNavigatorKey = GlobalKey<NavigatorState>();
     final sessionNavigatorKey = GlobalKey<NavigatorState>();
-    final router = GoRouter(
-      navigatorKey: rootNavigatorKey,
-      initialLocation: "/sessions/chat",
-      routes: [
-        ShellRoute(
-          navigatorKey: sessionNavigatorKey,
-          builder: (_, _, child) => Scaffold(
-            body: Row(
-              children: [
-                const SizedBox(
-                  width: 300,
-                  child: Center(child: Text("Session list pane")),
-                ),
-                Expanded(child: child),
-              ],
-            ),
-          ),
-          routes: [
-            GoRoute(
-              path: "/sessions",
-              builder: (_, _) => const Scaffold(body: Text("Session list route")),
-              routes: [
-                GoRoute(
-                  path: "chat",
-                  builder: (_, _) => const Scaffold(
-                    body: FilePartWidget(sessionId: "session-1", attachment: attachment),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ],
-    );
-    addTearDown(router.dispose);
-    await tester.pumpWidget(
-      MaterialApp.router(
-        routerConfig: router,
-        theme: ThemeData(extensions: [PregoDesignSystem.light]),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-      ),
+    final router = await _pumpSessionShellApp(
+      tester: tester,
+      attachment: attachment,
+      rootNavigatorKey: rootNavigatorKey,
+      sessionNavigatorKey: sessionNavigatorKey,
     );
     await _openImageViewer(tester: tester);
     final sessionRoute = ModalRoute.of(tester.element(find.byKey(FilePartWidget.previewTapTargetKey)))!;
@@ -957,6 +978,54 @@ void main() {
 
     expect(find.text("Session list route"), findsOneWidget);
     expect(router.routeInformationProvider.value.uri.path, "/sessions");
+  });
+
+  testWidgets("a second system back during the viewer dismissal stays in the session", (tester) async {
+    const attachment = MessageAttachment.inlineImage(
+      mime: "image/png",
+      base64: _pngBase64,
+      filename: "image.png",
+    );
+    final router = await _pumpSessionShellApp(
+      tester: tester,
+      attachment: attachment,
+      rootNavigatorKey: GlobalKey<NavigatorState>(),
+      sessionNavigatorKey: GlobalKey<NavigatorState>(),
+    );
+    await _openImageViewer(tester: tester);
+    expect(find.byType(ImageAttachmentViewer), findsOneWidget);
+
+    // Android's back gesture can deliver a second pop right behind the one that
+    // dismissed the viewer; it must not carry on out of the session.
+    await tester.binding.handlePopRoute();
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ImageAttachmentViewer), findsNothing);
+    expect(find.byKey(FilePartWidget.previewTapTargetKey), findsOneWidget);
+    expect(router.routeInformationProvider.value.uri.path, "/sessions/chat");
+  });
+
+  testWidgets("escape closes the image viewer", (tester) async {
+    const attachment = MessageAttachment.inlineImage(
+      mime: "image/png",
+      base64: _pngBase64,
+      filename: "image.png",
+    );
+    await tester.pumpWidget(
+      _app(
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
+    await _openImageViewer(tester: tester);
+    expect(find.byType(ImageAttachmentViewer), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ImageAttachmentViewer), findsNothing);
+    expect(find.byKey(FilePartWidget.previewTapTargetKey), findsOneWidget);
   });
 
   testWidgets("free-form image drag follows the pointer, snaps back, or dismisses", (tester) async {
@@ -1344,6 +1413,7 @@ void main() {
   testWidgets("renders normalized user file attachments", (tester) async {
     const message = MessageWithParts(
       info: Message.user(
+        promptId: null,
         id: "message-1",
         sessionID: "session-1",
         agent: null,

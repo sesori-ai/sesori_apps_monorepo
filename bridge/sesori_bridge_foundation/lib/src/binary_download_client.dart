@@ -70,15 +70,15 @@ class BinaryDownloadClient({
     try {
       response = await _httpClient.send(request).timeout(_requestTimeout);
     } on TimeoutException catch (error) {
-      throw DownloadException(kind: DownloadFailureKind.network, message: "Download connection timed out: $error");
+      throw DownloadException(kind: DownloadFailureKind.network, message: "Download connection timed out: ${error.toString()}");
     } on SocketException catch (error) {
-      throw DownloadException(kind: DownloadFailureKind.network, message: "Download connection failed: $error");
+      throw DownloadException(kind: DownloadFailureKind.network, message: "Download connection failed: ${error.toString()}");
     } on HttpException catch (error) {
-      throw DownloadException(kind: DownloadFailureKind.network, message: "Download HTTP error: $error");
+      throw DownloadException(kind: DownloadFailureKind.network, message: "Download HTTP error: ${error.toString()}");
     } on http.ClientException catch (error) {
-      throw DownloadException(kind: DownloadFailureKind.network, message: "Download client error: $error");
+      throw DownloadException(kind: DownloadFailureKind.network, message: "Download client error: ${error.toString()}");
     } on Object catch (error) {
-      throw DownloadException(kind: DownloadFailureKind.failed, message: "Download failed to start: $error");
+      throw DownloadException(kind: DownloadFailureKind.failed, message: "Download failed to start: ${error.toString()}");
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -96,7 +96,7 @@ class BinaryDownloadClient({
     try {
       sink = File(destinationPath).openWrite();
     } on Object catch (error) {
-      throw DownloadException(kind: DownloadFailureKind.failed, message: "Could not open download destination: $error");
+      throw DownloadException(kind: DownloadFailureKind.failed, message: "Could not open download destination: ${error.toString()}");
     }
 
     var receivedBytes = 0;
@@ -109,17 +109,17 @@ class BinaryDownloadClient({
       }
       bodyCompleted = true;
     } on TimeoutException catch (error) {
-      throw DownloadException(kind: DownloadFailureKind.network, message: "Download stream stalled: $error");
+      throw DownloadException(kind: DownloadFailureKind.network, message: "Download stream stalled: ${error.toString()}");
     } on SocketException catch (error) {
-      throw DownloadException(kind: DownloadFailureKind.network, message: "Download connection failed: $error");
+      throw DownloadException(kind: DownloadFailureKind.network, message: "Download connection failed: ${error.toString()}");
     } on HttpException catch (error) {
-      throw DownloadException(kind: DownloadFailureKind.network, message: "Download HTTP error: $error");
+      throw DownloadException(kind: DownloadFailureKind.network, message: "Download HTTP error: ${error.toString()}");
     } on http.ClientException catch (error) {
       // A connection reset/drop while reading the body (after a 2xx) is the same
       // transient outage class as a pre-response failure — keep it retryable.
-      throw DownloadException(kind: DownloadFailureKind.network, message: "Download connection dropped: $error");
+      throw DownloadException(kind: DownloadFailureKind.network, message: "Download connection dropped: ${error.toString()}");
     } on Object catch (error) {
-      throw DownloadException(kind: DownloadFailureKind.failed, message: "Download failed: $error");
+      throw DownloadException(kind: DownloadFailureKind.failed, message: "Download failed: ${error.toString()}");
     } finally {
       // The finally also runs when the consumer cancels the subscription
       // mid-stream, so the sink is always closed — no leaked handle or locked
@@ -132,7 +132,7 @@ class BinaryDownloadClient({
         try {
           await sink.close();
         } on Object catch (error) {
-          throw DownloadException(kind: DownloadFailureKind.failed, message: "Could not finalize download: $error");
+          throw DownloadException(kind: DownloadFailureKind.failed, message: "Could not finalize download: ${error.toString()}");
         }
       } else {
         // Error or cancellation: close quietly so a teardown failure never masks

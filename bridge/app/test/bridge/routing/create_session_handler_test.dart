@@ -1,23 +1,22 @@
 import "dart:async";
 import "dart:convert";
-import "dart:io";
 
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart" show SessionDto;
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
-import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/project_not_found_exception.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/routing/create_session_handler.dart";
-import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
+import "package:sesori_bridge/src/api/git_cli_api.dart";
+import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/routing/create_session_handler.dart";
+import "package:sesori_bridge/src/services/session_creation_service.dart";
+import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_process_runner.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -114,7 +113,7 @@ void main() {
     });
 
     test("accepts a request body without pluginId", () async {
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/create",
@@ -128,9 +127,6 @@ void main() {
             "dedicatedWorktree": false,
           }),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -165,9 +161,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
@@ -228,9 +221,6 @@ void main() {
           model: PromptModel(providerID: "anthropic", modelID: "claude-sonnet"),
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "defaults-1");
@@ -269,9 +259,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "simple-1");
@@ -327,9 +314,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "moved-1");
@@ -379,9 +363,6 @@ void main() {
             model: null,
             command: null,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         );
 
         _expectRandomSesoriId(sessionId: result.id, backendSessionId: "fallback-1");
@@ -434,9 +415,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "empty-1");
@@ -513,9 +491,6 @@ void main() {
             model: null,
             command: null,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<StateError>()),
       );
@@ -550,9 +525,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
@@ -597,9 +569,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.hasWorktree, isTrue);
@@ -628,9 +597,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.hasWorktree, isFalse);
@@ -662,9 +628,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.hasWorktree, isFalse);
@@ -683,9 +646,6 @@ void main() {
           model: PromptModel(providerID: "openai", modelID: "gpt-5"),
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastCreateSessionDirectory, equals("/tmp"));
@@ -731,9 +691,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
@@ -774,9 +731,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
@@ -806,9 +760,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
@@ -838,9 +789,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
@@ -869,9 +817,6 @@ void main() {
           model: null,
           command: "review",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "cmd-session-1");
@@ -914,9 +859,6 @@ void main() {
           model: null,
           command: "review",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       unawaited(response.then<void>((_) => responseCompleted = true));
 
@@ -958,9 +900,6 @@ void main() {
           model: null,
           command: "review",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       await plugin.sendCommandStarted!.future;
       commandGate.completeError(StateError("command rejected"));
@@ -997,9 +936,6 @@ void main() {
           model: null,
           command: "review",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastCreateSessionParts, isEmpty);
@@ -1057,9 +993,6 @@ void main() {
           model: PromptModel(providerID: "openai", modelID: "gpt-5"),
           command: "review",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(orderedPlugin.hadStoredRowWhenCommandSent, isTrue);
@@ -1101,9 +1034,6 @@ void main() {
           model: PromptModel(providerID: "openai", modelID: "gpt-5"),
           command: "review",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastCreateSessionAgent, isNull);
@@ -1136,9 +1066,6 @@ void main() {
             model: null,
             command: null,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<ProjectNotFoundException>()),
       );
@@ -1170,9 +1097,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastSendCommandSessionId, isNull);
@@ -1201,9 +1125,6 @@ void main() {
           model: PromptModel(providerID: "openai", modelID: "gpt-5.4"),
           command: "   ",
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastCreateSessionAgent, equals("coder"));
@@ -1255,9 +1176,6 @@ void main() {
           model: null,
           command: null,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
@@ -1292,7 +1210,7 @@ class _FakeWorktreeService({required AppDatabase database}) extends WorktreeServ
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           gitApi: GitCliApi(
-            processRunner: _NoopProcessRunner(),
+            processRunner: NoopProcessRunner(),
             gitPathExists: ({required String gitPath}) => true,
           ),
           plugin: _FakeBridgePlugin(),
@@ -1325,28 +1243,6 @@ class _FakeWorktreeService({required AppDatabase database}) extends WorktreeServ
     required String initialBranchName,
     required String generatedBranchName,
   }) async => renameResult;
-}
-
-class _NoopProcessRunner() implements ProcessRunner {
-  @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
-    Map<String, String>? environment,
-    String? workingDirectory,
-    Duration timeout = const Duration(seconds: 15),
-  }) {
-    throw UnimplementedError("_NoopProcessRunner should never execute git commands");
-  }
 }
 
 class _OpenCodeFakeBridgePlugin() extends FakeBridgePlugin {
@@ -1384,6 +1280,7 @@ class _OrderCheckingCommandPlugin({required final AppDatabase _database}) extend
 
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,
@@ -1398,6 +1295,7 @@ class _OrderCheckingCommandPlugin({required final AppDatabase _database}) extend
     );
     hadStoredRowWhenCommandSent = session != null;
     await super.sendCommand(
+      promptId: "prompt-1",
       sessionId: sessionId,
       command: command,
       arguments: arguments,

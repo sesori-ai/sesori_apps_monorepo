@@ -1,4 +1,3 @@
-import "package:cupertino_ui/cupertino_ui.dart" show CupertinoSliverRefreshControl, RefreshIndicatorMode;
 import "package:flutter/rendering.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
@@ -139,6 +138,11 @@ class const PregoGlassScaffold({
     /// When set, an in-scroll refresh control opens below the top bar and pushes
   /// the caller-provided content down while it is pulled.
   final Future<void> Function()? onRefresh,
+    /// An optional second stage for [onRefresh]. Pulling past a deeper
+  /// threshold runs it **immediately**, not on release: the underlying refresh
+  /// control has no release-gated commit, so a crossed pull cannot be taken
+  /// back and the surface must offer its own cancel.
+  final PregoDeepRefresh? deepRefresh,
     /// Page background painted behind the glass. Defaults to `bgSurface1`.
   final Color? backgroundColor,
     /// Whether the body scrolls behind the bar. Defaults to `true`. Set `false`
@@ -161,6 +165,10 @@ class const PregoGlassScaffold({
   this : assert(
          scrollable || onRefresh == null,
          "onRefresh requires scrollable to be true (the refresh control needs a draggable page)",
+       ),
+       assert(
+         deepRefresh == null || onRefresh != null,
+         "deepRefresh is a second stage of onRefresh, so it needs one to extend",
        );
 
   @override
@@ -178,6 +186,15 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
   /// content tracks the moving bar and is exact at rest.
   final ValueNotifier<double> _bannerHeight = ValueNotifier<double>(0);
 
+  /// The base inset captured during the latest build, combined with
+  /// [_bannerHeight] when publishing to [top_bar.pregoRootTopBarInset].
+  double _baseInset = 0;
+
+  /// The root overlay this scaffold publishes geometry for.
+  OverlayState? _rootOverlay;
+
+  final top_bar.PregoRootTopBarInsetOwner _rootInsetOwner = top_bar.PregoRootTopBarInsetOwner();
+
   /// The collapsing title's rendered extent, including its bottom spacing.
   /// Used to paint the refresh indicator below the title without assuming a
   /// fixed text scale or whether a subtitle is present.
@@ -189,10 +206,35 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
   double _refreshPulledExtent = 0;
 
   @override
+  void initState() {
+    super.initState();
+    _bannerHeight.addListener(_publishRootInset);
+  }
+
+  @override
   void dispose() {
+    _bannerHeight.removeListener(_publishRootInset);
+    final rootOverlay = _rootOverlay;
+    if (rootOverlay != null) {
+      top_bar.clearPregoRootTopBarInset(overlay: rootOverlay, owner: _rootInsetOwner);
+    }
     _scrollController.dispose();
     _bannerHeight.dispose();
     super.dispose();
+  }
+
+  /// Publishes this scaffold's live top-bar inset so app-wide presentation
+  /// outside any route can clear the top bar and a visible banner. The most
+  /// recently built (topmost) scaffold wins.
+  void _publishRootInset() {
+    if (!mounted) return;
+    final rootOverlay = _rootOverlay;
+    if (rootOverlay == null) return;
+    top_bar.publishPregoRootTopBarInset(
+      overlay: rootOverlay,
+      owner: _rootInsetOwner,
+      inset: _baseInset + _bannerHeight.value,
+    );
   }
 
   /// The floating action handed to the standalone [Scaffold], positioned per
@@ -316,17 +358,11 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
         // the live bar and large-title insets; the sliver itself opens at the
         // scroll origin and pushes the caller-provided content down.
         if (onRefresh != null)
-          CupertinoSliverRefreshControl(
+          PregoSliverRefreshControl(
             onRefresh: onRefresh,
-            builder: (context, refreshState, pulledExtent, triggerDistance, indicatorExtent) {
-              _refreshPulledExtent = refreshState == RefreshIndicatorMode.inactive ? 0 : pulledExtent;
-              final indicator = CupertinoSliverRefreshControl.buildRefreshIndicator(
-                context,
-                refreshState,
-                pulledExtent,
-                triggerDistance,
-                indicatorExtent,
-              );
+            deepRefresh: widget.deepRefresh,
+            onPulledExtentChanged: (extent) => _refreshPulledExtent = extent,
+            decorate: (context, indicator) {
               // A non-extended body already begins below the bar, but its
               // collapsing title still precedes the caller-provided content.
               if (!extendBehind) {
@@ -450,6 +486,19 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
             builder: (context, bannerHeight, _) => buildScaffold(bannerHeight),
           );
 
+    // Publish the root inset seam before building the bar area so app-wide
+    // presentation created during this frame already sees current geometry.
+    final rootOverlay = Overlay.maybeOf(context, rootOverlay: true);
+    if (!identical(_rootOverlay, rootOverlay)) {
+      final previousOverlay = _rootOverlay;
+      if (previousOverlay != null) {
+        top_bar.clearPregoRootTopBarInset(overlay: previousOverlay, owner: _rootInsetOwner);
+      }
+      _rootOverlay = rootOverlay;
+    }
+    _baseInset = topPad + PregoTopNavigation.barHeight;
+    _publishRootInset();
+
     // Remove this wrapper once liquid_glass_widgets migrates from the Flutter SDK Material and Cupertino libraries to material_ui and cupertino_ui.
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -536,8 +585,8 @@ class _AnimatedBannerSlotState() extends State<_AnimatedBannerSlot> {
     //  - Align(heightFactor: 0) sizes the hidden slot to zero while keeping
     //    the retained content laid out, which is what AnimatedSize animates
     //    toward during the exit.
-    return _HeightObserver(
-      onHeightChanged: _onHeightChanged,
+    return PregoSizeObserver(
+      onSizeChanged: (size) => _onHeightChanged(size.height),
       child: ClipRect(
         child: AnimatedSize(
           duration: _AnimatedBannerSlot._duration,
@@ -558,33 +607,6 @@ class _AnimatedBannerSlotState() extends State<_AnimatedBannerSlot> {
         ),
       ),
     );
-  }
-}
-
-/// Reports its child's laid-out height via [onHeightChanged] whenever it
-/// changes. The callback is invoked post-frame so listeners may safely call
-/// `setState`/notify — the same measure-and-report pattern as the session
-/// detail composer measurement.
-class const _HeightObserver({required final ValueChanged<double> onHeightChanged, required super.child}) extends SingleChildRenderObjectWidget {
-  @override
-  RenderObject createRenderObject(BuildContext context) => _RenderHeightObserver(onHeightChanged);
-
-  @override
-  void updateRenderObject(BuildContext context, _RenderHeightObserver renderObject) {
-    renderObject.onHeightChanged = onHeightChanged;
-  }
-}
-
-class _RenderHeightObserver(var ValueChanged<double> onHeightChanged) extends RenderProxyBox {
-  double? _lastReportedHeight;
-
-  @override
-  void performLayout() {
-    super.performLayout();
-    final height = size.height;
-    if (height == _lastReportedHeight) return;
-    _lastReportedHeight = height;
-    WidgetsBinding.instance.addPostFrameCallback((_) => onHeightChanged(height));
   }
 }
 
@@ -697,8 +719,8 @@ class const _LargeTitleSliver({
     );
 
     return SliverToBoxAdapter(
-      child: _HeightObserver(
-        onHeightChanged: onHeightChanged,
+      child: PregoSizeObserver(
+        onSizeChanged: (size) => onHeightChanged(size.height),
         child: pulledExtent == null
             ? titleContent
             : _OverscrollPinnedBox(pulledExtent: pulledExtent, child: titleContent),

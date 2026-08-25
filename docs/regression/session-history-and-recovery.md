@@ -12,10 +12,24 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
   never starts a stopped backend. Only a first backfill or a re-read after the
   backend advanced may reach it; backfill is lazy and per session, and a session
   advanced outside Sesori is detected as stale, re-read, and re-cached.
+- Messages visible live but absent from the backend's replay remain visible
+  after a stale re-read. They rejoin at their recorded creation time while
+  preserving relative order, so a catalog re-import cannot move old rows to the
+  newest edge.
 - Live streamed messages and parts become queryable immediately after they
   finalize, with the same visibility filtering and tool-output bound a backend
-  fetch returns. Clients request the latest page and page older messages on
-  demand; a client predating pagination gets the full transcript.
+  fetch returns. Reasoning finalizes when the stream advances to assistant or
+  tool output rather than remaining active for the rest of the turn, and an idle
+  boundary still finalizes it when a backend omits its explicit end snapshot.
+  Final text and reasoning snapshots are retained whether a backend emits them
+  before or after its stream block-stop event. Clients request the latest page
+  and page older messages on demand; a client predating pagination gets the full
+  transcript.
+- Client history uses a reversed list. Nearing its oldest edge prefetches the
+  next page, one request at a time, so paging back through history rarely stops
+  dead at the edge; prepended rows become visible without shifting the detached
+  reading position or admitting messages and streaming changes that arrived at
+  the newest edge while detached.
 - After a reconnect inside the replay window, buffered events are delivered;
   after a longer gap, a refresh reconciles without losing finalized content.
   After a backend event-stream gap, that plugin's stored transcripts stay marked
@@ -23,6 +37,15 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
 - Binary and attachment payloads are never stored inline in database tables; they
   round-trip through spill storage and still render. A slow or stuck request
   never blocks unrelated requests, other plugins, key exchange, or reconnects.
+- A tool part stranded in `pending`/`running` after its turn ended is finalized
+  to a terminal error, for every backend. The sweep runs when the session goes
+  idle (finalized parts are also delivered live as part updates) and on a
+  history read whose page still holds an open tool part while the session is
+  not currently busy — whether the page came from a backfill or from a store
+  kept fresh across an abrupt bridge death — including when the status is
+  unobservable, since a stopped backend hosts no live tool. Finalization never
+  advances the session's freshness marks, and a genuinely running tool swept by
+  the turn-start race is corrected by its next live capture.
 - Pi history follows the active `leafId` branch while retaining visible
   pre-compaction messages and omitting compaction and branch-summary payloads.
   File fallback is allowed only for Pi's exact no-model startup failure, applies
@@ -39,7 +62,7 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a previously synced session's transcript is served with every backend stopped. |
-| L2 Routine | Live plugin, representative: first backfill, live capture that becomes immediately queryable, and paging older messages on a transcript longer than one page. Automated Pi coverage: active branches, v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, cumulative tool updates, and live/replay final parity. |
+| L2 Routine | Live plugin, representative: first backfill, live capture that becomes immediately queryable, stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated Pi coverage: active branches, v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, cumulative tool updates, and live/replay final parity. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: open a long session, page back, continue a live turn, reopen cold, and confirm live and replayed content converge including tool and image parts. |
 | L4 Extended | Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. |
 | L5 Full | Automated and headless bridge for unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |
@@ -56,9 +79,14 @@ image parts converge by their own rules.
 
 - Opening a synced session starts a stopped backend, or content visible live
   disappears after a refresh or reopen.
+- Reasoning still says `Thinking...` after answer or tool output has started, or
+  disappears after reopening because only its empty start snapshot was retained.
 - A page boundary duplicates, drops, or reorders messages, or history ends early.
+- Loading an older page shifts the reader's viewport, remains hidden until
+  reattachment, or triggers repeated requests while one page is in flight.
 - A session advanced outside Sesori keeps serving the old transcript, or stored
   transcripts are marked complete after a gap without a full re-sync.
+- A stale re-read moves an older retained message to the newest edge.
 - Pi falls back after an arbitrary RPC failure, shows an abandoned branch or
   summary payload, or exposes a private path, raw backend error, or hidden prompt
   prefix in mapped history.

@@ -1,6 +1,7 @@
 import "models/plugin_agent.dart";
 import "models/plugin_message.dart";
 import "models/plugin_pending_question.dart";
+import "models/plugin_queued_prompt.dart";
 
 sealed class const BridgeSseEvent();
 
@@ -22,16 +23,12 @@ class const BridgeSseGlobalDisposed() extends BridgeSseEvent;
 /// Signals that the emitting plugin's process-wide command catalog changed.
 class const BridgeSseCommandCatalogUpdated() extends BridgeSseEvent;
 
+// ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
 class const BridgeSseSessionCreated({required final Map<String, dynamic> info}) extends BridgeSseEvent;
 
+// ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
 class const BridgeSseSessionUpdated({required final Map<String, dynamic> info, required final bool titleChanged})
     extends BridgeSseEvent;
-
-/// Signals that every session under [projectID] should be re-fetched.
-class const BridgeSseSessionsUpdated({
-  required final String sessionID,
-  required final String projectID,
-}) extends BridgeSseEvent;
 
 /// Signals that session-creation options changed for a backend session.
 ///
@@ -46,6 +43,7 @@ class const BridgeSseSessionPromptDefaultsChanged({
   required final PluginAgentModel? model,
 }) extends BridgeSseEvent;
 
+// ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
 class const BridgeSseSessionDeleted({required final Map<String, dynamic> info}) extends BridgeSseEvent;
 
 class const BridgeSseSessionDiff({required final String sessionID}) extends BridgeSseEvent;
@@ -54,6 +52,7 @@ class const BridgeSseSessionError({required final String? sessionID}) extends Br
 
 class const BridgeSseSessionCompacted({required final String sessionID}) extends BridgeSseEvent;
 
+// ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
 class const BridgeSseSessionStatus({required final String sessionID, required final Map<String, dynamic> status})
     extends BridgeSseEvent;
 
@@ -66,6 +65,18 @@ class const BridgeSseCommandExecuted({
   required final String messageID,
 }) extends BridgeSseEvent;
 
+/// Full replacement of [sessionID]'s queued-prompt list.
+///
+/// Emitted by queue-owning plugins on every change (accept, cancel, dispatch,
+/// abort, failure) with the complete current list, so a missed event
+/// self-heals on the next one. [sessionID] is the backend session identity;
+/// bridge core translates it to the stable binding before relaying.
+class const BridgeSseQueuedPromptsUpdated({
+  required final String sessionID,
+  required final List<PluginQueuedPrompt> prompts,
+}) extends BridgeSseEvent;
+
+// ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
 class const BridgeSseMessageUpdated({required final Map<String, dynamic> info}) extends BridgeSseEvent;
 
 class const BridgeSseMessageRemoved({required final String sessionID, required final String messageID})

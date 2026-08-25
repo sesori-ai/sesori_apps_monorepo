@@ -26,6 +26,8 @@ void main() {
         isTrue,
         reason: "Hermes advertises prompt image support",
       );
+      expect(HermesPluginDescriptor.minVersion, "0.20.0");
+      expect(HermesPluginDescriptor.targetVersion, "0.20.4");
     });
 
     test("declares only the binary option and no install capability", () {
@@ -45,7 +47,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 1,
-            stdoutBytes: utf8.encode("hermes-acp v0.20.0\n"),
+            stdoutBytes: utf8.encode("hermes-acp v0.20.4\n"),
             stderrBytes: const [],
             exitCode: Future<int>.value(0),
           ),
@@ -78,7 +80,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 1,
-            stdoutBytes: utf8.encode("0.20.1\n"),
+            stdoutBytes: utf8.encode("0.20.4\n"),
             stderrBytes: const [],
             exitCode: Future<int>.value(0),
           ),
@@ -114,7 +116,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 1,
-            stdoutBytes: utf8.encode("0.20.0\n"),
+            stdoutBytes: utf8.encode("0.20.4\n"),
             stderrBytes: const [],
             exitCode: Future<int>.value(0),
           ),
@@ -135,7 +137,7 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.20.0"));
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.20.4"));
       expect(processes.spawnedExecutables, ["hermes", "hermes"]);
       expect(processes.spawnedArguments, [
         const ["acp", "--version"],
@@ -344,7 +346,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 1,
-            stdoutBytes: utf8.encode("0.20.0\n"),
+            stdoutBytes: utf8.encode("0.20.4\n"),
             stderrBytes: const [],
             exitCode: Future<int>.value(0),
           ),
@@ -366,7 +368,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupAuthenticationRequired>());
-      expect(result.runtimeVersion, "0.20.0");
+      expect(result.runtimeVersion, "0.20.4");
     });
 
     test("reports authentication required when a model has no provider", () async {
@@ -375,7 +377,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 1,
-            stdoutBytes: utf8.encode("0.20.0\n"),
+            stdoutBytes: utf8.encode("0.20.4\n"),
             stderrBytes: const [],
             exitCode: Future<int>.value(0),
           ),
@@ -397,7 +399,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupAuthenticationRequired>());
-      expect(result.runtimeVersion, "0.20.0");
+      expect(result.runtimeVersion, "0.20.4");
     });
 
     test("reports unknown when the status command exits nonzero", () async {
@@ -406,7 +408,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 1,
-            stdoutBytes: utf8.encode("0.20.0\n"),
+            stdoutBytes: utf8.encode("0.20.4\n"),
             stderrBytes: const [],
             exitCode: Future<int>.value(0),
           ),
@@ -428,7 +430,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupUnknown>());
-      expect(result.runtimeVersion, "0.20.0");
+      expect(result.runtimeVersion, "0.20.4");
     });
 
     test("uses an explicit --hermes-bin override for every probe", () async {
@@ -437,7 +439,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 1,
-            stdoutBytes: utf8.encode("0.20.0\n"),
+            stdoutBytes: utf8.encode("0.20.4\n"),
             stderrBytes: const [],
             exitCode: Future<int>.value(0),
           ),
@@ -458,15 +460,22 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.20.0"));
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.20.4"));
       expect(processes.spawnedExecutables, ["/custom/hermes", "/custom/hermes"]);
     });
 
-    test("start spawns exactly one `hermes acp` process and connects", () async {
+    test("start discovers models before the user creates a session", () async {
       const descriptor = HermesPluginDescriptor();
       final processes = _ProbeProcessService(
         spawnError: null,
-        processSequence: const [],
+        processSequence: [
+          _ProbeProcess(
+            pid: 1,
+            stdoutBytes: utf8.encode("Model: DeepSeek-V4-Flash\nProvider: OpenCode Go\n"),
+            stderrBytes: const [],
+            exitCode: Future<int>.value(0),
+          ),
+        ],
         servesAcp: true,
       );
 
@@ -478,13 +487,35 @@ void main() {
         ),
       );
 
-      expect(processes.spawnedExecutables, ["/resolved/hermes"]);
+      final discovery = await plugin.api.getSessionOptions(
+        projectId: "/repo",
+        discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+      );
+      final options = (discovery as PluginSessionOptionsDiscoveryObserved).options;
+      final provider = options.providers.providers.single;
+      expect(provider.id, "opencode-go");
+      expect(provider.name, "OpenCode Go");
+      expect(provider.defaultModelID, "opencode-go:deepseek-v4-flash");
+      expect(
+        provider.models.map((model) => model.id),
+        ["opencode-go:deepseek-v4-flash", "opencode-go:gpt-5"],
+      );
+
+      expect(processes.spawnedExecutables, [
+        "/resolved/hermes",
+        "/resolved/hermes",
+        "/resolved/hermes",
+        "/resolved/hermes",
+      ]);
       expect(processes.spawnedArguments, [
+        const ["status"],
         const ["acp"],
+        const ["acp"],
+        const ["sessions", "delete", "catalog-session", "--yes"],
       ]);
 
       await plugin.shutdown(budget: null);
-      expect(processes.gracefulSignals, [1]);
+      expect(processes.gracefulSignals, [101, 100]);
     });
   });
 }
@@ -515,7 +546,8 @@ class _ProbeProcessService({
   required final bool servesAcp,
 }) implements HostProcessService {
   int _nextProcess = 0;
-  _AcpProcess? _acpProcess;
+  final Map<int, _AcpProcess> _acpProcesses = {};
+  int _nextAcpPid = 100;
   final List<String> spawnedExecutables = <String>[];
   final List<List<String>> spawnedArguments = <List<String>>[];
   final List<int> gracefulSignals = <int>[];
@@ -534,12 +566,23 @@ class _ProbeProcessService({
     if (error != null) {
       throw error;
     }
-    if (servesAcp) {
-      final process = _AcpProcess();
-      _acpProcess = process;
+    if (servesAcp && arguments.length == 1 && arguments.single == "acp") {
+      final process = _AcpProcess(pid: _nextAcpPid++);
+      _acpProcesses[process.pid] = process;
       return process;
     }
-    return processSequence[_nextProcess++];
+    if (servesAcp && arguments.length == 4 && arguments[0] == "sessions" && arguments[1] == "delete") {
+      return _ProbeProcess(
+        pid: 200,
+        stdoutBytes: utf8.encode("Deleted ${arguments[2]}\n"),
+        stderrBytes: const [],
+        exitCode: Future<int>.value(0),
+      );
+    }
+    if (_nextProcess < processSequence.length) {
+      return processSequence[_nextProcess++];
+    }
+    throw StateError("No canned process remains");
   }
 
   @override
@@ -548,7 +591,7 @@ class _ProbeProcessService({
   @override
   Future<SignalResult> signalGraceful({required int pid}) async {
     gracefulSignals.add(pid);
-    _acpProcess?.exit(-15);
+    _acpProcesses[pid]?.exit(-15);
     return _signal(
       pid: pid,
       requestedSignal: ShutdownSignal.graceful,
@@ -558,7 +601,7 @@ class _ProbeProcessService({
 
   @override
   Future<SignalResult> signalForce({required int pid}) async {
-    _acpProcess?.exit(-9);
+    _acpProcesses[pid]?.exit(-9);
     return _signal(
       pid: pid,
       requestedSignal: ShutdownSignal.force,
@@ -603,7 +646,7 @@ class _ProbeProcess({
   ProcessIdentity get identity => throw UnimplementedError();
 }
 
-class _AcpProcess() implements SpawnedProcess {
+class _AcpProcess({@override required final int pid}) implements SpawnedProcess {
   this {
     stdin = IOSink(_InputSink(onLine: _handleLine));
   }
@@ -620,6 +663,35 @@ class _AcpProcess() implements SpawnedProcess {
       _stdout.add(
         utf8.encode(
           "${jsonEncode({"jsonrpc": "2.0", "id": frame["id"], "result": <String, dynamic>{}})}\n",
+        ),
+      );
+      return;
+    }
+    if (frame["method"] == AcpMethods.sessionNew) {
+      _stdout.add(
+        utf8.encode(
+          "${jsonEncode({
+            "jsonrpc": "2.0",
+            "id": frame["id"],
+            "result": {
+              "sessionId": "catalog-session",
+              "models": {
+                "currentModelId": "opencode-go:deepseek-v4-flash",
+                "availableModels": [
+                  {
+                    "modelId": "opencode-go:deepseek-v4-flash",
+                    "name": "OpenCode Go · deepseek-v4-flash",
+                    "description": "Provider: OpenCode Go • current",
+                  },
+                  {
+                    "modelId": "opencode-go:gpt-5",
+                    "name": "OpenCode Go · GPT-5",
+                    "description": "Provider: OpenCode Go",
+                  },
+                ],
+              },
+            },
+          })}\n",
         ),
       );
       return;
@@ -660,9 +732,6 @@ class _AcpProcess() implements SpawnedProcess {
 
   @override
   ProcessIdentity get identity => throw UnimplementedError();
-
-  @override
-  int get pid => 1;
 
   @override
   Stream<List<int>> get stderr => const Stream.empty();

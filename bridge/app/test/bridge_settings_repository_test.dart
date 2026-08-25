@@ -11,7 +11,7 @@ void main() {
   group('BridgeSettingsRepository', () {
     test('creates defaults when config is missing', () async {
       final api = FakeBridgeSettingsApi(readResult: null);
-      final repository = BridgeSettingsRepository(api: api);
+      final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
 
       final settings = await repository.loadSettings();
 
@@ -26,7 +26,7 @@ void main() {
         readResult:
             '{"sleepPrevention":"off","pullRequestRefreshIntervalSeconds":30,"plugins":{"disabled":["cursor"]}}',
       );
-      final repository = BridgeSettingsRepository(api: api);
+      final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
 
       final settings = await repository.loadSettings();
 
@@ -37,7 +37,7 @@ void main() {
 
     test('writes the default when the PR refresh interval key is missing', () async {
       final api = FakeBridgeSettingsApi(readResult: '{"sleepPrevention":"off"}');
-      final repository = BridgeSettingsRepository(api: api);
+      final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
 
       final settings = await repository.loadSettings();
 
@@ -50,7 +50,7 @@ void main() {
         final api = FakeBridgeSettingsApi(
           readResult: jsonEncode({'pullRequestRefreshIntervalSeconds': rawValue}),
         );
-        final repository = BridgeSettingsRepository(api: api);
+        final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
 
         final settings = await repository.loadSettings();
 
@@ -61,7 +61,7 @@ void main() {
 
     test('does not replace corrupted JSON with an empty denylist', () async {
       final api = FakeBridgeSettingsApi(readResult: '{');
-      final repository = BridgeSettingsRepository(api: api);
+      final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
 
       await expectLater(repository.loadSettings(), throwsA(isA<FormatException>()));
       expect(api.writeCount, 0);
@@ -71,7 +71,7 @@ void main() {
       final api = FakeBridgeSettingsApi(
         readResult: '{"plugins":{"disabled":["cursor",42]}}',
       );
-      final repository = BridgeSettingsRepository(api: api);
+      final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
 
       await expectLater(repository.loadSettings(), throwsA(isA<PluginSettingsFormatException>()));
       expect(api.writeCount, 0);
@@ -80,7 +80,7 @@ void main() {
     test('does not replace explicit null plugin policy', () async {
       for (final storedConfig in ['{"plugins":null}', '{"plugins":{"disabled":null}}']) {
         final api = FakeBridgeSettingsApi(readResult: storedConfig);
-        final repository = BridgeSettingsRepository(api: api);
+        final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
 
         await expectLater(repository.loadSettings(), throwsA(isA<PluginSettingsFormatException>()));
         expect(api.writeCount, 0);
@@ -97,7 +97,7 @@ void main() {
           },
         }),
       );
-      final repository = BridgeSettingsRepository(api: api);
+      final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
 
       final settings = await repository.loadSettings();
 
@@ -114,7 +114,7 @@ void main() {
       final api = FakeBridgeSettingsApi(
         readResult: '{"plugins":{"disabled":["cursor"],"opencode":{"idleTimeoutMins":null}}}',
       );
-      final repository = BridgeSettingsRepository(api: api);
+      final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
 
       final settings = await repository.loadSettings();
 
@@ -127,7 +127,7 @@ void main() {
 
     test('ensureConfigExists does not parse or rewrite an existing file', () async {
       final api = FakeBridgeSettingsApi(readResult: '{');
-      final repository = BridgeSettingsRepository(api: api);
+      final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
 
       await repository.ensureConfigExists();
 
@@ -136,7 +136,7 @@ void main() {
 
     test('mutateSettings pretty prints, updates, and publishes the current snapshot', () async {
       final api = FakeBridgeSettingsApi(readResult: null);
-      final repository = BridgeSettingsRepository(api: api);
+      final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
       await repository.loadSettings();
       final changes = <BridgeSettingsChange>[];
       final subscription = repository.settingsChanges.listen(changes.add);
@@ -161,7 +161,7 @@ void main() {
       final api = FakeBridgeSettingsApi(
         readResult: '{"pullRequestRefreshIntervalSeconds":30}',
       );
-      final repository = BridgeSettingsRepository(api: api);
+      final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
       await repository.loadSettings();
       api.writeGate = Completer<void>();
 
@@ -188,7 +188,7 @@ void main() {
 
     test('rejects an invalid interval mutation before commit and keeps the tail usable', () async {
       final api = FakeBridgeSettingsApi(readResult: '{"pullRequestRefreshIntervalSeconds":30}');
-      final repository = BridgeSettingsRepository(api: api);
+      final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
       await repository.loadSettings();
       final changes = <BridgeSettingsChange>[];
       final subscription = repository.settingsChanges.listen(changes.add);
@@ -213,13 +213,13 @@ void main() {
 
     test('manual file edits have no live effect but load in a new repository', () async {
       final api = FakeBridgeSettingsApi(readResult: '{"pullRequestRefreshIntervalSeconds":30}');
-      final repository = BridgeSettingsRepository(api: api);
+      final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
       await repository.loadSettings();
 
       api.readResult = '{"pullRequestRefreshIntervalSeconds":60}';
 
       expect(repository.currentSettings.pullRequestRefreshIntervalSeconds, 30);
-      final restartedRepository = BridgeSettingsRepository(api: api);
+      final restartedRepository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
       expect((await restartedRepository.loadSettings()).pullRequestRefreshIntervalSeconds, 60);
       await repository.dispose();
       await restartedRepository.dispose();
@@ -234,7 +234,7 @@ void main() {
           },
         }),
       );
-      final repository = BridgeSettingsRepository(api: api);
+      final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
 
       final updated = await repository.updatePluginDisabled(pluginId: 'cursor', disabled: true);
 
@@ -248,7 +248,7 @@ void main() {
       final api = FakeBridgeSettingsApi(
         readResult: '{"plugins":{"disabled":["cursor"]}}',
       );
-      final repository = BridgeSettingsRepository(api: api);
+      final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
 
       await repository.updateReleaseTrack(track: ReleaseTrack.internal);
       final afterTrack = jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>;
@@ -261,8 +261,18 @@ void main() {
       expect((afterYolo['plugins'] as Map)['disabled'], ['cursor']);
     });
 
+    test('reports unavailable default editor explicitly', () async {
+      final repository = BridgeSettingsRepository(
+        defaultEditorApi: null,
+        api: FakeBridgeSettingsApi(readResult: null),
+      );
+
+      expect(repository.openInDefaultEditor, throwsA(isA<StateError>()));
+    });
+
     test('configFilePath delegates to the API', () {
       final repository = BridgeSettingsRepository(
+        defaultEditorApi: null,
         api: FakeBridgeSettingsApi(readResult: null, configFilePath: '/tmp/custom-config.json'),
       );
 

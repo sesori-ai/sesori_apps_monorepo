@@ -2,7 +2,7 @@ import "dart:async";
 import "dart:io";
 import "dart:typed_data";
 
-import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -419,7 +419,8 @@ void main() {
       await disconnected.timeout(const Duration(seconds: 5));
 
       final serverWs2Future = server.nextClient();
-      connection = await client.reconnect(connection: connection);
+      await client.closeIfCurrent(connection: connection);
+      connection = await client.connect();
       await serverWs2Future;
 
       final states = await statesFuture;
@@ -563,7 +564,8 @@ void main() {
 
       // Reconnect — the server will accept a new WebSocket.
       final serverWs2Future = server.nextClient();
-      connection = await client.reconnect(connection: connection);
+      await client.closeIfCurrent(connection: connection);
+      connection = await client.connect();
       final serverWs2 = await serverWs2Future;
 
       // Verify the second connection works.
@@ -628,7 +630,8 @@ void main() {
 
       // Reconnect.
       final serverWs2Future = server.nextClient();
-      connection = await client.reconnect(connection: connection);
+      await client.closeIfCurrent(connection: connection);
+      connection = await client.connect();
       final serverWs2 = await serverWs2Future;
 
       final received2 = <dynamic>[];
@@ -676,7 +679,8 @@ void main() {
       );
 
       final secondSocketFuture = server.nextClient();
-      final secondConnection = await client.reconnect(connection: firstConnection);
+      await client.closeIfCurrent(connection: firstConnection);
+      final secondConnection = await client.connect();
       _closeAfterTest(client: client, connection: secondConnection);
       final secondSocket = await secondSocketFuture;
       final received = <dynamic>[];

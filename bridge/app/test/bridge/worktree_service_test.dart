@@ -3,13 +3,14 @@ import "dart:io";
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
-import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
-import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
-import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
+import "package:sesori_bridge/src/api/git_cli_api.dart";
+import "package:sesori_bridge/src/foundation/process_runner.dart";
+import "package:sesori_bridge/src/repositories/worktree_repository.dart";
+import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "../helpers/fakes/fake_bridge_plugin.dart";
 import "../helpers/test_database.dart";
 
 const _projectId = "/repo/project";
@@ -130,6 +131,7 @@ void main() {
       await projectsDao.insertProjectsIfMissing(projectIds: [_projectId]); // satisfy v5 FK constraint
       await sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "parent-001",
         backendSessionId: "parent-001",
         projectId: _projectId,
@@ -1260,40 +1262,7 @@ class _GeneratedRenameWorktreeRepository() implements WorktreeRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeBridgePluginApi() implements NativeProjectsPluginApi {
-  @override
-  String get id => "fake";
-
-  @override
-  Stream<BridgeSseEvent> get events => const Stream<BridgeSseEvent>.empty();
-
-  String? lastDeleteWorkspaceProjectId;
-  String? lastDeleteWorkspaceWorktreePath;
-
-  @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) async {
-    lastDeleteWorkspaceProjectId = projectId;
-    lastDeleteWorkspaceWorktreePath = worktreePath;
-  }
-
-  @override
-  Future<List<PluginProject>> getProjects() async => [];
-
-  @override
-  Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit}) async => [];
-
-  @override
-  Future<List<PluginCommand>> getCommands({required String? projectId}) async => [];
-
-  @override
-  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
-    required String projectId,
-    required PluginSessionOptionsDiscoveryMode discoveryMode,
-  }) => throw UnimplementedError();
-
+class _FakeBridgePluginApi() extends FakeBridgePlugin {
   @override
   Future<PluginSession> createSession({
     required String directory,
@@ -1303,106 +1272,14 @@ class _FakeBridgePluginApi() implements NativeProjectsPluginApi {
     required PluginSessionVariant? variant,
     required String? agent,
     required ({String providerID, String modelID})? model,
-  }) async => throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
-  Future<PluginSession> renameSession({
-    required String sessionId,
-    required String title,
-  }) async => throw UnimplementedError();
+  Future<PluginSession> renameSession({required String sessionId, required String title}) => throw UnimplementedError();
 
   @override
-  Future<PluginProject> renameProject({
-    required String projectId,
-    required String name,
-  }) async => throw UnimplementedError();
+  Future<PluginProject> renameProject({required String projectId, required String name}) => throw UnimplementedError();
 
   @override
-  Future<void> deleteSession(String sessionId) async {}
-
-  @override
-  Future<void> archiveSession({required String sessionId}) async {}
-
-  @override
-  Future<List<PluginSession>> getChildSessions(String sessionId) async => [];
-
-  @override
-  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => {};
-
-  @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async => [];
-
-  @override
-  Future<void> sendPrompt({
-    required String sessionId,
-    required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {}
-
-  @override
-  Future<void> sendCommand({
-    required String sessionId,
-    required String command,
-    required String arguments,
-    required String? userVisibleArguments,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {}
-
-  @override
-  Future<void> abortSession({required String sessionId}) async {}
-
-  @override
-  Future<List<PluginAgent>> getAgents({required String projectId}) async => [];
-
-  @override
-  Future<List<PluginPendingPermission>> getPendingPermissions({
-    required String sessionId,
-  }) async => [];
-
-  @override
-  Future<List<PluginPendingQuestion>> getPendingQuestions({
-    required String sessionId,
-  }) async => [];
-
-  @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({
-    required String projectId,
-  }) async => [];
-
-  @override
-  Future<void> replyToQuestion({
-    required String questionId,
-    required String sessionId,
-    required List<List<String>> answers,
-  }) async {}
-
-  @override
-  Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {}
-
-  @override
-  Future<void> replyToPermission({
-    required String requestId,
-    required String sessionId,
-    required PluginPermissionReply reply,
-  }) async {}
-
-  @override
-  Future<PluginProject> getProject(String projectId) async => throw UnimplementedError();
-
-  @override
-  Future<bool> healthCheck() async => true;
-
-  @override
-  Future<PluginProvidersResult> getProviders({required String projectId}) async =>
-      const PluginProvidersResult(providers: []);
-
-  @override
-  List<PluginProjectActivitySummary> getActiveSessionsSummary() => [];
-
-  @override
-  Future<void> dispose() async {}
+  Future<PluginProject> getProject(String projectId) => throw UnimplementedError();
 }

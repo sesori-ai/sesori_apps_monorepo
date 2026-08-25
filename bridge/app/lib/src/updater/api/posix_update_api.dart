@@ -2,7 +2,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import '../../bridge/foundation/process_runner.dart';
+import '../../foundation/filesystem_cleaner.dart';
+import '../../foundation/process_runner.dart';
 import 'platform_update_api.dart';
 
 /// POSIX (macOS/Linux) in-place update applier.
@@ -15,6 +16,7 @@ class PosixUpdateApi({required final ProcessRunner _processRunner}) implements P
   static const String _binaryName = 'sesori-bridge';
   static const String _binaryBackupName = '.sesori-bridge.rollback';
   static const String _libBackupName = '.lib.rollback';
+  static const FilesystemCleaner _filesystemCleaner = FilesystemCleaner();
 
   @override
   bool get supportsInSessionChaining => true;
@@ -38,8 +40,8 @@ class PosixUpdateApi({required final ProcessRunner _processRunner}) implements P
     }
 
     targetBinary.parent.createSync(recursive: true);
-    _deleteIfExists(entity: backupBinary);
-    _deleteIfExists(entity: backupLibDir);
+    await _filesystemCleaner.delete(path: backupBinary.path, recursive: true);
+    await _filesystemCleaner.delete(path: backupLibDir.path, recursive: true);
 
     var movedTargetBinary = false;
     var movedNewBinary = false;
@@ -61,8 +63,8 @@ class PosixUpdateApi({required final ProcessRunner _processRunner}) implements P
       newLibDir.renameSync(targetLibDir.path);
       movedNewLib = true;
 
-      _deleteIfExists(entity: backupBinary);
-      _deleteIfExists(entity: backupLibDir);
+      await _filesystemCleaner.delete(path: backupBinary.path, recursive: true);
+      await _filesystemCleaner.delete(path: backupLibDir.path, recursive: true);
 
       if (Platform.isMacOS) {
         await _stripMacOSAttributes(installRoot);
@@ -86,8 +88,11 @@ class PosixUpdateApi({required final ProcessRunner _processRunner}) implements P
 
   @override
   Future<void> sweepResidue({required String installRoot}) async {
-    _deleteIfExists(entity: File(p.join(installRoot, 'bin', _binaryBackupName)));
-    _deleteIfExists(entity: Directory(p.join(installRoot, _libBackupName)));
+    await _filesystemCleaner.delete(
+      path: p.join(installRoot, 'bin', _binaryBackupName),
+      recursive: true,
+    );
+    await _filesystemCleaner.delete(path: p.join(installRoot, _libBackupName), recursive: true);
   }
 
   Future<void> _stripMacOSAttributes(String path) async {
@@ -133,16 +138,6 @@ class PosixUpdateApi({required final ProcessRunner _processRunner}) implements P
       }
     } on Object {
       // Best-effort rollback.
-    }
-  }
-
-  void _deleteIfExists({required FileSystemEntity entity}) {
-    try {
-      if (entity.existsSync()) {
-        entity.deleteSync(recursive: true);
-      }
-    } on Object {
-      // Best-effort cleanup.
     }
   }
 }

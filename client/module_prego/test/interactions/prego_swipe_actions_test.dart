@@ -92,9 +92,15 @@ Widget _harness({
   required List<Widget> rows,
   ScrollController? scrollController,
   TextDirection textDirection = TextDirection.ltr,
+  TargetPlatform? platform,
+  EdgeInsets systemGestureInsets = EdgeInsets.zero,
 }) {
   return MaterialApp(
-    theme: ThemeData(extensions: [PregoDesignSystem.light]),
+    theme: ThemeData(platform: platform, extensions: [PregoDesignSystem.light]),
+    builder: (context, child) => MediaQuery(
+      data: MediaQuery.of(context).copyWith(systemGestureInsets: systemGestureInsets),
+      child: child!,
+    ),
     home: Directionality(
       textDirection: textDirection,
       child: Scaffold(
@@ -113,6 +119,11 @@ Widget _harness({
 /// Drags [label]'s row horizontally by [dx] and lets it settle.
 Future<void> _swipe(WidgetTester tester, {required String label, required double dx}) async {
   await tester.drag(find.text('$label content'), Offset(dx, 0));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _swipeFrom(WidgetTester tester, {required Offset origin, required double dx}) async {
+  await tester.dragFrom(origin, Offset(dx, 0));
   await tester.pumpAndSettle();
 }
 
@@ -457,6 +468,85 @@ void main() {
 
     expect(counters.fullSwipes, 0);
     // ~190px extent at release — past half the reveal, so it settles open.
+    expect(_primaryRect(tester, 'A').left, lessThan(_surfaceWidth));
+  });
+
+  testWidgets('Android gesture navigation leaves both row edges to system back gestures', (tester) async {
+    final counters = _Counters();
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)],
+        platform: TargetPlatform.android,
+        systemGestureInsets: const EdgeInsets.symmetric(horizontal: 24),
+      ),
+    );
+
+    await _swipeFrom(tester, origin: const Offset(40, 48), dx: 120);
+    expect(_leadingRect(tester, 'A').right, lessThanOrEqualTo(0));
+
+    await _swipeFrom(tester, origin: const Offset(760, 48), dx: -150);
+    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+    expect(counters.leadingFullSwipes, 0);
+    expect(counters.fullSwipes, 0);
+
+    await _swipeFrom(tester, origin: const Offset(100, 48), dx: 120);
+    expect(_leadingRect(tester, 'A').left, moreOrLessEquals(16, epsilon: 1));
+  });
+
+  testWidgets('Android button navigation keeps swipe actions active at both row edges', (tester) async {
+    final counters = _Counters();
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)],
+        platform: TargetPlatform.android,
+      ),
+    );
+
+    await _swipeFrom(tester, origin: const Offset(40, 48), dx: 120);
+    expect(_leadingRect(tester, 'A').left, moreOrLessEquals(16, epsilon: 1));
+
+    await tester.tap(find.text('A content'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await _swipeFrom(tester, origin: const Offset(760, 48), dx: -150);
+    expect(_primaryRect(tester, 'A').left, lessThan(_surfaceWidth));
+  });
+
+  testWidgets('iOS leaves only the directional start edge to back navigation', (tester) async {
+    final counters = _Counters();
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)],
+        platform: TargetPlatform.iOS,
+      ),
+    );
+
+    await _swipeFrom(tester, origin: const Offset(40, 48), dx: 120);
+    expect(_leadingRect(tester, 'A').right, lessThanOrEqualTo(0));
+
+    await _swipeFrom(tester, origin: const Offset(100, 48), dx: 120);
+    expect(_leadingRect(tester, 'A').left, moreOrLessEquals(16, epsilon: 1));
+
+    await tester.tap(find.text('A content'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await _swipeFrom(tester, origin: const Offset(760, 48), dx: -150);
+    expect(_primaryRect(tester, 'A').left, lessThan(_surfaceWidth));
+  });
+
+  testWidgets('other platforms keep swipe actions active at both row edges', (tester) async {
+    final counters = _Counters();
+    await tester.pumpWidget(
+      _harness(
+        rows: [_row(label: 'A', counters: counters, leadingWidth: _leadingWidth)],
+        platform: TargetPlatform.macOS,
+      ),
+    );
+
+    await _swipeFrom(tester, origin: const Offset(40, 48), dx: 120);
+    expect(_leadingRect(tester, 'A').left, moreOrLessEquals(16, epsilon: 1));
+
+    await tester.tap(find.text('A content'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await _swipeFrom(tester, origin: const Offset(760, 48), dx: -150);
     expect(_primaryRect(tester, 'A').left, lessThan(_surfaceWidth));
   });
 

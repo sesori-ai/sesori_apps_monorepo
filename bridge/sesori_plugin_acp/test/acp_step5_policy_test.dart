@@ -11,10 +11,9 @@ class _PolicyPlugin({
   required final bool forms,
   required final Duration closeTimeout,
   required super.eventMapper,
-  required super.contentMapper,
   required super.commandTracker,
   required super.sessionOptionsService,
-  required AcpProcessFactory super.processFactory,
+  required super.processFactory,
 }) extends TestAcpPlugin {
   this
     : super(
@@ -72,13 +71,10 @@ void main() {
         failClosed: failClosed,
         forms: forms,
         closeTimeout: closeTimeout,
-        contentMapper: const AcpContentMapper(),
         eventMapper: AcpEventMapper(
           launchDirectory: "/repo",
-          agentId: "acp",
           pluginId: "acp",
           configurationTracker: configurationTracker,
-          contentMapper: const AcpContentMapper(),
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(
@@ -153,6 +149,7 @@ void main() {
     }
 
     Future<void> send(String sessionId, String text) => plugin.sendPrompt(
+      promptId: "prompt-1",
       sessionId: sessionId,
       parts: [PluginPromptPart.text(text: text)],
       variant: null,

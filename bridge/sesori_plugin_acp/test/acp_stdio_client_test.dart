@@ -35,7 +35,11 @@ void main() {
       expect(frame["jsonrpc"], "2.0");
       final id = frame["id"];
 
-      fake.emit({"jsonrpc": "2.0", "id": id, "result": {"ok": true}});
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": id,
+        "result": {"ok": true},
+      });
       final result = await future;
       expect((result as Map)["ok"], true);
     });
@@ -126,9 +130,11 @@ void main() {
       });
       await expectLater(
         future,
-        throwsA(isA<AcpRpcException>()
-            .having((e) => e.code, "code", -32603)
-            .having((e) => e.message, "message", "unknown error")),
+        throwsA(
+          isA<AcpRpcException>()
+              .having((e) => e.code, "code", -32603)
+              .having((e) => e.message, "message", "unknown error"),
+        ),
       );
     });
   });
@@ -182,7 +188,11 @@ void main() {
 
       final request = client.request(method: "initialize");
       final id = replacement.written.single["id"];
-      replacement.emit({"jsonrpc": "2.0", "id": id, "result": {"ok": true}});
+      replacement.emit({
+        "jsonrpc": "2.0",
+        "id": id,
+        "result": {"ok": true},
+      });
       expect((await request as Map)["ok"], isTrue);
       expect(spawnIndex, 2);
     });
@@ -207,10 +217,12 @@ void main() {
 
       var replacementExited = false;
       unawaited(client.processExit.then((_) => replacementExited = true));
-      final outcome = client.request(method: "initialize").then<Object>(
-        (result) => result as Object,
-        onError: (Object error, StackTrace _) => error,
-      );
+      final outcome = client
+          .request(method: "initialize")
+          .then<Object>(
+            (result) => result as Object,
+            onError: (Object error, StackTrace _) => error,
+          );
       final id = replacement.written.single["id"];
 
       old.exit(23);
@@ -218,7 +230,11 @@ void main() {
       expect(client.isConnected, isTrue);
       expect(replacementExited, isFalse);
 
-      replacement.emit({"jsonrpc": "2.0", "id": id, "result": {"ok": true}});
+      replacement.emit({
+        "jsonrpc": "2.0",
+        "id": id,
+        "result": {"ok": true},
+      });
       expect((await outcome as Map)["ok"], isTrue);
     });
   });

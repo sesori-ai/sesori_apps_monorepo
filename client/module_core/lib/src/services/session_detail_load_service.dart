@@ -112,16 +112,19 @@ class SessionDetailLoadService({
       final questionsFuture = _repository.getPendingQuestions(sessionId: sessionId);
       final permissionsFuture = _repository.getPendingPermissions(sessionId: sessionId);
       final statusesFuture = _repository.getSessionStatuses();
+      final queuedPromptsFuture = _repository.getQueuedPrompts(sessionId: sessionId);
       final (
         messagesResponse,
         questionsResponse,
         permissionsResponse,
         statusesResponse,
+        queuedPromptsResponse,
       ) = await (
         messagesFuture,
         questionsFuture,
         permissionsFuture,
         statusesFuture,
+        queuedPromptsFuture,
       ).wait;
       final (optionsResult, supportsPromptAttachments) = await (
         optionsFuture,
@@ -140,19 +143,36 @@ class SessionDetailLoadService({
 
       final pendingQuestions = switch (questionsResponse) {
         SuccessResponse(:final data) => data.data,
-        ErrorResponse() => <PendingQuestion>[],
+        ErrorResponse(:final error) => () {
+          logw("Failed to load pending questions; treating the session as having none", error);
+          return <PendingQuestion>[];
+        }(),
       };
       final pendingPermissions = switch (permissionsResponse) {
         SuccessResponse(:final data) => data.data,
-        ErrorResponse() => <PendingPermission>[],
+        ErrorResponse(:final error) => () {
+          logw("Failed to load pending permissions; treating the session as having none", error);
+          return <PendingPermission>[];
+        }(),
+      };
+      // An error is also the old-bridge (unknown route) path: no queue info.
+      final bridgeQueuedPrompts = switch (queuedPromptsResponse) {
+        SuccessResponse(:final data) => data.data,
+        ErrorResponse() => <QueuedSessionPrompt>[],
       };
       final childSessions = switch (childrenResponse) {
         SuccessResponse(:final data) => data.items,
-        ErrorResponse() => <Session>[],
+        ErrorResponse(:final error) => () {
+          logw("Failed to load child sessions; treating the session as having none", error);
+          return <Session>[];
+        }(),
       };
       final statuses = switch (statusesResponse) {
         SuccessResponse(:final data) => data.statuses,
-        ErrorResponse() => <String, SessionStatus>{},
+        ErrorResponse(:final error) => () {
+          logw("Failed to load session statuses; falling back to none", error);
+          return <String, SessionStatus>{};
+        }(),
       };
       return SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
@@ -163,6 +183,7 @@ class SessionDetailLoadService({
           olderMessagesCursor: olderMessagesCursor,
           pendingQuestions: pendingQuestions,
           pendingPermissions: pendingPermissions,
+          bridgeQueuedPrompts: bridgeQueuedPrompts,
           childSessions: childSessions,
           statuses: statuses,
           agents: options.agents,
@@ -173,7 +194,6 @@ class SessionDetailLoadService({
           isRootSession: session != null ? session.parentID == null : null,
           isArchived: isArchived,
         ),
-        isBridgeConnected: _connectionService.currentStatus is ConnectionConnected,
       );
     } on Object catch (error, stackTrace) {
       return SessionDetailLoadResult.failed(error: error, stackTrace: stackTrace);
@@ -331,10 +351,11 @@ class const SessionDetailSnapshot({
   /// pagination and always sends everything.
   required final int? olderMessagesCursor,
   required final List<PendingQuestion> pendingQuestions,
+  required final List<QueuedSessionPrompt> bridgeQueuedPrompts,
   required final List<PendingPermission> pendingPermissions,
   required final List<Session> childSessions,
   required final Map<String, SessionStatus> statuses,
-  required final List<AgentInfo?> agents,
+  required final List<AgentInfo> agents,
   required final ProviderListResponse? providerData,
   required final List<CommandInfo> commands,
   required final String? canonicalSessionTitle,
@@ -374,7 +395,6 @@ final class _LegacySessionOptionsLoadError({required List<LegacySessionOptionErr
 sealed class const SessionDetailLoadResult() {
   const factory loaded({
     required SessionDetailSnapshot snapshot,
-    required bool isBridgeConnected,
   }) = SessionDetailLoadResultLoaded;
 
   const factory waitingForConnection() = SessionDetailLoadResultWaitingForConnection;
@@ -388,7 +408,6 @@ sealed class const SessionDetailLoadResult() {
 
 final class const SessionDetailLoadResultLoaded({
   required final SessionDetailSnapshot snapshot,
-  required final bool isBridgeConnected,
 }) extends SessionDetailLoadResult;
 
 final class const SessionDetailLoadResultWaitingForConnection() extends SessionDetailLoadResult;

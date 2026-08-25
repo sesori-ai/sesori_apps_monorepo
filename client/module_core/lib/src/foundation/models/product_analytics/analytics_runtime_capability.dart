@@ -1,8 +1,8 @@
 enum AnalyticsRuntimeDisabledReason() {
   debugOrProfile,
+  recentBuildUnauthenticated,
   unsupportedPlatform,
   analyticsSinkUnavailable,
-  identitySafetyPreconditionFailed,
 }
 
 sealed class const AnalyticsRuntimeCapability() {

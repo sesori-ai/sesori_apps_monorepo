@@ -2,19 +2,20 @@ import "package:sesori_bridge/src/api/database/daos/catalog_hydrations_dao.dart"
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/pull_request_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
-import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
-import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_activity_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
+import "package:sesori_bridge/src/api/filesystem_api.dart";
+import "package:sesori_bridge/src/api/git_cli_api.dart";
+import "package:sesori_bridge/src/repositories/agent_repository.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
+import "package:sesori_bridge/src/repositories/pending_interaction_support.dart";
+import "package:sesori_bridge/src/repositories/permission_repository.dart";
+import "package:sesori_bridge/src/repositories/project_activity_repository.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge/src/repositories/project_repository.dart";
+import "package:sesori_bridge/src/repositories/provider_repository.dart";
+import "package:sesori_bridge/src/repositories/question_repository.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/repositories/worktree_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "plugin_runtime_test_support.dart";
@@ -26,7 +27,6 @@ AgentRepository singlePluginAgentRepository({
   return AgentRepository(
     runtime: createTestPluginRuntime(plugins: [plugin]),
     projectsDao: projectsDao,
-    legacyPluginId: plugin.id,
   );
 }
 
@@ -36,7 +36,7 @@ PermissionRepository singlePluginPermissionRepository({
 }) {
   return PermissionRepository(
     runtime: createTestPluginRuntime(plugins: [plugin]),
-    sessionDao: sessionDao,
+    pendingSupport: PendingInteractionSupport(sessionDao: sessionDao),
   );
 }
 
@@ -88,6 +88,7 @@ QuestionRepository singlePluginQuestionRepository({
 }) {
   return QuestionRepository(
     runtime: createTestPluginRuntime(plugins: [plugin]),
+    pendingSupport: PendingInteractionSupport(sessionDao: sessionDao),
     sessionDao: sessionDao,
     projectsDao: projectsDao,
     aggregateSourceDeadline: const Duration(seconds: 5),
@@ -110,9 +111,6 @@ SessionRepository singlePluginSessionRepository({
           plugins: [plugin],
           eligiblePluginIds: eligiblePluginIds,
         ),
-    bridgeDerivedProjectPluginIds: {
-      if (plugin is BridgeDerivedProjectsPluginApi) plugin.id,
-    },
     sessionDao: sessionDao,
     projectsDao: projectsDao,
     pullRequestDao: pullRequestDao,

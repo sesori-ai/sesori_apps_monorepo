@@ -14,17 +14,22 @@ import "services/omp_session_cleanup_service.dart";
 import "services/omp_session_options_service.dart";
 import "trackers/omp_catalog_tracker.dart";
 
+/// Oh My Pi backend over ACP.
+///
+/// OMP replaces an in-flight same-session turn when another input arrives and
+/// supports standard form elicitation. Independent sessions retain stock ACP's
+/// per-session turn lanes, while project-scoped model/mode/thinking catalog and
+/// persisted-session cleanup run over isolated scratch processes.
 class OmpPlugin._({
   required super.launchSpec,
   required super.launchDirectory,
-  required super.contentMapper,
   required super.eventMapper,
   required super.commandTracker,
   required super.sessionOptionsService,
   required final OmpCatalogService _catalogService,
   required final OmpSessionOptionsService _ompSessionOptionsService,
   required final OmpSessionCleanupService _cleanupService,
-  super.processFactory,
+  required super.processFactory,
 }) extends AcpPlugin implements PersistedSessionCleanupApi {
   factory({
     String binaryPath = OmpBinary.defaultBinary,
@@ -53,7 +58,6 @@ class OmpPlugin._({
       repository: catalogRepository,
       tracker: catalogTracker,
       totalTimeout: const Duration(seconds: 20),
-      maxModels: 24,
     );
     final ompSessionOptionsService = OmpSessionOptionsService(
       catalogService: catalogService,
@@ -76,17 +80,13 @@ class OmpPlugin._({
       totalTimeout: const Duration(seconds: 20),
       maxPages: 50,
     );
-    const contentMapper = AcpContentMapper();
     return OmpPlugin._(
       launchSpec: launchSpec,
       launchDirectory: cwd,
-      contentMapper: contentMapper,
       eventMapper: AcpEventMapper(
         launchDirectory: cwd,
-        agentId: OmpPluginIdentity.id,
         pluginId: OmpPluginIdentity.id,
         configurationTracker: configurationTracker,
-        contentMapper: contentMapper,
       ),
       commandTracker: commandTracker,
       sessionOptionsService: AcpSessionOptionsService(
@@ -109,34 +109,19 @@ class OmpPlugin._({
       );
 
   @override
-  String get clientName => "sesori-bridge";
-
-  @override
-  String get clientVersion => "0.0.0";
-
-  @override
-  String? get authMethodId => "agent";
-
-  @override
-  Map<String, dynamic>? get initializeCapabilityMeta => null;
+  String? get authMethodId => OmpBinary.acpAuthMethodId;
 
   @override
   bool get supportsFormElicitation => true;
 
   @override
-  bool get serializesPromptsProcessWide => true;
-
-  @override
-  bool get failsTurnOnSelectionError => true;
-
-  @override
-  Duration get sessionCloseSettlementTimeout => const Duration(seconds: 5);
+  bool get cancelsActiveTurnForQueuedInput => true;
 
   @override
   void captureSessionConfig(
     AcpNewSessionResult result, {
-    String? sessionId,
-    bool fromNewSession = false,
+    required String? sessionId,
+    required bool fromNewSession,
   }) => _ompSessionOptionsService.captureSessionConfig(
     result,
     sessionId: sessionId,

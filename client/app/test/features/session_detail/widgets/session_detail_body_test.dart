@@ -152,8 +152,10 @@ SessionDetailLoaded _loadedState({
     ),
     stagedCommand: null,
     isRefreshing: false,
-    availableVariants: const [SessionVariant(id: "xhigh")],
-    retryErrorMessage: null,
+    availableVariants: const [
+      SessionVariant(id: "xhigh"),
+      SessionVariant(id: "low"),
+    ],
   );
 }
 
@@ -204,6 +206,7 @@ void main() {
   late MockVoiceTranscriptionService voiceTranscriptionService;
   late MockComposerImagePicker imagePicker;
   late MockImageClipboard imageClipboard;
+  late StreamController<void> maxDurationReached;
 
   setUpAll(() {
     registerFallbackValue(ComposerDraft.typed(text: ""));
@@ -226,6 +229,7 @@ void main() {
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
     when(() => cubit.questionStream).thenAnswer((_) => const Stream.empty());
     when(() => cubit.permissionStream).thenAnswer((_) => const Stream.empty());
+    when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
     when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
     when(
       () => cubit.saveComposerDraft(draft: any(named: "draft")),
@@ -233,7 +237,7 @@ void main() {
     when(cubit.clearComposerDraft).thenReturn(null);
     when(cubit.reportVoiceTranscriptionCompleted).thenReturn(null);
 
-    final maxDurationReached = StreamController<void>.broadcast();
+    maxDurationReached = StreamController<void>.broadcast();
     addTearDown(maxDurationReached.close);
     when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
     when(() => voiceTranscriptionService.prewarmRecording()).thenAnswer((_) async {});
@@ -384,6 +388,7 @@ void main() {
       messages: const [
         MessageWithParts(
           info: Message.user(
+            promptId: null,
             id: "empty-user-envelope",
             sessionID: "session-1",
             agent: null,
@@ -447,6 +452,7 @@ void main() {
   testWidgets("sending feedback replaces the empty transcript label", (tester) async {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       sendingSubmission: const QueuedSessionSubmission.text(
+        promptId: "prompt-1",
         text: "Cold-start prompt",
         inputMode: ComposerInputMode.typed,
         attachments: [],
@@ -471,6 +477,7 @@ void main() {
       messages: const [
         MessageWithParts(
           info: Message.user(
+            promptId: null,
             id: "markdown-user",
             sessionID: "session-1",
             agent: null,
@@ -515,6 +522,7 @@ void main() {
       messages: const [
         MessageWithParts(
           info: Message.user(
+            promptId: null,
             id: "remote-image-user",
             sessionID: "session-1",
             agent: null,
@@ -557,6 +565,7 @@ void main() {
       messages: const [
         MessageWithParts(
           info: Message.user(
+            promptId: null,
             id: "unknown-attachment-user",
             sessionID: "session-1",
             agent: null,
@@ -597,6 +606,7 @@ void main() {
       messages: const [
         MessageWithParts(
           info: Message.user(
+            promptId: null,
             id: "empty-user",
             sessionID: "session-1",
             agent: null,
@@ -662,12 +672,14 @@ void main() {
       selectedAgentModel: const AgentModel(
         providerID: "anthropic",
         modelID: "claude-3-5-sonnet",
-        variant: null,
+        variant: "low",
       ),
       stagedCommand: null,
       isRefreshing: false,
-      availableVariants: const [SessionVariant(id: "xhigh")],
-      retryErrorMessage: null,
+      availableVariants: const [
+        SessionVariant(id: "xhigh"),
+        SessionVariant(id: "low"),
+      ],
     );
 
     final controller = StreamController<SessionDetailState>.broadcast();
@@ -685,23 +697,26 @@ void main() {
     await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
 
-    // Select Default (null variant).
-    await tester.tap(_pickerMenuItem("Default"));
+    // Select the other available variant.
+    await tester.tap(_pickerMenuItem("low"));
     await tester.pumpAndSettle();
 
-    verify(() => cubit.selectVariant(null)).called(1);
+    verify(() => cubit.selectVariant(const SessionVariant(id: "low"))).called(1);
 
     // Emit the updated state to simulate the cubit update.
     when(() => cubit.state).thenReturn(updatedState);
     controller.add(updatedState);
     await tester.pumpAndSettle();
 
-    // The UI should now show "Default".
-    expect(find.widgetWithText(PregoPickerButton, "Default"), findsOneWidget);
+    // The UI should now show the newly selected variant.
+    expect(find.widgetWithText(PregoPickerButton, "low"), findsOneWidget);
     expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
   });
 
   testWidgets("diff button navigates to diffs with the typed route", (tester) async {
+    final notices = StreamController<SessionDetailNotice>.broadcast();
+    addTearDown(notices.close);
+    when(() => cubit.noticeStream).thenAnswer((_) => notices.stream);
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
@@ -709,6 +724,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Diffs bridgeId=null"), findsOneWidget);
+
+    notices.add(SessionDetailNotice.promptOptionsUpdated);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(
+      find.text("Prompt options changed. Updated settings and retrying your message."),
+      findsNothing,
+    );
   });
 
   testWidgets("diff button preserves bridge scope", (tester) async {
@@ -744,6 +768,7 @@ void main() {
           isArchived: true,
           queuedMessages: const [
             QueuedSessionSubmission.text(
+              promptId: "prompt-1",
               text: "Queued before archive",
               inputMode: ComposerInputMode.typed,
               attachments: [],
@@ -768,6 +793,24 @@ void main() {
     expect(
       tester.widget<UserMessageBubble>(find.byType(UserMessageBubble)).outlined,
       isTrue,
+    );
+  });
+
+  testWidgets("shows an alert when stale prompt options are refreshed automatically", (tester) async {
+    final notices = StreamController<SessionDetailNotice>.broadcast();
+    addTearDown(notices.close);
+    when(() => cubit.noticeStream).thenAnswer((_) => notices.stream);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    notices.add(SessionDetailNotice.promptOptionsUpdated);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(
+      find.text("Prompt options changed. Updated settings and retrying your message."),
+      findsOneWidget,
     );
   });
 
@@ -1607,6 +1650,27 @@ void main() {
     verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
     verifyNever(() => voiceTranscriptionService.cancelRecording());
     expect(find.text("yes"), findsOneWidget);
+  });
+
+  testWidgets("the recording limit stops and transcribes the active hold", (tester) async {
+    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "limit words");
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 250));
+    maxDurationReached.add(null);
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
+    expect(find.text("Recording limit reached (15 minutes)"), findsOneWidget);
+    expect(find.text("limit words"), findsOneWidget);
+
+    await gesture.up();
   });
 
   testWidgets("release during recorder startup discards the incomplete recording", (tester) async {
@@ -2726,6 +2790,7 @@ void main() {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       queuedMessages: [
         QueuedSessionSubmission.text(
+          promptId: "prompt-1",
           text: "",
           inputMode: ComposerInputMode.typed,
           attachments: [
@@ -2747,6 +2812,7 @@ void main() {
 
   testWidgets("a queued submission renders inline with the transcript", (tester) async {
     const submission = QueuedSessionSubmission.text(
+      promptId: "prompt-1",
       text: "Please **review** `main.dart`",
       inputMode: ComposerInputMode.typed,
       attachments: [],
@@ -2773,7 +2839,7 @@ void main() {
       find.ancestor(
         of: find.byType(QueuedMessageBubble),
         matching: find.byWidgetPredicate(
-          (widget) => widget is CustomScrollView && widget.reverse,
+          (widget) => widget is ListView && widget.reverse,
         ),
       ),
       findsOneWidget,
@@ -2793,6 +2859,7 @@ void main() {
 
   testWidgets("the same inline queued bubble becomes sending in place", (tester) async {
     const submission = QueuedSessionSubmission.text(
+      promptId: "prompt-1",
       text: "Cold-start prompt",
       inputMode: ComposerInputMode.typed,
       attachments: [],
@@ -2800,6 +2867,7 @@ void main() {
       agentModel: null,
     );
     const followingSubmission = QueuedSessionSubmission.text(
+      promptId: "prompt-2",
       text: "Next prompt",
       inputMode: ComposerInputMode.typed,
       attachments: [],
@@ -2817,7 +2885,9 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    final submissionFinder = find.byKey(const ObjectKey(submission));
+    final submissionFinder = find.byWidgetPredicate(
+      (widget) => widget is QueuedMessageBubble && widget.key == const ValueKey("session-detail-prompt-prompt-1"),
+    );
     final before = tester.element(submissionFinder);
     expect(
       find.descendant(of: find.byType(SessionDetailMessageList), matching: submissionFinder),
@@ -2837,6 +2907,8 @@ void main() {
     await tester.pump();
 
     expect(identical(tester.element(submissionFinder), before), isTrue);
+    // The outgoing status rail cross-fades out; settle it before counting.
+    await tester.pump(const Duration(milliseconds: 300));
     expect(
       tester
           .widget<UserMessageBubble>(
@@ -2857,6 +2929,7 @@ void main() {
     addTearDown(tester.binding.platformDispatcher.clearAccessibilityFeaturesTestValue);
 
     const submission = QueuedSessionSubmission.text(
+      promptId: "prompt-1",
       text: "Cold-start prompt",
       inputMode: ComposerInputMode.typed,
       attachments: [],
@@ -2881,12 +2954,13 @@ void main() {
 
     expect(find.text("Cancel"), findsNothing);
     expect(find.text("Sending"), findsOneWidget);
-    expect(tester.widget<CircularProgressIndicator>(find.byType(CircularProgressIndicator)).value, 0.75);
+    expect(find.byType(PregoActivityIndicator), findsOneWidget);
   });
 
   testWidgets("an in-flight submission stays visible without a cancel action", (tester) async {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       sendingSubmission: const QueuedSessionSubmission.text(
+        promptId: "prompt-1",
         text: "Cold-start prompt",
         inputMode: ComposerInputMode.typed,
         attachments: [],

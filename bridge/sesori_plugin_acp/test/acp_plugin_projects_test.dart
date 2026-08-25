@@ -27,13 +27,10 @@ void main() {
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
-        contentMapper: const AcpContentMapper(),
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
-          agentId: "acp",
           pluginId: "acp",
           configurationTracker: configurationTracker,
-          contentMapper: const AcpContentMapper(),
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(
@@ -398,6 +395,7 @@ void main() {
       expect(s1.projectID, home);
 
       final sending = plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PluginPromptPart.text(text: "resume me")],
         variant: null,
@@ -455,6 +453,7 @@ void main() {
       addTearDown(sub.cancel);
 
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PluginPromptPart.text(text: "hi")],
         variant: null,
@@ -499,6 +498,7 @@ void main() {
 
       // A running turn surfaces under that project's activity row, not the CWD.
       await plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: session.id,
         parts: const [PluginPromptPart.text(text: "hi")],
         variant: null,
@@ -520,7 +520,7 @@ void main() {
       // enumeration would (the app lists a project's sessions before opening
       // one), then prompt a session this process never created so a
       // resume-load is forced.
-      final listing = plugin.getSessions(opened);
+      final listing = plugin.getSessions(projectId: opened, start: null, limit: null);
       await respond("session/list", {
         "sessions": [
           {"sessionId": "old-s", "cwd": opened, "title": "Prior"},
@@ -530,6 +530,7 @@ void main() {
       expect(sessions.single.projectID, opened);
 
       final sending = plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "old-s",
         parts: const [PluginPromptPart.text(text: "again")],
         variant: null,
@@ -563,6 +564,7 @@ void main() {
       );
 
       final sending = plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "cold-s",
         parts: const [PluginPromptPart.text(text: "resume me")],
         variant: null,
@@ -603,6 +605,7 @@ void main() {
         },
       );
       final sending = plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "cold-s",
         parts: const [PluginPromptPart.text(text: "resume me")],
         variant: null,
@@ -631,6 +634,7 @@ void main() {
       plugin.primeSessionDirectory(sessionId: "cold-s", directory: stored);
 
       final sending = plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "cold-s",
         parts: const [PluginPromptPart.text(text: "resume me")],
         variant: null,
@@ -681,6 +685,7 @@ void main() {
       );
 
       final sending = plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "cold-s",
         parts: const [PluginPromptPart.text(text: "resume me")],
         variant: null,
@@ -703,7 +708,7 @@ void main() {
       const opened = "/Users/x/kustos";
 
       // The agent itself reported the session's cwd via enumeration…
-      final listing = plugin.getSessions(opened);
+      final listing = plugin.getSessions(projectId: opened, start: null, limit: null);
       await respond("session/list", {
         "sessions": [
           {"sessionId": "old-s", "cwd": opened, "title": "Prior"},
@@ -715,6 +720,7 @@ void main() {
       plugin.primeSessionDirectory(sessionId: "old-s", directory: "/somewhere/stale");
 
       final sending = plugin.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "old-s",
         parts: const [PluginPromptPart.text(text: "again")],
         variant: null,
@@ -733,28 +739,8 @@ void main() {
     });
 
     test("a broken history replay surfaces as a typed failure, not an empty thread", () async {
-      final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
-      final failingPlugin = TestAcpPlugin(
-        id: "acp",
-        agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+      final failingPlugin = composeTestAcpPlugin(
         launchDirectory: cwd,
-        contentMapper: const AcpContentMapper(),
-        eventMapper: AcpEventMapper(
-          launchDirectory: cwd,
-          agentId: "acp",
-          pluginId: "acp",
-          configurationTracker: configurationTracker,
-          contentMapper: const AcpContentMapper(),
-        ),
-        commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
         processFactory: _throwReplayProcess,
       );
       addTearDown(failingPlugin.dispose);
@@ -839,7 +825,6 @@ void main() {
       );
       for (final session in [inLaunch, inOpened]) {
         plugin.registry!.addPendingQuestion(
-          bridgeRequestId: "q-${session.id}",
           acpId: "acp-${session.id}",
           sessionId: session.id,
           questions: const [question],
@@ -869,10 +854,9 @@ class _RegistryCapturingAcpPlugin({
   required super.launchSpec,
   required super.launchDirectory,
   required super.eventMapper,
-  required super.contentMapper,
   required super.commandTracker,
   required super.sessionOptionsService,
-  super.processFactory,
+  required super.processFactory,
 }) extends TestAcpPlugin {
   AcpApprovalRegistry? registry;
 

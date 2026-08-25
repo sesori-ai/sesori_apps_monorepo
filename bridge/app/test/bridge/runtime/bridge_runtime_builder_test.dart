@@ -4,14 +4,11 @@ import "dart:io";
 
 import "package:fake_async/fake_async.dart";
 import "package:http/http.dart" as http;
-import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/device_canvas/protocol.dart";
-import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
-import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
-import "package:sesori_bridge/src/bridge/orchestrator.dart";
-import "package:sesori_bridge/src/bridge/relay_client.dart";
-import "package:sesori_bridge/src/bridge/routing/routed_request_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
+import "package:sesori_bridge/src/foundation/process_runner.dart";
+import "package:sesori_bridge/src/foundation/relay_client.dart";
+import "package:sesori_bridge/src/models/bridge_config.dart";
+import "package:sesori_bridge/src/orchestrator.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/completion_push_listener.dart";
 import "package:sesori_bridge/src/push/maintenance_push_listener.dart";
@@ -21,6 +18,8 @@ import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
+import "package:sesori_bridge/src/routing/routed_request_dispatcher.dart";
+import "package:sesori_bridge/src/runtime/bridge_runtime.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show ServerClock;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -69,7 +68,6 @@ void main() {
         accessTokenProvider: FakeAccessTokenProvider(),
         bridgeIdProvider: FakeBridgeIdProvider(),
       ),
-      legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
@@ -81,7 +79,7 @@ void main() {
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(),
-      tokenRefresher: _FakeTokenRefresher(),
+      tokenRefresher: FakeTokenRefresher(),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: failureReporter,
       restartService: restartService,
@@ -124,7 +122,7 @@ void main() {
     await runtime.close();
     await lifecycleService.dispose();
     httpClient.close();
-    await plugin.dispose();
+    await plugin.closeEvents();
   });
 
   test("Device Canvas IPC rotates rendezvous, secret, and peer after bridge re-registration", () async {
@@ -153,7 +151,6 @@ void main() {
         accessTokenProvider: FakeAccessTokenProvider(),
         bridgeIdProvider: FakeBridgeIdProvider(),
       ),
-      legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
@@ -165,7 +162,7 @@ void main() {
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(),
-      tokenRefresher: _FakeTokenRefresher(),
+      tokenRefresher: FakeTokenRefresher(),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: failureReporter,
       restartService: restartService,
@@ -216,7 +213,7 @@ void main() {
     await runtime.close();
     await lifecycleService.dispose();
     httpClient.close();
-    await plugin.dispose();
+    await plugin.closeEvents();
   });
 }
 
@@ -237,11 +234,6 @@ Future<Map<String, dynamic>> _nextJson(StreamIterator<String> messages) async {
   return jsonDecode(messages.current) as Map<String, dynamic>;
 }
 
-class _FakeTokenRefresher() implements TokenRefresher {
-  @override
-  Future<String> getAccessToken({bool forceRefresh = false}) async => "test-token";
-}
-
 ({
   PushDispatcher dispatcher,
   CompletionPushListener completionListener,
@@ -257,7 +249,7 @@ _createPushSubsystemForTest() {
   final dispatcher = PushDispatcher(
     client: PushNotificationClient(
       authBackendURL: "https://api.sesori.test",
-      tokenRefreshManager: _FakeTokenRefresher(),
+      tokenRefreshManager: FakeTokenRefresher(),
       client: http.Client(),
     ),
     rateLimiter: rateLimiter,

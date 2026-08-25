@@ -88,7 +88,7 @@ cd bridge && make analyze && make test
 cd ../client && make analyze && make test
 ```
 
-Bridge CI is stricter than `make analyze` and uses `dart analyze --fatal-infos`. Consider running that from each changed module if you touched Bridge code.
+`make analyze` and Bridge CI both use `dart analyze --fatal-infos`, so a clean local run matches CI.
 
 ## Opening issues and pull requests
 

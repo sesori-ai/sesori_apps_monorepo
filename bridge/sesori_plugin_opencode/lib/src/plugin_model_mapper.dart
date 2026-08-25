@@ -119,6 +119,7 @@ class const PluginModelMapper({
         sessionID: sessionID,
         agent: agent,
         time: _mapUserMessageTime(time),
+        promptId: null,
       ),
       AssistantMessage() => _assistantMessageMapper.map(info),
       MessageUnknown(:final raw) => throw FormatException("Unknown message role: $raw"),

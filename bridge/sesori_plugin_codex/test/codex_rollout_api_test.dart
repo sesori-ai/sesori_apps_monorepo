@@ -8,8 +8,10 @@ import "package:codex_plugin/src/models/codex_replay_tool_disposition.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/codex_message_repository.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_user_content_mapper.dart";
 import "package:codex_plugin/src/repositories/models/codex_session_record.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -17,6 +19,7 @@ import "support/codex_plugin_test_factory.dart";
 
 void main() {
   group("Codex rollout layers", () {
+    const userContentMapper = CodexUserContentMapper();
     late Directory codexHome;
     late CodexRolloutApi rolloutApi;
     late CodexCatalogRepository catalogRepository;
@@ -33,6 +36,7 @@ void main() {
         rolloutToolMapper: const CodexRolloutToolMapper(
           imageAttachmentMapper: CodexImageAttachmentMapper(),
         ),
+        userContentMapper: userContentMapper,
       );
     });
 
@@ -572,7 +576,7 @@ void main() {
         path: "sessions/2026/07/22/rollout-current.jsonl",
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
         cwd: "/repo/app",
-        cliVersion: "0.144.1",
+        cliVersion: "0.147.0",
         extraLines: [
           jsonEncode({
             "type": "response_item",
@@ -594,6 +598,13 @@ void main() {
               ],
             },
           }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "turn_aborted",
+              "reason": "interrupted",
+            },
+          }),
         ],
       );
 
@@ -605,12 +616,20 @@ void main() {
       }, level: LogLevel.verbose);
 
       expect(output, isNot(contains("malformed rollout")));
-      expect(header, hasLength(3));
-      expect(transcript, hasLength(3));
+      expect(header, hasLength(4));
+      expect(transcript, hasLength(4));
       expect(transcript[1], isA<CodexRolloutResponseItemLineDto>());
       expect(_responseItemPayload(line: transcript[1]), isA<CodexRolloutCustomToolCallOutputDto>());
       expect(transcript[2], isA<CodexRolloutResponseItemLineDto>());
       expect(_responseItemPayload(line: transcript[2]), isA<CodexRolloutReasoningDto>());
+      expect(
+        (transcript[3] as CodexRolloutEventMessageLineDto).payload,
+        isA<CodexRolloutTurnAbortedEventDto>().having(
+          (event) => event.turnId,
+          "turnId",
+          isNull,
+        ),
+      );
     });
 
     test("rollout content decodes closed text, image, and unknown variants", () {
@@ -968,6 +987,267 @@ void main() {
       expect(messages[0].parts.last.id, "user-1-file-1");
       expect(messages[1].info.id, "assistant-1");
       expect(messages[1].parts.single.id, "assistant-1-text");
+    });
+
+    test("readMessages hides bridge context while preserving authored text and images", () {
+      const worktreeContext = """
+[SYSTEM CONTEXT \u2014 IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---
+""";
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/15/rollout-worktree-context.jsonl",
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaab",
+        cwd: "/repo/app/.worktrees/gray-wolf",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "attachment-only",
+              "role": "user",
+              "content": [
+                {"type": "input_text", "text": worktreeContext},
+                {"type": "input_image", "image_url": "data:image/png;base64,AA=="},
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "user_message",
+              "message": worktreeContext,
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "mixed-prompt",
+              "role": "user",
+              "content": [
+                {"type": "input_text", "text": worktreeContext},
+                {"type": "input_text", "text": "visible prompt"},
+                {"type": "input_image", "image_url": "data:image/png;base64,AQ=="},
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {
+              "type": "user_message",
+              "message": "$worktreeContext\nvisible prompt",
+            },
+          }),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaab",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages.map((message) => message.info.id), ["attachment-only", "mixed-prompt"]);
+      expect(messages.first.parts, hasLength(1));
+      expect(messages.first.parts.single.type, PluginMessagePartType.file);
+      expect(messages.first.parts.single.attachment, isA<PluginMessageAttachmentInlineImage>());
+      expect(messages.last.parts, hasLength(2));
+      expect(messages.last.parts.first.text, "visible prompt");
+      expect(messages.last.parts.first.text, isNot(contains("SYSTEM CONTEXT")));
+      final image = messages.last.parts.last.attachment! as PluginMessageAttachmentInlineImage;
+      expect(image.base64, "AQ==");
+    });
+
+    test("readMessages hides bridge context inside a command invocation", () {
+      const invocation = r"""
+$review [SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---
+
+authored arguments
+""";
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/20/rollout-command-context.jsonl",
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaad",
+        cwd: "/repo/.worktrees/feature",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "command-context",
+              "role": "user",
+              "content": [
+                {"type": "input_text", "text": invocation},
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {"type": "user_message", "message": invocation},
+          }),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaad",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages.single.parts.single.text, r"$review authored arguments" "\n");
+    });
+
+    test("readMessages hides bridge context from an argumentless command", () {
+      const invocation = r"""
+$review [SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---""";
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/20/rollout-argumentless-command-context.jsonl",
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaae",
+        cwd: "/repo/.worktrees/feature",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "argumentless-command-context",
+              "role": "user",
+              "content": [
+                {"type": "input_text", "text": invocation},
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {"type": "user_message", "message": invocation},
+          }),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaae",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages.single.parts.single.text, r"$review ");
+    });
+
+    test("readMessages skips a pending bridge-context-only user message", () {
+      const worktreeContext = """
+[SYSTEM CONTEXT — IMPORTANT]
+A dedicated git worktree and branch have been created for this session:
+- Branch: feature
+- Worktree path: /repo/.worktrees/feature
+- Based on: main
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+
+---
+""";
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/20/rollout-context-only.jsonl",
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaac",
+        cwd: "/repo/.worktrees/feature",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "context-only",
+              "role": "user",
+              "content": [
+                {"type": "input_text", "text": worktreeContext},
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "event_msg",
+            "payload": {"type": "user_message", "message": worktreeContext},
+          }),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaac",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages, isEmpty);
+    });
+
+    test("readMessages preserves a terminal Codex failure as an error message", () {
+      const sessionId = "019a0000-1111-2222-3333-eeeeeeeeeeee";
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/08/19/rollout-terminal-error.jsonl",
+        sessionId: sessionId,
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "type": "turn_context",
+            "payload": {"model": "gpt-5.6"},
+          }),
+          jsonEncode({
+            "timestamp": "2026-08-19T18:06:15.079Z",
+            "type": "event_msg",
+            "payload": {
+              "type": "task_complete",
+              "turn_id": "turn-quota",
+              "error": {
+                "message": "You've hit your usage limit.",
+                "codex_error_info": "usage_limit_exceeded",
+              },
+            },
+          }),
+        ],
+      );
+
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: sessionId,
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      expect(messages, hasLength(1));
+      final error = messages.single.info as PluginMessageError;
+      expect(error.id, "turn-quota");
+      expect(error.modelID, "gpt-5.6");
+      expect(error.providerID, "openai");
+      expect(error.errorName, "CodexError");
+      expect(error.errorMessage, "You've hit your usage limit.");
+      expect(messages.single.parts, isEmpty);
     });
 
     test("readMessages excludes only generated Codex user context envelopes", () {
@@ -2038,13 +2318,13 @@ void main() {
         keepaliveInterval: const Duration(seconds: 30),
       );
 
-      final sessions = await plugin.getSessions("/work/sample-app");
+      final sessions = await plugin.getSessions(projectId: "/work/sample-app", start: null, limit: null);
       expect(sessions, hasLength(1));
       expect(sessions.single.id, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
       expect(sessions.single.directory, equals("/work/sample-app"));
 
       // Filtering by a different CWD returns empty.
-      final none = await plugin.getSessions("/somewhere/else");
+      final none = await plugin.getSessions(projectId: "/somewhere/else", start: null, limit: null);
       expect(none, isEmpty);
       await plugin.dispose();
     });
@@ -2165,6 +2445,7 @@ void main() {
         rolloutToolMapper: const CodexRolloutToolMapper(
           imageAttachmentMapper: CodexImageAttachmentMapper(),
         ),
+        userContentMapper: const CodexUserContentMapper(),
       );
       final path = _writeRollout(
         codexHome,
@@ -2227,6 +2508,7 @@ void main() {
         rolloutToolMapper: const CodexRolloutToolMapper(
           imageAttachmentMapper: CodexImageAttachmentMapper(),
         ),
+        userContentMapper: const CodexUserContentMapper(),
       );
       final path = _writeRollout(
         codexHome,
@@ -2268,7 +2550,7 @@ CodexRolloutSessionMetadataPayloadDto _sessionMetadataPayload({
   required CodexRolloutLineDto line,
 }) {
   return switch (line) {
-    CodexRolloutSessionMetadataLineDto(: final payload) => payload,
+    CodexRolloutSessionMetadataLineDto(:final payload) => payload,
     _ => throw StateError("Expected session metadata rollout line"),
   };
 }
@@ -2277,7 +2559,7 @@ CodexRolloutTurnContextPayloadDto _turnContextPayload({
   required CodexRolloutLineDto line,
 }) {
   return switch (line) {
-    CodexRolloutTurnContextLineDto(: final payload) => payload,
+    CodexRolloutTurnContextLineDto(:final payload) => payload,
     _ => throw StateError("Expected turn context rollout line"),
   };
 }
@@ -2286,7 +2568,7 @@ CodexRolloutResponseItemDto _responseItemPayload({
   required CodexRolloutLineDto line,
 }) {
   return switch (line) {
-    CodexRolloutResponseItemLineDto(: final payload) => payload,
+    CodexRolloutResponseItemLineDto(:final payload) => payload,
     _ => throw StateError("Expected response item rollout line"),
   };
 }
@@ -2313,7 +2595,7 @@ String _captureWarnings(
   LogLevel level = LogLevel.warning,
 }) {
   final previousLevel = Log.level;
-  final stderr = _BufferingStdout();
+  final stderr = BufferingStdout();
   try {
     Log.level = level;
     IOOverrides.runZoned(action, stderr: () => stderr);
@@ -2321,18 +2603,6 @@ String _captureWarnings(
     Log.level = previousLevel;
   }
   return stderr.text;
-}
-
-class _BufferingStdout() implements Stdout {
-  final StringBuffer _buffer = StringBuffer();
-
-  String get text => _buffer.toString();
-
-  @override
-  void writeln([Object? object = ""]) => _buffer.writeln(object);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
 }
 
 String _writeRollout(

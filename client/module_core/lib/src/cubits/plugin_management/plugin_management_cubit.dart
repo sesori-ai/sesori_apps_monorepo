@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:bloc/bloc.dart";
 import "package:collection/collection.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../platform/url_launcher.dart";
@@ -12,14 +13,13 @@ import "plugin_management_state.dart";
 class PluginManagementCubit({required final PluginManagementService _service, required final UrlLauncher _urlLauncher})
     extends Cubit<PluginManagementState> {
   this : super(const PluginManagementState.loading()) {
-    _snapshotSubscription = _service.snapshots.listen((snapshot) => _onSnapshot(snapshot: snapshot));
-    _installSubscription = _service.installProgress.listen((installs) => _onInstallProgress(installs: installs));
-    _authenticationTerminalSubscription = _service.authenticationTerminal.listen(_onAuthenticationTerminal);
+    _subscriptions
+      ..add(_service.snapshots.listen((snapshot) => _onSnapshot(snapshot: snapshot)))
+      ..add(_service.installProgress.listen((installs) => _onInstallProgress(installs: installs)))
+      ..add(_service.authenticationTerminal.listen(_onAuthenticationTerminal));
   }
 
-  late final StreamSubscription<PluginManagementLoadResult> _snapshotSubscription;
-  late final StreamSubscription<Map<String, PluginInstallProgress>> _installSubscription;
-  late final StreamSubscription<PluginAuthenticationTerminalUpdate> _authenticationTerminalSubscription;
+  final CompositeSubscription _subscriptions = CompositeSubscription();
   int _actionGeneration = 0;
   int _authenticationGeneration = 0;
 
@@ -65,30 +65,10 @@ class PluginManagementCubit({required final PluginManagementService _service, re
             userCode: challenge.userCode,
           ),
         );
-      case PluginAuthenticationStartNotFound():
+      case PluginAuthenticationStartFailed(:final failure):
         _setAuthenticationFailure(
           pluginId: pluginId,
-          error: const PluginAuthenticationPresentationError.notFound(),
-        );
-      case PluginAuthenticationStartConflict(:final conflict):
-        _setAuthenticationFailure(
-          pluginId: pluginId,
-          error: PluginAuthenticationPresentationError.conflict(conflict: conflict),
-        );
-      case PluginAuthenticationStartUnsupported():
-        _setAuthenticationFailure(
-          pluginId: pluginId,
-          error: const PluginAuthenticationPresentationError.unsupported(),
-        );
-      case PluginAuthenticationStartUncertain():
-        _setAuthenticationFailure(
-          pluginId: pluginId,
-          error: const PluginAuthenticationPresentationError.uncertain(),
-        );
-      case PluginAuthenticationStartFailure(:final error):
-        _setAuthenticationFailure(
-          pluginId: pluginId,
-          error: PluginAuthenticationPresentationError.request(error: error),
+          error: _presentationErrorFor(failure: failure),
         );
     }
   }
@@ -155,22 +135,9 @@ class PluginManagementCubit({required final PluginManagementService _service, re
     switch (result) {
       case PluginAuthenticationCancelSuccess():
         break;
-      case PluginAuthenticationCancelNotFound():
-        _setAuthenticationFailure(
-          pluginId: challenge.pluginId,
-          error: const PluginAuthenticationPresentationError.notFound(),
-        );
-      case PluginAuthenticationCancelConflict(:final conflict):
-        _setAuthenticationFailure(
-          pluginId: challenge.pluginId,
-          error: PluginAuthenticationPresentationError.conflict(conflict: conflict),
-        );
-      case PluginAuthenticationCancelUnsupported():
-        _setAuthenticationFailure(
-          pluginId: challenge.pluginId,
-          error: const PluginAuthenticationPresentationError.unsupported(),
-        );
-      case PluginAuthenticationCancelUncertain():
+      // An uncertain cancel is not a failure: the request may still have
+      // landed, so keep the challenge on screen in its uncertain form.
+      case PluginAuthenticationCancelFailed(failure: PluginAuthenticationFailureUncertain()):
         _setAuthentication(
           PluginAuthenticationPresentationState.cancellingUncertain(
             pluginId: challenge.pluginId,
@@ -178,12 +145,25 @@ class PluginManagementCubit({required final PluginManagementService _service, re
             userCode: challenge.userCode,
           ),
         );
-      case PluginAuthenticationCancelFailure(:final error):
+      case PluginAuthenticationCancelFailed(:final failure):
         _setAuthenticationFailure(
           pluginId: challenge.pluginId,
-          error: PluginAuthenticationPresentationError.request(error: error),
+          error: _presentationErrorFor(failure: failure),
         );
     }
+  }
+
+  /// Start and cancel present the same failures the same way.
+  PluginAuthenticationPresentationError _presentationErrorFor({required PluginAuthenticationFailure failure}) {
+    return switch (failure) {
+      PluginAuthenticationFailureNotFound() => const PluginAuthenticationPresentationError.notFound(),
+      PluginAuthenticationFailureConflict(:final conflict) => PluginAuthenticationPresentationError.conflict(
+        conflict: conflict,
+      ),
+      PluginAuthenticationFailureUnsupported() => const PluginAuthenticationPresentationError.unsupported(),
+      PluginAuthenticationFailureUncertain() => const PluginAuthenticationPresentationError.uncertain(),
+      PluginAuthenticationFailureRequest(:final error) => PluginAuthenticationPresentationError.request(error: error),
+    };
   }
 
   void dismissAuthentication() => _setAuthentication(const PluginAuthenticationPresentationState.idle());
@@ -299,55 +279,14 @@ class PluginManagementCubit({required final PluginManagementService _service, re
     final result = await _service.command(pluginId: pluginId, request: request);
     if (!_canFinishAction(generation: generation)) return;
 
-    switch (result) {
-      case PluginManagementMutationResultSuccess():
-        _finishAction(generation: generation, action: const PluginManagementActionState.idle());
-      case PluginManagementMutationResultNotFound():
-        _finishAction(
-          generation: generation,
-          action: PluginManagementActionState.failed(
-            target: target,
-            error: const PluginManagementActionError.notFound(),
-          ),
-        );
-      case PluginManagementMutationResultConflict(:final conflict):
-        final actionState = switch (forceAction) {
-          final forceAction? => switch (_service.assessForce(conflict: conflict, action: forceAction)) {
-            PluginManagementForceAssessmentRequiresConfirmation(:final request) =>
-              PluginManagementActionState.forceConfirmationRequired(
-                pluginId: pluginId,
-                action: forceAction,
-                conflict: conflict,
-                request: request,
-              ),
-            PluginManagementForceAssessmentNotForceable() => PluginManagementActionState.failed(
-              target: target,
-              error: PluginManagementActionError.conflict(conflict: conflict),
-            ),
-          },
-          null => PluginManagementActionState.failed(
-            target: target,
-            error: PluginManagementActionError.conflict(conflict: conflict),
-          ),
-        };
-        _finishAction(generation: generation, action: actionState);
-      case PluginManagementMutationResultUncertain():
-        _finishAction(
-          generation: generation,
-          action: PluginManagementActionState.failed(
-            target: target,
-            error: const PluginManagementActionError.uncertain(),
-          ),
-        );
-      case PluginManagementMutationResultFailure(:final error):
-        _finishAction(
-          generation: generation,
-          action: PluginManagementActionState.failed(
-            target: target,
-            error: PluginManagementActionError.request(error: error),
-          ),
-        );
-    }
+    _finishAction(
+      generation: generation,
+      action: _actionStateFor(
+        result: result,
+        target: target,
+        force: forceAction == null ? null : _ForceContext(pluginId: pluginId, action: forceAction),
+      ),
+    );
   }
 
   Future<void> _runTimeoutPlan({
@@ -365,27 +304,65 @@ class PluginManagementCubit({required final PluginManagementService _service, re
         if (generation == null) return;
         final result = await _service.updateIdleTimeout(request: request);
         if (!_canFinishAction(generation: generation)) return;
-        final action = switch (result) {
-          PluginManagementMutationResultSuccess() => const PluginManagementActionState.idle(),
-          PluginManagementMutationResultNotFound() => PluginManagementActionState.failed(
-            target: target,
-            error: const PluginManagementActionError.notFound(),
-          ),
-          PluginManagementMutationResultConflict(:final conflict) => PluginManagementActionState.failed(
-            target: target,
-            error: PluginManagementActionError.conflict(conflict: conflict),
-          ),
-          PluginManagementMutationResultUncertain() => PluginManagementActionState.failed(
-            target: target,
-            error: const PluginManagementActionError.uncertain(),
-          ),
-          PluginManagementMutationResultFailure(:final error) => PluginManagementActionState.failed(
-            target: target,
-            error: PluginManagementActionError.request(error: error),
-          ),
-        };
-        _finishAction(generation: generation, action: action);
+        // An idle-timeout update offers no force affordance, so a conflict here
+        // is simply a failure.
+        _finishAction(
+          generation: generation,
+          action: _actionStateFor(result: result, target: target, force: null),
+        );
     }
+  }
+
+  /// The one mutation-result to action-state mapping. [force] is non-null only
+  /// where the caller can offer a force retry, and carries both values that
+  /// offer needs so neither can go missing.
+  PluginManagementActionState _actionStateFor({
+    required PluginManagementMutationResult result,
+    required PluginManagementActionTarget target,
+    required _ForceContext? force,
+  }) {
+    return switch (result) {
+      PluginManagementMutationResultSuccess() => const PluginManagementActionState.idle(),
+      PluginManagementMutationResultNotFound() => PluginManagementActionState.failed(
+        target: target,
+        error: const PluginManagementActionError.notFound(),
+      ),
+      PluginManagementMutationResultConflict(:final conflict) => _conflictActionStateFor(
+        conflict: conflict,
+        target: target,
+        force: force,
+      ),
+      PluginManagementMutationResultUncertain() => PluginManagementActionState.failed(
+        target: target,
+        error: const PluginManagementActionError.uncertain(),
+      ),
+      PluginManagementMutationResultFailure(:final error) => PluginManagementActionState.failed(
+        target: target,
+        error: PluginManagementActionError.request(error: error),
+      ),
+    };
+  }
+
+  PluginManagementActionState _conflictActionStateFor({
+    required PluginLifecycleConflict conflict,
+    required PluginManagementActionTarget target,
+    required _ForceContext? force,
+  }) {
+    final failed = PluginManagementActionState.failed(
+      target: target,
+      error: PluginManagementActionError.conflict(conflict: conflict),
+    );
+    if (force == null) return failed;
+    return switch (_service.assessForce(conflict: conflict, action: force.action)) {
+      PluginManagementForceAssessmentRequiresConfirmation(:final request) =>
+        PluginManagementActionState.forceConfirmationRequired(
+          pluginId: force.pluginId,
+          action: force.action,
+          conflict: conflict,
+          request: request,
+        ),
+      PluginManagementForceAssessmentNotForceable() => failed,
+    };
   }
 
   int? _beginAction({
@@ -536,9 +513,7 @@ class PluginManagementCubit({required final PluginManagementService _service, re
 
   @override
   Future<void> close() async {
-    await _snapshotSubscription.cancel();
-    await _installSubscription.cancel();
-    await _authenticationTerminalSubscription.cancel();
+    await _subscriptions.dispose();
     return await super.close();
   }
 }
@@ -562,3 +537,11 @@ class PluginManagementCubit({required final PluginManagementService _service, re
   PluginAuthenticationPresentationStarting() ||
   PluginAuthenticationPresentationFailed() => null,
 };
+
+/// The plugin and action a conflict may be force-retried with. Non-null only
+/// where the caller can offer that retry, so a force action can never travel
+/// without the plugin it applies to.
+final class const _ForceContext({
+  required final String pluginId,
+  required final PluginManagementForceAction action,
+});

@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/sse/bridge_event_mapper.dart";
+import "package:sesori_bridge/src/sse/bridge_event_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -165,15 +165,6 @@ void main() {
 
       expect(result, isA<SesoriSessionDiff>());
       expect((result! as SesoriSessionDiff).sessionID, equals("s1"));
-    });
-
-    test("maps stale project sessions to sessions.updated", () {
-      final result = mapEvent(
-        const BridgeSseSessionsUpdated(sessionID: "s1", projectID: "p1"),
-      );
-
-      expect(result, isA<SesoriSessionsUpdated>());
-      expect((result! as SesoriSessionsUpdated).projectID, "p1");
     });
 
     test("maps command.executed events", () {
@@ -465,6 +456,8 @@ void main() {
                 awaitingInput: false,
                 isRetrying: false,
                 childSessionIds: [],
+                lastUserActivityAt: null,
+                updatedAt: null,
               ),
             ],
           ),

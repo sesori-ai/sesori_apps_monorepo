@@ -238,6 +238,72 @@ void main() {
       expect(message.durationMs, 4500);
     });
 
+    test("reads top-level tool progress", () {
+      final message =
+          ClaudeStreamMessage.parse({
+                "type": "tool_progress",
+                "tool_use_id": "toolu_1",
+                "tool_name": "Bash",
+                "parent_tool_use_id": "toolu_parent",
+                "elapsed_time_seconds": 2.5,
+                "task_id": "task-1",
+                "heartbeat": true,
+                "subagent_type": "Explore",
+              })
+              as ClaudeToolProgressMessage;
+
+      expect(message.toolUseId, "toolu_1");
+      expect(message.toolName, "Bash");
+      expect(message.parentToolUseId, "toolu_parent");
+      expect(message.elapsedTimeSeconds, 2.5);
+      expect(message.taskId, "task-1");
+      expect(message.heartbeat, isTrue);
+      expect(message.subagentType, "Explore");
+    });
+
+    test("reads hook start and hook output frames", () {
+      final started =
+          ClaudeStreamMessage.parse({
+                "type": "system",
+                "subtype": "hook_started",
+                "hook_id": "hook-1",
+                "hook_name": "format",
+                "hook_event": "PostToolUse",
+              })
+              as ClaudeHookStartedMessage;
+
+      expect(started.hookId, "hook-1");
+      expect(started.hookName, "format");
+      expect(started.hookEvent, "PostToolUse");
+
+      final progress =
+          ClaudeStreamMessage.parse({
+                "type": "system",
+                "subtype": "hook_progress",
+                "hook_id": "hook-1",
+                "stdout": "formatting",
+              })
+              as ClaudeHookOutputMessage;
+
+      expect(progress.phase, ClaudeHookPhase.progress);
+      expect(progress.stdout, "formatting");
+      expect(progress.exitCode, isNull);
+
+      final response =
+          ClaudeStreamMessage.parse({
+                "type": "system",
+                "subtype": "hook_response",
+                "hook_id": "hook-1",
+                "stderr": "warning",
+                "exit_code": 2,
+              })
+              as ClaudeHookOutputMessage;
+
+      expect(response.phase, ClaudeHookPhase.response);
+      expect(response.stderr, "warning");
+      expect(response.exitCode, 2);
+    });
+
     test("absorbs unknown types and unknown system subtypes", () {
       final unknownType = ClaudeStreamMessage.parse({"type": "some_future_event", "session_id": "s"});
       expect(unknownType, isA<ClaudeUnknownMessage>());

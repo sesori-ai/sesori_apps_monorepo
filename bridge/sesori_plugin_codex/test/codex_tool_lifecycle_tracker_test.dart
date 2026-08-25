@@ -525,8 +525,7 @@ void main() {
         "type": "custom_tool_call",
         "call_id": "call-directed-image-wrapper-with-trailing-code",
         "name": "exec",
-        "input":
-            "// @exec: {\"yield-time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); console.log('keep visible');",
+        "input": "// @exec: {\"yield-time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); console.log('keep visible');",
       },
     });
     final directedWrapperWithCallLikePrompt = CodexRolloutLineDto.fromJson({
@@ -717,6 +716,109 @@ void main() {
     );
     final attachment = durable.single.attachments.single as PluginMessageAttachmentInlineImage;
     expect(attachment.filename, "final.png");
+  });
+
+  test("terminal notification errors a running app-server image", () {
+    final target = tracker();
+    target.observeAppServerTool(
+      notification: const CodexServerNotification(
+        method: "item/started",
+        params: {
+          "threadId": "thread-1",
+          "turnId": "turn-1",
+          "startedAtMs": 1779293200000,
+          "item": {
+            "type": "imageGeneration",
+            "id": "image-running",
+          },
+        },
+      ),
+      imageGeneration: const CodexImageGenerationItemDto(
+        id: "image-running",
+        status: CodexImageGenerationStatus.inProgress,
+        revisedPrompt: null,
+        result: "",
+        savedPath: null,
+      ),
+    );
+
+    final terminal = target
+        .observeTerminalNotification(
+          notification: _terminalNotification(method: "error"),
+        )
+        .single;
+
+    expect(terminal.canonicalId, "image-running");
+    expect(terminal.status, PluginToolStatus.error);
+  });
+
+  test("a fresh task start errors only running images from the prior turn", () {
+    final target = tracker();
+    target.observeRolloutLine(
+      threadId: "thread-1",
+      line: _taskEvent(type: "task_started", turnId: "turn-old"),
+    );
+    target.observeAppServerTool(
+      notification: const CodexServerNotification(
+        method: "item/started",
+        params: {
+          "threadId": "thread-1",
+          "turnId": "turn-old",
+          "item": {
+            "type": "imageGeneration",
+            "id": "image-old",
+          },
+        },
+      ),
+      imageGeneration: const CodexImageGenerationItemDto(
+        id: "image-old",
+        status: CodexImageGenerationStatus.inProgress,
+        revisedPrompt: null,
+        result: "",
+        savedPath: null,
+      ),
+    );
+    target.observeAppServerTool(
+      notification: const CodexServerNotification(
+        method: "item/started",
+        params: {
+          "threadId": "thread-1",
+          "turnId": "turn-new",
+          "item": {
+            "type": "imageGeneration",
+            "id": "image-new",
+          },
+        },
+      ),
+      imageGeneration: const CodexImageGenerationItemDto(
+        id: "image-new",
+        status: CodexImageGenerationStatus.inProgress,
+        revisedPrompt: null,
+        result: "",
+        savedPath: null,
+      ),
+    );
+
+    final retired = target
+        .observeRolloutLine(
+          threadId: "thread-1",
+          line: _taskEvent(type: "task_started", turnId: "turn-new"),
+        )
+        .single;
+    final freshTerminal = target.observeTerminalNotification(
+      notification: const CodexServerNotification(
+        method: "turn/completed",
+        params: {
+          "threadId": "thread-1",
+          "turn": {"id": "turn-new", "status": "completed"},
+        },
+      ),
+    );
+
+    expect(retired.canonicalId, "image-old");
+    expect(retired.status, PluginToolStatus.error);
+    expect(freshTerminal.single.canonicalId, "image-new");
+    expect(freshTerminal.single.status, PluginToolStatus.completed);
   });
 
   test("suppresses wait calls and projects their result onto the shell call", () {
@@ -1192,6 +1294,42 @@ void main() {
     expect(aborted.status, PluginToolStatus.error);
   });
 
+  test("identifier-less abort errors tools in the active turn", () {
+    final target = tracker();
+    target
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _taskEvent(type: "task_started", turnId: "turn-1"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _rawExecCall(callId: "call-exec", turnId: "turn-1"),
+      )
+      ..observeRolloutLine(
+        threadId: "thread-1",
+        line: _toolOutput(
+          callId: "call-exec",
+          output: "Script running with cell ID 7\nOutput:\n",
+        ),
+      );
+
+    final aborted = target
+        .observeRolloutLine(
+          threadId: "thread-1",
+          line: CodexRolloutLineDto.fromJson({
+            "type": "event_msg",
+            "payload": {
+              "type": "turn_aborted",
+              "reason": "interrupted",
+            },
+          }),
+        )
+        .single;
+
+    expect(aborted.canonicalId, "call-exec");
+    expect(aborted.status, PluginToolStatus.error);
+  });
+
   test("late app-server completion retains the aborted canonical identity", () {
     final target = tracker();
     target
@@ -1257,6 +1395,10 @@ void main() {
     expect(aborted.status, PluginToolStatus.error);
     expect(lateCompletion?.canonicalId, "call-exec");
     expect(lateCompletion?.status, PluginToolStatus.error);
+    expect(
+      lateCompletion?.time,
+      const PluginMessageTime(created: 1779293200000, completed: 1779293201000),
+    );
     expect(lateCompletion?.output, contains("late command output"));
     expect(
       RegExp("early output").allMatches(lateCompletion?.output ?? ""),
@@ -1965,6 +2107,8 @@ CodexServerNotification _commandNotification({
     params: {
       "threadId": "thread-1",
       "turnId": ?turnId,
+      if (method == "item/started") "startedAtMs": 1779293200000,
+      if (method == "item/completed") "completedAtMs": 1779293201000,
       "item": {
         "type": "commandExecution",
         "id": itemId,
@@ -2019,7 +2163,10 @@ extension on CodexToolLifecycleTracker {
             notification: notification,
             imageGeneration: imageGeneration,
           )
-        : observeCorrelatableAppServerItem(event: correlatableItem);
+        : observeCorrelatableAppServerItem(
+            event: correlatableItem,
+            notification: notification,
+          );
   }
 }
 

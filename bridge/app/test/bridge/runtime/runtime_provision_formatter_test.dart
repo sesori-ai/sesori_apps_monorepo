@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/runtime/runtime_provision_formatter.dart";
+import "package:sesori_bridge/src/runtime/runtime_provision_formatter.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 

@@ -1,0 +1,519 @@
+import "dart:async";
+
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
+
+import "../repositories/mappers/session_event_mapper.dart";
+import "../repositories/models/stored_session.dart";
+import "../repositories/session_repository.dart";
+import "../repositories/trackers/session_event_tracker.dart";
+import "../runtime/plugin_runtime.dart";
+
+typedef SourcedBridgeEvent = ({
+  String pluginId,
+  int generation,
+  int projectionUpdatedAt,
+  BridgeSseEvent event,
+});
+typedef NormalizedRuntimeEvent = ({int generation, BridgeSseEvent event});
+typedef _ProjectedSession = ({StoredSession binding, bool inserted});
+
+class SessionEventService({
+  required final SessionRepository _sessionRepository,
+  required final PluginRuntime _pluginRuntime,
+  required final SessionEventMapper _eventMapper,
+  required final SessionEventTracker _eventTracker,
+  required final FailureReporter _failureReporter,
+}) {
+  SourcedBridgeEvent captureSource({
+    required String pluginId,
+    required int generation,
+    required BridgeSseEvent event,
+  }) {
+    return (
+      pluginId: pluginId,
+      generation: generation,
+      projectionUpdatedAt: _sessionRepository.captureProjectionTimestamp(),
+      event: event,
+    );
+  }
+
+  Future<List<BridgeSseEvent>> normalize({
+    required SourcedBridgeEvent source,
+    required bool allowDuringStop,
+  }) async {
+    return await _normalizeGuarded(
+      source: source,
+      allowDuringStop: allowDuringStop,
+      drainPending: true,
+    );
+  }
+
+  Future<List<BridgeSseEvent>> _normalizeGuarded({
+    required SourcedBridgeEvent source,
+    required bool allowDuringStop,
+    required bool drainPending,
+  }) async {
+    if (!isCurrentEvent(
+      pluginId: source.pluginId,
+      generation: source.generation,
+      allowDuringStop: allowDuringStop,
+    )) {
+      return const [];
+    }
+    try {
+      return await _normalize(
+        source: source,
+        allowDuringStop: allowDuringStop,
+        drainPending: drainPending,
+      );
+    } on Object catch (error, stackTrace) {
+      if (_isSessionPayloadEvent(source.event) &&
+          !isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) {
+        return const [];
+      }
+      if (!isCurrentEvent(
+        pluginId: source.pluginId,
+        generation: source.generation,
+        allowDuringStop: allowDuringStop,
+      )) {
+        return const [];
+      }
+      Log.w("[sse] failed to normalize ${source.event.runtimeType}", error, stackTrace);
+      try {
+        await _failureReporter.recordFailure(
+          error: error,
+          stackTrace: stackTrace,
+          uniqueIdentifier: "bridge.sse.session_event",
+          fatal: false,
+          reason: "failed to normalize plugin SSE event",
+          information: [source.pluginId, source.event.runtimeType],
+        );
+      } on Object catch (reportError, reportStackTrace) {
+        Log.w("[sse] failed to report normalization failure", reportError, reportStackTrace);
+      }
+      return const [];
+    }
+  }
+
+  bool isCurrentGeneration({required String pluginId, required int generation}) {
+    return _pluginRuntime.isCurrentGeneration(pluginId: pluginId, generation: generation);
+  }
+
+  bool isCurrentEvent({
+    required String pluginId,
+    required int generation,
+    required bool allowDuringStop,
+  }) {
+    return _pluginRuntime.isCurrentEvent(
+      pluginId: pluginId,
+      generation: generation,
+      allowDuringStop: allowDuringStop,
+    );
+  }
+
+  Future<List<BridgeSseEvent>> _normalize({
+    required SourcedBridgeEvent source,
+    required bool allowDuringStop,
+    required bool drainPending,
+  }) async {
+    if (source.event is BridgeSseSessionDeleted) return const [];
+
+    final observed = _eventMapper.sessionInfo(event: source.event);
+    if (observed == null) {
+      return [
+        ?await _translate(source: source, allowDuringStop: allowDuringStop),
+      ];
+    }
+    if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) {
+      return const [];
+    }
+
+    final projection = await _projectSession(source: source, observed: observed);
+    if (projection == null) return const [];
+    final normalized = await _translate(source: source, allowDuringStop: allowDuringStop);
+    final output = <BridgeSseEvent>[
+      if (projection.inserted && source.event is! BridgeSseSessionCreated)
+        ?await _createdEvent(sessionId: projection.binding.id),
+      ?normalized,
+    ];
+    if (drainPending) {
+      output.addAll(
+        (await _drainPendingForBinding(
+          pluginId: source.pluginId,
+          backendSessionId: observed.id,
+        )).map((event) => event.event),
+      );
+    }
+    return output;
+  }
+
+  Future<List<NormalizedRuntimeEvent>> handleBindingsCommitted({required SessionBindingsCommitted commit}) async {
+    final output = <NormalizedRuntimeEvent>[];
+    for (final backendSessionId in commit.backendSessionIds) {
+      final pendingRoot = _eventTracker.takeRoot(
+        pluginId: commit.pluginId,
+        backendSessionId: backendSessionId,
+      );
+      if (pendingRoot != null &&
+          isCurrentGeneration(
+            pluginId: pendingRoot.pluginId,
+            generation: pendingRoot.generation,
+          )) {
+        final binding = await _sessionRepository.getStoredSessionByBackendId(
+          pluginId: commit.pluginId,
+          backendSessionId: backendSessionId,
+        );
+        final catalog = binding == null ? null : await _sessionRepository.getCatalogSession(sessionId: binding.id);
+        if (catalog != null &&
+            isCurrentGeneration(
+              pluginId: pendingRoot.pluginId,
+              generation: pendingRoot.generation,
+            )) {
+          output.add((
+            generation: pendingRoot.generation,
+            event: BridgeSseSessionCreated(info: catalog.toJson()),
+          ));
+        }
+      }
+      output.addAll(
+        await _drainPendingForBinding(
+          pluginId: commit.pluginId,
+          backendSessionId: backendSessionId,
+        ),
+      );
+    }
+    if (commit.kind == SessionBindingCommitKind.sessionCreation &&
+        isCurrentGeneration(
+          pluginId: commit.pluginId,
+          generation: commit.generation,
+        )) {
+      output.add((generation: commit.generation, event: const BridgeSseProjectUpdated()));
+    }
+    return output;
+  }
+
+  Future<bool> canPublish({required BridgeSseEvent event}) async {
+    if (event is! BridgeSseSessionCreated && event is! BridgeSseSessionUpdated) return true;
+    final session = _eventMapper.sessionInfo(event: event);
+    if (session == null || await _sessionRepository.getStoredSession(sessionId: session.id) == null) return false;
+    return !await _sessionRepository.isSessionTombstoned(sessionId: session.id);
+  }
+
+  Future<_ProjectedSession?> _projectSession({
+    required SourcedBridgeEvent source,
+    required Session observed,
+  }) async {
+    final existing = await _sessionRepository.getStoredSessionByBackendId(
+      pluginId: source.pluginId,
+      backendSessionId: observed.id,
+    );
+    if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
+    final backendParentId = observed.parentID;
+    if (existing != null) {
+      if (backendParentId != null) {
+        final parent = await _sessionRepository.getStoredSessionByBackendId(
+          pluginId: source.pluginId,
+          backendSessionId: backendParentId,
+        );
+        if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
+        if (parent == null || existing.parentSessionId != parent.id) return null;
+      } else if (existing.parentSessionId != null) {
+        return null;
+      }
+      final binding = await _sessionRepository.updateObservedSessionProjection(
+        pluginId: source.pluginId,
+        generation: source.generation,
+        observed: observed,
+        updateCatalogTitle: switch (source.event) {
+          BridgeSseSessionCreated() => true,
+          BridgeSseSessionUpdated(:final titleChanged) => titleChanged || observed.title != null,
+          _ => observed.title != null,
+        },
+        projectionUpdatedAt: source.projectionUpdatedAt,
+      );
+      if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
+      return binding == null ? null : (binding: binding, inserted: false);
+    }
+    if (backendParentId == null) {
+      if (source.event is BridgeSseSessionCreated) {
+        _warnIfEvicted(
+          evicted: _eventTracker.addRoot(
+            event: PendingSessionEvent(
+              pluginId: source.pluginId,
+              generation: source.generation,
+              event: source.event,
+              session: observed,
+              projectionUpdatedAt: source.projectionUpdatedAt,
+            ),
+          ),
+        );
+      } else {
+        final pendingGeneration = _eventTracker.pendingBindingGeneration(
+          pluginId: source.pluginId,
+          backendSessionId: observed.id,
+        );
+        if (pendingGeneration == source.generation) {
+          _warnIfEvicted(
+            evicted: _eventTracker.addTranslation(
+              event: PendingTranslationEvent(
+                pluginId: source.pluginId,
+                generation: source.generation,
+                event: source.event,
+                backendSessionId: observed.id,
+                projectionUpdatedAt: source.projectionUpdatedAt,
+              ),
+            ),
+          );
+        } else if (pendingGeneration != null) {
+          _warnIfEvicted(
+            evicted: _eventTracker.addRoot(
+              event: PendingSessionEvent(
+                pluginId: source.pluginId,
+                generation: source.generation,
+                event: source.event,
+                session: observed,
+                projectionUpdatedAt: source.projectionUpdatedAt,
+              ),
+            ),
+          );
+          _warnIfEvicted(
+            evicted: _eventTracker.addTranslation(
+              event: PendingTranslationEvent(
+                pluginId: source.pluginId,
+                generation: source.generation,
+                event: source.event,
+                backendSessionId: observed.id,
+                projectionUpdatedAt: source.projectionUpdatedAt,
+              ),
+            ),
+          );
+        }
+      }
+      return null;
+    }
+
+    final parent = await _sessionRepository.getStoredSessionByBackendId(
+      pluginId: source.pluginId,
+      backendSessionId: backendParentId,
+    );
+    if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
+    if (parent == null) {
+      _warnIfEvicted(
+        evicted: _eventTracker.addChild(
+          event: PendingSessionEvent(
+            pluginId: source.pluginId,
+            generation: source.generation,
+            event: source.event,
+            session: observed,
+            projectionUpdatedAt: source.projectionUpdatedAt,
+          ),
+        ),
+      );
+      return null;
+    }
+    final binding = await _sessionRepository.insertObservedChild(
+      pluginId: source.pluginId,
+      generation: source.generation,
+      observed: observed,
+      parent: parent,
+      projectionUpdatedAt: source.projectionUpdatedAt,
+    );
+    if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return null;
+    return binding == null ? null : (binding: binding, inserted: true);
+  }
+
+  Future<List<NormalizedRuntimeEvent>> _drainPendingForBinding({
+    required String pluginId,
+    required String backendSessionId,
+  }) async {
+    final output = <NormalizedRuntimeEvent>[];
+    final readyBindings = {
+      (pluginId: pluginId, backendSessionId: backendSessionId),
+    };
+    while (true) {
+      final pending = _eventTracker.takeNextReady(readyBindings: readyBindings);
+      if (pending == null) break;
+      final normalized = await _normalizeGuarded(
+        source: (
+          pluginId: pending.pluginId,
+          generation: pending.generation,
+          projectionUpdatedAt: pending.projectionUpdatedAt,
+          event: pending.event,
+        ),
+        allowDuringStop: false,
+        drainPending: false,
+      );
+      output.addAll([
+        for (final event in normalized) (generation: pending.generation, event: event),
+      ]);
+      if (pending is PendingSessionEvent) {
+        final binding = await _sessionRepository.getStoredSessionByBackendId(
+          pluginId: pending.pluginId,
+          backendSessionId: pending.session.id,
+        );
+        if (binding != null) {
+          readyBindings.add((
+            pluginId: pending.pluginId,
+            backendSessionId: pending.session.id,
+          ));
+        }
+      }
+    }
+    return output;
+  }
+
+  void _warnIfEvicted({required PendingTrackedEvent? evicted}) {
+    if (evicted == null) return;
+    Log.w(
+      "Dropping pending session event ${evicted.pluginId}/${evicted.backendSessionId}: "
+      "the ${_eventTracker.maxPendingEntriesPerPlugin}-event ancestry buffer is full",
+    );
+  }
+
+  Future<BridgeSseEvent?> _translate({
+    required SourcedBridgeEvent source,
+    required bool allowDuringStop,
+  }) async {
+    final backendSessionIds = _eventMapper.backendSessionIds(event: source.event);
+    final bindings = await _sessionRepository.getStoredSessionsByBackendIds(
+      pluginId: source.pluginId,
+      backendSessionIds: backendSessionIds.toList(growable: false),
+    );
+    if (!isCurrentEvent(
+      pluginId: source.pluginId,
+      generation: source.generation,
+      allowDuringStop: allowDuringStop,
+    )) {
+      return null;
+    }
+    if (bindings.length != backendSessionIds.length) {
+      final missingBackendSessionIds = backendSessionIds.where((id) => !bindings.containsKey(id)).toList();
+      if (missingBackendSessionIds.isNotEmpty &&
+          missingBackendSessionIds.every(
+            (id) => _eventTracker.isBindingPending(
+              pluginId: source.pluginId,
+              generation: source.generation,
+              backendSessionId: id,
+            ),
+          )) {
+        _warnIfEvicted(
+          evicted: _eventTracker.addTranslation(
+            event: PendingTranslationEvent(
+              pluginId: source.pluginId,
+              generation: source.generation,
+              event: source.event,
+              backendSessionId: missingBackendSessionIds.first,
+              projectionUpdatedAt: source.projectionUpdatedAt,
+            ),
+          ),
+        );
+      }
+      return null;
+    }
+    final translated = _eventMapper.map(
+      event: source.event,
+      sessionIdsByBackendId: {
+        for (final entry in bindings.entries) entry.key: entry.value.id,
+      },
+    );
+    if (!isCurrentEvent(
+      pluginId: source.pluginId,
+      generation: source.generation,
+      allowDuringStop: allowDuringStop,
+    )) {
+      return null;
+    }
+    if (translated == null) return null;
+
+    final translatedSession = _eventMapper.sessionInfo(event: translated);
+    return await switch (translated) {
+      BridgeSseSessionPromptDefaultsChanged(
+        :final sessionID,
+        :final agent,
+        model: final pluginModel,
+      ) =>
+        () async {
+          final model = switch (pluginModel) {
+            PluginAgentModel(:final providerID, :final modelID, :final variant) => AgentModel(
+              providerID: providerID,
+              modelID: modelID,
+              variant: variant,
+            ),
+            null => null,
+          };
+          try {
+            await _sessionRepository.updatePromptDefaults(sessionId: sessionID, agent: agent, agentModel: model);
+          } on Object catch (error, stackTrace) {
+            Log.w("Failed to persist backend-originated prompt defaults for session $sessionID", error, stackTrace);
+          }
+          return BridgeSseSessionPromptDefaultsChanged(
+            sessionID: sessionID,
+            agent: agent,
+            model: pluginModel,
+          );
+        }(),
+      BridgeSseSessionCreated() => switch (translatedSession) {
+        final session? => switch (await _catalogSession(session: session)) {
+          final catalogSession? => BridgeSseSessionCreated(info: catalogSession.toJson()),
+          null => null,
+        },
+        null => null,
+      },
+      BridgeSseSessionUpdated(:final titleChanged) => switch (translatedSession) {
+        final session? => await _enrichUpdatedSession(
+          source: source,
+          session: session,
+          titleChanged: titleChanged,
+          allowDuringStop: allowDuringStop,
+        ),
+        null => null,
+      },
+      _ => translated,
+    };
+  }
+
+  Future<BridgeSseEvent?> _enrichUpdatedSession({
+    required SourcedBridgeEvent source,
+    required Session session,
+    required bool titleChanged,
+    required bool allowDuringStop,
+  }) async {
+    if (!isCurrentEvent(
+      pluginId: source.pluginId,
+      generation: source.generation,
+      allowDuringStop: allowDuringStop,
+    )) {
+      return null;
+    }
+    final catalogSession = await _sessionRepository.getCatalogSession(sessionId: session.id);
+    if (!isCurrentEvent(
+      pluginId: source.pluginId,
+      generation: source.generation,
+      allowDuringStop: allowDuringStop,
+    )) {
+      return null;
+    }
+    if (catalogSession == null) return null;
+    return BridgeSseSessionUpdated(info: catalogSession.toJson(), titleChanged: titleChanged);
+  }
+
+  Future<Session?> _catalogSession({required Session session}) {
+    return _sessionRepository.getCatalogSession(
+      sessionId: session.id,
+    );
+  }
+
+  Future<BridgeSseEvent?> _createdEvent({required String sessionId}) async {
+    final session = await _sessionRepository.getCatalogSession(sessionId: sessionId);
+    return session == null ? null : BridgeSseSessionCreated(info: session.toJson());
+  }
+
+  bool _isSessionPayloadEvent(BridgeSseEvent event) {
+    return switch (event) {
+      BridgeSseTerminalHandoff(:final event) => _isSessionPayloadEvent(event),
+      BridgeSseSessionCreated() || BridgeSseSessionUpdated() || BridgeSseSessionDeleted() => true,
+      _ => false,
+    };
+  }
+}

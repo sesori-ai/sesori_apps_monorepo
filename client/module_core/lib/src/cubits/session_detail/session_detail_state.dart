@@ -47,6 +47,16 @@ sealed class SessionDetailState with _$SessionDetailState {
     required List<QueuedSessionSubmission> queuedMessages,
     // Submission currently awaiting bridge acceptance.
     required QueuedSessionSubmission? sendingSubmission,
+
+    // Prompts the bridge has accepted but not yet dispatched to the harness,
+    // owned by the bridge (snapshot + session.queued-prompts events). Distinct
+    // from [queuedMessages], which only stages sends the bridge has not
+    // accepted yet.
+    @Default([]) List<QueuedSessionPrompt> bridgeQueuedPrompts,
+    // Accepted sends whose bridge-side representation has not arrived yet.
+    // Rendered as read-only queued bubbles so a prompt never blanks between
+    // its acceptance response and the bridge's queue event listing it.
+    @Default([]) List<QueuedSessionSubmission> awaitingBridgeSubmissions,
     // Available agents and providers for selection.
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
@@ -58,10 +68,15 @@ sealed class SessionDetailState with _$SessionDetailState {
     required CommandInfo? stagedCommand,
     required bool isRefreshing,
     @Default([]) List<SessionVariant> availableVariants,
-    // Transient retry error message from the AI provider (e.g. "Provider is overloaded").
-    required String? retryErrorMessage,
     @Default(DeviceCanvasSessionHidden()) DeviceCanvasSessionState deviceCanvas,
   }) = SessionDetailLoaded;
 
   const factory failed({required RemoteFailureReason reason}) = SessionDetailFailed;
+}
+
+extension SessionDetailLoadedX on SessionDetailLoaded {
+  String? get retryErrorMessage => switch (sessionStatus) {
+    SessionStatusRetry(:final message) => message,
+    SessionStatusIdle() || SessionStatusBusy() => null,
+  };
 }

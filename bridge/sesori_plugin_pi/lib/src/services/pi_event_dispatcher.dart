@@ -19,13 +19,40 @@ final class PiEventDispatcher({
   final PiToolTracker _tools = toolTracker;
   final Map<String, _SessionState> _sessions = {};
 
-  void beginTurn({required String sessionId, required String? executionText, required String? userVisibleText}) {
-    final state = _session(sessionId);
+  void registerPrompt({
+    required String sessionId,
+    required String promptId,
+    required String? executionText,
+    required String? userVisibleText,
+  }) {
+    _session(sessionId).pendingPrompts.add(
+      _PendingPrompt(
+        promptId: promptId,
+        executionText: executionText,
+        userVisibleText: userVisibleText,
+      ),
+    );
+  }
+
+  void cancelPrompt({required String sessionId, required String promptId}) {
+    _sessions[sessionId]?.pendingPrompts.removeWhere((prompt) => prompt.promptId == promptId);
+  }
+
+  PluginMessageWithParts? activeCompactionMessage({required String sessionId}) {
+    final state = _sessions[sessionId];
+    final messageId = state?.compactionMessageId;
+    if (messageId == null) return null;
+    return _historyMapper.mapRunningCompaction(sessionId: sessionId, messageId: messageId);
+  }
+
+  List<BridgeSseEvent> clearCompaction({required String sessionId}) {
+    final state = _sessions[sessionId];
+    final messageId = state?.compactionMessageId;
+    if (state == null || messageId == null) return const [];
     state
-      ..clearMessage()
-      ..executionText = executionText
-      ..userVisibleText = userVisibleText;
-    _tools.beginTurn(sessionId: sessionId);
+      ..compactionMessageId = null
+      ..identities.releaseCompaction();
+    return [BridgeSseMessageRemoved(sessionID: sessionId, messageID: messageId)];
   }
 
   void forgetSession({required String sessionId}) {
@@ -34,12 +61,29 @@ final class PiEventDispatcher({
     _tools.forgetSession(sessionId: sessionId);
   }
 
+  PluginSessionStatus? sessionStatusFor({required PiEvent event, DateTime? now}) => switch (event) {
+    PiAgentStartEvent() ||
+    PiAutoRetryEndEvent(success: true) ||
+    PiSummarizationRetryAttemptStartEvent() ||
+    PiCompactionStartEvent() => const PluginSessionStatus.busy(),
+    PiAgentSettledEvent() => const PluginSessionStatus.idle(),
+    PiAutoRetryStartEvent(:final attempt, :final delayMs) => _retryStatus(
+      attempt: attempt,
+      delayMs: delayMs,
+      now: now ?? DateTime.now(),
+    ),
+    PiSummarizationRetryScheduledEvent(:final attempt, :final delayMs) => _retryStatus(
+      attempt: attempt,
+      delayMs: delayMs,
+      now: now ?? DateTime.now(),
+    ),
+    _ => null,
+  };
+
   List<BridgeSseEvent> map({required String sessionId, required PiEvent event, DateTime? now}) => switch (event) {
-    PiAgentStartEvent() => [
-      BridgeSseSessionStatus(sessionID: sessionId, status: const PluginSessionStatus.busy().toJson()),
-    ],
+    PiAgentStartEvent() => _status(sessionId: sessionId, event: event, now: now),
     PiAgentSettledEvent() => [
-      BridgeSseSessionStatus(sessionID: sessionId, status: const PluginSessionStatus.idle().toJson()),
+      ..._status(sessionId: sessionId, event: event, now: now),
       BridgeSseSessionIdle(sessionID: sessionId),
     ],
     PiMessageStartEvent(:final message) => _messageStart(sessionId: sessionId, raw: message),
@@ -64,29 +108,16 @@ final class PiEventDispatcher({
       result: result,
       isError: isError,
     ),
-    PiAutoRetryStartEvent(:final attempt, :final delayMs) => _retry(
-      sessionId: sessionId,
-      attempt: attempt,
-      delayMs: delayMs,
-      now: now ?? DateTime.now(),
-    ),
-    PiSummarizationRetryScheduledEvent(:final attempt, :final delayMs) => _retry(
-      sessionId: sessionId,
-      attempt: attempt,
-      delayMs: delayMs,
-      now: now ?? DateTime.now(),
-    ),
+    PiAutoRetryStartEvent() ||
+    PiSummarizationRetryScheduledEvent() => _status(sessionId: sessionId, event: event, now: now),
     PiAutoRetryEndEvent(:final success, :final attempt, :final finalError) when !success => _retryEnd(
       sessionId: sessionId,
       attempt: attempt,
       finalError: finalError,
     ),
-    PiAutoRetryEndEvent() || PiSummarizationRetryAttemptStartEvent() => [
-      BridgeSseSessionStatus(sessionID: sessionId, status: const PluginSessionStatus.busy().toJson()),
-    ],
-    PiCompactionStartEvent() => [
-      BridgeSseSessionStatus(sessionID: sessionId, status: const PluginSessionStatus.busy().toJson()),
-    ],
+    PiAutoRetryEndEvent() ||
+    PiSummarizationRetryAttemptStartEvent() => _status(sessionId: sessionId, event: event, now: now),
+    PiCompactionStartEvent() => _compactionStart(sessionId: sessionId, event: event, now: now),
     PiCompactionEndEvent(:final reason, :final aborted, :final willRetry, :final errorMessage) => _compactionEnd(
       sessionId: sessionId,
       reason: reason,
@@ -100,8 +131,8 @@ final class PiEventDispatcher({
       error: error,
     ),
     PiEntryAppendedEvent(:final entry) => _entryAppended(sessionId: sessionId, raw: entry),
+    PiTurnStartEvent() => _turnStart(sessionId: sessionId),
     PiAgentEndEvent() ||
-    PiTurnStartEvent() ||
     PiTurnEndEvent() ||
     PiBashExecutionUpdateEvent() ||
     PiQueueUpdateEvent() ||
@@ -306,14 +337,21 @@ final class PiEventDispatcher({
     if (message == null) return const [];
     final state = _session(sessionId);
     final textContent = message.content.whereType<PiTextContentDto>().singleOrNull;
-    final visibleText = state.userVisibleText;
-    final exactText = textContent?.text == state.executionText ? visibleText : null;
+    final isAttachmentOnlyMessage =
+        message.content.isNotEmpty && message.content.every((content) => content is PiImageContentDto);
+    final correlationIndex = state.pendingPrompts.indexWhere(
+      (prompt) =>
+          textContent?.text == prompt.executionText ||
+          ((prompt.executionText?.isEmpty ?? false) && isAttachmentOnlyMessage),
+    );
+    final correlation = correlationIndex == -1 ? null : state.pendingPrompts.removeAt(correlationIndex);
     final messageId = state.identities.next(role: PiMessageIdentityRole.user, timestamp: message.timestamp);
     final mapped = _historyMapper.mapUserMessage(
       sessionId: sessionId,
       messageId: messageId,
       message: message,
-      exactText: exactText,
+      exactText: correlation?.userVisibleText,
+      promptId: correlation?.promptId,
     );
     if (mapped == null) return const [];
     return [
@@ -506,22 +544,41 @@ final class PiEventDispatcher({
           ];
   }
 
-  List<BridgeSseEvent> _retry({
-    required String sessionId,
+  PluginSessionStatus? _retryStatus({
     required int? attempt,
     required int? delayMs,
     required DateTime now,
   }) {
-    if (attempt == null || delayMs == null || attempt < 0 || delayMs < 0) return const [];
+    if (attempt == null || delayMs == null || attempt < 0 || delayMs < 0) return null;
+    return PluginSessionStatus.retry(
+      attempt: attempt,
+      message: "Pi is retrying the provider request.",
+      next: now.millisecondsSinceEpoch + delayMs,
+    );
+  }
+
+  List<BridgeSseEvent> _turnStart({required String sessionId}) {
+    _tools.beginTurn(sessionId: sessionId);
+    return const [];
+  }
+
+  List<BridgeSseEvent> _status({required String sessionId, required PiEvent event, required DateTime? now}) {
+    final status = sessionStatusFor(event: event, now: now);
+    return status == null ? const [] : [BridgeSseSessionStatus(sessionID: sessionId, status: status.toJson())];
+  }
+
+  List<BridgeSseEvent> _compactionStart({
+    required String sessionId,
+    required PiCompactionStartEvent event,
+    required DateTime? now,
+  }) {
+    final state = _session(sessionId);
+    final messageId = state.compactionMessageId ??= state.identities.reserveCompaction();
+    final mapped = _historyMapper.mapRunningCompaction(sessionId: sessionId, messageId: messageId);
     return [
-      BridgeSseSessionStatus(
-        sessionID: sessionId,
-        status: PluginSessionStatus.retry(
-          attempt: attempt,
-          message: "Pi is retrying the provider request.",
-          next: now.millisecondsSinceEpoch + delayMs,
-        ).toJson(),
-      ),
+      ..._status(sessionId: sessionId, event: event, now: now),
+      BridgeSseMessageUpdated(info: mapped.info.toJson()),
+      for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
     ];
   }
 
@@ -552,12 +609,16 @@ final class PiEventDispatcher({
         _PiCompactionFailureDiagnostic(reason: reason, detail: errorMessage),
       );
     }
-    if ((aborted || errorMessage != null) && !willRetry) {
-      return [BridgeSseSessionError(sessionID: sessionId)];
+    if (aborted || errorMessage != null) {
+      if (willRetry) return const [];
+      return [
+        ...clearCompaction(sessionId: sessionId),
+        BridgeSseSessionError(sessionID: sessionId),
+      ];
     }
-    if (willRetry) return const [];
     final state = _session(sessionId);
-    final messageId = state.identities.nextCompaction();
+    final messageId = state.identities.commitCompaction();
+    state.compactionMessageId = null;
     final mapped = _historyMapper.mapCompaction(sessionId: sessionId, messageId: messageId);
     return [
       BridgeSseSessionCompacted(sessionID: sessionId),
@@ -600,14 +661,20 @@ final class PiEventDispatcher({
   );
 }
 
+final class const _PendingPrompt({
+  required final String promptId,
+  required final String? executionText,
+  required final String? userVisibleText,
+});
+
 final class _SessionState({required final PiMessageIdentityBuilder identities}) {
   String? messageId;
   PiAssistantMessageDto? message;
-  String? executionText;
-  String? userVisibleText;
+  final List<_PendingPrompt> pendingPrompts = [];
   bool announced = false;
   final Set<({int contentIndex, PluginMessagePartType type})> startedParts = {};
   final Set<String> emittedPartIds = {};
+  String? compactionMessageId;
 
   void clearMessage() {
     messageId = null;

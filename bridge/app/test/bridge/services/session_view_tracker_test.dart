@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
+import "package:sesori_bridge/src/services/session_view_tracker.dart";
 import "package:test/test.dart";
 
 void main() {

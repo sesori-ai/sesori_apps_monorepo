@@ -1,6 +1,6 @@
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
+import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -30,6 +30,19 @@ void main() {
     test("returns false for an unrelated error with no errno", () {
       const error = FileSystemException("Directory listing failed", "/p");
       expect(validator.isPermissionDenied(error), isFalse);
+    });
+
+    test("recognizes missing files by errno and Windows message", () {
+      const errno = FileSystemException("x", "/p", OSError("No such file or directory", 2));
+      const message = FileSystemException("Cannot find the file specified", "/p");
+
+      expect(validator.isFileMissing(errno), isTrue);
+      expect(validator.isFileMissing(message), isTrue);
+    });
+
+    test("does not classify unrelated filesystem errors as missing", () {
+      const error = FileSystemException("Directory listing failed", "/p", OSError("I/O error", 5));
+      expect(validator.isFileMissing(error), isFalse);
     });
   });
 }

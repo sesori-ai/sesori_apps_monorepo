@@ -54,7 +54,7 @@ class ManagedRuntimeInstallService({
     } on Object catch (error) {
       // Surfaced (and rendered) via ProvisionFailed — no separate upfront log.
       yield ProvisionFailed(
-        message: "Could not determine this machine's platform for the $name runtime ($error).",
+        message: "Could not determine this machine's platform for the $name runtime (${error.toString()}).",
       );
       return;
     }
@@ -96,7 +96,7 @@ class ManagedRuntimeInstallService({
       );
       _throwIfAborted(startAborted: startAborted);
       if (cachedVersion != null && cachedVersion.compareTo(bundled) == 0) {
-        Log.i("[$id] managed $name $bundled already installed");
+        Log.i("[$id] managed $name ${bundled.toString()} already installed");
         // Sweep before the terminal event: consumers may stop listening as
         // soon as ProvisionReady arrives, which would cancel this stream and
         // leave superseded version directories behind.
@@ -106,7 +106,7 @@ class ManagedRuntimeInstallService({
       }
       Log.w(
         "[$id] cached managed runtime at '$binaryPath' is version "
-        "'${cachedVersion ?? "unrunnable"}' (expected '$bundled'); reinstalling",
+        "'${cachedVersion?.toString() ?? "unrunnable"}' (expected '${bundled.toString()}'); reinstalling",
       );
     }
 
@@ -147,12 +147,12 @@ class ManagedRuntimeInstallService({
       yield ProvisionFailed(
         message:
             "The downloaded $name runtime is not runnable on this machine "
-            "(reported '${installedVersion ?? "no version"}', expected '$bundled').",
+            "(reported '${installedVersion?.toString() ?? "no version"}', expected '${bundled.toString()}').",
       );
       return;
     }
 
-    Log.i("[$id] installed managed $name $bundled");
+    Log.i("[$id] installed managed $name ${bundled.toString()}");
     // Sweep before the terminal event: consumers may stop listening as soon as
     // ProvisionReady arrives, which would cancel this stream mid-sweep.
     await _cleaner.sweep(managedDir: managedDir, keepVersion: bundled.raw);

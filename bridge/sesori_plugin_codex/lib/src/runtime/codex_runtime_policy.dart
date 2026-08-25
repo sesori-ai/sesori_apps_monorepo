@@ -1,8 +1,7 @@
-import "dart:async";
 import "dart:io" as io;
 import "dart:math";
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginHost, ProcessIdentity, SpawnedProcess;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginHost, SpawnedProcess;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
 import "codex_ownership_record.dart";
@@ -61,41 +60,17 @@ const Duration codexVersionProbeTimeout = Duration(seconds: 10);
 /// restart loop. Clean shutdowns disarm the monitor first and never fail.
 RuntimeRestartPolicy buildCodexRestartPolicy() => const RuntimeRestartPolicy.disabled();
 
-bool _isDynamicCandidate(int port) =>
-    port != codexNoReservedPort && port >= dynamicCodexPortMin && port <= dynamicCodexPortMax;
-
 /// The dynamic port candidates the supervisor probes when no explicit port is
-/// requested. When [candidates] is supplied (tests) it is filtered through the
-/// same in-range rule; otherwise random ports in the dynamic range are drawn,
-/// examining at most [dynamicCodexMaxAttempts] draws and yielding each distinct
-/// valid candidate (duplicate draws are skipped but still count as attempts, so
-/// the loop always terminates).
-Iterable<int> codexDynamicCandidates({Iterable<int>? candidates, Random? random}) sync* {
-  final supplied = candidates;
-  if (supplied != null) {
-    var examined = 0;
-    for (final port in supplied) {
-      if (examined >= dynamicCodexMaxAttempts) {
-        return;
-      }
-      examined++;
-      if (_isDynamicCandidate(port)) {
-        yield port;
-      }
-    }
-    return;
-  }
-
-  final rng = random ?? Random.secure();
-  final seen = <int>{};
-  // Bound by the number of draws examined, not by distinct ports yielded, so a
-  // run of duplicate draws (e.g. a degenerate Random) can never loop forever.
-  for (var examined = 0; examined < dynamicCodexMaxAttempts; examined++) {
-    final port = dynamicCodexPortMin + rng.nextInt(dynamicCodexPortMax - dynamicCodexPortMin + 1);
-    if (_isDynamicCandidate(port) && seen.add(port)) {
-      yield port;
-    }
-  }
+/// requested.
+Iterable<int> codexDynamicCandidates({Iterable<int>? candidates, Random? random}) {
+  return dynamicPortCandidates(
+    minPort: dynamicCodexPortMin,
+    maxPort: dynamicCodexPortMax,
+    maxDraws: dynamicCodexMaxAttempts,
+    reservedPort: codexNoReservedPort,
+    candidates: candidates,
+    random: random,
+  );
 }
 
 /// The argument vector `codex app-server` is spawned with for a chosen [port].
@@ -128,7 +103,7 @@ Future<SpawnedProcess> spawnCodexProcess({
     workingDirectory: null,
     runInShell: io.Platform.isWindows,
   );
-  return _DrainingCodexProcess(process);
+  return DrainingSpawnedProcess(inner: process);
 }
 
 /// Probes codex readiness on [port] by opening a loopback TCP connection: a
@@ -168,9 +143,8 @@ CodexOwnershipRecord buildCodexOwnershipRecord(RuntimeRecordDraft draft) {
 }
 
 /// Assembles the [ManagedRuntimeSpec] for `codex app-server` with the hardened
-/// policy knobs active: deadline-paced health confirmation, the start intent
-/// recorded to a bridge-private side file before spawn, and a child exit before
-/// the first healthy probe treated as authoritative failure.
+/// policy knobs active: deadline-paced health confirmation and a child exit
+/// before the first healthy probe treated as authoritative failure.
 ManagedRuntimeSpec<CodexOwnershipRecord> buildCodexManagedRuntimeSpec({
   required PluginHost host,
   required String executablePath,
@@ -182,59 +156,9 @@ ManagedRuntimeSpec<CodexOwnershipRecord> buildCodexManagedRuntimeSpec({
     probePortBindable: ({required int port}) => host.ports.isBindable(host: codexLoopbackHost, port: port),
     buildRecord: buildCodexOwnershipRecord,
     portPolicy: portPolicy,
-    healthPolicy: RuntimeHealthPolicy.deadline(
+    healthPolicy: RuntimeHealthPolicy(
       deadline: codexHealthDeadline,
       pollInterval: codexHealthPollInterval,
     ),
-    recordTiming: RuntimeRecordTiming.intentSideFile,
-    failOnEarlyChildExit: true,
   );
-}
-
-/// Wraps a [SpawnedProcess] so its stdout/stderr are drained from the moment of
-/// spawn, for the child's whole lifetime, so the OS pipe can never fill. The
-/// streams are exposed as broadcast so the exit monitor can still attach once
-/// armed; output produced before that is consumed by the internal drain.
-class _DrainingCodexProcess(final SpawnedProcess _inner) implements SpawnedProcess {
-  this {
-    _stdoutDrain = _stdout.listen((_) {}, onError: (Object _) {}, cancelOnError: false);
-    _stderrDrain = _stderr.listen((_) {}, onError: (Object _) {}, cancelOnError: false);
-    // Fail-soft: this background drain-release is best-effort, so swallow any
-    // error (e.g. a `cancel()` throw) rather than leaking an unhandled async
-    // error from the unawaited future.
-    unawaited(_releaseDrainsOnExit().catchError((Object _) {}));
-  }
-
-  final Stream<List<int>> _stdout = _inner.stdout.asBroadcastStream();
-  final Stream<List<int>> _stderr = _inner.stderr.asBroadcastStream();
-  late final StreamSubscription<List<int>> _stdoutDrain;
-  late final StreamSubscription<List<int>> _stderrDrain;
-
-  Future<void> _releaseDrainsOnExit() async {
-    try {
-      await _inner.exitCode;
-    } on Object {
-      // Ignore: the only purpose here is to release the drains after exit.
-    }
-    await _stdoutDrain.cancel();
-    await _stderrDrain.cancel();
-  }
-
-  @override
-  int get pid => _inner.pid;
-
-  @override
-  ProcessIdentity get identity => _inner.identity;
-
-  @override
-  io.IOSink get stdin => _inner.stdin;
-
-  @override
-  Stream<List<int>> get stdout => _stdout;
-
-  @override
-  Stream<List<int>> get stderr => _stderr;
-
-  @override
-  Future<int> get exitCode => _inner.exitCode;
 }

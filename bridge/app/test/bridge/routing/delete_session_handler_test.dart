@@ -3,27 +3,26 @@ import "dart:convert";
 import "dart:io";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
+import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/device_canvas/integration_state.dart";
 import "package:sesori_bridge/src/bridge/device_canvas/protocol.dart";
-import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
-import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
-import "package:sesori_bridge/src/bridge/repositories/device_canvas_claim_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/routing/delete_session_handler.dart";
-import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
-import "package:sesori_bridge/src/bridge/services/device_canvas_claim_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_deletion_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
+import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
+import "package:sesori_bridge/src/repositories/device_canvas_claim_repository.dart";
+import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/routing/delete_session_handler.dart";
+import "package:sesori_bridge/src/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/services/device_canvas_claim_service.dart";
+import "package:sesori_bridge/src/services/session_deletion_service.dart";
+import "package:sesori_bridge/src/services/session_lifecycle_service.dart";
+import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fakes/deletion_worktree_service_fake.dart";
 import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
@@ -32,7 +31,7 @@ void main() {
   group("DeleteSessionHandler", () {
     late AppDatabase db;
     late _TrackingFakeBridgePlugin plugin;
-    late _FakeWorktreeService worktreeService;
+    late DeletionWorktreeServiceFake worktreeService;
     late SessionOperationDispatcher sessionOperationDispatcher;
     late SessionMutationDispatcher sessionMutationDispatcher;
     late DeleteSessionHandler handler;
@@ -45,7 +44,7 @@ void main() {
       db = createTestDatabase();
       operationLog = [];
       plugin = _TrackingFakeBridgePlugin(operationLog: operationLog);
-      worktreeService = _FakeWorktreeService(database: db, operationLog: operationLog);
+      worktreeService = DeletionWorktreeServiceFake(operationLog: operationLog);
       final sessionRepository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -108,9 +107,6 @@ void main() {
             deleteBranch: false,
             force: false,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -138,9 +134,6 @@ void main() {
           deleteBranch: false,
           force: false,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, isA<SuccessEmptyResponse>());
@@ -177,9 +170,6 @@ void main() {
           deleteBranch: false,
           force: false,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, isA<SuccessEmptyResponse>());
@@ -211,9 +201,6 @@ void main() {
           deleteBranch: false,
           force: false,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       await plugin.deleteSessionStarted.future;
 
@@ -251,9 +238,6 @@ void main() {
           deleteBranch: false,
           force: false,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       await plugin.deleteSessionStarted.future;
 
@@ -277,7 +261,7 @@ void main() {
     });
 
     test("missing binding returns 404 before plugin or cleanup calls", () async {
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "DELETE",
           "/session/delete",
@@ -290,9 +274,6 @@ void main() {
             ).toJson(),
           ),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, 404);
@@ -319,9 +300,6 @@ void main() {
           deleteBranch: false,
           force: false,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, isA<SuccessEmptyResponse>());
@@ -360,9 +338,6 @@ void main() {
             deleteBranch: false,
             force: false,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<SessionCleanupFailedException>()),
       );
@@ -390,9 +365,6 @@ void main() {
             deleteBranch: true,
             force: false,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((response) => response.status, "status", 422)),
       );
@@ -423,9 +395,6 @@ void main() {
             deleteBranch: true,
             force: false,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((response) => response.status, "status", 422)),
       );
@@ -466,9 +435,6 @@ void main() {
             deleteBranch: false,
             force: false,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(409))),
       );
@@ -500,9 +466,6 @@ void main() {
           deleteBranch: false,
           force: true,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, isA<SuccessEmptyResponse>());
@@ -531,9 +494,6 @@ void main() {
           deleteBranch: false,
           force: false,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, isA<SuccessEmptyResponse>());
@@ -554,7 +514,7 @@ void main() {
         pluginId: "stopped-plugin",
       );
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "DELETE",
           "/session/delete",
@@ -567,9 +527,6 @@ void main() {
             ).toJson(),
           ),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, 503);
@@ -606,9 +563,6 @@ void main() {
             deleteBranch: false,
             force: false,
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<PluginApiException>()),
       );
@@ -639,9 +593,6 @@ void main() {
           deleteBranch: false,
           force: false,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, isA<SuccessEmptyResponse>());
@@ -666,9 +617,6 @@ void main() {
           deleteBranch: false,
           force: false,
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, isA<SuccessEmptyResponse>());
@@ -715,6 +663,7 @@ Future<void> _insertSession({
   await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]); // satisfy v5 FK constraint
   await db.sessionDao.insertSession(
     pluginId: pluginId,
+    preservePullRequestScope: false,
     sessionId: sessionId,
     backendSessionId: sessionId,
     projectId: projectId,
@@ -749,88 +698,6 @@ Future<void> _insertChildSession({
     projectionUpdatedAt: 1,
     pluginId: "fake",
   );
-}
-
-class _FakeWorktreeService({required AppDatabase database, required final List<String> operationLog})
-    extends WorktreeService {
-  WorktreeSafetyResult safetyResult = WorktreeSafe();
-  bool removeResult = true;
-
-  int checkCallCount = 0;
-  int removeCallCount = 0;
-
-  String? lastCheckWorktreePath;
-  String? lastRemoveProjectId;
-  String? lastRemoveWorktreePath;
-  bool? lastRemoveForce;
-
-  this
-    : super(
-        worktreeRepository: singlePluginWorktreeRepository(
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          gitApi: GitCliApi(
-            processRunner: _NoopProcessRunner(),
-            gitPathExists: ({required String gitPath}) => true,
-          ),
-          plugin: _FakeBridgePlugin(),
-        ),
-      );
-
-  @override
-  Future<WorktreeSafetyResult> checkWorktreeSafety({
-    required String worktreePath,
-  }) async {
-    checkCallCount++;
-    operationLog.add("checkSafety");
-    lastCheckWorktreePath = worktreePath;
-    return safetyResult;
-  }
-
-  @override
-  Future<bool> removeWorktree({
-    required String pluginId,
-    required String projectId,
-    required String worktreePath,
-    required bool force,
-  }) async {
-    removeCallCount++;
-    operationLog.add("removeWorktree");
-    lastRemoveProjectId = projectId;
-    lastRemoveWorktreePath = worktreePath;
-    lastRemoveForce = force;
-    return removeResult;
-  }
-}
-
-class _FakeBridgePlugin() extends FakeBridgePlugin {
-  @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) async {}
-}
-
-class _NoopProcessRunner() implements ProcessRunner {
-  @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
-    Map<String, String>? environment,
-    String? workingDirectory,
-    Duration timeout = const Duration(seconds: 15),
-  }) {
-    throw UnimplementedError("_NoopProcessRunner should never execute git commands");
-  }
 }
 
 class _TrackingFakeBridgePlugin({required final List<String> operationLog}) extends FakeBridgePlugin {

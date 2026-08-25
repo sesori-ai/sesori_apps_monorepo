@@ -44,7 +44,7 @@ class _MockLegalRepository() extends Mock implements LegalRepository;
 
 class _MockBridgeSettingsRepository() extends Mock implements BridgeSettingsRepository;
 
-const _connectionConfig = ServerConnectionConfig(relayHost: "relay.example.com");
+const _connectionConfig = ServerConnectionConfig(relayHost: "relay.example.com", authToken: null);
 const _health = HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false);
 const _connected = ConnectionStatus.connected(config: _connectionConfig, health: _health);
 
@@ -133,6 +133,7 @@ void main() {
     when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatuses.value);
     when(() => connectionService.status).thenAnswer((_) => connectionStatuses.stream);
     GetIt.instance.registerSingleton<ConnectionService>(connectionService);
+    GetIt.instance.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
 
     authSession = _StubAuthSession();
     when(authSession.logoutCurrentDevice).thenAnswer((_) async {});
@@ -198,9 +199,7 @@ void main() {
       final enabled = invocation.namedArguments[#enabled] as bool;
       return YoloSettingsMutationCommitted(response: YoloSettingsResponse(enabled: enabled));
     });
-    GetIt.instance.registerSingleton<BridgeSettingsService>(
-      BridgeSettingsService(repository: bridgeSettingsRepository),
-    );
+    GetIt.instance.registerSingleton<BridgeSettingsRepository>(bridgeSettingsRepository);
   });
 
   tearDown(() async {

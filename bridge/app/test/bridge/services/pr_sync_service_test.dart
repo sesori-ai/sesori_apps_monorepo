@@ -1,14 +1,14 @@
 import "dart:async";
 
 import "package:clock/clock.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
-import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_target.dart";
+import "package:sesori_bridge/src/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
+import "package:sesori_bridge/src/repositories/pr_source_repository.dart";
+import "package:sesori_bridge/src/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/services/pr_sync_service.dart";
 import "package:test/test.dart";
 
 const _repositoryIdentity = "sesori-ai/sesori_apps_monorepo";
@@ -620,12 +620,118 @@ void main() {
         projectIds: {"one"},
         refreshPolicy: PrRefreshPolicy.explicit,
       );
-      service.dispose();
+      final disposal = service.dispose();
 
       expect(await queued, PrRefreshOutcome.failed);
       selectionBlock.complete();
+      await disposal;
       expect(await first, PrRefreshOutcome.failed);
       expect(source.selectionCalls, hasLength(1));
+    });
+
+    test("dispose during session loading does not start local resolution", () async {
+      final sessionLoadBlock = Completer<void>();
+      final source = _FakePrSource();
+      final pullRequests = _FakePullRequestRepository();
+      final sessions = _FakeSessionRepository(
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
+        },
+        loadBlock: sessionLoadBlock,
+      );
+      final service = PrSyncService(
+        prSource: source,
+        pullRequestRepository: pullRequests,
+        sessionRepository: sessions,
+        clock: const Clock(),
+        debounceWindow: Duration.zero,
+      );
+
+      final refresh = service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.background,
+      );
+      await sessions.loadStarted.future;
+      final disposal = service.dispose();
+      sessionLoadBlock.complete();
+      await disposal;
+      await _waitFor(() => sessions.completedLoadCount == 1);
+      await refresh;
+
+      expect(source.resolveCalls, isEmpty);
+      expect(pullRequests.applyCalls, isEmpty);
+    });
+
+    test("dispose waits for an active local refresh write", () async {
+      final applyBlock = Completer<void>();
+      final source = _FakePrSource(
+        targetsByDirectory: const {
+          "/one": PullRequestLocalBranchDirectoryTarget(branchName: "feature/current"),
+        },
+      );
+      final pullRequests = _FakePullRequestRepository(applyBlock: applyBlock);
+      final service = _service(
+        source: source,
+        pullRequests: pullRequests,
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
+        },
+      );
+
+      final refresh = service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.background,
+      );
+      await pullRequests.applyStarted.future;
+      final disposal = service.dispose();
+      var disposalCompleted = false;
+      unawaited(disposal.then((_) => disposalCompleted = true));
+      await Future<void>.delayed(Duration.zero);
+      expect(disposalCompleted, isFalse);
+
+      applyBlock.complete();
+      await disposal;
+
+      expect(disposalCompleted, isTrue);
+      expect(await refresh, PrRefreshOutcome.failed);
+    });
+
+    test("dispose abandons local resolution finishing during shutdown", () async {
+      final resolutionBlock = Completer<void>();
+      final resolutionError = PullRequestTargetResolutionException(
+        innerError: StateError("git exited during shutdown"),
+        innerStackTrace: StackTrace.current,
+      );
+      final source = _FakePrSource(
+        targetsByDirectory: {
+          "/one": PullRequestRepositoryResolutionFailed(
+            branchName: "feature/current",
+            error: resolutionError,
+          ),
+        },
+        resolutionBlock: resolutionBlock,
+      );
+      final pullRequests = _FakePullRequestRepository();
+      final service = _service(
+        source: source,
+        pullRequests: pullRequests,
+        sessionsByProject: {
+          "one": [_session(id: "one", projectId: "one", directory: "/one")],
+        },
+      );
+
+      final refresh = service.triggerRefresh(
+        projectIds: {"one"},
+        refreshPolicy: PrRefreshPolicy.background,
+      );
+      await _waitFor(() => source.resolveCalls.isNotEmpty);
+      final disposal = service.dispose();
+      resolutionBlock.complete();
+      await disposal;
+      await _waitFor(() => source.completedResolutionCount == 1);
+      await refresh;
+
+      expect(pullRequests.applyCalls, isEmpty);
     });
   });
 }
@@ -689,6 +795,7 @@ final class _FakePrSource({
   Map<String, PullRequestDirectoryTarget> targetsByDirectory = const {},
   final List<Map<String, PullRequestDirectoryTarget>> resolutionResults = const [],
   final List<Completer<void>> selectionBlocks = const [],
+  final Completer<void>? resolutionBlock,
 }) implements PrSourceRepository {
   final List<List<String>> resolveCalls = <List<String>>[];
   final List<List<PullRequestSelectionTarget>> selectionCalls = <List<PullRequestSelectionTarget>>[];
@@ -704,6 +811,7 @@ final class _FakePrSource({
   int identityCallCount = 0;
   int _activeSelections = 0;
   int maxConcurrentSelections = 0;
+  int completedResolutionCount = 0;
 
   @override
   Future<Map<String, PullRequestDirectoryTarget>> resolvePullRequestTargets({
@@ -711,6 +819,8 @@ final class _FakePrSource({
   }) async {
     final uniqueDirectories = directories.toSet().toList(growable: false)..sort();
     resolveCalls.add(uniqueDirectories);
+    if (resolutionBlock case final block?) await block.future;
+    completedResolutionCount++;
     final resultIndex = resolveCalls.length - 1;
     final configured = resultIndex < resolutionResults.length ? resolutionResults[resultIndex] : targetsByDirectory;
     return {
@@ -762,7 +872,7 @@ final class _FakePrSource({
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-final class _FakePullRequestRepository() implements PullRequestRepository {
+final class _FakePullRequestRepository({final Completer<void>? applyBlock}) implements PullRequestRepository {
   Set<String> localChangedProjectIds = const <String>{};
   Set<String> preparedChangedProjectIds = const <String>{};
   final Map<String, PullRequestReplacementOutcome> replacementOutcomes = <String, PullRequestReplacementOutcome>{};
@@ -778,6 +888,7 @@ final class _FakePullRequestRepository() implements PullRequestRepository {
     })
   >
   replaceCalls = [];
+  final Completer<void> applyStarted = Completer<void>();
 
   @override
   Future<Set<String>> applyResolvedTargets({
@@ -788,6 +899,8 @@ final class _FakePullRequestRepository() implements PullRequestRepository {
       sessionsByProject: Map<String, List<StoredSession>>.from(sessionsByProject),
       targets: Map<String, PullRequestDirectoryTarget>.from(targetsByDirectory),
     ));
+    if (!applyStarted.isCompleted) applyStarted.complete();
+    if (applyBlock case final block?) await block.future;
     return localChangedProjectIds;
   }
 
@@ -821,10 +934,18 @@ final class _FakePullRequestRepository() implements PullRequestRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-final class _FakeSessionRepository({required final Map<String, List<StoredSession>> sessionsByProject})
-    implements SessionRepository {
+final class _FakeSessionRepository({
+  required final Map<String, List<StoredSession>> sessionsByProject,
+  final Completer<void>? loadBlock,
+}) implements SessionRepository {
+  final Completer<void> loadStarted = Completer<void>();
+  int completedLoadCount = 0;
+
   @override
   Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
+    if (!loadStarted.isCompleted) loadStarted.complete();
+    if (loadBlock case final block?) await block.future;
+    completedLoadCount++;
     return sessionsByProject[projectId] ?? const <StoredSession>[];
   }
 

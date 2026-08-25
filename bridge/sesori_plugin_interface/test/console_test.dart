@@ -1,5 +1,6 @@
 import "dart:io";
 
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -11,8 +12,8 @@ void main() {
 
       IOOverrides.runZoned(
         () => Console.message("hello, user"),
-        stdout: () => _CapturingStdout(out),
-        stderr: () => _CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: out),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(out, equals(["hello, user"]));
@@ -25,8 +26,8 @@ void main() {
 
       IOOverrides.runZoned(
         () => Console.warning("heads up"),
-        stdout: () => _CapturingStdout(out),
-        stderr: () => _CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: out),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(err, equals(["heads up"]));
@@ -39,8 +40,8 @@ void main() {
 
       IOOverrides.runZoned(
         () => Console.error("something went wrong"),
-        stdout: () => _CapturingStdout(out),
-        stderr: () => _CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: out),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(err, equals(["something went wrong"]));
@@ -55,8 +56,8 @@ void main() {
           Console.warning("warn");
           Console.error("boom");
         },
-        stdout: () => _CapturingStdout(<String>[]),
-        stderr: () => _CapturingStdout(err),
+        stdout: () => CapturingStdout(lines: <String>[]),
+        stderr: () => CapturingStdout(lines: err),
       );
 
       expect(
@@ -76,8 +77,8 @@ void main() {
 
       IOOverrides.runZoned(
         () => Console.message("must still be visible"),
-        stdout: () => _CapturingStdout(out),
-        stderr: () => _CapturingStdout(<String>[]),
+        stdout: () => CapturingStdout(lines: out),
+        stderr: () => CapturingStdout(lines: <String>[]),
       );
 
       expect(out, equals(["must still be visible"]));
@@ -86,12 +87,3 @@ void main() {
 }
 
 /// Captures [writeln] calls; [IOOverrides] swaps it in for stdout/stderr.
-class _CapturingStdout(final List<String> lines) implements Stdout {
-  @override
-  void writeln([Object? object = ""]) {
-    lines.add(object.toString());
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}

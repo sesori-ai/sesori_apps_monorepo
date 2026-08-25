@@ -404,7 +404,6 @@
   "notificationCategoryConnectionStatus": "Connection Status",
   "notificationCategoryConnectionStatusDescription": "Bridge online and offline status changes",
   "notificationCategorySystemUpdate": "System Updates",
-  "notificationCategorySystemUpdateDescription": "App and bridge updates or maintenance notices",
   "sessionListTitle": "Sessions",
   "sessionListRepoInfoSemantics": "Show full repository name",
   "@sessionListRepoInfoSemantics": {
@@ -675,11 +674,11 @@
   "sessionDetailQueuedMessage": "Queued",
   "sessionDetailQueuedCommand": "Queued command",
   "sessionDetailSendingMessage": "Sending",
+  "sessionDetailPromptOptionsUpdated": "Prompt options changed. Updated settings and retrying your message.",
+  "sessionDetailPromptOptionsRecoveryFailed": "Couldn’t apply updated prompt options. Your message remains queued.",
   "sessionDetailCancelQueued": "Cancel",
   "sessionDetailPickerAgent": "Agent",
-  "sessionDetailPickerModel": "Model",
   "sessionDetailPickerVariant": "Variant",
-  "sessionDetailVariantDefault": "Default",
   "sessionDetailSelectModel": "Select Model",
   "sessionDetailModelSearch": "Search models...",
   "backgroundTasksRunning": "{count, plural, =1{1 Task Running} other{{count} Tasks Running}}",
@@ -691,7 +690,6 @@
     }
   },
   "backgroundTasksCompleted": "All tasks completed",
-  "backgroundTasksTitle": "Background Tasks",
   "backgroundTaskStatusIdle": "Completed",
   "backgroundTaskStatusBusy": "Running",
   "backgroundTaskStatusRetry": "Retrying",
@@ -739,18 +737,12 @@
     "description": "Accessibility label for the toggle that re-masks the password field."
   },
   "signIn": "Sign in",
-  "backToLogin": "Back to login",
   "loginAuthenticationFailedTitle": "Authentication failed",
   "loginError": "Sign in failed. Please try again.",
   "loginAuthenticating": "Signing in...",
-  "loginAwaitingCallback": "Waiting for authorization...",
   "loginPolling": "Confirm the sign-in in your browser to continue.",
   "loginTimeout": "Authorization timed out. Please try again.",
   "loginBrowserOpenFailed": "Could not open browser",
-  "loginCallbackTimeout": "Authorization timed out. Please try again.",
-  "loginCallbackMissingParams": "Invalid authorization callback. Please try again.",
-  "loginStateMismatch": "Authorization state mismatch. Please try again.",
-  "loginPkceStateMissing": "Login session expired. Please start again.",
   "sessionListRunning": "Running",
   "@sessionListRunning": {
     "description": "Screen-reader label for a session an agent is actively working in; the visual signal is the twinkling sparkle"
@@ -789,7 +781,6 @@
   "sessionListStaleProjectMessage": "The directory for this project no longer exists or has been renamed. Sessions cannot be loaded because the server can no longer resolve this project.",
   "sessionListStaleProjectBack": "Go back",
   "voiceRecord": "Record voice",
-  "voiceStopRecording": "Stop recording",
   "voiceCancelTranscription": "Cancel transcription",
   "voiceCancelRecording": "Cancel recording",
   "@voiceCancelRecording": {
@@ -804,7 +795,6 @@
     "description": "Floating helper above the composer while the recording hold hovers over the cancel button; releasing there discards the recording."
   },
   "voiceTranscribing": "Transcribing...",
-  "voiceRecording": "Recording...",
   "voiceErrorPermission": "Microphone permission is required for voice input",
   "voiceErrorRecording": "Recording failed. Please try again.",
   "voiceErrorTranscription": "Transcription failed. Please try again.",
@@ -829,7 +819,6 @@
   "emptyDirectory": "This directory is empty",
   "fetchDirectoryFailed": "Could not load directory contents",
   "fetchDirectoryRetry": "Retry",
-  "fetchDirectoryGoBack": "Go Back",
   "gitRepoBadge": "Git",
   "@gitRepoBadge": {
     "description": "Tag on a folder row in the add-project browser marking it as a git repository. Not necessarily hosted on GitHub — the bridge only reports that a repository is present."
@@ -841,11 +830,6 @@
   "@hide": {
     "description": "Label on the swipe-revealed hide button of a project row. Kept short — the button is a compact pill."
   },
-  "projectFolderMissing": "Unavailable",
-  "@projectFolderMissing": {
-    "description": "Status shown on a project row whose folder no longer exists on disk. The row is greyed out and cannot be opened."
-  },
-  "projectFolderMissingMessage": "This project's folder no longer exists — it may have been moved or deleted. Hide the project, or restore the folder to its original location.",
   "noProjects": "No projects",
   "addProjectPrompt": "Add a project to get started",
   "projectDiscovered": "Project discovered",
@@ -891,10 +875,8 @@
   "newSessionHarnessSettings": "Harness settings",
   "newSessionNoHarnessTitle": "No coding harness installed",
   "newSessionNoHarnessDescription": "The connected bridge has no coding harness it can run. Install one from Harness settings.",
-  "newSessionHarnessesRefresh": "Check for harnesses",
   "newSessionOptionsLoadingSemantics": "Loading session options",
   "newSessionOptionsRefresh": "Refresh the model list",
-  "newSessionProjectRefresh": "Retry project check",
   "newSessionProjectUnavailable": "Couldn’t verify whether this project supports dedicated workspaces. Try again before creating the session.",
   "newSessionOptionsCached": "Using cached coding tool options.",
   "newSessionOptionsUnavailable": "No cached options are available. You can create with defaults or refresh now.",

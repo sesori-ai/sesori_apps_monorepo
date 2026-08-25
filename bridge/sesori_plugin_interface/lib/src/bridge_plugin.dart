@@ -8,11 +8,13 @@ import "models/plugin_project.dart";
 import "models/plugin_project_activity_summary.dart";
 import "models/plugin_prompt_part.dart";
 import "models/plugin_provider.dart";
+import "models/plugin_queued_prompt.dart";
 import "models/plugin_session.dart";
 import "models/plugin_session_options.dart";
 import "models/plugin_session_status.dart";
 import "models/plugin_session_variant.dart";
 import "plugin_permission_reply.dart";
+import "plugin_stale_options_exception.dart";
 
 // Note: as far as architecture goes, this MUST be treated as part of API layer
 /// The backend contract every bridge plugin fulfils.
@@ -32,7 +34,7 @@ sealed class BridgePluginApi() {
   Stream<BridgeSseEvent> get events;
 
   /// Get sessions for a project directory.
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit});
+  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit});
 
   /// Get the slash commands available to the current project.
   Future<List<PluginCommand>> getCommands({required String? projectId});
@@ -106,8 +108,29 @@ sealed class BridgePluginApi() {
   /// stay distinguishable from "no messages yet".
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId);
 
+  /// Sends a prompt to a session.
+  ///
+  /// The returned future MUST complete once the prompt is **accepted** —
+  /// durably enqueued by the plugin or taken by the backend — not when its
+  /// agent run (or the runs queued ahead of it) finishes. Callers (bridge
+  /// request handlers serving phones) await this future while holding a
+  /// client request open, so an implementation must never block for the
+  /// duration of a turn. A prompt accepted while another turn runs is
+  /// queued; queue-owning plugins expose it via [getQueuedPrompts] and
+  /// surface later dispatch failures through their [events] stream.
+  /// If an implementation rejects the send before acceptance because the
+  /// selected agent, model, or variant is no longer offered, it throws
+  /// [PluginStaleOptionsException] so the bridge can invalidate its catalog
+  /// and the client can refresh and retry.
+  ///
+  /// [promptId] is the prompt's stable identity: queue-owning plugins key
+  /// their queued entries by it, refuse a duplicate (already queued or
+  /// recently dispatched) as an idempotent success, and stamp it on the
+  /// resulting user message's `promptId`. Plugins without a queue may
+  /// ignore it.
   Future<void> sendPrompt({
     required String sessionId,
+    required String promptId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
     required String? agent,
@@ -126,6 +149,10 @@ sealed class BridgePluginApi() {
   ///
   /// Dispatch failures (unknown command, missing session, backend down) MUST
   /// be thrown so callers can report the send as failed.
+  /// A no-longer-offered agent, model, or variant uses
+  /// [PluginStaleOptionsException], as documented by [sendPrompt].
+  ///
+  /// [promptId] carries the same identity contract as [sendPrompt]'s.
   ///
   /// [arguments] is the exact backend execution payload and may include
   /// bridge-owned context. [userVisibleArguments] is only the user-authored
@@ -133,6 +160,7 @@ sealed class BridgePluginApi() {
   /// a client-facing command message MUST use that value, never [arguments].
   Future<void> sendCommand({
     required String sessionId,
+    required String promptId,
     required String command,
     required String arguments,
     required String? userVisibleArguments,
@@ -141,6 +169,20 @@ sealed class BridgePluginApi() {
     required ({String providerID, String modelID})? model,
   });
 
+  /// Returns the prompts accepted for [sessionId] but not yet dispatched to
+  /// the backend, in dispatch order.
+  ///
+  /// The default is an empty list: a plugin that hands every prompt to its
+  /// backend immediately has nothing queued to expose.
+  Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
+
+  /// Cancels the queued prompt [promptId] on [sessionId] before dispatch.
+  ///
+  /// Returns whether an entry was removed. The default is `false`: a plugin
+  /// without a queue has nothing to cancel — including an entry that already
+  /// dispatched, which callers treat as benign (the prompt became a turn).
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
+
   Future<void> abortSession({required String sessionId});
 
   /// Returns the agents available for the given project.
@@ -148,11 +190,15 @@ sealed class BridgePluginApi() {
   /// [projectId] identifies the project; its format is plugin-defined.
   Future<List<PluginAgent>> getAgents({required String projectId});
 
+  /// Returns questions that remain unresolved for [sessionId]. Implementations
+  /// consume each entry on reply/reject and clear it during abort or disposal.
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId});
 
   /// Returns the pending permission requests to surface on [sessionId]'s
   /// screen: the session's own requests plus those of its descendant
   /// (sub-agent) sessions, whose top-most root resolves to [sessionId].
+  /// Implementations consume each entry on reply and clear it during abort or
+  /// disposal.
   Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId});
 
   /// Returns all pending questions for every session in the given project.
@@ -168,12 +214,16 @@ sealed class BridgePluginApi() {
   /// - Each inner list contains the selected answers for that question. Multiple
   ///   values represent multi-select; an empty list means intentionally
   ///   unanswered, including a client-side decline of only that question.
+  /// Implementations must resolve the backend request or retain an observable
+  /// failure when consuming the pending entry.
   Future<void> replyToQuestion({
     required String questionId,
     required String sessionId,
     required List<List<String>> answers,
   });
 
+  /// Rejects and consumes a pending question. Teardown paths that reject on the
+  /// client's behalf must continue clearing state and log backend failures.
   Future<void> rejectQuestion({required String questionId, required String? sessionId});
 
   /// Responds to a pending permission request.
@@ -181,6 +231,8 @@ sealed class BridgePluginApi() {
   /// [requestId] — the unique ID of the permission request
   /// [sessionId] — the session that owns this permission
   /// [reply] — once/always/reject
+  /// Implementations must resolve the backend request or retain an observable
+  /// failure when consuming the pending entry.
   Future<void> replyToPermission({
     required String requestId,
     required String sessionId,
@@ -203,15 +255,6 @@ sealed class BridgePluginApi() {
 
   /// Build a summary of the active sessions for each project.
   List<PluginProjectActivitySummary> getActiveSessionsSummary();
-
-  /// Stop the plugin and release resources (SSE connections, HTTP clients, etc.).
-  ///
-  /// Prefer `BridgePlugin.shutdown()`, which owns the plugin's ordered
-  /// teardown; this method will be removed once the bridge core stops
-  /// calling it directly. Until then the core may call `dispose()` before or
-  /// after `shutdown()`, so implementations MUST be idempotent and safe in
-  /// either order.
-  Future<void> dispose();
 }
 
 /// A plugin whose backend owns the project list natively (e.g. OpenCode's

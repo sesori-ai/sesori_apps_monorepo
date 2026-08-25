@@ -8,6 +8,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('RuntimeFileApi', () {
+    const stateFileName = 'plugin-processes.json';
     late Directory tempDir;
 
     setUp(() async {
@@ -24,50 +25,50 @@ void main() {
       final runtimeDirectory = p.join(tempDir.path, 'runtime');
       final api = RuntimeFileApi(runtimeDirectory: runtimeDirectory);
 
-      await api.writeOwnershipFile(contents: '{"session-a":{"ownerSessionId":"session-a"}}');
+      await api.writeFile(name: stateFileName, contents: '{"session-a":{"ownerSessionId":"session-a"}}');
 
       expect(Directory(runtimeDirectory).existsSync(), isTrue);
-      expect(await api.readOwnershipFile(), '{"session-a":{"ownerSessionId":"session-a"}}');
+      expect(await api.readFile(name: stateFileName), '{"session-a":{"ownerSessionId":"session-a"}}');
 
-      await api.deleteOwnershipFile();
+      await api.deleteFile(name: stateFileName);
 
-      expect(await api.readOwnershipFile(), isNull);
-      expect(File(api.ownershipFilePath).existsSync(), isFalse);
+      expect(await api.readFile(name: stateFileName), isNull);
+      expect(File(p.join(api.runtimeDirectory, stateFileName)).existsSync(), isFalse);
     });
 
-    test('deleteOwnershipFile ignores missing files', () async {
+    test('deleteFile ignores missing files', () async {
       final api = RuntimeFileApi(runtimeDirectory: p.join(tempDir.path, 'runtime'));
 
-      await api.deleteOwnershipFile();
+      await api.deleteFile(name: stateFileName);
 
-      expect(File(api.ownershipFilePath).existsSync(), isFalse);
+      expect(File(p.join(api.runtimeDirectory, stateFileName)).existsSync(), isFalse);
     });
 
-    test('writeOwnershipFile creates missing runtime directory', () async {
+    test('writeFile creates missing runtime directory', () async {
       final runtimeDirectory = p.join(tempDir.path, 'nested', 'runtime');
       final api = RuntimeFileApi(runtimeDirectory: runtimeDirectory);
 
-      await api.writeOwnershipFile(contents: '{}');
+      await api.writeFile(name: stateFileName, contents: '{}');
 
       expect(Directory(runtimeDirectory).existsSync(), isTrue);
-      expect(File(api.ownershipFilePath).existsSync(), isTrue);
+      expect(File(p.join(api.runtimeDirectory, stateFileName)).existsSync(), isTrue);
     });
 
-    test('writeOwnershipFile overwrites existing ownership file via temp rename', () async {
+    test('writeFile overwrites existing ownership file via temp rename', () async {
       final runtimeDirectory = p.join(tempDir.path, 'runtime');
       final api = RuntimeFileApi(runtimeDirectory: runtimeDirectory);
 
-      await api.writeOwnershipFile(contents: '{"session-a":{"ownerSessionId":"session-a"}}');
-      await api.writeOwnershipFile(contents: '{"session-b":{"ownerSessionId":"session-b"}}');
+      await api.writeFile(name: stateFileName, contents: '{"session-a":{"ownerSessionId":"session-a"}}');
+      await api.writeFile(name: stateFileName, contents: '{"session-b":{"ownerSessionId":"session-b"}}');
 
       expect(
-        await File(api.ownershipFilePath).readAsString(),
+        await File(p.join(api.runtimeDirectory, stateFileName)).readAsString(),
         '{"session-b":{"ownerSessionId":"session-b"}}',
       );
-      expect(File('${api.ownershipFilePath}.tmp').existsSync(), isFalse);
+      expect(File('${p.join(api.runtimeDirectory, stateFileName)}.tmp').existsSync(), isFalse);
     });
 
-    test('writeOwnershipFile propagates filesystem failures', () async {
+    test('writeFile propagates filesystem failures', () async {
       final blockingFile = File(p.join(tempDir.path, 'not-a-directory'));
       await blockingFile.writeAsString('blocker');
       final api = RuntimeFileApi(
@@ -75,47 +76,46 @@ void main() {
       );
 
       expect(
-        () => api.writeOwnershipFile(contents: '{}'),
+        () => api.writeFile(name: stateFileName, contents: '{}'),
         throwsA(isA<FileSystemException>()),
       );
     });
 
-    test('renameOwnershipFile moves invalid file aside', () async {
+    test('renameFile moves invalid file aside', () async {
       final api = RuntimeFileApi(runtimeDirectory: p.join(tempDir.path, 'runtime'));
-      await api.writeOwnershipFile(contents: '{ invalid json }');
+      await api.writeFile(name: stateFileName, contents: '{ invalid json }');
 
-      await api.renameOwnershipFile(
-        fileName: 'opencode-processes.invalid.2026-05-15T10-00-00Z.json',
+      await api.renameFile(fromName: stateFileName, toName: 'plugin-processes.invalid.2026-05-15T10-00-00Z.json',
       );
 
-      expect(File(api.ownershipFilePath).existsSync(), isFalse);
+      expect(File(p.join(api.runtimeDirectory, stateFileName)).existsSync(), isFalse);
       expect(
         File(
           p.join(
-            p.dirname(api.ownershipFilePath),
-            'opencode-processes.invalid.2026-05-15T10-00-00Z.json',
+            p.dirname(p.join(api.runtimeDirectory, stateFileName)),
+            'plugin-processes.invalid.2026-05-15T10-00-00Z.json',
           ),
         ).existsSync(),
         isTrue,
       );
     });
 
-    test('deleteOwnershipFile surfaces delete failures', () async {
+    test('deleteFile surfaces delete failures', () async {
       if (Platform.isWindows) {
         return;
       }
 
       final api = RuntimeFileApi(runtimeDirectory: p.join(tempDir.path, 'runtime'));
-      await api.writeOwnershipFile(contents: '{}');
+      await api.writeFile(name: stateFileName, contents: '{}');
 
-      final chmodResult = await Process.run('chmod', ['500', p.dirname(api.ownershipFilePath)]);
+      final chmodResult = await Process.run('chmod', ['500', p.dirname(p.join(api.runtimeDirectory, stateFileName))]);
       addTearDown(() async {
-        await Process.run('chmod', ['700', p.dirname(api.ownershipFilePath)]);
+        await Process.run('chmod', ['700', p.dirname(p.join(api.runtimeDirectory, stateFileName))]);
       });
       expect(chmodResult.exitCode, equals(0));
 
       expect(
-        api.deleteOwnershipFile,
+        () => api.deleteFile(name: stateFileName),
         throwsA(isA<FileSystemException>()),
       );
     });

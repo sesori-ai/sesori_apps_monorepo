@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_message_mapper.dart";
+import "package:sesori_bridge/src/repositories/mappers/plugin_message_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -7,6 +7,7 @@ void main() {
   group("PluginMessageMapper.toSharedMessage()", () {
     test("preserves time on a user message", () {
       const message = PluginMessage.user(
+        promptId: null,
         id: "m1",
         sessionID: "s1",
         agent: null,
@@ -17,6 +18,7 @@ void main() {
         message.toSharedMessage(sessionId: "stable-session"),
         equals(
           const Message.user(
+            promptId: null,
             id: "m1",
             sessionID: "stable-session",
             agent: null,
@@ -82,6 +84,7 @@ void main() {
 
     test("maps a null time to null", () {
       const message = PluginMessage.user(
+        promptId: null,
         id: "m4",
         sessionID: "s1",
         agent: null,

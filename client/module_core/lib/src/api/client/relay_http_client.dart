@@ -1,12 +1,12 @@
 import "dart:async";
 import "dart:convert";
-import "dart:math";
 
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/relay/relay_client.dart";
+import "../../capabilities/relay/relay_request_id_generator.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../logging/logging.dart";
 
@@ -15,8 +15,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
   static const Duration _defaultRequestTimeout = Duration(seconds: 30);
   static const String _sensitiveParsingErrorMarker = "Sensitive response omitted";
 
-  int _requestCounter = 0;
-  final Random _requestIdRandom = Random();
+  final RelayRequestIdGenerator _requestIdGenerator = RelayRequestIdGenerator();
 
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> get<T>(
@@ -25,24 +24,16 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     required T Function(Map<String, dynamic> json) fromJson,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
-  }) async {
-    final relayClient = _connectionService.relayClient;
-    if (relayClient != null && relayClient.isConnected) {
-      return _mapAuthErrors(
-        await _sendViaRelay(
-          relayClient: relayClient,
-          method: HttpMethod.get,
-          path: path,
-          fromJson: fromJson,
-          queryParameters: queryParameters,
-          extraHeaders: headers,
-          timeout: _defaultRequestTimeout,
-          sensitiveResponse: false,
-        ),
-      );
-    }
-    return _relayDisconnectedResponse();
-  }
+  }) => _request(
+    method: HttpMethod.get,
+    path: path,
+    fromJson: fromJson,
+    queryParameters: queryParameters,
+    body: null,
+    extraHeaders: headers,
+    timeout: _defaultRequestTimeout,
+    sensitiveResponse: false,
+  );
 
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> post<T>(
@@ -53,25 +44,16 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     required Object? body,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
-  }) async {
-    final relayClient = _connectionService.relayClient;
-    if (relayClient != null && relayClient.isConnected) {
-      return _mapAuthErrors(
-        await _sendViaRelay(
-          relayClient: relayClient,
-          method: HttpMethod.post,
-          path: path,
-          fromJson: fromJson,
-          queryParameters: queryParameters,
-          body: body,
-          extraHeaders: headers,
-          timeout: _defaultRequestTimeout,
-          sensitiveResponse: false,
-        ),
-      );
-    }
-    return _relayDisconnectedResponse();
-  }
+  }) => _request(
+    method: HttpMethod.post,
+    path: path,
+    fromJson: fromJson,
+    queryParameters: queryParameters,
+    body: body,
+    extraHeaders: headers,
+    timeout: _defaultRequestTimeout,
+    sensitiveResponse: false,
+  );
 
   Future<ApiResponse<T>> postWithTimeout<T>(
     String path, {
@@ -80,25 +62,16 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     // ignore: no_slop_linter/prefer_specific_type
     required Object body,
     required Duration timeout,
-  }) async {
-    final relayClient = _connectionService.relayClient;
-    if (relayClient != null && relayClient.isConnected) {
-      return _mapAuthErrors(
-        await _sendViaRelay(
-          relayClient: relayClient,
-          method: HttpMethod.post,
-          path: path,
-          fromJson: fromJson,
-          queryParameters: null,
-          body: body,
-          extraHeaders: null,
-          timeout: timeout,
-          sensitiveResponse: true,
-        ),
-      );
-    }
-    return _relayDisconnectedResponse();
-  }
+  }) => _request(
+    method: HttpMethod.post,
+    path: path,
+    fromJson: fromJson,
+    queryParameters: null,
+    body: body,
+    extraHeaders: null,
+    timeout: timeout,
+    sensitiveResponse: true,
+  );
 
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> patch<T>(
@@ -109,25 +82,16 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     required Object? body,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
-  }) async {
-    final relayClient = _connectionService.relayClient;
-    if (relayClient != null && relayClient.isConnected) {
-      return _mapAuthErrors(
-        await _sendViaRelay(
-          relayClient: relayClient,
-          method: HttpMethod.patch,
-          path: path,
-          fromJson: fromJson,
-          queryParameters: queryParameters,
-          body: body,
-          extraHeaders: headers,
-          timeout: _defaultRequestTimeout,
-          sensitiveResponse: false,
-        ),
-      );
-    }
-    return _relayDisconnectedResponse();
-  }
+  }) => _request(
+    method: HttpMethod.patch,
+    path: path,
+    fromJson: fromJson,
+    queryParameters: queryParameters,
+    body: body,
+    extraHeaders: headers,
+    timeout: _defaultRequestTimeout,
+    sensitiveResponse: false,
+  );
 
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> delete<T>(
@@ -138,24 +102,46 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     Object? body,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
+  }) => _request(
+    method: HttpMethod.delete,
+    path: path,
+    fromJson: fromJson,
+    queryParameters: queryParameters,
+    body: body,
+    extraHeaders: headers,
+    timeout: _defaultRequestTimeout,
+    sensitiveResponse: false,
+  );
+
+  Future<ApiResponse<T>> _request<T>({
+    required HttpMethod method,
+    required String path,
+    // ignore: no_slop_linter/prefer_specific_type, JSON parsing callback requires dynamic payload
+    required T Function(Map<String, dynamic> json) fromJson,
+    required Map<String, String>? queryParameters,
+    // ignore: no_slop_linter/prefer_specific_type
+    required Object? body,
+    required Map<String, String>? extraHeaders,
+    required Duration timeout,
+    required bool sensitiveResponse,
   }) async {
     final relayClient = _connectionService.relayClient;
-    if (relayClient != null && relayClient.isConnected) {
-      return _mapAuthErrors(
-        await _sendViaRelay(
-          relayClient: relayClient,
-          method: HttpMethod.delete,
-          path: path,
-          fromJson: fromJson,
-          queryParameters: queryParameters,
-          body: body,
-          extraHeaders: headers,
-          timeout: _defaultRequestTimeout,
-          sensitiveResponse: false,
-        ),
-      );
+    if (relayClient == null || !relayClient.isConnected) {
+      return _relayDisconnectedResponse();
     }
-    return _relayDisconnectedResponse();
+    return _mapAuthErrors(
+      await _sendViaRelay(
+        relayClient: relayClient,
+        method: method,
+        path: path,
+        fromJson: fromJson,
+        queryParameters: queryParameters,
+        body: body,
+        extraHeaders: extraHeaders,
+        timeout: timeout,
+        sensitiveResponse: sensitiveResponse,
+      ),
+    );
   }
 
   ApiResponse<T> _mapAuthErrors<T>(ApiResponse<T> response) {
@@ -179,7 +165,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     required Duration timeout,
     required bool sensitiveResponse,
   }) async {
-    final requestId = _nextRelayRequestId();
+    final requestId = _requestIdGenerator();
     final fullPath = Uri(path: path, queryParameters: queryParameters).toString();
     final bodyString = body == null
         ? null
@@ -255,13 +241,5 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
       return "Invalid JSON syntax or shape; offset=${offset?.toString() ?? 'unknown'}";
     }
     return "Response DTO conversion failed";
-  }
-
-  String _nextRelayRequestId() {
-    _requestCounter = (_requestCounter + 1) & 0xFFFF;
-    final timestamp = DateTime.now().microsecondsSinceEpoch.toRadixString(16);
-    final counter = _requestCounter.toRadixString(16).padLeft(4, "0");
-    final random = _requestIdRandom.nextInt(0x10000).toRadixString(16).padLeft(4, "0");
-    return "$timestamp-$counter$random";
   }
 }

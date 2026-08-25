@@ -7,8 +7,10 @@ import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../di/firebase_register_module.dart";
 import "firebase/firebase_messaging_static_adapter.dart";
 
+@firebaseEnabledEnvironment
 @LazySingleton(as: PushMessagingSource)
 class FirebasePushMessagingSource implements PushMessagingSource {
   final FirebaseMessaging _messaging;

@@ -3,6 +3,7 @@ import "dart:io";
 import "dart:typed_data";
 
 import "package:acp_plugin/acp_plugin.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageBytes;
 import "package:test/test.dart";
@@ -257,34 +258,32 @@ void main() {
     test("bounds tool images before scanning trailing text and diff content", () {
       late AcpReplaceToolContentMutation replacement;
       final output = _captureWarnings(() {
-        replacement =
-            mapper.toolContent(
-                  update: {
-                    "content": [
-                      for (var index = 0; index < 5; index++)
-                        {
-                          "type": "content",
-                          "content": {
-                            "type": "image",
-                            "data": "AA==",
-                            "mimeType": "image/png",
-                            "uri": "file:///private/image-$index.png",
-                          },
-                        },
-                      {
-                        "type": "content",
-                        "content": {"type": "text", "text": "after images"},
-                      },
-                      {
-                        "type": "diff",
-                        "path": "/private/source.dart",
-                        "oldText": "old",
-                        "newText": "new",
-                      },
-                    ],
+        replacement = mapper.toolContent(
+          update: {
+            "content": [
+              for (var index = 0; index < 5; index++)
+                {
+                  "type": "content",
+                  "content": {
+                    "type": "image",
+                    "data": "AA==",
+                    "mimeType": "image/png",
+                    "uri": "file:///private/image-$index.png",
                   },
-                )
-                as AcpReplaceToolContentMutation;
+                },
+              {
+                "type": "content",
+                "content": {"type": "text", "text": "after images"},
+              },
+              {
+                "type": "diff",
+                "path": "/private/source.dart",
+                "oldText": "old",
+                "newText": "new",
+              },
+            ],
+          },
+        ) as AcpReplaceToolContentMutation;
       });
 
       expect(replacement.imageCandidates, hasLength(4));
@@ -311,34 +310,28 @@ void main() {
       );
       expect(
         (mapper.toolContent(
-                  update: {
-                    "rawOutput": {"stdout": "out\n", "stderr": "error\n"},
-                  },
-                )
-                as AcpUpdateToolOutputMutation)
-            .output,
+          update: {
+            "rawOutput": {"stdout": "out\n", "stderr": "error\n"},
+          },
+        ) as AcpUpdateToolOutputMutation).output,
         "out\nerror",
       );
       expect(
         (mapper.toolContent(
-                  update: {
-                    "rawOutput": {
-                      "content": {"type": "text", "text": "nested\n"},
-                    },
-                  },
-                )
-                as AcpUpdateToolOutputMutation)
-            .output,
+          update: {
+            "rawOutput": {
+              "content": {"type": "text", "text": "nested\n"},
+            },
+          },
+        ) as AcpUpdateToolOutputMutation).output,
         "nested",
       );
       expect(
         (mapper.toolContent(
-                  update: {
-                    "rawOutput": {"exitCode": 7},
-                  },
-                )
-                as AcpUpdateToolOutputMutation)
-            .output,
+          update: {
+            "rawOutput": {"exitCode": 7},
+          },
+        ) as AcpUpdateToolOutputMutation).output,
         "exited with code 7",
       );
 
@@ -369,15 +362,27 @@ void main() {
         ),
       );
       expect(
-        mapper.toolContent(update: {"rawOutput": {"stdout": 42}}),
+        mapper.toolContent(
+          update: {
+            "rawOutput": {"stdout": 42},
+          },
+        ),
         isA<AcpUnchangedToolContentMutation>(),
       );
       expect(
-        mapper.toolContent(update: {"rawOutput": {"content": 42}}),
+        mapper.toolContent(
+          update: {
+            "rawOutput": {"content": 42},
+          },
+        ),
         isA<AcpUnchangedToolContentMutation>(),
       );
       expect(
-        mapper.toolContent(update: {"rawOutput": {"stdout": 42, "stderr": "usable"}}),
+        mapper.toolContent(
+          update: {
+            "rawOutput": {"stdout": 42, "stderr": "usable"},
+          },
+        ),
         isA<AcpUpdateToolOutputMutation>().having(
           (mutation) => mutation.output,
           "output",
@@ -396,23 +401,21 @@ void main() {
             .having((mutation) => mutation.hasDiff, "hasDiff", isFalse),
       );
 
-      final imageOnly =
-          mapper.toolContent(
-                update: {
-                  "content": [
-                    {
-                      "type": "content",
-                      "content": {
-                        "type": "image",
-                        "data": "AA==",
-                        "mimeType": "image/png",
-                        "uri": null,
-                      },
-                    },
-                  ],
-                },
-              )
-              as AcpReplaceToolContentMutation;
+      final imageOnly = mapper.toolContent(
+        update: {
+          "content": [
+            {
+              "type": "content",
+              "content": {
+                "type": "image",
+                "data": "AA==",
+                "mimeType": "image/png",
+                "uri": null,
+              },
+            },
+          ],
+        },
+      ) as AcpReplaceToolContentMutation;
       expect(imageOnly.output, isNull);
       expect(imageOnly.imageCandidates, hasLength(1));
     });
@@ -437,37 +440,33 @@ void main() {
     });
 
     test("uses raw output only when replacement content has no text", () {
-      final withText =
-          mapper.toolContent(
-                update: {
-                  "content": [
-                    {
-                      "type": "content",
-                      "content": {"type": "text", "text": "standard"},
-                    },
-                  ],
-                  "rawOutput": "fallback",
-                },
-              )
-              as AcpReplaceToolContentMutation;
-      final imageOnly =
-          mapper.toolContent(
-                update: {
-                  "content": [
-                    {
-                      "type": "content",
-                      "content": {
-                        "type": "image",
-                        "data": "AA==",
-                        "mimeType": "image/png",
-                        "uri": null,
-                      },
-                    },
-                  ],
-                  "rawOutput": "fallback",
-                },
-              )
-              as AcpReplaceToolContentMutation;
+      final withText = mapper.toolContent(
+        update: {
+          "content": [
+            {
+              "type": "content",
+              "content": {"type": "text", "text": "standard"},
+            },
+          ],
+          "rawOutput": "fallback",
+        },
+      ) as AcpReplaceToolContentMutation;
+      final imageOnly = mapper.toolContent(
+        update: {
+          "content": [
+            {
+              "type": "content",
+              "content": {
+                "type": "image",
+                "data": "AA==",
+                "mimeType": "image/png",
+                "uri": null,
+              },
+            },
+          ],
+          "rawOutput": "fallback",
+        },
+      ) as AcpReplaceToolContentMutation;
 
       expect(withText.output, "standard");
       expect(imageOnly.output, "fallback");
@@ -477,7 +476,7 @@ void main() {
 
 String _captureWarnings(void Function() action) {
   final previousLevel = Log.level;
-  final stderr = _BufferingStdout();
+  final stderr = BufferingStdout();
   try {
     Log.level = LogLevel.warning;
     IOOverrides.runZoned(action, stderr: () => stderr);
@@ -485,16 +484,4 @@ String _captureWarnings(void Function() action) {
     Log.level = previousLevel;
   }
   return stderr.text;
-}
-
-class _BufferingStdout() implements Stdout {
-  final StringBuffer _buffer = StringBuffer();
-
-  String get text => _buffer.toString();
-
-  @override
-  void writeln([Object? object = ""]) => _buffer.writeln(object);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
 }

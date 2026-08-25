@@ -6,66 +6,88 @@ import "package:flutter_test/flutter_test.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_mobile/core/platform/firebase/firebase_messaging_static_adapter.dart";
-import "package:sesori_mobile/core/platform/firebase/no_op_firebase_analytics_adapter.dart";
-import "package:sesori_mobile/core/platform/firebase/no_op_firebase_app_adapter.dart";
-import "package:sesori_mobile/core/platform/firebase/no_op_firebase_crashlytics_adapter.dart";
-import "package:sesori_mobile/core/platform/firebase/no_op_firebase_messaging_adapter.dart";
-import "package:sesori_mobile/core/platform/firebase_analytics_client.dart";
+import "package:sesori_mobile/core/platform/firebase/no_op_analytics_client.dart";
+import "package:sesori_mobile/core/platform/firebase/no_op_failure_reporter.dart";
+import "package:sesori_mobile/core/platform/firebase/no_op_push_messaging_source.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() async {
+    await configureDependencies(
+      firebaseEnabled: false,
+      createAnalyticsRuntimeCapability: ({required authSession}) async => const AnalyticsRuntimeCapability.disabled(
+        reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
+      ),
+    );
+  });
 
   tearDown(() async {
     await getIt.reset();
   });
 
-  test("disabled Firebase environment registers safe SDK substitutes", () async {
-    configureDependencies(
-      firebaseEnabled: false,
-      analyticsRuntimeCapability: const AnalyticsRuntimeCapability.disabled(
-        reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
-      ),
-    );
+  test("disabled Firebase environment binds the interfaces to no-ops", () {
+    expect(getIt<AnalyticsClient>(), isA<NoOpAnalyticsClient>());
+    expect(getIt<FailureReporter>(), isA<NoOpFailureReporter>());
+    expect(getIt<PushMessagingSource>(), isA<NoOpPushMessagingSource>());
+  });
 
-    expect(getIt<FirebaseApp>(), isA<NoOpFirebaseAppAdapter>());
-    expect(getIt<FirebaseMessaging>(), isA<NoOpFirebaseMessagingAdapter>());
-    expect(getIt<FirebaseAnalytics>(), isA<NoOpFirebaseAnalyticsAdapter>());
-    expect(getIt<FirebaseCrashlytics>(), isA<NoOpFirebaseCrashlyticsAdapter>());
-    expect(getIt<AnalyticsClient>(), isA<FirebaseAnalyticsClient>());
-    expect(getIt<AnalyticsRuntimeCapability>().isEnabled, isFalse);
-    expect(getIt<ProductAnalyticsService>(), isA<ProductAnalyticsService>());
-    expect(getIt<AnalyticsRouteListener>(), isA<AnalyticsRouteListener>());
-    expect(getIt.isRegistered<AttachmentThumbnailStorage>(), isTrue);
-    expect(
-      getIt.checkLazySingletonInstanceExists<MessageThumbnailCacheService>(),
-      isTrue,
-    );
+  test("disabled Firebase environment registers no FlutterFire SDK object", () {
+    // The app talks to Firebase only through the three interfaces above, so a
+    // build without the SDK has nothing to stand in for these. Registering
+    // substitutes for them is what this step removed; keep it removed.
+    expect(getIt.isRegistered<FirebaseApp>(), isFalse);
+    expect(getIt.isRegistered<FirebaseMessaging>(), isFalse);
+    expect(getIt.isRegistered<FirebaseAnalytics>(), isFalse);
+    expect(getIt.isRegistered<FirebaseCrashlytics>(), isFalse);
+  });
 
+  test("the static messaging adapter still resolves, because startup always uses it", () async {
+    // main() calls registerBackgroundHandler unconditionally, so this one keeps
+    // a disabled-environment registration.
     final staticAdapter = getIt<FirebaseMessagingStaticAdapter>();
     staticAdapter.registerBackgroundHandler(handler: (_) async {});
     await expectLater(staticAdapter.foregroundMessageStream, emitsDone);
     await expectLater(staticAdapter.notificationOpenedStream, emitsDone);
+  });
 
-    final messaging = getIt<FirebaseMessaging>();
-    expect(await messaging.isSupported(), isFalse);
-    expect(await messaging.getToken(), isNull);
-    expect(
-      (await messaging.requestPermission()).authorizationStatus,
-      AuthorizationStatus.denied,
-    );
-
-    final analytics = getIt<FirebaseAnalytics>();
-    expect(await analytics.isSupported(), isFalse);
-    await analytics.logEvent(name: "ignored");
-    await analytics.setUserId(id: "ignored");
-
-    final crashlytics = getIt<FirebaseCrashlytics>();
-    expect(await crashlytics.checkForUnsentReports(), isFalse);
-    await crashlytics.recordError(Exception("ignored"), StackTrace.current);
-
+  test("the no-op push source yields no token and no events", () async {
     final pushMessagingSource = getIt<PushMessagingSource>();
     await pushMessagingSource.initialize();
     expect(await pushMessagingSource.getToken(), isNull);
     await pushMessagingSource.deleteToken();
+    expect(await pushMessagingSource.getInitialNotificationOpen(), isNull);
+    await expectLater(pushMessagingSource.tokenRefreshStream, emitsDone);
+    await expectLater(pushMessagingSource.foregroundMessageStream, emitsDone);
+    await expectLater(pushMessagingSource.notificationOpenedStream, emitsDone);
+  });
+
+  test("the no-op analytics and failure reporter accept calls without a sink", () async {
+    await getIt<AnalyticsClient>().logInstallationEvent(
+      event: const LoginAttemptStartedEvent(provider: AnalyticsLoginProvider.apple),
+    );
+    final reporter = getIt<FailureReporter>();
+    reporter.log(message: "ignored");
+    reporter.setGlobalKey(key: "ignored", value: 1);
+    await reporter.recordFailure(
+      error: Exception("ignored"),
+      stackTrace: StackTrace.current,
+      uniqueIdentifier: "ignored",
+      fatal: false,
+      reason: null,
+      information: const <Object>[],
+    );
+  });
+
+  test("services that depend on the no-ops still resolve", () {
+    expect(getIt<ProductAnalyticsService>(), isA<ProductAnalyticsService>());
+    expect(getIt<AnalyticsRouteListener>(), isA<AnalyticsRouteListener>());
+    // Resolved from the settings and profile screens on every platform, which
+    // is why PushMessagingSource needs a disabled-environment binding at all.
+    expect(getIt<NotificationRegistrationService>(), isA<NotificationRegistrationService>());
+    expect(getIt.isRegistered<AttachmentThumbnailStorage>(), isTrue);
+    expect(getIt.checkLazySingletonInstanceExists<MessageThumbnailCacheService>(), isTrue);
+    expect(getIt<AnalyticsRuntimeCapability>().isEnabled, isFalse);
   });
 }

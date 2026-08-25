@@ -10,30 +10,32 @@ import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/database/database.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
-import 'package:sesori_bridge/src/auth/bridge_id_migration_service.dart';
+import 'package:sesori_bridge/src/auth/auth_api.dart';
+import 'package:sesori_bridge/src/auth/auth_repository.dart';
 import 'package:sesori_bridge/src/auth/bridge_id_storage.dart';
-import 'package:sesori_bridge/src/auth/bridge_registration_api.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_repository.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_service.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
-import 'package:sesori_bridge/src/auth/token_manager.dart';
+import 'package:sesori_bridge/src/auth/token_refresh_exception.dart';
+import 'package:sesori_bridge/src/auth/token_service.dart';
 import 'package:sesori_bridge/src/bridge/device_canvas/integration_state.dart';
-import 'package:sesori_bridge/src/bridge/foundation/device_type_detector.dart';
-import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
-import 'package:sesori_bridge/src/bridge/foundation/process_runner_command_executor.dart';
-import 'package:sesori_bridge/src/bridge/repositories/device_canvas_claim_repository.dart';
-import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_dispatch.dart';
-import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart';
-import 'package:sesori_bridge/src/bridge/runtime/bridge_logout_runner.dart';
-import 'package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart';
-import 'package:sesori_bridge/src/bridge/runtime/plugin_cli_options_mapper.dart';
-import 'package:sesori_bridge/src/bridge/runtime/plugin_registry.dart';
-import 'package:sesori_bridge/src/bridge/services/device_canvas_claim_service.dart';
+import 'package:sesori_bridge/src/foundation/abortable_request.dart';
 import 'package:sesori_bridge/src/foundation/bridge_startup_banner_formatter.dart';
+import 'package:sesori_bridge/src/foundation/data_directory_hardening.dart';
+import 'package:sesori_bridge/src/foundation/device_type_detector.dart';
+import 'package:sesori_bridge/src/foundation/filesystem_cleaner.dart';
+import 'package:sesori_bridge/src/foundation/process_runner.dart';
+import 'package:sesori_bridge/src/foundation/process_runner_command_executor.dart';
 import 'package:sesori_bridge/src/repositories/app_onboarding_state_repository.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
-import 'package:sesori_bridge/src/repositories/default_editor_repository.dart';
+import 'package:sesori_bridge/src/repositories/device_canvas_claim_repository.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
+import 'package:sesori_bridge/src/runtime/bridge_cli_dispatch.dart';
+import 'package:sesori_bridge/src/runtime/bridge_cli_options.dart';
+import 'package:sesori_bridge/src/runtime/bridge_logout_runner.dart';
+import 'package:sesori_bridge/src/runtime/bridge_runtime_runner.dart';
+import 'package:sesori_bridge/src/runtime/plugin_cli_options_mapper.dart';
+import 'package:sesori_bridge/src/runtime/plugin_registry.dart';
 import 'package:sesori_bridge/src/server/api/process_id_lookup_api.dart';
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
 import 'package:sesori_bridge/src/server/api/terminal_prompt_api.dart';
@@ -42,6 +44,7 @@ import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository.dart';
 import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
+import 'package:sesori_bridge/src/services/device_canvas_claim_service.dart';
 import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
 import 'package:sesori_bridge/src/updater/api/checksum_manifest_api.dart';
 import 'package:sesori_bridge/src/updater/api/github_releases_api.dart';
@@ -53,7 +56,6 @@ import 'package:sesori_bridge/src/updater/api/update_log_api.dart';
 import 'package:sesori_bridge/src/updater/formatters/terminal_download_progress_listener.dart';
 import 'package:sesori_bridge/src/updater/formatters/update_command_formatter.dart';
 import 'package:sesori_bridge/src/updater/formatters/update_output_formatter.dart';
-import 'package:sesori_bridge/src/updater/foundation/filesystem_cleaner.dart';
 import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:sesori_bridge/src/updater/foundation/update_lock.dart';
 import 'package:sesori_bridge/src/updater/models/distribution_target.dart';
@@ -71,6 +73,7 @@ import 'package:sesori_bridge/src/version.dart';
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
     show Console, Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
+import 'package:win32/win32.dart' show SetThreadExecutionState;
 
 const String _defaultRelayURL = 'wss://relay.sesori.com';
 const String _defaultAuthURL = 'https://api.sesori.com';
@@ -140,16 +143,13 @@ class RunCommand() extends cli.Command<void> {
 
     final BridgeCliOptions options;
     final Map<String, PluginConfig> pluginConfigs;
-    final pluginConfigDeprecations = <String>[];
     try {
       // Plugin option validate hooks and config validation run at
       // argument-parse time — strictly before the startup mutex, so a typo'd
       // flag can never terminate a healthy resident bridge.
       pluginConfigs = <String, PluginConfig>{};
       for (final plugin in knownPlugins) {
-        final parsed = _pluginCliMappers[plugin.id]!.parse(results: results, options: plugin.options);
-        pluginConfigs[plugin.id] = parsed.config;
-        pluginConfigDeprecations.addAll(parsed.deprecations);
+        pluginConfigs[plugin.id] = _pluginCliMappers[plugin.id]!.parse(results: results, options: plugin.options);
       }
       for (final plugin in knownPlugins) {
         plugin.validateConfig(pluginConfigs[plugin.id]!);
@@ -183,21 +183,22 @@ class RunCommand() extends cli.Command<void> {
       if (banner != null) Console.message(banner);
     }
 
-    // Surface deprecated-flag usage to the user directly. The legacy flag still
-    // worked; this only nudges the user toward the namespaced form, so it must
-    // be visible regardless of --log-level and is not a diagnostic.
-    pluginConfigDeprecations.forEach(Console.warning);
-
-    final settingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
+    final settingsRepository = BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi());
     final sleepPreventionService = SleepPreventionService(
       bridgeSettingsRepository: settingsRepository,
       wakeLockRepository: WakeLockRepository(
-        client: WakeLockClient.forPlatform(),
+        client: WakeLockClient.forPlatform(
+          platform: PlatformTarget.current().os,
+          processStarter: Process.start,
+          executionStateSetter: SetThreadExecutionState,
+          warningLogger: Log.w,
+        ),
       ),
       deviceTypeDetector: DeviceTypeDetector(
         processRunner: ProcessRunner(),
         platformChecker: DefaultPlatformChecker(),
       ),
+      warningLogger: Log.w,
     );
 
     try {
@@ -207,7 +208,7 @@ class RunCommand() extends cli.Command<void> {
       Log.w('Sleep prevention failed: $error');
     }
 
-    final exitCode = await runBridgeApp(
+    final exitCode = await BridgeRuntimeRunner.run(
       options: options,
       pluginConfigs: pluginConfigs,
     );
@@ -285,7 +286,6 @@ class LogoutCommand() extends cli.Command<void> {
       api: TerminalPromptApi(
         stdin: stdin,
         stdout: stdout,
-        environment: Platform.environment,
       ),
     );
     final logoutRunner = BridgeLogoutRunner(
@@ -345,14 +345,8 @@ Future<void> _unregisterBridgeRegistration({
 }) async {
   final bridgeIdStorage = BridgeIdStorage(
     filePath: bridgeIdPath(dataDirectory: dataDirectory),
+    writeRestrictedFile: writeRestrictedFile,
   );
-  // Adopt a legacy id persisted inside token.json first, so a never-reconnected
-  // legacy install still unregisters cleanly; the service reads the bridge id
-  // back out of storage.
-  await BridgeIdMigrationService(
-    bridgeIdStorage: bridgeIdStorage,
-    readLegacyBridgeId: () => readLegacyBridgeId(dataDirectory: dataDirectory),
-  ).migrate();
   if (await bridgeIdStorage.read() == null) {
     // Nothing registered to remove.
     return;
@@ -361,36 +355,60 @@ Future<void> _unregisterBridgeRegistration({
   final TokenData tokens;
   try {
     tokens = await loadTokens(dataDirectory: dataDirectory);
-  } on Object catch (e) {
-    // A registered bridge with no usable token file — there is no credential
-    // left to authenticate the unregister call. Logout still proceeds, but
-    // leave a trace.
-    Log.w('Skipping bridge unregistration; could not load tokens: $e');
+  } on PathNotFoundException {
+    // Logout is idempotent. A persisted bridge id can outlive the token file
+    // after an earlier best-effort unregister failed, so no token is expected
+    // when the user runs logout again.
+    return;
+  } on Object catch (error, stackTrace) {
+    // A registered bridge with an unreadable token file has no credential for
+    // the unregister call. Logout still proceeds, but retain the unexpected
+    // local failure for diagnostics.
+    Log.w('Skipping bridge unregistration; could not load tokens', error, stackTrace);
     return;
   }
 
   final httpClient = http.Client();
-  final tokenManager = TokenManager(
-    initialToken: tokens.accessToken,
+  final authApi = AuthApi(
     authBackendUrl: authBackendUrl,
+    client: httpClient,
+    requestDeadline: AuthApi.defaultRequestDeadline,
+    sendRequest: sendRequestWithDeadline,
+  );
+  final tokenService = TokenService(
+    initialToken: tokens.accessToken,
     loadTokens: () => loadTokens(dataDirectory: dataDirectory),
-    saveTokens: (data) => saveTokens(data: data, dataDirectory: dataDirectory),
-    ownedClient: http.Client(),
-    requestDeadline: TokenManager.defaultRequestDeadline,
+    saveTokens: (data) => saveTokens(
+      data: data,
+      dataDirectory: dataDirectory,
+      writeRestrictedFile: writeRestrictedFile,
+    ),
+    authRepository: AuthRepository(api: authApi),
   );
   try {
     final registrationService = BridgeRegistrationService(
       repository: BridgeRegistrationRepository(
-        api: BridgeRegistrationApi(authBackendUrl: authBackendUrl, client: httpClient),
+        api: authApi,
       ),
-      tokenRefresher: tokenManager,
+      tokenRefresher: tokenService,
       bridgeIdStorage: bridgeIdStorage,
       hostName: Platform.localHostname,
       platform: BridgeRegistrationService.currentPlatformName(),
     );
-    await registrationService.unregister().timeout(const Duration(seconds: 10));
+    try {
+      await registrationService.unregister().timeout(const Duration(seconds: 10));
+    } on TokenRefreshException catch (error) {
+      if (error.statusCode != 401) {
+        rethrow;
+      }
+      // An expired or revoked saved session is a normal reason to log out. The
+      // server registration cannot be removed without valid credentials, but
+      // the local logout should remain clean and the persisted bridge id lets a
+      // later login reclaim the same registration.
+      Log.i('Skipping bridge unregistration because the saved authentication session is no longer valid.');
+    }
   } finally {
-    tokenManager.dispose();
+    tokenService.dispose();
     httpClient.close();
   }
 }
@@ -398,6 +416,7 @@ Future<void> _unregisterBridgeRegistration({
 Future<void> _cleanupDeviceCanvasClaimsForLogout({required String dataDirectory}) async {
   final bridgeIdStorage = BridgeIdStorage(
     filePath: bridgeIdPath(dataDirectory: dataDirectory),
+    writeRestrictedFile: writeRestrictedFile,
   );
   final bridgeId = await bridgeIdStorage.read();
   if (bridgeId == null) return;
@@ -444,17 +463,14 @@ class ConfigEditCommand() extends cli.Command<void> {
 
   @override
   Future<void> run() async {
-    final api = BridgeSettingsApi();
-    final settingsRepository = BridgeSettingsRepository(api: api);
-    final editorRepository = DefaultEditorRepository(
-      api: DefaultEditorApi.forPlatform(
+    final settingsRepository = BridgeSettingsRepository(
+      api: BridgeSettingsApi(),
+      defaultEditorApi: DefaultEditorApi.forPlatform(
+        platform: PlatformTarget.current().os,
         processRunner: ProcessRunner(),
       ),
     );
-    final configService = BridgeConfigService(
-      bridgeSettingsRepository: settingsRepository,
-      defaultEditorRepository: editorRepository,
-    );
+    final configService = BridgeConfigService(bridgeSettingsRepository: settingsRepository);
 
     final configFilePath = await configService.openConfigFile();
     Console.message('Opening config file at $configFilePath');
@@ -480,10 +496,7 @@ class ConfigPluginsCommand() extends cli.Command<void> {
       });
     final knownIds = {for (final descriptor in descriptors) descriptor.id};
     final configService = BridgeConfigService(
-      bridgeSettingsRepository: BridgeSettingsRepository(api: BridgeSettingsApi()),
-      defaultEditorRepository: DefaultEditorRepository(
-        api: DefaultEditorApi.forPlatform(processRunner: ProcessRunner()),
-      ),
+      bridgeSettingsRepository: BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi()),
     );
 
     if (rest.isEmpty) {
@@ -534,7 +547,7 @@ class ConfigTrackCommand() extends cli.Command<void> {
       usageException('Unable to read command arguments.');
     }
     final rest = results.rest;
-    final repository = BridgeSettingsRepository(api: BridgeSettingsApi());
+    final repository = BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi());
 
     if (rest.isEmpty) {
       final settings = await repository.loadSettings();
@@ -584,7 +597,7 @@ class ConfigYoloCommand() extends cli.Command<void> {
       usageException('Unable to read command arguments.');
     }
     final rest = results.rest;
-    final repository = BridgeSettingsRepository(api: BridgeSettingsApi());
+    final repository = BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi());
 
     if (rest.isEmpty) {
       final settings = await repository.loadSettings();
@@ -751,7 +764,7 @@ class UpdateCommand() extends cli.Command<void> {
 
   Future<ReleaseTrack> _resolveReleaseTrack() async {
     try {
-      final settings = await BridgeSettingsRepository(api: BridgeSettingsApi()).loadSettings();
+      final settings = await BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi()).loadSettings();
       return settings.releaseTrack;
     } on Object catch (error) {
       Log.w('Failed to resolve release track; defaulting to stable: $error');

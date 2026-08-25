@@ -5,13 +5,12 @@ import "dart:io";
 import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/auth/token_refresher.dart";
-import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
-import "package:sesori_bridge/src/bridge/orchestrator.dart";
-import "package:sesori_bridge/src/bridge/relay_client.dart";
-import "package:sesori_bridge/src/bridge/routing/routed_request_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
-import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart" as runtime show PluginRuntimeState;
+import "package:sesori_bridge/src/foundation/relay_client.dart";
+import "package:sesori_bridge/src/models/bridge_config.dart";
+import "package:sesori_bridge/src/orchestrator.dart";
+import "package:sesori_bridge/src/routing/routed_request_dispatcher.dart";
+import "package:sesori_bridge/src/runtime/bridge_runtime.dart";
+import "package:sesori_bridge/src/runtime/plugin_runtime.dart" as runtime show PluginRuntimeState;
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -269,6 +268,7 @@ void main() {
       lastAgent: null,
       lastAgentModel: null,
       pluginId: "one",
+      preservePullRequestScope: false,
     );
     final patch = harness.composition.session.localWireEvents
         .where((event) => event is SesoriSessionUnseenChanged)
@@ -278,6 +278,7 @@ void main() {
     harness.plugins.single.emitEvent(
       BridgeSseMessageUpdated(
         info: const Message.user(
+          promptId: null,
           id: "message",
           sessionID: "session",
           agent: null,
@@ -429,6 +430,111 @@ void main() {
     );
     await harness.composition.session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
+  });
+
+  test("session upserts emitted during backend deletion stay suppressed", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
+    await relayServer.nextClient();
+    await harness.activatePlugins();
+    await _insertEventSession(database: harness.database, pluginId: "one");
+    final plugin = harness.plugins.single;
+    final deletionStarted = Completer<void>();
+    final deletionGate = Completer<void>();
+    plugin
+      ..deleteSessionStarted = deletionStarted
+      ..deleteSessionGate = deletionGate;
+    final updates = <SesoriSessionUpdated>[];
+    final updateSubscription = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriSessionUpdated)
+        .cast<SesoriSessionUpdated>()
+        .listen(updates.add);
+    final laterEventDelivered = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriVcsBranchUpdated)
+        .first;
+    final deletion = _deleteEventSession(
+      dispatcher: harness.composition.routedRequestDispatcher,
+    );
+
+    try {
+      await deletionStarted.future.timeout(const Duration(seconds: 2));
+      plugin.emitEvent(_lateSessionUpdate(pluginId: plugin.id));
+      plugin.emitEvent(const BridgeSseVcsBranchUpdated());
+      await _waitForCatalogTitle(database: harness.database, title: "Late title");
+      await laterEventDelivered.timeout(const Duration(seconds: 2));
+
+      expect(updates, isEmpty);
+    } finally {
+      if (!deletionGate.isCompleted) deletionGate.complete();
+      expect((await deletion).status, 200);
+      await updateSubscription.cancel();
+      await harness.composition.session.cancel();
+      await runFuture.timeout(const Duration(seconds: 5));
+    }
+  });
+
+  test("queued session upserts are rechecked after deletion", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
+    await relayServer.nextClient();
+    await harness.activatePlugins();
+    await _insertEventSession(database: harness.database, pluginId: "one");
+    final plugin = harness.plugins.single;
+    final projectReadStarted = Completer<void>();
+    final projectReadGate = Completer<void>();
+    _configureBlockingProjectSummary(
+      plugin: plugin,
+      started: projectReadStarted,
+      gate: projectReadGate,
+    );
+    final updates = <SesoriSessionUpdated>[];
+    final updateSubscription = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriSessionUpdated)
+        .cast<SesoriSessionUpdated>()
+        .listen(updates.add);
+    final laterEventDelivered = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriVcsBranchUpdated)
+        .first;
+
+    try {
+      plugin.emitEvent(const BridgeSseProjectUpdated());
+      await projectReadStarted.future.timeout(const Duration(seconds: 2));
+      plugin.emitEvent(_lateSessionUpdate(pluginId: plugin.id));
+      plugin.emitEvent(const BridgeSseVcsBranchUpdated());
+      await _waitForCatalogTitle(database: harness.database, title: "Late title");
+      expect(
+        (await _deleteEventSession(dispatcher: harness.composition.routedRequestDispatcher)).status,
+        200,
+      );
+
+      projectReadGate.complete();
+      await laterEventDelivered.timeout(const Duration(seconds: 2));
+
+      expect(updates, isEmpty);
+    } finally {
+      if (!projectReadGate.isCompleted) projectReadGate.complete();
+      await updateSubscription.cancel();
+      await harness.composition.session.cancel();
+      await runFuture.timeout(const Duration(seconds: 5));
+    }
   });
 
   test("aggregate project summaries are built and delivered in trigger order across plugins", () async {
@@ -752,6 +858,70 @@ Future<RelayResponse> _dispatch({
   throw StateError("route was rejected during test setup");
 }
 
+Future<RelayResponse> _deleteEventSession({required RoutedRequestDispatcher dispatcher}) {
+  return _dispatch(
+    dispatcher: dispatcher,
+    request: makeRequest(
+      "DELETE",
+      "/session/delete",
+      body: jsonEncode(
+        const DeleteSessionRequest(
+          sessionId: "stable-session",
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ).toJson(),
+      ),
+    ),
+  );
+}
+
+Future<void> _insertEventSession({required AppDatabase database, required String pluginId}) async {
+  await database.projectsDao.insertProjectsIfMissing(projectIds: ["project"]);
+  await database.sessionDao.insertSession(
+    pluginId: pluginId,
+    preservePullRequestScope: false,
+    sessionId: "stable-session",
+    backendSessionId: "backend-session",
+    projectId: "project",
+    isDedicated: false,
+    createdAt: 1,
+    worktreePath: null,
+    branchName: null,
+    baseBranch: null,
+    baseCommit: null,
+    lastAgent: null,
+    lastAgentModel: null,
+  );
+}
+
+BridgeSseSessionUpdated _lateSessionUpdate({required String pluginId}) {
+  return BridgeSseSessionUpdated(
+    info: Session(
+      id: "backend-session",
+      pluginId: pluginId,
+      projectID: "project",
+      directory: "/repo",
+      parentID: null,
+      title: "Late title",
+      time: const SessionTime(created: 1, updated: 2, archived: null),
+      pullRequest: null,
+      promptDefaults: null,
+      lastUserActivityAt: null,
+      branchName: null,
+    ).toJson(),
+    titleChanged: true,
+  );
+}
+
+Future<void> _waitForCatalogTitle({required AppDatabase database, required String title}) async {
+  final timeoutAt = DateTime.now().add(const Duration(seconds: 2));
+  while ((await database.sessionDao.getSession(sessionId: "stable-session"))?.catalogTitle != title) {
+    if (DateTime.now().isAfter(timeoutAt)) fail("Timed out waiting for the session projection");
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
+}
+
 void _configureBlockingProjectSummary({
   required _SourcedPlugin plugin,
   required Completer<void> started,
@@ -930,7 +1100,6 @@ class const _OrchestratorHarness({
         accessTokenProvider: FakeAccessTokenProvider(),
         bridgeIdProvider: FakeBridgeIdProvider(),
       ),
-      legacyMissingPluginId: "opencode",
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
@@ -942,7 +1111,7 @@ class const _OrchestratorHarness({
       httpClient: httpClient,
       processRunner: NoopProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(),
-      tokenRefresher: _FakeTokenRefresher(),
+      tokenRefresher: FakeTokenRefresher(token: "token"),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: failureReporter,
       restartService: restartService,
@@ -1003,6 +1172,8 @@ class _SourcedPlugin(final String pluginId) extends FakeBridgePlugin {
   Completer<void>? getProjectStarted;
   Completer<void>? getProjectGate;
   Completer<void>? activeSummaryReadStarted;
+  Completer<void>? deleteSessionStarted;
+  Completer<void>? deleteSessionGate;
   List<PluginProjectActivitySummary> activitySummaries = const [];
 
   @override
@@ -1021,14 +1192,16 @@ class _SourcedPlugin(final String pluginId) extends FakeBridgePlugin {
   }
 
   @override
+  Future<void> deleteSession(String sessionId) async {
+    deleteSessionStarted?.complete();
+    if (deleteSessionGate case final gate?) await gate.future;
+    await super.deleteSession(sessionId);
+  }
+
+  @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() {
     activeSummaryReadStarted?.complete();
     activeSummaryReadStarted = null;
     return activitySummaries;
   }
-}
-
-class _FakeTokenRefresher() implements TokenRefresher {
-  @override
-  Future<String> getAccessToken({bool forceRefresh = false}) async => "token";
 }

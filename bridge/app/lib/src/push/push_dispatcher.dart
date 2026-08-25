@@ -36,10 +36,6 @@ class PushDispatcher({
     );
   }
 
-  Future<void> dispose() async {
-    await _client.dispose();
-  }
-
   void _sendImmediateNotificationIfApplicable(SesoriSseEvent event) {
     final notificationData = _contentBuilder.extractNotificationData(event);
     if (notificationData == null) {

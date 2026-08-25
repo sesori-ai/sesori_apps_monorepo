@@ -9,6 +9,9 @@ import "package:sesori_shared/sesori_shared.dart"
     show ActiveSession, ProjectActivitySummary, maxInlineMessageAttachmentBytes;
 import "package:test/test.dart";
 
+import "support/fake_open_code_api.dart";
+import "support/open_code_fixtures.dart";
+
 void main() {
   group("OpenCodeService.getProjects", () {
     test("returns projects and owns tracker alias bookkeeping", () async {
@@ -148,7 +151,7 @@ void main() {
         ],
         providers: const PluginProvidersResult(
           providers: [
-            PluginProvider.custom(
+            PluginProvider(
               id: "provider",
               name: "Provider",
               authType: PluginProviderAuthType.unknown,
@@ -216,48 +219,8 @@ void main() {
 
   group("OpenCodeService.getSessions", () {
     final sessions = [
-      const Session(
-        slug: "slug",
-        title: "title",
-        version: "v",
-        time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
-        id: "s1",
-        projectID: "p1",
-        directory: "/repo",
-        workspaceID: null,
-        path: null,
-        parentID: null,
-        summary: null,
-        cost: null,
-        tokens: null,
-        share: null,
-        agent: null,
-        model: null,
-        metadata: null,
-        permission: null,
-        revert: null,
-      ),
-      const Session(
-        slug: "slug",
-        title: "title",
-        version: "v",
-        time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
-        id: "s2",
-        projectID: "p1",
-        directory: "/repo",
-        workspaceID: null,
-        path: null,
-        parentID: null,
-        summary: null,
-        cost: null,
-        tokens: null,
-        share: null,
-        agent: null,
-        model: null,
-        metadata: null,
-        permission: null,
-        revert: null,
-      ),
+      openCodeSession(id: "s1", directory: "/repo"),
+      openCodeSession(id: "s2", directory: "/repo"),
       const Session(
         slug: "slug",
         title: "title",
@@ -734,6 +697,22 @@ void main() {
   });
 
   group("OpenCodeService.sendPrompt", () {
+    test("reserves the user-message id through the tracked directory", () async {
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
+      final repository = FakeOpenCodeRepository();
+      final service = OpenCodeService(repository, tracker);
+
+      final messageId = await service.reserveMessage(
+        sessionId: "ses-1",
+        agent: "build",
+        variant: null,
+        model: null,
+      );
+
+      expect(messageId, equals("msg-reserved"));
+      expect(repository.lastReservedDirectory, equals("/repo"));
+    });
+
     test("resolves session directory from tracker before delegating", () async {
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
       final repository = FakeOpenCodeRepository();
@@ -741,6 +720,7 @@ void main() {
       const parts = [PluginPromptPart.text(text: "Continue")];
 
       await service.sendPrompt(
+        messageId: null,
         sessionId: "ses-1",
         parts: parts,
         agent: null,
@@ -763,6 +743,7 @@ void main() {
       final service = OpenCodeService(repository, tracker);
 
       await service.sendCommand(
+        messageId: "msg-reserved",
         sessionId: "ses-1",
         command: "/review-work",
         arguments: "recent changes",
@@ -781,69 +762,79 @@ void main() {
       expect(tracker.hasAcceptedTurnEvidence, isFalse);
     });
 
-    test("routes the artificial compact command to the summarize endpoint", () async {
+    test("runs the reserved compaction message instead of calling summarize", () async {
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
       final repository = FakeOpenCodeRepository();
       final service = OpenCodeService(repository, tracker);
 
-      await service.sendCommand(
+      await service.sendCompaction(
         sessionId: "ses-1",
-        command: OpenCodeService.compactionCommandName,
-        arguments: "",
+        messageId: "msg-reserved",
+        partId: "prt-reserved",
         agent: null,
         variant: null,
         model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 
-      expect(repository.summarizeCalls, equals(1));
-      expect(repository.lastSummarizeSessionId, equals("ses-1"));
-      expect(repository.lastSummarizeDirectory, equals("/repo"));
-      expect(repository.lastSummarizeModel, equals((providerID: "openai", modelID: "gpt-4.1")));
       expect(repository.addCompactionInstructionsCalls, equals(0));
-      expect(repository.compactionOperations, equals(["summarize"]));
-      // The real command endpoint must never be hit for compaction.
+      expect(repository.lastConvertedMessageId, equals("msg-reserved"));
+      expect(repository.lastConvertedPartId, equals("prt-reserved"));
+      expect(repository.lastPromptMessageId, equals("msg-reserved"));
+      expect(repository.lastPromptParts, isEmpty);
+      expect(repository.compactionOperations, equals(["convert", "prompt"]));
       expect(repository.lastCommandName, isNull);
+      expect(tracker.hasAcceptedTurnEvidence, isTrue);
     });
 
-    test("persists compact arguments before summarizing", () async {
+    test("persists compact arguments before running the compaction message", () async {
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
       final repository = FakeOpenCodeRepository();
       final service = OpenCodeService(repository, tracker);
 
-      await service.sendCommand(
+      final reservation = await service.reserveCompactionMessage(
         sessionId: "ses-1",
-        command: OpenCodeService.compactionCommandName,
         arguments: "  Keep auth decisions  ",
+        userVisibleArguments: "Keep auth decisions",
         agent: "build",
         variant: const PluginSessionVariant(id: "high"),
         model: (providerID: "openai", modelID: "gpt-4.1"),
       );
+      await service.sendCompaction(
+        sessionId: "ses-1",
+        messageId: reservation.messageId,
+        partId: reservation.partId,
+        agent: "build",
+        variant: const PluginSessionVariant(id: "high"),
+        model: reservation.model,
+      );
 
       expect(repository.addCompactionInstructionsCalls, equals(1));
       expect(repository.lastCompactionInstructions, equals("Keep auth decisions"));
+      expect(repository.lastCompactionUserVisibleArguments, equals("Keep auth decisions"));
       expect(repository.lastCompactionInstructionsDirectory, equals("/repo"));
       expect(repository.lastCompactionInstructionsModel, equals((providerID: "openai", modelID: "gpt-4.1")));
-      expect(repository.compactionOperations, equals(["instructions", "summarize"]));
+      expect(reservation.guidanceMessageId, equals("msg-guidance"));
+      expect(repository.compactionOperations, equals(["instructions", "reserve", "convert", "prompt"]));
       expect(repository.lastCommandName, isNull);
     });
 
-    test("throws and skips summarize when compact is invoked without a model", () async {
+    test("refuses compaction reservation without a model", () async {
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
       final repository = FakeOpenCodeRepository();
       final service = OpenCodeService(repository, tracker);
 
       await expectLater(
-        service.sendCommand(
+        service.reserveCompactionMessage(
           sessionId: "ses-1",
-          command: OpenCodeService.compactionCommandName,
           arguments: "",
+          userVisibleArguments: null,
           agent: null,
           variant: null,
           model: null,
         ),
         throwsA(isA<PluginApiException>()),
       );
-      expect(repository.summarizeCalls, equals(0));
+      expect(repository.reserveCompactionCalls, equals(0));
     });
 
     group("dispatch fast-fail window", () {
@@ -863,6 +854,7 @@ void main() {
 
       Future<void> sendCommand() {
         return service.sendCommand(
+          messageId: "msg-reserved",
           sessionId: "ses-1",
           command: "/review-work",
           arguments: "",
@@ -1539,9 +1531,9 @@ void main() {
           ProjectActivitySummary(
             id: "/repo",
             activeSessions: [
-              ActiveSession(id: "s1"),
-              ActiveSession(id: "s2"),
-              ActiveSession(id: "s3"),
+              ActiveSession(id: "s1", lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(id: "s2", lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(id: "s3", lastUserActivityAt: null, updatedAt: null),
             ],
           ),
         ],
@@ -1890,151 +1882,6 @@ SseEventData _questionAsked(String id, String sessionId) {
   );
 }
 
-class FakeOpenCodeApi({var List<SessionMessagesResponseItem> messages = const [], var Object? messagesError})
-    implements OpenCodeApi {
-  String? lastRequestedSessionId;
-  String? lastRequestedDirectory;
-
-  @override
-  Future<bool> healthCheck() async => true;
-
-  @override
-  Future<List<SessionMessagesResponseItem>> getMessages({required String sessionId, required String? directory}) async {
-    lastRequestedSessionId = sessionId;
-    lastRequestedDirectory = directory;
-    if (messagesError != null) throw messagesError!;
-    return messages;
-  }
-
-  @override
-  Future<List<Command>> listCommands({required String? directory}) async => const [];
-
-  @override
-  Future<Session> createSession({required String directory, String? parentSessionId}) async =>
-      throw UnimplementedError();
-
-  @override
-  Future<Session> getSession({required String sessionId, required String? directory}) async =>
-      throw UnimplementedError();
-
-  @override
-  Future<Session> updateSession({
-    required String sessionId,
-    required Map<String, dynamic> body,
-    required String? directory,
-  }) async => throw UnimplementedError();
-
-  @override
-  Future<List<Session>> getChildren({
-    required String sessionId,
-    required String? directory,
-  }) async => [];
-
-  @override
-  Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async => {};
-
-  @override
-  Future<void> deleteSession({required String sessionId, required String? directory}) async {}
-
-  @override
-  Future<void> removeWorktree({
-    required String directory,
-    required String worktreePath,
-  }) async {}
-
-  @override
-  Future<void> sendPrompt({
-    required String sessionId,
-    required SendPromptBody body,
-    required String? directory,
-  }) async {}
-
-  @override
-  Future<void> sendCommand({
-    required String sessionId,
-    required SendCommandBody body,
-    required String? directory,
-  }) async {}
-
-  @override
-  Future<void> summarize({
-    required String sessionId,
-    required SummarizeBody body,
-    required String? directory,
-  }) async {}
-
-  @override
-  Future<void> abortSession({required String sessionId, required String? directory}) async {}
-
-  @override
-  Future<List<Agent>> listAgents({required String directory}) async => [];
-
-  @override
-  Future<List<QuestionRequest>> getPendingQuestions({required String? directory}) async => [];
-
-  @override
-  Future<List<PermissionRequest>> getPendingPermissions({required String? directory}) async => [];
-
-  @override
-  Future<void> replyToQuestion({
-    required String questionId,
-    required String? directory,
-    required QuestionReplyBody body,
-  }) async {}
-
-  @override
-  Future<void> replyToPermission({
-    required String requestId,
-    required String? directory,
-    required PluginPermissionReply reply,
-  }) async {}
-
-  @override
-  Future<void> rejectQuestion({
-    required String questionId,
-    required String? directory,
-  }) async {}
-
-  @override
-  Future<Project> getProject({required String directory}) async => throw UnimplementedError();
-
-  @override
-  Future<Project> updateProject({
-    required String projectId,
-    required String directory,
-    required UpdateProjectBody body,
-  }) async => throw UnimplementedError();
-
-  @override
-  Future<List<GlobalSession>> listAllSessions({
-    required String? directory,
-    required bool roots,
-  }) async => [];
-
-  @override
-  Future<List<Project>> listProjects() async => [];
-
-  @override
-  Future<List<Session>> listRootSessions() async => [];
-
-  @override
-  Future<List<Session>> listSessions({String? directory, required bool roots}) async => [];
-
-  @override
-  Future<ProviderListResponse> listProviders() async =>
-      const ProviderListResponse(all: [], defaultValue: {}, connected: []);
-
-  @override
-  Future<ConfigProvidersResponse> listConfigProviders({required String? directory}) async =>
-      const ConfigProvidersResponse(providers: [], defaultValue: {});
-
-  @override
-  Future<Session> forkSession({
-    required String sessionId,
-    required String directory,
-  }) async => throw UnimplementedError();
-}
-
 class FakeOpenCodeRepository._({
   @override required final FakeOpenCodeApi api,
   required final List<Project> _projects,
@@ -2063,11 +1910,17 @@ class FakeOpenCodeRepository._({
   String? lastCreateParentSessionId;
   String? lastPromptSessionId;
   String? lastPromptDirectory;
+  String? lastPromptMessageId;
   List<PluginPromptPart>? lastPromptParts;
   String? lastPromptAgent;
   String? lastPromptVariant;
   ({String providerID, String modelID})? lastPromptModel;
   Object? sendPromptError;
+  String? lastReservedDirectory;
+  int reserveCompactionCalls = 0;
+  String? lastConvertedMessageId;
+  String? lastConvertedPartId;
+  String? lastDeletedMessageId;
   String? lastCommandSessionId;
   String? lastCommandDirectory;
   String? lastCommandName;
@@ -2080,10 +1933,7 @@ class FakeOpenCodeRepository._({
   String? lastCompactionInstructions;
   String? lastCompactionInstructionsDirectory;
   ({String providerID, String modelID})? lastCompactionInstructionsModel;
-  int summarizeCalls = 0;
-  String? lastSummarizeSessionId;
-  String? lastSummarizeDirectory;
-  ({String providerID, String modelID})? lastSummarizeModel;
+  String? lastCompactionUserVisibleArguments;
   final List<String> compactionOperations = [];
   String? lastDeletedSessionId;
   String? lastDeletedDirectory;
@@ -2236,6 +2086,7 @@ class FakeOpenCodeRepository._({
   Future<void> sendPrompt({
     required String sessionId,
     required String? directory,
+    required String? messageId,
     required List<PluginPromptPart> parts,
     required String? agent,
     required PluginSessionVariant? variant,
@@ -2246,16 +2097,70 @@ class FakeOpenCodeRepository._({
     }
     lastPromptSessionId = sessionId;
     lastPromptDirectory = directory;
+    lastPromptMessageId = messageId;
     lastPromptParts = parts;
     lastPromptAgent = agent;
     lastPromptVariant = variant?.id;
     lastPromptModel = model;
+    if (messageId != null && parts.isEmpty) {
+      compactionOperations.add("prompt");
+    }
+  }
+
+  @override
+  Future<String> reserveMessage({
+    required String sessionId,
+    required String? directory,
+    required String? agent,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    lastReservedDirectory = directory;
+    return "msg-reserved";
+  }
+
+  @override
+  Future<({String messageId, String partId})> reserveCompactionMessage({
+    required String sessionId,
+    required String? directory,
+    required String? userVisibleArguments,
+    required String? agent,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID}) model,
+  }) async {
+    reserveCompactionCalls += 1;
+    lastReservedDirectory = directory;
+    lastCompactionUserVisibleArguments = userVisibleArguments;
+    compactionOperations.add("reserve");
+    return (messageId: "msg-reserved", partId: "prt-reserved");
+  }
+
+  @override
+  Future<void> convertReservedPartToCompaction({
+    required String sessionId,
+    required String? directory,
+    required String messageId,
+    required String partId,
+  }) async {
+    lastConvertedMessageId = messageId;
+    lastConvertedPartId = partId;
+    compactionOperations.add("convert");
+  }
+
+  @override
+  Future<void> deleteMessage({
+    required String sessionId,
+    required String? directory,
+    required String messageId,
+  }) async {
+    lastDeletedMessageId = messageId;
   }
 
   @override
   Future<void> sendCommand({
     required String sessionId,
     required String? directory,
+    required String? messageId,
     required String command,
     required String arguments,
     required String? agent,
@@ -2275,9 +2180,10 @@ class FakeOpenCodeRepository._({
   }
 
   @override
-  Future<void> addCompactionInstructions({
+  Future<String> addCompactionInstructions({
     required String sessionId,
     required String? directory,
+    required String? messageId,
     required String instructions,
     required String? agent,
     required PluginSessionVariant? variant,
@@ -2288,19 +2194,7 @@ class FakeOpenCodeRepository._({
     lastCompactionInstructionsDirectory = directory;
     lastCompactionInstructionsModel = model;
     compactionOperations.add("instructions");
-  }
-
-  @override
-  Future<void> summarize({
-    required String sessionId,
-    required String? directory,
-    required ({String providerID, String modelID}) model,
-  }) async {
-    summarizeCalls += 1;
-    lastSummarizeSessionId = sessionId;
-    lastSummarizeDirectory = directory;
-    lastSummarizeModel = model;
-    compactionOperations.add("summarize");
+    return "msg-guidance";
   }
 
   @override

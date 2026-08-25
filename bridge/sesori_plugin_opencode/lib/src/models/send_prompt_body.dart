@@ -1,11 +1,16 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 class const SendPromptBody({
+  /// Existing OpenCode user-message id to reuse, or null to let OpenCode name
+  /// a new message. Sesori reserves a server-named empty message, records its
+  /// id, then reuses it here so correlation never depends on the bridge clock.
+  required final String? messageID,
   required final List<PluginPromptPart> parts,
   required final String? agent,
   required final String? variant,
   required final ({String providerID, String modelID})? model,
   required final bool noReply,
+  required final bool syntheticText,
 }) {
   /// Converts our domain types to OpenCode's wire format.
   ///
@@ -16,11 +21,13 @@ class const SendPromptBody({
   Map<String, dynamic> toJson() {
     final selectedModel = model;
     return <String, dynamic>{
+      "messageID": ?messageID,
       "parts": parts.map((part) {
         return switch (part) {
           PluginPromptPartText(:final text) => <String, dynamic>{
             "type": "text",
             "text": text,
+            if (syntheticText) "synthetic": true,
           },
           PluginPromptPartFilePath(:final mime, :final path, :final filename) => <String, dynamic>{
             "type": "file",

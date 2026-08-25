@@ -99,7 +99,7 @@ void main() {
       expect(indexLines, hasLength(1));
       expect(indexLines.single, contains("Survivor"));
       // Listing sessions reflects the delete.
-      final remaining = await plugin.getSessions(projectCwd.path);
+      final remaining = await plugin.getSessions(projectId: projectCwd.path, start: null, limit: null);
       expect(
         remaining.map((s) => s.id).toList(),
         equals([

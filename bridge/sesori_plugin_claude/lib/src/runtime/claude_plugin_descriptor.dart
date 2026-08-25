@@ -49,13 +49,18 @@ ClaudeBridgePlugin _defaultBuildBridgePlugin({
 /// Descriptor and composition root for the local Claude Code CLI plugin.
 final class const ClaudePluginDescriptor({
   final Duration _probeTimeout = const Duration(seconds: 10),
-  final Duration _sessionIdleTimeout = const Duration(minutes: 5),
   final Duration _statusDebounce = const Duration(seconds: 5),
   final ClaudeBridgePluginFactory? _buildBridgePlugin,
 }) extends BridgePluginDescriptor {
   static const String binOption = "bin";
   static const String defaultBinary = "claude";
+
+  /// Oldest Claude Code release with the CLI behavior this plugin requires.
   static const String minVersion = "2.1.221";
+
+  /// Latest stable Claude Code release validated against this plugin.
+  static const String targetVersion = "2.1.237";
+
   static final Random _secureRandom = Random.secure();
 
   static const List<PluginOption> cliOptions = [
@@ -83,6 +88,16 @@ final class const ClaudePluginDescriptor({
 
   @override
   bool get supportsPromptAttachments => true;
+
+  /// Claude owns idle reclamation per session: the service reaps individual
+  /// CLI child processes on the user-configured idle timeout
+  /// ([PluginHost.pluginIdleTimeout]) and resumes them transparently with
+  /// `--resume`. Whole-plugin suspension would add nothing (an all-reaped
+  /// plugin holds no processes, timers, or ports) and would silently kill any
+  /// pending in-process `ScheduleWakeup` timer, so the bridge-level idle
+  /// suspension must never arm.
+  @override
+  PluginResidencyPolicy residencyPolicy({required PluginConfig config}) => PluginResidencyPolicy.resident;
 
   @override
   List<PluginOption> get options => cliOptions;
@@ -196,7 +211,7 @@ final class const ClaudePluginDescriptor({
       processes: processes,
       approvals: approvals,
       clock: host.clock,
-      idleTimeout: _sessionIdleTimeout,
+      resolveIdleTimeout: () => host.pluginIdleTimeout,
     );
     const content = ClaudeContentMapper();
     final plugin = ClaudePlugin(

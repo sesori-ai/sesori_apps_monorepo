@@ -1,7 +1,7 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/routing/reply_to_question_handler.dart";
+import "package:sesori_bridge/src/routing/reply_to_question_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -37,7 +37,7 @@ void main() {
     test("returns 409 for an archived session", () async {
       await db.sessionDao.setArchived(sessionId: "ses-1", archivedAt: 7, updatedAt: 7, projectionUpdatedAt: 7);
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/question/reply",
@@ -45,13 +45,12 @@ void main() {
             const ReplyToQuestionRequest(
               requestId: "q-1",
               sessionId: "ses-1",
-              answers: [ReplyAnswer(values: ["yes"])],
+              answers: [
+                ReplyAnswer(values: ["yes"]),
+              ],
             ).toJson(),
           ),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, 409);
@@ -73,9 +72,6 @@ void main() {
             ReplyAnswer(values: ["tool-a", "tool-b"]),
           ],
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastReplyQuestionId, equals("q1"));
@@ -99,9 +95,6 @@ void main() {
             ReplyAnswer(values: ["ok"]),
           ],
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, equals(const SuccessEmptyResponse()));
@@ -118,9 +111,6 @@ void main() {
               ReplyAnswer(values: ["ok"]),
             ],
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -137,9 +127,6 @@ void main() {
               ReplyAnswer(values: ["ok"]),
             ],
           ),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );

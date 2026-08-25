@@ -1,10 +1,10 @@
 import "dart:convert";
 
-import "package:sesori_bridge/src/bridge/routing/post_device_canvas_claim_handler.dart";
-import "package:sesori_bridge/src/bridge/routing/post_device_canvas_release_handler.dart";
-import "package:sesori_bridge/src/bridge/routing/post_device_canvas_status_handler.dart";
-import "package:sesori_bridge/src/bridge/routing/request_handler.dart";
-import "package:sesori_bridge/src/bridge/services/device_canvas_client_service.dart";
+import "package:sesori_bridge/src/routing/post_device_canvas_claim_handler.dart";
+import "package:sesori_bridge/src/routing/post_device_canvas_release_handler.dart";
+import "package:sesori_bridge/src/routing/post_device_canvas_status_handler.dart";
+import "package:sesori_bridge/src/routing/request_handler.dart";
+import "package:sesori_bridge/src/services/device_canvas_client_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -139,13 +139,7 @@ Future<RelayResponse> _route({
   required String? body,
 }) {
   final request = makeRequest(method, path, body: body);
-  final params = handler.extractParams(request);
-  return handler.handleInternal(
-    request,
-    pathParams: params.pathParams,
-    queryParams: params.queryParams,
-    fragment: params.fragment,
-  );
+  return handler.routeForTest(request);
 }
 
 class _DeviceCanvasClientService() implements DeviceCanvasClientService {

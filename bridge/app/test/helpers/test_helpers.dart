@@ -10,8 +10,8 @@ import "package:sesori_bridge/src/auth/bridge_id_storage.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_repository.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_service.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
-import "package:sesori_bridge/src/bridge/orchestrator.dart";
-import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/foundation/relay_client.dart";
+import "package:sesori_bridge/src/orchestrator.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 class FakeAccessTokenProvider([String token = "test-token"]) implements AccessTokenProvider {
@@ -29,9 +29,16 @@ class FakeBridgeIdProvider([var String? id]) implements BridgeIdProvider {
   String? get bridgeId => id;
 }
 
-class FakeTokenRefresher() implements TokenRefresher {
+class FakeTokenRefresher({String token = "test-token", String? refreshedToken}) implements TokenRefresher {
+  final String _token = token;
+  final String? _refreshedToken = refreshedToken;
+  final List<bool> forceRefreshValues = [];
+
   @override
-  Future<String> getAccessToken({bool forceRefresh = false}) async => "test-token";
+  Future<String> getAccessToken({bool forceRefresh = false}) async {
+    forceRefreshValues.add(forceRefresh);
+    return forceRefresh ? _refreshedToken ?? _token : _token;
+  }
 }
 
 /// In-memory [BridgeIdStorage] substitute for [BridgeRegistrationService] tests.

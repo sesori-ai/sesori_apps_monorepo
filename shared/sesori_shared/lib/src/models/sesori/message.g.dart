@@ -13,6 +13,7 @@ MessageUser _$MessageUserFromJson(Map json) => MessageUser(
   time: json['time'] == null
       ? null
       : MessageTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
+  promptId: json['promptId'] as String?,
   $type: json['role'] as String?,
 );
 
@@ -22,6 +23,7 @@ Map<String, dynamic> _$MessageUserToJson(MessageUser instance) =>
       'sessionID': instance.sessionID,
       'agent': ?instance.agent,
       'time': ?instance.time?.toJson(),
+      'promptId': ?instance.promptId,
       'role': instance.$type,
     };
 

@@ -17,7 +17,21 @@ final class ClaudeEventDispatcher({
   final Map<String, Map<int, PluginMessagePart>> _completedStreamedParts = {};
   final Map<String, Set<String>> _streamedMessageIds = {};
 
-  void beginTurn({required String sessionId}) {
+  /// Content blocks already carried by `assistant` frames, per message id.
+  ///
+  /// Claude Code emits one `assistant` frame per content block under the same
+  /// `message.id`, so every frame's own content restarts at offset 0. Blocks
+  /// are numbered across the whole message instead, matching the stream's
+  /// block index and the transcript history; otherwise a block streamed at
+  /// index >= 1 is finalized under a second part id and renders twice.
+  final Map<String, int> _assistantBlockCounts = {};
+
+  void beginTurn({required String sessionId}) => _resetTurn(sessionId: sessionId);
+
+  /// Clears completed-turn stream state.
+  void completeTurn({required String sessionId}) => _resetTurn(sessionId: sessionId);
+
+  void _resetTurn({required String sessionId}) {
     _messageIds.remove(sessionId);
     _announcedMessageIds.remove(sessionId);
     _clearStreamedMessages(sessionId: sessionId);
@@ -38,6 +52,7 @@ final class ClaudeEventDispatcher({
     for (final messageId in messageIds) {
       _streamedBlocks.remove(messageId);
       _completedStreamedParts.remove(messageId);
+      _assistantBlockCounts.remove(messageId);
     }
   }
 
@@ -66,15 +81,18 @@ final class ClaudeEventDispatcher({
       return switch (message) {
         ClaudeStreamEventMessage() => _mapStream(sessionId: sessionId, message: message),
         ClaudeAssistantMessage() => _mapAssistant(sessionId: sessionId, message: message),
-        ClaudeUserMessage() => _mapUser(sessionId: sessionId, message: message),
+        ClaudeUserMessage() => _mapUser(sessionId: sessionId, message: message, promptId: null),
         ClaudeApiRetryMessage() => _mapRetry(sessionId: sessionId, message: message, now: now ?? DateTime.now()),
         ClaudeResultMessage() => _mapResult(sessionId: sessionId, message: message),
         ClaudeInitMessage() ||
         ClaudeStatusMessage() ||
         // ponytail: parsed but not surfaced — no client UI consumes thinking
-        // token estimates or subagent task progress yet.
+        // token estimates, task/tool progress, or hook output yet.
         ClaudeThinkingTokensMessage() ||
         ClaudeTaskProgressMessage() ||
+        ClaudeToolProgressMessage() ||
+        ClaudeHookStartedMessage() ||
+        ClaudeHookOutputMessage() ||
         ClaudeControlRequestMessage() ||
         ClaudeControlResponseMessage() ||
         ClaudeRateLimitMessage() ||
@@ -82,6 +100,16 @@ final class ClaudeEventDispatcher({
       };
     }
     return const [];
+  }
+
+  /// Maps one bridge-dispatched stdin replay with its authoritative prompt id.
+  List<BridgeSseEvent> mapPromptReplay({
+    required ClaudeUserMessage message,
+    required String promptId,
+  }) {
+    final sessionId = message.sessionId;
+    if (sessionId == null || sessionId.isEmpty || message.parentToolUseId != null) return const [];
+    return _mapUser(sessionId: sessionId, message: message, promptId: promptId);
   }
 
   List<BridgeSseEvent> _mapStream({
@@ -210,6 +238,7 @@ final class ClaudeEventDispatcher({
     final messageId = _messageIds[sessionId];
     final index = message.blockIndex;
     if (messageId == null || index == null) return const [];
+    _streamedBlocks[messageId]?.remove(index);
     final tool = _tools.stopInput(sessionId: sessionId, messageId: messageId, blockIndex: index);
     final completed = _completedStreamedParts[messageId]?.remove(index);
     return [
@@ -228,10 +257,23 @@ final class ClaudeEventDispatcher({
     final messageId = _nonEmptyString(message.messageId);
     if (messageId == null) return const [];
     _messageIds[sessionId] = messageId;
+    _streamedMessageIds.putIfAbsent(sessionId, () => <String>{}).add(messageId);
     if (_realModel(model: message.model) case final model?) _models[sessionId] = model;
     final mapped = _content.map(content: message.message["content"]);
+    // Counted before any filtering so a skipped block still occupies its
+    // ordinal, exactly as it does in the stream and the transcript.
+    final firstBlockIndex = _assistantBlockCounts[messageId] ?? 0;
+    _assistantBlockCounts[messageId] = firstBlockIndex + mapped.length;
     if (_content.containsInternalCommandOutput(blocks: mapped)) return const [];
-    final parts = _content.mapParts(content: message.message["content"], sessionId: sessionId, messageId: messageId);
+    final parts = [
+      for (var offset = 0; offset < mapped.length; offset++)
+        _content.mapPart(
+          block: mapped[offset],
+          index: firstBlockIndex + offset,
+          sessionId: sessionId,
+          messageId: messageId,
+        ),
+    ];
     if (!parts.any((part) => part.type.isVisible)) return const [];
     _announcedMessageIds[sessionId] = messageId;
     final events = <BridgeSseEvent>[
@@ -243,8 +285,9 @@ final class ClaudeEventDispatcher({
         ).toJson(),
       ),
     ];
-    for (var index = 0; index < mapped.length; index++) {
-      final part = switch (mapped[index]) {
+    for (var offset = 0; offset < mapped.length; offset++) {
+      final index = firstBlockIndex + offset;
+      final part = switch (mapped[offset]) {
         ClaudeMappedToolUseContentBlock(:final id, :final name, :final input) => _toolPart(
           sessionId: sessionId,
           tool: _tools.upsertCompleteBlock(
@@ -256,7 +299,7 @@ final class ClaudeEventDispatcher({
             input: input,
           ),
         ),
-        _ => parts[index],
+        _ => parts[offset],
       };
       if (_streamedBlocks[messageId]?.contains(index) ?? false) {
         _completedStreamedParts.putIfAbsent(messageId, () => <int, PluginMessagePart>{})[index] = part;
@@ -270,6 +313,7 @@ final class ClaudeEventDispatcher({
   List<BridgeSseEvent> _mapUser({
     required String sessionId,
     required ClaudeUserMessage message,
+    required String? promptId,
   }) {
     final mapped = _content.map(content: message.message["content"]);
     if (_content.containsInternalCommandOutput(blocks: mapped)) return const [];
@@ -307,17 +351,19 @@ final class ClaudeEventDispatcher({
       messageId: messageId,
     );
     if (!parts.any((part) => part.type.isVisible)) return const [];
-    return [
+    final events = [
       BridgeSseMessageUpdated(
         info: PluginMessage.user(
           id: messageId,
           sessionID: sessionId,
           agent: null,
           time: _messageTime(message.timestamp),
+          promptId: promptId,
         ).toJson(),
       ),
       for (final part in parts) BridgeSseMessagePartUpdated(part: part),
     ];
+    return events;
   }
 
   List<BridgeSseEvent> _mapRetry({

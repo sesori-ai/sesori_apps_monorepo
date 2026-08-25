@@ -3,6 +3,8 @@ import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:opencode_plugin/opencode_plugin.dart";
+import "package:opencode_plugin/src/models/openapi/compaction_part.g.dart";
+import "package:opencode_plugin/src/models/openapi/user_message.g.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -217,6 +219,7 @@ void main() {
       await api.sendCommand(
         sessionId: "ses-123",
         body: const SendCommandBody(
+          messageID: null,
           command: "/review-work",
           arguments: "recent changes",
           agent: "reviewer",
@@ -253,7 +256,20 @@ void main() {
       final mockClient = MockClient((request) async {
         capturedRequest = request;
         capturedBody = request.body;
-        return http.Response("{}", 200);
+        return http.Response(
+          jsonEncode({
+            "info": {
+              "id": "msg-server-reserved",
+              "sessionID": "ses-123",
+              "role": "user",
+              "time": {"created": 1},
+              "agent": "build",
+              "model": {"providerID": "openai", "modelID": "gpt-4.1"},
+            },
+            "parts": <dynamic>[],
+          }),
+          200,
+        );
       });
       final api = OpenCodeApi(
         client: OpenCodeRawHttpClient(
@@ -263,14 +279,16 @@ void main() {
         ),
       );
 
-      await api.sendPrompt(
+      final reserved = await api.sendPrompt(
         sessionId: "ses-123",
         body: const SendPromptBody(
+          messageID: null,
           parts: [PluginPromptPart.text(text: "Keep auth decisions")],
           agent: "build",
           variant: null,
           model: (providerID: "openai", modelID: "gpt-4.1"),
           noReply: true,
+          syntheticText: false,
         ),
         directory: "/repo",
       );
@@ -282,62 +300,91 @@ void main() {
       );
       expect(capturedRequest.headers["x-opencode-directory"], equals("/repo"));
       expect(jsonDecodeMap(capturedBody)["noReply"], isTrue);
+      expect((reserved!.info as UserMessage).id, equals("msg-server-reserved"));
     });
   });
 
-  group("OpenCodeApi.summarize", () {
-    test("uses the injected client for POST /session/{id}/summarize", () async {
-      var calls = 0;
+  group("OpenCodeApi reserved messages", () {
+    test("updates a reserved part through its exact message and part path", () async {
       late http.BaseRequest capturedRequest;
       late String capturedBody;
-
       final mockClient = MockClient((request) async {
-        calls += 1;
         capturedRequest = request;
         capturedBody = request.body;
-        return http.Response("true", 200);
+        return http.Response("{}", 200);
       });
-
       final api = OpenCodeApi(
         client: OpenCodeRawHttpClient(
           serverURL: "http://localhost:1234",
-          password: "test-pass",
+          password: null,
+          client: mockClient,
+        ),
+      );
+      const part = CompactionPart(
+        id: "prt-reserved",
+        sessionID: "ses-123",
+        messageID: "msg-reserved",
+        auto: false,
+        overflow: null,
+        tailStartId: null,
+      );
+
+      await api.updateMessagePart(
+        sessionId: "ses-123",
+        messageId: "msg-reserved",
+        partId: "prt-reserved",
+        part: part,
+        directory: "/repo",
+      );
+
+      expect(capturedRequest.method, equals("PATCH"));
+      expect(
+        capturedRequest.url.toString(),
+        equals("http://localhost:1234/session/ses-123/message/msg-reserved/part/prt-reserved"),
+      );
+      expect(capturedRequest.headers["x-opencode-directory"], equals("/repo"));
+      expect(jsonDecodeMap(capturedBody), equals(part.toJson()));
+    });
+
+    test("deletes a definitively rejected reserved message", () async {
+      late http.BaseRequest capturedRequest;
+      final mockClient = MockClient((request) async {
+        capturedRequest = request;
+        return http.Response("true", 200);
+      });
+      final api = OpenCodeApi(
+        client: OpenCodeRawHttpClient(
+          serverURL: "http://localhost:1234",
+          password: null,
           client: mockClient,
         ),
       );
 
-      await api.summarize(
+      await api.deleteMessage(
         sessionId: "ses-123",
-        body: const SummarizeBody(providerID: "openai", modelID: "gpt-4.1"),
+        messageId: "msg-reserved",
         directory: "/repo",
       );
 
-      expect(calls, equals(1));
-      expect(capturedRequest.method, equals("POST"));
+      expect(capturedRequest.method, equals("DELETE"));
       expect(
         capturedRequest.url.toString(),
-        equals("http://localhost:1234/session/ses-123/summarize"),
+        equals("http://localhost:1234/session/ses-123/message/msg-reserved"),
       );
       expect(capturedRequest.headers["x-opencode-directory"], equals("/repo"));
-      expect(
-        jsonDecode(capturedBody),
-        equals({
-          "providerID": "openai",
-          "modelID": "gpt-4.1",
-          "auto": false,
-        }),
-      );
     });
   });
 
   group("Send body serialization", () {
     test("SendPromptBody omits variant when null", () {
       const body = SendPromptBody(
+        messageID: null,
         parts: [PluginPromptPart.text(text: "Hello")],
         agent: null,
         variant: null,
         model: null,
         noReply: false,
+        syntheticText: false,
       );
 
       expect(body.toJson().containsKey("variant"), isFalse);
@@ -346,11 +393,13 @@ void main() {
 
     test("SendPromptBody includes noReply when enabled", () {
       const body = SendPromptBody(
+        messageID: null,
         parts: [PluginPromptPart.text(text: "Keep auth decisions")],
         agent: "build",
         variant: null,
         model: (providerID: "openai", modelID: "gpt-4.1"),
         noReply: true,
+        syntheticText: false,
       );
 
       expect(body.toJson()["noReply"], isTrue);
@@ -358,6 +407,7 @@ void main() {
 
     test("SendCommandBody includes variant when provided", () {
       const body = SendCommandBody(
+        messageID: null,
         command: "/review-work",
         arguments: "recent changes",
         agent: null,

@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/repositories/mappers/session_event_mapper.dart";
+import "package:sesori_bridge/src/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -17,6 +17,7 @@ void main() {
         parentId: "backend-parent",
       );
       final messageInfo = const Message.user(
+        promptId: null,
         id: "message",
         sessionID: "backend-session",
         agent: null,
@@ -53,11 +54,6 @@ void main() {
           name: "session deleted",
           event: BridgeSseSessionDeleted(info: sessionInfo),
           expectedBackendIds: ids.keys.toSet(),
-        ),
-        (
-          name: "sessions updated",
-          event: const BridgeSseSessionsUpdated(sessionID: "backend-session", projectID: "project"),
-          expectedBackendIds: {"backend-session"},
         ),
         (
           name: "session diff",

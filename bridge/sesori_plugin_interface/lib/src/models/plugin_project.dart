@@ -13,6 +13,7 @@ part "plugin_project.g.dart";
 /// populated from upstream project metadata.
 @freezed
 sealed class PluginProject with _$PluginProject {
+  // ignore: no_slop_linter/prefer_required_named_parameters, generated public model signature
   const factory({
     required String id,
     required String directory,

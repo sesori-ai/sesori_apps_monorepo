@@ -1,8 +1,8 @@
 import "dart:async";
 
-import "package:sesori_bridge/src/bridge/routing/request_handler.dart";
-import "package:sesori_bridge/src/bridge/routing/request_router.dart";
-import "package:sesori_bridge/src/bridge/routing/routed_request_dispatcher.dart";
+import "package:sesori_bridge/src/routing/request_handler.dart";
+import "package:sesori_bridge/src/routing/request_router.dart";
+import "package:sesori_bridge/src/routing/routed_request_dispatcher.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -88,7 +88,7 @@ void main() {
       final drain = dispatcher.drain();
       final response = (await (dispatch as RoutedRequestAccepted).pendingRequest.completion).response;
 
-      expect(response.status, 502);
+      expect(response.status, 500);
       expect(response.body, contains("route failed"));
       await drain;
     });
@@ -105,9 +105,7 @@ class _GatedHandler({
   @override
   Future<RelayResponse> handleInternal(
     RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
+    required RequestTargetParams targetParams,
   }) async {
     _started.complete();
     await _gate.future;
@@ -126,9 +124,7 @@ class _FailingHandler() extends RequestHandlerBase {
   @override
   Future<RelayResponse> handleInternal(
     RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
+    required RequestTargetParams targetParams,
   }) async {
     throw StateError("route failed");
   }

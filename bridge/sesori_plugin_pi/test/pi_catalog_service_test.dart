@@ -94,6 +94,21 @@ void main() {
     expect(tracker.snapshotFor(projectId: project), same(trackedGood));
     expect(repository.projects, hasLength(2));
   });
+
+  test("required options preserve the catalog probe failure as cause", () async {
+    final failure = StateError("private probe failure");
+    final service = _service(
+      repository: _FakeCatalogRepository(results: [failure]),
+      tracker: PiCatalogTracker(),
+    );
+
+    await expectLater(
+      service.requireOptions(projectId: path.absolute("project")),
+      throwsA(
+        isA<PluginOperationException>().having((error) => error.cause, "cause", same(failure)),
+      ),
+    );
+  });
 }
 
 PiCatalogService _service({required PiBackendCatalogRepository repository, required PiCatalogTracker tracker}) =>
@@ -101,7 +116,6 @@ PiCatalogService _service({required PiBackendCatalogRepository repository, requi
       repository: repository,
       tracker: tracker,
       totalTimeout: const Duration(seconds: 2),
-      maxModels: 4,
     );
 
 PluginSessionOptions _options({
@@ -120,10 +134,12 @@ class _FakeCatalogRepository({required final List<Object> results}) implements P
   int maxActive = 0;
 
   @override
+  Future<bool> healthCheck() async => true;
+
+  @override
   Future<PiCatalogProbeSnapshot> probe({
     required String projectId,
     required Duration totalTimeout,
-    required int maxModels,
   }) async {
     projects.add(projectId);
     active++;

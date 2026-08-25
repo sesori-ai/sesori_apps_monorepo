@@ -2,12 +2,12 @@ import "dart:convert";
 
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/routing/rename_session_handler.dart";
-import "package:sesori_bridge/src/bridge/services/session_mutation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/routing/rename_session_handler.dart";
+import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -93,9 +93,6 @@ void main() {
       await handler.handle(
         makeRequest("PATCH", "/session/title"),
         body: const RenameSessionRequest(sessionId: "s1", title: "New Title"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       await sessionMutationDispatcher.dispose();
 
@@ -107,6 +104,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
         pluginId: "fake",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         projectId: "p1",
@@ -163,9 +161,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("PATCH", "/session/title"),
         body: const RenameSessionRequest(sessionId: "s1", title: "Renamed Session"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.id, equals("s1"));
@@ -186,24 +181,18 @@ void main() {
         () => handler.handle(
           makeRequest("PATCH", "/session/title"),
           body: const RenameSessionRequest(sessionId: "", title: "New Title"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
     });
 
     test("missing binding returns 404 before plugin I/O", () async {
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "PATCH",
           "/session/title",
           body: jsonEncode(const RenameSessionRequest(sessionId: "missing", title: "New Title").toJson()),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, 404);
@@ -226,7 +215,7 @@ void main() {
         agentModel: null,
       );
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "PATCH",
           "/session/title",
@@ -234,9 +223,6 @@ void main() {
             const RenameSessionRequest(sessionId: "stale-plugin-session", title: "New Title").toJson(),
           ),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, 200);

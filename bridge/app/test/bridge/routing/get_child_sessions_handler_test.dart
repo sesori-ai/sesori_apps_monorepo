@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/bridge/routing/get_child_sessions_handler.dart";
+import "package:sesori_bridge/src/routing/get_child_sessions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -31,9 +31,6 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/children"),
         body: const SessionIdRequest(sessionId: "s1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastGetChildSessionsSessionId, equals("s1"));
@@ -44,9 +41,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/session/children"),
           body: const SessionIdRequest(sessionId: ""),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -67,9 +61,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/children"),
         body: const SessionIdRequest(sessionId: "s1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.items, hasLength(1));
@@ -90,9 +81,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/children"),
         body: const SessionIdRequest(sessionId: "parent-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final session = response.items[0];
@@ -121,9 +109,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/children"),
         body: const SessionIdRequest(sessionId: "parent-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.items.single.pullRequest, isNull);

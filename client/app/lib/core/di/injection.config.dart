@@ -22,7 +22,6 @@ import 'package:http/http.dart' as _i519;
 import 'package:image_picker/image_picker.dart' as _i183;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:record/record.dart' as _i1039;
-import 'package:sesori_auth/sesori_auth.dart' as _i442;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
 import 'package:sesori_mobile/capabilities/media/composer_image_picker.dart'
     as _i140;
@@ -45,6 +44,12 @@ import 'package:sesori_mobile/core/platform/crashlytics_failure_reporter.dart'
 import 'package:sesori_mobile/core/platform/file_save_client.dart' as _i223;
 import 'package:sesori_mobile/core/platform/firebase/firebase_messaging_static_adapter.dart'
     as _i178;
+import 'package:sesori_mobile/core/platform/firebase/no_op_analytics_client.dart'
+    as _i901;
+import 'package:sesori_mobile/core/platform/firebase/no_op_failure_reporter.dart'
+    as _i52;
+import 'package:sesori_mobile/core/platform/firebase/no_op_push_messaging_source.dart'
+    as _i483;
 import 'package:sesori_mobile/core/platform/firebase_analytics_client.dart'
     as _i326;
 import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
@@ -70,7 +75,7 @@ import 'package:sesori_mobile/core/platform/pasteboard_client.dart' as _i748;
 import 'package:sesori_mobile/core/platform/share_plus_client.dart' as _i1019;
 import 'package:sesori_mobile/core/platform/temporary_directory_client.dart'
     as _i908;
-import 'package:sesori_mobile/core/routing/deep_link_service.dart' as _i901;
+import 'package:sesori_mobile/core/routing/deep_link_service.dart' as _i902;
 import 'package:sesori_mobile/core/routing/deep_link_source.dart' as _i919;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
 
@@ -163,12 +168,12 @@ extension GetItInjectableX on _i174.GetIt {
       () => firebaseRegisterModule.enabledFirebaseMessagingStaticAdapter,
       registerFor: {_firebaseEnabled},
     );
-    gh.lazySingleton<_i982.FirebaseApp>(
-      () => firebaseRegisterModule.disabledFirebaseApp,
-      registerFor: {_firebaseDisabled},
-    );
     gh.lazySingleton<_i178.FirebaseMessagingStaticAdapter>(
       () => firebaseRegisterModule.disabledFirebaseMessagingStaticAdapter,
+      registerFor: {_firebaseDisabled},
+    );
+    gh.lazySingleton<_i948.AnalyticsClient>(
+      () => _i901.NoOpAnalyticsClient(),
       registerFor: {_firebaseDisabled},
     );
     gh.lazySingleton<_i948.AttachmentThumbnailStorage>(
@@ -176,17 +181,39 @@ extension GetItInjectableX on _i174.GetIt {
         temporaryDirectoryClient: gh<_i908.TemporaryDirectoryClient>(),
       ),
     );
+    gh.lazySingleton<_i553.FailureReporter>(
+      () => _i534.CrashlyticsFailureReporter(gh<_i141.FirebaseCrashlytics>()),
+      registerFor: {_firebaseEnabled},
+    );
+    gh.lazySingleton<_i948.PushMessagingSource>(
+      () => _i483.NoOpPushMessagingSource(),
+      registerFor: {_firebaseDisabled},
+    );
     gh.lazySingleton<_i948.ImageSaver>(
       () => registerModule.imageSaver(
         galClient: gh<_i227.GalClient>(),
         fileSaveClient: gh<_i223.FileSaveClient>(),
       ),
     );
+    gh.lazySingleton<_i948.PushMessagingSource>(
+      () => _i1042.FirebasePushMessagingSource(
+        messaging: gh<_i892.FirebaseMessaging>(),
+        staticAdapter: gh<_i178.FirebaseMessagingStaticAdapter>(),
+      ),
+      registerFor: {_firebaseEnabled},
+    );
     gh.lazySingleton<_i62.RecordingFileProvider>(
       () => _i62.RecordingFileProvider(
         audioFormat: gh<_i430.AudioFormatConfig>(),
         temporaryDirectoryClient: gh<_i908.TemporaryDirectoryClient>(),
       ),
+    );
+    gh.lazySingleton<_i948.AnalyticsClient>(
+      () => _i326.FirebaseAnalyticsClient(
+        analytics: gh<_i398.FirebaseAnalytics>(),
+        capability: gh<_i948.AnalyticsRuntimeCapability>(),
+      ),
+      registerFor: {_firebaseEnabled},
     );
     gh.lazySingleton<_i948.ImageClipboard>(
       () => _i274.FlutterImageClipboard(
@@ -198,34 +225,17 @@ extension GetItInjectableX on _i174.GetIt {
         sharePlusClient: gh<_i1019.SharePlusClient>(),
       ),
     );
-    gh.lazySingleton<_i892.FirebaseMessaging>(
-      () => firebaseRegisterModule.disabledFirebaseMessaging(
-        gh<_i982.FirebaseApp>(),
-      ),
+    gh.lazySingleton<_i553.FailureReporter>(
+      () => _i52.NoOpFailureReporter(),
       registerFor: {_firebaseDisabled},
     );
-    gh.lazySingleton<_i398.FirebaseAnalytics>(
-      () => firebaseRegisterModule.disabledFirebaseAnalytics(
-        gh<_i982.FirebaseApp>(),
-      ),
-      registerFor: {_firebaseDisabled},
-    );
-    gh.lazySingleton<_i141.FirebaseCrashlytics>(
-      () => firebaseRegisterModule.disabledFirebaseCrashlytics(
-        gh<_i982.FirebaseApp>(),
-      ),
-      registerFor: {_firebaseDisabled},
-    );
-    gh.lazySingleton<_i901.DeepLinkService>(
-      () => _i901.DeepLinkService(
+    gh.lazySingleton<_i902.DeepLinkService>(
+      () => _i902.DeepLinkService(
         gh<_i948.DeepLinkSource>(),
-        gh<_i442.AuthSession>(),
+        gh<_i948.AuthSession>(),
         gh<_i948.RouteDispatcher>(),
       ),
       dispose: (i) => i.dispose(),
-    );
-    gh.lazySingleton<_i553.FailureReporter>(
-      () => _i534.CrashlyticsFailureReporter(gh<_i141.FirebaseCrashlytics>()),
     );
     gh.lazySingleton<_i1038.VoiceTranscriptionService>(
       () => _i1038.VoiceTranscriptionService(
@@ -237,18 +247,6 @@ extension GetItInjectableX on _i174.GetIt {
         audioFormat: gh<_i430.AudioFormatConfig>(),
       ),
       dispose: (i) => i.dispose(),
-    );
-    gh.lazySingleton<_i948.PushMessagingSource>(
-      () => _i1042.FirebasePushMessagingSource(
-        messaging: gh<_i892.FirebaseMessaging>(),
-        staticAdapter: gh<_i178.FirebaseMessagingStaticAdapter>(),
-      ),
-    );
-    gh.lazySingleton<_i948.AnalyticsClient>(
-      () => _i326.FirebaseAnalyticsClient(
-        analytics: gh<_i398.FirebaseAnalytics>(),
-        capability: gh<_i948.AnalyticsRuntimeCapability>(),
-      ),
     );
     return this;
   }

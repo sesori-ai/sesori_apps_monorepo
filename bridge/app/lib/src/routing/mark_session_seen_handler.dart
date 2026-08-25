@@ -1,0 +1,32 @@
+import "package:sesori_shared/sesori_shared.dart";
+
+import "../services/session_unseen_service.dart";
+import "request_handler.dart";
+
+/// Handles `POST /session/seen` — explicit "Mark as Read" ([read] == true) /
+/// "Mark as Unread" ([read] == false) for a session. Persists the change and
+/// lets the unseen service emit the SSE update that syncs every client.
+class MarkSessionSeenHandler({required final SessionUnseenService _sessionUnseenService})
+    extends BodyRequestHandler<MarkSessionSeenRequest, SuccessEmptyResponse> {
+  this : super(HttpMethod.post, "/session/seen", fromJson: MarkSessionSeenRequest.fromJson);
+
+  @override
+  Future<SuccessEmptyResponse> handle(
+    RelayRequest request, {
+    required MarkSessionSeenRequest body,
+  }) async {
+    requireNonEmpty(request: request, value: body.sessionId, label: "session id");
+    if (body.read) {
+      await _sessionUnseenService.markRead(sessionId: body.sessionId);
+    } else {
+      try {
+        await _sessionUnseenService.markUnread(sessionId: body.sessionId);
+      } on SessionUnseenRowMissingException {
+        // Unknown/deleted session — the non-2xx tells the requesting client to
+        // refresh its optimistic state from the authoritative list.
+        throw buildErrorResponse(request, 404, "session not found");
+      }
+    }
+    return const SuccessEmptyResponse();
+  }
+}

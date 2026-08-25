@@ -1,24 +1,34 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
-import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/services/session_abort_service.dart";
+import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/session_prompt_service.dart";
+import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/test_database.dart";
 import "../routing/routing_test_helpers.dart";
 
 void main() {
+  test("bridge-generated prompt ids use 16 random bytes", () {
+    final promptId = SessionPromptService.generatePromptId();
+
+    expect(promptId, matches(RegExp(r"^prm_[0-9a-f]{32}$")));
+  });
+
   group("SessionPromptService command dispatch", () {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
     late SessionRepository sessionRepository;
     late SessionOperationDispatcher dispatcher;
+    late FakeSessionOptionsService optionsService;
     late SessionPromptService service;
 
     setUp(() async {
@@ -32,10 +42,12 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
+      optionsService = FakeSessionOptionsService();
       service = SessionPromptService(
         sessionRepository: sessionRepository,
         dispatcher: dispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
+        sessionOptionsService: optionsService,
       );
       await sessionRepository.insertStoredSession(
         sessionId: "s1",
@@ -62,6 +74,7 @@ void main() {
 
     Future<void> sendCommand({String command = "review"}) {
       return service.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "extra args")],
         variant: null,
@@ -85,6 +98,7 @@ void main() {
 
       await expectLater(
         service.sendPrompt(
+          promptId: "prompt-1",
           sessionId: "s1",
           parts: const [PromptPart.text(text: "hello")],
           variant: null,
@@ -143,6 +157,7 @@ void main() {
         agentModel: null,
       );
       await service.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s-defaults-command",
         parts: const [PromptPart.text(text: "")],
         variant: const SessionVariant(id: "low"),
@@ -177,6 +192,7 @@ void main() {
       final changeFuture = service.promptDefaultsChanges.first;
 
       await service.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s-defaults-event",
         parts: const [PromptPart.text(text: "Hello")],
         variant: const SessionVariant(id: "high"),
@@ -212,6 +228,7 @@ void main() {
       plugin.sendCommandCompleter = commandGate;
 
       final command = service.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "arguments")],
         variant: null,
@@ -224,6 +241,7 @@ void main() {
       }
       final abort = abortService.abortSession(sessionId: "s1");
       final prompt = service.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "later")],
         variant: null,
@@ -244,6 +262,7 @@ void main() {
 
     test("plain prompts are unaffected and delegate to sendPrompt", () async {
       await service.sendPrompt(
+        promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "Hello")],
         variant: null,
@@ -254,6 +273,33 @@ void main() {
 
       expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
       expect(plugin.lastSendCommand, isNull);
+    });
+
+    test("invalidates the options cache and rethrows when the plugin reports stale options", () async {
+      plugin.sendPromptError = const PluginStaleOptionsException("sendPrompt", message: "unsupported agent");
+
+      await expectLater(
+        service.sendPrompt(
+          promptId: "prompt-1",
+          sessionId: "s1",
+          parts: const [PromptPart.text(text: "Hello")],
+          variant: null,
+          agent: "removed-agent",
+          model: null,
+          command: null,
+        ),
+        throwsA(
+          isA<StaleSessionPromptOptionsException>().having(
+            (error) => error.cause,
+            "cause",
+            isA<PluginStaleOptionsException>(),
+          ),
+        ),
+      );
+
+      expect(optionsService.explicitInvalidations.single, (pluginId: "fake", projectId: "/repo"));
+      // The rejected selection is not persisted as the session's defaults.
+      expect((await db.sessionDao.getSession(sessionId: "s1"))!.lastAgent, isNull);
     });
   });
 }

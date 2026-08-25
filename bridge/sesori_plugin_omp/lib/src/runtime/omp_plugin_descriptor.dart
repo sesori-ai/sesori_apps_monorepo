@@ -121,9 +121,12 @@ final class const OmpPluginDescriptor({
     const manifest = OmpRuntimeManifest();
     yield* ManagedRuntimeProvisionService(
       manifest: manifest,
-      versionValidator: _versionValidator(processes: host.processes),
+      selectionService: ManagedRuntimeSelectionService(
+        manifest: manifest,
+        versionValidator: _versionValidator(processes: host.processes),
+      ),
       fallbackExecutableCandidates: const [],
-    ).provision(host: host);
+    ).provision(host: host, explicitExecutablePath: null);
   }
 
   @override
@@ -178,41 +181,37 @@ final class const OmpPluginDescriptor({
   }) async {
     const manifest = OmpRuntimeManifest();
     final explicitBin = _explicitBin(config);
-    final pathProbe = await _probeRuntime(
-      executable: explicitBin ?? manifest.pathExecutableName,
-      processes: processes,
+    final selection = await ManagedRuntimeSelectionService(
+      manifest: manifest,
+      versionValidator: _versionValidator(processes: processes),
+    ).select(
+      explicitExecutablePath: explicitBin,
+      fallbackExecutableCandidates: const [],
       environment: environment,
-      expectedVersion: manifest.minPathVersion,
-      exactVersion: false,
+      stateDirectory: stateDirectory,
+      abortSignal: StartAbortSignal.never,
+      managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
     );
-    if (pathProbe case _OmpRuntimeReady(:final version)) {
-      return PluginSetupReady.versioned(runtimeVersion: version);
+    if (selection case ManagedRuntimeSelected(:final version)) {
+      return PluginSetupReady.versioned(runtimeVersion: version.raw);
     }
+    final notSelected = selection as ManagedRuntimeNotSelected;
     if (explicitBin != null) {
-      return switch (pathProbe) {
-        _OmpRuntimeReady(:final version) => PluginSetupReady.versioned(runtimeVersion: version),
-        _OmpRuntimeMissing() => const PluginSetupRuntimeMissing(
+      return switch (notSelected.primaryRejection) {
+        ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => const PluginSetupRuntimeMissing(
           actionHint: "Fix the configured Oh My Pi CLI path, then restart the bridge.",
         ),
-        _OmpRuntimeOutdated() => const PluginSetupUnavailable(
+        ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
           actionHint: "Update the configured Oh My Pi CLI, then restart the bridge.",
         ),
-        _OmpRuntimeUnknown() => const PluginSetupUnknown(
+        ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
           actionHint: "Oh My Pi setup could not be determined. Verify the configured CLI and retry.",
         ),
       };
     }
-    final managedProbe = await _probeRuntime(
-      executable: manifest.managedBinaryPath(stateDirectory: stateDirectory),
-      processes: processes,
-      environment: environment,
-      expectedVersion: manifest.bundledVersion,
-      exactVersion: true,
-    );
-    if (managedProbe case _OmpRuntimeReady(:final version)) {
-      return PluginSetupReady.versioned(runtimeVersion: version);
-    }
-    if (pathProbe is _OmpRuntimeUnknown || managedProbe is _OmpRuntimeUnknown) {
+    final automatic = notSelected as ManagedRuntimeAutomaticNotSelected;
+    if (_isUnknownRejection(automatic.primaryRejection) ||
+        _isUnknownRejection(automatic.managedRejection)) {
       return const PluginSetupUnknown(
         actionHint: "Oh My Pi setup could not be determined. Verify the local CLI and retry.",
       );
@@ -224,51 +223,20 @@ final class const OmpPluginDescriptor({
     );
   }
 
+  bool _isUnknownRejection(ManagedRuntimeRejection rejection) {
+    return switch (rejection) {
+      ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) || ManagedRuntimeVersionRejected() => false,
+      ManagedRuntimeProbeRejected() => true,
+    };
+  }
+
   bool _supportsManagedInstall() {
     try {
-      return const OmpRuntimeManifest().hasAssetFor(target: PlatformTarget.current());
+      return const OmpRuntimeManifest().supportsManagedInstallOn(target: PlatformTarget.current());
     } on Object catch (error, stackTrace) {
       Log.w("[omp] platform detection failed; managed install unavailable", error, stackTrace);
       return false;
     }
-  }
-
-  Future<_OmpRuntimeProbe> _probeRuntime({
-    required String executable,
-    required HostProcessService processes,
-    required Map<String, String> environment,
-    required RuntimeVersion expectedVersion,
-    required bool exactVersion,
-  }) async {
-    final executor = HostProcessCommandExecutor(
-      processes: processes,
-      runInShell: io.Platform.isWindows,
-      maxCapturedOutputCharactersPerStream: 64 * 1024,
-    );
-    final CommandResult result;
-    try {
-      result = await executor.run(
-        executable,
-        const ["--version"],
-        environment: environment,
-        timeout: _versionProbeTimeout,
-      );
-    } on TimeoutException {
-      return const _OmpRuntimeUnknown();
-    } on io.ProcessException {
-      return const _OmpRuntimeMissing();
-    } on Object catch (error, stackTrace) {
-      Log.w("[omp] runtime version probe failed", error, stackTrace);
-      return const _OmpRuntimeUnknown();
-    }
-    if (result.exitCode != 0) return const _OmpRuntimeUnknown();
-    final version = _versionValidator(processes: processes).parseVersionOutput(output: result.stdout);
-    if (version == null) return const _OmpRuntimeUnknown();
-    final comparison = version.compareTo(expectedVersion);
-    if (exactVersion ? comparison == 0 : comparison >= 0) {
-      return _OmpRuntimeReady(version: version.raw);
-    }
-    return const _OmpRuntimeOutdated();
   }
 
   RuntimeVersionValidator _versionValidator({required HostProcessService processes}) => RuntimeVersionValidator(
@@ -291,27 +259,6 @@ final class const OmpPluginDescriptor({
       scratchDirectory: null,
       processFactory: hostProcessAcpFactory(processes: host.processes, environment: host.environment),
     );
-    final plugin = AcpBridgePlugin(plugin: omp, clock: host.clock, endpoint: "$binaryPath acp");
-    await plugin.connect(budget: _connectBudget, startAborted: host.startAborted);
-    if (!host.startAborted.isAborted) return plugin;
-    try {
-      await plugin.shutdown(budget: null);
-    } on Object catch (error, stackTrace) {
-      Log.e("[omp] rollback after aborted start failed", error, stackTrace);
-    }
-    throw const PluginStartAbortedException();
+    return await AcpBridgePlugin.start(plugin: omp, host: host, connectBudget: _connectBudget);
   }
 }
-
-/// Outcome of an Oh My Pi runtime probe. Only [_OmpRuntimeReady] carries the
-/// selected runtime version, so a version can never accompany a rejected or
-/// unresolved runtime.
-sealed class const _OmpRuntimeProbe();
-
-final class const _OmpRuntimeReady({required final String version}) extends _OmpRuntimeProbe;
-
-final class const _OmpRuntimeMissing() extends _OmpRuntimeProbe;
-
-final class const _OmpRuntimeOutdated() extends _OmpRuntimeProbe;
-
-final class const _OmpRuntimeUnknown() extends _OmpRuntimeProbe;

@@ -25,7 +25,7 @@ class const AgentModelButtons({
   required final AgentModel? selectedAgentModel,
   required final void Function({required String providerID, required String modelID}) onModelSelected,
   required final List<SessionVariant> availableVariants,
-  required final ValueChanged<SessionVariant?> onVariantSelected,
+  required final ValueChanged<SessionVariant> onVariantSelected,
 }) extends StatefulWidget {
   @override
   State<AgentModelButtons> createState() => _AgentModelButtonsState();
@@ -231,7 +231,7 @@ class const _VariantMenu({
   required final PregoComposerSurfaceStyle surfaceStyle,
   required final List<SessionVariant> availableVariants,
   required final String? selectedVariant,
-  required final ValueChanged<SessionVariant?> onVariantSelected,
+  required final ValueChanged<SessionVariant> onVariantSelected,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -242,18 +242,12 @@ class const _VariantMenu({
       menuMaxHeight: _pickerMaxHeight,
       triggerBuilder: (context, toggle) => PregoPickerButton(
         leadingIcon: Icons.speed_outlined,
-        label: selectedVariant ?? loc.sessionDetailVariantDefault,
+        label: selectedVariant ?? availableVariants.first.id,
         surfaceStyle: surfaceStyle,
         onPressed: toggle,
       ),
       entriesBuilder: () => [
         PregoMenuLabel(text: loc.sessionDetailPickerVariant),
-        PregoMenuItem(
-          title: loc.sessionDetailVariantDefault,
-          subtitle: null,
-          isSelected: selectedVariant == null,
-          onTap: () => onVariantSelected(null),
-        ),
         for (final variant in availableVariants)
           PregoMenuItem(
             title: variant.id,

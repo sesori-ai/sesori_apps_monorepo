@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
@@ -11,8 +12,6 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/logging/logging.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
-import "package:sesori_dart_core/src/platform/notification_canceller.dart";
-import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
@@ -21,15 +20,13 @@ import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
 
-class MockNotificationCanceller() extends Mock implements NotificationCanceller;
-
-class MockPermissionRepository() extends Mock implements PermissionRepository;
+const _cooldown = Duration(milliseconds: 100);
 
 void main() {
   const sessionId = "session-1";
   const connectedStatus = ConnectionStatus.connected(
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
-    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
+    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
   );
   const connectionLostStatus = ConnectionStatus.connectionLost(
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
@@ -42,7 +39,7 @@ void main() {
   });
 
   group("SessionDetailCubit stale reconnect", () {
-    late MockSessionService mockSessionService;
+    late MockSessionRepository mockSessionService;
     late MockSessionRepository mockSessionRepository;
     late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
@@ -55,7 +52,7 @@ void main() {
     late BehaviorSubject<ConnectionStatus> connectionStatus;
 
     setUp(() {
-      mockSessionService = MockSessionService();
+      mockSessionService = MockSessionRepository();
       mockSessionRepository = MockSessionRepository();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
@@ -76,7 +73,7 @@ void main() {
       when(() => mockConnectionService.events).thenAnswer((_) => globalEvents.stream);
       when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus);
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
-      delegateSessionRepositoryToService(repository: mockSessionRepository, service: mockSessionService);
+      delegateSessionRepository(repository: mockSessionRepository, source: mockSessionService);
       when(
         () => mockNotificationCanceller.cancelForSession(
           sessionId: any(named: "sessionId"),
@@ -141,9 +138,16 @@ void main() {
         connectionStatus.add(connectionLostStatus);
         await pumpEventQueue();
 
-        when(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).thenAnswer(
-          (_) async =>
-              ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-refreshed")], nextCursor: null)),
+        when(
+          () => mockSessionService.getMessages(
+            sessionId: sessionId,
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-refreshed")], nextCursor: null),
+          ),
         );
 
         final emitted = <SessionDetailState>[];
@@ -153,7 +157,13 @@ void main() {
         mockConnectionService.emitDataMayBeStale();
         await pumpEventQueue();
 
-        verifyNever(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before")));
+        verifyNever(
+          () => mockSessionService.getMessages(
+            sessionId: sessionId,
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        );
         verifyNever(() => mockSessionService.getPendingQuestions(sessionId: sessionId));
         verifyNever(() => mockSessionService.getChildren(sessionId: sessionId));
         verifyNever(() => mockSessionService.getSessionStatuses());
@@ -205,9 +215,16 @@ void main() {
       await _awaitLoaded(cubit);
       clearInteractions(mockSessionService);
 
-      when(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).thenAnswer(
-        (_) async =>
-            ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-immediate")], nextCursor: null)),
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-immediate")], nextCursor: null),
+        ),
       );
 
       final emitted = <SessionDetailState>[];
@@ -217,7 +234,13 @@ void main() {
       mockConnectionService.emitDataMayBeStale();
       await pumpEventQueue();
 
-      verify(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
@@ -352,6 +375,7 @@ void main() {
     test("sendMessage forwards selectedAgentModel variant to repository", () async {
       when(
         () => mockSessionRepository.sendMessage(
+          promptId: any(named: "promptId"),
           attachments: const [],
           sessionId: sessionId,
           text: "hello",
@@ -391,12 +415,99 @@ void main() {
 
       verify(
         () => mockSessionRepository.sendMessage(
+          promptId: any(named: "promptId"),
           attachments: const [],
           sessionId: sessionId,
           text: "hello",
           agent: "coder",
           model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
           variant: const SessionVariant(id: "low"),
+          command: null,
+        ),
+      ).called(1);
+    });
+
+    test("resume forwards the transcript model when the provider cache is stale", () async {
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const MessageWithPartsResponse(
+            messages: [
+              MessageWithParts(
+                info: Message.error(
+                  id: "msg-custom-model",
+                  sessionID: sessionId,
+                  agent: null,
+                  modelID: "test-model",
+                  providerID: "sesori-local",
+                  errorName: "ProviderError",
+                  errorMessage: "request failed",
+                  time: null,
+                ),
+                parts: [],
+              ),
+            ],
+            nextCursor: null,
+          ),
+        ),
+      );
+      when(
+        () => mockSessionRepository.sendMessage(
+          promptId: any(named: "promptId"),
+          attachments: const [],
+          sessionId: sessionId,
+          text: "resume",
+          agent: "coder",
+          model: const PromptModel(providerID: "sesori-local", modelID: "test-model"),
+          variant: null,
+          command: null,
+        ),
+      ).thenAnswer((_) async => ApiResponse<void>.success(null));
+
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      expect(
+        (cubit.state as SessionDetailLoaded).selectedAgentModel,
+        const AgentModel(providerID: "sesori-local", modelID: "test-model", variant: null),
+      );
+
+      await cubit.sendMessage(
+        attachments: const [],
+        text: "resume",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+      );
+
+      verify(
+        () => mockSessionRepository.sendMessage(
+          promptId: any(named: "promptId"),
+          attachments: const [],
+          sessionId: sessionId,
+          text: "resume",
+          agent: "coder",
+          model: const PromptModel(providerID: "sesori-local", modelID: "test-model"),
+          variant: null,
           command: null,
         ),
       ).called(1);
@@ -424,7 +535,13 @@ void main() {
       clearInteractions(mockSessionService);
 
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
-      when(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).thenAnswer((_) => messagesCompleter.future);
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).thenAnswer((_) => messagesCompleter.future);
       when(
         () => mockSessionService.getPendingQuestions(sessionId: sessionId),
       ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
@@ -468,7 +585,9 @@ void main() {
       await pumpEventQueue();
 
       messagesCompleter.complete(
-        ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-race")], nextCursor: null)),
+        ApiResponse.success(
+          MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-race")], nextCursor: null),
+        ),
       );
       await pumpEventQueue();
 
@@ -498,7 +617,13 @@ void main() {
 
       await _awaitLoaded(cubit);
 
-      when(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).thenAnswer(
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).thenAnswer(
         (_) async => ApiResponse.success(
           MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-provider-fallback")], nextCursor: null),
         ),
@@ -521,7 +646,13 @@ void main() {
 
     test("stale signal is ignored when state is SessionDetailLoading", () async {
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
-      when(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).thenAnswer((_) => messagesCompleter.future);
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).thenAnswer((_) => messagesCompleter.future);
 
       final cubit = SessionDetailCubit(
         mockConnectionService,
@@ -542,7 +673,13 @@ void main() {
       mockConnectionService.emitDataMayBeStale();
       await pumpEventQueue();
 
-      verify(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getPendingPermissions(sessionId: any(named: "sessionId"))).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
@@ -560,14 +697,20 @@ void main() {
         ),
       ).called(1);
 
-      messagesCompleter.complete(ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)));
+      messagesCompleter.complete(
+        ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+      );
       await _awaitLoaded(cubit);
       await cubit.close();
     });
 
     test("stale signal is ignored when state is SessionDetailFailed", () async {
       when(
-        () => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before")),
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
       final cubit = SessionDetailCubit(
@@ -591,7 +734,13 @@ void main() {
       mockConnectionService.emitDataMayBeStale();
       await pumpEventQueue();
 
-      verify(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
       expect(cubit.state, isA<SessionDetailFailed>());
     });
 
@@ -629,7 +778,11 @@ void main() {
         final error = StateError("silent refresh sentinel");
 
         when(
-          () => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before")),
+          () => mockSessionService.getMessages(
+            sessionId: sessionId,
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
         ).thenThrow(error);
 
         final emitted = <SessionDetailState>[];
@@ -664,170 +817,193 @@ void main() {
       },
     );
 
-    test("a failed leading stale refresh retries until a snapshot succeeds", () async {
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: FakeLifecycleSource(),
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-        eventRefreshMinInterval: const Duration(milliseconds: 100),
-      );
-      addTearDown(cubit.close);
+    test("a failed leading stale refresh retries until a snapshot succeeds", () {
+      fakeAsync((FakeAsync async) {
+        final cubit = SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
+          lifecycleSource: FakeLifecycleSource(),
+          composerDraftRepository: inMemoryComposerDraftRepository(),
+          productAnalyticsService: stubbedProductAnalyticsService(),
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: MockFailureReporter(),
+          eventRefreshMinInterval: _cooldown,
+        );
 
-      await _awaitLoaded(cubit);
-      reset(mockSessionService);
-      _stubLoadApis(mockSessionService, sessionId: sessionId);
-      when(
-        () => mockSessionService.listCommands(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
-        ),
-      ).thenAnswer(
-        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
-      );
-      var messageLoads = 0;
-      when(
-        () => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
-      ).thenAnswer((_) async {
-        messageLoads++;
-        if (messageLoads == 1) {
-          return ApiResponse.error(ApiError.generic());
-        }
-        return ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null));
+        _settleLoaded(async: async, cubit: cubit);
+        reset(mockSessionService);
+        _stubLoadApis(mockSessionService, sessionId: sessionId);
+        when(
+          () => mockSessionService.listCommands(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+        );
+        var messageLoads = 0;
+        when(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).thenAnswer((_) async {
+          messageLoads++;
+          if (messageLoads == 1) {
+            return ApiResponse.error(ApiError.generic());
+          }
+          return ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null));
+        });
+
+        mockConnectionService.emitDataMayBeStale();
+        async.elapse(Duration.zero);
+        expect(messageLoads, 1);
+
+        // The cooldown elapses and the restored staleness produces the retry.
+        async.elapse(_cooldown);
+        expect(messageLoads, 2);
+
+        // The successful retry consumed the signal; later windows stay quiet.
+        async.elapse(_cooldown * 2);
+        expect(messageLoads, 2);
+
+        _completeCleanup(async: async, futures: [cubit.close()]);
       });
-
-      mockConnectionService.emitDataMayBeStale();
-      await pumpEventQueue();
-      expect(messageLoads, 1);
-
-      await Future<void>.delayed(const Duration(milliseconds: 120));
-      expect(messageLoads, 2);
-
-      await Future<void>.delayed(const Duration(milliseconds: 150));
-      expect(messageLoads, 2);
     });
 
-    test("an option load failure preserves catalogs and retries until options load", () async {
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: FakeLifecycleSource(),
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-        eventRefreshMinInterval: const Duration(milliseconds: 100),
-      );
-      addTearDown(cubit.close);
+    test("an option load failure preserves catalogs and retries until options load", () {
+      fakeAsync((FakeAsync async) {
+        final cubit = SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
+          lifecycleSource: FakeLifecycleSource(),
+          composerDraftRepository: inMemoryComposerDraftRepository(),
+          productAnalyticsService: stubbedProductAnalyticsService(),
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: MockFailureReporter(),
+          eventRefreshMinInterval: _cooldown,
+        );
 
-      await _awaitLoaded(cubit);
-      final before = cubit.state as SessionDetailLoaded;
-      var providerLoads = 0;
-      when(
-        () => mockSessionService.listProviders(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
-        ),
-      ).thenAnswer((_) async {
-        providerLoads++;
-        return providerLoads == 1
-            ? ApiResponse<ProviderListResponse>.error(ApiError.generic())
-            : ApiResponse.success(_providers());
+        _settleLoaded(async: async, cubit: cubit);
+        final before = cubit.state as SessionDetailLoaded;
+        var providerLoads = 0;
+        when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer((_) async {
+          providerLoads++;
+          return providerLoads == 1
+              ? ApiResponse<ProviderListResponse>.error(ApiError.generic())
+              : ApiResponse.success(_providers());
+        });
+
+        mockConnectionService.emitDataMayBeStale();
+        async.elapse(Duration.zero);
+
+        expect(providerLoads, 1);
+        final afterFailure = cubit.state as SessionDetailLoaded;
+        expect(afterFailure.availableAgents, before.availableAgents);
+        expect(afterFailure.availableProviders, before.availableProviders);
+        expect(afterFailure.availableCommands, before.availableCommands);
+
+        // The cooldown elapses and the retained staleness retries the options.
+        async.elapse(_cooldown);
+        expect(providerLoads, 2);
+
+        // The successful retry consumed the signal; later windows stay quiet.
+        async.elapse(_cooldown * 2);
+        expect(providerLoads, 2);
+
+        _completeCleanup(async: async, futures: [cubit.close()]);
       });
-
-      mockConnectionService.emitDataMayBeStale();
-      await pumpEventQueue();
-
-      expect(providerLoads, 1);
-      final afterFailure = cubit.state as SessionDetailLoaded;
-      expect(afterFailure.availableAgents, before.availableAgents);
-      expect(afterFailure.availableProviders, before.availableProviders);
-      expect(afterFailure.availableCommands, before.availableCommands);
-
-      await Future<void>.delayed(const Duration(milliseconds: 120));
-      expect(providerLoads, 2);
-
-      await Future<void>.delayed(const Duration(milliseconds: 150));
-      expect(providerLoads, 2);
     });
 
     test("a disconnected failed refresh waits for reconnect instead of retrying each cooldown", () async {
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: FakeLifecycleSource(),
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-        eventRefreshMinInterval: const Duration(milliseconds: 100),
-      );
-      addTearDown(cubit.close);
-
-      await _awaitLoaded(cubit);
-      reset(mockSessionService);
-      _stubLoadApis(mockSessionService, sessionId: sessionId);
-      when(
-        () => mockSessionService.listCommands(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
-        ),
-      ).thenAnswer(
-        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
-      );
-
-      final firstMessages = Completer<ApiResponse<MessageWithPartsResponse>>();
-      var messageLoads = 0;
-      when(
-        () => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
-      ).thenAnswer((_) {
-        messageLoads++;
-        if (messageLoads == 1) return firstMessages.future;
-        return Future.value(
-          ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+      late final SessionDetailCubit cubit;
+      late final StreamSubscription<SessionDetailState> sub;
+      fakeAsync((FakeAsync async) {
+        cubit = SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
+          lifecycleSource: FakeLifecycleSource(),
+          composerDraftRepository: inMemoryComposerDraftRepository(),
+          productAnalyticsService: stubbedProductAnalyticsService(),
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: MockFailureReporter(),
+          eventRefreshMinInterval: _cooldown,
         );
+
+        _settleLoaded(async: async, cubit: cubit);
+        reset(mockSessionService);
+        _stubLoadApis(mockSessionService, sessionId: sessionId);
+        when(
+          () => mockSessionService.listCommands(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+        );
+
+        final firstMessages = Completer<ApiResponse<MessageWithPartsResponse>>();
+        var messageLoads = 0;
+        when(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).thenAnswer((_) {
+          messageLoads++;
+          if (messageLoads == 1) return firstMessages.future;
+          return Future.value(
+            ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+          );
+        });
+
+        final emitted = <SessionDetailState>[];
+        sub = cubit.stream.listen(emitted.add);
+
+        mockConnectionService.emitDataMayBeStale();
+        async.elapse(Duration.zero);
+        connectionStatus.add(connectionLostStatus);
+        firstMessages.complete(ApiResponse.error(ApiError.generic()));
+
+        // Several cooldown windows pass while disconnected: no retry fires.
+        async.elapse(_cooldown * 3);
+        expect(messageLoads, 1);
+        expect(
+          emitted.whereType<SessionDetailLoaded>().where((state) => state.isRefreshing),
+          hasLength(1),
+        );
+
+        connectionStatus.add(connectedStatus);
+        async.elapse(Duration.zero);
+        expect(messageLoads, 2);
       });
-
-      final emitted = <SessionDetailState>[];
-      final sub = cubit.stream.listen(emitted.add);
-      addTearDown(sub.cancel);
-
-      mockConnectionService.emitDataMayBeStale();
-      await pumpEventQueue();
-      connectionStatus.add(connectionLostStatus);
-      firstMessages.complete(ApiResponse.error(ApiError.generic()));
-
-      await Future<void>.delayed(const Duration(milliseconds: 250));
-      expect(messageLoads, 1);
-      expect(
-        emitted.whereType<SessionDetailLoaded>().where((state) => state.isRefreshing),
-        hasLength(1),
-      );
-
-      connectionStatus.add(connectedStatus);
-      await pumpEventQueue();
-      expect(messageLoads, 2);
+      await sub.cancel();
+      await cubit.close();
     });
 
     test("concurrent stale signals are coalesced (single API call)", () async {
@@ -852,7 +1028,13 @@ void main() {
       reset(mockSessionService);
 
       final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
-      when(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).thenAnswer((_) => messagesCompleter.future);
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).thenAnswer((_) => messagesCompleter.future);
       when(
         () => mockSessionService.getPendingQuestions(sessionId: sessionId),
       ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
@@ -893,11 +1075,19 @@ void main() {
       await pumpEventQueue();
 
       messagesCompleter.complete(
-        ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-coalesced")], nextCursor: null)),
+        ApiResponse.success(
+          MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-coalesced")], nextCursor: null),
+        ),
       );
       await pumpEventQueue();
 
-      verify(() => mockSessionService.getMessages(sessionId: sessionId, limit: any(named: "limit"), before: any(named: "before"))).called(1);
+      verify(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getPendingPermissions(sessionId: any(named: "sessionId"))).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
@@ -916,352 +1106,484 @@ void main() {
       ).called(1);
     });
 
-    test("staleness bursts inside the cooldown collapse into one immediate and one trailing refresh", () async {
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: FakeLifecycleSource(),
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-        eventRefreshMinInterval: const Duration(milliseconds: 100),
-      );
-      addTearDown(cubit.close);
+    test("staleness bursts inside the cooldown collapse into one immediate and one trailing refresh", () {
+      fakeAsync((FakeAsync async) {
+        final cubit = SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
+          lifecycleSource: FakeLifecycleSource(),
+          composerDraftRepository: inMemoryComposerDraftRepository(),
+          productAnalyticsService: stubbedProductAnalyticsService(),
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: MockFailureReporter(),
+          eventRefreshMinInterval: _cooldown,
+        );
 
-      await _awaitLoaded(cubit);
-      reset(mockSessionService);
-      _stubLoadApis(mockSessionService, sessionId: sessionId);
-      when(
-        () => mockSessionService.listCommands(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
-        ),
-      ).thenAnswer(
-        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
-      );
+        _settleLoaded(async: async, cubit: cubit);
+        reset(mockSessionService);
+        _stubLoadApis(mockSessionService, sessionId: sessionId);
+        when(
+          () => mockSessionService.listCommands(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+        );
 
-      // A burst of staleness signals: the first refreshes immediately, the
-      // rest queue behind the cooldown.
-      mockConnectionService.emitDataMayBeStale();
-      mockConnectionService.emitDataMayBeStale();
-      mockConnectionService.emitDataMayBeStale();
-      await pumpEventQueue();
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
+        // A burst of staleness signals: the first refreshes immediately, the
+        // rest queue behind the cooldown.
+        mockConnectionService.emitDataMayBeStale();
+        mockConnectionService.emitDataMayBeStale();
+        mockConnectionService.emitDataMayBeStale();
+        async.elapse(Duration.zero);
+        verify(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).called(1);
 
-      // Once the cooldown elapses, the queued signals collapse into exactly
-      // one trailing refresh...
-      await Future<void>.delayed(const Duration(milliseconds: 120));
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
+        // Once the cooldown elapses, the queued signals collapse into exactly
+        // one trailing refresh...
+        async.elapse(_cooldown);
+        verify(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).called(1);
 
-      // ...and a drained queue schedules nothing further.
-      await Future<void>.delayed(const Duration(milliseconds: 150));
-      verifyNever(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")));
-    });
+        // ...and a drained queue schedules nothing further.
+        async.elapse(_cooldown * 2);
+        verifyNever(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        );
 
-    test("a queued signal survives a refresh that outlives the cooldown window", () async {
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: FakeLifecycleSource(),
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-        eventRefreshMinInterval: const Duration(milliseconds: 100),
-      );
-      addTearDown(cubit.close);
-
-      await _awaitLoaded(cubit);
-      reset(mockSessionService);
-      _stubLoadApis(mockSessionService, sessionId: sessionId);
-      when(
-        () => mockSessionService.listCommands(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
-        ),
-      ).thenAnswer(
-        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
-      );
-
-      // Hold the first refresh's message fetch so the refresh itself spans
-      // the entire cooldown window.
-      final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
-      when(
-        () => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
-      ).thenAnswer((_) => messagesCompleter.future);
-
-      mockConnectionService.emitDataMayBeStale();
-      mockConnectionService.emitDataMayBeStale();
-      await pumpEventQueue();
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
-
-      // The cooldown elapses while the first refresh is still in flight; the
-      // queued signal must be retained, not silently coalesced into the
-      // stale in-flight run.
-      await Future<void>.delayed(const Duration(milliseconds: 120));
-      when(
-        () => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
-      ).thenAnswer(
-        (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
-      );
-      messagesCompleter.complete(
-        ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
-      );
-
-      // Once the next window elapses, the retained signal produces the
-      // trailing refresh against fresh data.
-      await Future<void>.delayed(const Duration(milliseconds: 150));
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
-    });
-
-    test("the trailing refresh runs as soon as a slow refresh completes, not a window later", () async {
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: FakeLifecycleSource(),
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-        eventRefreshMinInterval: const Duration(milliseconds: 100),
-      );
-      addTearDown(cubit.close);
-
-      await _awaitLoaded(cubit);
-      reset(mockSessionService);
-      _stubLoadApis(mockSessionService, sessionId: sessionId);
-      when(
-        () => mockSessionService.listCommands(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
-        ),
-      ).thenAnswer(
-        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
-      );
-
-      final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
-      when(
-        () => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
-      ).thenAnswer((_) => messagesCompleter.future);
-
-      mockConnectionService.emitDataMayBeStale();
-      mockConnectionService.emitDataMayBeStale();
-      await Future<void>.delayed(const Duration(milliseconds: 120));
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
-
-      // The minimum interval elapsed mid-refresh; when the slow refresh
-      // finally completes, the queued trailing refresh must start right away
-      // rather than waiting out another full cooldown window.
-      when(
-        () => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
-      ).thenAnswer(
-        (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
-      );
-      messagesCompleter.complete(
-        ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
-      );
-      await pumpEventQueue();
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
-    });
-
-    test("the queue is held while hidden and consumed by the resume refresh", () async {
-      final lifecycle = FakeLifecycleSource();
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: lifecycle,
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-        eventRefreshMinInterval: const Duration(milliseconds: 100),
-      );
-      addTearDown(cubit.close);
-
-      await _awaitLoaded(cubit);
-      reset(mockSessionService);
-      _stubLoadApis(mockSessionService, sessionId: sessionId);
-      when(
-        () => mockSessionService.listCommands(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
-        ),
-      ).thenAnswer(
-        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
-      );
-
-      mockConnectionService.emitDataMayBeStale();
-      mockConnectionService.emitDataMayBeStale();
-      await pumpEventQueue();
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
-
-      // Backgrounding cancels the cooldown: the queued trailing refresh must
-      // not spend the radio while the app is hidden.
-      lifecycle.emitState(LifecycleState.paused);
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      verifyNever(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")));
-
-      // The resume bypass refresh consumes the held signal...
-      lifecycle.emitState(LifecycleState.resumed);
-      await pumpEventQueue();
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
-
-      // ...so nothing further fires afterwards.
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      verifyNever(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")));
-    });
-
-    test("a failed resume refresh preserves hidden staleness until a snapshot succeeds", () async {
-      final lifecycle = FakeLifecycleSource();
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: lifecycle,
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-        eventRefreshMinInterval: const Duration(milliseconds: 100),
-      );
-      addTearDown(cubit.close);
-
-      await _awaitLoaded(cubit);
-      reset(mockSessionService);
-      _stubLoadApis(mockSessionService, sessionId: sessionId);
-      when(
-        () => mockSessionService.listCommands(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
-        ),
-      ).thenAnswer(
-        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
-      );
-      var messageLoads = 0;
-      when(
-        () => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
-      ).thenAnswer((_) async {
-        messageLoads++;
-        if (messageLoads == 1) {
-          return ApiResponse.error(ApiError.generic());
-        }
-        return ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null));
+        _completeCleanup(async: async, futures: [cubit.close()]);
       });
-
-      lifecycle.emitState(LifecycleState.paused);
-      mockConnectionService.emitDataMayBeStale();
-      await Future<void>.delayed(const Duration(milliseconds: 150));
-      expect(messageLoads, 0);
-
-      lifecycle.emitState(LifecycleState.resumed);
-      await pumpEventQueue();
-      expect(messageLoads, 1);
-
-      await Future<void>.delayed(const Duration(milliseconds: 120));
-      expect(messageLoads, 2);
-
-      await Future<void>.delayed(const Duration(milliseconds: 150));
-      expect(messageLoads, 2);
     });
 
-    test("a signal queued behind an in-flight refresh survives a pause/resume cycle", () async {
-      final lifecycle = FakeLifecycleSource();
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: lifecycle,
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-        eventRefreshMinInterval: const Duration(milliseconds: 100),
-      );
-      addTearDown(cubit.close);
+    test("a queued signal survives a refresh that outlives the cooldown window", () {
+      fakeAsync((FakeAsync async) {
+        final cubit = SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
+          lifecycleSource: FakeLifecycleSource(),
+          composerDraftRepository: inMemoryComposerDraftRepository(),
+          productAnalyticsService: stubbedProductAnalyticsService(),
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: MockFailureReporter(),
+          eventRefreshMinInterval: _cooldown,
+        );
 
-      await _awaitLoaded(cubit);
-      reset(mockSessionService);
-      _stubLoadApis(mockSessionService, sessionId: sessionId);
-      when(
-        () => mockSessionService.listCommands(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
-        ),
-      ).thenAnswer(
-        (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
-      );
+        _settleLoaded(async: async, cubit: cubit);
+        reset(mockSessionService);
+        _stubLoadApis(mockSessionService, sessionId: sessionId);
+        when(
+          () => mockSessionService.listCommands(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+        );
 
-      final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
-      when(
-        () => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
-      ).thenAnswer((_) => messagesCompleter.future);
+        // Hold the first refresh's message fetch so the refresh itself spans
+        // the entire cooldown window.
+        final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
+        when(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).thenAnswer((_) => messagesCompleter.future);
 
-      // Refresh A starts and stays in flight; a second signal queues.
-      mockConnectionService.emitDataMayBeStale();
-      mockConnectionService.emitDataMayBeStale();
-      await pumpEventQueue();
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
+        mockConnectionService.emitDataMayBeStale();
+        mockConnectionService.emitDataMayBeStale();
+        async.elapse(Duration.zero);
+        verify(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).called(1);
 
-      // Pause cancels the cooldown (the only armed trailing trigger); the
-      // resume bypass finds A still in flight and cannot start a refresh.
-      lifecycle.emitState(LifecycleState.paused);
-      lifecycle.emitState(LifecycleState.resumed);
-      await pumpEventQueue();
+        // The cooldown elapses while the first refresh is still in flight; the
+        // queued signal must be retained, not silently coalesced into the
+        // stale in-flight run.
+        async.elapse(_cooldown);
+        when(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+        );
+        messagesCompleter.complete(
+          ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+        );
 
-      // When A finally completes, the queued signal must still produce the
-      // trailing refresh instead of being stranded.
-      when(
-        () => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
-      ).thenAnswer(
-        (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
-      );
-      messagesCompleter.complete(
-        ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
-      );
-      await pumpEventQueue();
-      verify(() => mockSessionService.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before"))).called(1);
+        // Once the next window elapses, the retained signal produces the
+        // trailing refresh against fresh data.
+        async.elapse(_cooldown * 2);
+        verify(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).called(1);
+
+        _completeCleanup(async: async, futures: [cubit.close()]);
+      });
+    });
+
+    test("the trailing refresh runs as soon as a slow refresh completes, not a window later", () {
+      fakeAsync((FakeAsync async) {
+        final cubit = SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
+          lifecycleSource: FakeLifecycleSource(),
+          composerDraftRepository: inMemoryComposerDraftRepository(),
+          productAnalyticsService: stubbedProductAnalyticsService(),
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: MockFailureReporter(),
+          eventRefreshMinInterval: _cooldown,
+        );
+
+        _settleLoaded(async: async, cubit: cubit);
+        reset(mockSessionService);
+        _stubLoadApis(mockSessionService, sessionId: sessionId);
+        when(
+          () => mockSessionService.listCommands(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+        );
+
+        final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
+        when(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).thenAnswer((_) => messagesCompleter.future);
+
+        mockConnectionService.emitDataMayBeStale();
+        mockConnectionService.emitDataMayBeStale();
+        // The minimum interval elapses while the first refresh is still in
+        // flight.
+        async.elapse(_cooldown);
+        verify(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).called(1);
+
+        // When the slow refresh finally completes, the queued trailing refresh
+        // must start right away rather than waiting out another full cooldown
+        // window.
+        when(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+        );
+        messagesCompleter.complete(
+          ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+        );
+        async.elapse(Duration.zero);
+        verify(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).called(1);
+
+        _completeCleanup(async: async, futures: [cubit.close()]);
+      });
+    });
+
+    test("the queue is held while hidden and consumed by the resume refresh", () {
+      fakeAsync((FakeAsync async) {
+        final lifecycle = FakeLifecycleSource();
+        final cubit = SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
+          lifecycleSource: lifecycle,
+          composerDraftRepository: inMemoryComposerDraftRepository(),
+          productAnalyticsService: stubbedProductAnalyticsService(),
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: MockFailureReporter(),
+          eventRefreshMinInterval: _cooldown,
+        );
+
+        _settleLoaded(async: async, cubit: cubit);
+        reset(mockSessionService);
+        _stubLoadApis(mockSessionService, sessionId: sessionId);
+        when(
+          () => mockSessionService.listCommands(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+        );
+
+        mockConnectionService.emitDataMayBeStale();
+        mockConnectionService.emitDataMayBeStale();
+        async.elapse(Duration.zero);
+        verify(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).called(1);
+
+        // Backgrounding cancels the cooldown: the queued trailing refresh must
+        // not spend the radio while the app is hidden.
+        lifecycle.emitState(LifecycleState.paused);
+        async.elapse(_cooldown * 3);
+        verifyNever(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        );
+
+        // The resume bypass refresh consumes the held signal...
+        lifecycle.emitState(LifecycleState.resumed);
+        async.elapse(Duration.zero);
+        verify(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).called(1);
+
+        // ...so nothing further fires afterwards.
+        async.elapse(_cooldown * 3);
+        verifyNever(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        );
+
+        _completeCleanup(async: async, futures: [cubit.close()]);
+      });
+    });
+
+    test("a failed resume refresh preserves hidden staleness until a snapshot succeeds", () {
+      fakeAsync((FakeAsync async) {
+        final lifecycle = FakeLifecycleSource();
+        final cubit = SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
+          lifecycleSource: lifecycle,
+          composerDraftRepository: inMemoryComposerDraftRepository(),
+          productAnalyticsService: stubbedProductAnalyticsService(),
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: MockFailureReporter(),
+          eventRefreshMinInterval: _cooldown,
+        );
+
+        _settleLoaded(async: async, cubit: cubit);
+        reset(mockSessionService);
+        _stubLoadApis(mockSessionService, sessionId: sessionId);
+        when(
+          () => mockSessionService.listCommands(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+        );
+        var messageLoads = 0;
+        when(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).thenAnswer((_) async {
+          messageLoads++;
+          if (messageLoads == 1) {
+            return ApiResponse.error(ApiError.generic());
+          }
+          return ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null));
+        });
+
+        lifecycle.emitState(LifecycleState.paused);
+        mockConnectionService.emitDataMayBeStale();
+        async.elapse(_cooldown * 2);
+        expect(messageLoads, 0);
+
+        lifecycle.emitState(LifecycleState.resumed);
+        async.elapse(Duration.zero);
+        expect(messageLoads, 1);
+
+        // The cooldown elapses and the preserved staleness retries.
+        async.elapse(_cooldown);
+        expect(messageLoads, 2);
+
+        // The successful retry consumed the signal; later windows stay quiet.
+        async.elapse(_cooldown * 2);
+        expect(messageLoads, 2);
+
+        _completeCleanup(async: async, futures: [cubit.close()]);
+      });
+    });
+
+    test("a signal queued behind an in-flight refresh survives a pause/resume cycle", () {
+      fakeAsync((FakeAsync async) {
+        final lifecycle = FakeLifecycleSource();
+        final cubit = SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
+          lifecycleSource: lifecycle,
+          composerDraftRepository: inMemoryComposerDraftRepository(),
+          productAnalyticsService: stubbedProductAnalyticsService(),
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: MockFailureReporter(),
+          eventRefreshMinInterval: _cooldown,
+        );
+
+        _settleLoaded(async: async, cubit: cubit);
+        reset(mockSessionService);
+        _stubLoadApis(mockSessionService, sessionId: sessionId);
+        when(
+          () => mockSessionService.listCommands(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
+        );
+
+        final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
+        when(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).thenAnswer((_) => messagesCompleter.future);
+
+        // Refresh A starts and stays in flight; a second signal queues.
+        mockConnectionService.emitDataMayBeStale();
+        mockConnectionService.emitDataMayBeStale();
+        async.elapse(Duration.zero);
+        verify(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).called(1);
+
+        // Pause cancels the cooldown (the only armed trailing trigger); the
+        // resume bypass finds A still in flight and cannot start a refresh.
+        lifecycle.emitState(LifecycleState.paused);
+        lifecycle.emitState(LifecycleState.resumed);
+        async.elapse(Duration.zero);
+
+        // When A finally completes, the queued signal must still produce the
+        // trailing refresh instead of being stranded.
+        when(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+        );
+        messagesCompleter.complete(
+          ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+        );
+        async.elapse(Duration.zero);
+        verify(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+          ),
+        ).called(1);
+
+        _completeCleanup(async: async, futures: [cubit.close()]);
+      });
     });
   });
 }
 
-void _stubLoadApis(MockSessionService service, {required String sessionId}) {
+void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
   when(
-    () => service.getMessages(sessionId: any(named: "sessionId"), limit: any(named: "limit"), before: any(named: "before")),
+    () => service.getMessages(
+      sessionId: any(named: "sessionId"),
+      limit: any(named: "limit"),
+      before: any(named: "before"),
+    ),
   ).thenAnswer(
     (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(
       ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
@@ -1358,26 +1680,34 @@ ProviderListResponse _providers() {
   );
 }
 
+void _settleLoaded({required FakeAsync async, required SessionDetailCubit cubit}) {
+  async.elapse(Duration.zero);
+  expect(
+    cubit.state,
+    isA<SessionDetailLoaded>(),
+    reason: "initial load should settle synchronously under fake time",
+  );
+}
+
+void _completeCleanup({required FakeAsync async, required List<Future<void>> futures}) {
+  var completed = false;
+  unawaited(Future.wait(futures).then((_) => completed = true));
+  async.flushMicrotasks();
+  expect(completed, isTrue, reason: "fake-time cleanup should complete");
+}
+
 Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
-  if (cubit.state is SessionDetailLoaded) return;
-  await cubit.stream
-      .firstWhere((state) => state is SessionDetailLoaded)
-      .timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => fail(
-          "Timed out waiting for SessionDetailLoaded; current state: ${cubit.state}",
-        ),
-      );
+  await awaitState(
+    cubit: cubit,
+    predicate: (state) => state is SessionDetailLoaded,
+    description: "SessionDetailLoaded",
+  );
 }
 
 Future<void> _awaitFailed(SessionDetailCubit cubit) async {
-  if (cubit.state is SessionDetailFailed) return;
-  await cubit.stream
-      .firstWhere((state) => state is SessionDetailFailed)
-      .timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => fail(
-          "Timed out waiting for SessionDetailFailed; current state: ${cubit.state}",
-        ),
-      );
+  await awaitState(
+    cubit: cubit,
+    predicate: (state) => state is SessionDetailFailed,
+    description: "SessionDetailFailed",
+  );
 }

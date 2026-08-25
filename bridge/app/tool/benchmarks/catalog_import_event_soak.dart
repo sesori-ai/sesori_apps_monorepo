@@ -4,25 +4,26 @@ import "dart:ffi" show Abi;
 import "dart:io";
 
 import "package:args/args.dart";
+import "package:cryptography/cryptography.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
-import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
-import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
-import "package:sesori_bridge/src/bridge/repositories/mappers/session_event_mapper.dart";
-import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/repositories/trackers/session_event_tracker.dart";
-import "package:sesori_bridge/src/bridge/services/session_event_service.dart";
-import "package:sesori_bridge/src/bridge/sse/bridge_event_mapper.dart";
-import "package:sesori_bridge/src/bridge/sse/sse_event_delivery.dart";
-import "package:sesori_bridge/src/bridge/sse/sse_manager.dart";
+import "package:sesori_bridge/src/api/filesystem_api.dart";
+import "package:sesori_bridge/src/api/git_cli_api.dart";
+import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
+import "package:sesori_bridge/src/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge/src/repositories/project_repository.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/repositories/trackers/session_event_tracker.dart";
+import "package:sesori_bridge/src/services/session_event_service.dart";
+import "package:sesori_bridge/src/sse/bridge_event_mapper.dart";
+import "package:sesori_bridge/src/sse/sse_event_delivery.dart";
+import "package:sesori_bridge/src/sse/sse_manager.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -134,7 +135,6 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
       );
       sessionRepository = SessionRepository(
         runtime: runtime,
-        bridgeDerivedProjectPluginIds: {plugin.id},
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
@@ -836,7 +836,7 @@ class _BenchmarkPlugin({
   }
 
   @override
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) {
+  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) {
     listReadCalls++;
     return Future<List<PluginSession>>.error(StateError("catalog read unexpectedly called plugin.getSessions"));
   }
@@ -862,6 +862,7 @@ class _CountingSSEManager({required super.failureReporter}) extends SSEManager {
     : super(
         replayWindow: const Duration(minutes: 1),
         onBytesSent: (_) {},
+        encryptor: RelayCryptoService().createSessionEncryptor(SecretKey(List<int>.filled(32, 0))),
       );
 
   int enqueueCount = 0;

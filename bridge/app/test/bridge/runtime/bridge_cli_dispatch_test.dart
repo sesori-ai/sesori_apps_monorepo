@@ -1,4 +1,4 @@
-import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_dispatch.dart';
+import 'package:sesori_bridge/src/runtime/bridge_cli_dispatch.dart';
 import 'package:test/test.dart';
 
 void main() {

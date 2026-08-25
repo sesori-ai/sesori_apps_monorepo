@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -23,7 +21,6 @@ void main() {
   late MockRegisteredBridgesService registeredBridgesService;
   late _MockDeviceCanvasService deviceCanvasService;
   late BehaviorSubject<ConnectionStatus> connectionStatuses;
-  late StreamController<SseEvent> events;
 
   setUp(() async {
     await getIt.reset();
@@ -32,14 +29,13 @@ void main() {
     deviceCanvasService = _MockDeviceCanvasService();
     connectionStatuses = BehaviorSubject<ConnectionStatus>.seeded(
       ConnectionStatus.connected(
-        config: const ServerConnectionConfig(relayHost: "relay.example.com"),
+        config: const ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
         health: testHealthResponse(),
       ),
     );
-    events = StreamController<SseEvent>.broadcast();
 
     when(() => connectionService.status).thenAnswer((_) => connectionStatuses.stream);
-    when(() => connectionService.events).thenAnswer((_) => events.stream);
+    when(() => connectionService.events).thenAnswer((_) => const Stream.empty());
     when(() => deviceCanvasService.getSessionStatus(sessionId: "session-1")).thenAnswer(
       (_) async => const DeviceCanvasStatusSupported(
         status: DeviceCanvasSessionStatusResponse(
@@ -71,7 +67,6 @@ void main() {
   tearDown(() async {
     await getIt.reset();
     await connectionStatuses.close();
-    await events.close();
   });
 
   testWidgets("does not load diffs while another bridge is active", (tester) async {

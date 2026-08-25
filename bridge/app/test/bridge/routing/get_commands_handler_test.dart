@@ -1,8 +1,8 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/routing/get_commands_handler.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/routing/get_commands_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -41,15 +41,12 @@ void main() {
     });
 
     test("accepts a request body without pluginId", () async {
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/command",
           body: jsonEncode({"projectId": "/repo"}),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -74,9 +71,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/command"),
         body: const PluginProjectIdRequest(projectId: "/repo"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastGetCommandsProjectId, equals("/repo"));
@@ -106,9 +100,6 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/command"),
         body: const PluginProjectIdRequest(projectId: "/repo", pluginId: "opencode"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(plugin.lastGetCommandsProjectId, equals("/repo"));

@@ -47,13 +47,16 @@ class const AcpHaltNotice({
 /// Harness-specific notifications (e.g. Cursor's `cursor/*`) are routed to
 /// [mapExtension], which subclasses override.
 class AcpEventMapper({
-    required String launchDirectory,
-    /// Agent name stamped on assistant messages (e.g. "cursor").
-  required final String agentId,
-    required final String pluginId,
-    required final AcpSessionConfigurationTracker _configurationTracker,
-    required final AcpContentMapper _contentMapper,
-  }) {
+  required String launchDirectory,
+
+  /// The owning plugin's id — also the `agent` stamped on every message this
+  /// mapper emits (the cross-plugin convention: codex stamps "codex", pi its
+  /// plugin id), and what history replay must stamp to match the live stream.
+  required final String pluginId,
+  required final AcpSessionConfigurationTracker _configurationTracker,
+}) {
+  static const AcpContentMapper _contentMapper = AcpContentMapper();
+
   /// The bridge launch directory (canonicalized) — the fallback project
   /// attribution for sessions whose own directory is not (yet) known. Matches
   /// the canonical project id the bridge derives for the same directory.
@@ -151,7 +154,6 @@ class AcpEventMapper({
     _startedParts.remove(sessionId);
     _contentTrackers.remove(sessionId);
     _textPartAccumulators.remove(sessionId);
-    _sentUserSeq.remove(sessionId);
     _idlessAssistantSeq.remove(sessionId);
     _openIdlessAssistant.remove(sessionId);
     // Exact per-session removal — session ids are opaque agent strings that may
@@ -194,10 +196,6 @@ class AcpEventMapper({
   /// persists complete part snapshots only.
   final Map<String, Map<String, _TextPartAccumulator>> _textPartAccumulators = {};
 
-  /// Sequence for user messages accepted by this plugin. These are emitted
-  /// locally because ACP agents do not reliably echo `user_message_chunk`.
-  final Map<String, int> _sentUserSeq = {};
-
   /// Fallback assistant-envelope sequence when ACP omits `messageId`.
   final Map<String, int> _idlessAssistantSeq = {};
 
@@ -230,16 +228,17 @@ class AcpEventMapper({
 
     return [
       for (final accumulator in accumulators.values)
-        BridgeSseMessagePartUpdated(
-          part: _part(
-            partId: accumulator.partId,
-            messageId: accumulator.messageId,
-            sessionId: sessionId,
-            type: accumulator.type,
-            text: accumulator.text.toString(),
-            attachment: null,
+        if (accumulator.type != PluginMessagePartType.reasoning || accumulator.isStreaming)
+          BridgeSseMessagePartUpdated(
+            part: _part(
+              partId: accumulator.partId,
+              messageId: accumulator.messageId,
+              sessionId: sessionId,
+              type: accumulator.type,
+              text: accumulator.text.toString(),
+              attachment: null,
+            ),
           ),
-        ),
     ];
   }
 
@@ -252,52 +251,80 @@ class AcpEventMapper({
   /// let the client upsert either arrival order instead of rendering both.
   List<BridgeSseEvent> mapInitialPrompt({
     required String sessionId,
-    required String text,
-  }) {
-    if (text.trim().isEmpty) return const [];
-    final messageId = initialUserMessageId(sessionId);
-    return [
-      BridgeSseMessageUpdated(
-        info: _messageFor(_ChunkRole.user, messageId, sessionId).toJson(),
-      ),
-      BridgeSseMessagePartUpdated(
-        part: _part(
-          partId: "$messageId-text",
-          messageId: messageId,
-          sessionId: sessionId,
-          type: PluginMessagePartType.text,
-          text: text,
-          attachment: null,
-        ),
-      ),
-    ];
-  }
+    required List<PluginPromptPart> parts,
+  }) => _mapUserPrompt(
+    sessionId: sessionId,
+    messageId: initialUserMessageId(sessionId),
+    promptId: null,
+    parts: parts,
+  );
+
+  /// Derives the durable user-message identity from the accepted prompt id.
+  static String sentUserMessageId({required String promptId}) => "$promptId-user";
 
   /// Maps an accepted outbound prompt to its canonical live user message.
   List<BridgeSseEvent> mapSentPrompt({
     required String sessionId,
+    required String messageId,
+    required String promptId,
+    required List<PluginPromptPart> parts,
+  }) => _mapUserPrompt(
+    sessionId: sessionId,
+    messageId: messageId,
+    promptId: promptId,
+    parts: parts,
+  );
+
+  List<BridgeSseEvent> _mapUserPrompt({
+    required String sessionId,
+    required String messageId,
+    required String? promptId,
     required List<PluginPromptPart> parts,
   }) {
-    final textParts = parts.whereType<PluginPromptPartText>().where((part) => part.text.isNotEmpty).toList();
-    if (textParts.isEmpty) return const [];
-
-    final sequence = (_sentUserSeq[sessionId] ?? 0) + 1;
-    _sentUserSeq[sessionId] = sequence;
-    final messageId = "$sessionId-sent-$sequence-user";
+    final content = <Map<String, dynamic>>[
+      for (final part in parts)
+        switch (part) {
+          PluginPromptPartText(:final text) => {"type": "text", "text": text},
+          PluginPromptPartFileData(:final mime, :final base64) => {
+            "type": "image",
+            "mimeType": mime,
+            "data": base64,
+          },
+          PluginPromptPartFilePath() || PluginPromptPartFileUrl() => const {},
+        },
+    ];
+    final tracker = AcpContentTracker();
+    final mutations = tracker.append(
+      blocks: _contentMapper.mapScoped(
+        content: content.where((block) => block.isNotEmpty).toList(growable: false),
+        scope: tracker.mappingScope,
+      ),
+    );
+    if (mutations.isEmpty) return const [];
     return [
       BridgeSseMessageUpdated(
-        info: _messageFor(_ChunkRole.user, messageId, sessionId).toJson(),
+        info: _messageFor(_ChunkRole.user, messageId, sessionId, promptId: promptId).toJson(),
       ),
-      for (var index = 0; index < textParts.length; index++)
+      for (final mutation in mutations)
         BridgeSseMessagePartUpdated(
-          part: _part(
-            partId: "$messageId-text-$index",
-            messageId: messageId,
-            sessionId: sessionId,
-            type: PluginMessagePartType.text,
-            text: textParts[index].text,
-            attachment: null,
-          ),
+          part: switch (mutation) {
+            AcpTextDeltaMutation(:final partIdSuffix, :final delta) => _part(
+              partId: "$messageId-$partIdSuffix",
+              messageId: messageId,
+              sessionId: sessionId,
+              type: PluginMessagePartType.text,
+              text: delta,
+              attachment: null,
+            ),
+            AcpImageMutation(:final partIdSuffix, :final attachment) => _part(
+              partId: "$messageId-$partIdSuffix",
+              messageId: messageId,
+              sessionId: sessionId,
+              type: PluginMessagePartType.file,
+              text: null,
+              attachment: attachment,
+            ),
+          },
         ),
     ];
   }
@@ -344,7 +371,10 @@ class AcpEventMapper({
 
     switch (update["sessionUpdate"] as String?) {
       case "agent_message_chunk":
-        return _assistantContentChunk(sessionId: sessionId, update: update);
+        return _afterReasoning(
+          sessionId: sessionId,
+          events: _assistantContentChunk(sessionId: sessionId, update: update),
+        );
       case "agent_thought_chunk":
         return _textChunk(
           sessionId: sessionId,
@@ -359,9 +389,15 @@ class AcpEventMapper({
         // is reconstructed separately by AcpReplayCollector.
         return const [];
       case "tool_call":
-        return _toolCall(sessionId: sessionId, update: update);
+        return _afterReasoning(
+          sessionId: sessionId,
+          events: _toolCall(sessionId: sessionId, update: update),
+        );
       case "tool_call_update":
-        return _toolCallUpdate(sessionId: sessionId, update: update);
+        return _afterReasoning(
+          sessionId: sessionId,
+          events: _toolCallUpdate(sessionId: sessionId, update: update),
+        );
       case "plan":
         return [BridgeSseTodoUpdated(sessionID: sessionId)];
       case "available_commands_update":
@@ -407,6 +443,62 @@ class AcpEventMapper({
     // session "variant", driven by the plugin, not a message event), and any
     // future standard variants the mobile UI has no renderer for.
     return const [];
+  }
+
+  List<BridgeSseEvent> _afterReasoning({
+    required String sessionId,
+    required List<BridgeSseEvent> events,
+  }) {
+    if (events.isEmpty) return events;
+    return [
+      ..._finalizeActiveTextParts(
+        sessionId: sessionId,
+        partType: PluginMessagePartType.reasoning,
+        messageId: null,
+      ),
+      ...events,
+    ];
+  }
+
+  List<BridgeSseEvent> _finalizeActiveTextParts({
+    required String sessionId,
+    required PluginMessagePartType partType,
+    required String? messageId,
+  }) {
+    final accumulators = _textPartAccumulators[sessionId];
+    if (accumulators == null) return const [];
+
+    final events = <BridgeSseEvent>[];
+    for (final accumulator in accumulators.values) {
+      if (accumulator.type != partType ||
+          !accumulator.isStreaming ||
+          (messageId != null && accumulator.messageId != messageId)) {
+        continue;
+      }
+      accumulator.isStreaming = false;
+      events.add(
+        BridgeSseMessagePartUpdated(
+          part: _part(
+            partId: accumulator.partId,
+            messageId: accumulator.messageId,
+            sessionId: sessionId,
+            type: accumulator.type,
+            text: accumulator.text.toString(),
+            attachment: null,
+          ),
+        ),
+      );
+    }
+    return events;
+  }
+
+  List<BridgeSseEvent> _finalizeCurrentIdlessAssistantText({required String sessionId}) {
+    if (!_openIdlessAssistant.contains(sessionId)) return const [];
+    return _finalizeActiveTextParts(
+      sessionId: sessionId,
+      partType: PluginMessagePartType.text,
+      messageId: _currentIdlessAssistantMessageId(sessionId),
+    );
   }
 
   /// Hook for non-`session/update` notifications (harness extensions such as
@@ -477,11 +569,14 @@ class AcpEventMapper({
       identity.messageId,
       AcpContentTracker.new,
     );
-    return _appendAssistantBlocks(
+    return _afterReasoning(
       sessionId: sessionId,
-      identity: identity,
-      tracker: tracker,
-      blocks: blocks,
+      events: _appendAssistantBlocks(
+        sessionId: sessionId,
+        identity: identity,
+        tracker: tracker,
+        blocks: blocks,
+      ),
     );
   }
 
@@ -516,7 +611,7 @@ class AcpEventMapper({
     if (started.add(identity.messageId)) {
       events.add(
         BridgeSseMessageUpdated(
-          info: _messageFor(_ChunkRole.assistant, identity.messageId, sessionId).toJson(),
+          info: _messageFor(_ChunkRole.assistant, identity.messageId, sessionId, promptId: null).toJson(),
         ),
       );
     }
@@ -612,7 +707,7 @@ class AcpEventMapper({
     if (started.add(partId)) {
       if (started.add(messageId)) {
         events.add(
-          BridgeSseMessageUpdated(info: _messageFor(role, messageId, sessionId).toJson()),
+          BridgeSseMessageUpdated(info: _messageFor(role, messageId, sessionId, promptId: null).toJson()),
         );
       }
       events.add(
@@ -666,6 +761,7 @@ class AcpEventMapper({
       ),
     );
     accumulator.text.write(delta);
+    accumulator.isStreaming = true;
   }
 
   ({String messageId, bool hasAcpMessageId}) _chunkIdentity({
@@ -708,7 +804,7 @@ class AcpEventMapper({
         info: shared.Message.error(
           id: messageId,
           sessionID: sessionId,
-          agent: agentId,
+          agent: pluginId,
           modelID: modelForSession(sessionId: sessionId),
           providerID: providerForSession(sessionId: sessionId),
           errorName: notice.errorName,
@@ -726,6 +822,9 @@ class AcpEventMapper({
     final toolCallId = update["toolCallId"] as String?;
     if (toolCallId == null || toolCallId.isEmpty) return const [];
     final prior = _liveTools[sessionId]?[toolCallId];
+    final boundaryEvents = prior == null
+        ? _finalizeCurrentIdlessAssistantText(sessionId: sessionId)
+        : const <BridgeSseEvent>[];
     if (prior == null) {
       _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     }
@@ -756,6 +855,7 @@ class AcpEventMapper({
     );
     (_liveTools[sessionId] ??= {})[toolCallId] = state;
     final events = <BridgeSseEvent>[
+      ...boundaryEvents,
       if (prior == null) _toolEnvelope(sessionId: sessionId, messageId: messageId),
       _toolPartEvent(sessionId: sessionId, messageId: messageId, state: state),
     ];
@@ -781,6 +881,9 @@ class AcpEventMapper({
     // which would blank an existing tool card. Mirrors the replay collector,
     // which already merges — keeping live and history renderings consistent.
     final prior = _liveTools[sessionId]?[toolCallId];
+    final boundaryEvents = prior == null
+        ? _finalizeCurrentIdlessAssistantText(sessionId: sessionId)
+        : const <BridgeSseEvent>[];
     if (prior == null) {
       _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     }
@@ -811,6 +914,7 @@ class AcpEventMapper({
       hasExplicitStatus: (prior?.hasExplicitStatus ?? false) || mappedStatus != null,
     );
     final events = <BridgeSseEvent>[
+      ...boundaryEvents,
       // ACP events can be reordered (reconnect / resume / replay), so a
       // `tool_call_update` may arrive before its `tool_call`. When it is
       // first-seen, synthesize the message envelope — like `_textChunk` does —
@@ -838,20 +942,22 @@ class AcpEventMapper({
   }
 
   void _closeCurrentIdlessAssistantContent({required String sessionId}) {
-    final messageId =
-        "$sessionId-t${_turn(sessionId)}-${_ChunkRole.assistant.name}-a${_idlessAssistantSeq[sessionId] ?? 0}";
+    final messageId = _currentIdlessAssistantMessageId(sessionId);
     final sessionTrackers = _contentTrackers[sessionId];
     sessionTrackers?.remove(messageId);
     if (sessionTrackers?.isEmpty ?? false) _contentTrackers.remove(sessionId);
     _closeIdlessAssistantEnvelope(sessionId);
   }
 
+  String _currentIdlessAssistantMessageId(String sessionId) =>
+      "$sessionId-t${_turn(sessionId)}-${_ChunkRole.assistant.name}-a${_idlessAssistantSeq[sessionId] ?? 0}";
+
   BridgeSseMessageUpdated _toolEnvelope({required String sessionId, required String messageId}) {
     return BridgeSseMessageUpdated(
       info: shared.Message.assistant(
         id: messageId,
         sessionID: sessionId,
-        agent: agentId,
+        agent: pluginId,
         modelID: modelForSession(sessionId: sessionId),
         providerID: providerForSession(sessionId: sessionId),
         // ACP carries no per-message timestamps; the mobile model treats a null
@@ -884,18 +990,19 @@ class AcpEventMapper({
     );
   }
 
-  shared.Message _messageFor(_ChunkRole role, String messageId, String sessionId) {
+  shared.Message _messageFor(_ChunkRole role, String messageId, String sessionId, {required String? promptId}) {
     return switch (role) {
       _ChunkRole.user => shared.Message.user(
         id: messageId,
         sessionID: sessionId,
         agent: null,
         time: null,
+        promptId: promptId,
       ),
       _ChunkRole.assistant => shared.Message.assistant(
         id: messageId,
         sessionID: sessionId,
-        agent: agentId,
+        agent: pluginId,
         modelID: modelForSession(sessionId: sessionId),
         providerID: providerForSession(sessionId: sessionId),
         time: null,
@@ -1060,6 +1167,7 @@ class _TextPartAccumulator({
     required final PluginMessagePartType type,
   }) {
   final StringBuffer text = StringBuffer();
+  bool isStreaming = false;
 }
 
 /// The last-rendered state of one live tool call, so a partial

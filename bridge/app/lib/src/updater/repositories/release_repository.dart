@@ -79,21 +79,18 @@ class ReleaseRepository({
     final releases = await _api.fetchReleases();
     final selected = _selectLatestBridgeRelease(releases: releases);
 
-    ReleaseInfo? latestEligible;
-    SemanticVersion? latestVersion;
+    EligibleUpdate? latest;
     if (selected != null) {
       final extracted = await _extractReleaseInfo(release: selected);
       if (extracted != null) {
-        latestEligible = extracted.info;
-        latestVersion = extracted.version;
+        latest = (release: extracted.info, version: extracted.version);
       }
     }
 
     return UpdateResolution(
       currentVersion: _currentVersion,
       currentEligible: _isEligible(_currentVersion),
-      latestEligible: latestEligible,
-      latestVersion: latestVersion,
+      latest: latest,
     );
   }
 

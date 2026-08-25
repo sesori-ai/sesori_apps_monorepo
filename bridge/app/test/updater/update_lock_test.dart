@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clock/clock.dart';
-import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
+import 'package:sesori_bridge/src/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/updater/foundation/update_lock.dart';
 import 'package:test/test.dart';
 

@@ -1,8 +1,8 @@
 import "dart:async";
 
 import "package:rxdart/rxdart.dart";
-import "package:sesori_bridge/src/bridge/runtime/plugin_generation_factory.dart";
-import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
+import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";
+import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 TestPluginRuntime createTestPluginRuntime({
@@ -171,9 +171,7 @@ class TestPluginRuntime({
   Stream<SourcedPluginProvisionProgress> get provisionProgress => const Stream.empty();
 
   @override
-  Future<void> disposeStartedApis() => Future.wait([
-    for (final plugin in _plugins.values) plugin.dispose(),
-  ]);
+  Future<void> shutdownStartedPlugins() async {}
 
   @override
   Future<void> dispose() async {

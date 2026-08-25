@@ -7,10 +7,10 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/auth/access_token_provider.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
-import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
-import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
-import "package:sesori_bridge/src/bridge/orchestrator.dart";
-import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/foundation/process_runner.dart";
+import "package:sesori_bridge/src/foundation/relay_client.dart";
+import "package:sesori_bridge/src/models/bridge_config.dart";
+import "package:sesori_bridge/src/orchestrator.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show ServerClock;
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
@@ -55,7 +55,7 @@ void main() {
       expect(firstAuth["token"], equals(initialToken));
 
       // A routine refresh mints a DIFFERENT token for the SAME user (rotated
-      // exp/signature) — e.g. TokenManager refreshing near expiry during session
+      // exp/signature) — e.g. TokenService refreshing near expiry during session
       // metadata generation. The relay validates the JWT once at connect and
       // never re-checks it, so the live socket must stay up.
       authority.emit(_jwt(userId: "user-1", seq: 2));
@@ -142,7 +142,7 @@ void main() {
       await _firstTextMessage(firstSocket);
 
       // The refresher fails transiently (not a typed unavailable / sign-out), as
-      // a standalone TokenManager would when its auth-refresh endpoint is down
+      // a standalone TokenService would when its auth-refresh endpoint is down
       // but the cached JWT is still valid. The reconnect must still proceed using
       // the cached token rather than deferring.
       authority.transientFailRefresh = true;
@@ -268,7 +268,7 @@ class _ScriptedTokenAuthority(var String current) implements AccessTokenProvider
       throw const ControlTokenUnavailableException("signed out");
     }
     if (transientFailRefresh) {
-      // Mirror a standalone TokenManager whose auth-refresh endpoint is
+      // Mirror a standalone TokenService whose auth-refresh endpoint is
       // transiently down while a valid cached token is still on hand. The
       // orchestrator must reconnect with the cached token rather than defer.
       throw const _TransientRefreshException();
@@ -328,7 +328,6 @@ class _ReauthHarness._({
         accessTokenProvider: authority,
         bridgeIdProvider: registrationService,
       ),
-      legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),

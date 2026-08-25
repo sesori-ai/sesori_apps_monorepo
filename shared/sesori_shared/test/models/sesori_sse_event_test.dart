@@ -417,8 +417,8 @@ void main() {
           ProjectActivitySummary(
             id: '/foo',
             activeSessions: [
-              ActiveSession(id: 's1'),
-              ActiveSession(id: 's2'),
+              ActiveSession(id: 's1', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(id: 's2', lastUserActivityAt: null, updatedAt: null),
             ],
           ),
           ProjectActivitySummary(id: '/bar', activeSessions: []),
@@ -501,16 +501,16 @@ void main() {
           ProjectActivitySummary(
             id: '/alpha',
             activeSessions: [
-              ActiveSession(id: 's1'),
-              ActiveSession(id: 's2'),
-              ActiveSession(id: 's3'),
-              ActiveSession(id: 's4'),
-              ActiveSession(id: 's5'),
+              ActiveSession(id: 's1', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(id: 's2', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(id: 's3', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(id: 's4', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(id: 's5', lastUserActivityAt: null, updatedAt: null),
             ],
           ),
           ProjectActivitySummary(
             id: '/beta',
-            activeSessions: [ActiveSession(id: 's1')],
+            activeSessions: [ActiveSession(id: 's1', lastUserActivityAt: null, updatedAt: null)],
           ),
           ProjectActivitySummary(id: '/gamma', activeSessions: []),
         ],
@@ -642,7 +642,7 @@ void main() {
 
     test('messageUpdated implements SesoriSessionEvent', () {
       const event = SesoriSseEvent.messageUpdated(
-        info: Message.user(id: 'm', sessionID: 's', agent: null, time: null),
+        info: Message.user(promptId: null, id: 'm', sessionID: 's', agent: null, time: null),
       );
       expect(event, isA<SesoriSessionEvent>());
     });
@@ -678,13 +678,13 @@ void main() {
       const summary = ProjectActivitySummary(
         id: '/test',
         activeSessions: [
-          ActiveSession(id: 's1'),
-          ActiveSession(id: 's2'),
-          ActiveSession(id: 's3'),
-          ActiveSession(id: 's4'),
-          ActiveSession(id: 's5'),
-          ActiveSession(id: 's6'),
-          ActiveSession(id: 's7'),
+          ActiveSession(id: 's1', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(id: 's2', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(id: 's3', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(id: 's4', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(id: 's5', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(id: 's6', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(id: 's7', lastUserActivityAt: null, updatedAt: null),
         ],
       );
       expect(summary.id, '/test');
@@ -695,10 +695,10 @@ void main() {
       const summary = ProjectActivitySummary(
         id: '/my/path',
         activeSessions: [
-          ActiveSession(id: 's1'),
-          ActiveSession(id: 's2'),
-          ActiveSession(id: 's3'),
-          ActiveSession(id: 's4'),
+          ActiveSession(id: 's1', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(id: 's2', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(id: 's3', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(id: 's4', lastUserActivityAt: null, updatedAt: null),
         ],
       );
       final json = summary.toJson();
@@ -913,7 +913,7 @@ void main() {
 
     test('messageUpdated uses message.updated', () {
       final json = const SesoriSseEvent.messageUpdated(
-        info: Message.user(id: 'm', sessionID: 's', agent: null, time: null),
+        info: Message.user(promptId: null, id: 'm', sessionID: 's', agent: null, time: null),
       ).toJson();
       expect(json['type'], 'message.updated');
     });

@@ -3,6 +3,7 @@ import "dart:async";
 import "package:path/path.dart" as path;
 import "package:pi_plugin/pi_plugin.dart";
 import "package:pi_plugin/pi_testing.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -37,14 +38,15 @@ void main() {
     expect(options.agents.single.model, isNull);
     expect(options.providers.providers, hasLength(2));
     final anthropic = options.providers.providers.first;
-    expect(anthropic, isA<PluginProviderAnthropic>());
+    expect(anthropic.id, "anthropic");
+    expect(anthropic.name, "anthropic");
     expect(anthropic.authType, PluginProviderAuthType.unknown);
     expect(anthropic.defaultModelID, "claude/team");
     expect(anthropic.models.single.id, "claude/team");
     expect(anthropic.models.single.variants, ["off", "max"]);
     final custom = options.providers.providers.last;
-    expect(custom, isA<PluginProviderCustom>());
     expect(custom.id, "custom/team");
+    expect(custom.name, "custom/team");
     expect(custom.models.single.id, "model/v2");
     expect(custom.models.single.variants, isEmpty);
     expect(harness.selected, [("anthropic", "claude/team")]);
@@ -73,21 +75,23 @@ void main() {
     expect(replies.every((frame) => frame["cancelled"] == true), isTrue);
   });
 
-  test("bounds model hydration and marks capped catalog partial", () async {
+  test("hydrates every advertised model and keeps large catalogs complete", () async {
+    final models = [
+      for (var index = 0; index < 101; index++) _model(provider: "google", id: "model-$index", reasoning: true),
+    ];
     final harness = _ProbeHarness(
-      stateModel: _model(provider: "google", id: "third", reasoning: true),
-      models: [
-        _model(provider: "google", id: "first", reasoning: true),
-        _model(provider: "google", id: "second", reasoning: true),
-        _model(provider: "google", id: "third", reasoning: true),
-      ],
+      stateModel: _model(provider: "google", id: "model-100", reasoning: true),
+      models: models,
     );
 
-    final options = await harness.probe(maxModels: 2);
+    final options = await harness.probe();
+    final discovered = options.providers.providers.single.models;
 
-    expect(options.completeness, PluginSessionOptionsCompleteness.partial);
-    expect(options.providers.providers.single.models.map((model) => model.id), ["third", "first"]);
-    expect(harness.selected, [("google", "third"), ("google", "first")]);
+    expect(options.completeness, PluginSessionOptionsCompleteness.complete);
+    expect(discovered, hasLength(models.length));
+    expect(discovered.first.id, "model-100");
+    expect(discovered.last.id, "model-99");
+    expect(harness.selected, hasLength(models.length));
   });
 
   test("optional thinking and command failures preserve partial catalogs", () async {
@@ -186,6 +190,17 @@ Map<String, Object?> _model({
   "input": const ["text", "image"],
 };
 
+final class const _CommandExecutor() implements CommandExecutor {
+  @override
+  Future<CommandResult> run(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    Duration? timeout,
+  }) async => const CommandResult(exitCode: 0, stdout: "", stderr: "");
+}
+
 class _ProbeHarness({
   required final Map<String, Object?>? stateModel,
   required final List<Map<String, Object?>> models,
@@ -205,7 +220,6 @@ class _ProbeHarness({
 
   Future<PluginSessionOptions> probe({
     Duration timeout = const Duration(seconds: 2),
-    int maxModels = 8,
   }) async {
     final snapshot =
         await PiBackendCatalogRepository(
@@ -219,10 +233,11 @@ class _ProbeHarness({
             unawaited(_answer(process));
             return process;
           },
+          commandExecutor: const _CommandExecutor(),
+          healthTimeout: const Duration(seconds: 1),
         ).probe(
           projectId: path.normalize(path.absolute("project/./nested/..")),
           totalTimeout: timeout,
-          maxModels: maxModels,
         );
     return PluginSessionOptions(
       agents: snapshot.agents,

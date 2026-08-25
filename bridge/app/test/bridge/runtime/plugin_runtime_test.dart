@@ -1,13 +1,23 @@
 import "dart:async";
 
 import "package:rxdart/rxdart.dart";
-import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_server_exception.dart";
-import "package:sesori_bridge/src/bridge/runtime/plugin_generation_factory.dart";
-import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
+import "package:sesori_bridge/src/runtime/bridge_runtime_server_exception.dart";
+import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";
+import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
+  test("snapshot emissions cannot be mutated by subscribers", () async {
+    final runtime = _runtime(factory: _FakeGenerationFactory(startGate: Future<void>.value()));
+    addTearDown(runtime.dispose);
+
+    final snapshots = await runtime.snapshots.first;
+
+    expect(snapshots.clear, throwsUnsupportedError);
+    expect((await runtime.snapshots.first).single.pluginId, "one");
+  });
+
   test("only the latest setup inspection can update a slot", () async {
     final firstGate = Completer<PluginSetupStatus>();
     final secondGate = Completer<PluginSetupStatus>();
@@ -1010,7 +1020,7 @@ void main() {
 
     expect(result, isA<PluginRuntimeCommandConflict>());
     expect(result.snapshot.state, PluginRuntimeState.active);
-    expect(result.snapshot.eligible, isTrue);
+    expect(result.snapshot.accessGate != PluginRuntimeAccessGate.disabled, isTrue);
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
     expect(
       await runtime.use(pluginId: "one", operation: _TestOperation.read, body: (_) async => "available"),
@@ -1031,7 +1041,7 @@ void main() {
     runtime.commitDisable(pluginId: "one");
 
     expect(runtime.snapshot.single.state, PluginRuntimeState.disabled);
-    expect(runtime.snapshot.single.eligible, isFalse);
+    expect(runtime.snapshot.single.accessGate != PluginRuntimeAccessGate.disabled, isFalse);
     expect(runtime.snapshot.single.startAllowed, isFalse);
     expect(runtime.snapshot.single.transition, PluginRuntimeTransition.none);
     expect(await runtime.start(pluginId: "one"), isA<PluginRuntimeCommandConflict>());
@@ -1564,7 +1574,7 @@ void main() {
     expect(factory.plugins.single.shutdownCount, 1);
   });
 
-  test("shutdown cleans up a plugin that returns after API disposal begins", () async {
+  test("shutdown cleans up a plugin that returns after plugin shutdown begins", () async {
     final startGate = Completer<void>();
     final factory = _FakeGenerationFactory(
       startGate: startGate.future,
@@ -1575,16 +1585,39 @@ void main() {
     await _waitUntil(() => factory.startCount == 1);
 
     runtime.beginShutdown();
-    final disposingApis = runtime.disposeStartedApis();
+    final shuttingDownPlugins = runtime.shutdownStartedPlugins();
     startGate.complete();
 
     await expectLater(starting, throwsA(isA<PluginStartAbortedException>()));
-    await disposingApis;
+    await shuttingDownPlugins;
     expect(factory.plugins.single.shutdownCount, 1);
     await runtime.dispose();
   });
 
-  test("event closure during API disposal does not hide a later shutdown failure", () async {
+  test("plugin shutdown owns API disposal before runtime lifecycle cleanup", () async {
+    final shutdownGate = Completer<void>();
+    final factory = _FakeGenerationFactory(
+      startGate: Future<void>.value(),
+      pluginFactory: (_) => _FakePlugin(
+        api: _FakeApi(),
+        shutdownGate: shutdownGate.future,
+      ),
+    );
+    final runtime = _runtime(factory: factory);
+    await runtime.startEager(pluginIds: const ["one"]);
+
+    runtime.beginShutdown();
+    final shuttingDownPlugins = runtime.shutdownStartedPlugins();
+    await _waitUntil(() => factory.plugins.single.shutdownCount == 1);
+
+    expect(factory.api.disposeCount, 0, reason: "core must not bypass the plugin's teardown ordering");
+    shutdownGate.complete();
+    await shuttingDownPlugins;
+    expect(factory.api.disposeCount, 1);
+    await runtime.dispose();
+  });
+
+  test("event closure during plugin shutdown does not hide its failure", () async {
     final shutdownError = StateError("runtime shutdown failed");
     final factory = _FakeGenerationFactory(
       startGate: Future<void>.value(),
@@ -1597,7 +1630,7 @@ void main() {
     await runtime.startEager(pluginIds: const ["one"]);
 
     runtime.beginShutdown();
-    await runtime.disposeStartedApis();
+    await expectLater(runtime.shutdownStartedPlugins(), throwsA(same(shutdownError)));
     expect(runtime.snapshot.single.state, PluginRuntimeState.active);
 
     await expectLater(runtime.dispose(), throwsA(same(shutdownError)));
@@ -1849,7 +1882,6 @@ class _FakeApi({
     return activeSessionsSummary;
   }
 
-  @override
   Future<void> dispose() async {
     disposeCount++;
     if (closeEventsOnDispose && !eventsController.isClosed) await eventsController.close();

@@ -6,6 +6,19 @@ part of 'catalog_import_progress.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+_CatalogImportNewItems _$CatalogImportNewItemsFromJson(Map json) =>
+    _CatalogImportNewItems(
+      projects: (json['projects'] as num).toInt(),
+      sessions: (json['sessions'] as num).toInt(),
+    );
+
+Map<String, dynamic> _$CatalogImportNewItemsToJson(
+  _CatalogImportNewItems instance,
+) => <String, dynamic>{
+  'projects': instance.projects,
+  'sessions': instance.sessions,
+};
+
 CatalogImportEnumerating _$CatalogImportEnumeratingFromJson(Map json) =>
     CatalogImportEnumerating(
       pluginId: json['pluginId'] as String,
@@ -46,6 +59,11 @@ CatalogImportCompleted _$CatalogImportCompletedFromJson(Map json) =>
       projectsImported: (json['projectsImported'] as num).toInt(),
       sessionsImported: (json['sessionsImported'] as num).toInt(),
       completedAt: (json['completedAt'] as num).toInt(),
+      newItems: json['newItems'] == null
+          ? null
+          : CatalogImportNewItems.fromJson(
+              Map<String, dynamic>.from(json['newItems'] as Map),
+            ),
       $type: json['type'] as String?,
     );
 
@@ -56,6 +74,7 @@ Map<String, dynamic> _$CatalogImportCompletedToJson(
   'projectsImported': instance.projectsImported,
   'sessionsImported': instance.sessionsImported,
   'completedAt': instance.completedAt,
+  'newItems': ?instance.newItems?.toJson(),
   'type': instance.$type,
 };
 

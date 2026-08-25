@@ -105,18 +105,26 @@ CodexRolloutTaskCompleteEventDto _$CodexRolloutTaskCompleteEventDtoFromJson(
   Map json,
 ) => CodexRolloutTaskCompleteEventDto(
   turnId: json['turn_id'] as String,
+  error: json['error'] == null
+      ? null
+      : CodexRolloutErrorDto.fromJson(
+          Map<String, dynamic>.from(json['error'] as Map),
+        ),
   $type: json['type'] as String?,
 );
 
 CodexRolloutTurnAbortedEventDto _$CodexRolloutTurnAbortedEventDtoFromJson(
   Map json,
 ) => CodexRolloutTurnAbortedEventDto(
-  turnId: json['turn_id'] as String,
+  turnId: json['turn_id'] as String?,
   $type: json['type'] as String?,
 );
 
 CodexRolloutUnknownEventDto _$CodexRolloutUnknownEventDtoFromJson(Map json) =>
     CodexRolloutUnknownEventDto($type: json['type'] as String?);
+
+_CodexRolloutErrorDto _$CodexRolloutErrorDtoFromJson(Map json) =>
+    _CodexRolloutErrorDto(message: json['message'] as String);
 
 _CodexRolloutSessionMetadataPayloadDto
 _$CodexRolloutSessionMetadataPayloadDtoFromJson(Map json) =>

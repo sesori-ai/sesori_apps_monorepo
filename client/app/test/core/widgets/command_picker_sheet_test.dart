@@ -91,12 +91,12 @@ void main() {
     await _openPicker(tester);
 
     expect(find.text("Slash commands"), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(PregoActivityIndicator), findsOneWidget);
     expect(find.text("/deploy"), findsNothing);
 
     await _waitForEntries(tester, until: find.text("/deploy"));
 
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byType(PregoActivityIndicator), findsNothing);
     expect(find.text("/release"), findsOneWidget);
     expect(find.text("Ship the app"), findsOneWidget);
     expect(find.text("version"), findsOneWidget);
@@ -142,7 +142,7 @@ void main() {
       until: find.text("No slash commands are available for this project."),
     );
 
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byType(PregoActivityIndicator), findsNothing);
   });
 
   testWidgets("caps the body at the space left below the sheet header", (tester) async {

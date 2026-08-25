@@ -131,6 +131,12 @@ meaningful automated tests, and historical plans as maintenance sources rather
 than as substitutes for the contract; and record accepted limitations honestly,
 never describing unshipped behavior as passing coverage.
 
+Track supported behavior, material risks, and concrete failure signals worth
+testing. When behavior, a route, a field, a migration, or a flag is removed,
+delete stale references instead of adding a permanent assertion that it remains
+absent. Document absence only when reintroducing the artifact would itself break
+an active capability or security invariant.
+
 For durable planned work, regression documentation is completed before the plan
 is retired. The retirement step runs the level and matrix recorded in `PLAN.md`
 through each feature's authoritative end-to-end boundary. A reduction requires
@@ -151,6 +157,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Permission auto-approval](permission-auto-approval.md)
 - [Plugin runtime installation](plugin-runtime-installation.md)
 - [Plugin setup and lifecycle](plugin-setup-and-lifecycle.md)
+- [Popup alerts](popup-alerts.md)
 - [Projects and sessions](projects-and-sessions.md)
 - [Pull request monitoring](pull-request-monitoring.md)
 - [Questions and permissions](questions-and-permissions.md)

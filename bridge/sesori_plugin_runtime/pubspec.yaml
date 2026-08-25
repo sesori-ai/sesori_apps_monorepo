@@ -3,10 +3,10 @@ publish_to: none
 resolution: workspace
 
 environment:
-  sdk: ^3.13.0-0
+  sdk: ^3.13.1
 
 dependencies:
-  meta: ^1.18.0
+  meta: ^1.19.0
   freezed_annotation: ^3.1.0
   json_annotation: ^4.12.0
   path: ^1.9.1
@@ -18,6 +18,6 @@ dependencies:
 dev_dependencies:
   lints: ^6.1.0
   freezed: 4.0.0-dev.3
-  json_serializable: ^6.14.0
+  json_serializable: ^6.14.1
   build_runner: any
-  test: ^1.31.1
+  test: ^1.31.2

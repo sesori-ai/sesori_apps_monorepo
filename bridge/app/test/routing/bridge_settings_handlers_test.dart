@@ -1,27 +1,27 @@
 import "dart:convert";
 
-import "package:sesori_bridge/src/api/bridge_settings_api.dart";
-import "package:sesori_bridge/src/bridge/services/permission_auto_approval_service.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/routing/get_bridge_settings_handler.dart";
 import "package:sesori_bridge/src/routing/patch_bridge_settings_handler.dart";
+import "package:sesori_bridge/src/services/permission_auto_approval_service.dart";
 import "package:sesori_bridge/src/services/pull_request_refresh_settings_service.dart";
 import "package:sesori_bridge/src/services/yolo_settings_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../bridge/routing/routing_test_helpers.dart";
+import "../helpers/in_memory_bridge_settings_api.dart";
 
 void main() {
   group("bridge settings handlers", () {
-    late _MemoryBridgeSettingsApi api;
+    late InMemoryBridgeSettingsApi api;
     late BridgeSettingsRepository repository;
     late YoloSettingsService service;
     late PatchBridgeSettingsHandler patchHandler;
 
     setUp(() async {
-      api = _MemoryBridgeSettingsApi();
-      repository = BridgeSettingsRepository(api: api);
+      api = InMemoryBridgeSettingsApi(config: '{"yolo":false,"pullRequestRefreshIntervalSeconds":30}');
+      repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
       await repository.loadSettings();
       service = YoloSettingsService(
         bridgeSettingsRepository: repository,
@@ -38,11 +38,8 @@ void main() {
     tearDown(() => repository.dispose());
 
     test("GET returns both settings from one committed snapshot", () async {
-      final response = await GetBridgeSettingsHandler(settingsRepository: repository).handleInternal(
+      final response = await GetBridgeSettingsHandler(settingsRepository: repository).routeForTest(
         makeRequest("GET", "/settings"),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
 
       expect(response.status, 200);
@@ -56,11 +53,8 @@ void main() {
     });
 
     test("PATCH persists and returns the committed setting", () async {
-      final response = await patchHandler.handleInternal(
+      final response = await patchHandler.routeForTest(
         makeRequest("PATCH", "/settings", body: jsonEncode(const BridgeSettingUpdate.yolo(enabled: true).toJson())),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
 
       expect(response.status, 200);
@@ -79,17 +73,4 @@ class _FakePermissionAutoApprovalService() implements PermissionAutoApprovalServ
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _MemoryBridgeSettingsApi() implements BridgeSettingsApi {
-  String? config = '{"yolo":false,"pullRequestRefreshIntervalSeconds":30}';
-
-  @override
-  String get configFilePath => "/tmp/config.json";
-
-  @override
-  Future<String?> readConfig() async => config;
-
-  @override
-  Future<void> writeConfig(String jsonContent) async => config = jsonContent;
 }

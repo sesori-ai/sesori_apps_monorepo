@@ -1,9 +1,11 @@
 import "dart:async";
+import "dart:io";
 
 import "package:fake_async/fake_async.dart";
-import "package:sesori_bridge/src/bridge/runtime/bridge_shutdown_coordinator.dart";
+import "package:sesori_bridge/src/runtime/bridge_shutdown_coordinator.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show PluginStartAbortedException, StartAbortController, StartAbortSignal;
+    show Log, LogLevel, PluginStartAbortedException, StartAbortController, StartAbortSignal;
 import "package:test/test.dart";
 
 void main() {
@@ -50,11 +52,13 @@ void main() {
       final operations = <String>[];
 
       coordinator.add(disposable: () => operations.add("parallel.a"));
-      coordinator.addOrdered(
+      coordinator.addPhase(
+        phase: BridgeShutdownPhase.lifecycle,
         action: () async => operations.add("ordered.1"),
         budget: const Duration(seconds: 5),
       );
-      coordinator.addOrdered(
+      coordinator.addPhase(
+        phase: BridgeShutdownPhase.lifecycle,
         action: () async => operations.add("ordered.2"),
         budget: const Duration(seconds: 5),
       );
@@ -72,11 +76,13 @@ void main() {
       );
       final operations = <String>[];
 
-      coordinator.addOrdered(
+      coordinator.addPhase(
+        phase: BridgeShutdownPhase.lifecycle,
         action: () async => throw StateError("plugin shutdown failed"),
         budget: const Duration(seconds: 5),
       );
-      coordinator.addOrdered(
+      coordinator.addPhase(
+        phase: BridgeShutdownPhase.lifecycle,
         action: () async => operations.add("ordered.2"),
         budget: const Duration(seconds: 5),
       );
@@ -138,32 +144,35 @@ void main() {
       expect(operations, ["signal.interrupt", "drain"]);
     });
 
-    test("starts every action in a phase before awaiting a blocked peer", () async {
+    test("starts plugin shutdown and catalog drain together before awaiting either", () async {
       final coordinator = BridgeShutdownCoordinator(
         startAbortSignal: StartAbortSignal.never,
         exitProcess: (_) {},
       );
-      final blocked = Completer<void>();
+      final catalogDrainStarted = Completer<void>();
+      final pluginTransportClosed = Completer<void>();
       final operations = <String>[];
 
       coordinator.addPhase(
-        phase: BridgeShutdownPhase.drain,
-        action: () {
-          operations.add("blocked");
-          return blocked.future;
+        phase: BridgeShutdownPhase.pluginDispose,
+        action: () async {
+          operations.add("plugin.shutdown");
+          await catalogDrainStarted.future;
+          pluginTransportClosed.complete();
         },
       );
       coordinator.addPhase(
-        phase: BridgeShutdownPhase.drain,
-        action: () => operations.add("ready"),
+        phase: BridgeShutdownPhase.pluginDispose,
+        action: () async {
+          operations.add("catalog.drain");
+          catalogDrainStarted.complete();
+          await pluginTransportClosed.future;
+        },
       );
 
-      final shutdown = coordinator.shutdown();
-      await Future<void>.delayed(Duration.zero);
-      expect(operations, ["blocked", "ready"]);
+      await coordinator.shutdown().timeout(const Duration(seconds: 1));
 
-      blocked.complete();
-      await shutdown;
+      expect(operations, ["plugin.shutdown", "catalog.drain"]);
     });
 
     test("an aborted plugin start does not block phases after plugin disposal", () async {
@@ -225,7 +234,8 @@ void main() {
           backstopExitCode: () => 1,
           exitProcess: exitCalls.add,
         );
-        coordinator.addOrdered(
+        coordinator.addPhase(
+          phase: BridgeShutdownPhase.lifecycle,
           action: () => Completer<void>().future,
           budget: const Duration(seconds: 10),
         );
@@ -237,6 +247,36 @@ void main() {
         async.elapse(const Duration(seconds: 2));
         expect(exitCalls, [1]);
       });
+    });
+
+    test("backstop log identifies the phase that did not drain", () {
+      final stderr = BufferingStdout();
+      final previousLevel = Log.level;
+      try {
+        Log.level = LogLevel.debug;
+        IOOverrides.runZoned(
+          () {
+            fakeAsync((async) {
+              final coordinator = BridgeShutdownCoordinator(
+                startAbortSignal: StartAbortSignal.never,
+                exitProcess: (_) {},
+              );
+              coordinator.addPhase(
+                phase: BridgeShutdownPhase.drain,
+                action: () => Completer<void>().future,
+              );
+
+              unawaited(coordinator.shutdown());
+              async.elapse(const Duration(seconds: 11));
+            });
+          },
+          stderr: () => stderr,
+        );
+
+        expect(stderr.text, contains("during the drain phase"));
+      } finally {
+        Log.level = previousLevel;
+      }
     });
 
     test("backstop covers a hung parallel phase even with no ordered steps", () {
@@ -337,7 +377,11 @@ void main() {
           startAbortSignal: StartAbortSignal.never,
           exitProcess: exitCalls.add,
         );
-        coordinator.addOrdered(action: () async {}, budget: const Duration(seconds: 10));
+        coordinator.addPhase(
+          phase: BridgeShutdownPhase.lifecycle,
+          action: () async {},
+          budget: const Duration(seconds: 10),
+        );
         coordinator.add(disposable: () {});
 
         unawaited(coordinator.shutdown());

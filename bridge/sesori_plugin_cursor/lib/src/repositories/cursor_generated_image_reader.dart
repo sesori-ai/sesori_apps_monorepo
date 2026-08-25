@@ -75,13 +75,11 @@ final class const CursorGeneratedImageReader() {
       }
       return [
         AcpMappedInlineImageContentBlock(
-          attachment:
-              PluginMessageAttachment.inlineImage(
-                    mime: mime,
-                    base64: base64,
-                    filename: basename,
-                  )
-                  as PluginMessageAttachmentInlineImage,
+          attachment: PluginMessageAttachment.inlineImage(
+            mime: mime,
+            base64: base64,
+            filename: basename,
+          ) as PluginMessageAttachmentInlineImage,
           decodedBytes: bytes.length,
         ),
       ];

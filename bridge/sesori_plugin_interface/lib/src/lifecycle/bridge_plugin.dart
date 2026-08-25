@@ -66,16 +66,17 @@ abstract class BridgePlugin() {
   /// [budget] bounds the complete interruption and quiescence operation.
   Future<Set<String>> interruptActiveWork({required Duration budget});
 
-  /// Stops the plugin in order: api teardown, then any managed runtime,
-  /// releasing everything `start()` acquired.
+  /// Stops the plugin in its backend-defined order, including API teardown and
+  /// any managed runtime, releasing everything `start()` acquired. Bridge
+  /// lifecycle owners call this method rather than disposing [api] directly so
+  /// the plugin can disarm monitors and sequence transport/process teardown.
   ///
   /// Contract:
   ///
   /// - **Idempotent.** Repeated calls return the same (or an equivalent
   ///   completed) future.
-  /// - **Safe in either order with [BridgePluginApi.dispose].** During the
-  ///   migration window the bridge core may still call `dispose()` directly
-  ///   before or after `shutdown()`; neither call may break the other.
+  /// - **Owns API teardown.** Implementations dispose [api] as part of this
+  ///   operation and remain safe if that API was already disposed independently.
   /// - [budget] is the soft deadline the caller grants; implementations
   ///   should degrade to forceful termination rather than overrun it.
   ///   `null` means the caller imposes no deadline.

@@ -6,39 +6,43 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/device_canvas/integration_state.dart";
-import "package:sesori_bridge/src/bridge/repositories/device_canvas_claim_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_command_mapper.dart";
-import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_message_mapper.dart";
-import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
-import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_status_mapper.dart";
-import "package:sesori_bridge/src/bridge/repositories/mappers/prompt_part_mapper.dart";
-import "package:sesori_bridge/src/bridge/repositories/mappers/pull_request_mapper.dart";
-import "package:sesori_bridge/src/bridge/repositories/mappers/stored_session_mapper.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
-import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
-import "package:sesori_bridge/src/bridge/routing/request_handler.dart";
-import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
-import "package:sesori_bridge/src/bridge/services/device_canvas_claim_service.dart";
-import "package:sesori_bridge/src/bridge/services/pending_interaction_service.dart";
-import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
-import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
+import "package:sesori_bridge/src/repositories/device_canvas_claim_repository.dart";
+import "package:sesori_bridge/src/repositories/mappers/plugin_command_mapper.dart";
+import "package:sesori_bridge/src/repositories/mappers/plugin_message_mapper.dart";
+import "package:sesori_bridge/src/repositories/mappers/plugin_session_status_mapper.dart";
+import "package:sesori_bridge/src/repositories/mappers/plugin_to_shared_mapping.dart";
+import "package:sesori_bridge/src/repositories/mappers/prompt_part_mapper.dart";
+import "package:sesori_bridge/src/repositories/mappers/pull_request_mapper.dart";
+import "package:sesori_bridge/src/repositories/mappers/stored_session_mapper.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_target.dart";
-import "package:sesori_bridge/src/repositories/session_metadata_repository.dart";
+import "package:sesori_bridge/src/repositories/models/session_operation.dart";
+import "package:sesori_bridge/src/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
+import "package:sesori_bridge/src/repositories/pr_source_repository.dart";
+import "package:sesori_bridge/src/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_repository.dart";
+import "package:sesori_bridge/src/routing/request_handler.dart";
+import "package:sesori_bridge/src/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/services/device_canvas_claim_service.dart";
+import "package:sesori_bridge/src/services/pending_interaction_service.dart";
+import "package:sesori_bridge/src/services/pr_sync_service.dart";
+import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/session_unseen_service.dart";
+import "package:sesori_bridge/src/services/session_view_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 
 import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
+import "../../helpers/fakes/fake_bridge_plugin.dart";
+import "../../helpers/fakes/fake_repository_fakes.dart";
 import "../../helpers/single_plugin_repository_test_support.dart";
+
+export "../../helpers/fakes/fake_bridge_plugin.dart";
+export "../../helpers/fakes/fake_repository_fakes.dart";
 
 /// Builds a real [SessionUnseenService] backed by [db] for handler/router tests.
 SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginApi plugin) {
@@ -94,7 +98,6 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
       ),
       dispatcher: dispatcher,
       archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
-      legacyMissingPluginId: plugin.id,
     ),
   );
 }
@@ -120,378 +123,13 @@ extension RequestHandlerTestMatching on RequestHandlerBase {
     return matches(requestMethod: method, target: Uri.parse(request.path));
   }
 
-  ({
-    Map<String, String> pathParams,
-    Map<String, String> queryParams,
-    String? fragment,
-  })
-  extractParams(RelayRequest request) => extractTargetParams(target: Uri.parse(request.path));
-}
+  RequestTargetParams extractParams(RelayRequest request) => extractTargetParams(target: Uri.parse(request.path));
 
-/// Hand-written fake [BridgePluginApi] used across routing handler tests.
-class FakeBridgePlugin() implements NativeProjectsPluginApi {
-  final _controller = StreamController<BridgeSseEvent>.broadcast();
-
-  // ── Configurable return values ───────────────────────────────────────────
-
-  List<PluginProject> projectsResult = [];
-  List<PluginSession> sessionsResult = [];
-  List<PluginCommand> commandsResult = [];
-  List<PluginMessageWithParts> messagesResult = [];
-  PluginProvidersResult providersResult = const PluginProvidersResult(providers: []);
-  PluginSession? createSessionResult;
-  PluginSession? renameSessionResult;
-  PluginProject? renameProjectResult;
-  List<PluginSession> childSessionsResult = [];
-  Map<String, PluginSessionStatus> sessionStatusesResult = {};
-  List<PluginAgent> agentsResult = [];
-  String? lastAgentsProjectId;
-  List<PluginPendingQuestion> pendingQuestionsResult = [];
-  List<PluginPendingPermission> pendingPermissionsResult = [];
-  PluginProject? currentProjectResult;
-
-  // ── Recorded call arguments ──────────────────────────────────────────────
-
-  String? lastGetSessionsWorktree;
-  int? lastGetSessionsStart;
-  int? lastGetSessionsLimit;
-  String? lastGetCommandsProjectId;
-
-  String? lastGetMessagesSessionId;
-  String? lastGetPendingQuestionsSessionId;
-  String? lastGetPendingPermissionsSessionId;
-
-  String? lastGetProvidersProjectId;
-  String? lastCreateSessionDirectory;
-  String? lastCreateSessionParentId;
-  String? lastCreateSessionProjectId;
-  List<PluginPromptPart>? lastCreateSessionParts;
-  String? lastCreateSessionUserVisibleText;
-  String? lastCreateSessionVariant;
-  String? lastCreateSessionAgent;
-  ({String providerID, String modelID})? lastCreateSessionModel;
-  String? lastRenameSessionId;
-  String? lastRenameSessionTitle;
-  String? lastRenameProjectId;
-  String? lastRenameProjectName;
-  String? lastDeleteSessionId;
-  String? lastArchiveSessionId;
-  String? lastDeleteWorkspaceProjectId;
-  String? lastDeleteWorkspaceWorktreePath;
-  String? lastGetChildSessionsSessionId;
-  String? lastSendPromptSessionId;
-  List<PluginPromptPart>? lastSendPromptParts;
-  String? lastSendPromptVariant;
-  String? lastSendPromptAgent;
-  ({String providerID, String modelID})? lastSendPromptModel;
-  String? lastSendCommandSessionId;
-  String? lastSendCommand;
-  String? lastSendCommandArguments;
-  String? lastSendCommandUserVisibleArguments;
-  String? lastSendCommandVariant;
-  String? lastSendCommandAgent;
-  ({String providerID, String modelID})? lastSendCommandModel;
-  String? lastAbortSessionId;
-  String? lastReplyQuestionId;
-  String? lastReplySessionId;
-  List<List<String>>? lastReplyAnswers;
-  String? lastRejectQuestionId;
-  String? lastRejectSessionId;
-  String? lastGetCurrentProjectProjectId;
-  String? lastReplyToPermissionRequestId;
-  String? lastReplyToPermissionSessionId;
-  PluginPermissionReply? lastReplyToPermissionReply;
-
-  // ── Error injection ──────────────────────────────────────────────────────
-
-  bool throwOnHealthCheck = false;
-  bool healthCheckResult = true;
-  int healthCheckCallCount = 0;
-  bool throwOnGetProjects = false;
-  Object? throwOnGetProjectsError;
-  Object? throwOnGetProjectError;
-  bool throwOnGetSessions = false;
-  Object? throwOnGetMessagesError;
-  Object? throwOnDeleteSessionError;
-  Object? throwOnArchiveSessionError;
-  Completer<void>? archiveSessionCompleter;
-  Completer<void>? sendCommandStarted;
-  Completer<void>? sendCommandCompleter;
-  int getProjectsCallCount = 0;
-
-  // ── BridgePlugin implementation ──────────────────────────────────────────
-
-  @override
-  String get id => "fake";
-
-  @override
-  Stream<BridgeSseEvent> get events => _controller.stream;
-
-  void emitEvent(BridgeSseEvent event) => _controller.add(event);
-
-  Future<void> closeEvents() => _controller.close();
-
-  @override
-  Future<bool> healthCheck() async {
-    healthCheckCallCount++;
-    if (throwOnHealthCheck) throw Exception("healthCheck error");
-    return healthCheckResult;
+  Future<RelayResponse> routeForTest(RelayRequest request) async {
+    final targetParams = extractTargetParams(target: Uri.parse(request.path));
+    final outcome = await routeInternal(request: request, targetParams: targetParams);
+    return outcome.response;
   }
-
-  @override
-  Future<List<PluginProject>> getProjects() async {
-    getProjectsCallCount++;
-    if (throwOnGetProjectsError case final error?) {
-      throw error;
-    }
-    if (throwOnGetProjects) throw Exception("getProjects error");
-    return projectsResult;
-  }
-
-  @override
-  Future<List<PluginSession>> getSessions(
-    String worktree, {
-    int? start,
-    int? limit,
-  }) async {
-    if (throwOnGetSessions) throw Exception("getSessions error");
-    lastGetSessionsWorktree = worktree;
-    lastGetSessionsStart = start;
-    lastGetSessionsLimit = limit;
-    return sessionsResult;
-  }
-
-  @override
-  Future<List<PluginCommand>> getCommands({required String? projectId}) async {
-    lastGetCommandsProjectId = projectId;
-    return commandsResult;
-  }
-
-  @override
-  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
-    required String projectId,
-    required PluginSessionOptionsDiscoveryMode discoveryMode,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<PluginSession> createSession({
-    required String directory,
-    required String? parentSessionId,
-    required List<PluginPromptPart> parts,
-    required String? userVisibleText,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {
-    lastCreateSessionDirectory = directory;
-    lastCreateSessionParentId = parentSessionId;
-    lastCreateSessionProjectId = directory;
-    lastCreateSessionParts = parts;
-    lastCreateSessionUserVisibleText = userVisibleText;
-    lastCreateSessionVariant = variant?.id;
-    lastCreateSessionAgent = agent;
-    lastCreateSessionModel = model;
-    return createSessionResult ??
-        const PluginSession(
-          id: "",
-          projectID: "",
-          directory: "",
-          parentID: null,
-          title: null,
-          time: null,
-        );
-  }
-
-  @override
-  Future<PluginSession> renameSession({
-    required String sessionId,
-    required String title,
-  }) async {
-    lastRenameSessionId = sessionId;
-    lastRenameSessionTitle = title;
-    return renameSessionResult ??
-        const PluginSession(
-          id: "",
-          projectID: "",
-          directory: "",
-          parentID: null,
-          title: null,
-          time: null,
-        );
-  }
-
-  @override
-  Future<PluginProject> renameProject({
-    required String projectId,
-    required String name,
-  }) async {
-    lastRenameProjectId = projectId;
-    lastRenameProjectName = name;
-    return renameProjectResult ?? const PluginProject(id: "", directory: "");
-  }
-
-  @override
-  Future<void> deleteSession(String sessionId) async {
-    lastDeleteSessionId = sessionId;
-    if (throwOnDeleteSessionError case final error?) {
-      throw error;
-    }
-  }
-
-  @override
-  Future<void> archiveSession({required String sessionId}) async {
-    lastArchiveSessionId = sessionId;
-    if (throwOnArchiveSessionError case final error?) {
-      throw error;
-    }
-    if (archiveSessionCompleter case final completer?) {
-      await completer.future;
-    }
-  }
-
-  @override
-  Future<void> deleteWorkspace({
-    required String projectId,
-    required String worktreePath,
-  }) async {
-    lastDeleteWorkspaceProjectId = projectId;
-    lastDeleteWorkspaceWorktreePath = worktreePath;
-  }
-
-  @override
-  Future<List<PluginSession>> getChildSessions(String sessionId) async {
-    lastGetChildSessionsSessionId = sessionId;
-    return childSessionsResult;
-  }
-
-  @override
-  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => sessionStatusesResult;
-
-  @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(
-    String sessionId,
-  ) async {
-    lastGetMessagesSessionId = sessionId;
-    if (throwOnGetMessagesError case final error?) {
-      throw error;
-    }
-    return messagesResult;
-  }
-
-  @override
-  Future<void> sendPrompt({
-    required String sessionId,
-    required List<PluginPromptPart> parts,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {
-    lastSendPromptSessionId = sessionId;
-    lastSendPromptParts = parts;
-    lastSendPromptVariant = variant?.id;
-    lastSendPromptAgent = agent;
-    lastSendPromptModel = model;
-  }
-
-  @override
-  Future<void> sendCommand({
-    required String sessionId,
-    required String command,
-    required String arguments,
-    required String? userVisibleArguments,
-    required PluginSessionVariant? variant,
-    required String? agent,
-    required ({String providerID, String modelID})? model,
-  }) async {
-    if (sendCommandStarted case final started? when !started.isCompleted) started.complete();
-    lastSendCommandSessionId = sessionId;
-    lastSendCommand = command;
-    lastSendCommandArguments = arguments;
-    lastSendCommandUserVisibleArguments = userVisibleArguments;
-    lastSendCommandVariant = variant?.id;
-    lastSendCommandAgent = agent;
-    lastSendCommandModel = model;
-    if (sendCommandCompleter case final completer?) {
-      await completer.future;
-    }
-  }
-
-  @override
-  Future<void> abortSession({required String sessionId}) async {
-    lastAbortSessionId = sessionId;
-  }
-
-  @override
-  Future<List<PluginAgent>> getAgents({required String projectId}) async {
-    lastAgentsProjectId = projectId;
-    return agentsResult;
-  }
-
-  @override
-  Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async {
-    lastGetPendingQuestionsSessionId = sessionId;
-    return pendingQuestionsResult;
-  }
-
-  @override
-  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async => pendingQuestionsResult;
-
-  @override
-  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async {
-    lastGetPendingPermissionsSessionId = sessionId;
-    return pendingPermissionsResult;
-  }
-
-  @override
-  Future<void> replyToQuestion({
-    required String questionId,
-    required String sessionId,
-    required List<List<String>> answers,
-  }) async {
-    lastReplyQuestionId = questionId;
-    lastReplySessionId = sessionId;
-    lastReplyAnswers = answers;
-  }
-
-  @override
-  Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {
-    lastRejectQuestionId = questionId;
-    lastRejectSessionId = sessionId;
-  }
-
-  @override
-  Future<void> replyToPermission({
-    required String requestId,
-    required String sessionId,
-    required PluginPermissionReply reply,
-  }) async {
-    lastReplyToPermissionRequestId = requestId;
-    lastReplyToPermissionSessionId = sessionId;
-    lastReplyToPermissionReply = reply;
-  }
-
-  @override
-  Future<PluginProject> getProject(String projectId) async {
-    if (throwOnGetProjectError case final error?) {
-      throw error;
-    }
-    lastGetCurrentProjectProjectId = projectId;
-    return currentProjectResult ?? const PluginProject(id: "", directory: "");
-  }
-
-  @override
-  List<PluginProjectActivitySummary> getActiveSessionsSummary() => [];
-
-  @override
-  Future<PluginProvidersResult> getProviders({required String projectId}) async {
-    lastGetProvidersProjectId = projectId;
-    return providersResult;
-  }
-
-  @override
-  Future<void> dispose() async {}
-
-  Future<void> close() => _controller.close();
 }
 
 /// Hand-written fake [SessionDao] for testing.
@@ -576,109 +214,6 @@ class FakeSessionDao() {
   Future<void> deleteSession({required String sessionId}) async {
     _sessions.remove(sessionId);
   }
-}
-
-/// Hand-written fake [SessionMetadataRepository] for testing.
-class FakeSessionMetadataRepository() implements SessionMetadataRepository {
-  String? generateResult = "Generated title";
-  String generatedBranchName = "generated-branch";
-  String? lastGenerateMessage;
-
-  @override
-  void beginShutdown() {}
-
-  @override
-  Future<GeneratedSessionMetadata> generateMetadata({required String firstMessage}) async {
-    lastGenerateMessage = firstMessage;
-    return (
-      title: generateResult ?? (throw StateError("metadata unavailable")),
-      branchName: generatedBranchName,
-    );
-  }
-}
-
-class FakePullRequestRepository() implements PullRequestRepository {
-  final Map<String, List<PullRequestDto>> _prsBySessionId = <String, List<PullRequestDto>>{};
-  final Map<String, PullRequestDto> _prsByPrimaryKey = <String, PullRequestDto>{};
-
-  void setPr({required String sessionId, required PullRequestDto pullRequest}) {
-    _prsBySessionId.putIfAbsent(sessionId, () => <PullRequestDto>[]).add(pullRequest);
-    _prsByPrimaryKey[_key(
-          projectId: pullRequest.projectId,
-          githubRepositoryIdentity: pullRequest.githubRepositoryIdentity,
-          prNumber: pullRequest.prNumber,
-        )] =
-        pullRequest;
-  }
-
-  Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({
-    required List<String> sessionIds,
-    required VerifiedGithubLogin verifiedGithubLogin,
-  }) async {
-    return <String, List<PullRequestDto>>{
-      for (final sessionId in sessionIds)
-        if (_prsBySessionId[sessionId]?.where((pr) => pr.githubLogin == verifiedGithubLogin.login).toList()
-            case final matching? when matching.isNotEmpty)
-          sessionId: matching,
-    };
-  }
-
-  @override
-  Future<PullRequestReplacementOutcome> replaceScopedPullRequests({
-    required String projectId,
-    required VerifiedGithubLogin verifiedGithubLogin,
-    required Map<String, String> capturedRootDirectoriesBySessionId,
-    required List<PullRequestTargetSelection> targetSelections,
-    required int lastCheckedAt,
-  }) async {
-    _prsByPrimaryKey.removeWhere((_, pullRequest) => pullRequest.projectId == projectId);
-    for (final selection in targetSelections) {
-      if (selection is! PullRequestTargetSelected) continue;
-      final pullRequest = selection;
-      final record = PullRequestDto(
-        projectId: projectId,
-        githubRepositoryIdentity: pullRequest.target.githubRepositoryIdentity,
-        githubLogin: verifiedGithubLogin.login,
-        prNumber: pullRequest.number,
-        branchName: pullRequest.target.branchName,
-        url: pullRequest.url,
-        title: pullRequest.title,
-        state: pullRequest.state,
-        mergeableStatus: pullRequest.mergeableStatus,
-        reviewDecision: pullRequest.reviewDecision,
-        checkStatus: pullRequest.checkStatus,
-        lastCheckedAt: lastCheckedAt,
-        createdAt: pullRequest.createdAt.millisecondsSinceEpoch,
-      );
-      _prsByPrimaryKey[_key(
-            projectId: record.projectId,
-            githubRepositoryIdentity: record.githubRepositoryIdentity,
-            prNumber: record.prNumber,
-          )] =
-          record;
-    }
-    return const PullRequestReplacementApplied(changed: true);
-  }
-
-  String _key({
-    required String projectId,
-    required String githubRepositoryIdentity,
-    required int prNumber,
-  }) {
-    return "$projectId::$githubRepositoryIdentity::$prNumber";
-  }
-
-  @override
-  Future<Set<String>> prepareScopedRefresh({
-    required Set<String> projectIds,
-    required VerifiedGithubLogin verifiedGithubLogin,
-  }) async => const <String>{};
-
-  @override
-  Future<Set<String>> applyResolvedTargets({
-    required Map<String, List<StoredSession>> sessionsByProject,
-    required Map<String, PullRequestDirectoryTarget> targetsByDirectory,
-  }) async => const <String>{};
 }
 
 class FakePrSyncService({
@@ -822,6 +357,7 @@ Future<void> recordSessionBinding({
       lastAgent: null,
       lastAgentModel: null,
       pluginId: pluginId,
+      preservePullRequestScope: false,
     );
     return;
   }
@@ -843,6 +379,12 @@ Future<void> recordSessionBinding({
 class _NoopSessionRepository() implements SessionRepository {
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
+
+  @override
+  Future<List<QueuedSessionPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
 
   @override
   int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;
@@ -896,6 +438,9 @@ class _NoopSessionRepository() implements SessionRepository {
 
   @override
   Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const <MessageWithParts>[];
+
+  @override
+  Future<SessionStatus?> getSessionStatus({required String sessionId}) async => null;
 
   @override
   Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => const <ProjectActivitySummary>[];
@@ -1046,14 +591,7 @@ class _NoopSessionRepository() implements SessionRepository {
   }) async {}
 
   @override
-  Future<String?> findProjectIdForSession({required String sessionId}) async => null;
-
-  @override
-  Future<Session?> getSessionForProject({
-    required String projectId,
-    required String sessionId,
-    required VerifiedGithubLogin? verifiedGithubLogin,
-  }) async => null;
+  Future<({String pluginId, String projectId})?> findSessionOptionsScope({required String sessionId}) async => null;
 
   @override
   Future<void> abortSession({required String sessionId}) async {}
@@ -1063,6 +601,7 @@ class _NoopSessionRepository() implements SessionRepository {
 
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,
@@ -1078,6 +617,7 @@ class _NoopSessionRepository() implements SessionRepository {
 
   @override
   Future<void> sendPrompt({
+    required String promptId,
     required String sessionId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
@@ -1126,6 +666,14 @@ class FakeSessionRepository({
 }) implements SessionRepository {
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
+
+  @override
+  Future<List<QueuedSessionPrompt>> getQueuedPrompts({required String sessionId}) async =>
+      (await _plugin.getQueuedPrompts(sessionId: sessionId)).toSharedQueuedPrompts();
+
+  @override
+  Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) =>
+      _plugin.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId);
 
   @override
   int captureProjectionTimestamp() => DateTime.now().millisecondsSinceEpoch;
@@ -1227,6 +775,8 @@ class FakeSessionRepository({
               awaitingInput: active.awaitingInput,
               isRetrying: active.isRetrying,
               childSessionIds: active.childSessionIds,
+              lastUserActivityAt: null,
+              updatedAt: null,
             ),
         ],
       ),
@@ -1275,7 +825,7 @@ class FakeSessionRepository({
     lastVerifiedGithubLogin = verifiedGithubLogin;
     lastGetSessionsArgs = (projectId: projectId, start: start, limit: limit);
     final pluginSessions = await _plugin.getSessions(
-      projectId,
+      projectId: projectId,
       start: start,
       limit: limit,
     );
@@ -1340,7 +890,6 @@ class FakeSessionRepository({
     enrichSessionsCallCount++;
     lastVerifiedGithubLogin = verifiedGithubLogin;
     final sessionIds = sessions.map((session) => session.id).toList(growable: false);
-    final dbSessions = await _sessionDao.getSessionsByIds(sessionIds: sessionIds);
     final prsBySessionId = verifiedGithubLogin == null
         ? <String, List<PullRequestDto>>{}
         : await _pullRequestRepository.getPrsBySessionIds(
@@ -1351,19 +900,13 @@ class FakeSessionRepository({
       for (final session in sessions)
         if (_selectBestPr(prsBySessionId[session.id]) case final pr?) session.id: pullRequestInfoFromDto(pr),
     };
-    return enrichSharedSessions(
-      sessions: [
-        for (final session in sessions)
-          session.copyWith(
-            pullRequest: null,
-            pullRequestHistory: const <PullRequestInfo>[],
-          ),
-      ],
-      storedSessionsById: dbSessions,
-      pullRequestsBySessionId: pullRequestsBySessionId,
-      unseenCalculator: const SessionUnseenCalculator(),
-      adoptStoredProjectId: false,
-    );
+    return [
+      for (final session in sessions)
+        session.copyWith(
+          pullRequest: pullRequestsBySessionId[session.id],
+          pullRequestHistory: const <PullRequestInfo>[],
+        ),
+    ];
   }
 
   static PullRequestDto? _selectBestPr(List<PullRequestDto>? prs) {
@@ -1498,6 +1041,13 @@ class FakeSessionRepository({
   }
 
   @override
+  Future<SessionStatus?> getSessionStatus({required String sessionId}) async {
+    final stored = await _sessionDao.getSession(sessionId: sessionId);
+    if (stored == null) return null;
+    return (await _plugin.getSessionStatuses())[stored.backendSessionId]?.toSharedSessionStatus();
+  }
+
+  @override
   Future<void> ensurePluginRoutable({required String pluginId, required SessionOperation operation}) async {
     if (pluginId == _plugin.id) return;
     throw PluginOperationException(
@@ -1552,27 +1102,7 @@ class FakeSessionRepository({
   }) async {}
 
   @override
-  Future<String?> findProjectIdForSession({required String sessionId}) async => null;
-
-  @override
-  Future<Session?> getSessionForProject({
-    required String projectId,
-    required String sessionId,
-    required VerifiedGithubLogin? verifiedGithubLogin,
-  }) async {
-    final sessions = await getSessionsForProject(
-      projectId: projectId,
-      start: null,
-      limit: null,
-      verifiedGithubLogin: verifiedGithubLogin,
-    );
-    for (final session in sessions) {
-      if (session.id == sessionId) {
-        return session;
-      }
-    }
-    return null;
-  }
+  Future<({String pluginId, String projectId})?> findSessionOptionsScope({required String sessionId}) async => null;
 
   @override
   Future<void> abortSession({required String sessionId}) async {
@@ -1584,6 +1114,7 @@ class FakeSessionRepository({
 
   @override
   Future<void> sendCommand({
+    required String promptId,
     required String sessionId,
     required String command,
     required String arguments,
@@ -1593,6 +1124,7 @@ class FakeSessionRepository({
     required PromptModel? model,
   }) async {
     await _plugin.sendCommand(
+      promptId: "prompt-1",
       sessionId: sessionId,
       command: command,
       arguments: arguments,
@@ -1619,6 +1151,7 @@ class FakeSessionRepository({
 
   @override
   Future<void> sendPrompt({
+    required String promptId,
     required String sessionId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
@@ -1626,6 +1159,7 @@ class FakeSessionRepository({
     required PromptModel? model,
   }) async {
     await _plugin.sendPrompt(
+      promptId: "prompt-1",
       sessionId: sessionId,
       parts: parts.map((part) => part.toPlugin()).toList(growable: false),
       variant: _toPluginVariant(variant),

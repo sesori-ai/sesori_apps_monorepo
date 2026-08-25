@@ -29,8 +29,8 @@ class HostJsonRuntimeOwnershipRepository<R>({
       name: _fileName,
       transform: (current) async {
         final parsed = _parseRecords(contents: current);
-        if (parsed.invalidError != null) {
-          await _handleInvalidRuntimeFile(reason: "invalid runtime ownership file", error: parsed.invalidError!);
+        if (parsed.invalidError case final invalidError?) {
+          await _handleInvalidRuntimeFile(reason: "invalid runtime ownership file", error: invalidError);
         }
         parsed.records[_mapper.ownerSessionIdOf(record: record)] = record;
         return jsonEncode(_recordsToJson(records: parsed.records));
@@ -44,8 +44,8 @@ class HostJsonRuntimeOwnershipRepository<R>({
       name: _fileName,
       transform: (current) async {
         final parsed = _parseRecords(contents: current);
-        if (parsed.invalidError != null) {
-          await _handleInvalidRuntimeFile(reason: "invalid runtime ownership file", error: parsed.invalidError!);
+        if (parsed.invalidError case final invalidError?) {
+          await _handleInvalidRuntimeFile(reason: "invalid runtime ownership file", error: invalidError);
         }
         final removedRecord = parsed.records.remove(ownerSessionId);
         if (removedRecord == null) {
@@ -72,31 +72,36 @@ class HostJsonRuntimeOwnershipRepository<R>({
       return <String, R>{};
     }
     final parsed = _parseRecords(contents: contents);
-    if (parsed.invalidError != null) {
-      await _quarantineIfStillInvalid(reason: "invalid runtime ownership file", error: parsed.invalidError!);
+    if (parsed.invalidError case final invalidError?) {
+      await _quarantineIfStillInvalid(reason: "invalid runtime ownership file", error: invalidError);
       return <String, R>{};
     }
     return parsed.records;
   }
 
+  // ignore: no_slop_linter/prefer_specific_type, parse failures retain their opaque original error
   ({Map<String, R> records, Object? invalidError}) _parseRecords({required String? contents}) {
     if (contents == null || contents.trim().isEmpty) {
       return (records: <String, R>{}, invalidError: null);
     }
 
     try {
-      final decoded = jsonDecode(contents);
-      if (decoded is! Map) {
+      // ignore: no_slop_linter/prefer_specific_type, JSON decoding produces dynamic values at this boundary.
+      final dynamic decoded = jsonDecode(contents);
+      // ignore: no_slop_linter/prefer_specific_type, JSON objects contain heterogeneous values
+      if (decoded is! Map<String, dynamic>) {
         throw const FormatException("Runtime ownership root must be an object");
       }
-      final rootJson = Map<String, dynamic>.from(decoded);
-      return (
-        records: <String, R>{
-          for (final MapEntry<String, dynamic> entry in rootJson.entries)
-            entry.key: _mapper.fromJson(json: Map<String, dynamic>.from(entry.value as Map)),
-        },
-        invalidError: null,
-      );
+      final records = <String, R>{};
+      for (final entry in decoded.entries) {
+        final value = entry.value;
+        // ignore: no_slop_linter/prefer_specific_type, JSON objects contain heterogeneous values
+        if (value is! Map<String, dynamic>) {
+          throw const FormatException("Runtime ownership record must be an object");
+        }
+        records[entry.key] = _mapper.fromJson(json: value);
+      }
+      return (records: records, invalidError: null);
     } on Object catch (error) {
       return (records: <String, R>{}, invalidError: error);
     }
@@ -116,38 +121,44 @@ class HostJsonRuntimeOwnershipRepository<R>({
             return current;
           }
           final recheck = _parseRecords(contents: current);
-          if (recheck.invalidError == null) {
-            return current;
+          if (recheck.invalidError case final invalidError?) {
+            await _handleInvalidRuntimeFile(reason: reason, error: invalidError);
+            return null;
           }
-          await _handleInvalidRuntimeFile(reason: reason, error: recheck.invalidError!);
-          return null;
+          return current;
         },
       );
-    } on Object catch (updateError) {
+    } on Object catch (updateError, stackTrace) {
       Log.w(
         "Could not revalidate runtime ownership file at $_fileName before quarantine; "
-        "continuing fresh without persisted ownership state. Error: $updateError (original: $error)",
+        "continuing fresh without persisted ownership state. Original error: ${error.toString()}",
+        updateError,
+        stackTrace,
       );
     }
   }
 
+  // ignore: no_slop_linter/prefer_specific_type, JSON encoding requires dynamic values at this boundary.
   Map<String, dynamic> _recordsToJson({required Map<String, R> records}) {
+    // ignore: no_slop_linter/prefer_specific_type, JSON encoding requires dynamic values at this boundary.
     return <String, dynamic>{
       for (final MapEntry<String, R> entry in records.entries) entry.key: _mapper.toJson(record: entry.value),
     };
   }
 
   Future<void> _handleInvalidRuntimeFile({required String reason, required Object error}) async {
-    Log.w("$reason at $_fileName; ignoring persisted ownership state and continuing fresh. Error: $error");
+    Log.w("$reason at $_fileName; ignoring persisted ownership state and continuing fresh", error);
 
     final timestamp = _clock.now().toUtc().toIso8601String().replaceAll(":", "-").replaceAll(".", "-");
     final quarantinedName = "${_fileNameBase()}.invalid.$timestamp.json";
 
     try {
       await _store.quarantine(name: _fileName, quarantinedName: quarantinedName);
-    } on Object catch (renameError) {
+    } on Object catch (renameError, stackTrace) {
       Log.w(
-        "Failed to rename invalid runtime ownership file at $_fileName; continuing fresh without persisted ownership state. Error: $renameError",
+        "Failed to rename invalid runtime ownership file at $_fileName; continuing fresh without persisted ownership state",
+        renameError,
+        stackTrace,
       );
     }
   }

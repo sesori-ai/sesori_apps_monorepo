@@ -2,16 +2,16 @@ import "dart:async";
 import "dart:collection";
 import "dart:io";
 
+import "package:sesori_bridge/src/api/gh_authenticated_identity.dart";
+import "package:sesori_bridge/src/api/gh_cli_api.dart";
+import "package:sesori_bridge/src/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/api/gh_pull_request_batch.dart";
-import "package:sesori_bridge/src/bridge/api/gh_authenticated_identity.dart";
-import "package:sesori_bridge/src/bridge/api/gh_cli_api.dart";
-import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
-import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
-import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
-import "package:sesori_bridge/src/bridge/repositories/models/verified_github_login.dart";
-import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
+import "package:sesori_bridge/src/api/git_cli_api.dart";
+import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_target.dart";
+import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
+import "package:sesori_bridge/src/repositories/pr_source_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -240,7 +240,7 @@ void main() {
       final completed = outcome as PullRequestSelectionCompleted;
       final selected = completed.selections.whereType<PullRequestTargetSelected>().single;
       expect(selected.target, _selectionTarget);
-      expect(selected.number, 2);
+      expect(selected.pullRequest.number, 2);
       expect(ghCli.cursorCalls, isEmpty);
     });
 
@@ -291,7 +291,7 @@ void main() {
       );
 
       final completed = outcome as PullRequestSelectionCompleted;
-      expect(completed.selections.whereType<PullRequestTargetSelected>().single.number, 5);
+      expect(completed.selections.whereType<PullRequestTargetSelected>().single.pullRequest.number, 5);
       expect(ghCli.cursorCalls.map((requests) => requests.single.cursor), ["open-1", "open-2"]);
     });
 
@@ -357,7 +357,7 @@ void main() {
 
       final selected = (outcome as PullRequestSelectionCompleted).selections.single as PullRequestTargetSelected;
       expect(selected.target, historicalTarget);
-      expect(selected.number, 7);
+      expect(selected.pullRequest.number, 7);
       final cursorTarget = ghCli.cursorCalls.single.single.target;
       expect(cursorTarget.repositoryOwner, "sesori-ai");
       expect(cursorTarget.repositoryName, "historical-name");
@@ -476,7 +476,7 @@ void main() {
       );
 
       final completed = outcome as PullRequestSelectionCompleted;
-      expect(completed.selections.whereType<PullRequestTargetSelected>().single.number, 7);
+      expect(completed.selections.whereType<PullRequestTargetSelected>().single.pullRequest.number, 7);
     });
 
     test("coalesces cursor follow-ups for different targets", () async {

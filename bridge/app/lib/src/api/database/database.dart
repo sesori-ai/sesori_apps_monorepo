@@ -6,7 +6,7 @@ import "package:path/path.dart" as path;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../data_directory_hardening.dart";
+import "../../foundation/data_directory_hardening.dart";
 import "daos/catalog_hydrations_dao.dart";
 import "daos/device_canvas_claim_dao.dart";
 import "daos/projects_dao.dart";

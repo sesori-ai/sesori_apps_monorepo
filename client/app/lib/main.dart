@@ -18,7 +18,7 @@ import "core/di/injection.dart";
 import "core/extensions/appearance_mode_x.dart";
 import "core/extensions/build_context_x.dart";
 import "core/platform/firebase/firebase_messaging_static_adapter.dart";
-import "core/platform/firebase_analytics_identity_migration.dart";
+import "core/platform/firebase_analytics_startup.dart";
 import "core/routing/app_router.dart";
 import "core/routing/deep_link_service.dart";
 import "firebase_options.dart";
@@ -27,42 +27,14 @@ import "l10n/app_localizations.dart";
 @pragma("vm:entry-point")
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  final capability =
-      await FirebaseAnalyticsIdentityMigration(
-        analytics: FirebaseAnalytics.instance,
-      ).clearLegacyIdentity(
-        disabledReasonAfterSuccess: kReleaseMode ? null : AnalyticsRuntimeDisabledReason.debugOrProfile,
-      );
-  if (capability case AnalyticsRuntimeDisabled(
-    reason: AnalyticsRuntimeDisabledReason.identitySafetyPreconditionFailed,
-  )) {
-    return;
-  }
 }
 
 void _configureFirebaseSdk({
-  required bool supportsAnalytics,
   required bool supportsCrashlytics,
 }) {
   getIt<FirebaseMessagingStaticAdapter>().registerBackgroundHandler(
     handler: _firebaseMessagingBackgroundHandler,
   );
-
-  if (supportsAnalytics) {
-    // Explicitly disable any data collection except for the very basic analytics.
-    // These are also disabled by default in Info.plist and AndroidManifest.xml.
-    getIt<FirebaseAnalytics>()
-        .setConsent(
-          adPersonalizationSignalsConsentGranted: false,
-          adStorageConsentGranted: false,
-          adUserDataConsentGranted: false,
-          personalizationStorageConsentGranted: false,
-          securityStorageConsentGranted: false,
-          analyticsStorageConsentGranted: true,
-          functionalityStorageConsentGranted: true,
-        )
-        .ignore();
-  }
 
   if (supportsCrashlytics) {
     final crashlytics = getIt<FirebaseCrashlytics>();
@@ -87,27 +59,25 @@ void main() async {
     SystemUiMode.edgeToEdge,
     overlays: SystemUiOverlay.values,
   );
-  final shouldInitializeFirebase = _shouldInitializeFirebase;
-  final supportsFirebaseAnalytics = _supportsFirebaseAnalytics;
-  final supportsFirebaseCrashlytics = _supportsFirebaseCrashlytics;
+  final shouldInitializeFirebase = _supportsFirebase;
+  final supportsFirebaseAnalytics = _supportsFirebase;
+  final supportsFirebaseCrashlytics = _supportsFirebase;
   if (shouldInitializeFirebase) {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   }
 
-  final analyticsRuntimeCapability = await _createAnalyticsRuntimeCapability(
-    shouldInitializeFirebase: shouldInitializeFirebase,
-    supportsFirebaseAnalytics: supportsFirebaseAnalytics,
-  );
-
   await bootstrapSesoriApp(
     shouldInitializeFirebase: shouldInitializeFirebase,
-    configureDependenciesFn: () {
-      configureDependencies(
+    configureDependenciesFn: () async {
+      await configureDependencies(
         firebaseEnabled: shouldInitializeFirebase,
-        analyticsRuntimeCapability: analyticsRuntimeCapability,
+        createAnalyticsRuntimeCapability: ({required authSession}) => _createAnalyticsRuntimeCapability(
+          shouldInitializeFirebase: shouldInitializeFirebase,
+          supportsFirebaseAnalytics: supportsFirebaseAnalytics,
+          authSession: authSession,
+        ),
       );
       _configureFirebaseSdk(
-        supportsAnalytics: supportsFirebaseAnalytics,
         supportsCrashlytics: supportsFirebaseCrashlytics,
       );
     },
@@ -129,7 +99,7 @@ void main() async {
 
 Future<void> bootstrapSesoriApp({
   required bool shouldInitializeFirebase,
-  required void Function() configureDependenciesFn,
+  required Future<void> Function() configureDependenciesFn,
   required void Function() initializeDeepLinks,
   required Future<void> Function() startProductAnalyticsFn,
   required Future<void> Function() startAnalyticsRouteListenerFn,
@@ -138,7 +108,7 @@ Future<void> bootstrapSesoriApp({
   required Future<ChatInputMode> Function() readChatInputModeFn,
   required void Function(Widget app) runAppFn,
 }) async {
-  configureDependenciesFn();
+  await configureDependenciesFn();
   initializeDeepLinks();
   await startProductAnalyticsFn();
   await startAnalyticsRouteListenerFn();
@@ -168,8 +138,8 @@ Future<void> bootstrapSesoriApp({
   runAppFn(
     LiquidGlassWidgets.wrap(
       child: SesoriApp(initialAppearance: appearance, initialChatInputMode: chatInputMode),
+      brightnessResolver: Theme.maybeBrightnessOf,
       adaptiveQuality: true,
-      // ignore: experimental_member_use
       adaptiveConfig: GlassAdaptiveScopeConfig(
         targetFrameMs: 8,
         minQuality: .minimal,
@@ -187,15 +157,54 @@ Future<void> bootstrapSesoriApp({
 Future<AnalyticsRuntimeCapability> _createAnalyticsRuntimeCapability({
   required bool shouldInitializeFirebase,
   required bool supportsFirebaseAnalytics,
-}) {
-  if (!shouldInitializeFirebase || !supportsFirebaseAnalytics) {
-    return Future.value(
-      const AnalyticsRuntimeCapability.disabled(reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable),
-    );
+  required AuthSession authSession,
+}) async {
+  final capability = !shouldInitializeFirebase || !supportsFirebaseAnalytics
+      ? const AnalyticsRuntimeCapability.disabled(
+          reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
+        )
+      : await FirebaseAnalyticsStartup(analytics: FirebaseAnalytics.instance).configure(
+          ineligibilityReason: await _analyticsIneligibilityReason(authSession: authSession),
+        );
+  if (capability case AnalyticsRuntimeDisabled(:final reason)) {
+    logi("Firebase analytics runtime disabled (${reason.name})");
   }
-  return FirebaseAnalyticsIdentityMigration(analytics: FirebaseAnalytics.instance).clearLegacyIdentity(
-    disabledReasonAfterSuccess: kReleaseMode ? null : AnalyticsRuntimeDisabledReason.debugOrProfile,
-  );
+  return capability;
+}
+
+/// Unix seconds at which the release lanes compiled this binary. Builds made
+/// outside those lanes leave it 0, which reads as a build too old for a store
+/// crawl to still be running it.
+const _buildEpochSeconds = int.fromEnvironment("SESORI_BUILD_EPOCH_SECONDS");
+
+/// How long after compilation a store may still be crawling the binary. Play
+/// runs its pre-launch report against every track upload "subject to capacity",
+/// so this is a heuristic on Google's scheduling delay, not a contract.
+const _buildWindow = Duration(hours: 2);
+
+/// Whether a binary stamped at [buildEpochSeconds] could still be under a store
+/// pre-launch crawl at [now]. A clock behind the stamp says nothing about the
+/// crawl, so it reads as outside the window.
+bool isWithinBuildWindow({required int buildEpochSeconds, required DateTime now}) {
+  if (buildEpochSeconds <= 0) return false;
+  final buildTime = DateTime.fromMillisecondsSinceEpoch(buildEpochSeconds * 1000, isUtc: true);
+  return !now.isBefore(buildTime) && now.isBefore(buildTime.add(_buildWindow));
+}
+
+/// Why this process must not report analytics, or null when it may.
+///
+/// Play's pre-launch report is the only store process that launches the app
+/// after an upload; TestFlight runs nothing, so only Android is gated. Crawlers
+/// never sign in, so an unauthenticated launch inside the build window is
+/// treated as one. A signed-in device keeps reporting at any time.
+Future<AnalyticsRuntimeDisabledReason?> _analyticsIneligibilityReason({required AuthSession authSession}) async {
+  if (!kReleaseMode) return AnalyticsRuntimeDisabledReason.debugOrProfile;
+  if (defaultTargetPlatform == TargetPlatform.android &&
+      isWithinBuildWindow(buildEpochSeconds: _buildEpochSeconds, now: DateTime.now()) &&
+      !await authSession.hasLocallyValidSession()) {
+    return AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated;
+  }
+  return null;
 }
 
 Future<void> startNotificationStartup({
@@ -220,31 +229,7 @@ Future<void> _runNotificationStartupStep(Future<void> Function() step) async {
   }
 }
 
-bool get _shouldInitializeFirebase {
-  if (kIsWeb) {
-    return false;
-  }
-
-  return switch (defaultTargetPlatform) {
-    TargetPlatform.android => !kProfileMode,
-    TargetPlatform.iOS || TargetPlatform.macOS => true,
-    TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => false,
-  };
-}
-
-bool get _supportsFirebaseAnalytics {
-  if (kIsWeb) {
-    return false;
-  }
-
-  return switch (defaultTargetPlatform) {
-    TargetPlatform.android => !kProfileMode,
-    TargetPlatform.iOS || TargetPlatform.macOS => true,
-    TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => false,
-  };
-}
-
-bool get _supportsFirebaseCrashlytics {
+bool get _supportsFirebase {
   if (kIsWeb) {
     return false;
   }
@@ -336,10 +321,45 @@ class const _SesoriAppShell() extends StatelessWidget {
               getIt<ConnectionService>(),
               getIt<RegisteredBridgesService>(),
             ),
-            child: child ?? const SizedBox.shrink(),
+            child: BlocProvider(
+              create: (_) => SseToastCubit(getIt<ConnectionService>()),
+              child: _SseToastListener(child: child ?? const SizedBox.shrink()),
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Renders backend toast states through the design-system popup alert
+/// presenter, so guidance such as a local `/login` hint reaches the user on
+/// any screen, including startup routes with no scaffold.
+class const _SseToastListener({required final Widget child}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<SseToastCubit, SseToastState>(
+      listener: (context, state) {
+        if (state case SseToastShow(:final title, :final message, :final variant)) {
+          final overlay = appRootNavigatorKey.currentState?.overlay;
+          if (overlay == null) return;
+          PregoPopupAlertPresenter.fromOverlayState(overlay).show(
+            title: title ?? message,
+            content: title == null ? const PregoPopupAlertContent() : PregoPopupAlertContent(message: message),
+            variant: switch (variant) {
+              SseToastVariant.info => PregoPopupAlertsNotificationsVariant.info,
+              SseToastVariant.success => PregoPopupAlertsNotificationsVariant.success,
+              SseToastVariant.warning => PregoPopupAlertsNotificationsVariant.warning,
+              SseToastVariant.error => PregoPopupAlertsNotificationsVariant.error,
+            },
+            duration: switch (variant) {
+              SseToastVariant.error || SseToastVariant.warning => const Duration(seconds: 8),
+              SseToastVariant.info || SseToastVariant.success => const Duration(seconds: 4),
+            },
+          );
+        }
+      },
+      child: child,
     );
   }
 }

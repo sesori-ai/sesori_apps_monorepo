@@ -3,9 +3,9 @@ import "dart:io";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
+import "auth_api.dart";
 import "bridge_id_provider.dart";
 import "bridge_id_storage.dart";
-import "bridge_registration_api.dart";
 import "bridge_registration_repository.dart";
 import "token_refresher.dart";
 
@@ -16,9 +16,7 @@ import "token_refresher.dart";
 /// returns immediately on subsequent calls until [handleBridgeRevoked]
 /// resets it (relay close code 4006 — bridge revoked).
 ///
-/// The persisted bridge id is read from [BridgeIdStorage]; legacy ids from an
-/// older `token.json` are copied into that storage by `BridgeIdMigrationService`
-/// before authentication, so this service never reads `token.json`.
+/// The persisted bridge id is read from [BridgeIdStorage].
 class BridgeRegistrationService({
   required final BridgeRegistrationRepository _repository,
   required final TokenRefresher _tokenRefresher,

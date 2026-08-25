@@ -1,6 +1,6 @@
 import "dart:async";
 
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show CommandExecutor, normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/models/pi_catalog_dto.dart";
@@ -30,11 +30,21 @@ class PiBackendCatalogRepository({
   required final String _binaryPath,
   required final Map<String, String> _environment,
   required final PiProcessFactory _processFactory,
+  required final CommandExecutor _commandExecutor,
+  required final Duration _healthTimeout,
 }) {
+  Future<bool> healthCheck() async {
+    try {
+      return (await _commandExecutor.run(_binaryPath, const ["--version"], timeout: _healthTimeout)).exitCode == 0;
+    } on Object catch (error, stack) {
+      Log.w("[pi] health check failed", error, stack);
+      return false;
+    }
+  }
+
   Future<PiCatalogProbeSnapshot> probe({
     required String projectId,
     required Duration totalTimeout,
-    required int maxModels,
   }) async {
     final stopwatch = Stopwatch()..start();
     final normalizedProject = normalizeProjectDirectory(directory: projectId);
@@ -81,11 +91,12 @@ class PiBackendCatalogRepository({
       final initialIndex = deduped.indexWhere((model) => _sameModel(model, initialModel));
       if (initialIndex < 0) throw StateError("Pi selected model is absent from the catalog");
       if (initialIndex > 0) deduped.insert(0, deduped.removeAt(initialIndex));
-      final bounded = deduped.take(maxModels).toList();
 
-      var partial = deduped.length > bounded.length;
+      var partial = false;
       final thinkingByModel = <String, List<String>>{};
-      for (final model in bounded.where((model) => model.reasoning)) {
+      // The total deadline bounds this sweep. A count cap would make every larger
+      // healthy catalog partial, so it could never replace an older complete cache.
+      for (final model in deduped.where((model) => model.reasoning)) {
         try {
           await _send(
             client: client,
@@ -146,7 +157,7 @@ class PiBackendCatalogRepository({
         ],
         providers: PluginProvidersResult(
           providers: _providers(
-            models: bounded,
+            models: deduped,
             initial: initialModel,
             thinkingByModel: thinkingByModel,
           ),
@@ -242,85 +253,13 @@ class PiBackendCatalogRepository({
     required List<PluginModel> models,
     required String? defaultModelId,
   }) {
-    final fields = (
+    return PluginProvider(
       id: id,
       name: id,
       authType: PluginProviderAuthType.unknown,
       models: models,
       defaultModelID: defaultModelId,
     );
-    return switch (id.toLowerCase()) {
-      "anthropic" => PluginProvider.anthropic(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-      "openai" => PluginProvider.openAI(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-      "google" => PluginProvider.google(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-      "mistral" => PluginProvider.mistral(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-      "groq" => PluginProvider.groq(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-      "xai" => PluginProvider.xAI(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-      "deepseek" => PluginProvider.deepseek(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-      "amazon-bedrock" || "bedrock" => PluginProvider.amazonBedrock(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-      "azure" || "azure-openai-responses" => PluginProvider.azure(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-      _ => PluginProvider.custom(
-        id: fields.id,
-        name: fields.name,
-        authType: fields.authType,
-        models: fields.models,
-        defaultModelID: fields.defaultModelID,
-      ),
-    };
   }
 
   PluginCommand? _command(PiCatalogCommandDto dto) {

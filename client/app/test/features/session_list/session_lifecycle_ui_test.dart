@@ -6,12 +6,13 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_mobile/features/session_list/session_list_cubit_provider.dart";
 import "package:sesori_mobile/features/session_list/session_list_panel.dart";
 import "package:sesori_mobile/features/session_list/session_list_screen.dart";
 import "package:sesori_mobile/features/session_list/session_tile.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
-import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_shared/sesori_shared.dart" hide SessionCleanupRejection;
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -124,7 +125,7 @@ class const _TestSessionListBody() extends StatelessWidget {
           );
         },
       ),
-      _ => const Center(child: CircularProgressIndicator()),
+      _ => Center(child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)),
     };
   }
 
@@ -275,7 +276,7 @@ class _TestArchiveSheetState() extends State<_TestArchiveSheet> {
 
 void main() {
   late MockSessionListCubit mockCubit;
-  late MockSessionService mockSessionService;
+  late MockSessionRepository mockSessionService;
   late MockProjectRepository mockProjectRepository;
   late MockConnectionService mockConnectionService;
   late MockSseEventTracker mockSseEventTracker;
@@ -287,7 +288,7 @@ void main() {
 
   setUp(() {
     mockCubit = MockSessionListCubit();
-    mockSessionService = MockSessionService();
+    mockSessionService = MockSessionRepository();
     mockProjectRepository = MockProjectRepository();
     mockConnectionService = MockConnectionService();
     mockSseEventTracker = MockSseEventTracker();
@@ -295,8 +296,8 @@ void main() {
     mockFailureReporter = MockFailureReporter();
     statusController = BehaviorSubject<ConnectionStatus>.seeded(
       const ConnectionStatus.connected(
-        config: ServerConnectionConfig(relayHost: "relay.example.com"),
-        health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+        health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
       ),
     );
 
@@ -304,8 +305,8 @@ void main() {
     when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
     when(() => mockConnectionService.currentStatus).thenReturn(
       const ConnectionStatus.connected(
-        config: ServerConnectionConfig(relayHost: "relay.example.com"),
-        health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+        health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
       ),
     );
     when(
@@ -507,7 +508,7 @@ void main() {
           waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session])));
-      getIt.registerSingleton<SessionService>(mockSessionService);
+      getIt.registerSingleton<SessionRepository>(mockSessionService);
       getIt.registerSingleton<ProjectRepository>(mockProjectRepository);
       registerListServices(
         projectRepository: mockProjectRepository,

@@ -7,6 +7,7 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
@@ -51,6 +52,7 @@ Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorSta
 SessionDetailLoadResult _loadedResult() {
   return const SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
+      bridgeQueuedPrompts: [],
       projectId: "project-1",
       pluginId: "opencode",
       supportsPromptAttachments: false,
@@ -68,13 +70,13 @@ SessionDetailLoadResult _loadedResult() {
       isRootSession: true,
       isArchived: false,
     ),
-    isBridgeConnected: true,
   );
 }
 
 SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
   return SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
+      bridgeQueuedPrompts: const [],
       projectId: "project-1",
       pluginId: "opencode",
       supportsPromptAttachments: false,
@@ -92,13 +94,13 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
       isRootSession: true,
       isArchived: false,
     ),
-    isBridgeConnected: true,
   );
 }
 
 SessionDetailLoadResult _loadedResultWithPendingQuestion() {
   return const SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
+      bridgeQueuedPrompts: [],
       projectId: "project-1",
       pluginId: "opencode",
       supportsPromptAttachments: false,
@@ -123,7 +125,6 @@ SessionDetailLoadResult _loadedResultWithPendingQuestion() {
       isRootSession: true,
       isArchived: false,
     ),
-    isBridgeConnected: true,
   );
 }
 
@@ -140,6 +141,8 @@ void _registerDependencies({
   final getIt = GetIt.instance;
 
   getIt.registerSingleton<ConnectionService>(connectionService);
+
+  getIt.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
   getIt.registerSingleton<SessionDetailLoadService>(loadService);
   getIt.registerSingleton<SessionRepository>(promptDispatcher);
   getIt.registerSingleton<PermissionRepository>(permissionRepository);
@@ -191,7 +194,7 @@ void main() {
     globalEvents = StreamController<SseEvent>.broadcast();
     connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(
       ConnectionStatus.connected(
-        config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+        config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
         health: testHealthResponse(),
       ),
     );
@@ -201,7 +204,7 @@ void main() {
     when(() => connectionService.status).thenAnswer((_) => connectionStatus.stream);
     when(() => connectionService.currentStatus).thenReturn(
       ConnectionStatus.connected(
-        config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+        config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
         health: testHealthResponse(),
       ),
     );

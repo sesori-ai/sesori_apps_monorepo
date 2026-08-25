@@ -156,6 +156,7 @@ class CodexSessionService({
   Future<({CodexThreadRecord? resumedThread, String? resolvedModel, String? turnId, bool started})> startTurn({
     required String threadId,
     required List<PluginPromptPart> parts,
+    required String? clientUserMessageId,
     required String? model,
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
@@ -175,6 +176,7 @@ class CodexSessionService({
       final turnId = await _connectedThreadRepository.startTurn(
         threadId: threadId,
         parts: parts,
+        clientUserMessageId: clientUserMessageId,
         model: turnModel,
         effort: turnEffort,
         collaborationMode: turnMode,
@@ -203,6 +205,7 @@ class CodexSessionService({
       final turnId = await _connectedThreadRepository.startTurn(
         threadId: threadId,
         parts: parts,
+        clientUserMessageId: clientUserMessageId,
         model: turnModel,
         effort: turnEffort,
         collaborationMode: turnMode,
@@ -223,6 +226,7 @@ class CodexSessionService({
     required String threadId,
     required String command,
     required String arguments,
+    required String? clientUserMessageId,
     required String? model,
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
@@ -244,6 +248,7 @@ class CodexSessionService({
         threadId: threadId,
         command: command,
         arguments: arguments,
+        clientUserMessageId: clientUserMessageId,
         model: turnModel,
         effort: turnEffort,
         collaborationMode: turnMode,
@@ -264,6 +269,7 @@ class CodexSessionService({
         threadId: threadId,
         command: command,
         arguments: arguments,
+        clientUserMessageId: clientUserMessageId,
         model: turnModel,
         effort: turnEffort,
         collaborationMode: turnMode,
@@ -283,6 +289,7 @@ class CodexSessionService({
     required String threadId,
     required String command,
     required String arguments,
+    required String? clientUserMessageId,
     required String? model,
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
@@ -295,6 +302,7 @@ class CodexSessionService({
     return await _connectedThreadRepository.startTurn(
       threadId: threadId,
       parts: [PluginPromptPart.text(text: invocation)],
+      clientUserMessageId: clientUserMessageId,
       model: model,
       effort: effort,
       collaborationMode: collaborationMode,
@@ -512,7 +520,7 @@ class CodexSessionService({
         providers: selectedModelID == null
             ? const []
             : [
-                PluginProvider.custom(
+                PluginProvider(
                   id: providerID,
                   name: _providerDisplayName(providerID: providerID),
                   authType: PluginProviderAuthType.unknown,

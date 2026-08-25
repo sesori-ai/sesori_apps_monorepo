@@ -5,8 +5,8 @@ import "dart:math";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
-import "../repositories/device_canvas_claim_repository.dart";
-import "../services/device_canvas_claim_service.dart";
+import "../../repositories/device_canvas_claim_repository.dart";
+import "../../services/device_canvas_claim_service.dart";
 import "integration_state.dart";
 import "protocol.dart";
 import "protocol_codec.dart";

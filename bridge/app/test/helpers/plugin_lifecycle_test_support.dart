@@ -1,7 +1,7 @@
-import "package:sesori_bridge/src/bridge/runtime/plugin_runtime.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/repositories/plugin_lifecycle_repository.dart";
+import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show legacyMissingPluginId;
@@ -36,8 +36,6 @@ Future<PluginLifecycleService> createPluginLifecycleService({
           bridgeSettingsRepository: settingsRepository,
           idleTimerScheduler: const PluginIdleTimerScheduler(),
           bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
-        )
-        ..registerPlugins(
           plugins: [
             for (final plugin in plugins)
               (

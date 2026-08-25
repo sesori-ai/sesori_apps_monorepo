@@ -247,6 +247,27 @@ Map<String, dynamic> _$SesoriCommandExecutedToJson(
   'type': instance.$type,
 };
 
+SesoriSessionQueuedPrompts _$SesoriSessionQueuedPromptsFromJson(Map json) =>
+    SesoriSessionQueuedPrompts(
+      sessionID: json['sessionID'] as String,
+      prompts: (json['prompts'] as List<dynamic>)
+          .map(
+            (e) => QueuedSessionPrompt.fromJson(
+              Map<String, dynamic>.from(e as Map),
+            ),
+          )
+          .toList(),
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$SesoriSessionQueuedPromptsToJson(
+  SesoriSessionQueuedPrompts instance,
+) => <String, dynamic>{
+  'sessionID': instance.sessionID,
+  'prompts': instance.prompts.map((e) => e.toJson()).toList(),
+  'type': instance.$type,
+};
+
 SesoriMessageUpdated _$SesoriMessageUpdatedFromJson(Map json) =>
     SesoriMessageUpdated(
       info: Message.fromJson(Map<String, dynamic>.from(json['info'] as Map)),

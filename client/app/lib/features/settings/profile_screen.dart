@@ -106,14 +106,13 @@ class const _ProfileBody() extends StatelessWidget {
                         icon: TablerRegular.logout,
                         title: Text(loc.settingsLogout),
                         trailing: isLoggingOut
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
                               )
                             : null,
                         onTap: isLoggingOut ? null : () => context.read<SettingsCubit>().logout(),
-                        isLast: true,
                       ),
                     ],
                   ),
@@ -204,7 +203,6 @@ class const _ProductAnalyticsPreferenceRow({required final bool blocked}) extend
       ),
       trailing: trailing,
       onTap: canToggle ? () => toggle(enabled: preference != ProductAnalyticsPreference.enabled) : null,
-      isLast: true,
     );
     return PregoGroupedRows(
       children: [hasFailure ? row : MergeSemantics(child: row)],

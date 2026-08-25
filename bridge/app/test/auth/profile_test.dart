@@ -1,21 +1,34 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:sesori_bridge/src/auth/profile.dart';
+import 'package:http/http.dart' as http;
+import 'package:sesori_bridge/src/auth/auth_api.dart';
+import 'package:sesori_bridge/src/auth/auth_repository.dart';
+import 'package:sesori_bridge/src/foundation/abortable_request.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('fetchUsername', () {
     late HttpServer server;
-    late String baseUrl;
+    late http.Client client;
+    late AuthRepository repository;
 
     setUp(() async {
       server = await HttpServer.bind('127.0.0.1', 0);
-      baseUrl = 'http://${server.address.host}:${server.port}';
+      client = http.Client();
+      repository = AuthRepository(
+        api: AuthApi(
+          authBackendUrl: 'http://${server.address.host}:${server.port}',
+          client: client,
+          requestDeadline: AuthApi.defaultRequestDeadline,
+          sendRequest: sendRequestWithDeadline,
+        ),
+      );
     });
 
     tearDown(() async {
       await server.close(force: true);
+      client.close();
     });
 
     test('returns providerUsername on 200', () async {
@@ -39,7 +52,7 @@ void main() {
         await request.response.close();
       });
 
-      final username = await fetchUsername(baseUrl, 'valid-token');
+      final username = await repository.fetchUsername(accessToken: 'valid-token');
       expect(username, equals('testuser'));
     });
 
@@ -64,7 +77,7 @@ void main() {
         await request.response.close();
       });
 
-      final username = await fetchUsername(baseUrl, 'valid-token');
+      final username = await repository.fetchUsername(accessToken: 'valid-token');
       expect(username, equals('unknown-user'));
     });
 
@@ -75,7 +88,7 @@ void main() {
       });
 
       expect(
-        () => fetchUsername(baseUrl, 'invalid-token'),
+        () => repository.fetchUsername(accessToken: 'invalid-token'),
         throwsA(isA<Exception>()),
       );
     });
@@ -84,7 +97,7 @@ void main() {
       await server.close(force: true);
 
       expect(
-        () => fetchUsername('http://127.0.0.1:1', 'token'),
+        () => repository.fetchUsername(accessToken: 'token'),
         throwsA(isA<Exception>()),
       );
     });

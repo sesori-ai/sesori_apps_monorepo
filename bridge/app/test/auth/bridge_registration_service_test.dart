@@ -1,6 +1,6 @@
 import "dart:io";
 
-import "package:sesori_bridge/src/auth/bridge_registration_api.dart";
+import "package:sesori_bridge/src/auth/auth_api.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_repository.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_service.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";

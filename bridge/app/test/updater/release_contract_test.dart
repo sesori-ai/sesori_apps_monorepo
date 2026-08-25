@@ -152,7 +152,7 @@ void main() {
       // Primary path: GitHub-native always-latest static download; the version is
       // read from the versioned download redirect, and both the archive and
       // checksums.txt are required before the latest release is accepted.
-      expect(script, contains(r'GITHUB="${GITHUB:-https://github.com}"'));
+      expect(script, contains('GITHUB_BASE_URL="https://github.com"'));
       expect(script, contains('releases/latest/download'));
       expect(script, contains(r'${latest_base}/${filename}'));
       expect(script, contains(r'${latest_base}/checksums.txt'));
@@ -161,7 +161,10 @@ void main() {
 
       // Fallback scan: still the REST API, but small and reading pages from
       // files (paths-as-args only), never env vars.
-      expect(script, contains(r'GITHUB_API="${GITHUB_API:-https://api.github.com}"'));
+      expect(
+        script,
+        contains(r'GITHUB_RELEASES_API_URL="https://api.github.com/repos/${GITHUB_REPO}/releases"'),
+      );
       expect(script, contains('GITHUB_RELEASES_PER_PAGE=30'));
       expect(script, contains('GITHUB_RELEASES_MAX_PAGES=3'));
       expect(script, contains(r'?per_page=${GITHUB_RELEASES_PER_PAGE}&page=${page}'));

@@ -21,15 +21,12 @@ void main() {
 
   test("PostPluginLifecycleCommandHandler dispatches a typed disable command", () async {
     final service = _FakePluginLifecycleService();
-    final response = await buildHandler(service: service).handleInternal(
+    final response = await buildHandler(service: service).routeForTest(
       makeRequest(
         "POST",
         "/plugin/one/command",
         body: jsonEncode(const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe).toJson()),
       ),
-      pathParams: const {"id": "one"},
-      queryParams: const {},
-      fragment: null,
     );
 
     expect(response.status, 200);
@@ -45,11 +42,8 @@ void main() {
     final service = _FakePluginLifecycleService();
     final handler = buildHandler(service: service);
 
-    final invalid = await handler.handleInternal(
+    final invalid = await handler.routeForTest(
       makeRequest("POST", "/plugin/one/command", body: jsonEncode(const {"type": "disable"})),
-      pathParams: const {"id": "one"},
-      queryParams: const {},
-      fragment: null,
     );
     service.error = const PluginManagementPluginNotFoundException("missing");
     final unknown = await _send(handler, pluginId: "missing");
@@ -71,15 +65,12 @@ void main() {
 }
 
 Future<RelayResponse> _send(PostPluginLifecycleCommandHandler handler, {required String pluginId}) {
-  return handler.handleInternal(
+  return handler.routeForTest(
     makeRequest(
       "POST",
       "/plugin/$pluginId/command",
       body: jsonEncode(const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.force).toJson()),
     ),
-    pathParams: {"id": pluginId},
-    queryParams: const {},
-    fragment: null,
   );
 }
 

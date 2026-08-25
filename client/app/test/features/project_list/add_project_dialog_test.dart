@@ -95,7 +95,9 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
             child: const Icon(Icons.add),
           ),
           body: switch (state) {
-            ProjectListLoading() => const Center(child: CircularProgressIndicator()),
+            ProjectListLoading() => Center(
+              child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
+            ),
             ProjectListLoaded() => Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -188,15 +190,15 @@ void main() {
     mockConnectionService = MockConnectionService();
     connectionStatusController = BehaviorSubject<ConnectionStatus>.seeded(
       const ConnectionStatus.connected(
-        config: ServerConnectionConfig(relayHost: "relay.example.com"),
-        health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+        health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
       ),
     );
     // Default: connected with no degraded filesystem access.
     stubConnectionStatus(
       const ConnectionStatus.connected(
-        config: ServerConnectionConfig(relayHost: "relay.example.com"),
-        health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+        health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
       ),
     );
 
@@ -258,7 +260,7 @@ void main() {
     testWidgets("shows the limited-folder-access warning when the bridge reports degraded access", (tester) async {
       stubConnectionStatus(
         const ConnectionStatus.connected(
-          config: ServerConnectionConfig(relayHost: "relay.example.com"),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
           health: HealthResponse(healthy: true, version: "1.0.0", filesystemAccessDegraded: true),
         ),
       );
@@ -284,7 +286,7 @@ void main() {
     });
 
     testWidgets("hides the warning when filesystem access is not degraded", (tester) async {
-      // Default stubbed status has filesystemAccessDegraded: null.
+      // Default stubbed status has filesystemAccessDegraded: false.
       _stubSuggestionsWithEntries(mockCubit, entries: _homeDirEntries);
 
       await tester.pumpWidget(

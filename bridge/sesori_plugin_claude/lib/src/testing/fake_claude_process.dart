@@ -47,6 +47,8 @@ class FakeClaudeProcess({bool stdinCloseCompletes = true}) implements ClaudeProc
 
   bool get stdinClosed => _stdin.closed;
 
+  void failNextStdinWrite() => _stdin.failNextAdd = true;
+
   void completeStdinClose() => _stdin.completeClose();
 
   /// Pushes one stdout frame as an ndjson line.
@@ -109,12 +111,17 @@ class CapturingIOSink({bool closeCompletes = true}) implements IOSink {
   /// Whether the transport closed stdin, which is the protocol's own shutdown
   /// signal.
   bool closed = false;
+  bool failNextAdd = false;
 
   @override
   Encoding encoding = utf8;
 
   @override
   void add(List<int> data) {
+    if (failNextAdd) {
+      failNextAdd = false;
+      throw StateError("test stdin write failure");
+    }
     _buffer.addAll(data);
     while (true) {
       final index = _buffer.indexOf(10);

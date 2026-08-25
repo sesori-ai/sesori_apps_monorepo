@@ -95,11 +95,13 @@ final class PiHistoryMapper({
     required String messageId,
     required PiUserMessageDto message,
     required String? exactText,
+    required String? promptId,
   }) => _mapUserMessage(
     sessionId: sessionId,
     messageId: messageId,
     message: message,
     exactText: exactText,
+    promptId: promptId,
     warnings: <_PiHistoryWarning>{},
   );
 
@@ -108,6 +110,7 @@ final class PiHistoryMapper({
     required String messageId,
     required PiUserMessageDto message,
     required String? exactText,
+    required String? promptId,
     required Set<_PiHistoryWarning> warnings,
   }) {
     final parts = _mapUserContent(
@@ -124,6 +127,7 @@ final class PiHistoryMapper({
         sessionID: sessionId,
         agent: null,
         time: _time(message.timestamp),
+        promptId: promptId,
       ),
       parts: parts,
     );
@@ -236,16 +240,35 @@ final class PiHistoryMapper({
     }
   }
 
-  PluginMessageWithParts mapCompaction({required String sessionId, required String messageId}) {
+  PluginMessageWithParts mapRunningCompaction({required String sessionId, required String messageId}) => _mapCompaction(
+    sessionId: sessionId,
+    messageId: messageId,
+    title: "Compacting context",
+    status: PluginToolStatus.running,
+  );
+
+  PluginMessageWithParts mapCompaction({required String sessionId, required String messageId}) => _mapCompaction(
+    sessionId: sessionId,
+    messageId: messageId,
+    title: "Context compacted",
+    status: PluginToolStatus.completed,
+  );
+
+  PluginMessageWithParts _mapCompaction({
+    required String sessionId,
+    required String messageId,
+    required String title,
+    required PluginToolStatus status,
+  }) {
     final draft = _toolMessage(
       sessionId: sessionId,
       messageId: messageId,
       timestamp: null,
       tool: "compact",
-      title: "Context compacted",
+      title: title,
       output: null,
       error: null,
-      status: PluginToolStatus.completed,
+      status: status,
     );
     return PluginMessageWithParts(info: draft.info, parts: draft.parts);
   }
@@ -325,6 +348,8 @@ final class PiHistoryMapper({
                 messageId: messageId,
                 message: message,
                 exactText: null,
+                // Replayed history cannot recover the originating prompt id.
+                promptId: null,
                 warnings: warnings,
               );
               if (mapped != null) messages.add(_MessageDraft(info: mapped.info, parts: mapped.parts.toList()));
