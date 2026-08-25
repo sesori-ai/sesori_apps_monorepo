@@ -31,3 +31,5 @@ jobs:
       MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       ITC_TEAM_ID: ${{ secrets.ITC_TEAM_ID }}
+      SINGULAR_SDK_KEY: ${{ secrets.SINGULAR_SDK_KEY }}
+      SINGULAR_SDK_SECRET: ${{ secrets.SINGULAR_SDK_SECRET }}

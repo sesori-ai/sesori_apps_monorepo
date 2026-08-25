@@ -51,6 +51,35 @@ dart run build_runner build
 flutter run
 ```
 
+## Singular mobile attribution
+
+The Android/iOS app includes Singular's basic install/session attribution integration. It starts only in eligible
+release builds when both compile-time credentials are present. Debug/profile builds, unsupported platforms, and
+Android Play pre-launch crawls inside the existing build window remain disabled.
+
+Keep credentials outside Git. Create a local JSON file such as:
+
+```json
+{
+  "SESORI_SINGULAR_SDK_KEY": "your-sdk-key",
+  "SESORI_SINGULAR_SDK_SECRET": "your-sdk-secret"
+}
+```
+
+Then pass it to a release build with `--dart-define-from-file=/absolute/path/to/singular.json`. Automated Android and
+iOS release lanes read the optional `SINGULAR_SDK_KEY` and `SINGULAR_SDK_SECRET` GitHub Actions secrets and inject
+them through a temporary mode-0600 file. Both must be configured together; with neither configured, attribution stays
+dormant. Singular's client credentials are embedded in the compiled app by design; this handling keeps them out of
+Git and routine command logs, but does not make them secret from someone inspecting the binary.
+
+The iOS dependency still bundles Singular's vendor privacy manifest even while startup is dormant. Review the binary
+and update Apple/Google store declarations before distributing it; runtime flags do not alter that manifest.
+
+The initial integration does not set a custom user ID or send custom Singular events. Advertising identifiers and
+partner data sharing are limited in SDK configuration, and Android removes both advertising-ID permissions. Enabling
+credentials for a distributed build still requires the privacy/store disclosure checklist in
+[`docs/PRODUCT_ANALYTICS_DISCLOSURE.md`](docs/PRODUCT_ANALYTICS_DISCLOSURE.md).
+
 ## Testing
 
 ```bash
