@@ -38,7 +38,7 @@ compaction commands; and selected message-part/tool-status construction.
 - `dart analyze --fatal-infos` passed in shared, interface, runtime, ACP, Codex,
   Claude, Pi, Cursor, OMP, and OpenCode packages.
 - Full `shared/sesori_shared` suite: 363 passed.
-- Full `sesori_plugin_interface` suite: 158 passed.
+- Full `sesori_plugin_interface` suite: 159 passed.
 - Full `sesori_plugin_runtime` suite: 153 passed.
 - Full ACP suite: 263 passed.
 - Full Codex suite: 380 passed.
@@ -50,4 +50,6 @@ compaction commands; and selected message-part/tool-status construction.
 - Interface model code generation completed with no generated-file changes.
 - Architecture implementation review: approved with no findings.
 - Correctness review: no findings.
+- Interface, ACP, Codex, and Cursor analyzers and full suites passed again after
+  merging Step 27's review fixes forward.
 - `git diff --check`: passed.
