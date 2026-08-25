@@ -232,7 +232,6 @@ abstract class AcpPlugin({
     return AcpApprovalRegistry.forClient(
       client: client,
       emit: emitActivityEvent,
-      onFireAndForgetNotification: handleAgentNotification,
       activeSessionResolver: () => activeTurnSessionId,
     );
   }
@@ -304,9 +303,9 @@ abstract class AcpPlugin({
 
   /// The single handler for agent-originated notifications: replay suppression,
   /// then mapping through [eventMapper] into the event buffer. Also the forward
-  /// target for fire-and-forget extension *requests* reclassified by the
-  /// approval registry (see [AcpApprovalRegistry.fireAndForgetExtensionMethods]),
-  /// so both wire shapes share one mapping path.
+  /// target for fire-and-forget extension *requests* acknowledged and
+  /// re-injected by an approval registry's `handleExtensionRequest` override
+  /// (see `CursorApprovalRegistry`), so both wire shapes share one mapping path.
   void handleAgentNotification(AcpNotification notification) {
     if (notification.method == AcpMethods.sessionUpdate) {
       final sid = notification.params["sessionId"];
@@ -355,7 +354,7 @@ abstract class AcpPlugin({
         _notificationSubscription = client.notifications.listen(handleAgentNotification);
         final registry = buildApprovalRegistry(client);
         _approvalRegistry = registry;
-        registry.attach(client.serverRequests);
+        registry.attach(stream: client.serverRequests);
         _initResult = await _initialize(client);
         _syncWorkState();
         if (!_connected.isClosed) _connected.add(null);
@@ -970,7 +969,7 @@ abstract class AcpPlugin({
       method: AcpMethods.sessionCancel,
       params: {"sessionId": sessionId},
     );
-    _approvalRegistry?.cancelForSession(sessionId);
+    _approvalRegistry?.cancelForSession(sessionId: sessionId);
   }
 
   void _recordSessionActivity(String sessionId) {
@@ -1414,7 +1413,7 @@ abstract class AcpPlugin({
     // ACP requires the client to resolve any permission/question the cancelled
     // turn was blocked on; otherwise the agent keeps waiting on that JSON-RPC
     // request and the phone shows a stale prompt.
-    _approvalRegistry?.cancelForSession(sessionId);
+    _approvalRegistry?.cancelForSession(sessionId: sessionId);
   }
 
   Future<Set<String>> interruptActiveWork({required Duration budget}) {
@@ -1460,7 +1459,7 @@ abstract class AcpPlugin({
     if ((state?.pending ?? 0) > 0) {
       await abortSession(sessionId: sessionId);
     }
-    _approvalRegistry?.cancelForSession(sessionId);
+    _approvalRegistry?.cancelForSession(sessionId: sessionId);
     final canClose = _initResult?.agentCapabilities.closeSession ?? false;
     if (canClose && _residentSessions.contains(sessionId)) {
       try {
@@ -1706,12 +1705,12 @@ abstract class AcpPlugin({
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({
     required String sessionId,
-  }) async => _approvalRegistry?.pendingForSession(sessionId) ?? const [];
+  }) async => _approvalRegistry?.pendingForSession(sessionId: sessionId) ?? const [];
 
   @override
   Future<List<PluginPendingPermission>> getPendingPermissions({
     required String sessionId,
-  }) async => _approvalRegistry?.pendingPermissionsForSession(sessionId) ?? const [];
+  }) async => _approvalRegistry?.pendingPermissionsForSession(sessionId: sessionId) ?? const [];
 
   @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({
@@ -1726,7 +1725,7 @@ abstract class AcpPlugin({
     final sessionIds = _sessionStatuses.keys
         .where((sessionId) => directoryForSession(sessionId: sessionId) == target)
         .toList(growable: false);
-    return registry.pendingForProject(sessionIds);
+    return registry.pendingForProject(sessionIds: sessionIds);
   }
 
   @override
@@ -1735,7 +1734,7 @@ abstract class AcpPlugin({
     required String sessionId,
     required List<List<String>> answers,
   }) async {
-    _approvalRegistry?.replyQuestion(questionId, answers);
+    _approvalRegistry?.replyQuestion(requestId: questionId, answers: answers);
   }
 
   @override
@@ -1743,7 +1742,7 @@ abstract class AcpPlugin({
     // The registry is keyed by the bridge question id; it already knows the
     // session (and clears the pending entry, so awaiting-input drops), so the
     // sessionId argument is not needed here.
-    _approvalRegistry?.rejectQuestion(questionId);
+    _approvalRegistry?.rejectQuestion(requestId: questionId);
   }
 
   @override
@@ -1752,7 +1751,7 @@ abstract class AcpPlugin({
     required String sessionId,
     required PluginPermissionReply reply,
   }) async {
-    _approvalRegistry?.replyPermission(requestId, reply);
+    _approvalRegistry?.replyPermission(requestId: requestId, reply: reply);
   }
 
   @override
@@ -1776,7 +1775,7 @@ abstract class AcpPlugin({
       // A session with any unfinished turn (running or queued behind one)
       // counts as running, so it stays active until its last turn settles.
       final running = (_turnStates[sessionId]?.pending ?? 0) > 0;
-      final awaiting = registry?.hasPendingInput(sessionId) ?? false;
+      final awaiting = registry?.hasPendingInput(sessionId: sessionId) ?? false;
       if (!running && !awaiting) continue;
       (byProject[directoryForSession(sessionId: sessionId)] ??= []).add(
         PluginActiveSession(

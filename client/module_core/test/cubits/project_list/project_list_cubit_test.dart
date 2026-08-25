@@ -2388,6 +2388,10 @@ void main() {
         ).thenAnswer((_) async => ApiResponse.success(const Projects(data: <ProjectSummary>[])));
       }
 
+      Future<ApiResponse<Projects>> successfulResponse({required List<ProjectSummary> projects}) {
+        return Future<ApiResponse<Projects>>.value(ApiResponse.success(Projects(data: projects)));
+      }
+
       test("projects the scan onto the loaded state", () async {
         stubProjects();
         final cubit = buildCubit();
@@ -2409,7 +2413,7 @@ void main() {
         );
       });
 
-      test("refreshes when a scan leaves a live operation", () async {
+      test("refreshes after a committed catalog change", () async {
         stubProjects();
         final cubit = buildCubit();
         addTearDown(cubit.close);
@@ -2417,84 +2421,176 @@ void main() {
         clearInteractions(mockProjectRepository);
         stubProjects();
 
-        // A committed import raises no list invalidation of its own, so this
-        // refresh is the only thing that surfaces what the scan imported.
-        fakeCatalogRescanService.emitSettled();
+        fakeCatalogRescanService.emitCatalogChanged();
         await Future<void>.delayed(Duration.zero);
 
         verify(() => mockProjectRepository.listProjects()).called(1);
       });
 
-      test("keeps a terminal scan through the refresh it triggers", () async {
+      test("keeps a terminal scan through the committed-change refresh", () async {
         stubProjects();
         final cubit = buildCubit();
         addTearDown(cubit.close);
         await Future<void>.delayed(Duration.zero);
         stubProjects();
 
-        // The service publishes its terminal state and then announces the
-        // close, which starts the refresh. That refresh must not erase the row
-        // it was fired for.
         fakeCatalogRescanService.emit(
           const CatalogRescanState.succeeded(
             harnessCount: 1,
             counts: CatalogRescanCounts.delta(newProjects: 2, newSessions: 5),
           ),
         );
-        fakeCatalogRescanService.emitSettled();
+        fakeCatalogRescanService.emitCatalogChanged();
         await Future<void>.delayed(Duration.zero);
 
         expect((cubit.state as ProjectListLoaded).catalogScan, isA<CatalogRescanSucceeded>());
       });
 
-      test("reads again after an in-flight refresh rather than coalescing onto it", () async {
-        stubProjects();
+      test("post-commit data wins over overlapping earlier reads", () async {
+        final olderRefresh = Completer<ApiResponse<Projects>>();
+        final olderFullLoad = Completer<ApiResponse<Projects>>();
+        final postCommit = Completer<ApiResponse<Projects>>();
+        var requestCount = 0;
+        Future<ApiResponse<Projects>> nextResponse() => switch (requestCount++) {
+          0 => successfulResponse(projects: const []),
+          1 => olderRefresh.future,
+          2 => olderFullLoad.future,
+          3 => postCommit.future,
+          _ => throw StateError("unexpected project list request"),
+        };
+        when(() => mockProjectRepository.listProjects()).thenAnswer((_) => nextResponse());
+
         final cubit = buildCubit();
         addTearDown(cubit.close);
         await Future<void>.delayed(Duration.zero);
 
-        // A refresh that started before the import committed.
-        final inFlight = Completer<ApiResponse<Projects>>();
-        when(() => mockProjectRepository.listProjects()).thenAnswer((_) => inFlight.future);
         unawaited(cubit.refreshProjects());
         await Future<void>.delayed(Duration.zero);
-        clearInteractions(mockProjectRepository);
-
-        fakeCatalogRescanService.emitSettled();
+        unawaited(cubit.loadProjects());
         await Future<void>.delayed(Duration.zero);
-        verifyNever(() => mockProjectRepository.listProjects());
+        fakeCatalogRescanService.emitCatalogChanged();
+        await Future<void>.delayed(Duration.zero);
+        expect(requestCount, 4, reason: "the catalog refresh must not coalesce onto the older refresh");
 
-        // Releasing the old request must be followed by a fresh read, or the
-        // imported rows are never seen: the import raises no other signal.
-        stubProjects();
-        inFlight.complete(ApiResponse.success(const Projects(data: <ProjectSummary>[])));
+        postCommit.complete(ApiResponse.success(Projects(data: [projectC])));
         await Future<void>.delayed(Duration.zero);
         await Future<void>.delayed(Duration.zero);
+        expect((cubit.state as ProjectListLoaded).projects, [projectC]);
 
-        verify(() => mockProjectRepository.listProjects()).called(1);
+        olderFullLoad.complete(ApiResponse.success(const Projects(data: <ProjectSummary>[])));
+        olderRefresh.complete(ApiResponse.success(const Projects(data: <ProjectSummary>[])));
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+
+        expect((cubit.state as ProjectListLoaded).projects, [projectC]);
       });
 
-      test("waits for a full load too, not only a silent refresh", () async {
-        // Only the silent path is coalesced, so an initial or retry load is
-        // invisible to it. Landing last, it would overwrite what the scan
-        // imported.
-        final initial = Completer<ApiResponse<Projects>>();
-        when(() => mockProjectRepository.listProjects()).thenAnswer((_) => initial.future);
+      test("a catalog failure that supersedes a full load exits loading", () async {
+        final fullLoad = Completer<ApiResponse<Projects>>();
+        var requestCount = 0;
+        Future<ApiResponse<Projects>> nextResponse() => switch (requestCount++) {
+          0 => successfulResponse(projects: const []),
+          1 => fullLoad.future,
+          2 => Future<ApiResponse<Projects>>.value(ApiResponse.error(ApiError.generic())),
+          _ => successfulResponse(projects: const []),
+        };
+        when(() => mockProjectRepository.listProjects()).thenAnswer((_) => nextResponse());
+
         final cubit = buildCubit();
         addTearDown(cubit.close);
         await Future<void>.delayed(Duration.zero);
-        clearInteractions(mockProjectRepository);
 
-        fakeCatalogRescanService.emitSettled();
+        final load = cubit.loadProjects();
         await Future<void>.delayed(Duration.zero);
-        verifyNever(() => mockProjectRepository.listProjects());
+        final failure = cubit.stream.firstWhere((state) => state is ProjectListFailed);
+        fakeCatalogRescanService.emitCatalogChanged();
 
-        stubProjects();
-        initial.complete(ApiResponse.success(const Projects(data: <ProjectSummary>[])));
-        await Future<void>.delayed(Duration.zero);
+        expect(await failure, isA<ProjectListFailed>());
+        fullLoad.complete(ApiResponse.success(const Projects(data: <ProjectSummary>[])));
+        await load;
+      });
+
+      test("a superseded explicit refresh reports the catalog refresh failure", () async {
+        final explicitRefresh = Completer<ApiResponse<Projects>>();
+        var requestCount = 0;
+        Future<ApiResponse<Projects>> nextResponse() => switch (requestCount++) {
+          0 => successfulResponse(projects: const []),
+          1 => explicitRefresh.future,
+          2 => Future<ApiResponse<Projects>>.value(ApiResponse.error(ApiError.generic())),
+          _ => successfulResponse(projects: const []),
+        };
+        when(() => mockProjectRepository.listProjects()).thenAnswer((_) => nextResponse());
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
         await Future<void>.delayed(Duration.zero);
 
-        verify(() => mockProjectRepository.listProjects()).called(1);
+        final refresh = cubit.refreshProjects();
+        await Future<void>.delayed(Duration.zero);
+        fakeCatalogRescanService.emitCatalogChanged();
+        await Future<void>.delayed(Duration.zero);
+        expect(requestCount, 3);
+
+        explicitRefresh.complete(ApiResponse.success(const Projects(data: <ProjectSummary>[])));
+        expect(await refresh, isFalse);
+        expect(requestCount, 3, reason: "the stale explicit read must not rearm the failed catalog refresh");
+      });
+
+      test("runs a trailing catalog refresh after another commit arrives in flight", () async {
+        final firstPostCommit = Completer<ApiResponse<Projects>>();
+        final secondPostCommit = Completer<ApiResponse<Projects>>();
+        var requestCount = 0;
+        Future<ApiResponse<Projects>> nextResponse() => switch (requestCount++) {
+          0 => successfulResponse(projects: const []),
+          1 => firstPostCommit.future,
+          2 => secondPostCommit.future,
+          _ => throw StateError("unexpected project list request"),
+        };
+        when(() => mockProjectRepository.listProjects()).thenAnswer((_) => nextResponse());
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await Future<void>.delayed(Duration.zero);
+
+        fakeCatalogRescanService
+          ..emitCatalogChanged()
+          ..emitCatalogChanged();
+        await Future<void>.delayed(Duration.zero);
+        expect(requestCount, 2);
+
+        firstPostCommit.complete(ApiResponse.success(Projects(data: [projectA])));
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+        expect(requestCount, 3, reason: "the second commit needs a later snapshot");
+
+        secondPostCommit.complete(ApiResponse.success(Projects(data: [projectC])));
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+        expect((cubit.state as ProjectListLoaded).projects, [projectC]);
+      });
+
+      test("preserves a failed catalog refresh for the next ordinary refresh", () async {
+        var requestCount = 0;
+        Future<ApiResponse<Projects>> nextResponse() => switch (requestCount++) {
+          0 => successfulResponse(projects: const []),
+          1 => Future<ApiResponse<Projects>>.value(ApiResponse.error(ApiError.generic())),
+          2 => successfulResponse(projects: [projectC]),
+          _ => throw StateError("unexpected project list request"),
+        };
+        when(() => mockProjectRepository.listProjects()).thenAnswer((_) => nextResponse());
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await Future<void>.delayed(Duration.zero);
+
+        fakeCatalogRescanService.emitCatalogChanged();
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+        expect(requestCount, 2, reason: "a failed catalog refresh must not retry in a loop");
+
+        expect(await cubit.refreshProjects(), isTrue);
+        expect(requestCount, 3);
+        expect((cubit.state as ProjectListLoaded).projects, [projectC]);
       });
 
       test("forwards the scan intents to the service", () async {
@@ -2514,6 +2610,5 @@ void main() {
         expect(fakeCatalogRescanService.dismissCalls, 1);
       });
     });
-
   });
 }

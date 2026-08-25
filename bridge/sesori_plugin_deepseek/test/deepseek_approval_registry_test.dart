@@ -31,7 +31,6 @@ void main() {
     registry = DeepSeekApprovalRegistry(
       client: client,
       emit: events.add,
-      onFireAndForgetNotification: (_) {},
       api: const DeepSeekAcpApi(pluginId: DeepSeekIdentity.id),
       idGenerator: () => "request-${++nextBridgeId}",
       activeSessionResolver: () => "active-session",
@@ -100,10 +99,13 @@ void main() {
     expect(questions.first.custom, isTrue);
     expect(questions.last.question, "Why?\n\nExplain the tradeoff.");
     expect(
-      registry.replyQuestion("request-1", const [
-        ["Yes", "With safeguards"],
-        ["Because"],
-      ]),
+      registry.replyQuestion(
+        requestId: "request-1",
+        answers: const [
+          ["Yes", "With safeguards"],
+          ["Because"],
+        ],
+      ),
       isTrue,
     );
     expect(fake.written.single["id"], 7);
@@ -117,7 +119,7 @@ void main() {
     ]);
   });
   test("standard permissions retain active-session fallback", () async {
-    registry.attach(client.serverRequests);
+    registry.attach(stream: client.serverRequests);
     fake.emit({
       "jsonrpc": "2.0",
       "id": 6,
@@ -134,7 +136,7 @@ void main() {
 
     final asked = events.single as BridgeSsePermissionAsked;
     expect([asked.sessionID, asked.tool, asked.allowAlways], ["active-session", "edit", false]);
-    expect(registry.replyPermission(asked.requestID, PluginPermissionReply.once), isTrue);
+    expect(registry.replyPermission(requestId: asked.requestID, reply: PluginPermissionReply.once), isTrue);
     expect(fake.written.single["result"], {
       "outcome": {"outcome": "selected", "optionId": "allow-once"},
     });
@@ -157,15 +159,21 @@ void main() {
 
     expect(events.whereType<BridgeSseQuestionAsked>().map((event) => event.sessionID), ["session-1", "session-2"]);
     expect(
-      registry.replyQuestion("request-2", const [
-        ["No"],
-      ]),
+      registry.replyQuestion(
+        requestId: "request-2",
+        answers: const [
+          ["No"],
+        ],
+      ),
       isTrue,
     );
     expect(
-      registry.replyQuestion("request-1", const [
-        ["Yes"],
-      ]),
+      registry.replyQuestion(
+        requestId: "request-1",
+        answers: const [
+          ["Yes"],
+        ],
+      ),
       isTrue,
     );
     expect(fake.written.map((frame) => frame["id"]), [12, 11]);
@@ -192,16 +200,19 @@ void main() {
       );
     }
 
-    registry.cancelForSession("session-1");
+    registry.cancelForSession(sessionId: "session-1");
     await Future<void>.delayed(Duration.zero);
     expect(
-      registry.replyQuestion("request-1", const [
-        ["Yes"],
-      ]),
+      registry.replyQuestion(
+        requestId: "request-1",
+        answers: const [
+          ["Yes"],
+        ],
+      ),
       isFalse,
     );
-    expect(registry.pendingForSession("session-1"), isEmpty);
-    expect(registry.pendingForSession("session-2"), hasLength(1));
+    expect(registry.pendingForSession(sessionId: "session-1"), isEmpty);
+    expect(registry.pendingForSession(sessionId: "session-2"), hasLength(1));
     expect(fake.written.single["error"], {"code": -32603, "message": "aborted"});
   });
   test("plan review exposes fixed options and rejects custom input", () async {
@@ -224,9 +235,12 @@ void main() {
 
     final logs = await _captureWarnings(() async {
       expect(
-        registry.replyQuestion("request-1", const [
-          ["Change it"],
-        ]),
+        registry.replyQuestion(
+          requestId: "request-1",
+          answers: const [
+            ["Change it"],
+          ],
+        ),
         isTrue,
       );
     });
@@ -234,9 +248,12 @@ void main() {
     expect(logs, contains("DeepSeek plan-review questions do not accept custom answers"));
     expect(fake.written.single["error"], {"code": -32603, "message": "invalid answer"});
     expect(
-      registry.replyQuestion("request-1", const [
-        ["Approve"],
-      ]),
+      registry.replyQuestion(
+        requestId: "request-1",
+        answers: const [
+          ["Approve"],
+        ],
+      ),
       isFalse,
     );
   });
@@ -256,9 +273,12 @@ void main() {
     );
     final logs = await _captureWarnings(() async {
       expect(
-        registry.replyQuestion("request-1", const [
-          ["A", "A"],
-        ]),
+        registry.replyQuestion(
+          requestId: "request-1",
+          answers: const [
+            ["A", "A"],
+          ],
+        ),
         isTrue,
       );
     });
@@ -280,7 +300,7 @@ void main() {
         ],
       }),
     );
-    expect(registry.replyQuestion("request-1", const [[]]), isTrue);
+    expect(registry.replyQuestion(requestId: "request-1", answers: const [<String>[]]), isTrue);
     await Future<void>.delayed(Duration.zero);
     expect(fake.written.single["error"], {"code": -32603, "message": "invalid answer"});
     expect(registry.hasAnyPendingInput, isFalse);
@@ -295,9 +315,12 @@ void main() {
       }),
     );
     expect(
-      registry.replyQuestion("request-1", [
-        ["x".padRight(2049, "x")],
-      ]),
+      registry.replyQuestion(
+        requestId: "request-1",
+        answers: [
+          ["x".padRight(2049, "x")],
+        ],
+      ),
       isTrue,
     );
     await Future<void>.delayed(Duration.zero);

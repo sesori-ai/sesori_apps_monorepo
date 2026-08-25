@@ -31,7 +31,6 @@ class DeepSeekPlugin({
   AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) => DeepSeekApprovalRegistry(
     client: client,
     emit: emitActivityEvent,
-    onFireAndForgetNotification: handleAgentNotification,
     activeSessionResolver: () => activeTurnSessionId,
     api: api,
   );

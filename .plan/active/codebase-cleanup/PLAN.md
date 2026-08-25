@@ -967,35 +967,69 @@ All verified with whole-word grep over lib, bin, and test across the repo.
 
 ### Step 27 — pending-permission registry base
 
-- `acp_approval_registry.dart` (520) and codex `approval_registry.dart` (532)
-  share a ~215-line skeleton (bridge-request-id allocation, pending map keyed by
-  bridge id, `cancelForSession`, `hasAnyPendingInput`,
-  `PluginPendingPermission` construction, `_asMap`/`_str`); Claude's registry is
-  structurally different and stays; Cursor-specific branches currently live in
-  the ACP base.
-- Change: `PendingPermissionRegistry` base in `sesori_plugin_interface` — the
-  contract-owning layer that already hosts implementor support such as
-  `SteadyPluginLifecycle` and `PluginStatusController`, and whose entire
-  vocabulary here is contract types (`BridgeSseEvent`,
-  `PluginPendingPermission`); both plugins also depend on foundation and shared,
-  but those are transport/protocol layers, not the home for a plugin-contract
-  base — owning id allocation, pending map, per-session cancel,
-  `hasAnyPendingInput`, emit hook; ACP/Codex subclasses keep protocol mapping;
-  Cursor branches move to the Cursor subclass; the base carries no ACP, Codex,
-  or Cursor branch. `PluginPendingPermission`/`PluginPermissionReply` unchanged.
-- Home decision: two reviews disagree on whether a stateful base belongs in
-  the contract package (the plan review accepted the `PluginStatusController`/
-  `SteadyPluginLifecycle` precedent; PR #1017's review and the Step 1 PR review
-  objected). The precedent is the default; if the Step 27 implementation
-  review rejects it, the base moves to `sesori_plugin_runtime`, which Step 29
-  makes a dependency of ACP, Codex, and Claude, as the plugin-only shared
-  implementation package. Either way it is one base, not three registries.
+- Current re-verification finds `acp_approval_registry.dart` and Codex
+  `approval_registry.dart` still duplicate bridge-request-id allocation,
+  pending storage keyed by bridge id, typed stream attachment/disposal,
+  session/project snapshots, pending-input queries, reply/reject removal,
+  clearing SSEs, per-session cancellation, and settle-all disposal. Their JSON
+  parsing, request classification, wire responders, permission summaries, and
+  question builders are not the same invariant and stay local. Claude remains
+  structurally different: response delivery can fail without consuming an
+  entry, it owns allowed-tool/denial state and project-update events, and it has
+  no request stream or JSON-RPC responder.
+- Change: add `PendingPermissionRegistry<TRequest, TPayload>` in
+  `sesori_plugin_interface`, the contract-owning layer that already hosts
+  implementor support such as `SteadyPluginLifecycle` and
+  `PluginStatusController`. It owns only generated `br-N` ids, opaque payload
+  storage alongside exact `PluginPendingPermission`/`PluginPendingQuestion`
+  snapshots, request-stream subscription, session/project queries,
+  `hasPendingInput`/`hasAnyPendingInput`/pending session ids, removal on
+  reply/reject, contract clearing events, session cancellation, and settle-all
+  disposal with observable recovered failures. Protected registration methods
+  allocate the id, store one permission/question snapshot atomically, emit the
+  corresponding asked event, and return the id. Each private entry contains
+  only the opaque `TPayload` and one permission/question contract snapshot.
+  Subclasses implement request dispatch and supply typed protocol callbacks for
+  permission reply, question reply, question rejection, and cancellation. Neutral
+  cancellation-reason and question-reply-outcome enums let those hooks choose
+  protocol responses without exposing ACP/Codex ids, methods, params, or
+  builders to the interface package. Ordinary reply/reject removes the entry
+  before invoking its protocol hook, preserving current ACP/Codex behavior: a
+  thrown responder consumes the entry and emits no clearing SSE. Cancellation
+  and disposal catch and log each failed protocol resolution, continue settling
+  the remaining entries, and emit each contract clearing event independently.
+- ACP and Codex subclasses retain all request classification, session parsing,
+  response payloads/errors, option selection, permission summaries, question
+  builders, and malformed-answer behavior. An ACP invalid answer still consumes
+  and declines the request, emits question rejection, and returns handled.
+  `_asMap`/string parsing remain local for Step 28. `PluginPendingPermission`,
+  `PluginPendingQuestion`, and `PluginPermissionReply` wire shapes are unchanged.
+- `sesori_plugin_interface` remains the owner: the base depends only on Dart
+  async and interface-owned contract/event/log types. Moving it into
+  `sesori_plugin_runtime` would make ACP and its Cursor, OMP, Hermes, and DeepSeek
+  consumers depend on managed-process supervision for unrelated approval state.
+  There is no runtime-package fallback in this step.
+- Move Cursor's fire-and-forget request acknowledgement/reinjection
+  (`cursor/generate_image`, `cursor/update_todos`) and its notification sink out
+  of the ACP registry into `CursorApprovalRegistry.handleExtensionRequest`.
+  `CursorPluginImpl.buildApprovalRegistry` continues wiring
+  `handleAgentNotification` into the Cursor-owned constructor callback. Cursor
+  responds with the empty ACK before reinjecting an `AcpNotification`, catches
+  and logs reinjection failure with the method/error/stack, and returns handled
+  so one malformed notification cannot break approval routing. The ACP base,
+  base `AcpPlugin`, and DeepSeek constructor contain no Cursor method set or
+  notification callback. ACP's active-session fallback remains because
+  DeepSeek now also relies on it. DeepSeek remains an ACP subclass and registers
+  its questions through the shared engine; its DTO mapping and strict answer
+  validation stay local.
 - Doc comments on the `BridgePluginApi` question/permission methods state the
   pending-input lifecycle expectation (reply/dispose/cancel must resolve or
   log), per PR #1017 Step 8.
-- Verify: `acp_approval_registry_test*`, codex approval tests,
-  `cursor_approval_registry_test`, claude approval tests; approval correctness is
-  high-stakes — per-plugin tests are the contract.
+- Verify: focused interface tests for ids/storage/query/removal/events,
+  cancellation isolation, disposal, and recovered-failure logging; ACP and
+  Codex protocol integration tests; Cursor fire-and-forget/question tests;
+  DeepSeek mapping/validation tests; Claude approval tests unchanged. Approval
+  correctness is high-stakes, so every affected plugin suite remains required.
 
 ### Step 28 — small plugin helpers and lifecycle wrappers
 

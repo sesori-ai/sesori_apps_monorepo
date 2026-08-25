@@ -7,7 +7,6 @@ import "api/models/deepseek_protocol_dto.dart";
 class DeepSeekApprovalRegistry({
   required AcpStdioClient client,
   required super.emit,
-  required super.onFireAndForgetNotification,
   required final DeepSeekAcpApi api,
   super.idGenerator,
   required super.activeSessionResolver,
@@ -25,9 +24,7 @@ class DeepSeekApprovalRegistry({
     try {
       final parsed = api.parseQuestionRequest(request.params);
       final questions = parsed.questions.map(_mapQuestion).toList(growable: false);
-      final bridgeId = generateBridgeId();
       addPendingQuestion(
-        bridgeRequestId: bridgeId,
         acpId: request.id,
         sessionId: parsed.sessionId,
         questions: questions,
@@ -43,14 +40,6 @@ class DeepSeekApprovalRegistry({
           ).toJson();
         },
         resolutionBuilder: null,
-      );
-      emit(
-        BridgeSseQuestionAsked(
-          id: bridgeId,
-          sessionID: parsed.sessionId,
-          displaySessionId: parsed.sessionId,
-          questions: questions,
-        ),
       );
     } on Object catch (error, stack) {
       Log.w("[deepseek] invalid question request", error, stack);

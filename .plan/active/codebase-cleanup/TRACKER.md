@@ -262,6 +262,9 @@ Fixed titles and order. Status is GitHub's; evidence is in `steps/step-NN.md`.
   decisions offered to D1); recorded what is not adopted and why in PLAN.md.
 - **Owner decisions (2026-08-22):** D1 confirmed at `≥ v1.4.0`; D2 approved;
   #1018 kept as the single plan and #1017 closed in its favor.
+- **Step 27 architecture implementation review (2026-08-24):** approved with
+  no findings; `PendingPermissionRegistry` remains in
+  `sesori_plugin_interface` as planned.
 - **Step 1 PR review round 3 (bot, 2026-08-22):** six new findings; five
   applied (Steps 4 and 20 added to the implementation-review list; Step 7
   moves `plugin_runtime.dart` to `api/` and keeps `runtime/` as the
