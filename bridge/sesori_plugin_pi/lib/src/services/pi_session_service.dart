@@ -739,9 +739,14 @@ final class PiSessionService({
     ];
     final agentInitiatedTurnFailed = affected.isEmpty && state.agentRunning;
     if (affected.isEmpty && !agentInitiatedTurnFailed) return;
+    final failure = PiRpcProcessExitException(exitCode: exit.exitCode);
     _clearCompaction(sessionId: exit.sessionId);
     state.agentRunning = false;
     if (agentInitiatedTurnFailed) {
+      Log.w(
+        "[pi] resident process exited during an extension-initiated turn for session id=${exit.sessionId}",
+        failure,
+      );
       state.status = const PluginSessionStatus.idle();
       _emit(
         BridgeSseSessionStatus(
@@ -768,7 +773,6 @@ final class PiSessionService({
         ),
       );
     }
-    final failure = PiRpcProcessExitException(exitCode: exit.exitCode);
     if (hasUncancelled) {
       Log.w("[pi] resident process exited during active turns for session id=${exit.sessionId}", failure);
     }

@@ -1773,32 +1773,37 @@ void main() {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process])..idleTimeout = null;
     addTearDown(fixture.dispose);
-    final service = fixture.service();
+    late PiSessionService service;
     final events = <BridgeSseEvent>[];
-    service.events.listen(events.add);
+    final warnings = await _captureWarnings(() async {
+      service = fixture.service();
+      service.events.listen(events.add);
 
-    await service.sendPrompt(
-      sessionId: "session",
-      promptId: "prompt-before-extension-exit",
-      directory: "/project",
-      parts: [const PluginPromptPart.text(text: "start")],
-      userVisibleText: "start",
-      variant: null,
-      model: null,
-    );
-    await _answerEntries(process);
-    final prompt = await waitForCommand(process: process, type: "prompt");
-    process.emit(frame: {"type": "agent_start"});
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
-    process.emit(frame: {"type": "agent_settled"});
-    await _waitForIdle(service: service, sessionId: "session");
-    events.clear();
+      await service.sendPrompt(
+        sessionId: "session",
+        promptId: "prompt-before-extension-exit",
+        directory: "/project",
+        parts: [const PluginPromptPart.text(text: "start")],
+        userVisibleText: "start",
+        variant: null,
+        model: null,
+      );
+      await _answerEntries(process);
+      final prompt = await waitForCommand(process: process, type: "prompt");
+      process.emit(frame: {"type": "agent_start"});
+      process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+      process.emit(frame: {"type": "agent_settled"});
+      await _waitForIdle(service: service, sessionId: "session");
+      events.clear();
 
-    process.emit(frame: {"type": "agent_start"});
-    await _waitForEvent<BridgeSseSessionStatus>(events: events);
-    process.exit(code: 9);
-    await _waitForEvent<BridgeSseSessionError>(events: events);
+      process.emit(frame: {"type": "agent_start"});
+      await _waitForEvent<BridgeSseSessionStatus>(events: events);
+      process.exit(code: 9);
+      await _waitForEvent<BridgeSseSessionError>(events: events);
+    });
 
+    expect(warnings, contains("extension-initiated turn for session id=session"));
+    expect(warnings, contains("PiRpcProcessExitException(exitCode: 9)"));
     expect(service.sessionStatuses["session"], const PluginSessionStatus.idle());
     expect(service.currentWorkState, PluginWorkState.idle);
     expect(events.whereType<BridgeSseSessionIdle>(), hasLength(1));
