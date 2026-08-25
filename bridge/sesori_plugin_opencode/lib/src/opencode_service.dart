@@ -8,7 +8,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginAgent,
         PluginApiException,
         PluginCommand,
-        PluginCommandSource,
         PluginMessageWithParts,
         PluginPermissionReply,
         PluginProject,
@@ -37,13 +36,7 @@ class OpenCodeService(
   /// [sendCompaction].
   static const String compactionCommandName = "compact";
 
-  static const PluginCommand _compactionCommand = PluginCommand(
-    name: compactionCommandName,
-    description: "Summarize the conversation so far to free up the context window",
-    provider: null,
-    source: PluginCommandSource.command,
-    subtask: null,
-  );
+  static final PluginCommand _compactionCommand = PluginCommand.compaction(name: compactionCommandName);
 
   /// Signals that service-owned tracker bookkeeping changed observable state
   /// and the consumer (the plugin) should resync work state and re-emit its

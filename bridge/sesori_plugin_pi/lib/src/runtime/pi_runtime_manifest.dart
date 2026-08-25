@@ -94,5 +94,5 @@ class const PiRuntimeManifest() extends RuntimeManifest {
 
   @override
   String downloadUrlFor({required RuntimeAsset asset}) =>
-      "https://github.com/earendil-works/pi/releases/download/v${bundledVersion.raw}/${asset.assetName}";
+      githubReleaseAssetUrl(repository: "earendil-works/pi", tag: "v${bundledVersion.raw}", asset: asset);
 }

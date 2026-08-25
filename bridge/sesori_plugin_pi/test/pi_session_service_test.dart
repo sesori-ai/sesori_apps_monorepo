@@ -1415,8 +1415,8 @@ void main() {
     final runningMessage = events.whereType<BridgeSseMessageUpdated>().single;
     final runningPart = events.whereType<BridgeSseMessagePartUpdated>().single.part;
     expect(runningPart.messageID, runningMessage.info["id"]);
-    expect(runningPart.state?.status, PluginToolStatus.running);
-    expect(runningPart.state?.title, "Compacting context");
+    expect(runningPart.state.status, PluginToolStatus.running);
+    expect(runningPart.state.title, "Compacting context");
 
     process.emit(frame: {"type": "compaction_end", "aborted": false, "willRetry": false});
     await pump();
@@ -1424,8 +1424,8 @@ void main() {
     expect(events.whereType<BridgeSseMessageUpdated>().last.info["id"], runningMessage.info["id"]);
     final completedPart = events.whereType<BridgeSseMessagePartUpdated>().last.part;
     expect(completedPart.id, runningPart.id);
-    expect(completedPart.state?.status, PluginToolStatus.completed);
-    expect(completedPart.state?.title, "Context compacted");
+    expect(completedPart.state.status, PluginToolStatus.completed);
+    expect(completedPart.state.title, "Context compacted");
 
     process.emit(frame: {"type": "agent_start"});
     process.emitResponse(id: prompt["id"]! as String, command: "prompt");
@@ -1681,6 +1681,132 @@ void main() {
 
     expect(warnings, isNot(contains("abort command failed")));
     expect(service.sessionStatuses["session"], const PluginSessionStatus.idle());
+    expect(fixture.repository.residentSessionIds, isEmpty);
+  });
+
+  test("extension-initiated idle turns remain visible and reset resident idleness", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final clock = _ManualClock();
+    final service = fixture.service(clock: clock);
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-extension",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "start")],
+      userVisibleText: "start",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+    await pump();
+    expect(clock.delays, [const Duration(minutes: 5)]);
+    events.clear();
+
+    process.emit(frame: {"type": "agent_start"});
+    await _waitForEvent<BridgeSseSessionStatus>(events: events);
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
+    expect(service.currentWorkState, PluginWorkState.busy);
+
+    clock.elapse();
+    await pump();
+    expect(process.killed, isFalse);
+
+    process.emit(
+      frame: {
+        "type": "message_end",
+        "message": {
+          "role": "custom",
+          "content": "[PR Monitor] report",
+          "display": true,
+          "timestamp": 100,
+        },
+      },
+    );
+    process.emit(
+      frame: {
+        "type": "message_end",
+        "message": {
+          "role": "assistant",
+          "content": [
+            {"type": "text", "text": "Handled report"},
+          ],
+          "provider": "provider",
+          "model": "model",
+          "stopReason": "stop",
+          "errorMessage": null,
+          "timestamp": 101,
+        },
+      },
+    );
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+    await _waitForEventCount<BridgeSseMessageUpdated>(events: events, count: 2);
+
+    expect(
+      events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.text),
+      containsAllInOrder(["[PR Monitor] report", "Handled report"]),
+    );
+    expect(
+      events.whereType<BridgeSseSessionStatus>().map((event) => event.status["type"]),
+      ["busy", "idle"],
+    );
+    expect(events.whereType<BridgeSseSessionIdle>(), hasLength(1));
+    expect(service.currentWorkState, PluginWorkState.idle);
+    expect(clock.delays, [const Duration(minutes: 5), const Duration(minutes: 5)]);
+
+    clock.elapse();
+    await pump();
+    expect(process.killed, isTrue);
+  });
+
+  test("extension-initiated process exit reports failure and returns idle", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process])..idleTimeout = null;
+    addTearDown(fixture.dispose);
+    late PiSessionService service;
+    final events = <BridgeSseEvent>[];
+    final warnings = await _captureWarnings(() async {
+      service = fixture.service();
+      service.events.listen(events.add);
+
+      await service.sendPrompt(
+        sessionId: "session",
+        promptId: "prompt-before-extension-exit",
+        directory: "/project",
+        parts: [const PluginPromptPart.text(text: "start")],
+        userVisibleText: "start",
+        variant: null,
+        model: null,
+      );
+      await _answerEntries(process);
+      final prompt = await waitForCommand(process: process, type: "prompt");
+      process.emit(frame: {"type": "agent_start"});
+      process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+      process.emit(frame: {"type": "agent_settled"});
+      await _waitForIdle(service: service, sessionId: "session");
+      events.clear();
+
+      process.emit(frame: {"type": "agent_start"});
+      await _waitForEvent<BridgeSseSessionStatus>(events: events);
+      process.exit(code: 9);
+      await _waitForEvent<BridgeSseSessionError>(events: events);
+    });
+
+    expect(warnings, contains("extension-initiated turn for session id=session"));
+    expect(warnings, contains("PiRpcProcessExitException(exitCode: 9)"));
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.idle());
+    expect(service.currentWorkState, PluginWorkState.idle);
+    expect(events.whereType<BridgeSseSessionIdle>(), hasLength(1));
     expect(fixture.repository.residentSessionIds, isEmpty);
   });
 

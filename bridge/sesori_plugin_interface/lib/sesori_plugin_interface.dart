@@ -29,6 +29,7 @@ export "src/lifecycle/runtime_provision_progress.dart";
 export "src/lifecycle/start_abort_signal.dart";
 export "src/lifecycle/steady_plugin_lifecycle.dart";
 export "src/log.dart";
+export "src/messages/attachment_normalization.dart";
 export "src/models/plugin_active_session.dart";
 export "src/models/plugin_agent.dart";
 export "src/models/plugin_command.dart";

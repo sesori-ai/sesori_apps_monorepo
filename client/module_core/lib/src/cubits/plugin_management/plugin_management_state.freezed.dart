@@ -1896,7 +1896,7 @@ $ApiErrorCopyWith<$Res> get error {
 
 
 class PluginManagementReady implements PluginManagementState {
-  const PluginManagementReady({required this.response, required this.refresh, required this.action, required this.authentication, required  Map<String, PluginInstallProgress> installs}): _installs = installs;
+  const PluginManagementReady({required this.response, required this.refresh, required this.action, required this.authentication, required  Map<String, PluginInstallProgress> installs, required  Set<String> scanningPluginIds, required  Map<String, CatalogRescanStartResult> scanRejections}): _installs = installs,_scanningPluginIds = scanningPluginIds,_scanRejections = scanRejections;
   
 
  final  PluginManagementResponse response;
@@ -1912,6 +1912,30 @@ class PluginManagementReady implements PluginManagementState {
   return EqualUnmodifiableMapView(_installs);
 }
 
+/// Harnesses with a catalog scan in flight, whether this screen started it
+/// or the lists did. Their scan action is not offered again while it runs.
+ final  Set<String> _scanningPluginIds;
+/// Harnesses with a catalog scan in flight, whether this screen started it
+/// or the lists did. Their scan action is not offered again while it runs.
+ Set<String> get scanningPluginIds {
+  if (_scanningPluginIds is EqualUnmodifiableSetView) return _scanningPluginIds;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableSetView(_scanningPluginIds);
+}
+
+/// Why a targeted scan was turned down, keyed by the harness the user
+/// named. An accepted start is never recorded: the card reports it by
+/// disabling its own action, and the aggregate row reports the run.
+ final  Map<String, CatalogRescanStartResult> _scanRejections;
+/// Why a targeted scan was turned down, keyed by the harness the user
+/// named. An accepted start is never recorded: the card reports it by
+/// disabling its own action, and the aggregate row reports the run.
+ Map<String, CatalogRescanStartResult> get scanRejections {
+  if (_scanRejections is EqualUnmodifiableMapView) return _scanRejections;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_scanRejections);
+}
+
 
 /// Create a copy of PluginManagementState
 /// with the given fields replaced by the non-null parameter values.
@@ -1923,16 +1947,16 @@ $PluginManagementReadyCopyWith<PluginManagementReady> get copyWith => _$PluginMa
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementReady&&(identical(other.response, response) || other.response == response)&&(identical(other.refresh, refresh) || other.refresh == refresh)&&(identical(other.action, action) || other.action == action)&&(identical(other.authentication, authentication) || other.authentication == authentication)&&const DeepCollectionEquality().equals(other._installs, _installs));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementReady&&(identical(other.response, response) || other.response == response)&&(identical(other.refresh, refresh) || other.refresh == refresh)&&(identical(other.action, action) || other.action == action)&&(identical(other.authentication, authentication) || other.authentication == authentication)&&const DeepCollectionEquality().equals(other._installs, _installs)&&const DeepCollectionEquality().equals(other._scanningPluginIds, _scanningPluginIds)&&const DeepCollectionEquality().equals(other._scanRejections, _scanRejections));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,response,refresh,action,authentication,const DeepCollectionEquality().hash(_installs));
+int get hashCode => Object.hash(runtimeType,response,refresh,action,authentication,const DeepCollectionEquality().hash(_installs),const DeepCollectionEquality().hash(_scanningPluginIds),const DeepCollectionEquality().hash(_scanRejections));
 
 @override
 String toString() {
-  return 'PluginManagementState.ready(response: $response, refresh: $refresh, action: $action, authentication: $authentication, installs: $installs)';
+  return 'PluginManagementState.ready(response: $response, refresh: $refresh, action: $action, authentication: $authentication, installs: $installs, scanningPluginIds: $scanningPluginIds, scanRejections: $scanRejections)';
 }
 
 
@@ -1943,7 +1967,7 @@ abstract mixin class $PluginManagementReadyCopyWith<$Res> implements $PluginMana
   factory $PluginManagementReadyCopyWith(PluginManagementReady value, $Res Function(PluginManagementReady) _then) = _$PluginManagementReadyCopyWithImpl;
 @useResult
 $Res call({
- PluginManagementResponse response, PluginManagementRefreshState refresh, PluginManagementActionState action, PluginAuthenticationPresentationState authentication, Map<String, PluginInstallProgress> installs
+ PluginManagementResponse response, PluginManagementRefreshState refresh, PluginManagementActionState action, PluginAuthenticationPresentationState authentication, Map<String, PluginInstallProgress> installs, Set<String> scanningPluginIds, Map<String, CatalogRescanStartResult> scanRejections
 });
 
 
@@ -1960,14 +1984,16 @@ class _$PluginManagementReadyCopyWithImpl<$Res>
 
 /// Create a copy of PluginManagementState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? response = null,Object? refresh = null,Object? action = null,Object? authentication = null,Object? installs = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? response = null,Object? refresh = null,Object? action = null,Object? authentication = null,Object? installs = null,Object? scanningPluginIds = null,Object? scanRejections = null,}) {
   return _then(PluginManagementReady(
 response: null == response ? _self.response : response // ignore: cast_nullable_to_non_nullable
 as PluginManagementResponse,refresh: null == refresh ? _self.refresh : refresh // ignore: cast_nullable_to_non_nullable
 as PluginManagementRefreshState,action: null == action ? _self.action : action // ignore: cast_nullable_to_non_nullable
 as PluginManagementActionState,authentication: null == authentication ? _self.authentication : authentication // ignore: cast_nullable_to_non_nullable
 as PluginAuthenticationPresentationState,installs: null == installs ? _self._installs : installs // ignore: cast_nullable_to_non_nullable
-as Map<String, PluginInstallProgress>,
+as Map<String, PluginInstallProgress>,scanningPluginIds: null == scanningPluginIds ? _self._scanningPluginIds : scanningPluginIds // ignore: cast_nullable_to_non_nullable
+as Set<String>,scanRejections: null == scanRejections ? _self._scanRejections : scanRejections // ignore: cast_nullable_to_non_nullable
+as Map<String, CatalogRescanStartResult>,
   ));
 }
 

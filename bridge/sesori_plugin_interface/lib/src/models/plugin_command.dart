@@ -12,6 +12,13 @@ enum PluginCommandSource() {
 
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginCommand with _$PluginCommand {
+  static PluginCommand compaction({required String name}) => PluginCommand(
+    name: name,
+    description: "Summarize the conversation so far to free up the context window",
+    provider: null,
+    source: PluginCommandSource.command,
+  );
+
   // ignore: no_slop_linter/prefer_required_named_parameters, generated public model signature
   const factory({
     required String name,

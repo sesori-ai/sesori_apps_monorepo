@@ -1033,42 +1033,40 @@ All verified with whole-word grep over lib, bin, and test across the repo.
 
 ### Step 28 — small plugin helpers and lifecycle wrappers
 
-- `_asMap` ×6, non-empty-string helper ×6 (cursor's silently accepts empty —
-  third drift), `PluginMessagePart(… retryError: null …)` ×18 across 10 files,
-  terminal-status checks ×3, compaction `PluginCommand` literal ×3,
-  `PluginStaleOptionsException` ternary ×7, ACP `configOptions` parsing
-  duplicated between `cursor_catalog_mapper.dart:148-220` and
-  `omp_catalog_repository.dart:118-183`; `_stringOrNull/_intOrNull/_stringList/
-  _timestampOrNull` duplicated between claude and pi DTO models;
-  `_decodeErrorForLog` (claude/codex); `claude_bridge_plugin.dart` (87) vs
-  `pi_bridge_plugin.dart` (85) near-identical lifecycle wrappers.
-- Change: `PluginMessagePart.text/thinking/tool` named constructors,
-  `PluginToolStatus.isTerminal`, `PluginCommand.compaction`, and a neutral
-  `ProcessSpawnOutcome` enum (next to `HostProcessService`/`SpawnedProcess`) in
-  `sesori_plugin_interface`; `asStringKeyedMap`/`nonEmptyString` beside
-  `jsonDecodeMap` in `shared/sesori_shared/lib/src/extensions/sugar_dart.dart`
-  — this step therefore modifies `sesori_shared`, considers every bridge and
-  client consumer of that file, and runs the shared suite;
-  `AcpConfigOptionParser` in the ACP base; a `SteadyPluginLifecycle` teardown
-  helper for the Claude/Pi wrappers; the Claude and Pi tracked-work copies
-  (`claude_session_service.dart:37,99`, `pi_session_service.dart:130`) migrate
-  to the Step 15 `PendingOperations`. From PR #1017 finding F9:
-  `_tryNormalizeBase64` byte-identical in the ACP/Codex/OpenCode mappers (+ a
-  Pi variant adopted only if byte-equivalent) and the ACP/Codex MIME
-  normalization/essence helpers → pure functions
-  `tryNormalizeBase64({required value})`, `normalizeMimeValue`, `mimeEssence`
-  in `sesori_plugin_interface/lib/src/messages/attachment_normalization.dart`
-  beside the existing attachment validators (stateless, I/O-free); the GitHub
-  release-asset URL assembly repeated in five runtime manifests → a default
-  `Uri releaseAssetUrl({required String assetName})` on the manifest base (a
-  manifest with a different tag convention overrides and says why). Plugin
-  catch hygiene: the six comment-only best-effort catches in
-  `codex approval_registry.dart:118,127`, `codex_app_server_client.dart:207,213`,
-  `codex_plugin_impl.dart:1166,1193`, and `codex_config_reader.dart:54` gain a
-  debug log; `opencode_api.dart:41`/`acp_plugin.dart:467` health probes stay
-  silent by design and say so in a comment.
-- Verify: mapper/registry tests of each touched plugin; `dart test` and
-  `dart analyze --fatal-infos` in `shared/sesori_shared`.
+- Re-verification retains exact small copies only. Claude and Pi duplicate the
+  same first-error/all-cleanups shutdown sequence, process-spawn outcome, and
+  global tracked teardown sets. Cursor and OMP duplicate ACP config-option
+  selection and flattening. ACP/Codex/OpenCode share attachment base64
+  normalization, ACP/Codex share MIME normalization, four GitHub manifests
+  share release-asset URL assembly, and three plugins construct the same
+  compaction command. Repeated text/reasoning/tool message parts and terminal
+  tool-status checks remain byte-equivalent in Claude/Pi and their trackers.
+- Add `PluginMessagePart.fromText/fromThinking/fromTool`,
+  `PluginToolStatus.isTerminal`, `PluginCommand.compaction`, and neutral
+  `ProcessSpawnOutcome` in `sesori_plugin_interface`. Add a protected
+  `SteadyPluginLifecycle.runShutdownCleanups` that attempts every cleanup and
+  rethrows the first error with its original stack. Claude and Pi use these
+  primitives; their global tracked teardown sets use Step 15
+  `PendingOperations`, while Claude's per-session map and Pi's per-session idle
+  future remain local.
+- Add `asStringKeyedMap` and `nonEmptyString` beside `jsonDecodeMap` in
+  `sesori_shared`, and migrate only byte-equivalent consumers. Cursor's
+  empty-string acceptance and OpenCode's empty-map fallback remain local. Add
+  ACP-owned `AcpConfigOptionParser` for Cursor/OMP config options while keeping
+  each plugin's output model local.
+- Add pure attachment base64/MIME normalization in
+  `sesori_plugin_interface/lib/src/messages/attachment_normalization.dart` and
+  migrate exact ACP/Codex/OpenCode copies. Pi's variant stays local because its
+  fallback contract differs. Claude/Pi DTO scalar parsers and Claude/Codex
+  `_decodeErrorForLog` stay local because their validation and privacy behavior
+  are not equivalent.
+- Add `RuntimeManifest.githubReleaseAssetUrl` for OpenCode, Codex, OMP, and Pi;
+  each manifest still owns its exact repository and tag (`v` versus Codex's
+  `rust-v`), while Cursor's non-GitHub URL is unchanged. Add contextual logs to
+  the remaining Codex swallow-and-continue catches. Collapse repeated stale
+  selection exception construction only inside Claude and Pi.
+- Verify: analyzers and full suites for shared, interface, runtime, ACP, Codex,
+  Claude, Pi, Cursor, OMP, and OpenCode; architecture implementation review.
 
 ### Step 29 — stdio transport plumbing
 
@@ -1700,4 +1698,5 @@ one bridge layer tree that matches its architecture document, one fake per
 shared contract, tested primitives instead of hand-rolled lanes and
 request tables, sealed states where flags used to coordinate, dated and correctly
 labelled compatibility markers with a recorded support baseline, CI covering the
-shared crypto/protocol package, and no database or default wire-contract change.
+shared crypto/protocol package, no database change, and only Step 28's additive
+non-null message-part defaults changing the default wire contract.

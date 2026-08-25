@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:collection";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PendingOperations;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
@@ -96,7 +97,7 @@ final class ClaudeSessionService({
   final StreamController<BridgeSseEvent> _events = StreamController.broadcast();
   final StreamController<ClaudeTurnDispatched> _dispatches = StreamController.broadcast(sync: true);
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.idle);
-  final Set<Future<void>> _inFlightTeardowns = {};
+  final PendingOperations _inFlightTeardowns = PendingOperations();
   final Map<String, Future<void>> _teardownsBySession = {};
   late final StreamSubscription<ClaudeSessionProcessEvent> _processEvents;
   Future<void>? _disposeFuture;
@@ -542,7 +543,7 @@ final class ClaudeSessionService({
     await _processEvents.cancel();
     _approvals.dispose();
     await _processes.dispose();
-    await Future.wait(_inFlightTeardowns.toList(growable: false));
+    await _inFlightTeardowns.drain();
     await _events.close();
     await _dispatches.close();
     await _workState.close();
@@ -588,12 +589,11 @@ final class ClaudeSessionService({
         if (_clock.now().isAfter(wakeupAt.add(idleTimeout))) break;
       }
       final teardown = _processes.teardown(sessionId: sessionId);
-      _inFlightTeardowns.add(teardown);
+      unawaited(_inFlightTeardowns.track(operation: teardown));
       _teardownsBySession[sessionId] = teardown;
       try {
         await teardown;
       } finally {
-        _inFlightTeardowns.remove(teardown);
         if (identical(_teardownsBySession[sessionId], teardown)) {
           unawaited(_teardownsBySession.remove(sessionId));
         }

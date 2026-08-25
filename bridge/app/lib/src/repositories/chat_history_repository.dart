@@ -215,20 +215,24 @@ class ChatHistoryRepository({
       return attachment;
     }
 
-    final state = part.state;
-    return part.copyWith(
-      attachment: part.attachment == null ? null : bound(attachment: part.attachment!),
-      state: state == null
-          ? null
-          : state.copyWith(
-              attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(),
-            ),
-    );
+    return switch (part) {
+      MessagePartFile(:final attachment) => part.copyWith(attachment: bound(attachment: attachment)),
+      MessagePartTool(:final state) => part.copyWith(
+        state: state.copyWith(
+          attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(),
+        ),
+      ),
+      _ => part,
+    };
   }
 
-  bool _hasInlineImage({required MessagePart part}) =>
-      part.attachment is MessageAttachmentInlineImage ||
-      (part.state?.attachments.any((attachment) => attachment is MessageAttachmentInlineImage) ?? false);
+  bool _hasInlineImage({required MessagePart part}) => switch (part) {
+    MessagePartFile(:final attachment) => attachment is MessageAttachmentInlineImage,
+    MessagePartTool(:final state) => state.attachments.any(
+      (attachment) => attachment is MessageAttachmentInlineImage,
+    ),
+    _ => false,
+  };
 
   int _storedImageBytes({required String partJson}) {
     final json = jsonDecodeMap(partJson);

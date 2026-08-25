@@ -117,10 +117,17 @@ class CatalogRescanService({
           for (final plugin in response.plugins)
             if (plugin.runtimeState.isRoutable) plugin.setup.id,
         ];
-        if (pluginIds.isEmpty) return;
+        if (pluginIds.isEmpty) {
+          if (_members.isEmpty) _publish(const CatalogRescanState.noHarness());
+          return;
+        }
         await _start(pluginIds: pluginIds, coversEveryHarness: true);
+      // No snapshot to fan out over. Reported rather than returned silently,
+      // because the caller is a gesture that has already told the user a scan
+      // started, and a failed snapshot keeps answering this way until it is
+      // reloaded.
       case PluginManagementLoadResultLoading() || PluginManagementLoadResultFailure() || null:
-        return;
+        if (_members.isEmpty) _publish(const CatalogRescanState.noHarness());
     }
   }
 

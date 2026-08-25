@@ -170,6 +170,26 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
   @protected
   Future<void> onShutdown({required Duration? budget}) async {}
 
+  @protected
+  Future<void> runShutdownCleanups({required Iterable<Future<void> Function()> cleanups}) async {
+    Object? firstError;
+    StackTrace? firstStackTrace;
+    for (final cleanup in cleanups) {
+      try {
+        await cleanup();
+      } on Object catch (error, stackTrace) {
+        if (firstError == null) {
+          firstError = error;
+          firstStackTrace = stackTrace;
+        } else {
+          Log.w("Additional shutdown cleanup failed", error, stackTrace);
+        }
+      }
+    }
+    final stackTrace = firstStackTrace;
+    if (firstError != null && stackTrace != null) Error.throwWithStackTrace(firstError, stackTrace);
+  }
+
   @override
   Future<void> shutdown({required Duration? budget}) {
     return _shutdownFuture ??= _runShutdown(budget: budget);

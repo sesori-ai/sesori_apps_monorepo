@@ -657,21 +657,11 @@ void main() {
         ).toJson(),
       );
       const part = BridgeSseMessagePartUpdated(
-        part: PluginMessagePart(
+        part: PluginMessagePart.text(
           id: "backend-part",
           sessionID: "backend-root",
           messageID: "backend-message",
-          type: PluginMessagePartType.text,
           text: "visible prompt",
-          tool: null,
-          state: null,
-          prompt: null,
-          description: null,
-          agent: null,
-          agentName: null,
-          attempt: null,
-          retryError: null,
-          attachment: null,
         ),
       );
       final status = BridgeSseSessionStatus(

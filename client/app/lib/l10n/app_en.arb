@@ -1030,5 +1030,156 @@
   "projectsOnboardingWhyFaqReadAnswer": "No. Everything between your phone and computer is end-to-end encrypted — the relay only passes along sealed data it can't read.",
   "@projectsOnboardingWhyFaqReadAnswer": {
     "description": "DRAFT copy pending final wording. Answer to the 'can Sesori read my sessions' FAQ question."
+  },
+  "catalogScanPullCaption": "Keep pulling to scan all harnesses",
+  "@catalogScanPullCaption": {
+    "description": "Caption under the pull-to-refresh spinner once the pull has passed the ordinary trigger, inviting the user to keep pulling to start a full catalog scan."
+  },
+  "catalogScanDeepCaption": "Scanning for new sessions",
+  "@catalogScanDeepCaption": {
+    "description": "Caption under the pull-to-refresh spinner once the deep pull has fired and the catalog scan has already started."
+  },
+  "catalogScanRunningTitle": "Scanning all harnesses",
+  "@catalogScanRunningTitle": {
+    "description": "Title of the row above a list while a catalog scan is in flight across every enabled harness."
+  },
+  "catalogScanRunningDetail": "{harness} — {sessions, plural, =1{1 session} other{{sessions} sessions}}",
+  "@catalogScanRunningDetail": {
+    "description": "Supporting line on the running scan row: the harness currently being scanned and how many sessions it has reported so far.",
+    "placeholders": {
+      "harness": {
+        "type": "String",
+        "example": "Codex"
+      },
+      "sessions": {
+        "type": "int"
+      }
+    }
+  },
+  "catalogScanCancel": "Cancel",
+  "@catalogScanCancel": {
+    "description": "Action on the running scan row that stops the catalog scan in flight."
+  },
+  "catalogScanCompleteTitle": "Scan complete",
+  "@catalogScanCompleteTitle": {
+    "description": "Title of the scan row once every harness finished scanning successfully."
+  },
+  "catalogScanNothingNew": "No new sessions",
+  "@catalogScanNothingNew": {
+    "description": "Whole result line of a finished scan that turned up neither a new session nor a new project. A standalone sentence, unlike the count clauses, which are noun phrases meant to be joined."
+  },
+  "catalogScanNewSessionCount": "{count, plural, =1{1 new session} other{{count} new sessions}}",
+  "@catalogScanNewSessionCount": {
+    "description": "Sessions clause of a finished scan's result, counting only sessions the scan had not imported before. Never rendered for a count of zero; that clause is dropped so the line reads as a noun phrase either way.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "catalogScanNewProjectCount": "{count, plural, =1{1 new project} other{{count} new projects}}",
+  "@catalogScanNewProjectCount": {
+    "description": "Projects clause of a finished scan's result, counting only projects the scan had not imported before.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "catalogScanSessionCount": "{count, plural, =1{1 session} other{{count} sessions}}",
+  "@catalogScanSessionCount": {
+    "description": "Sessions clause used when a harness did not report what was new, so the row can only name the totals it published.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "catalogScanProjectCount": "{count, plural, =1{1 project} other{{count} projects}}",
+  "@catalogScanProjectCount": {
+    "description": "Projects clause used when a harness did not report what was new, so the row can only name the totals it published.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "catalogScanCountsJoined": "{sessions} in {projects}",
+  "@catalogScanCountsJoined": {
+    "description": "Joins the sessions and projects clauses of a finished scan's result into one line.",
+    "placeholders": {
+      "sessions": {
+        "type": "String",
+        "example": "5 new sessions"
+      },
+      "projects": {
+        "type": "String",
+        "example": "2 new projects"
+      }
+    }
+  },
+  "catalogScanPartlyFailedTitle": "Scan finished",
+  "@catalogScanPartlyFailedTitle": {
+    "description": "Title of the scan row when some harnesses scanned successfully and others did not."
+  },
+  "catalogScanPartlyFailedDetail": "{failed} of {total} harnesses could not be scanned",
+  "@catalogScanPartlyFailedDetail": {
+    "description": "Supporting line on a partly failed scan row. Both harnesses counts are at least one, so the total is always plural.",
+    "placeholders": {
+      "failed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "catalogScanFailedTitle": "Scan failed",
+  "@catalogScanFailedTitle": {
+    "description": "Title of the scan row when no harness could be scanned."
+  },
+  "catalogScanFailedDetail": "Check the bridge log for details",
+  "@catalogScanFailedDetail": {
+    "description": "Supporting line on a failed scan row. The bridge's own error text is never shown here, so the row points at the log that has it."
+  },
+  "catalogScanUnsupportedTitle": "Scanning needs a newer bridge",
+  "@catalogScanUnsupportedTitle": {
+    "description": "Title of the scan row when the connected bridge is too old to scan harness catalogs on request."
+  },
+  "catalogScanUnsupportedDetail": "Update the bridge to scan from here",
+  "@catalogScanUnsupportedDetail": {
+    "description": "Supporting line on the unsupported scan row, naming what would make scanning available."
+  },
+  "catalogScanNoHarnessTitle": "No harness to scan",
+  "@catalogScanNoHarnessTitle": {
+    "description": "Title of the scan row when no harness could be scanned: none is connected and ready, or the bridge has not reported its harnesses yet."
+  },
+  "catalogScanNoHarnessDetail": "Check your harnesses in Settings",
+  "@catalogScanNoHarnessDetail": {
+    "description": "Supporting line on the no-harness scan row, naming where the user can see and fix their harness setup."
+  },
+  "harnessManagementScan": "Scan for sessions",
+  "@harnessManagementScan": {
+    "description": "Settings action on a harness card that re-imports that one harness's catalog, the pointer-and-keyboard equivalent of the lists' deep pull."
+  },
+  "harnessManagementScanDescription": "Import projects and sessions this harness has on disk",
+  "@harnessManagementScanDescription": {
+    "description": "Supporting line under the per-harness scan action, saying what scanning does."
+  },
+  "harnessManagementScanNotReady": "This harness cannot be scanned right now",
+  "@harnessManagementScanNotReady": {
+    "description": "Replaces the scan action's description when the bridge refused to import from this harness, usually because it is not running or its setup is incomplete."
+  },
+  "harnessManagementScanUnsupported": "Update the bridge to scan from here",
+  "@harnessManagementScanUnsupported": {
+    "description": "Replaces the scan action's description when the connected bridge is too old to import catalogs on request."
+  },
+  "harnessManagementScanFailed": "Could not start the scan. Try again in a moment",
+  "@harnessManagementScanFailed": {
+    "description": "Replaces the scan action's description when the request itself failed. Names no log, because the request may never have reached the bridge, and the client-side cause it is recorded against has no user-facing viewer."
+  },
+  "catalogScanDismiss": "Dismiss",
+  "@catalogScanDismiss": {
+    "description": "Action on a finished scan row that clears it once the user has read the result."
   }
 }

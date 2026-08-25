@@ -406,6 +406,40 @@ void main() {
       expect(repository.startedPluginIds, isEmpty);
     });
 
+    // The gesture that calls this has already told the user a scan started, so
+    // a fan-out with nothing to fan out to has to say so rather than return.
+    test("reports that there is no harness when the snapshot names none that is routable", () async {
+      build(snapshot: _snapshot(routable: const {}));
+
+      await service.startAll();
+
+      expect(service.state.value, isA<CatalogRescanNoHarness>());
+      expect(repository.startedPluginIds, isEmpty);
+    });
+
+    test("reports that there is no harness while no snapshot has arrived", () async {
+      build(snapshot: const PluginManagementLoadResult.loading());
+
+      await service.startAll();
+
+      expect(service.state.value, isA<CatalogRescanNoHarness>());
+      expect(repository.startedPluginIds, isEmpty);
+    });
+
+    test("a live run outlasts a fan-out that finds no harness", () async {
+      build(snapshot: _snapshot(routable: const {"codex": "Codex"}));
+      await service.startAll();
+      management.emit(const PluginManagementLoadResult.loading());
+
+      await service.startAll();
+
+      expect(
+        service.state.value,
+        isA<CatalogRescanStarting>(),
+        reason: "the run in flight is still the truth about what is happening",
+      );
+    });
+
     test("a targeted start on an unsupported bridge tells the caller", () async {
       build(snapshot: const PluginManagementLoadResult.unsupported());
 

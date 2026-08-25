@@ -67,23 +67,17 @@ Session _childSession({required String id, String? title}) {
   );
 }
 
-MessagePart _subtaskPart({String? description}) {
-  return MessagePart(
+MessagePartSubtask _subtaskPart({String? description}) {
+  final part = MessagePart.subtask(
     id: "part-1",
     sessionID: "session-parent",
     messageID: "msg-1",
-    type: MessagePartType.subtask,
-    text: null,
-    tool: null,
-    state: null,
-    prompt: description,
-    description: description,
-    agent: null,
-    agentName: null,
-    attempt: null,
-    retryError: null,
-    attachment: null,
+    prompt: description ?? "",
+    description: description ?? "",
+    agent: "",
   );
+  if (part case final MessagePartSubtask subtask) return subtask;
+  throw StateError("MessagePart.subtask returned a non-subtask variant");
 }
 
 void main() {

@@ -1217,21 +1217,11 @@ void main() {
       final mockLoadService = MockSessionDetailLoadService();
       final refresh = Completer<SessionDetailLoadResult>();
 
-      MessagePart textPart({required String id, required String text}) => MessagePart(
+      MessagePart textPart({required String id, required String text}) => MessagePart.text(
         id: id,
         sessionID: _sessionId,
         messageID: "message-1",
-        type: MessagePartType.text,
         text: text,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
-        attachment: null,
       );
 
       SessionDetailSnapshot snapshot({required List<MessageWithParts> messages}) => SessionDetailSnapshot(
@@ -1321,7 +1311,7 @@ void main() {
       });
 
       final parts = (cubit.state as SessionDetailLoaded).messages.single.parts;
-      expect(parts.map((part) => (part.id, part.text)), [
+      expect(parts.whereType<MessagePartText>().map((part) => (part.id, part.text)), [
         ("part-before-refresh", "fresh snapshot"),
         ("part-during-refresh", "live"),
       ]);
@@ -1361,21 +1351,11 @@ void main() {
       final cubit = createCubit(loadService: mockLoadService);
       await _awaitLoaded(cubit);
 
-      const part = MessagePart(
+      const part = MessagePart.text(
         id: "part-1",
         sessionID: _sessionId,
         messageID: "message-1",
-        type: MessagePartType.text,
         text: "Keep this prompt",
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
-        attachment: null,
       );
       sessionEvents.add(const SesoriMessagePartUpdated(part: part));
       await Future<void>.delayed(Duration.zero);
@@ -1430,21 +1410,11 @@ void main() {
         ),
       );
 
-      MessagePart part({required String id, required String text}) => MessagePart(
+      MessagePart part({required String id, required String text}) => MessagePart.text(
         id: id,
         sessionID: _sessionId,
         messageID: "message-1",
-        type: MessagePartType.text,
         text: text,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
-        attachment: null,
       );
 
       final cubit = createCubit(loadService: mockLoadService);
@@ -1481,7 +1451,7 @@ void main() {
 
       final parts = (cubit.state as SessionDetailLoaded).messages.single.parts;
       expect(parts.map((item) => item.id), ["part-a", "part-b"]);
-      expect(parts.map((item) => item.text), ["new", "second"]);
+      expect(parts.whereType<MessagePartText>().map((item) => item.text), ["new", "second"]);
     });
 
     test("inserts late message envelopes by transcript time", () async {

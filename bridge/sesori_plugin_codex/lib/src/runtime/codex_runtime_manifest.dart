@@ -33,8 +33,6 @@ class const CodexRuntimeManifest() extends RuntimeManifest {
   /// The exact codex version the managed runtime installs.
   static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: targetVersion);
 
-  static const String _releaseBaseUrl = "https://github.com/openai/codex/releases/download";
-
   /// Pinned per-platform assets for [bundledVersion]. codex ships `.tar.gz` on
   /// darwin/linux and an `.exe.zip` on windows; the binary inside each archive is
   /// named with the full target triple (e.g. `codex-aarch64-apple-darwin`), so
@@ -121,7 +119,6 @@ class const CodexRuntimeManifest() extends RuntimeManifest {
   }
 
   @override
-  String downloadUrlFor({required RuntimeAsset asset}) {
-    return "$_releaseBaseUrl/rust-v$bundledVersion/${asset.assetName}";
-  }
+  String downloadUrlFor({required RuntimeAsset asset}) =>
+      githubReleaseAssetUrl(repository: "openai/codex", tag: "rust-v${bundledVersion.raw}", asset: asset);
 }

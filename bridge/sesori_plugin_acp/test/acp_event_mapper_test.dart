@@ -86,7 +86,12 @@ void main() {
       final parts = [
         ...transition.whereType<BridgeSseMessagePartUpdated>(),
         ...mapper.finalizeTurn(sessionId: "s1").whereType<BridgeSseMessagePartUpdated>(),
-      ].map((event) => event.part).where((part) => part.text?.isNotEmpty ?? false).toList();
+      ].map((event) => event.part).where(
+        (part) => switch (part) {
+          PluginMessagePartText(:final text) || PluginMessagePartReasoning(:final text) => text.isNotEmpty,
+          _ => false,
+        },
+      ).toList();
 
       expect(parts.map((part) => part.id), [
         "s1-t1-assistant-a0-reasoning",
@@ -298,7 +303,7 @@ void main() {
         PluginMessagePartType.text,
       ]);
       expect(parts[1].attachment, isA<PluginMessageAttachmentInlineImage>());
-      expect(parts[1].attachment?.filename, "output.png");
+      expect(parts[1].attachment.filename, "output.png");
       expect(events.whereType<BridgeSseMessagePartDelta>().map((event) => event.delta), ["before", "after"]);
     });
 
@@ -407,7 +412,7 @@ void main() {
         ]);
         final attachment = mapped.where((part) => part.type == PluginMessagePartType.file).single.attachment;
         expect(attachment, isA<PluginMessageAttachmentInlineImage>());
-        expect((attachment! as PluginMessageAttachmentInlineImage).base64, "AA==");
+        expect((attachment as PluginMessageAttachmentInlineImage).base64, "AA==");
         expect(events.toString(), isNot(contains("private.png")));
       });
     }
@@ -544,7 +549,7 @@ void main() {
       final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
       expect(part.type, PluginMessagePartType.tool);
       expect(part.tool, "read");
-      expect(part.state?.status, PluginToolStatus.pending);
+      expect(part.state.status, PluginToolStatus.pending);
     });
 
     test("tool_call falls through an empty kind to title and never throws", () {
@@ -577,7 +582,7 @@ void main() {
       );
       final badPart = nonStringKind.whereType<BridgeSseMessagePartUpdated>().single.part;
       expect(badPart.tool, "tool");
-      expect(badPart.state?.title, isNull);
+      expect(badPart.state.title, isNull);
     });
 
     test("tool_call reads output from the standard ACP content wrapper", () {
@@ -600,7 +605,7 @@ void main() {
         }),
       );
       final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
-      expect(part.state?.output, "wrapped output");
+      expect(part.state.output, "wrapped output");
     });
 
     test("a partial tool_call_update preserves the tool's prior name/title/output", () {
@@ -627,9 +632,9 @@ void main() {
       );
       final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
       expect(part.tool, "execute", reason: "name preserved across a partial update");
-      expect(part.state?.title, "Run tests", reason: "title preserved");
-      expect(part.state?.status, PluginToolStatus.completed, reason: "status advanced");
-      expect(part.state?.output, "starting", reason: "prior output preserved when the update omits it");
+      expect(part.state.title, "Run tests", reason: "title preserved");
+      expect(part.state.status, PluginToolStatus.completed, reason: "status advanced");
+      expect(part.state.output, "starting", reason: "prior output preserved when the update omits it");
     });
 
     test("a title-only tool_call_update keeps the canonical tool id", () {
@@ -654,7 +659,7 @@ void main() {
       );
       final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
       expect(part.tool, "edit", reason: "no kind → canonical id preserved");
-      expect(part.state?.title, "Edit main.dart (revised)");
+      expect(part.state.title, "Edit main.dart (revised)");
     });
 
     test("a first-seen tool_call_update synthesizes the message envelope", () {
@@ -702,9 +707,9 @@ void main() {
       );
       expect(late.whereType<BridgeSseMessageUpdated>(), isEmpty, reason: "retained → not first-seen");
       final latePart = late.whereType<BridgeSseMessagePartUpdated>().single.part;
-      expect(latePart.state?.status, PluginToolStatus.completed, reason: "terminal status preserved");
+      expect(latePart.state.status, PluginToolStatus.completed, reason: "terminal status preserved");
       expect(latePart.tool, "read");
-      expect(latePart.state?.output, "final");
+      expect(latePart.state.output, "final");
 
       // The next turn clears the prior turn's tools to keep the cache bounded.
       mapper.beginTurn("s1");
@@ -931,9 +936,9 @@ void main() {
         }),
       );
       final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
-      expect(part.state?.status, PluginToolStatus.completed);
-      expect(part.state?.output, "a.dart\nb.dart");
-      expect(part.state?.error, isNull);
+      expect(part.state.status, PluginToolStatus.completed);
+      expect(part.state.output, "a.dart\nb.dart");
+      expect(part.state.error, isNull);
     });
 
     test("read-style tool surfaces rawOutput.content", () {
@@ -948,7 +953,7 @@ void main() {
         }),
       );
       final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
-      expect(part.state?.output, "hello from cursor e2e");
+      expect(part.state.output, "hello from cursor e2e");
     });
 
     test("failed tool_call_update mirrors output into error", () {
@@ -962,9 +967,9 @@ void main() {
         }),
       );
       final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
-      expect(part.state?.status, PluginToolStatus.error);
-      expect(part.state?.output, "boom");
-      expect(part.state?.error, "boom");
+      expect(part.state.status, PluginToolStatus.error);
+      expect(part.state.output, "boom");
+      expect(part.state.error, "boom");
     });
 
     test("oversized tool output is truncated", () {
@@ -978,7 +983,7 @@ void main() {
           "rawOutput": {"stdout": big, "stderr": ""},
         }),
       );
-      final output = events.whereType<BridgeSseMessagePartUpdated>().single.part.state?.output;
+      final output = events.whereType<BridgeSseMessagePartUpdated>().single.part.state.output;
       expect(output, hasLength(maxToolOutputLength + 1)); // 500 chars + ellipsis
       expect(output, endsWith("…"));
     });
