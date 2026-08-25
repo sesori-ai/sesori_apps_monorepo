@@ -5,9 +5,9 @@
 - **Plan slug:** `catalog-rescan`
 - **Implementation base:** `main` at
   `7b1ebe9bc629d05b5d104e76cd5dbaa1514d65a2`
-- **Series state:** Steps 1/8 to 6b/8 merged; Step 6c/8 open
-- **Current step:** scan one harness from Settings
-- **Next action:** land 6c, then reconcile the regression docs in step 7
+- **Series state:** Steps 1/8 to 6c/8 merged; Step 6d/8 open
+- **Current step:** quieten the scan row and its pull
+- **Next action:** land 6d, then reconcile projects-and-sessions.md in step 7
 - **Origin issue:** [#961](https://github.com/sesori-ai/sesori_apps_monorepo/issues/961)
 - **External overlap:** [#1008](https://github.com/sesori-ai/sesori_apps_monorepo/issues/1008)
   owns Codex live updates; do not address it here
@@ -136,7 +136,8 @@
 | [x] | 5/8 | `⚙️ [catalog-rescan] Add a second stage to pull-to-refresh [step 5/8]` | 350-600 | [PR #1093](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1093) merged |
 | [x] | 6a/8 | `⚙️ [catalog-rescan] Route scan state through the list cubits [step 6a/8]` | 450-750 | Merged |
 | [x] | 6b/8 | `⚙️ [catalog-rescan] Show the catalog scan in the lists [step 6b/8]` | 500-800 | [PR #1103](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1103) merged |
-| [ ] | 6c/8 | `🌿 [catalog-rescan] Scan one harness from Settings [step 6c/8]` | 350-600 | Open |
+| [x] | 6c/8 | `🌿 [catalog-rescan] Scan one harness from Settings [step 6c/8]` | 350-600 | [PR #1113](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1113) merged |
+| [ ] | 6d/8 | `⚙️ [catalog-rescan] Quieten the scan row and its pull [step 6d/8]` | 400-700 | [PR #1114](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1114) open |
 | [ ] | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 | Not started |
 | [ ] | 8/8 | `🌱 [catalog-rescan] Verify and retire the catalog rescan plan [step 8/8]` | 60-140 | Not started |
 
@@ -608,4 +609,31 @@ duplicate-emission nicety.
   `settled` to `catalogChanged` and already updating part of
   `docs/regression/projects-and-sessions.md`. Step 7's scope is therefore
   smaller than the plan text describes and must be re-derived from the file
+- **Step 6c declined finding:** a third bot round asked for a connection-epoch
+  fence on `startCatalogScanFor`, so a POST pending across a disconnect could
+  not overwrite a later retry's rejection. Declined: it needs a disconnect,
+  reconnect and retry inside one pending request, and the worst outcome is one
+  stale line until the next tap or until Settings is left. Same call the plan
+  already recorded for the recovery read
+- **Step 6d base:** `main` at `2c3ef6d` (merged forward to pick up 6c)
+- **Step 6d origin:** owner feedback from a running build, eight points. Not a
+  planned step — the feature worked and looked wrong
+- **Step 6d component reversal:** 6b chose `PregoInlineAlertsNotifications` to
+  avoid a bespoke card. Wrong component: it paints `colors.fgPrimary`, the
+  contrast-inverted foreground, so the row was a near-black slab over a light
+  list. Replaced with a tinted card in each state's own colour family. The
+  instinct to reuse was right; the component is an interrupt surface and this is
+  ambient status
+- **Step 6d animation root cause:** starting an `AnimationController` from
+  `build` races its own frame, which inside a `SliverToBoxAdapter` leaves the
+  row pinned at zero height. This is also why 6b's `AnimatedSize` attempt never
+  grew and was removed as unworkable. Driven from `didUpdateWidget` now, and the
+  tests pump the extra frame a controller needs before its first tick carries
+  elapsed time
+- **Step 6d residues:** the overscroll still holds its extent while the finger
+  is down, which is scroll physics rather than something the control can cancel
+  mid-gesture; the area it holds is simply empty. The toast suppression reads
+  the scan state at report time rather than threading a flag through the
+  gesture, so a fetch that resolved before the pull crossed 1.8x would still
+  raise one toast
 - **Final disposition:** pending
