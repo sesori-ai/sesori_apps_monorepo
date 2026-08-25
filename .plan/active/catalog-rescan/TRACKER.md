@@ -79,6 +79,7 @@
 | Second start while running | Joins the live operation | Replacing it dropped the first harness from aggregation and cancellation |
 | List refresh trigger | Leaving a live operation, not the terminal variants | An observed run publishes no summary and would otherwise never refresh |
 | Pre-v1.7.0 bridges | `CatalogRescanUnsupported` straight from an unsupported management snapshot | `/plugin/management` is v1.7.0; without a snapshot the fan-out sends zero requests, so the all-`404` branch never fires |
+| Nothing to fan out to | `CatalogRescanNoHarness` for a loading, failed, or absent snapshot and for one naming no routable harness | The caller is a gesture that has already told the user a scan started; a failed snapshot answers this way until reloaded, so a silent return is a persistent dead end |
 | Start failures | `CatalogRescanStartFailed` retains the `ApiError` and is logged locally | A transport or decode failure may never reach the bridge, so its log cannot explain it |
 | Targeted rejections | Typed `CatalogRescanStartResult` held per plugin id by `PluginManagementCubit` | The aggregate row cannot say which card was rejected |
 | Completion wording | New items, with a totals fallback | Reporting 193 totals after a no-op rescan would be actively misleading |
