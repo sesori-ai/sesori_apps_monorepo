@@ -442,38 +442,28 @@ PluginMessagePart _textPart({
   required int index,
   required PluginMessagePartType type,
   required String text,
-}) => PluginMessagePart(
-  id: "$messageId-block-$index",
-  sessionID: sessionId,
-  messageID: messageId,
-  type: type,
-  text: text,
-  tool: null,
-  state: null,
-  prompt: null,
-  description: null,
-  agent: null,
-  agentName: null,
-  attempt: null,
-  retryError: null,
-  attachment: null,
-);
+}) => switch (type) {
+  PluginMessagePartType.text => PluginMessagePart.fromText(
+    id: "$messageId-block-$index",
+    sessionID: sessionId,
+    messageID: messageId,
+    text: text,
+  ),
+  PluginMessagePartType.reasoning => PluginMessagePart.fromThinking(
+    id: "$messageId-block-$index",
+    sessionID: sessionId,
+    messageID: messageId,
+    text: text,
+  ),
+  _ => throw ArgumentError.value(type, "type"),
+};
 
-PluginMessagePart _toolPart({required String sessionId, required ClaudeTrackedTool tool}) => PluginMessagePart(
+PluginMessagePart _toolPart({required String sessionId, required ClaudeTrackedTool tool}) => PluginMessagePart.fromTool(
   id: tool.id,
   sessionID: sessionId,
   messageID: tool.messageId,
-  type: PluginMessagePartType.tool,
-  text: null,
   tool: tool.name,
   state: tool.state,
-  prompt: null,
-  description: null,
-  agent: null,
-  agentName: null,
-  attempt: null,
-  retryError: null,
-  attachment: null,
 );
 
 Map<String, Object?>? _mapOrNull(Object? value) => value is Map ? value.cast<String, Object?>() : null;

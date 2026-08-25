@@ -889,14 +889,18 @@ All verified with whole-word grep over lib, bin, and test across the repo.
   rollback ≈ 120 lines the same modulo names.
 - Change (in `sesori_plugin_runtime`): `DrainingSpawnedProcess` +
   `dynamicPortCandidates(...)`; `ManagedRuntimeStatusReporter` (codex's variant);
-  `ManagedRuntimeApi` + generic `ManagedRuntimeBridgePlugin<R>` with an
-  owned-only-interrupt option for OpenCode attach mode; a
-  `startManagedRuntimePlugin(...)` helper owning construction → port policy →
-  start → reporter/monitor → api → wrapper → bounded cold start → abort
-  rollback; if it grows beyond thin composition it becomes a named collaborator
-  class with constructor-injected dependencies, not a free function.
-  Descriptors keep config parsing, OpenCode attach/degraded branches, and the
-  spawn/probe seams. Ownership-record unification (JSON keys in
+  a lifecycle-only `ManagedRuntimeApi` plus generic
+  `ManagedRuntimeBridgePlugin<R, A>` with an owned-only-interrupt option for
+  OpenCode attach mode. `BridgePluginApi` is sealed around project ownership,
+  so the lifecycle API remains a separate facet rather than becoming another
+  project-ownership subtype. Re-verification found that descriptor startup is
+  no longer one invariant: OpenCode now has attach, unreachable/degraded, and
+  nullable-handle branches with different rollback ownership, while Codex is
+  managed-only. The planned `startManagedRuntimePlugin(...)` helper is therefore
+  dropped instead of flattening those policies into flags. Descriptors keep
+  config parsing, all startup/abort/rollback orchestration, OpenCode
+  attach/degraded branches, and spawn/probe seams. Ownership-record unification
+  (JSON keys in
   `codex-processes.json`/`opencode-processes.json`) is **deferred** to the D1
   decision.
 - Verify: runtime suite; `codex/test/runtime/*`; `opencode/test/runtime/*`;
@@ -904,112 +908,165 @@ All verified with whole-word grep over lib, bin, and test across the repo.
 
 ### Step 26 — descriptor setup and installation
 
-- `installRuntime` body identical ×5 (`cursor_plugin_descriptor.dart:185-222`,
-  `omp:129-170`, `pi:139-176`, `codex:223-264`, `opencode:287-328`);
-  `_supportsManagedInstall` ×5; version-probe + sealed outcome + "PATH → managed
-  → hint" setup copied per plugin (cursor `:362-411,463-476`, hermes `:218-300`,
-  omp `:236-272,298-309`, pi `:229-262,323`, opencode `:355-448` with six
-  re-probes, codex `codex_runtime_selection_service.dart` 260 lines that
-  re-implement `ManagedRuntimeProvisionService.provision` precedence though it
-  already accepts `fallbackExecutableCandidates`); `HostProcessCommandExecutor(…)`
-  constructed 26 times; `64 * 1024` probe limit ×7; ANSI strip ×3. Root cause:
-  `RuntimeVersionValidator.detectVersion` returns `null` for every failure, so
-  each descriptor re-rolls a probe to tell missing/timeout/non-zero/unrecognized apart.
-- Change (runtime package): sealed `RuntimeProbeOutcome {Ready(version),
-  Missing, TimedOut, NonZeroExit, Unrecognized, Outdated}` from
-  `RuntimeVersionValidator.probe()`; `ManagedRuntimeSelectionService` with
-  constructor `({required RuntimeVersionValidator validator, required
-  RuntimeManifest manifest, required List<String> fallbackExecutableCandidates,
-  required Duration probeTimeout})` — it receives an injected validator and
-  takes no `HostProcessService` or capture-limit parameters (the codex source it
-  generalizes builds executors and a validator from pass-through constructor
-  arguments; that shape is not lifted). It exposes `select()` (explicit bin →
-  PATH → fallback candidates → managed) consumed by
-  `ManagedRuntimeProvisionService.provision()`, and `inspectSetup({required
-  hints, required Future<RuntimeProbeOutcome>? Function() authProbe})` returning
-  a neutral sealed setup result that each descriptor maps to `PluginSetupStatus`
-  through its own hint table. `ManagedRuntimeInstallService.forHost({manifest,
-  processes, versionProbeTimeout, assetResolver})` is a composition seam only;
-  its injected main constructor stays. `RuntimeManifest.supportsManagedInstallOn(
-  PlatformTarget)`; a foundation `stripAnsi()`; one setup-probe executor factory
-  used by descriptors at composition time, never inside the services. Hermes
-  either adds the runtime dependency or keeps its custom `acp --version` probe;
-  Claude stays custom (no manifest). Per-plugin hint/status differences (cursor
-  outdated-without-explicit-bin → `RuntimeMissing`; omp/pi → `Unavailable`) are
-  preserved through the hint table, not flattened.
+- Re-verification found five structurally similar, but not identical,
+  `installRuntime` pipelines (Cursor, OMP, Pi, Codex, OpenCode), five managed
+  install capability checks, and duplicated setup probing/selection across the
+  same descriptors. OMP resolves Linux assets asynchronously from host libc;
+  install executors use different capture policies; and every descriptor owns
+  an `http.Client` whose lifetime spans the install stream. The planned install
+  factory would therefore either leak ownership or flatten real policy. The
+  executor count is now 24 production constructions and `64 * 1024` has broader
+  plugin-specific uses, so neither an executor factory nor a shared probe-limit
+  constant is justified. Cursor, Codex, and Hermes retain byte-identical CSI
+  stripping, while Claude has the existing stronger CSI+OSC variant.
+- Change (runtime package): add sealed mechanical probe outcomes
+  `RuntimeProbeReady(version)`, `RuntimeProbeMissing`, `RuntimeProbeTimedOut`,
+  `RuntimeProbeNonZeroExit`, `RuntimeProbeUnrecognized`, and
+  `RuntimeProbeFailed` from `RuntimeVersionValidator.probe()`. Outdated is not a
+  raw probe outcome because minimum-versus-exact acceptance belongs to runtime
+  selection policy. Add `ManagedRuntimeSelectionService` owning only explicit
+  → PATH → fallback candidates → managed precedence, abort boundaries, selected
+  source/path/version, and minimum-versus-exact managed-version policy. It
+  receives only an injected validator and manifest. Its `select({required
+  String? explicitExecutablePath, required List<String>
+  fallbackExecutableCandidates, required Map<String, String> environment,
+  required String stateDirectory, required StartAbortSignal abortSignal,
+  required ManagedRuntimeVersionPolicy managedVersionPolicy})` accepts neutral,
+  already-parsed candidates: each descriptor trims/interprets its own `--bin`
+  config first, and Codex resolves desktop-app paths before calling it. The
+  result is sealed selected/not-selected data with a neutral source
+  (`explicit`, `path`, `fallback`, `managed`), selected path/version, rejected
+  PATH version when present, and either the mechanical probe failure or rejected
+  version that prevented selection. The service takes no `PluginConfig`,
+  platform locator, process service,
+  capture limit, auth callback, hint strings, or `PluginSetupStatus` vocabulary.
+  `ManagedRuntimeProvisionService` consumes the same selection seam; Codex's
+  duplicate selection service is removed. Descriptors continue mapping neutral
+  selection/probe outcomes to their exact existing setup variants and hints,
+  and keep backend-specific authentication checks.
+- Add `RuntimeManifest.supportsManagedInstallOn({required PlatformTarget
+  target})` with the synchronous `assetFor` default; OMP overrides it with its
+  libc-aware capability rule. Keep install composition local so each descriptor
+  visibly owns asset resolution, output policy, and HTTP client disposal. Add
+  foundation `stripAnsi()` using the existing CSI+OSC behavior and migrate the
+  Cursor, Codex, Hermes, and Claude ANSI-stripping copies. Version-probe logic
+  remains descriptor-local where it differs: Hermes probes
+  `hermes acp --version` and interprets backend-specific non-zero output, while
+  Claude and DeepSeek remain custom/no-manifest probes. No generic
+  `inspectSetup`, auth callback, hint table, install factory, executor factory,
+  or shared output-limit constant is introduced.
+- Preserve each descriptor's explicit-bin authority, selected runtime version,
+  installability, unknown/outdated/missing classification, auth behavior, and
+  setup hint text. In particular Cursor's managed setup accepts its current
+  minimum-version rule, OMP/Pi/Codex/OpenCode keep exact pinned-managed checks,
+  OpenCode attach mode remains unprobed ready, and abort still throws
+  `PluginStartAbortedException`.
 - Verify: descriptor/setup tests in cursor, omp, pi, codex, opencode, hermes;
-  runtime provisioning tests; `PluginSetupStatus` wire shape unchanged.
+  runtime probe/selection/provisioning tests; foundation ANSI tests and Claude's
+  OSC coverage; `PluginSetupStatus` wire shape unchanged.
 
 ### Step 27 — pending-permission registry base
 
-- `acp_approval_registry.dart` (520) and codex `approval_registry.dart` (532)
-  share a ~215-line skeleton (bridge-request-id allocation, pending map keyed by
-  bridge id, `cancelForSession`, `hasAnyPendingInput`,
-  `PluginPendingPermission` construction, `_asMap`/`_str`); Claude's registry is
-  structurally different and stays; Cursor-specific branches currently live in
-  the ACP base.
-- Change: `PendingPermissionRegistry` base in `sesori_plugin_interface` — the
-  contract-owning layer that already hosts implementor support such as
-  `SteadyPluginLifecycle` and `PluginStatusController`, and whose entire
-  vocabulary here is contract types (`BridgeSseEvent`,
-  `PluginPendingPermission`); both plugins also depend on foundation and shared,
-  but those are transport/protocol layers, not the home for a plugin-contract
-  base — owning id allocation, pending map, per-session cancel,
-  `hasAnyPendingInput`, emit hook; ACP/Codex subclasses keep protocol mapping;
-  Cursor branches move to the Cursor subclass; the base carries no ACP, Codex,
-  or Cursor branch. `PluginPendingPermission`/`PluginPermissionReply` unchanged.
-- Home decision: two reviews disagree on whether a stateful base belongs in
-  the contract package (the plan review accepted the `PluginStatusController`/
-  `SteadyPluginLifecycle` precedent; PR #1017's review and the Step 1 PR review
-  objected). The precedent is the default; if the Step 27 implementation
-  review rejects it, the base moves to `sesori_plugin_runtime`, which Step 29
-  makes a dependency of ACP, Codex, and Claude, as the plugin-only shared
-  implementation package. Either way it is one base, not three registries.
+- Current re-verification finds `acp_approval_registry.dart` and Codex
+  `approval_registry.dart` still duplicate bridge-request-id allocation,
+  pending storage keyed by bridge id, typed stream attachment/disposal,
+  session/project snapshots, pending-input queries, reply/reject removal,
+  clearing SSEs, per-session cancellation, and settle-all disposal. Their JSON
+  parsing, request classification, wire responders, permission summaries, and
+  question builders are not the same invariant and stay local. Claude remains
+  structurally different: response delivery can fail without consuming an
+  entry, it owns allowed-tool/denial state and project-update events, and it has
+  no request stream or JSON-RPC responder.
+- Change: add `PendingPermissionRegistry<TRequest, TPayload>` in
+  `sesori_plugin_interface`, the contract-owning layer that already hosts
+  implementor support such as `SteadyPluginLifecycle` and
+  `PluginStatusController`. It owns only generated `br-N` ids, opaque payload
+  storage alongside exact `PluginPendingPermission`/`PluginPendingQuestion`
+  snapshots, request-stream subscription, session/project queries,
+  `hasPendingInput`/`hasAnyPendingInput`/pending session ids, removal on
+  reply/reject, contract clearing events, session cancellation, and settle-all
+  disposal with observable recovered failures. Protected registration methods
+  allocate the id, store one permission/question snapshot atomically, emit the
+  corresponding asked event, and return the id. Each private entry contains
+  only the opaque `TPayload` and one permission/question contract snapshot.
+  Subclasses implement request dispatch and supply typed protocol callbacks for
+  permission reply, question reply, question rejection, and cancellation. Neutral
+  cancellation-reason and question-reply-outcome enums let those hooks choose
+  protocol responses without exposing ACP/Codex ids, methods, params, or
+  builders to the interface package. Ordinary reply/reject removes the entry
+  before invoking its protocol hook, preserving current ACP/Codex behavior: a
+  thrown responder consumes the entry and emits no clearing SSE. Cancellation
+  and disposal catch and log each failed protocol resolution, continue settling
+  the remaining entries, and emit each contract clearing event independently.
+- ACP and Codex subclasses retain all request classification, session parsing,
+  response payloads/errors, option selection, permission summaries, question
+  builders, and malformed-answer behavior. An ACP invalid answer still consumes
+  and declines the request, emits question rejection, and returns handled.
+  `_asMap`/string parsing remain local for Step 28. `PluginPendingPermission`,
+  `PluginPendingQuestion`, and `PluginPermissionReply` wire shapes are unchanged.
+- `sesori_plugin_interface` remains the owner: the base depends only on Dart
+  async and interface-owned contract/event/log types. Moving it into
+  `sesori_plugin_runtime` would make ACP and its Cursor, OMP, Hermes, and DeepSeek
+  consumers depend on managed-process supervision for unrelated approval state.
+  There is no runtime-package fallback in this step.
+- Move Cursor's fire-and-forget request acknowledgement/reinjection
+  (`cursor/generate_image`, `cursor/update_todos`) and its notification sink out
+  of the ACP registry into `CursorApprovalRegistry.handleExtensionRequest`.
+  `CursorPluginImpl.buildApprovalRegistry` continues wiring
+  `handleAgentNotification` into the Cursor-owned constructor callback. Cursor
+  responds with the empty ACK before reinjecting an `AcpNotification`, catches
+  and logs reinjection failure with the method/error/stack, and returns handled
+  so one malformed notification cannot break approval routing. The ACP base,
+  base `AcpPlugin`, and DeepSeek constructor contain no Cursor method set or
+  notification callback. ACP's active-session fallback remains because
+  DeepSeek now also relies on it. DeepSeek remains an ACP subclass and registers
+  its questions through the shared engine; its DTO mapping and strict answer
+  validation stay local.
 - Doc comments on the `BridgePluginApi` question/permission methods state the
   pending-input lifecycle expectation (reply/dispose/cancel must resolve or
   log), per PR #1017 Step 8.
-- Verify: `acp_approval_registry_test*`, codex approval tests,
-  `cursor_approval_registry_test`, claude approval tests; approval correctness is
-  high-stakes — per-plugin tests are the contract.
+- Verify: focused interface tests for ids/storage/query/removal/events,
+  cancellation isolation, disposal, and recovered-failure logging; ACP and
+  Codex protocol integration tests; Cursor fire-and-forget/question tests;
+  DeepSeek mapping/validation tests; Claude approval tests unchanged. Approval
+  correctness is high-stakes, so every affected plugin suite remains required.
 
 ### Step 28 — small plugin helpers and lifecycle wrappers
 
-- `_asMap` ×6, non-empty-string helper ×6 (cursor's silently accepts empty —
-  third drift), `PluginMessagePart(… retryError: null …)` ×18 across 10 files,
-  terminal-status checks ×3, compaction `PluginCommand` literal ×3,
-  `PluginStaleOptionsException` ternary ×7, ACP `configOptions` parsing
-  duplicated between `cursor_catalog_mapper.dart:148-220` and
-  `omp_catalog_repository.dart:118-183`; `_stringOrNull/_intOrNull/_stringList/
-  _timestampOrNull` duplicated between claude and pi DTO models;
-  `_decodeErrorForLog` (claude/codex); `claude_bridge_plugin.dart` (87) vs
-  `pi_bridge_plugin.dart` (85) near-identical lifecycle wrappers.
-- Change: `PluginMessagePart.text/thinking/tool` named constructors,
-  `PluginToolStatus.isTerminal`, `PluginCommand.compaction`, and a neutral
-  `ProcessSpawnOutcome` enum (next to `HostProcessService`/`SpawnedProcess`) in
-  `sesori_plugin_interface`; `asStringKeyedMap`/`nonEmptyString` beside
-  `jsonDecodeMap` in `shared/sesori_shared/lib/src/extensions/sugar_dart.dart`
-  — this step therefore modifies `sesori_shared`, considers every bridge and
-  client consumer of that file, and runs the shared suite;
-  `AcpConfigOptionParser` in the ACP base; a `SteadyPluginLifecycle` teardown
-  helper for the Claude/Pi wrappers; the Claude and Pi tracked-work copies
-  (`claude_session_service.dart:37,99`, `pi_session_service.dart:130`) migrate
-  to the Step 15 `PendingOperations`. From PR #1017 finding F9:
-  `_tryNormalizeBase64` byte-identical in the ACP/Codex/OpenCode mappers (+ a
-  Pi variant adopted only if byte-equivalent) and the ACP/Codex MIME
-  normalization/essence helpers → pure functions
-  `tryNormalizeBase64({required value})`, `normalizeMimeValue`, `mimeEssence`
-  in `sesori_plugin_interface/lib/src/messages/attachment_normalization.dart`
-  beside the existing attachment validators (stateless, I/O-free); the GitHub
-  release-asset URL assembly repeated in five runtime manifests → a default
-  `Uri releaseAssetUrl({required String assetName})` on the manifest base (a
-  manifest with a different tag convention overrides and says why). Plugin
-  catch hygiene: the six comment-only best-effort catches in
-  `codex approval_registry.dart:118,127`, `codex_app_server_client.dart:207,213`,
-  `codex_plugin_impl.dart:1166,1193`, and `codex_config_reader.dart:54` gain a
-  debug log; `opencode_api.dart:41`/`acp_plugin.dart:467` health probes stay
-  silent by design and say so in a comment.
-- Verify: mapper/registry tests of each touched plugin; `dart test` and
-  `dart analyze --fatal-infos` in `shared/sesori_shared`.
+- Re-verification retains exact small copies only. Claude and Pi duplicate the
+  same first-error/all-cleanups shutdown sequence, process-spawn outcome, and
+  global tracked teardown sets. Cursor and OMP duplicate ACP config-option
+  selection and flattening. ACP/Codex/OpenCode share attachment base64
+  normalization, ACP/Codex share MIME normalization, four GitHub manifests
+  share release-asset URL assembly, and three plugins construct the same
+  compaction command. Repeated text/reasoning/tool message parts and terminal
+  tool-status checks remain byte-equivalent in Claude/Pi and their trackers.
+- Add `PluginMessagePart.fromText/fromThinking/fromTool`,
+  `PluginToolStatus.isTerminal`, `PluginCommand.compaction`, and neutral
+  `ProcessSpawnOutcome` in `sesori_plugin_interface`. Add a protected
+  `SteadyPluginLifecycle.runShutdownCleanups` that attempts every cleanup and
+  rethrows the first error with its original stack. Claude and Pi use these
+  primitives; their global tracked teardown sets use Step 15
+  `PendingOperations`, while Claude's per-session map and Pi's per-session idle
+  future remain local.
+- Add `asStringKeyedMap` and `nonEmptyString` beside `jsonDecodeMap` in
+  `sesori_shared`, and migrate only byte-equivalent consumers. Cursor's
+  empty-string acceptance and OpenCode's empty-map fallback remain local. Add
+  ACP-owned `AcpConfigOptionParser` for Cursor/OMP config options while keeping
+  each plugin's output model local.
+- Add pure attachment base64/MIME normalization in
+  `sesori_plugin_interface/lib/src/messages/attachment_normalization.dart` and
+  migrate exact ACP/Codex/OpenCode copies. Pi's variant stays local because its
+  fallback contract differs. Claude/Pi DTO scalar parsers and Claude/Codex
+  `_decodeErrorForLog` stay local because their validation and privacy behavior
+  are not equivalent.
+- Add `RuntimeManifest.githubReleaseAssetUrl` for OpenCode, Codex, OMP, and Pi;
+  each manifest still owns its exact repository and tag (`v` versus Codex's
+  `rust-v`), while Cursor's non-GitHub URL is unchanged. Add contextual logs to
+  the remaining Codex swallow-and-continue catches. Collapse repeated stale
+  selection exception construction only inside Claude and Pi.
+- Verify: analyzers and full suites for shared, interface, runtime, ACP, Codex,
+  Claude, Pi, Cursor, OMP, and OpenCode; architecture implementation review.
 
 ### Step 29 — stdio transport plumbing
 
@@ -1641,4 +1698,5 @@ one bridge layer tree that matches its architecture document, one fake per
 shared contract, tested primitives instead of hand-rolled lanes and
 request tables, sealed states where flags used to coordinate, dated and correctly
 labelled compatibility markers with a recorded support baseline, CI covering the
-shared crypto/protocol package, and no database or default wire-contract change.
+shared crypto/protocol package, no database change, and only Step 28's additive
+non-null message-part defaults changing the default wire contract.

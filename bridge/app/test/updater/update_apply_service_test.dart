@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:clock/clock.dart';
 import 'package:path/path.dart' as p;
-import 'package:sesori_bridge/src/updater/foundation/filesystem_cleaner.dart';
+import 'package:sesori_bridge/src/foundation/filesystem_cleaner.dart';
 import 'package:sesori_bridge/src/updater/foundation/update_lock.dart';
 import 'package:sesori_bridge/src/updater/models/release_info.dart';
 import 'package:sesori_bridge/src/updater/models/update_apply_outcome.dart';

@@ -24,7 +24,7 @@ void main() {
         respond: (id, result) => respondCalls.add(_RespondCall(id, result)),
         respondError: (id, code, message) => errorCalls.add(_RespondError(id, code, message)),
       );
-      registry.attach(requests.stream);
+      registry.attach(stream: requests.stream);
     });
 
     tearDown(() async {
@@ -132,17 +132,17 @@ void main() {
         await pump();
         final asked = emitted.single as BridgeSsePermissionAsked;
 
-        final pending = registry.pendingPermissionsForSession("t-7");
+        final pending = registry.pendingPermissionsForSession(sessionId: "t-7");
         expect(pending, hasLength(1));
         expect(pending.single.id, equals(asked.requestID));
         expect(pending.single.sessionID, equals("t-7"));
         expect(pending.single.displaySessionId, equals("t-7"));
         expect(pending.single.tool, equals("exec"));
         expect(pending.single.description, equals("clean build dir"));
-        expect(registry.hasPendingInput("t-7"), isTrue);
+        expect(registry.hasPendingInput(sessionId: "t-7"), isTrue);
         // Questions and permissions are disjoint: a permission is never a
         // pending question.
-        expect(registry.pendingForSession("t-7"), isEmpty);
+        expect(registry.pendingForSession(sessionId: "t-7"), isEmpty);
       },
     );
 
@@ -164,12 +164,12 @@ void main() {
       final askedId = (emitted.single as BridgeSsePermissionAsked).requestID;
       emitted.clear();
 
-      final ok = registry.replyPermission(askedId, PluginPermissionReply.once);
+      final ok = registry.replyPermission(requestId: askedId, reply: PluginPermissionReply.once);
       expect(ok, isTrue);
       expect(respondCalls.single.id, equals(100));
       expect((respondCalls.single.result as Map)["decision"], equals("accept"));
       expect(emitted.single, isA<BridgeSsePermissionReplied>());
-      expect(registry.hasPendingInput("t-1"), isFalse);
+      expect(registry.hasPendingInput(sessionId: "t-1"), isFalse);
     });
 
     test("replyPermission(always) sends 'acceptForSession'", () async {
@@ -188,7 +188,7 @@ void main() {
       await pump();
       final askedId = (emitted.single as BridgeSsePermissionAsked).requestID;
 
-      registry.replyPermission(askedId, PluginPermissionReply.always);
+      registry.replyPermission(requestId: askedId, reply: PluginPermissionReply.always);
       expect(
         (respondCalls.single.result as Map)["decision"],
         equals("acceptForSession"),
@@ -212,7 +212,7 @@ void main() {
       await pump();
       final askedId = (emitted.single as BridgeSsePermissionAsked).requestID;
 
-      registry.replyPermission(askedId, PluginPermissionReply.reject);
+      registry.replyPermission(requestId: askedId, reply: PluginPermissionReply.reject);
       expect(
         (respondCalls.single.result as Map)["decision"],
         equals("decline"),
@@ -248,7 +248,7 @@ void main() {
         final event = emitted.single as BridgeSsePermissionAsked;
         expect(event.tool, equals("permissions"));
 
-        registry.replyPermission(event.requestID, PluginPermissionReply.always);
+        registry.replyPermission(requestId: event.requestID, reply: PluginPermissionReply.always);
         final result = respondCalls.single.result as Map;
         expect(result["permissions"], equals(requested));
         expect(result["scope"], equals("session"));
@@ -276,7 +276,7 @@ void main() {
         await pump();
         final askedId = (emitted.single as BridgeSsePermissionAsked).requestID;
 
-        registry.replyPermission(askedId, PluginPermissionReply.reject);
+        registry.replyPermission(requestId: askedId, reply: PluginPermissionReply.reject);
         final result = respondCalls.single.result as Map;
         expect(result["permissions"], isEmpty);
         expect(result["scope"], equals("turn"));
@@ -318,8 +318,8 @@ void main() {
       "replyPermission for an unknown id returns false and emits nothing",
       () {
         final ok = registry.replyPermission(
-          "br-bogus",
-          PluginPermissionReply.once,
+          requestId: "br-bogus",
+          reply: PluginPermissionReply.once,
         );
         expect(ok, isFalse);
         expect(respondCalls, isEmpty);
@@ -359,13 +359,13 @@ void main() {
         expect(asked.sessionID, equals("t-3"));
         expect(asked.description, equals("Allow Calendar to create an event?"));
         expect(asked.allowAlways, isTrue);
-        expect(registry.pendingPermissionsForSession("t-3"), hasLength(1));
-        expect(registry.pendingPermissionsForSession("t-3").single.allowAlways, isTrue);
-        expect(registry.pendingForSession("t-3"), isEmpty);
+        expect(registry.pendingPermissionsForSession(sessionId: "t-3"), hasLength(1));
+        expect(registry.pendingPermissionsForSession(sessionId: "t-3").single.allowAlways, isTrue);
+        expect(registry.pendingForSession(sessionId: "t-3"), isEmpty);
 
         final replied = registry.replyPermission(
-          asked.requestID,
-          PluginPermissionReply.once,
+          requestId: asked.requestID,
+          reply: PluginPermissionReply.once,
         );
         expect(replied, isTrue);
         expect(respondCalls.single.id, equals(199));
@@ -407,7 +407,7 @@ void main() {
         await pump();
 
         expect((emitted.single as BridgeSsePermissionAsked).allowAlways, isFalse);
-        expect(registry.pendingPermissionsForSession("t-3").single.allowAlways, isFalse);
+        expect(registry.pendingPermissionsForSession(sessionId: "t-3").single.allowAlways, isFalse);
       },
     );
 
@@ -436,8 +436,8 @@ void main() {
         await pump();
 
         expect(emitted.single, isA<BridgeSseQuestionAsked>());
-        expect(registry.pendingPermissionsForSession("t-3"), isEmpty);
-        expect(registry.pendingForSession("t-3"), hasLength(1));
+        expect(registry.pendingPermissionsForSession(sessionId: "t-3"), isEmpty);
+        expect(registry.pendingForSession(sessionId: "t-3"), hasLength(1));
       },
     );
 
@@ -466,7 +466,7 @@ void main() {
       await pump();
 
       expect(emitted.single, isA<BridgeSseQuestionAsked>());
-      expect(registry.pendingPermissionsForSession("t-3"), isEmpty);
+      expect(registry.pendingPermissionsForSession(sessionId: "t-3"), isEmpty);
     });
 
     test(
@@ -490,10 +490,10 @@ void main() {
         final asked = emitted.single as BridgeSseQuestionAsked;
         expect(asked.sessionID, equals("t-3"));
 
-        final pending = registry.pendingForSession("t-3");
+        final pending = registry.pendingForSession(sessionId: "t-3");
         expect(pending, hasLength(1));
         expect(pending.single.id, equals(asked.id));
-        expect(registry.hasPendingInput("t-3"), isTrue);
+        expect(registry.hasPendingInput(sessionId: "t-3"), isTrue);
       },
     );
 
@@ -517,9 +517,12 @@ void main() {
         await pump();
         final askedId = (emitted.single as BridgeSseQuestionAsked).id;
 
-        final ok = registry.replyQuestion(askedId, const [
-          ["Daniil"],
-        ]);
+        final ok = registry.replyQuestion(
+          requestId: askedId,
+          answers: const [
+            ["Daniil"],
+          ],
+        );
         expect(ok, isTrue);
         expect(respondCalls.single.id, equals(201));
         final answers = (respondCalls.single.result as Map)["answers"] as Map;
@@ -551,9 +554,12 @@ void main() {
         await pump();
         final askedId = (emitted.single as BridgeSseQuestionAsked).id;
 
-        registry.replyQuestion(askedId, const [
-          ["/tmp/out"],
-        ]);
+        registry.replyQuestion(
+          requestId: askedId,
+          answers: const [
+            ["/tmp/out"],
+          ],
+        );
         final result = respondCalls.single.result as Map;
         expect(result["action"], equals("accept"));
         expect((result["content"] as Map)["answers"], equals(["/tmp/out"]));
@@ -579,7 +585,7 @@ void main() {
         await pump();
         final askedId = (emitted.single as BridgeSseQuestionAsked).id;
 
-        final ok = registry.rejectQuestion(askedId);
+        final ok = registry.rejectQuestion(requestId: askedId);
         expect(ok, isTrue);
         expect((respondCalls.single.result as Map)["action"], equals("decline"));
         expect(errorCalls, isEmpty);
@@ -604,7 +610,7 @@ void main() {
         await pump();
         final askedId = (emitted.single as BridgeSseQuestionAsked).id;
 
-        final ok = registry.rejectQuestion(askedId);
+        final ok = registry.rejectQuestion(requestId: askedId);
         expect(ok, isTrue);
         expect(respondCalls, isEmpty);
         expect(errorCalls.single.id, equals(204));

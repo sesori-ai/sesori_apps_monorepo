@@ -38,6 +38,23 @@ final class PiEventDispatcher({
     _sessions[sessionId]?.pendingPrompts.removeWhere((prompt) => prompt.promptId == promptId);
   }
 
+  PluginMessageWithParts? activeCompactionMessage({required String sessionId}) {
+    final state = _sessions[sessionId];
+    final messageId = state?.compactionMessageId;
+    if (messageId == null) return null;
+    return _historyMapper.mapRunningCompaction(sessionId: sessionId, messageId: messageId);
+  }
+
+  List<BridgeSseEvent> clearCompaction({required String sessionId}) {
+    final state = _sessions[sessionId];
+    final messageId = state?.compactionMessageId;
+    if (state == null || messageId == null) return const [];
+    state
+      ..compactionMessageId = null
+      ..identities.releaseCompaction();
+    return [BridgeSseMessageRemoved(sessionID: sessionId, messageID: messageId)];
+  }
+
   void forgetSession({required String sessionId}) {
     _sessions.remove(sessionId);
     _identityTracker.forgetSession(sessionId: sessionId);
@@ -99,8 +116,8 @@ final class PiEventDispatcher({
       finalError: finalError,
     ),
     PiAutoRetryEndEvent() ||
-    PiSummarizationRetryAttemptStartEvent() ||
-    PiCompactionStartEvent() => _status(sessionId: sessionId, event: event, now: now),
+    PiSummarizationRetryAttemptStartEvent() => _status(sessionId: sessionId, event: event, now: now),
+    PiCompactionStartEvent() => _compactionStart(sessionId: sessionId, event: event, now: now),
     PiCompactionEndEvent(:final reason, :final aborted, :final willRetry, :final errorMessage) => _compactionEnd(
       sessionId: sessionId,
       reason: reason,
@@ -229,7 +246,7 @@ final class PiEventDispatcher({
     final parts = <PluginMessagePart>[];
     var sessionDiffRequired = false;
     for (final part in mapped.parts) {
-      if (part.type != PluginMessagePartType.tool) {
+      if (part is! PluginMessagePartTool) {
         parts.add(part);
         continue;
       }
@@ -550,6 +567,21 @@ final class PiEventDispatcher({
     return status == null ? const [] : [BridgeSseSessionStatus(sessionID: sessionId, status: status.toJson())];
   }
 
+  List<BridgeSseEvent> _compactionStart({
+    required String sessionId,
+    required PiCompactionStartEvent event,
+    required DateTime? now,
+  }) {
+    final state = _session(sessionId);
+    final messageId = state.compactionMessageId ??= state.identities.reserveCompaction();
+    final mapped = _historyMapper.mapRunningCompaction(sessionId: sessionId, messageId: messageId);
+    return [
+      ..._status(sessionId: sessionId, event: event, now: now),
+      BridgeSseMessageUpdated(info: mapped.info.toJson()),
+      for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
+    ];
+  }
+
   List<BridgeSseEvent> _retryEnd({
     required String sessionId,
     required int? attempt,
@@ -577,12 +609,16 @@ final class PiEventDispatcher({
         _PiCompactionFailureDiagnostic(reason: reason, detail: errorMessage),
       );
     }
-    if ((aborted || errorMessage != null) && !willRetry) {
-      return [BridgeSseSessionError(sessionID: sessionId)];
+    if (aborted || errorMessage != null) {
+      if (willRetry) return const [];
+      return [
+        ...clearCompaction(sessionId: sessionId),
+        BridgeSseSessionError(sessionID: sessionId),
+      ];
     }
-    if (willRetry) return const [];
     final state = _session(sessionId);
-    final messageId = state.identities.nextCompaction();
+    final messageId = state.identities.commitCompaction();
+    state.compactionMessageId = null;
     final mapped = _historyMapper.mapCompaction(sessionId: sessionId, messageId: messageId);
     return [
       BridgeSseSessionCompacted(sessionID: sessionId),
@@ -638,6 +674,7 @@ final class _SessionState({required final PiMessageIdentityBuilder identities}) 
   bool announced = false;
   final Set<({int contentIndex, PluginMessagePartType type})> startedParts = {};
   final Set<String> emittedPartIds = {};
+  String? compactionMessageId;
 
   void clearMessage() {
     messageId = null;
@@ -654,38 +691,28 @@ PluginMessagePart _textPart({
   required int contentIndex,
   required PluginMessagePartType type,
   required String text,
-}) => PluginMessagePart(
-  id: _blockId(messageId: messageId, contentIndex: contentIndex),
-  sessionID: sessionId,
-  messageID: messageId,
-  type: type,
-  text: text,
-  tool: null,
-  state: null,
-  prompt: null,
-  description: null,
-  agent: null,
-  agentName: null,
-  attempt: null,
-  retryError: null,
-  attachment: null,
-);
+}) => switch (type) {
+  PluginMessagePartType.text => PluginMessagePart.fromText(
+    id: _blockId(messageId: messageId, contentIndex: contentIndex),
+    sessionID: sessionId,
+    messageID: messageId,
+    text: text,
+  ),
+  PluginMessagePartType.reasoning => PluginMessagePart.fromThinking(
+    id: _blockId(messageId: messageId, contentIndex: contentIndex),
+    sessionID: sessionId,
+    messageID: messageId,
+    text: text,
+  ),
+  _ => throw ArgumentError.value(type, "type"),
+};
 
-PluginMessagePart _toolPart({required String sessionId, required PiTrackedTool tool}) => PluginMessagePart(
+PluginMessagePart _toolPart({required String sessionId, required PiTrackedTool tool}) => PluginMessagePart.fromTool(
   id: tool.id,
   sessionID: sessionId,
   messageID: tool.messageId,
-  type: PluginMessagePartType.tool,
-  text: null,
   tool: tool.name,
   state: tool.state,
-  prompt: null,
-  description: null,
-  agent: null,
-  agentName: null,
-  attempt: null,
-  retryError: null,
-  attachment: null,
 );
 
 String _blockId({required String messageId, required int contentIndex}) => "$messageId-block-${contentIndex + 1}";

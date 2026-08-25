@@ -37,7 +37,6 @@ class OpenCodePlugin._({
   required final io.HttpClient _httpClient,
   required String serverUrl,
   required String? password,
-  required bool autoInitialize,
   void Function()? onConnected,
   void Function()? onDisconnected,
 }) implements OpenCodeManagedApi {
@@ -66,16 +65,11 @@ class OpenCodePlugin._({
 
   /// Builds an OpenCode plugin against the server at [serverUrl].
   ///
-  /// When [autoInitialize] is true (the default, used by the legacy bridge-app
-  /// flow), cold-start is kicked off fire-and-forget at construction, swallowing
-  /// failures so creation never throws. The descriptor passes
-  /// `autoInitialize: false` and awaits [initialize] itself so it can surface a
-  /// cold-start failure as a degraded status. [onConnected]/[onDisconnected]
-  /// follow the SSE transport's live state for lifecycle reporting.
+  /// [onConnected]/[onDisconnected] follow the SSE transport's live state for
+  /// lifecycle reporting.
   factory({
     required String serverUrl,
     String? password,
-    bool autoInitialize = true,
     void Function()? onConnected,
     void Function()? onDisconnected,
   }) {
@@ -94,7 +88,6 @@ class OpenCodePlugin._({
       httpClient: httpClient,
       serverUrl: serverUrl,
       password: password,
-      autoInitialize: autoInitialize,
       onConnected: onConnected,
       onDisconnected: onDisconnected,
     );
@@ -123,16 +116,6 @@ class OpenCodePlugin._({
     // has already returned); re-emit the activity summary when it does so the
     // running badge surfaces on the correct root session.
     _summarySubscription = _service.summaryInvalidations.listen((_) => _emitProjectsSummary());
-    if (autoInitialize) {
-      // Legacy behavior: cold-start fire-and-forget so direct construction never
-      // throws (the descriptor awaits initialize() instead). The failure is
-      // swallowed to keep startup fail-soft, but logged so it stays diagnosable.
-      unawaited(
-        initialize().catchError((Object error, StackTrace stackTrace) {
-          Log.e("[opencode] auto-initialize cold-start failed: $error\n$stackTrace");
-        }),
-      );
-    }
   }
 
   /// Hydrates the session tracker and starts the SSE stream. Idempotent:

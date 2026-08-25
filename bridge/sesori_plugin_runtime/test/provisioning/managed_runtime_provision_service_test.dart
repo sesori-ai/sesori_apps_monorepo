@@ -1,3 +1,5 @@
+import "dart:io";
+
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -41,7 +43,14 @@ class const _StubManifest() implements RuntimeManifest {
   RuntimeAsset? assetFor({required PlatformTarget target}) => _asset;
 
   @override
+  bool supportsManagedInstallOn({required PlatformTarget target}) => true;
+
+  @override
   String downloadUrlFor({required RuntimeAsset asset}) => "https://example.test/${asset.assetName}";
+
+  @override
+  String githubReleaseAssetUrl({required String repository, required String tag, required RuntimeAsset asset}) =>
+      "https://github.com/$repository/releases/download/$tag/${asset.assetName}";
 
   @override
   String managedBinaryPath({required String stateDirectory}) {
@@ -56,6 +65,20 @@ class _FakeValidator({
   final void Function(String executable)? onDetect,
 }) implements RuntimeVersionValidator {
   final List<String> detectedExecutables = [];
+
+  @override
+  Future<RuntimeProbeOutcome> probe({
+    required String executable,
+    required Map<String, String>? environment,
+  }) async {
+    final version = await detectVersion(executable: executable, environment: environment);
+    return version == null
+        ? RuntimeProbeMissing(
+            innerError: ProcessException(executable, const []),
+            stackTrace: StackTrace.empty,
+          )
+        : RuntimeProbeReady(version: version);
+  }
 
   @override
   Future<RuntimeVersion?> detectVersion({
@@ -101,10 +124,13 @@ void main() {
   }) {
     return ManagedRuntimeProvisionService(
           manifest: const _StubManifest(),
-          versionValidator: _FakeValidator(
-            pathVersion: pathVersion,
-            managedVersion: managedVersion,
-            candidateVersions: candidateVersions,
+          selectionService: ManagedRuntimeSelectionService(
+            manifest: const _StubManifest(),
+            versionValidator: _FakeValidator(
+              pathVersion: pathVersion,
+              managedVersion: managedVersion,
+              candidateVersions: candidateVersions,
+            ),
           ),
           fallbackExecutableCandidates: fallbackCandidates,
         )
@@ -113,6 +139,7 @@ void main() {
             stateDirectory: stateDirectory,
             abortSignal: StartAbortSignal.never,
           ),
+          explicitExecutablePath: null,
         )
         .toList();
   }
@@ -200,10 +227,14 @@ void main() {
     final stream =
         ManagedRuntimeProvisionService(
           manifest: const _StubManifest(),
-          versionValidator: validator,
+          selectionService: ManagedRuntimeSelectionService(
+            manifest: const _StubManifest(),
+            versionValidator: validator,
+          ),
           fallbackExecutableCandidates: const [],
         ).provision(
           host: _FakeHost(stateDirectory: stateDirectory, abortSignal: abort.signal),
+          explicitExecutablePath: null,
         );
 
     await expectLater(stream, emitsError(isA<PluginStartAbortedException>()));
@@ -222,10 +253,14 @@ void main() {
     final stream =
         ManagedRuntimeProvisionService(
           manifest: const _StubManifest(),
-          versionValidator: validator,
+          selectionService: ManagedRuntimeSelectionService(
+            manifest: const _StubManifest(),
+            versionValidator: validator,
+          ),
           fallbackExecutableCandidates: const [],
         ).provision(
           host: _FakeHost(stateDirectory: stateDirectory, abortSignal: abort.signal),
+          explicitExecutablePath: null,
         );
 
     await expectLater(

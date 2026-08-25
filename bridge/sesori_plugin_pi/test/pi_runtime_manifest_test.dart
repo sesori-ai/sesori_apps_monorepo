@@ -63,7 +63,7 @@ void main() {
     );
   });
 
-  test("builds the official release URL", () {
+  test("builds the official release URL with the v tag", () {
     final asset = manifest.assetFor(
       target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
     )!;

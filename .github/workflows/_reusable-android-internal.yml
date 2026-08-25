@@ -19,6 +19,10 @@ on:
         required: true
       ANDROID_PROPERTIES:
         required: true
+      SINGULAR_SDK_KEY:
+        required: true
+      SINGULAR_SDK_SECRET:
+        required: true
 
 jobs:
   deploy:
@@ -62,6 +66,8 @@ jobs:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_PROPERTIES: ${{ secrets.ANDROID_PROPERTIES }}
+          SINGULAR_SDK_KEY: ${{ secrets.SINGULAR_SDK_KEY }}
+          SINGULAR_SDK_SECRET: ${{ secrets.SINGULAR_SDK_SECRET }}
         run: bundle exec fastlane deploy_internal
 
       - name: Cleanup credentials

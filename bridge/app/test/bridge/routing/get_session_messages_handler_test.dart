@@ -129,20 +129,10 @@ void main() {
             time: null,
           ),
           parts: [
-            PluginMessagePart(
+            PluginMessagePart.file(
               id: "p1",
               sessionID: "s1",
               messageID: "m1",
-              type: PluginMessagePartType.file,
-              text: null,
-              tool: null,
-              state: null,
-              prompt: null,
-              description: null,
-              agent: null,
-              agentName: null,
-              attempt: null,
-              retryError: null,
               attachment: PluginMessageAttachment.inlineImage(
                 mime: "image/png",
                 base64: base64Encode(const [1, 2, 3]),
@@ -157,7 +147,10 @@ void main() {
         makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
       );
-      expect(inlineResponse.messages.single.parts.single.attachment, isA<MessageAttachmentInlineImage>());
+      expect(
+        (inlineResponse.messages.single.parts.single as MessagePartFile).attachment,
+        isA<MessageAttachmentInlineImage>(),
+      );
 
       final response = await handler.handle(
         makeRequest("POST", "/session/messages"),
@@ -170,7 +163,7 @@ void main() {
       );
 
       expect(
-        response.messages.single.parts.single.attachment,
+        (response.messages.single.parts.single as MessagePartFile).attachment,
         isA<MessageAttachmentStoredImage>().having((image) => image.bridgeId, "bridgeId", "br_test1234"),
       );
     });

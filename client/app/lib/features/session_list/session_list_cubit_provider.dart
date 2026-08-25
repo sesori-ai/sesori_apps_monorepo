@@ -24,6 +24,7 @@ class const SessionListCubitProvider({
         routeSource: getIt<RouteSource>(),
         projectId: projectId,
         failureReporter: getIt<FailureReporter>(),
+        catalogRescanService: getIt<CatalogRescanService>(),
       ),
       child: child,
     );

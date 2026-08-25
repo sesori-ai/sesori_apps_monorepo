@@ -91,7 +91,8 @@ class const OmpRuntimeManifest() extends RuntimeManifest {
 
   /// Whether this release publishes an asset for [target]. Linux support is
   /// known before the host's libc variant is selected asynchronously.
-  bool hasAssetFor({required PlatformTarget target}) {
+  @override
+  bool supportsManagedInstallOn({required PlatformTarget target}) {
     if (target.os == PlatformOs.linux) return _linuxAssets.values.any((assets) => assets.containsKey(target.arch));
     return assetFor(target: target) != null;
   }
@@ -100,5 +101,5 @@ class const OmpRuntimeManifest() extends RuntimeManifest {
 
   @override
   String downloadUrlFor({required RuntimeAsset asset}) =>
-      "https://github.com/can1357/oh-my-pi/releases/download/v${bundledVersion.raw}/${asset.assetName}";
+      githubReleaseAssetUrl(repository: "can1357/oh-my-pi", tag: "v${bundledVersion.raw}", asset: asset);
 }

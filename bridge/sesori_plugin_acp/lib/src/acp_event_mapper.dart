@@ -154,7 +154,6 @@ class AcpEventMapper({
     _startedParts.remove(sessionId);
     _contentTrackers.remove(sessionId);
     _textPartAccumulators.remove(sessionId);
-    _sentUserSeq.remove(sessionId);
     _idlessAssistantSeq.remove(sessionId);
     _openIdlessAssistant.remove(sessionId);
     // Exact per-session removal — session ids are opaque agent strings that may
@@ -196,10 +195,6 @@ class AcpEventMapper({
   /// ACP emits an empty part snapshot followed by deltas, while chat history
   /// persists complete part snapshots only.
   final Map<String, Map<String, _TextPartAccumulator>> _textPartAccumulators = {};
-
-  /// Sequence for user messages accepted by this plugin. These are emitted
-  /// locally because ACP agents do not reliably echo `user_message_chunk`.
-  final Map<String, int> _sentUserSeq = {};
 
   /// Fallback assistant-envelope sequence when ACP omits `messageId`.
   final Map<String, int> _idlessAssistantSeq = {};
@@ -264,22 +259,21 @@ class AcpEventMapper({
     parts: parts,
   );
 
+  /// Derives the durable user-message identity from the accepted prompt id.
+  static String sentUserMessageId({required String promptId}) => "$promptId-user";
+
   /// Maps an accepted outbound prompt to its canonical live user message.
   List<BridgeSseEvent> mapSentPrompt({
     required String sessionId,
+    required String messageId,
     required String promptId,
     required List<PluginPromptPart> parts,
-  }) {
-    final sequence = (_sentUserSeq[sessionId] ?? 0) + 1;
-    final events = _mapUserPrompt(
-      sessionId: sessionId,
-      messageId: "$sessionId-sent-$sequence-user",
-      promptId: promptId,
-      parts: parts,
-    );
-    if (events.isNotEmpty) _sentUserSeq[sessionId] = sequence;
-    return events;
-  }
+  }) => _mapUserPrompt(
+    sessionId: sessionId,
+    messageId: messageId,
+    promptId: promptId,
+    parts: parts,
+  );
 
   List<BridgeSseEvent> _mapUserPrompt({
     required String sessionId,
@@ -1065,22 +1059,27 @@ class AcpEventMapper({
     required String? text,
     required PluginMessageAttachment? attachment,
   }) {
-    return PluginMessagePart(
-      id: partId,
-      sessionID: sessionId,
-      messageID: messageId,
-      type: type,
-      text: text,
-      tool: null,
-      state: null,
-      prompt: null,
-      description: null,
-      agent: null,
-      agentName: null,
-      attempt: null,
-      retryError: null,
-      attachment: attachment,
-    );
+    return switch (type) {
+      PluginMessagePartType.text => PluginMessagePart.text(
+        id: partId,
+        sessionID: sessionId,
+        messageID: messageId,
+        text: text!,
+      ),
+      PluginMessagePartType.reasoning => PluginMessagePart.reasoning(
+        id: partId,
+        sessionID: sessionId,
+        messageID: messageId,
+        text: text!,
+      ),
+      PluginMessagePartType.file => PluginMessagePart.file(
+        id: partId,
+        sessionID: sessionId,
+        messageID: messageId,
+        attachment: attachment!,
+      ),
+      _ => throw StateError("ACP content part cannot use $type"),
+    };
   }
 
   PluginMessagePart _toolPart({
@@ -1090,21 +1089,12 @@ class AcpEventMapper({
     required String tool,
     required PluginToolState state,
   }) {
-    return PluginMessagePart(
+    return PluginMessagePart.tool(
       id: partId,
       sessionID: sessionId,
       messageID: messageId,
-      type: PluginMessagePartType.tool,
-      text: null,
       tool: tool,
       state: state,
-      prompt: null,
-      description: null,
-      agent: null,
-      agentName: null,
-      attempt: null,
-      retryError: null,
-      attachment: null,
     );
   }
 

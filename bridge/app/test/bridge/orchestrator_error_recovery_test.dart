@@ -3,7 +3,6 @@ import "dart:io";
 
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_bridge/src/models/bridge_config.dart";
@@ -78,7 +77,7 @@ void main() {
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(""),
-      tokenRefresher: _FakeTokenRefresher(),
+      tokenRefresher: FakeTokenRefresher(token: "token"),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),
       restartService: buildTestRestartService(),
@@ -156,7 +155,7 @@ void main() {
       httpClient: httpClient,
       processRunner: ProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(""),
-      tokenRefresher: _FakeTokenRefresher(),
+      tokenRefresher: FakeTokenRefresher(token: "token"),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),
       restartService: buildTestRestartService(),
@@ -213,7 +212,7 @@ void main() {
         httpClient: httpClient,
         processRunner: ProcessRunner(),
         accessTokenProvider: FakeAccessTokenProvider(""),
-        tokenRefresher: _FakeTokenRefresher(),
+        tokenRefresher: FakeTokenRefresher(token: "token"),
         bridgeRegistrationService: createFakeBridgeRegistrationService(),
         failureReporter: FakeFailureReporter(),
         restartService: buildTestRestartService(),
@@ -306,7 +305,7 @@ class _TestHarness._({
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
     final failureReporter = CapturingFailureReporter();
-    final tokenRefresher = _FakeTokenRefresher();
+    final tokenRefresher = FakeTokenRefresher(token: "token");
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
@@ -568,7 +567,6 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
     required String projectId,
   }) async => const PluginProvidersResult(providers: []);
 
-  @override
   Future<void> dispose() async {}
 }
 
@@ -585,9 +583,4 @@ class _ThrowingConnectRelayClient({required final Future<void> _connectGate}) ex
     await _connectGate;
     throw StateError("connect failed");
   }
-}
-
-class _FakeTokenRefresher() implements TokenRefresher {
-  @override
-  Future<String> getAccessToken({bool forceRefresh = false}) async => "token";
 }

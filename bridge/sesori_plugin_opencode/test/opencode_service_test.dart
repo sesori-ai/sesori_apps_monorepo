@@ -151,7 +151,7 @@ void main() {
         ],
         providers: const PluginProvidersResult(
           providers: [
-            PluginProvider.custom(
+            PluginProvider(
               id: "provider",
               name: "Provider",
               authType: PluginProviderAuthType.unknown,

@@ -56,6 +56,8 @@ sealed class const CatalogRescanState() {
 
   const factory unsupported() = CatalogRescanUnsupported;
 
+  const factory noHarness() = CatalogRescanNoHarness;
+
   /// Whether a rescan is in flight. Leaving this is what tells a list to
   /// refresh, since a committed import raises no invalidation of its own.
   bool get isLive => this is CatalogRescanStarting || this is CatalogRescanRunning;
@@ -98,6 +100,15 @@ final class const CatalogRescanFailed({required final int harnessCount})
 
 /// This bridge cannot rescan at all, because it predates the import route.
 final class const CatalogRescanUnsupported() extends CatalogRescanState;
+
+/// There is no harness to rescan: either no management snapshot has arrived
+/// yet, the one that arrived failed, or none of its harnesses is routable.
+///
+/// One variant for all three, because a rescan cannot start in any of them and
+/// the user's next move is the same. Without it a fan-out over an empty set
+/// would return silently, leaving the pull that asked for it with nothing to
+/// show for itself.
+final class const CatalogRescanNoHarness() extends CatalogRescanState;
 
 /// Outcome of a rescan aimed at one named harness.
 ///

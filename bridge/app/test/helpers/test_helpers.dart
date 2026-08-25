@@ -29,9 +29,16 @@ class FakeBridgeIdProvider([var String? id]) implements BridgeIdProvider {
   String? get bridgeId => id;
 }
 
-class FakeTokenRefresher() implements TokenRefresher {
+class FakeTokenRefresher({String token = "test-token", String? refreshedToken}) implements TokenRefresher {
+  final String _token = token;
+  final String? _refreshedToken = refreshedToken;
+  final List<bool> forceRefreshValues = [];
+
   @override
-  Future<String> getAccessToken({bool forceRefresh = false}) async => "test-token";
+  Future<String> getAccessToken({bool forceRefresh = false}) async {
+    forceRefreshValues.add(forceRefresh);
+    return forceRefresh ? _refreshedToken ?? _token : _token;
+  }
 }
 
 /// In-memory [BridgeIdStorage] substitute for [BridgeRegistrationService] tests.

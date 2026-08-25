@@ -49,11 +49,8 @@ export "src/capabilities/relay/room_key_storage.dart";
 export "src/capabilities/server_connection/connection_service.dart";
 export "src/capabilities/server_connection/models/connection_status.dart";
 export "src/capabilities/server_connection/server_connection_config.dart";
-// Capabilities
 export "src/capabilities/voice/voice_api.dart";
-// Consumers
 export "src/consumers/analytics/session_activity_analytics_listener.dart";
-// Cubits
 export "src/cubits/appearance/appearance_cubit.dart";
 export "src/cubits/bridge_identity/bridge_identity_cubit.dart";
 export "src/cubits/bridge_identity/bridge_identity_state.dart";
@@ -98,11 +95,8 @@ export "src/cubits/splash/splash_cubit.dart";
 export "src/cubits/splash/splash_state.dart";
 export "src/cubits/sse_toast/sse_toast_cubit.dart";
 export "src/cubits/sse_toast/sse_toast_state.dart";
-// DI
 export "src/di/injection.dart";
-// Errors
 export "src/errors/remote_failure_reason.dart";
-// Analytics foundation
 export "src/foundation/models/composer/composer_attachment.dart";
 export "src/foundation/models/composer/composer_draft.dart";
 export "src/foundation/models/product_analytics/analytics_runtime_capability.dart";
@@ -114,9 +108,7 @@ export "src/foundation/platform/attachment_thumbnail_storage.dart";
 export "src/foundation/platform/image_clipboard.dart";
 export "src/foundation/platform/image_saver.dart";
 export "src/foundation/platform/image_sharer.dart";
-// Logging
 export "src/logging/logging.dart";
-// Platform interfaces
 export "src/platform/deep_link_source.dart";
 export "src/platform/lifecycle_source.dart";
 export "src/platform/local_notification_client.dart";
@@ -146,16 +138,16 @@ export "src/repositories/product_analytics_preference_repository.dart";
 export "src/repositories/project_repository.dart";
 export "src/repositories/registered_bridges_store.dart";
 export "src/repositories/session_repository.dart";
-// Routing
 export "src/routing/analytics_route_listener.dart";
 export "src/routing/app_routes.dart";
 export "src/routing/notification_open_dispatcher.dart";
-// Services
+export "src/services/catalog_rescan_service.dart";
 export "src/services/composer_draft_calculator.dart";
 export "src/services/foreground_notification_dispatcher.dart";
 export "src/services/installation_analytics_service.dart";
 export "src/services/loaded_state_analytics_reporter.dart";
 export "src/services/message_thumbnail_cache_service.dart";
+export "src/services/models/catalog_rescan_state.dart";
 export "src/services/models/new_session_backend_scope.dart";
 export "src/services/models/new_session_options_source.dart";
 export "src/services/models/new_session_selection_intent.dart";
@@ -176,7 +168,6 @@ export "src/services/session_list_service.dart";
 export "src/services/session_unseen_tracker.dart";
 export "src/services/session_viewing_service.dart";
 export "src/services/sse_event_tracker.dart";
-// Utils
 export "src/utils/command_filter/command_picker_entry_builder.dart";
 export "src/utils/diff/diff_engine.dart";
 export "src/utils/diff/language_detector.dart";

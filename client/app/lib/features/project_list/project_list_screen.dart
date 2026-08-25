@@ -17,6 +17,7 @@ import "../../core/external_link.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/support_links.dart";
 import "../../core/utils/copy_text_to_clipboard.dart";
+import "../../core/widgets/catalog_scan_row.dart";
 import "../../core/widgets/connection_banner.dart";
 import "../../core/widgets/connection_graphic.dart";
 import "../../core/widgets/remote_failure_view.dart";
@@ -49,6 +50,7 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
               productAnalyticsService: getIt<ProductAnalyticsService>(),
             ),
             failureReporter: getIt<FailureReporter>(),
+            catalogRescanService: getIt<CatalogRescanService>(),
           ),
         ),
         // The machine this account is paired with, resolved independently of the
@@ -176,6 +178,14 @@ class _ProjectListBodyState() extends State<_ProjectListBody> {
       floatingActionButton: floatingAction.action,
       floatingActionAlignment: floatingAction.alignment,
       onRefresh: _refreshFor(context: context, state: state),
+      // Only the loaded list can scan: the disconnected states pull to
+      // reconnect, and there is nothing to scan into until the list is there.
+      deepRefresh: state is ProjectListLoaded
+          ? CatalogScanRow.deepRefresh(
+              context: context,
+              onStart: () => context.read<ProjectListCubit>().startCatalogScan(),
+            )
+          : null,
       slivers: _buildContentSlivers(
         context: context,
         state: state,
@@ -297,8 +307,15 @@ class _ProjectListBodyState() extends State<_ProjectListBody> {
           ),
         ),
       ],
-      ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId) => [
+      ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId, :final catalogScan) => [
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
+        SliverToBoxAdapter(
+          child: CatalogScanRow(
+            scan: catalogScan,
+            onCancel: () => context.read<ProjectListCubit>().cancelCatalogScan(),
+            onDismiss: () => context.read<ProjectListCubit>().dismissCatalogScan(),
+          ),
+        ),
         // Keep the list mounted at zero items so its final row can finish the
         // closing transition before the connected-empty view takes over.
         PregoAnimatedSliverList<ProjectSummary>(

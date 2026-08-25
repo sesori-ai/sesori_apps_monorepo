@@ -29,7 +29,7 @@ class OmpPlugin._({
   required final OmpCatalogService _catalogService,
   required final OmpSessionOptionsService _ompSessionOptionsService,
   required final OmpSessionCleanupService _cleanupService,
-  super.processFactory,
+  required super.processFactory,
 }) extends AcpPlugin implements PersistedSessionCleanupApi {
   factory({
     String binaryPath = OmpBinary.defaultBinary,

@@ -190,11 +190,15 @@ sealed class BridgePluginApi() {
   /// [projectId] identifies the project; its format is plugin-defined.
   Future<List<PluginAgent>> getAgents({required String projectId});
 
+  /// Returns questions that remain unresolved for [sessionId]. Implementations
+  /// consume each entry on reply/reject and clear it during abort or disposal.
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId});
 
   /// Returns the pending permission requests to surface on [sessionId]'s
   /// screen: the session's own requests plus those of its descendant
   /// (sub-agent) sessions, whose top-most root resolves to [sessionId].
+  /// Implementations consume each entry on reply and clear it during abort or
+  /// disposal.
   Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId});
 
   /// Returns all pending questions for every session in the given project.
@@ -210,12 +214,16 @@ sealed class BridgePluginApi() {
   /// - Each inner list contains the selected answers for that question. Multiple
   ///   values represent multi-select; an empty list means intentionally
   ///   unanswered, including a client-side decline of only that question.
+  /// Implementations must resolve the backend request or retain an observable
+  /// failure when consuming the pending entry.
   Future<void> replyToQuestion({
     required String questionId,
     required String sessionId,
     required List<List<String>> answers,
   });
 
+  /// Rejects and consumes a pending question. Teardown paths that reject on the
+  /// client's behalf must continue clearing state and log backend failures.
   Future<void> rejectQuestion({required String questionId, required String? sessionId});
 
   /// Responds to a pending permission request.
@@ -223,6 +231,8 @@ sealed class BridgePluginApi() {
   /// [requestId] — the unique ID of the permission request
   /// [sessionId] — the session that owns this permission
   /// [reply] — once/always/reject
+  /// Implementations must resolve the backend request or retain an observable
+  /// failure when consuming the pending entry.
   Future<void> replyToPermission({
     required String requestId,
     required String sessionId,
@@ -245,15 +255,6 @@ sealed class BridgePluginApi() {
 
   /// Build a summary of the active sessions for each project.
   List<PluginProjectActivitySummary> getActiveSessionsSummary();
-
-  /// Stop the plugin and release resources (SSE connections, HTTP clients, etc.).
-  ///
-  /// Prefer `BridgePlugin.shutdown()`, which owns the plugin's ordered
-  /// teardown; this method will be removed once the bridge core stops
-  /// calling it directly. Until then the core may call `dispose()` before or
-  /// after `shutdown()`, so implementations MUST be idempotent and safe in
-  /// either order.
-  Future<void> dispose();
 }
 
 /// A plugin whose backend owns the project list natively (e.g. OpenCode's

@@ -825,7 +825,6 @@ void main() {
       );
       for (final session in [inLaunch, inOpened]) {
         plugin.registry!.addPendingQuestion(
-          bridgeRequestId: "q-${session.id}",
           acpId: "acp-${session.id}",
           sessionId: session.id,
           questions: const [question],
@@ -857,7 +856,7 @@ class _RegistryCapturingAcpPlugin({
   required super.eventMapper,
   required super.commandTracker,
   required super.sessionOptionsService,
-  super.processFactory,
+  required super.processFactory,
 }) extends TestAcpPlugin {
   AcpApprovalRegistry? registry;
 

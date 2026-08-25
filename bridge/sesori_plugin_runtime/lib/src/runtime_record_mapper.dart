@@ -1,8 +1,7 @@
 /// Maps a plugin-owned runtime record to and from its frozen persistence contract.
 ///
-/// This is the byte-compatibility seam for managed plugin runtimes. At PR 11 the
-/// OpenCode plugin supplies its existing Freezed ownership model verbatim through
-/// this seam, writing byte-compatible JSON to the frozen legacy path.
+/// Keeps managed-runtime supervision generic while each plugin owns its frozen
+/// persistence schema.
 abstract class RuntimeRecordMapper<R>() {
   Map<String, dynamic> toJson({required R record});
 

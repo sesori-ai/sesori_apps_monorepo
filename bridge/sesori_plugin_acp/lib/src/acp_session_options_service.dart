@@ -34,7 +34,7 @@ class AcpSessionOptionsService({
         providers: modelId == null
             ? const []
             : [
-                PluginProvider.custom(
+                PluginProvider(
                   id: providerId,
                   name: _agentDisplayName,
                   authType: PluginProviderAuthType.unknown,

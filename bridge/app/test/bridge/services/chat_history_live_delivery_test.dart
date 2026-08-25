@@ -101,11 +101,11 @@ void main() {
 
       final shapes = captured as CapturedPartShapes;
       expect(
-        shapes.inlinePart.attachment,
+        _attachmentOf(shapes.inlinePart),
         isA<MessageAttachmentInlineImage>().having((image) => image.base64, "base64", base64Encode(bytes)),
       );
       expect(
-        shapes.storedReferencePart.attachment,
+        _attachmentOf(shapes.storedReferencePart),
         isA<MessageAttachmentStoredImage>()
             .having((image) => image.bridgeId, "bridgeId", "br_test1234")
             .having((image) => image.byteLength, "byteLength", bytes.length),
@@ -134,9 +134,9 @@ void main() {
         ),
       ) as CapturedPartShapes;
 
-      expect(captured.inlinePart.attachment, isA<MessageAttachmentMetadata>());
+      expect(_attachmentOf(captured.inlinePart), isA<MessageAttachmentMetadata>());
       expect(
-        captured.storedReferencePart.attachment,
+        _attachmentOf(captured.storedReferencePart),
         isA<MessageAttachmentStoredImage>().having((image) => image.byteLength, "byteLength", bytes.length),
       );
     });
@@ -283,13 +283,13 @@ void main() {
         ),
       ) as CapturedPartShapes;
 
-      expect(first.inlinePart.attachment, isA<MessageAttachmentInlineImage>());
+      expect(_attachmentOf(first.inlinePart), isA<MessageAttachmentInlineImage>());
       expect(
-        second.inlinePart.attachment,
+        _attachmentOf(second.inlinePart),
         isA<MessageAttachmentMetadata>().having((data) => data.filename, "filename", "second.png"),
         reason: "the released 5 MiB aggregate applies across the whole stored collection",
       );
-      expect(second.storedReferencePart.attachment, isA<MessageAttachmentStoredImage>());
+      expect(_attachmentOf(second.storedReferencePart), isA<MessageAttachmentStoredImage>());
     });
 
     test("retention budgeting spans separately delivered image parts of one message", () async {
@@ -337,8 +337,8 @@ void main() {
         ),
       ) as CapturedPartShapes;
 
-      expect(captured.inlinePart.attachment, isA<MessageAttachmentMetadata>());
-      expect(captured.storedReferencePart.attachment, isA<MessageAttachmentMetadata>());
+      expect(_attachmentOf(captured.inlinePart), isA<MessageAttachmentMetadata>());
+      expect(_attachmentOf(captured.storedReferencePart), isA<MessageAttachmentMetadata>());
       final rows = await history.database.chatHistoryDao.getParts(sessionId: "ses_a", messageIds: ["m1"]);
       expect(rows.last.partJson, isNot(contains("stored_file")));
     });
@@ -388,8 +388,8 @@ void main() {
         ),
       ) as CapturedPartShapes;
 
-      expect(captured.inlinePart.attachment, isA<MessageAttachmentMetadata>());
-      expect(captured.storedReferencePart.attachment, isA<MessageAttachmentMetadata>());
+      expect(_attachmentOf(captured.inlinePart), isA<MessageAttachmentMetadata>());
+      expect(_attachmentOf(captured.storedReferencePart), isA<MessageAttachmentMetadata>());
     });
 
     test("a failed write returns unavailable and drops the synced marker", () async {
@@ -456,7 +456,7 @@ void main() {
         ),
       ) as CapturedPartUnavailable;
 
-      expect(captured.inlineFallbackPart.attachment, isA<MessageAttachmentMetadata>());
+      expect(_attachmentOf(captured.inlineFallbackPart), isA<MessageAttachmentMetadata>());
     });
   });
 }
@@ -473,22 +473,16 @@ MessagePart _part({
   required String id,
   MessageAttachment? attachment,
   ToolState? state,
-}) => MessagePart(
-  id: id,
-  sessionID: "ses_a",
-  messageID: "m1",
-  type: state == null ? MessagePartType.file : MessagePartType.tool,
-  text: null,
-  tool: state == null ? null : "tool",
-  state: state,
-  prompt: null,
-  description: null,
-  agent: null,
-  agentName: null,
-  attempt: null,
-  retryError: null,
-  attachment: attachment,
-);
+}) => state == null
+    ? MessagePart.file(
+        id: id,
+        sessionID: "ses_a",
+        messageID: "m1",
+        attachment: attachment ?? const MessageAttachment.unknown(),
+      )
+    : MessagePart.tool(id: id, sessionID: "ses_a", messageID: "m1", tool: "tool", state: state);
+
+MessageAttachment _attachmentOf(MessagePart part) => (part as MessagePartFile).attachment;
 
 /// Fails the one write the delivery shapes depend on, the way a full or
 /// unwritable disk does.

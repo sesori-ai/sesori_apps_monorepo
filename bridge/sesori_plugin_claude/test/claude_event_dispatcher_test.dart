@@ -308,7 +308,7 @@ void main() {
       expect(toolComplete.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
       final tool = toolStopped.whereType<BridgeSseMessagePartUpdated>().single.part;
       expect(tool.id, "toolu-split");
-      expect(tool.state?.status, PluginToolStatus.running);
+      expect(tool.state.status, PluginToolStatus.running);
     });
 
     test("hides local command records and keeps the last real model", () {
@@ -431,14 +431,14 @@ void main() {
       );
 
       expect(
-        started.whereType<BridgeSseMessagePartUpdated>().single.part.state?.status,
+        started.whereType<BridgeSseMessagePartUpdated>().single.part.state.status,
         PluginToolStatus.pending,
       );
-      expect((input.single as BridgeSseMessagePartUpdated).part.state?.status, PluginToolStatus.running);
+      expect((input.single as BridgeSseMessagePartUpdated).part.state.status, PluginToolStatus.running);
       expect(completed.whereType<BridgeSseSessionDiff>(), hasLength(1));
       final terminal = completed.whereType<BridgeSseMessagePartUpdated>().single.part;
-      expect(terminal.state?.status, PluginToolStatus.completed);
-      expect(terminal.state?.output, "done");
+      expect(terminal.state.status, PluginToolStatus.completed);
+      expect(terminal.state.output, "done");
       expect(duplicate.whereType<BridgeSseSessionDiff>(), isEmpty);
       expect(duplicate.whereType<BridgeSseMessagePartUpdated>().single.part.state, terminal.state);
     });

@@ -29,7 +29,10 @@ void main() {
       );
 
       expect(harness.processes, isEmpty);
-      expect((await harness.plugin.getSessions(projectId: harness.project.path, start: null, limit: null)).single.id, session.id);
+      expect(
+        (await harness.plugin.getSessions(projectId: harness.project.path, start: null, limit: null)).single.id,
+        session.id,
+      );
       expect(await harness.plugin.getSessionMessages(session.id), isEmpty);
 
       final events = <BridgeSseEvent>[];
@@ -39,6 +42,29 @@ void main() {
       }
       expect(events.single, isA<BridgeSseSessionCreated>());
       await subscription.cancel();
+    });
+
+    test("session snapshot includes an active compaction for late viewers", () async {
+      harness.writeSession(id: "session", parentPath: null);
+      await harness.plugin.getSessions(projectId: harness.project.path, start: null, limit: null);
+      await harness.plugin.sendPrompt(
+        sessionId: "session",
+        promptId: "prompt",
+        parts: const [PluginPromptPart.text(text: "continue")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final process = await harness.nextSessionProcess();
+      await waitForCommand(process: process, type: "prompt");
+      process.emit(frame: {"type": "compaction_start", "reason": "threshold"});
+      await pump();
+
+      final messages = await harness.plugin.getSessionMessages("session");
+
+      expect(messages, hasLength(1));
+      expect(messages.single.parts.single.state.status, PluginToolStatus.running);
+      expect(messages.single.parts.single.state.title, "Compacting context");
     });
 
     test("buffers created before busy when the first turn starts", () async {

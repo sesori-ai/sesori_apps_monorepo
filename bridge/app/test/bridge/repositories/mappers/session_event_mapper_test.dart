@@ -23,21 +23,11 @@ void main() {
         agent: null,
         time: null,
       ).toJson();
-      const part = PluginMessagePart(
+      const part = PluginMessagePart.text(
         id: "part",
         sessionID: "backend-session",
         messageID: "message",
-        type: PluginMessagePartType.text,
         text: "text",
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
-        attachment: null,
       );
       final cases = <({String name, BridgeSseEvent event, Set<String> expectedBackendIds})>[
         (

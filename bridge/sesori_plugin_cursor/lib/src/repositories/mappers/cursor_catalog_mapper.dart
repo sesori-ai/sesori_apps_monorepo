@@ -117,12 +117,7 @@ abstract final class CursorCatalogMapper() {
   static Map<String, dynamic>? _findConfig({
     required AcpNewSessionResult result,
     required String category,
-  }) {
-    for (final option in result.configOptions) {
-      if (option["category"] == category) return option;
-    }
-    return null;
-  }
+  }) => AcpConfigOptionParser.find(configs: result.configOptions, category: category, id: null);
 
   static Map<String, dynamic>? _findThoughtLevelConfig({
     required AcpNewSessionResult result,
@@ -145,15 +140,10 @@ abstract final class CursorCatalogMapper() {
     return null;
   }
 
-  static String? _configId({required Map<String, dynamic>? config}) {
-    final id = config?["id"];
-    return id is String && id.isNotEmpty ? id : null;
-  }
+  static String? _configId({required Map<String, dynamic>? config}) => AcpConfigOptionParser.id(config: config);
 
-  static String? _currentValue({required Map<String, dynamic>? config}) {
-    final value = config?["currentValue"] ?? config?["value"];
-    return value is String && value.isNotEmpty ? value : null;
-  }
+  static String? _currentValue({required Map<String, dynamic>? config}) =>
+      AcpConfigOptionParser.currentValue(config: config);
 
   static List<CursorCatalogOption> _options({
     required Map<String, dynamic>? config,
@@ -188,24 +178,7 @@ abstract final class CursorCatalogMapper() {
 
   static List<Map<String, dynamic>> _flattenedOptions({
     required Map<String, dynamic>? config,
-  }) {
-    final rawOptions = config?["options"];
-    if (rawOptions is! List) return const [];
-    final flattened = <Map<String, dynamic>>[];
-    for (final entry in rawOptions) {
-      if (entry is! Map) continue;
-      final option = entry.cast<String, dynamic>();
-      final nested = option["options"];
-      if (nested is List) {
-        flattened.addAll(
-          nested.whereType<Map<dynamic, dynamic>>().map((item) => item.cast<String, dynamic>()),
-        );
-      } else {
-        flattened.add(option);
-      }
-    }
-    return flattened;
-  }
+  }) => AcpConfigOptionParser.flattenedOptions(config: config);
 
   static bool _hasMultiLevelOptions({required Map<String, dynamic> config}) {
     final options = _options(config: config);

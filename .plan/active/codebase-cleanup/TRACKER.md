@@ -52,7 +52,8 @@ five open PRs). Steps sharing a package stay serialized: 4 after 3 (both
 - [x] Every step re-verifies its evidence against current `main` before editing
   and records the delta in its own `steps/step-NN.md` — never in this file, so
   parallel steps cannot conflict.
-- [x] No wire-contract or compatibility removal outside Step 42 and D1.
+- [x] No compatibility removal outside Step 42 and D1. Step 28's additive
+  non-null message-part defaults are the only other wire-contract change.
 - [x] No database schema change anywhere in the series.
 - [x] Session-detail refresh coordination, dispatcher merging, orchestrator
   splitting, and `ConnectionService`/`RelayClient` lifecycle redesign are out.
@@ -65,8 +66,8 @@ five open PRs). Steps sharing a package stay serialized: 4 after 3 (both
 
 - [x] One `PendingOperations` and one `KeyedParallelLock` (both in
   `sesori_bridge_foundation`), one `AbortableRequestClient` (app foundation),
-  one `PendingPermissionRegistry` base, one managed-runtime start helper, one
-  `RuntimeProbeOutcome`, one `NdjsonProcessClient` (`sesori_plugin_runtime`),
+  one `PendingPermissionRegistry` base, one managed-runtime lifecycle wrapper,
+  one `RuntimeProbeOutcome`, one `NdjsonProcessClient` (`sesori_plugin_runtime`),
   one per-cubit `LoadedStateAnalyticsReporter` — no second variant of any of
   them, and no caller state on singleton services.
 - [x] No listener base class, generic tool tracker, merged dispatcher, shared
@@ -262,6 +263,12 @@ Fixed titles and order. Status is GitHub's; evidence is in `steps/step-NN.md`.
   decisions offered to D1); recorded what is not adopted and why in PLAN.md.
 - **Owner decisions (2026-08-22):** D1 confirmed at `≥ v1.4.0`; D2 approved;
   #1018 kept as the single plan and #1017 closed in its favor.
+- **Step 27 architecture implementation review (2026-08-24):** approved with
+  no findings; `PendingPermissionRegistry` remains in
+  `sesori_plugin_interface` as planned.
+- **Step 28 architecture implementation review (2026-08-24):** approved with
+  no findings; neutral helpers remain in interface/shared, ACP config parsing
+  remains in the ACP package, and lifecycle/runtime ownership remains intact.
 - **Step 1 PR review round 3 (bot, 2026-08-22):** six new findings; five
   applied (Steps 4 and 20 added to the implementation-review list; Step 7
   moves `plugin_runtime.dart` to `api/` and keeps `runtime/` as the

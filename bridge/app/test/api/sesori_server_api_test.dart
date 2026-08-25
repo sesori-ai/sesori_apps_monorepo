@@ -9,6 +9,8 @@ import "package:sesori_bridge/src/foundation/abortable_request.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../helpers/test_helpers.dart";
+
 void main() {
   group("SesoriServerApi app-client status", () {
     test("sends immediate request to exact endpoint with bearer token", () async {
@@ -20,7 +22,7 @@ void main() {
           return http.Response('{"registered":true}', 200);
         }),
         requestDeadline: const Duration(seconds: 1),
-        tokenRefresher: _FakeTokenRefresher(token: "unused"),
+        tokenRefresher: FakeTokenRefresher(token: "unused"),
       );
 
       final response = await api.getAppClientStatus(accessToken: "secret-token");
@@ -36,13 +38,13 @@ void main() {
         authBackendUrl: "https://auth.example.test",
         client: MockClient((_) async => http.Response("missing", 503)),
         requestDeadline: const Duration(seconds: 1),
-        tokenRefresher: _FakeTokenRefresher(token: "unused"),
+        tokenRefresher: FakeTokenRefresher(token: "unused"),
       );
       final malformedApi = SesoriServerApi(
         authBackendUrl: "https://auth.example.test",
         client: MockClient((_) async => http.Response('{"registered":"yes"}', 200)),
         requestDeadline: const Duration(seconds: 1),
-        tokenRefresher: _FakeTokenRefresher(token: "unused"),
+        tokenRefresher: FakeTokenRefresher(token: "unused"),
       );
 
       await expectLater(
@@ -62,7 +64,7 @@ void main() {
         authBackendUrl: "https://auth.example.test",
         client: client,
         requestDeadline: Duration.zero,
-        tokenRefresher: _FakeTokenRefresher(token: "unused"),
+        tokenRefresher: FakeTokenRefresher(token: "unused"),
       );
 
       await expectLater(api.getAppClientStatus(accessToken: "token"), throwsA(isA<http.RequestAbortedException>()));
@@ -75,7 +77,7 @@ void main() {
         authBackendUrl: "https://auth.example.test",
         client: client,
         requestDeadline: const Duration(milliseconds: 5),
-        tokenRefresher: _FakeTokenRefresher(token: "unused"),
+        tokenRefresher: FakeTokenRefresher(token: "unused"),
       );
 
       await api.getAppClientStatus(accessToken: "token");
@@ -88,7 +90,7 @@ void main() {
   group("SesoriServerApi session metadata", () {
     test("acquires token and posts typed request while decoding title and branch", () async {
       late http.Request request;
-      final tokenRefresher = _FakeTokenRefresher(token: "secret-token");
+      final tokenRefresher = FakeTokenRefresher(token: "secret-token");
       final api = SesoriServerApi(
         authBackendUrl: "https://auth.example.test/",
         client: MockClient((incoming) async {
@@ -119,7 +121,7 @@ void main() {
 
     test("force-refreshes once after 401 and retries with refreshed token", () async {
       final requests = <http.Request>[];
-      final tokenRefresher = _FakeTokenRefresher(token: "stale", refreshedToken: "fresh");
+      final tokenRefresher = FakeTokenRefresher(token: "stale", refreshedToken: "fresh");
       final api = SesoriServerApi(
         authBackendUrl: "https://auth.example.test",
         client: MockClient((request) async {
@@ -147,7 +149,7 @@ void main() {
     test("does not retry non-401 or second 401", () async {
       for (final statusCode in [500, 401]) {
         var requestCount = 0;
-        final tokenRefresher = _FakeTokenRefresher(token: "stale", refreshedToken: "fresh");
+        final tokenRefresher = FakeTokenRefresher(token: "stale", refreshedToken: "fresh");
         final api = SesoriServerApi(
           authBackendUrl: "https://auth.example.test",
           client: MockClient((_) async {
@@ -179,7 +181,7 @@ void main() {
         authBackendUrl: "https://auth.example.test",
         client: MockClient((_) async => http.Response('{"title":1}', 200)),
         requestDeadline: const Duration(seconds: 1),
-        tokenRefresher: _FakeTokenRefresher(token: "token"),
+        tokenRefresher: FakeTokenRefresher(token: "token"),
       );
 
       await expectLater(
@@ -202,7 +204,7 @@ void main() {
         authBackendUrl: "https://auth.example.test",
         client: client,
         requestDeadline: Duration.zero,
-        tokenRefresher: _FakeTokenRefresher(token: "token"),
+        tokenRefresher: FakeTokenRefresher(token: "token"),
       );
 
       await expectLater(
@@ -222,7 +224,7 @@ void main() {
         authBackendUrl: "https://auth.example.test",
         client: client,
         requestDeadline: const Duration(seconds: 1),
-        tokenRefresher: _FakeTokenRefresher(token: "token"),
+        tokenRefresher: FakeTokenRefresher(token: "token"),
       );
 
       final response = api.generateSessionMetadata(
@@ -303,7 +305,7 @@ void main() {
         authBackendUrl: "https://auth.example.test",
         client: client,
         requestDeadline: const Duration(seconds: 1),
-        tokenRefresher: _FakeTokenRefresher(token: "token"),
+        tokenRefresher: FakeTokenRefresher(token: "token"),
       );
 
       await api.generateSessionMetadata(
@@ -316,18 +318,6 @@ void main() {
       expect(client.abortObserved, isFalse);
     });
   });
-}
-
-class _FakeTokenRefresher({required final String token, final String? refreshedToken}) implements TokenRefresher {
-  final String _token = token;
-  final String _refreshedToken = refreshedToken ?? token;
-  final List<bool> forceRefreshValues = [];
-
-  @override
-  Future<String> getAccessToken({bool forceRefresh = false}) async {
-    forceRefreshValues.add(forceRefresh);
-    return forceRefresh ? _refreshedToken : _token;
-  }
 }
 
 class _PendingTokenRefresher() implements TokenRefresher {

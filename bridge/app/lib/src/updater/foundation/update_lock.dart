@@ -5,6 +5,7 @@ import 'package:clock/clock.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 import 'package:sesori_shared/sesori_shared.dart';
 
+import '../../foundation/filesystem_cleaner.dart';
 import '../../foundation/filesystem_permission_validator.dart';
 import '../../foundation/process_runner.dart';
 
@@ -144,7 +145,7 @@ class UpdateLock({
     try {
       content = await lockFile.readAsString();
     } on FileSystemException catch (error) {
-      if (_isFileMissing(error: error) || !lockFile.existsSync()) {
+      if (const FilesystemPermissionValidator().isFileMissing(error) || !lockFile.existsSync()) {
         return LockAcquireResult.acquired;
       }
       if (_isPermissionDenied(error: error)) {
@@ -258,7 +259,7 @@ class UpdateLock({
   }
 
   Future<void> _releaseLock({required File lockFile}) {
-    return _cleanupPath(path: lockFile.path, recursive: false);
+    return const FilesystemCleaner().delete(path: lockFile.path, recursive: false);
   }
 
   Future<LockAcquireResult> _deleteStaleLock({required File lockFile}) async {
@@ -266,7 +267,7 @@ class UpdateLock({
       await lockFile.delete();
       return LockAcquireResult.acquired;
     } on FileSystemException catch (error) {
-      if (_isFileMissing(error: error) || !lockFile.existsSync()) {
+      if (const FilesystemPermissionValidator().isFileMissing(error) || !lockFile.existsSync()) {
         return LockAcquireResult.acquired;
       }
       if (_isPermissionDenied(error: error)) {
@@ -276,15 +277,6 @@ class UpdateLock({
     }
   }
 
-  static bool _isFileMissing({required FileSystemException error}) {
-    final int? code = error.osError?.errorCode;
-    if (code == 2) {
-      return true;
-    }
-
-    final String message = '${error.osError?.message ?? ''} ${error.message}'.toLowerCase();
-    return message.contains('no such file') || message.contains('cannot find the file');
-  }
 
   static bool _isPermissionDenied({required FileSystemException error}) {
     // The shared validator covers EPERM(1)/EACCES(13) and permission messages.
@@ -309,24 +301,6 @@ class UpdateLock({
     }
   }
 
-  static Future<void> _cleanupPath({required String path, required bool recursive}) async {
-    try {
-      final FileSystemEntityType entityType = FileSystemEntity.typeSync(path);
-      switch (entityType) {
-        case FileSystemEntityType.file:
-          File(path).deleteSync();
-        case FileSystemEntityType.directory:
-          Directory(path).deleteSync(recursive: recursive);
-        case FileSystemEntityType.link:
-          Link(path).deleteSync();
-        case FileSystemEntityType.unixDomainSock:
-        case FileSystemEntityType.pipe:
-        case FileSystemEntityType.notFound:
-      }
-    } on Object {
-      stderr.writeln('Warning: updater cleanup failed for $path');
-    }
-  }
 }
 
 final class const _LockOwner({required final int pid, required final String? processMarker}) {

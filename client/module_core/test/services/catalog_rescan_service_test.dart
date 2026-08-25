@@ -62,11 +62,13 @@ void main() {
     test("names the enumerating harness once progress arrives", () async {
       await service.startAll();
 
-      connection.emitProgress(const CatalogImportProgress.enumerating(
-        pluginId: "codex",
-        projectsSeen: 3,
-        sessionsSeen: 42,
-      ));
+      connection.emitProgress(
+        const CatalogImportProgress.enumerating(
+          pluginId: "codex",
+          projectsSeen: 3,
+          sessionsSeen: 42,
+        ),
+      );
 
       expect(
         service.state.value,
@@ -119,10 +121,12 @@ void main() {
       await service.startAll();
 
       connection.emitProgress(_completed("codex", newProjects: 1, newSessions: 1));
-      connection.emitProgress(const CatalogImportProgress.failed(
-        pluginId: "claude",
-        message: "boom: /Users/someone/secret/path",
-      ));
+      connection.emitProgress(
+        const CatalogImportProgress.failed(
+          pluginId: "claude",
+          message: "boom: /Users/someone/secret/path",
+        ),
+      );
 
       expect(
         service.state.value,
@@ -311,15 +315,17 @@ void main() {
     });
 
     test("an unsupported snapshot does not overwrite a run already in flight", () async {
-      final settled = <void>[];
-      service.settled.listen(settled.add);
+      final catalogChanges = <void>[];
+      service.catalogChanged.listen(catalogChanges.add);
       // A v1.6.x bridge has the import route but no management route, so a run
       // can be live while the snapshot reports unsupported.
-      connection.emitProgress(const CatalogImportProgress.enumerating(
-        pluginId: "codex",
-        projectsSeen: 1,
-        sessionsSeen: 2,
-      ));
+      connection.emitProgress(
+        const CatalogImportProgress.enumerating(
+          pluginId: "codex",
+          projectsSeen: 1,
+          sessionsSeen: 2,
+        ),
+      );
       management.emit(const PluginManagementLoadResult.unsupported());
 
       await service.startAll();
@@ -330,16 +336,18 @@ void main() {
 
       connection.emitProgress(_completed("codex", newProjects: 3, newSessions: 3));
 
-      expect(settled, hasLength(1), reason: "its close must still refresh the lists");
+      expect(catalogChanges, hasLength(1), reason: "its committed import must refresh the lists");
     });
 
     test("re-points the row at a harness still working when another settles", () async {
       await service.startAll();
-      connection.emitProgress(const CatalogImportProgress.enumerating(
-        pluginId: "claude",
-        projectsSeen: 1,
-        sessionsSeen: 9,
-      ));
+      connection.emitProgress(
+        const CatalogImportProgress.enumerating(
+          pluginId: "claude",
+          projectsSeen: 1,
+          sessionsSeen: 9,
+        ),
+      );
       expect((service.state.value as CatalogRescanRunning).activePluginName, "Claude");
 
       connection.emitProgress(_completed("claude", newProjects: 1, newSessions: 1));
@@ -366,9 +374,9 @@ void main() {
       );
     });
 
-    test("a start resolving after its run already settled leaves the row alone", () async {
-      final settled = <void>[];
-      service.settled.listen(settled.add);
+    test("a start resolving after its failed run settled leaves the row alone", () async {
+      final catalogChanges = <void>[];
+      service.catalogChanged.listen(catalogChanges.add);
       final release = Completer<CatalogImportMutationResult>();
       repository.pendingFor["claude"] = release.future;
 
@@ -386,7 +394,7 @@ void main() {
         isA<CatalogRescanFailed>(),
         reason: "a diagnostic the user has not read must not erase itself",
       );
-      expect(settled, hasLength(1), reason: "and the lists must not refresh twice");
+      expect(catalogChanges, isEmpty, reason: "a failed import did not change the catalog");
     });
 
     test("reports an unsupported bridge from an unsupported snapshot, issuing no request", () async {
@@ -396,6 +404,40 @@ void main() {
 
       expect(service.state.value, isA<CatalogRescanUnsupported>());
       expect(repository.startedPluginIds, isEmpty);
+    });
+
+    // The gesture that calls this has already told the user a scan started, so
+    // a fan-out with nothing to fan out to has to say so rather than return.
+    test("reports that there is no harness when the snapshot names none that is routable", () async {
+      build(snapshot: _snapshot(routable: const {}));
+
+      await service.startAll();
+
+      expect(service.state.value, isA<CatalogRescanNoHarness>());
+      expect(repository.startedPluginIds, isEmpty);
+    });
+
+    test("reports that there is no harness while no snapshot has arrived", () async {
+      build(snapshot: const PluginManagementLoadResult.loading());
+
+      await service.startAll();
+
+      expect(service.state.value, isA<CatalogRescanNoHarness>());
+      expect(repository.startedPluginIds, isEmpty);
+    });
+
+    test("a live run outlasts a fan-out that finds no harness", () async {
+      build(snapshot: _snapshot(routable: const {"codex": "Codex"}));
+      await service.startAll();
+      management.emit(const PluginManagementLoadResult.loading());
+
+      await service.startAll();
+
+      expect(
+        service.state.value,
+        isA<CatalogRescanStarting>(),
+        reason: "the run in flight is still the truth about what is happening",
+      );
     });
 
     test("a targeted start on an unsupported bridge tells the caller", () async {
@@ -429,15 +471,17 @@ void main() {
       expect(service.state.value, isA<CatalogRescanIdle>());
     });
 
-    test("adopts an unsolicited rescan and settles it without claiming a summary", () async {
-      final settled = <void>[];
-      service.settled.listen(settled.add);
+    test("adopts an unsolicited rescan and refreshes after its commit without claiming a summary", () async {
+      final catalogChanges = <void>[];
+      service.catalogChanged.listen(catalogChanges.add);
 
-      connection.emitProgress(const CatalogImportProgress.enumerating(
-        pluginId: "codex",
-        projectsSeen: 1,
-        sessionsSeen: 4,
-      ));
+      connection.emitProgress(
+        const CatalogImportProgress.enumerating(
+          pluginId: "codex",
+          projectsSeen: 1,
+          sessionsSeen: 4,
+        ),
+      );
       expect(service.state.value, isA<CatalogRescanRunning>());
 
       connection.emitProgress(_completed("codex", newProjects: 5, newSessions: 5));
@@ -447,35 +491,51 @@ void main() {
         isA<CatalogRescanIdle>(),
         reason: "a run this client did not start cannot honestly summarise itself",
       );
-      expect(settled, hasLength(1), reason: "the lists still have to refresh");
+      expect(catalogChanges, hasLength(1), reason: "the lists still have to refresh");
     });
 
-    test("ignores an unsolicited terminal event for a run it never saw", () async {
+    test("announces an unsolicited terminal commit without reopening a row", () async {
+      final catalogChanges = <void>[];
+      service.catalogChanged.listen(catalogChanges.add);
+
       connection.emitProgress(_completed("codex", newProjects: 3, newSessions: 3));
 
       expect(service.state.value, isA<CatalogRescanIdle>());
+      expect(catalogChanges, hasLength(1));
     });
 
-    test("announces the close whenever a live operation ends", () async {
-      final settled = <void>[];
-      service.settled.listen(settled.add);
+    test("ignores a zero-count hydration completion", () async {
+      final catalogChanges = <void>[];
+      service.catalogChanged.listen(catalogChanges.add);
+
+      connection.emitProgress(_completed("codex", newProjects: 0, newSessions: 0, totals: 0));
+
+      expect(catalogChanges, isEmpty);
+      expect(service.state.value, isA<CatalogRescanIdle>());
+    });
+
+    test("announces each durable catalog commit", () async {
+      final catalogChanges = <void>[];
+      service.catalogChanged.listen(catalogChanges.add);
 
       await service.startAll();
       connection.emitProgress(_completed("codex", newProjects: 1, newSessions: 1));
       connection.emitProgress(_completed("claude", newProjects: 1, newSessions: 1));
 
-      expect(settled, hasLength(1));
+      expect(catalogChanges, hasLength(2));
     });
 
     test("an operation stops claiming a summary once an outside harness joins", () async {
       await service.startAll();
 
       // A third harness this client never dispatched appears from elsewhere.
-      connection.emitProgress(const CatalogImportProgress.enumerating(
-        pluginId: "outsider",
-        projectsSeen: 1,
-        sessionsSeen: 1,
-      ));
+      connection.emitProgress(
+        const CatalogImportProgress.enumerating(
+          pluginId: "outsider",
+          projectsSeen: 1,
+          sessionsSeen: 1,
+        ),
+      );
       connection.emitProgress(_completed("codex", newProjects: 1, newSessions: 1));
       connection.emitProgress(_completed("claude", newProjects: 1, newSessions: 1));
       connection.emitProgress(_completed("outsider", newProjects: 1, newSessions: 1));
@@ -485,6 +545,21 @@ void main() {
         isA<CatalogRescanIdle>(),
         reason: "it can no longer vouch for every member, so it claims nothing",
       );
+    });
+
+    test("announces a commit that arrives after an immediate cancel", () async {
+      build(snapshot: _snapshot(routable: const {"codex": "Codex"}));
+      final catalogChanges = <void>[];
+      service.catalogChanged.listen(catalogChanges.add);
+      await service.startAll();
+
+      await service.cancel();
+      expect(service.state.value, isA<CatalogRescanIdle>(), reason: "the row still closes immediately");
+
+      connection.emitProgress(_completed("codex", newProjects: 1, newSessions: 1));
+
+      expect(service.state.value, isA<CatalogRescanIdle>());
+      expect(catalogChanges, hasLength(1), reason: "the completed atomic commit still invalidates lists");
     });
 
     test("cancel waits for a start still in flight before sending its DELETE", () async {
@@ -543,11 +618,13 @@ void main() {
       connection.emitProgress(_completed("codex", newProjects: 1, newSessions: 1));
 
       // Another surface restarts codex while claude is still running.
-      connection.emitProgress(const CatalogImportProgress.enumerating(
-        pluginId: "codex",
-        projectsSeen: 1,
-        sessionsSeen: 1,
-      ));
+      connection.emitProgress(
+        const CatalogImportProgress.enumerating(
+          pluginId: "codex",
+          projectsSeen: 1,
+          sessionsSeen: 1,
+        ),
+      );
       connection.emitProgress(_completed("codex", newProjects: 50, newSessions: 50));
       connection.emitProgress(_completed("claude", newProjects: 1, newSessions: 1));
 
@@ -590,11 +667,13 @@ void main() {
 
       // A progress event from the run being cancelled arrives before the
       // DELETE has gone out.
-      connection.emitProgress(const CatalogImportProgress.enumerating(
-        pluginId: "codex",
-        projectsSeen: 1,
-        sessionsSeen: 3,
-      ));
+      connection.emitProgress(
+        const CatalogImportProgress.enumerating(
+          pluginId: "codex",
+          projectsSeen: 1,
+          sessionsSeen: 3,
+        ),
+      );
 
       expect(
         service.state.value,
@@ -613,10 +692,10 @@ void main() {
       expect(service.state.value, isA<CatalogRescanSucceeded>());
     });
 
-    test("an outside cancellation settles quietly instead of showing a failure", () async {
+    test("an outside cancellation closes quietly instead of showing a failure", () async {
       build(snapshot: _snapshot(routable: const {"codex": "Codex"}));
-      final settled = <void>[];
-      service.settled.listen(settled.add);
+      final catalogChanges = <void>[];
+      service.catalogChanged.listen(catalogChanges.add);
       await service.startAll();
 
       // Another connected surface cancelled this harness.
@@ -627,7 +706,7 @@ void main() {
         isA<CatalogRescanIdle>(),
         reason: "a deliberate cancellation elsewhere is not this run's failure",
       );
-      expect(settled, hasLength(1));
+      expect(catalogChanges, isEmpty);
     });
 
     test("recovers an in-flight import when resolved onto a live connection", () async {
@@ -687,9 +766,9 @@ void main() {
       expect(service.state.value, isA<CatalogRescanIdle>());
     });
 
-    test("a disconnect clears an active rescan and announces the close", () async {
-      final settled = <void>[];
-      service.settled.listen(settled.add);
+    test("a disconnect clears an active rescan without claiming a catalog change", () async {
+      final catalogChanges = <void>[];
+      service.catalogChanged.listen(catalogChanges.add);
       await service.startAll();
       expect(service.state.value, isA<CatalogRescanStarting>());
 
@@ -697,7 +776,7 @@ void main() {
       await pumpEventQueue();
 
       expect(service.state.value, isA<CatalogRescanIdle>());
-      expect(settled, hasLength(1));
+      expect(catalogChanges, isEmpty);
     });
   });
 }

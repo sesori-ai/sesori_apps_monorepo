@@ -1,11 +1,10 @@
-import 'dart:async';
 import 'dart:io';
 
-import 'package:http/http.dart' show ClientException;
 import 'package:path/path.dart' as p;
 
+import '../../foundation/filesystem_cleaner.dart';
 import '../../foundation/filesystem_permission_validator.dart';
-import '../foundation/filesystem_cleaner.dart';
+import '../foundation/update_policy.dart';
 import '../models/release_info.dart';
 import '../models/update_install_result.dart';
 import '../models/update_result.dart';
@@ -42,15 +41,15 @@ class UpdateInstallService({
     try {
       final bool isWritable = await _isDirectoryWritable(directoryPath: installRoot);
       if (!isWritable) {
-        return const UpdateInstallResult.failed(result: UpdateResult.permissionDenied);
+        return const UpdateInstallStageFailed(result: UpdateResult.permissionDenied);
       }
 
-      final UpdateResult downloadResult = await _updateArtifactRepository.downloadArchive(
+      final UpdateResult? downloadFailure = await _updateArtifactRepository.downloadArchive(
         release: release,
         archivePath: archivePath,
       );
-      if (downloadResult != UpdateResult.success) {
-        return UpdateInstallResult.failed(result: downloadResult);
+      if (downloadFailure != null) {
+        return UpdateInstallStageFailed(result: downloadFailure);
       }
 
       final bool checksumValid = await _updateArtifactRepository.verifyDownloadedArchive(
@@ -58,7 +57,7 @@ class UpdateInstallService({
         release: release,
       );
       if (!checksumValid) {
-        return const UpdateInstallResult.failed(result: UpdateResult.checksumFailed);
+        return const UpdateInstallStageFailed(result: UpdateResult.checksumFailed);
       }
 
       final bool extracted = await _updateArtifactRepository.extractArchive(
@@ -66,24 +65,21 @@ class UpdateInstallService({
         stagingPath: stagingPath,
       );
       if (!extracted) {
-        return const UpdateInstallResult.failed(result: UpdateResult.downloadFailed);
+        return const UpdateInstallStageFailed(result: UpdateResult.downloadFailed);
       }
 
       staged = true;
-      return UpdateInstallResult.staged(stagingPath: stagingPath);
-    } on SocketException {
-      return const UpdateInstallResult.failed(result: UpdateResult.networkError);
-    } on HttpException {
-      return const UpdateInstallResult.failed(result: UpdateResult.networkError);
-    } on TimeoutException {
-      return const UpdateInstallResult.failed(result: UpdateResult.networkError);
-    } on ClientException {
-      return const UpdateInstallResult.failed(result: UpdateResult.networkError);
+      return UpdateInstallStaged(stagingPath: stagingPath);
     } on FileSystemException catch (error) {
       if (isPermissionDenied(error: error)) {
-        return const UpdateInstallResult.failed(result: UpdateResult.permissionDenied);
+        return const UpdateInstallStageFailed(result: UpdateResult.permissionDenied);
       }
-      return const UpdateInstallResult.failed(result: UpdateResult.downloadFailed);
+      return const UpdateInstallStageFailed(result: UpdateResult.downloadFailed);
+    } on Object catch (error) {
+      if (isTransientNetworkError(error)) {
+        return const UpdateInstallStageFailed(result: UpdateResult.networkError);
+      }
+      rethrow;
     } finally {
       // The archive is never needed past extraction; the staging directory is
       // the output handed to the apply step, so it is kept only on success.

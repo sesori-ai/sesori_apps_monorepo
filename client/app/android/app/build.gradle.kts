@@ -103,7 +103,7 @@ android {
             resValue("string", "app_name", "Sesori")
 
             proguardFiles.add(getDefaultProguardFile("proguard-android-optimize.txt"))
-//            proguardFiles.add(getDefaultProguardFile("proguard-rules.pro"))
+            proguardFiles.add(file("proguard-rules.pro"))
             isMinifyEnabled = true
         }
 

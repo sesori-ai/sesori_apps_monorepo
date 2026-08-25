@@ -1526,7 +1526,7 @@ void main() {
             (event) =>
                 event is BridgeSseMessagePartUpdated &&
                 event.part.messageID == "call-abort" &&
-                event.part.state?.status == PluginToolStatus.error,
+                event.part.state.status == PluginToolStatus.error,
           )
           .cast<BridgeSseMessagePartUpdated>()
           .first;
@@ -1545,7 +1545,7 @@ void main() {
 
       await plugin.abortSession(sessionId: sessionId);
 
-      expect((await terminalTool.timeout(const Duration(seconds: 1))).part.state?.status, PluginToolStatus.error);
+      expect((await terminalTool.timeout(const Duration(seconds: 1))).part.state.status, PluginToolStatus.error);
       expect((await idleEvent).sessionID, sessionId);
       expect((await plugin.getSessionStatuses())[sessionId], isA<PluginSessionStatusIdle>());
       expect(plugin.currentWorkState, PluginWorkState.idle);
@@ -1799,7 +1799,7 @@ void main() {
         (event) =>
             event is BridgeSseMessagePartUpdated &&
             event.part.messageID == "call-error" &&
-            event.part.state?.status == PluginToolStatus.error,
+            event.part.state.status == PluginToolStatus.error,
       );
       fake.pushNotification("error", {
         "threadId": sessionId,
@@ -1820,8 +1820,7 @@ void main() {
             .whereType<BridgeSseMessagePartUpdated>()
             .lastWhere((event) => event.part.messageID == "call-error")
             .part
-            .state
-            ?.status,
+            .state.status,
         PluginToolStatus.error,
       );
     });
@@ -2172,7 +2171,7 @@ void main() {
       expect(finalLiveParts, isNot(contains("exec-immediate")));
       expect(finalLiveParts, isNot(contains("call-image-wrapper")));
       expect(
-        finalLiveParts["call-immediate"]?.state?.status,
+        finalLiveParts["call-immediate"]?.state.status,
         PluginToolStatus.error,
       );
       expect(
@@ -2186,29 +2185,29 @@ void main() {
         expect(livePart, isNotNull, reason: message.info.id);
         expect(livePart?.id, historicalPart.id);
         expect(livePart?.tool, historicalPart.tool);
-        expect(livePart?.state?.title, historicalPart.state?.title);
-        expect(livePart?.state?.status, historicalPart.state?.status);
-        expect(livePart?.state?.output, historicalPart.state?.output);
-        expect(livePart?.state?.error, historicalPart.state?.error);
-        expect(livePart?.state?.attachments, historicalPart.state?.attachments);
+        expect(livePart?.state.title, historicalPart.state.title);
+        expect(livePart?.state.status, historicalPart.state.status);
+        expect(livePart?.state.output, historicalPart.state.output);
+        expect(livePart?.state.error, historicalPart.state.error);
+        expect(livePart?.state.attachments, historicalPart.state.attachments);
       }
-      expect(finalLiveParts["call-exec-2"]?.state?.attachments.single, isA<PluginMessageAttachmentInlineImage>());
-      expect(finalLiveParts["image-live"]?.state?.attachments.single, isA<PluginMessageAttachmentInlineImage>());
+      expect(finalLiveParts["call-exec-2"]?.state.attachments.single, isA<PluginMessageAttachmentInlineImage>());
+      expect(finalLiveParts["image-live"]?.state.attachments.single, isA<PluginMessageAttachmentInlineImage>());
       expect(
-        (finalLiveParts["image-live"]?.state?.attachments.single as PluginMessageAttachmentInlineImage).filename,
+        (finalLiveParts["image-live"]?.state.attachments.single as PluginMessageAttachmentInlineImage).filename,
         "final.png",
       );
       expect(
-        finalLiveParts["call-immediate"]?.state?.title,
+        finalLiveParts["call-immediate"]?.state.title,
         r"printf 'LIVE-EVENT-TEST immediate-complete\n'",
       );
-      expect(finalLiveParts["call-exec-1"]?.state?.title, "sleep 5");
+      expect(finalLiveParts["call-exec-1"]?.state.title, "sleep 5");
       expect(
-        finalLiveParts["call-failed"]?.state?.status,
+        finalLiveParts["call-failed"]?.state.status,
         PluginToolStatus.error,
       );
       expect(
-        finalLiveParts["call-failed"]?.state?.output,
+        finalLiveParts["call-failed"]?.state.output,
         contains("Process exited with code 1"),
       );
       expect(

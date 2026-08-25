@@ -7,11 +7,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 /// questions.
 ///
 /// Cursor's non-blocking extension *requests* (`cursor/generate_image`,
-/// `cursor/update_todos` — sent via `extMethod` even though cursor-agent
-/// treats them as fire-and-forget) are only declared in
-/// [fireAndForgetExtensionMethods]; the base registry acks and re-injects them
-/// into the notification pipeline, where the Cursor event mapper handles both
-/// wire shapes.
+/// `cursor/update_todos`) are acknowledged and re-injected into its notification
+/// pipeline, where the event mapper handles both wire shapes.
 ///
 /// NOTE: Cursor's exact reply payload shapes are not formally documented; the
 /// builders below are best-effort and should be confirmed against a real
@@ -19,7 +16,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 class CursorApprovalRegistry({
   required AcpStdioClient client,
   required super.emit,
-  required super.onFireAndForgetNotification,
+  required final void Function(AcpNotification notification) _onFireAndForgetNotification,
   super.idGenerator,
   super.activeSessionResolver,
 }) extends AcpApprovalRegistry {
@@ -31,14 +28,16 @@ class CursorApprovalRegistry({
       );
 
   @override
-  Set<String> get fireAndForgetExtensionMethods => const {
-    "cursor/generate_image",
-    "cursor/update_todos",
-  };
-
-  @override
   bool handleExtensionRequest(AcpServerRequest request) {
     switch (request.method) {
+      case "cursor/generate_image" || "cursor/update_todos":
+        respond(request.id, const <String, Object?>{});
+        try {
+          _onFireAndForgetNotification(AcpNotification(method: request.method, params: request.params));
+        } on Object catch (error, stack) {
+          Log.w("[cursor] ${request.method} notification forward failed", error, stack);
+        }
+        return true;
       case "cursor/ask_question":
         _handleAskQuestion(request);
         return true;
@@ -123,24 +122,12 @@ class CursorApprovalRegistry({
       return;
     }
 
-    final bridgeId = generateBridgeId();
     addPendingQuestion(
-      bridgeRequestId: bridgeId,
       acpId: request.id,
       sessionId: sessionId,
       questions: pluginQuestions,
       replyBuilder: (answers) => _buildAskReply(metas, answers),
       resolutionBuilder: null,
-    );
-    emit(
-      BridgeSseQuestionAsked(
-        id: bridgeId,
-        sessionID: sessionId,
-        // Cursor sessions are flat (no sub-agent hierarchy), so a request's
-        // display root is its own session.
-        displaySessionId: sessionId,
-        questions: pluginQuestions,
-      ),
     );
   }
 
@@ -188,9 +175,7 @@ class CursorApprovalRegistry({
       ),
     ];
 
-    final bridgeId = generateBridgeId();
     addPendingQuestion(
-      bridgeRequestId: bridgeId,
       acpId: request.id,
       sessionId: sessionId,
       questions: questions,
@@ -199,14 +184,6 @@ class CursorApprovalRegistry({
         return {"accepted": accepted};
       },
       resolutionBuilder: null,
-    );
-    emit(
-      BridgeSseQuestionAsked(
-        id: bridgeId,
-        sessionID: sessionId,
-        displaySessionId: sessionId,
-        questions: questions,
-      ),
     );
   }
 }

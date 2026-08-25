@@ -122,7 +122,7 @@ final class const PiPluginDescriptor({
   bool _supportsManagedInstall({required PluginConfig config}) {
     if (_explicitBin(config) != null) return false;
     try {
-      return const PiRuntimeManifest().assetFor(target: PlatformTarget.current()) != null;
+      return const PiRuntimeManifest().supportsManagedInstallOn(target: PlatformTarget.current());
     } on Object catch (error, stackTrace) {
       Log.w("[pi] platform detection failed; managed install unavailable", error, stackTrace);
       return false;
@@ -135,9 +135,12 @@ final class const PiPluginDescriptor({
     const manifest = PiRuntimeManifest();
     yield* ManagedRuntimeProvisionService(
       manifest: manifest,
-      versionValidator: _versionValidator(processes: host.processes),
+      selectionService: ManagedRuntimeSelectionService(
+        manifest: manifest,
+        versionValidator: _versionValidator(processes: host.processes),
+      ),
       fallbackExecutableCandidates: const [],
-    ).provision(host: host);
+    ).provision(host: host, explicitExecutablePath: null);
   }
 
   @override
@@ -188,37 +191,35 @@ final class const PiPluginDescriptor({
   }) async {
     const manifest = PiRuntimeManifest();
     final explicitBin = _explicitBin(config);
-    final pathProbe = await _probeRuntime(
-      executable: explicitBin ?? manifest.pathExecutableName,
-      processes: processes,
+    final selection = await ManagedRuntimeSelectionService(
+      manifest: manifest,
+      versionValidator: _versionValidator(processes: processes),
+    ).select(
+      explicitExecutablePath: explicitBin,
+      fallbackExecutableCandidates: const [],
       environment: environment,
-      expectedVersion: manifest.minPathVersion,
-      exactVersion: false,
+      stateDirectory: stateDirectory,
+      abortSignal: StartAbortSignal.never,
+      managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
     );
-    if (pathProbe == _PiRuntimeProbe.ready) return const PluginSetupReady();
+    if (selection is ManagedRuntimeSelected) return const PluginSetupReady();
+    final notSelected = selection as ManagedRuntimeNotSelected;
     if (explicitBin != null) {
-      return switch (pathProbe) {
-        _PiRuntimeProbe.missing => const PluginSetupRuntimeMissing(
+      return switch (notSelected.primaryRejection) {
+        ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => const PluginSetupRuntimeMissing(
           actionHint: "Fix the configured Pi CLI path, then restart the bridge.",
         ),
-        _PiRuntimeProbe.outdated => const PluginSetupUnavailable(
+        ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
           actionHint: "Update the configured Pi CLI, then restart the bridge.",
         ),
-        _PiRuntimeProbe.unknown => const PluginSetupUnknown(
+        ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
           actionHint: "Pi setup could not be determined. Verify the configured CLI and retry.",
         ),
-        _PiRuntimeProbe.ready => const PluginSetupReady(),
       };
     }
-    final managedProbe = await _probeRuntime(
-      executable: manifest.managedBinaryPath(stateDirectory: stateDirectory),
-      processes: processes,
-      environment: environment,
-      expectedVersion: manifest.bundledVersion,
-      exactVersion: true,
-    );
-    if (managedProbe == _PiRuntimeProbe.ready) return const PluginSetupReady();
-    if (pathProbe == _PiRuntimeProbe.unknown || managedProbe == _PiRuntimeProbe.unknown) {
+    final automatic = notSelected as ManagedRuntimeAutomaticNotSelected;
+    if (_isUnknownRejection(automatic.primaryRejection) ||
+        _isUnknownRejection(automatic.managedRejection)) {
       return const PluginSetupUnknown(
         actionHint: "Pi setup could not be determined. Verify the local CLI and retry.",
       );
@@ -230,39 +231,11 @@ final class const PiPluginDescriptor({
     );
   }
 
-  Future<_PiRuntimeProbe> _probeRuntime({
-    required String executable,
-    required HostProcessService processes,
-    required Map<String, String> environment,
-    required RuntimeVersion expectedVersion,
-    required bool exactVersion,
-  }) async {
-    final executor = HostProcessCommandExecutor(
-      processes: processes,
-      runInShell: io.Platform.isWindows,
-      maxCapturedOutputCharactersPerStream: 64 * 1024,
-    );
-    final CommandResult result;
-    try {
-      result = await executor.run(
-        executable,
-        const ["--version"],
-        environment: environment,
-        timeout: _versionProbeTimeout,
-      );
-    } on TimeoutException {
-      return _PiRuntimeProbe.unknown;
-    } on io.ProcessException {
-      return _PiRuntimeProbe.missing;
-    } on Object catch (error, stackTrace) {
-      Log.w("[pi] runtime version probe failed", error, stackTrace);
-      return _PiRuntimeProbe.unknown;
-    }
-    if (result.exitCode != 0) return _PiRuntimeProbe.unknown;
-    final version = _versionValidator(processes: processes).parseVersionOutput(output: result.stdout);
-    if (version == null) return _PiRuntimeProbe.unknown;
-    final comparison = version.compareTo(expectedVersion);
-    return (exactVersion ? comparison == 0 : comparison >= 0) ? _PiRuntimeProbe.ready : _PiRuntimeProbe.outdated;
+  bool _isUnknownRejection(ManagedRuntimeRejection rejection) {
+    return switch (rejection) {
+      ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) || ManagedRuntimeVersionRejected() => false,
+      ManagedRuntimeProbeRejected() => true,
+    };
   }
 
   RuntimeVersionValidator _versionValidator({required HostProcessService processes}) => RuntimeVersionValidator(
@@ -322,5 +295,3 @@ final class const PiPluginDescriptor({
     throw const PluginStartAbortedException();
   }
 }
-
-enum _PiRuntimeProbe() { ready, missing, outdated, unknown }

@@ -16,12 +16,7 @@ class CursorSessionOptionsService({
   static const String _cursorCompactionCommandName = "summarize";
   static const String _providerId = "cursor";
 
-  static const PluginCommand _compactionCommand = PluginCommand(
-    name: compactionCommandName,
-    description: "Summarize the conversation so far to free up the context window",
-    provider: null,
-    source: PluginCommandSource.command,
-  );
+  static final PluginCommand _compactionCommand = PluginCommand.compaction(name: compactionCommandName);
 
   final String _launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
 
@@ -114,7 +109,7 @@ class CursorSessionOptionsService({
     if (models.isEmpty) return const PluginProvidersResult(providers: []);
     return PluginProvidersResult(
       providers: [
-        PluginProvider.custom(
+        PluginProvider(
           id: _providerId,
           name: "Cursor",
           authType: PluginProviderAuthType.unknown,

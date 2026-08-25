@@ -478,20 +478,10 @@ const _imageBase64 = "aW1hZ2UtYnl0ZXM=";
 /// One live part event in both shapes: the released inline payload and the
 /// reference payload that carries no bytes.
 SseEventDelivery _attachmentShapedDelivery() {
-  MessagePart part({required MessageAttachment attachment}) => MessagePart(
+  MessagePart part({required MessageAttachment attachment}) => MessagePart.file(
     id: "p1",
     sessionID: "ses_a",
     messageID: "m1",
-    type: MessagePartType.file,
-    text: null,
-    tool: null,
-    state: null,
-    prompt: null,
-    description: null,
-    agent: null,
-    agentName: null,
-    attempt: null,
-    retryError: null,
     attachment: attachment,
   );
   return SseEventDelivery.attachmentShaped(

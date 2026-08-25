@@ -4,7 +4,6 @@ import "dart:typed_data";
 
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_bridge/src/models/bridge_config.dart";
 import "package:sesori_bridge/src/orchestrator.dart";
@@ -48,7 +47,7 @@ void main() {
     final event = await delivered;
 
     expect(
-      event.part.attachment,
+      (event.part as MessagePartFile).attachment,
       isA<MessageAttachmentInlineImage>().having((image) => image.base64, "base64", base64Encode(imageBytes)),
       reason: "the local debug stream has no capability surface, so it keeps the released shape",
     );
@@ -265,22 +264,32 @@ PluginMessagePart _pluginPart({
   String messageId = "m1",
   PluginMessagePartType type = PluginMessagePartType.text,
   PluginMessageAttachment? attachment,
-}) => PluginMessagePart(
-  id: id,
-  sessionID: _backendSessionId,
-  messageID: messageId,
-  type: attachment == null ? type : PluginMessagePartType.file,
-  text: text,
-  tool: null,
-  state: null,
-  prompt: null,
-  description: null,
-  agent: null,
-  agentName: null,
-  attempt: null,
-  retryError: null,
-  attachment: attachment,
-);
+}) => attachment != null
+    ? PluginMessagePart.file(
+        id: id,
+        sessionID: _backendSessionId,
+        messageID: messageId,
+        attachment: attachment,
+      )
+    : switch (type) {
+        PluginMessagePartType.text => PluginMessagePart.text(
+          id: id,
+          sessionID: _backendSessionId,
+          messageID: messageId,
+          text: text!,
+        ),
+        PluginMessagePartType.snapshot => PluginMessagePart.snapshot(
+          id: id,
+          sessionID: _backendSessionId,
+          messageID: messageId,
+        ),
+        PluginMessagePartType.unknown => PluginMessagePart.unknown(
+          id: id,
+          sessionID: _backendSessionId,
+          messageID: messageId,
+        ),
+        _ => throw StateError("Unsupported test part type: $type"),
+      };
 
 class _LiveAttachmentHarness({
   required final FakeBridgePlugin plugin,
@@ -326,7 +335,7 @@ class _LiveAttachmentHarness({
       httpClient: httpClient,
       processRunner: NoopProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(),
-      tokenRefresher: _FakeTokenRefresher(),
+      tokenRefresher: FakeTokenRefresher(token: "token"),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: failureReporter,
       restartService: buildTestRestartService(),
@@ -430,9 +439,4 @@ Future<void> _insertRootSession({required AppDatabase database}) async {
 class _SourcedPlugin(final String pluginId) extends FakeBridgePlugin {
   @override
   String get id => pluginId;
-}
-
-class _FakeTokenRefresher() implements TokenRefresher {
-  @override
-  Future<String> getAccessToken({bool forceRefresh = false}) async => "token";
 }

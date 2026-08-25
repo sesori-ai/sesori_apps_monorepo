@@ -147,31 +147,28 @@ final class PiHistoryMapper({
       switch (message.content[index]) {
         case PiTextContentDto(:final text) when text.isNotEmpty:
           parts.add(
-            _part(
+            PluginMessagePart.text(
               id: "$messageId-block-${index + 1}",
-              sessionId: sessionId,
-              messageId: messageId,
-              type: PluginMessagePartType.text,
+              sessionID: sessionId,
+              messageID: messageId,
               text: text,
             ),
           );
         case PiThinkingContentDto(:final thinking, :final redacted) when redacted != true && thinking.isNotEmpty:
           parts.add(
-            _part(
+            PluginMessagePart.reasoning(
               id: "$messageId-block-${index + 1}",
-              sessionId: sessionId,
-              messageId: messageId,
-              type: PluginMessagePartType.reasoning,
+              sessionID: sessionId,
+              messageID: messageId,
               text: thinking,
             ),
           );
         case PiToolCallContentDto(:final id, :final name):
           parts.add(
-            _part(
+            PluginMessagePart.tool(
               id: id,
-              sessionId: sessionId,
-              messageId: messageId,
-              type: PluginMessagePartType.tool,
+              sessionID: sessionId,
+              messageID: messageId,
               tool: name,
               state: const PluginToolState(
                 status: PluginToolStatus.pending,
@@ -240,16 +237,35 @@ final class PiHistoryMapper({
     }
   }
 
-  PluginMessageWithParts mapCompaction({required String sessionId, required String messageId}) {
+  PluginMessageWithParts mapRunningCompaction({required String sessionId, required String messageId}) => _mapCompaction(
+    sessionId: sessionId,
+    messageId: messageId,
+    title: "Compacting context",
+    status: PluginToolStatus.running,
+  );
+
+  PluginMessageWithParts mapCompaction({required String sessionId, required String messageId}) => _mapCompaction(
+    sessionId: sessionId,
+    messageId: messageId,
+    title: "Context compacted",
+    status: PluginToolStatus.completed,
+  );
+
+  PluginMessageWithParts _mapCompaction({
+    required String sessionId,
+    required String messageId,
+    required String title,
+    required PluginToolStatus status,
+  }) {
     final draft = _toolMessage(
       sessionId: sessionId,
       messageId: messageId,
       timestamp: null,
       tool: "compact",
-      title: "Context compacted",
+      title: title,
       output: null,
       error: null,
-      status: PluginToolStatus.completed,
+      status: status,
     );
     return PluginMessageWithParts(info: draft.info, parts: draft.parts);
   }
@@ -369,11 +385,11 @@ final class PiHistoryMapper({
               final location = toolLocations[toolCallId];
               if (location == null) continue;
               final mapped = _mapToolResult(content: content, warnings: warnings);
-              final oldPart = location.draft.parts[location.partIndex];
+              final oldPart = location.draft.parts[location.partIndex] as PluginMessagePartTool;
               location.draft.parts[location.partIndex] = oldPart.copyWith(
                 state: PluginToolState(
                   status: isError ? PluginToolStatus.error : PluginToolStatus.completed,
-                  title: oldPart.state?.title,
+                  title: oldPart.state.title,
                   output: isError ? null : mapped.output,
                   error: isError ? mapped.output : null,
                   attachments: mapped.attachments,
@@ -431,11 +447,11 @@ final class PiHistoryMapper({
     for (final draft in terminalToolDrafts) {
       for (var index = 0; index < draft.parts.length; index++) {
         final part = draft.parts[index];
-        if (part.type != PluginMessagePartType.tool || part.state?.status != PluginToolStatus.pending) continue;
+        if (part is! PluginMessagePartTool || part.state.status != PluginToolStatus.pending) continue;
         draft.parts[index] = part.copyWith(
           state: PluginToolState(
             status: PluginToolStatus.error,
-            title: part.state?.title,
+            title: part.state.title,
             output: null,
             error: _unfinishedToolError,
             attachments: const [],
@@ -496,11 +512,10 @@ final class PiHistoryMapper({
           final visibleText = exactText ?? _persistedUserTextCodec.decodeVisibleText(persistedText: text);
           if (visibleText.isEmpty) continue;
           parts.add(
-            _part(
+            PluginMessagePart.text(
               id: "$messageId-block-${index + 1}",
-              sessionId: sessionId,
-              messageId: messageId,
-              type: PluginMessagePartType.text,
+              sessionID: sessionId,
+              messageID: messageId,
               text: visibleText,
             ),
           );
@@ -508,11 +523,10 @@ final class PiHistoryMapper({
           final attachment = _mapImage(data: data, mimeType: mimeType, budget: images, warnings: warnings);
           if (attachment == null) continue;
           parts.add(
-            _part(
+            PluginMessagePart.file(
               id: "$messageId-block-${index + 1}",
-              sessionId: sessionId,
-              messageId: messageId,
-              type: PluginMessagePartType.file,
+              sessionID: sessionId,
+              messageID: messageId,
               attachment: attachment,
             ),
           );
@@ -667,11 +681,10 @@ final class PiHistoryMapper({
         time: _time(timestamp),
       ),
       parts: [
-        _part(
+        PluginMessagePart.text(
           id: "$messageId-text",
-          sessionId: sessionId,
-          messageId: messageId,
-          type: PluginMessagePartType.text,
+          sessionID: sessionId,
+          messageID: messageId,
           text: text,
         ),
       ],
@@ -698,11 +711,10 @@ final class PiHistoryMapper({
         time: _time(timestamp),
       ),
       parts: [
-        _part(
+        PluginMessagePart.tool(
           id: "$messageId-tool",
-          sessionId: sessionId,
-          messageId: messageId,
-          type: PluginMessagePartType.tool,
+          sessionID: sessionId,
+          messageID: messageId,
           tool: tool,
           state: PluginToolState(
             status: status,
@@ -713,34 +725,6 @@ final class PiHistoryMapper({
           ),
         ),
       ],
-    );
-  }
-
-  PluginMessagePart _part({
-    required String id,
-    required String sessionId,
-    required String messageId,
-    required PluginMessagePartType type,
-    String? text,
-    String? tool,
-    PluginToolState? state,
-    PluginMessageAttachment? attachment,
-  }) {
-    return PluginMessagePart(
-      id: id,
-      sessionID: sessionId,
-      messageID: messageId,
-      type: type,
-      text: text,
-      tool: tool,
-      state: state,
-      prompt: null,
-      description: null,
-      agent: null,
-      agentName: null,
-      attempt: null,
-      retryError: null,
-      attachment: attachment,
     );
   }
 

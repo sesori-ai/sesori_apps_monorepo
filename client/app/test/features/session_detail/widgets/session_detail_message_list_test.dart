@@ -175,21 +175,11 @@ MessageWithParts _message({
   return MessageWithParts(
     info: info,
     parts: [
-      MessagePart(
+      MessagePart.text(
         id: resolvedPartId,
         sessionID: "session-1",
         messageID: messageId,
-        type: MessagePartType.text,
         text: text,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
-        attachment: null,
       ),
     ],
   );

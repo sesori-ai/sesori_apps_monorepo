@@ -74,7 +74,7 @@ void main() {
     test("maps provider id and name fields", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
-          PluginProvider.anthropic(
+          PluginProvider(
             id: "anthropic",
             name: "Anthropic",
             authType: PluginProviderAuthType.apiKey,
@@ -98,7 +98,7 @@ void main() {
     test("maps defaultModelID when present", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
-          PluginProvider.openAI(
+          PluginProvider(
             id: "openai",
             name: "OpenAI",
             authType: PluginProviderAuthType.apiKey,
@@ -120,7 +120,7 @@ void main() {
     test("defaultModelID is null when absent", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
-          PluginProvider.google(
+          PluginProvider(
             id: "google",
             name: "Google",
             authType: PluginProviderAuthType.apiKey,
@@ -142,7 +142,7 @@ void main() {
     test("maps models with id, providerID, name, and family", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
-          PluginProvider.anthropic(
+          PluginProvider(
             id: "anthropic",
             name: "Anthropic",
             authType: PluginProviderAuthType.apiKey,
@@ -179,7 +179,7 @@ void main() {
     test("maps model availability and releaseDate from plugin", () async {
       plugin.providersResult = PluginProvidersResult(
         providers: [
-          PluginProvider.openAI(
+          PluginProvider(
             id: "openai",
             name: "OpenAI",
             authType: PluginProviderAuthType.apiKey,
@@ -230,7 +230,7 @@ void main() {
     test("preserves 1.4-style synthetic model IDs", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
-          PluginProvider.openAI(
+          PluginProvider(
             id: "openai",
             name: "OpenAI",
             authType: PluginProviderAuthType.apiKey,
@@ -256,7 +256,7 @@ void main() {
     test("maps isAvailable values directly", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
-          PluginProvider.anthropic(
+          PluginProvider(
             id: "anthropic",
             name: "Anthropic",
             authType: PluginProviderAuthType.apiKey,
@@ -282,7 +282,7 @@ void main() {
     test("unknown model statuses remain available through the route contract", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
-          PluginProvider.openAI(
+          PluginProvider(
             id: "openai",
             name: "OpenAI",
             authType: PluginProviderAuthType.apiKey,
@@ -305,7 +305,7 @@ void main() {
     test("provider with no models has empty models map", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
-          PluginProvider.custom(
+          PluginProvider(
             id: "empty-provider",
             name: "Empty Provider",
             authType: PluginProviderAuthType.unknown,
@@ -326,21 +326,21 @@ void main() {
     test("returns all providers when plugin returns multiple", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
-          PluginProvider.anthropic(
+          PluginProvider(
             id: "anthropic",
             name: "Anthropic",
             authType: PluginProviderAuthType.apiKey,
             models: [],
             defaultModelID: null,
           ),
-          PluginProvider.openAI(
+          PluginProvider(
             id: "openai",
             name: "OpenAI",
             authType: PluginProviderAuthType.apiKey,
             models: [],
             defaultModelID: null,
           ),
-          PluginProvider.google(
+          PluginProvider(
             id: "google",
             name: "Google",
             authType: PluginProviderAuthType.apiKey,

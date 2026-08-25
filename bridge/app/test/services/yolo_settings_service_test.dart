@@ -1,22 +1,23 @@
 import "dart:async";
 
-import "package:sesori_bridge/src/api/bridge_settings_api.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/services/permission_auto_approval_service.dart";
 import "package:sesori_bridge/src/services/yolo_settings_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../helpers/in_memory_bridge_settings_api.dart";
+
 void main() {
   group("YoloSettingsService", () {
-    late _MemoryBridgeSettingsApi api;
+    late InMemoryBridgeSettingsApi api;
     late _FakePermissionAutoApprovalService permissionAutoApprovalService;
     late BridgeSettingsRepository repository;
     late YoloSettingsService service;
 
     setUp(() async {
-      api = _MemoryBridgeSettingsApi();
-      repository = BridgeSettingsRepository(api: api);
+      api = InMemoryBridgeSettingsApi(config: '{"yolo":false,"pullRequestRefreshIntervalSeconds":30}');
+      repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
       await repository.loadSettings();
       permissionAutoApprovalService = _FakePermissionAutoApprovalService();
       service = YoloSettingsService(
@@ -67,21 +68,4 @@ class _FakePermissionAutoApprovalService() implements PermissionAutoApprovalServ
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _MemoryBridgeSettingsApi() implements BridgeSettingsApi {
-  String? config = '{"yolo":false,"pullRequestRefreshIntervalSeconds":30}';
-  int writeCount = 0;
-
-  @override
-  String get configFilePath => "/tmp/config.json";
-
-  @override
-  Future<String?> readConfig() async => config;
-
-  @override
-  Future<void> writeConfig(String jsonContent) async {
-    config = jsonContent;
-    writeCount++;
-  }
 }

@@ -213,7 +213,7 @@ final class _TrackedTool({
       );
 }
 
-bool _isTerminal(PluginToolStatus status) => status == PluginToolStatus.completed || status == PluginToolStatus.error;
+bool _isTerminal(PluginToolStatus status) => status.isTerminal;
 
 enum _ClaudeToolKind() {
   edit,

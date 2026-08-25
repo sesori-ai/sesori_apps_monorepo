@@ -119,9 +119,9 @@ final class const ClaudeHistoryMapper({
         parts.add(part);
         continue;
       }
-      final state = part.state;
-      if (state != null && state.status != PluginToolStatus.pending) {
-        parts[existingIndex] = parts[existingIndex].copyWith(state: state);
+      if (part case PluginMessagePartTool(:final state) when state.status != PluginToolStatus.pending) {
+        final existing = parts[existingIndex] as PluginMessagePartTool;
+        parts[existingIndex] = existing.copyWith(state: state);
       }
     }
     if (!parts.any((part) => part.type.isVisible)) return null;

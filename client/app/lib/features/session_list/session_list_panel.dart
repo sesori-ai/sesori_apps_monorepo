@@ -1,4 +1,3 @@
-import "package:cupertino_ui/cupertino_ui.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -6,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
+import "../../core/widgets/catalog_scan_row.dart";
 import "../../l10n/app_localizations.dart";
 import "session_list_content.dart";
 import "session_tile.dart";
@@ -125,16 +125,30 @@ class const SessionListPanel({
   Widget _buildScrollableContent(BuildContext context, {required SessionListState state}) {
     final isRefreshing = state is SessionListLoaded && state.isRefreshing;
     final canRefresh = state is SessionListLoaded;
+    final catalogScan = state is SessionListLoaded ? state.catalogScan : const CatalogRescanState.idle();
     return CustomScrollView(
       physics: canRefresh
           ? const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics())
           : const AlwaysScrollableScrollPhysics(),
       slivers: [
         if (canRefresh)
-          CupertinoSliverRefreshControl(
+          PregoSliverRefreshControl(
             onRefresh: () => refreshSessionList(context),
+            deepRefresh: CatalogScanRow.deepRefresh(
+              context: context,
+              onStart: () => context.read<SessionListCubit>().startCatalogScan(),
+            ),
+            decorate: null,
+            onPulledExtentChanged: null,
           ),
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
+        SliverToBoxAdapter(
+          child: CatalogScanRow(
+            scan: catalogScan,
+            onCancel: () => context.read<SessionListCubit>().cancelCatalogScan(),
+            onDismiss: () => context.read<SessionListCubit>().dismissCatalogScan(),
+          ),
+        ),
         SessionListContent(
           projectName: projectName,
           selectedSessionId: selectedSessionId,

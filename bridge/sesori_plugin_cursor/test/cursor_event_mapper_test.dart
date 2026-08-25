@@ -117,7 +117,7 @@ void main() {
       final parts = events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
       expect(parts, hasLength(2));
       expect(parts.first.type, PluginMessagePartType.reasoning);
-      expect(parts.first.text, "Designing the image");
+      expect((parts.first as PluginMessagePartReasoning).text, "Designing the image");
       expect(parts.last.type, PluginMessagePartType.file);
     });
 

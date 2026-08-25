@@ -21,11 +21,8 @@ void main() {
         emit: emitted.add,
         respond: (id, result) => responds.add((id, result)),
         respondError: (id, code, message) => errors.add((id, code, message)),
-        // The base registry declares no fireAndForgetExtensionMethods, so the
-        // forward is never invoked here.
-        onFireAndForgetNotification: (_) {},
       );
-      registry.attach(requests.stream);
+      registry.attach(stream: requests.stream);
     });
 
     tearDown(() async {
@@ -78,7 +75,7 @@ void main() {
       await pump();
 
       expect((emitted.single as BridgeSsePermissionAsked).allowAlways, isFalse);
-      expect(registry.pendingPermissionsForSession("s1").single.allowAlways, isFalse);
+      expect(registry.pendingPermissionsForSession(sessionId: "s1").single.allowAlways, isFalse);
     });
 
     test("permission with no resolvable session is auto-cancelled, not enqueued", () async {
@@ -107,7 +104,7 @@ void main() {
       });
       // …and nothing was surfaced to the user or left pending.
       expect(emitted, isEmpty);
-      expect(registry.pendingPermissionsForSession(""), isEmpty);
+      expect(registry.pendingPermissionsForSession(sessionId: ""), isEmpty);
     });
 
     test("reply 'once' echoes the allow_once optionId", () async {
@@ -115,7 +112,7 @@ void main() {
       await pump();
       final id = (emitted.single as BridgeSsePermissionAsked).requestID;
 
-      expect(registry.replyPermission(id, PluginPermissionReply.once), isTrue);
+      expect(registry.replyPermission(requestId: id, reply: PluginPermissionReply.once), isTrue);
       final (_, result) = responds.single;
       expect((result! as Map)["outcome"], {"outcome": "selected", "optionId": "opt-allow-once"});
       expect(emitted.whereType<BridgeSsePermissionReplied>(), hasLength(1));
@@ -125,7 +122,7 @@ void main() {
       requests.add(permission());
       await pump();
       final id = (emitted.single as BridgeSsePermissionAsked).requestID;
-      registry.replyPermission(id, PluginPermissionReply.always);
+      registry.replyPermission(requestId: id, reply: PluginPermissionReply.always);
       final (_, result) = responds.single;
       expect(((result! as Map)["outcome"] as Map)["optionId"], "opt-allow-always");
     });
@@ -134,7 +131,7 @@ void main() {
       requests.add(permission());
       await pump();
       final id = (emitted.single as BridgeSsePermissionAsked).requestID;
-      registry.replyPermission(id, PluginPermissionReply.reject);
+      registry.replyPermission(requestId: id, reply: PluginPermissionReply.reject);
       final (_, result) = responds.single;
       expect(((result! as Map)["outcome"] as Map)["optionId"], "opt-reject");
     });
@@ -155,7 +152,7 @@ void main() {
       );
       await pump();
       final id = (emitted.single as BridgeSsePermissionAsked).requestID;
-      registry.replyPermission(id, PluginPermissionReply.reject);
+      registry.replyPermission(requestId: id, reply: PluginPermissionReply.reject);
       final (_, result) = responds.single;
       expect((result! as Map)["outcome"], {"outcome": "cancelled"});
     });
@@ -179,7 +176,7 @@ void main() {
       );
       await pump();
       final id = (emitted.single as BridgeSsePermissionAsked).requestID;
-      registry.replyPermission(id, PluginPermissionReply.once);
+      registry.replyPermission(requestId: id, reply: PluginPermissionReply.once);
       final (_, result) = responds.single;
       expect((result! as Map)["outcome"], {"outcome": "cancelled"});
     });
@@ -188,7 +185,6 @@ void main() {
       requests.add(permission());
       await pump();
       registry.addPendingQuestion(
-        bridgeRequestId: "q-1",
         acpId: 5,
         sessionId: "s1",
         questions: const [
@@ -201,7 +197,7 @@ void main() {
       errors.clear();
       emitted.clear();
 
-      registry.cancelForSession("s1");
+      registry.cancelForSession(sessionId: "s1");
 
       // Permission answered with a cancelled outcome; question answered with an error.
       expect(responds.single.$2, const {
@@ -209,7 +205,7 @@ void main() {
       });
       expect(errors.single.$2, -32603);
       // Both pending entries cleared, and the phone gets clearing events.
-      expect(registry.hasPendingInput("s1"), isFalse);
+      expect(registry.hasPendingInput(sessionId: "s1"), isFalse);
       expect(emitted.whereType<BridgeSsePermissionReplied>(), hasLength(1));
       expect(emitted.whereType<BridgeSseQuestionRejected>(), hasLength(1));
     });
@@ -218,7 +214,6 @@ void main() {
       requests.add(permission());
       await pump();
       registry.addPendingQuestion(
-        bridgeRequestId: "q-1",
         acpId: 5,
         sessionId: "s1",
         questions: const [
@@ -275,8 +270,7 @@ void main() {
     });
 
     test("registered questions reply via the builder and surface as pending", () {
-      registry.addPendingQuestion(
-        bridgeRequestId: "q-1",
+      final requestId = registry.addPendingQuestion(
         acpId: 5,
         sessionId: "s1",
         questions: [
@@ -292,11 +286,14 @@ void main() {
         resolutionBuilder: null,
       );
 
-      expect(registry.pendingForSession("s1"), hasLength(1));
+      expect(registry.pendingForSession(sessionId: "s1"), hasLength(1));
       expect(
-        registry.replyQuestion("q-1", [
-          ["yes"],
-        ]),
+        registry.replyQuestion(
+          requestId: requestId,
+          answers: [
+            ["yes"],
+          ],
+        ),
         isTrue,
       );
       final (_, result) = responds.single;

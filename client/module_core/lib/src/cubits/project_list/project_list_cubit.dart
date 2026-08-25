@@ -15,7 +15,9 @@ import "../../platform/route_source.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
 import "../../routing/app_routes.dart";
+import "../../services/catalog_rescan_service.dart";
 import "../../services/loaded_state_analytics_reporter.dart";
+import "../../services/models/catalog_rescan_state.dart";
 import "../../services/models/session_activity_info.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/project_list_service.dart";
@@ -33,6 +35,8 @@ const refreshThrottleDuration = Duration(seconds: 30);
 @visibleForTesting
 const initialProjectLoadConnectionWaitTimeout = Duration(seconds: 15);
 
+enum _ProjectFetchOutcome() { applied, failed, superseded }
+
 class ProjectListCubit(
   final ProjectRepository _projectRepository,
   final ConnectionService _connectionService,
@@ -44,6 +48,7 @@ class ProjectListCubit(
   required final ProductAnalyticsService _productAnalyticsService,
   required final LoadedStateAnalyticsReporter _loadedStateAnalyticsReporter,
   required final FailureReporter _failureReporter,
+  required final CatalogRescanService _catalogRescanService,
 }) extends Cubit<ProjectListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
@@ -63,6 +68,12 @@ class ProjectListCubit(
     _subscriptions.add(
       _sseEventTracker.projectTimestampUpdates.listen(_onProjectTimestampUpdated),
     );
+
+    // 1a2. The catalog scan, which any surface can start. Its state is only
+    //     projected onto the list; the operation itself is the service's.
+    _subscriptions.add(_catalogRescanService.state.listen(_onCatalogScanState));
+    // A committed import raises no list invalidation of its own.
+    _subscriptions.add(_catalogRescanService.catalogChanged.listen((_) => _onCatalogChanged()));
 
     // 1b. Immediate unseen (bold) updates (no API call).
     _subscriptions.add(
@@ -297,7 +308,7 @@ class ProjectListCubit(
       // The relay connection is fully torn down — nothing is reachable and no
       // banner represents this state, so surface the bridge-disconnected flow.
       case ConnectionDisconnected():
-        unawaited(_emitBridgeDisconnected());
+        unawaited(_emitBridgeDisconnected(fetchGeneration: null));
       case ConnectionBridgeOffline():
         // A non-empty loaded list stays browsable while the bridge is offline —
         // the top-nav connection banner owns the messaging. The full-screen
@@ -305,7 +316,7 @@ class ProjectListCubit(
         // show (launch before the bridge starts, or an empty list whose
         // onboarding checklist would contradict an offline banner).
         if (state case ProjectListLoaded(:final projects) when projects.isNotEmpty) break;
-        unawaited(_emitBridgeDisconnected());
+        unawaited(_emitBridgeDisconnected(fetchGeneration: null));
       // Keep the current UI. A loaded list keeps hosting the inline connection
       // banner, which owns the ConnectionLost reconnect action;
       // ConnectionReconnecting is a brief transient.
@@ -326,9 +337,10 @@ class ProjectListCubit(
   ///
   /// Which machine the recovery view is trying to reach is resolved separately
   /// by `BridgeIdentityCubit`, so this state is never held back by that fetch.
-  Future<void> _emitBridgeDisconnected() async {
+  Future<void> _emitBridgeDisconnected({required int? fetchGeneration}) async {
     final hasRegisteredBridges = await _registeredBridgesService.hasRegisteredBridges();
     if (isClosed) return;
+    if (fetchGeneration != null && fetchGeneration != _fetchGeneration) return;
     if (!_isBridgeUnavailable) return;
     _loadedStateAnalyticsReporter.clearCurrentOccurrence();
     emit(ProjectListState.bridgeDisconnected(hasRegisteredBridges: hasRegisteredBridges));
@@ -353,17 +365,17 @@ class ProjectListCubit(
   Future<void> loadProjects() async {
     _loadedStateAnalyticsReporter.clearCurrentOccurrence();
     emit(const ProjectListState.loading());
-    await _fetchProjects();
+    await _fetchProjects(silent: false, catalogRefresh: false);
   }
 
   Future<void> _loadInitialProjects() async {
     await _prepareInitialConnection();
     if (isClosed) return;
     if (_isBridgeUnavailable) {
-      await _emitBridgeDisconnected();
+      await _emitBridgeDisconnected(fetchGeneration: null);
       return;
     }
-    await _fetchProjects();
+    await _fetchProjects(silent: false, catalogRefresh: false);
   }
 
   Future<void> _prepareInitialConnection() async {
@@ -418,7 +430,7 @@ class ProjectListCubit(
     if (isClosed) return;
     await _connectionService.reconnectAndAwaitOutcome(timeout: const Duration(seconds: 15));
     if (isClosed) return;
-    await _fetchProjects();
+    await _fetchProjects(silent: false, catalogRefresh: false);
   }
 
   /// True while [reconnectBridge] is re-establishing the connection. The
@@ -463,23 +475,70 @@ class ProjectListCubit(
       }
       if (isClosed) return;
       if (_isBridgeUnavailable) {
-        await _emitBridgeDisconnected();
+        await _emitBridgeDisconnected(fetchGeneration: null);
         return;
       }
-      await _fetchProjects();
+      await _fetchProjects(silent: false, catalogRefresh: false);
     } finally {
       _reconnectBridgeInFlight = false;
     }
   }
 
   /// In-flight silent refresh, used for coalescing.
-  Future<bool>? _activeRefresh;
+  Future<_ProjectFetchOutcome>? _activeRefresh;
+
+  /// Most recently started read. This is not a coalescing barrier: a refresh
+  /// whose response was superseded uses it only to observe the winning result.
+  Future<_ProjectFetchOutcome>? _latestFetch;
+
+  /// Monotonically orders list reads so an older response cannot overwrite a
+  /// snapshot requested after it.
+  int _fetchGeneration = 0;
+
+  /// Durable catalog commits observed by this cubit, and the newest commit a
+  /// successfully applied list snapshot has covered.
+  int _catalogChangeGeneration = 0;
+  int _catalogChangeConsumedGeneration = 0;
+  bool _catalogRefreshPausedAfterFailure = false;
+  Future<void>? _catalogRefresh;
 
   /// Re-fetches projects without showing the full-screen loading indicator.
-  /// Concurrent calls are coalesced: if a refresh is already in-flight, the
-  /// existing Future is returned instead of starting a second network request.
+  /// Concurrent ordinary calls coalesce onto the current silent refresh.
   Future<bool> refreshProjects() {
-    return _activeRefresh ??= _fetchProjects(silent: true).whenComplete(() => _activeRefresh = null);
+    return _awaitRefreshResult(refresh: _refreshProjects(force: false, catalogRefresh: false));
+  }
+
+  /// A catalog refresh can supersede an explicit pull. Wait for the newer read
+  /// so the caller reports that read's outcome rather than premature success.
+  Future<bool> _awaitRefreshResult({required Future<_ProjectFetchOutcome> refresh}) async {
+    var latest = refresh;
+    while (true) {
+      switch (await latest) {
+        case _ProjectFetchOutcome.applied:
+          return true;
+        case _ProjectFetchOutcome.failed:
+          return false;
+        case _ProjectFetchOutcome.superseded:
+          final winningFetch = _latestFetch;
+          if (winningFetch == null || identical(winningFetch, latest)) return false;
+          latest = winningFetch;
+      }
+    }
+  }
+
+  Future<_ProjectFetchOutcome> _refreshProjects({
+    required bool force,
+    required bool catalogRefresh,
+  }) {
+    final active = _activeRefresh;
+    if (!force && active != null) return active;
+
+    late final Future<_ProjectFetchOutcome> refresh;
+    refresh = _fetchProjects(silent: true, catalogRefresh: catalogRefresh).whenComplete(() {
+      if (identical(_activeRefresh, refresh)) _activeRefresh = null;
+    });
+    _activeRefresh = refresh;
+    return refresh;
   }
 
   /// Calls the bridge API to hide the project, then removes it from the
@@ -650,59 +709,179 @@ class ProjectListCubit(
     return error is NonSuccessCodeError && error.errorCode == 403;
   }
 
-  Future<bool> _fetchProjects({bool silent = false}) async {
-    // Captured BEFORE the fetch so the seed can't overwrite a live update that
-    // arrives while the request is in flight.
-    final unseenTick = _sessionUnseenTracker.tick;
-    final projectResponse = await _projectListService.listProjects();
-    if (isClosed) return false;
+  Future<_ProjectFetchOutcome> _fetchProjects({
+    required bool silent,
+    required bool catalogRefresh,
+  }) {
+    final requestGeneration = ++_fetchGeneration;
+    final catalogChangeGeneration = _catalogChangeGeneration;
+    final fetch = _runFetchProjects(
+      silent: silent,
+      catalogRefresh: catalogRefresh,
+      requestGeneration: requestGeneration,
+      catalogChangeGeneration: catalogChangeGeneration,
+    );
+    _latestFetch = fetch;
+    return fetch;
+  }
 
-    switch (projectResponse) {
-      case SuccessResponse(data: Projects(data: final projects)):
-        final mergedProjects = _projectListService
-            .mergeTimestampUpdates(
-              projects: projects,
-              timestampByProjectId: _sseEventTracker.currentProjectTimestampUpdates,
-            )
-            .projects;
-        final sortedProjects = _projectListService.orderProjects(
-          projects: mergedProjects,
-          activityByProjectId: _sseEventTracker.currentSessionActivity,
-          listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
-        );
-        // The REST aggregate is authoritative at fetch time — seed the tracker
-        // so a stale live `true` can't keep a project bold after its last
-        // unseen session was archived/deleted while an echo was missed.
-        _sessionUnseenTracker.seedProjects(
-          {for (final p in sortedProjects) p.id: p.hasUnseenChanges},
-          sinceTick: unseenTick,
-        );
-        emit(
-          ProjectListState.loaded(
-            projects: sortedProjects,
-            activityById: _sseEventTracker.currentProjectActivity,
-            unseenByProjectId: _unseenByProjectId(sortedProjects),
-          ),
-        );
-        _loadedStateAnalyticsReporter.reportLoaded(
-          isEmpty: sortedProjects.isEmpty,
-          occurredAtUtc: DateTime.now().toUtc(),
-        );
-        return true;
-
-      case ErrorResponse(:final error):
-        if (silent) {
-          logw("Failed to refresh projects: ${error.toString()}");
-        } else if (_isBridgeUnavailable) {
-          // The fetch failed because the bridge isn't connected — show the
-          // bridge-disconnected flow rather than a generic error.
-          await _emitBridgeDisconnected();
-        } else {
-          loge("Project list load failed", error);
-          _loadedStateAnalyticsReporter.clearCurrentOccurrence();
-          emit(ProjectListState.failed(reason: error.remoteFailureReason));
+  Future<_ProjectFetchOutcome> _runFetchProjects({
+    required bool silent,
+    required bool catalogRefresh,
+    required int requestGeneration,
+    required int catalogChangeGeneration,
+  }) async {
+    var didApplySnapshot = false;
+    try {
+      // Captured BEFORE the fetch so the seed can't overwrite a live update
+      // that arrives while the request is in flight.
+      final unseenTick = _sessionUnseenTracker.tick;
+      final projectResponse = await _projectListService.listProjects();
+      if (isClosed) return _ProjectFetchOutcome.superseded;
+      if (requestGeneration != _fetchGeneration) {
+        if (projectResponse case ErrorResponse(:final error)) {
+          logw(
+            "Discarded superseded project list response "
+            "(request generation $requestGeneration, current $_fetchGeneration)",
+            error,
+          );
         }
-        return false;
+        return _ProjectFetchOutcome.superseded;
+      }
+
+      switch (projectResponse) {
+        case SuccessResponse(data: Projects(data: final projects)):
+          final mergedProjects = _projectListService
+              .mergeTimestampUpdates(
+                projects: projects,
+                timestampByProjectId: _sseEventTracker.currentProjectTimestampUpdates,
+              )
+              .projects;
+          final sortedProjects = _projectListService.orderProjects(
+            projects: mergedProjects,
+            activityByProjectId: _sseEventTracker.currentSessionActivity,
+            listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
+          );
+          // The REST aggregate is authoritative at fetch time — seed the tracker
+          // so a stale live `true` can't keep a project bold after its last
+          // unseen session was archived/deleted while an echo was missed.
+          _sessionUnseenTracker.seedProjects(
+            {for (final p in sortedProjects) p.id: p.hasUnseenChanges},
+            sinceTick: unseenTick,
+          );
+          emit(
+            ProjectListState.loaded(
+              projects: sortedProjects,
+              activityById: _sseEventTracker.currentProjectActivity,
+              unseenByProjectId: _unseenByProjectId(sortedProjects),
+              catalogScan: _catalogRescanService.state.value,
+            ),
+          );
+          _loadedStateAnalyticsReporter.reportLoaded(
+            isEmpty: sortedProjects.isEmpty,
+            occurredAtUtc: DateTime.now().toUtc(),
+          );
+          _consumeCatalogChangesThrough(generation: catalogChangeGeneration);
+          didApplySnapshot = true;
+          return _ProjectFetchOutcome.applied;
+
+        case ErrorResponse(:final error):
+          if (silent && state is! ProjectListLoading) {
+            logw("Failed to refresh projects: ${error.toString()}");
+          } else if (_isBridgeUnavailable) {
+            // The fetch failed because the bridge isn't connected — show the
+            // bridge-disconnected flow rather than a generic error.
+            await _emitBridgeDisconnected(fetchGeneration: requestGeneration);
+            if (isClosed || requestGeneration != _fetchGeneration) {
+              return _ProjectFetchOutcome.superseded;
+            }
+          } else {
+            loge("Project list load failed", error);
+            _loadedStateAnalyticsReporter.clearCurrentOccurrence();
+            emit(ProjectListState.failed(reason: error.remoteFailureReason));
+          }
+          return _ProjectFetchOutcome.failed;
+      }
+    } finally {
+      if (!catalogRefresh && didApplySnapshot) _rearmCatalogRefreshAfterOrdinaryFetch();
+    }
+  }
+
+  void _onCatalogChanged() {
+    if (isClosed) return;
+    _catalogChangeGeneration++;
+    _catalogRefreshPausedAfterFailure = false;
+    _ensureCatalogRefresh();
+  }
+
+  void _consumeCatalogChangesThrough({required int generation}) {
+    if (generation > _catalogChangeConsumedGeneration) {
+      _catalogChangeConsumedGeneration = generation;
+    }
+  }
+
+  void _ensureCatalogRefresh() {
+    if (isClosed ||
+        _catalogRefresh != null ||
+        _catalogRefreshPausedAfterFailure ||
+        _catalogChangeConsumedGeneration >= _catalogChangeGeneration) {
+      return;
+    }
+
+    late final Future<void> refresh;
+    refresh = _drainCatalogRefreshes().whenComplete(() {
+      if (!identical(_catalogRefresh, refresh)) return;
+      _catalogRefresh = null;
+      _ensureCatalogRefresh();
+    });
+    _catalogRefresh = refresh;
+    unawaited(refresh);
+  }
+
+  Future<void> _drainCatalogRefreshes() async {
+    while (!isClosed && _catalogChangeConsumedGeneration < _catalogChangeGeneration) {
+      final targetGeneration = _catalogChangeGeneration;
+      late final _ProjectFetchOutcome outcome;
+      try {
+        outcome = await _refreshProjects(force: true, catalogRefresh: true);
+      } on Object catch (error, stackTrace) {
+        loge("Catalog-change project refresh failed unexpectedly", error, stackTrace);
+        _catalogRefreshPausedAfterFailure = true;
+        return;
+      }
+
+      if (_catalogChangeConsumedGeneration >= _catalogChangeGeneration) return;
+      switch (outcome) {
+        case _ProjectFetchOutcome.applied:
+        case _ProjectFetchOutcome.superseded:
+          continue;
+        case _ProjectFetchOutcome.failed:
+          if (targetGeneration < _catalogChangeGeneration) continue;
+          _catalogRefreshPausedAfterFailure = true;
+          return;
+      }
+    }
+  }
+
+  void _rearmCatalogRefreshAfterOrdinaryFetch() {
+    if (isClosed || !_catalogRefreshPausedAfterFailure) return;
+    _catalogRefreshPausedAfterFailure = false;
+    _ensureCatalogRefresh();
+  }
+
+  /// Starts a catalog scan across every harness this bridge can import from.
+  void startCatalogScan() => unawaited(_catalogRescanService.startAll());
+
+  /// Stops the scan in flight.
+  void cancelCatalogScan() => unawaited(_catalogRescanService.cancel());
+
+  /// Clears a finished scan the user has read.
+  void dismissCatalogScan() => _catalogRescanService.dismiss();
+
+  void _onCatalogScanState(CatalogRescanState scan) {
+    if (isClosed) return;
+    if (state case final ProjectListLoaded loaded) {
+      emit(loaded.copyWith(catalogScan: scan));
     }
   }
 

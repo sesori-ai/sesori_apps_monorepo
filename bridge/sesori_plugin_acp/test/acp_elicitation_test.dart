@@ -21,9 +21,8 @@ void main() {
         emit: emitted.add,
         respond: (id, result) => responses.add((id, result)),
         respondError: (id, code, message) => errors.add((id, code, message)),
-        onFireAndForgetNotification: (_) {},
       );
-      registry.attach(requests.stream);
+      registry.attach(stream: requests.stream);
     });
 
     tearDown(() async {
@@ -88,11 +87,14 @@ void main() {
       expect(asked.questions[2].options.single.description.length, lessThan(suggested.length));
 
       expect(
-        registry.replyQuestion(asked.id, [
-          ["fast"],
-          ["Yes"],
-          ["Use suggested text"],
-        ]),
+        registry.replyQuestion(
+          requestId: asked.id,
+          answers: [
+            ["fast"],
+            ["Yes"],
+            ["Use suggested text"],
+          ],
+        ),
         isTrue,
       );
       expect(responses.single.$2, {
@@ -124,9 +126,12 @@ void main() {
 
       final asked = emitted.single as BridgeSseQuestionAsked;
       expect(asked.questions.single.options.map((option) => option.label), ["Approve", "Approve (2)"]);
-      registry.replyQuestion(asked.id, [
-        ["Approve (2)"],
-      ]);
+      registry.replyQuestion(
+        requestId: asked.id,
+        answers: [
+          ["Approve (2)"],
+        ],
+      );
 
       expect(responses.single.$2, {
         "action": "accept",
@@ -146,10 +151,13 @@ void main() {
       await pump();
       final asked = emitted.single as BridgeSseQuestionAsked;
 
-      registry.replyQuestion(asked.id, [
-        ["value"],
-        const [],
-      ]);
+      registry.replyQuestion(
+        requestId: asked.id,
+        answers: [
+          ["value"],
+          const <String>[],
+        ],
+      );
 
       expect(responses.single.$2, {
         "action": "accept",
@@ -170,10 +178,13 @@ void main() {
       await pump();
       final asked = emitted.single as BridgeSseQuestionAsked;
 
-      registry.replyQuestion(asked.id, [
-        const [],
-        ["optional"],
-      ]);
+      registry.replyQuestion(
+        requestId: asked.id,
+        answers: [
+          const <String>[],
+          ["optional"],
+        ],
+      );
 
       expect(responses.single.$2, const {"action": "decline"});
     });
@@ -194,9 +205,12 @@ void main() {
       final label = asked.questions.single.options.single.label;
       expect(label, isNotEmpty);
 
-      registry.replyQuestion(asked.id, [
-        [label],
-      ]);
+      registry.replyQuestion(
+        requestId: asked.id,
+        answers: [
+          [label],
+        ],
+      );
       expect(responses.single.$2, {
         "action": "accept",
         "content": {"value": ""},
@@ -228,7 +242,7 @@ void main() {
         (2, const {"action": "decline"}),
       ]);
       expect(emitted, isEmpty);
-      expect(registry.pendingForSession("session-1"), isEmpty);
+      expect(registry.pendingForSession(sessionId: "session-1"), isEmpty);
     });
 
     test("cancels a form that has no resolvable session", () async {
@@ -252,10 +266,9 @@ void main() {
         emit: emitted.add,
         respond: (id, result) => responses.add((id, result)),
         respondError: (id, code, message) => errors.add((id, code, message)),
-        onFireAndForgetNotification: (_) {},
         activeSessionResolver: () => "active-session",
       );
-      registry.attach(requests.stream);
+      registry.attach(stream: requests.stream);
 
       requests.add(
         const AcpServerRequest(
@@ -285,10 +298,9 @@ void main() {
         emit: emitted.add,
         respond: (id, result) => responses.add((id, result)),
         respondError: (id, code, message) => errors.add((id, code, message)),
-        onFireAndForgetNotification: (_) {},
         activeSessionResolver: () => "active-session",
       );
-      registry.attach(requests.stream);
+      registry.attach(stream: requests.stream);
 
       requests.add(
         form(
@@ -318,13 +330,13 @@ void main() {
       }
 
       final rejected = await ask(id: 1);
-      registry.rejectQuestion(rejected);
+      registry.rejectQuestion(requestId: rejected);
       expect(responses.last.$2, const {"action": "decline"});
 
       final aborted = await ask(id: 2);
-      registry.cancelForSession("session-1");
+      registry.cancelForSession(sessionId: "session-1");
       expect(responses.last.$2, const {"action": "cancel"});
-      expect(registry.replyQuestion(aborted, const []), isFalse);
+      expect(registry.replyQuestion(requestId: aborted, answers: const []), isFalse);
 
       await ask(id: 3);
       await registry.dispose();

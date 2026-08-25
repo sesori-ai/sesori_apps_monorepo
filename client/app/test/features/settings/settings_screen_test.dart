@@ -133,6 +133,7 @@ void main() {
     when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatuses.value);
     when(() => connectionService.status).thenAnswer((_) => connectionStatuses.stream);
     GetIt.instance.registerSingleton<ConnectionService>(connectionService);
+    GetIt.instance.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
 
     authSession = _StubAuthSession();
     when(authSession.logoutCurrentDevice).thenAnswer((_) async {});

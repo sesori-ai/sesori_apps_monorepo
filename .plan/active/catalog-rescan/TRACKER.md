@@ -5,9 +5,9 @@
 - **Plan slug:** `catalog-rescan`
 - **Implementation base:** `main` at
   `7b1ebe9bc629d05b5d104e76cd5dbaa1514d65a2`
-- **Series state:** Steps 1/8 to 3/8 merged; Step 4/8 open
-- **Current step:** add the client catalog rescan service
-- **Next action:** land Step 4, then Step 5's two-stage pull control
+- **Series state:** Steps 1/8 to 6b/8 merged; Step 6c/8 open
+- **Current step:** scan one harness from Settings
+- **Next action:** land 6c, then reconcile the regression docs in step 7
 - **Origin issue:** [#961](https://github.com/sesori-ai/sesori_apps_monorepo/issues/961)
 - **External overlap:** [#1008](https://github.com/sesori-ai/sesori_apps_monorepo/issues/1008)
   owns Codex live updates; do not address it here
@@ -54,8 +54,12 @@
 
 | Decision | Chosen | Rationale |
 |---|---|---|
-| Refresh model | Two-stage pull: soft unchanged, deep armed past `1.6 x triggerDistance` | A rescan boots every enabled harness backend, so it must be deliberate |
+| Refresh model | Two-stage pull: soft unchanged, deep fires past `1.6 x triggerDistance` | A rescan boots every enabled harness backend, so it must be deliberate |
+| Deep-pull commit | On crossing the threshold, not on release | `CupertinoSliverRefreshControl` fires `onRefresh` on crossing and never on release, so release semantics were unbuildable. Owner decision 2026-08-24 |
 | Gesture owner | One `module_prego` `PregoSliverRefreshControl` | Three hosts, only two of which use `PregoGlassScaffold`; the pane must not re-implement thresholds in `client/app` |
+| Row weight | Tinted card, distinct from the surrounding tiles | Reads as status rather than content, so it is never mistaken for an openable row |
+| Running detail | The harness and its live session count | A "2 of 3" line goes still during a long single-harness scan, which is when reassurance matters most |
+| Copy | "Scan" led, sessions first, projects only in the result | Owner decision 2026-08-24: "rescan" named the mechanism, not the outcome |
 | Progress presentation | One aggregate row | Fixed height; the top of the list never reflows as harnesses finish at different times |
 | Row placement | Ordinary sliver at index 0, scrolls with the list | Non-intrusive; a refresh already scrolls to the top, so it is visible when it matters |
 | Row home | `client/app/lib/core/widgets/` | Consumed by two features; must not live inside either |
@@ -75,6 +79,7 @@
 | Second start while running | Joins the live operation | Replacing it dropped the first harness from aggregation and cancellation |
 | List refresh trigger | Leaving a live operation, not the terminal variants | An observed run publishes no summary and would otherwise never refresh |
 | Pre-v1.7.0 bridges | `CatalogRescanUnsupported` straight from an unsupported management snapshot | `/plugin/management` is v1.7.0; without a snapshot the fan-out sends zero requests, so the all-`404` branch never fires |
+| Nothing to fan out to | `CatalogRescanNoHarness` for a loading, failed, or absent snapshot and for one naming no routable harness | The caller is a gesture that has already told the user a scan started; a failed snapshot answers this way until reloaded, so a silent return is a persistent dead end |
 | Start failures | `CatalogRescanStartFailed` retains the `ApiError` and is logged locally | A transport or decode failure may never reach the bridge, so its log cannot explain it |
 | Targeted rejections | Typed `CatalogRescanStartResult` held per plugin id by `PluginManagementCubit` | The aggregate row cannot say which card was rejected |
 | Completion wording | New items, with a totals fallback | Reporting 193 totals after a no-op rescan would be actively misleading |
@@ -113,8 +118,12 @@
 
 ## Open Questions
 
-- [ ] Does `PregoGlassScaffold` have an existing design catalog scenario, or do
-  widget tests alone cover the second stage?
+- [x] Does `PregoGlassScaffold` have an existing design catalog scenario, or do
+  widget tests alone cover the second stage? **Answered in step 5:** the design
+  catalog has no scaffold scenario, so `PLAN.md`'s "otherwise widget tests" path
+  applies. Eight `prego_sliver_refresh_control_test.dart` cases cover the stage,
+  including its two caption phases and the fired label's visual distinction. No
+  catalog scenario was added, so no manifest regeneration was needed.
 
 ## Delivery Steps
 
@@ -123,9 +132,11 @@
 | [x] | 1/8 | `🌱 [catalog-rescan] Plan client-triggered catalog rescan [step 1/8]` | 950-1,100 (`PLAN.md`) | [PR #1064](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1064) merged |
 | [x] | 2/8 | `🌱 [catalog-rescan] Re-hydrate stale plugin catalogs [step 2/8]` | 20-60 | [PR #1071](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1071) merged |
 | [x] | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 | [PR #1074](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1074) merged |
-| [ ] | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 | Open |
-| [ ] | 5/8 | `⚙️ [catalog-rescan] Add a second stage to pull-to-refresh [step 5/8]` | 350-600 | Not started |
-| [ ] | 6/8 | `⚙️ [catalog-rescan] Surface catalog rescan in the app [step 6/8]` | 950-1,400 | Not started |
+| [x] | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 | [PR #1085](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1085) merged |
+| [x] | 5/8 | `⚙️ [catalog-rescan] Add a second stage to pull-to-refresh [step 5/8]` | 350-600 | [PR #1093](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1093) merged |
+| [x] | 6a/8 | `⚙️ [catalog-rescan] Route scan state through the list cubits [step 6a/8]` | 450-750 | Merged |
+| [x] | 6b/8 | `⚙️ [catalog-rescan] Show the catalog scan in the lists [step 6b/8]` | 500-800 | [PR #1103](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1103) merged |
+| [ ] | 6c/8 | `🌿 [catalog-rescan] Scan one harness from Settings [step 6c/8]` | 350-600 | Open |
 | [ ] | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 | Not started |
 | [ ] | 8/8 | `🌱 [catalog-rescan] Verify and retire the catalog rescan plan [step 8/8]` | 60-140 | Not started |
 
@@ -204,15 +215,15 @@
 
 ## Step 5 Checklist
 
-- [ ] Add `PregoSliverRefreshControl` owning arming, captions, and dispatch.
-- [ ] Compose it in `PregoGlassScaffold` behind `onDeepRefresh` and assert it
+- [x] Add `PregoSliverRefreshControl` owning thresholds, captions, and dispatch.
+- [x] Compose it in `PregoGlassScaffold` behind `deepRefresh` and assert it
   requires `onRefresh`.
-- [ ] Replace `SessionListPanel`'s bare `CupertinoSliverRefreshControl` with it
-  and give the pane an optional `onDeepRefresh` parameter, so the pane test has a
-  callback before the cubit intent exists.
-- [ ] Leave an ordinary pull visually unchanged.
-- [ ] Prove short pull, long pull, and abandoned long pull, in both the scaffold
-  and the pane.
+- [x] Replace `SessionListPanel`'s bare `CupertinoSliverRefreshControl` with it
+  and give the pane an optional `deepRefresh` parameter, so step 6 has somewhere
+  to wire the cubit intent.
+- [x] Leave an ordinary pull visually unchanged.
+- [x] Prove short pull, long pull, abandoned pull, once-per-pull, no-second-stage,
+  caption order, and the fired label's visual distinction.
 - [ ] Run `architecture-implementation-review`.
 
 ## Step 6 Checklist
@@ -220,7 +231,7 @@
 - [ ] Give all three cubits a rescan subscription, state, and intent methods.
 - [ ] Refresh both lists whenever the service leaves a live operation, not only
   on the terminal summary variants.
-- [ ] Wire the pane's `onDeepRefresh` parameter to the cubit.
+- [ ] Wire the pane's `deepRefresh` parameter to the cubit.
 - [ ] Build the rescan row in `client/app/lib/core/widgets/` with all seven
   presentations, no timer, and no bridge-supplied text.
 - [ ] Wire all three hosts through their cubits; no widget touches the service.
@@ -462,5 +473,139 @@ duplicate-emission nicety.
 - **Step 4 review:** `architecture-implementation-review` **rejected** the first
   pass with two blocking A2 findings, both divergences from the approved
   operation model, both applied with regression coverage
-- **Step 4 PR:** pending
+- **Step 4 PR:** [#1085](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1085)
+  merged
+- **Step 5 base:** `main` at `bafa7cd02`
+- **Step 5 changed lines:** 427 of delivered code, inside the 350-600 target;
+  `.plan/` excluded so the figure cannot count itself
+- **Step 5 verification:** `dart analyze --fatal-infos` clean on
+  `client/module_prego` and `client/app`; full `module_prego` suite 227 tests
+  passed, including 8 new `prego_sliver_refresh_control_test.dart` cases
+- **Step 5 review:** `architecture-implementation-review` **approved** with zero
+  findings. It confirmed the boundary tightened rather than widened — both hosts
+  lost their `cupertino_ui` imports, and `decorate` hands back only the built
+  indicator so no host can re-derive gesture state — and that the fire-on-
+  crossing correction is architecturally sound. Both of its non-blocking
+  observations were applied: `PLAN.md`'s Step 5 scope section still described the
+  unbuildable release semantics and would have misdirected step 6, and the new
+  design-system file's doc comments carried product vocabulary
+- **Step 5 PR:** [#1093](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1093)
+  merged
+- **Step 6a base:** `main` at `0969f00d6`
+- **Step 6a changed lines:** 346 of delivered code, under the 450-750 estimate
+  because the cubits reuse their existing refresh rather than adding one
+- **Step 6a verification:** `dart analyze --fatal-infos` clean on
+  `client/module_core` and `client/app`; module_core 1,349 tests passed
+  (6 new cubit cases); app 854 tests passed
+- **Step 6a review:** `architecture-implementation-review` **rejected** the first
+  pass with three findings, all applied. Two were one real bug: both cubits
+  rebuilt their loaded state without `catalogScan`, so it reverted to idle —
+  and on the project list the erasing rebuild was the very refresh the scan's
+  own `settled` listener fires, which would have wiped the terminal row it was
+  fired for. On the session list any session event during a scan reset the
+  running row. Fixed by re-deriving from the owner in both paths, the way the
+  sibling activity and unseen fields already do. The third: the shared
+  `FakeCatalogRescanService` declared the interface without implementing
+  `start(pluginId:)` and hid the gap behind `noSuchMethod`, which would have
+  turned any future interface addition into a runtime throw in every consumer
+  instead of a compile error. Both regression tests were confirmed to fail
+  without the fix
+- **Step 6a PR:** [#1099](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1099)
+  merged
+- **Step 6b base:** `main` at `1f12f5cee1`
+- **Step 6b changed lines:** 862 of delivered code against a 500-800 estimate,
+  of which 207 are generated `app_localizations*.dart`; the hand-written figure
+  is 655
+- **Step 6b design-system reuse:** the row maps onto
+  `PregoInlineAlertsNotifications` rather than adding a bespoke card, so all
+  seven presentations are a `switch` returning a record. `AnimatedSize` around
+  the row was tried and removed: inside a `SliverToBoxAdapter` it never grew
+  past zero height, so the row appears and clears without a size transition
+- **Step 6b accessibility choice:** the alert's `onClose` renders an icon-only
+  button with no semantic label, so cancel and dismiss both use the labelled
+  `secondaryAction` instead. Adding `semanticLabel` to
+  `PregoButtonsSolid.iconOnly` would have required copy for all 11 existing
+  icon-only call sites across unrelated features and was left out of scope
+- **Step 6b dropped guard:** the planned suppression of the soft-refresh
+  `LinearProgressIndicator` while a scan runs was removed. On both lists
+  `isRefreshing` is raised only by the stale-reconnect path — the pull reports
+  through a toast and the scan's own post-settle refresh is silent — so the
+  overlap needs a reconnect to land mid-scan and costs one redundant bar
+- **Step 6b verification:** `flutter analyze` clean on `client/app` lib and
+  test; app 872 tests passed (18 new: 12 row presentations, 6 project-list
+  wiring including the two-stage pull)
+- **Step 6b review:** `architecture-implementation-review` **approved** with no
+  findings. It confirmed the row holds no business logic, that
+  `CatalogImportFailed.message` cannot reach it because `CatalogRescanFailed`
+  carries only `harnessCount`, that no backend identifier escapes into
+  `client/` (`activePluginName` is the management snapshot's display string,
+  and `Codex` appears only as an ARB example), and that
+  `PregoGlassScaffold`'s `deepRefresh == null || onRefresh != null` assertion
+  holds on every host path. It also noted that removing `SessionListPanel`'s
+  unused injected `deepRefresh` parameter retires step 5's speculative seam in
+  lockstep with its only call site
+- **Carried to step 7/8:** `CatalogRescanDelta.isEmpty`
+  (`catalog_rescan_state.dart:20`) has had no consumer since step 4 shipped it.
+  Delete it unless 6c adopts it
+- **Step 6b review comments:** three of four bot findings were valid and fixed
+  in `e30a20bb7d`. `startAll()` returned silently for a loading, failed, or
+  absent management snapshot and for a snapshot naming no routable harness, so
+  a deep pull said a scan had started and then showed nothing — a persistent
+  dead end, not a transient one, because a failed snapshot answers that way
+  until it is reloaded. Added `CatalogRescanNoHarness`, published under the same
+  `_members.isEmpty` guard `unsupported` uses. The row's live region also
+  covered the running state, whose `sessionsSeen` changes per enumerated
+  session, so a screen reader would have been interrupted once per session
+  across a whole scan; it is now scoped to phase and terminal transitions. And a
+  counts clause is dropped at zero rather than joined, so a scan finding only a
+  new project no longer read `No new sessions in 2 new projects`
+- **Step 6b declined finding:** codex asked for
+  `docs/regression/projects-and-sessions.md` in this PR, citing the AGENTS.md
+  rule. Declined and left unresolved: step 7 owns that reconciliation for
+  behaviour 6b and 6c both contribute to, and writing it now means rewriting it
+  twice. The staleness window between 6b and step 7 is real rather than
+  theoretical, because 6b is what makes scanning user-reachable
+- **Step 6b PR:** [#1103](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1103)
+  open
+- **Step 6c base:** `main` at `d8459ae9cf`
+- **Step 6c changed lines:** 451 of delivered code, within the 350-600 estimate
+- **Step 6c field ownership:** `scanningPluginIds` is re-read from
+  `CatalogRescanService` on every snapshot rebuild, the way `installs` is, so a
+  scan a list's pull started still closes the Settings action and reopening the
+  screen mid-scan does not hide it. `scanRejections` is carried forward from the
+  previous ready state, the way `action` and `authentication` are, because
+  nothing outside the cubit holds a rejection the user has not read. The
+  regression test for the rebuild was confirmed to fail without both
+- **Step 6c dropped intent:** `dismissCatalogScanRejection` was written and then
+  removed before commit — it had no caller, since a rejection clears on the next
+  attempt on that harness or on leaving the screen, which rebuilds the cubit
+- **Step 6c verification:** `flutter analyze lib test` clean on `client/app`;
+  `dart analyze --fatal-infos lib test` clean on `client/module_core`; app 890
+  tests passed, module_core 1,373 passed (13 new: 6 cubit, 7 widget)
+- **Step 6c review:** `architecture-implementation-review` **approved** with no
+  architectural findings. It confirmed both writers of `scanningPluginIds` funnel
+  through one getter so the stream and rebuild paths cannot diverge, that
+  `isRoutable` is the shared model's own getter rather than an eligibility rule
+  re-implemented in the shell, and that `CatalogRescanStartFailed.cause` never
+  reaches a rendered string. It also caught a real documentation defect this
+  commit introduced: inserting `startCatalogScanFor` between `install()`'s doc
+  comment and `install()` orphaned that comment. Fixed
+- **Step 6c PR:** [#1113](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1113)
+  open
+- **Step 6c review comments:** both bot findings valid, fixed in `7a4e024ea4`.
+  The failed-start line said "Check the bridge log", which contradicts this
+  plan's own reason for retaining the `ApiError`: the request may never have
+  reached the bridge. Now neutral, because the app has no user-facing log
+  viewer either. The lists' failed row still names the bridge log and is
+  correct — that one comes from a bridge-side `CatalogImportFailed` event
+- **Step 6c doc reversal:** codex asked again for the regression document in the
+  same PR, and this time it was right where it was not on 6b. 6c is the last
+  implementation step, so nothing written now would be rewritten in step 7.
+  `plugin-setup-and-lifecycle.md` was reconciled here, leaving step 7 with
+  `projects-and-sessions.md` only
+- **Upstream change during 6c:** PR #1106 fixed the catalog refresh ordering
+  seam this plan had recorded as an accepted residue, renaming the service's
+  `settled` to `catalogChanged` and already updating part of
+  `docs/regression/projects-and-sessions.md`. Step 7's scope is therefore
+  smaller than the plan text describes and must be re-derived from the file
 - **Final disposition:** pending

@@ -13,38 +13,132 @@ Map<String, dynamic> _$PluginMessageWithPartsToJson(
   'parts': instance.parts.map((e) => e.toJson()).toList(),
 };
 
-Map<String, dynamic> _$PluginMessagePartToJson(_PluginMessagePart instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'sessionID': instance.sessionID,
-      'messageID': instance.messageID,
-      'type': _$PluginMessagePartTypeEnumMap[instance.type]!,
-      'text': ?instance.text,
-      'tool': ?instance.tool,
-      'state': ?instance.state?.toJson(),
-      'prompt': ?instance.prompt,
-      'description': ?instance.description,
-      'agent': ?instance.agent,
-      'agentName': ?instance.agentName,
-      'attempt': ?instance.attempt,
-      'retryError': ?instance.retryError,
-      'attachment': ?instance.attachment?.toJson(),
-    };
+Map<String, dynamic> _$PluginMessagePartTextToJson(
+  PluginMessagePartText instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'messageID': instance.messageID,
+  'text': instance.text,
+  'type': instance.$type,
+};
 
-const _$PluginMessagePartTypeEnumMap = {
-  PluginMessagePartType.text: 'text',
-  PluginMessagePartType.reasoning: 'reasoning',
-  PluginMessagePartType.tool: 'tool',
-  PluginMessagePartType.subtask: 'subtask',
-  PluginMessagePartType.stepStart: 'step-start',
-  PluginMessagePartType.stepFinish: 'step-finish',
-  PluginMessagePartType.file: 'file',
-  PluginMessagePartType.snapshot: 'snapshot',
-  PluginMessagePartType.patch: 'patch',
-  PluginMessagePartType.agent: 'agent',
-  PluginMessagePartType.retry: 'retry',
-  PluginMessagePartType.compaction: 'compaction',
-  PluginMessagePartType.unknown: 'unknown',
+Map<String, dynamic> _$PluginMessagePartReasoningToJson(
+  PluginMessagePartReasoning instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'messageID': instance.messageID,
+  'text': instance.text,
+  'type': instance.$type,
+};
+
+Map<String, dynamic> _$PluginMessagePartToolToJson(
+  PluginMessagePartTool instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'messageID': instance.messageID,
+  'tool': ?instance.tool,
+  'state': instance.state.toJson(),
+  'type': instance.$type,
+};
+
+Map<String, dynamic> _$PluginMessagePartSubtaskToJson(
+  PluginMessagePartSubtask instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'messageID': instance.messageID,
+  'prompt': instance.prompt,
+  'description': instance.description,
+  'agent': instance.agent,
+  'type': instance.$type,
+};
+
+Map<String, dynamic> _$PluginMessagePartStepStartToJson(
+  PluginMessagePartStepStart instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'messageID': instance.messageID,
+  'type': instance.$type,
+};
+
+Map<String, dynamic> _$PluginMessagePartStepFinishToJson(
+  PluginMessagePartStepFinish instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'messageID': instance.messageID,
+  'type': instance.$type,
+};
+
+Map<String, dynamic> _$PluginMessagePartFileToJson(
+  PluginMessagePartFile instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'messageID': instance.messageID,
+  'attachment': instance.attachment.toJson(),
+  'type': instance.$type,
+};
+
+Map<String, dynamic> _$PluginMessagePartSnapshotToJson(
+  PluginMessagePartSnapshot instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'messageID': instance.messageID,
+  'type': instance.$type,
+};
+
+Map<String, dynamic> _$PluginMessagePartPatchToJson(
+  PluginMessagePartPatch instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'messageID': instance.messageID,
+  'type': instance.$type,
+};
+
+Map<String, dynamic> _$PluginMessagePartAgentToJson(
+  PluginMessagePartAgent instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'messageID': instance.messageID,
+  'agentName': instance.agentName,
+  'type': instance.$type,
+};
+
+Map<String, dynamic> _$PluginMessagePartRetryToJson(
+  PluginMessagePartRetry instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'messageID': instance.messageID,
+  'attempt': instance.attempt,
+  'retryError': instance.retryError,
+  'type': instance.$type,
+};
+
+Map<String, dynamic> _$PluginMessagePartCompactionToJson(
+  PluginMessagePartCompaction instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'messageID': instance.messageID,
+  'type': instance.$type,
+};
+
+Map<String, dynamic> _$PluginMessagePartUnknownToJson(
+  PluginMessagePartUnknown instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'messageID': instance.messageID,
+  'type': instance.$type,
 };
 
 Map<String, dynamic> _$PluginMessageAttachmentInlineImageToJson(

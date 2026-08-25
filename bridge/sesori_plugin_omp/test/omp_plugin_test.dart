@@ -356,16 +356,16 @@ void main() {
         ]),
       );
       final finalizedReasoning = parts.indexWhere(
-        (part) => part.type == PluginMessagePartType.reasoning && part.text == "Thinking",
+        (part) => part is PluginMessagePartReasoning && part.text == "Thinking",
       );
       final tool = parts.indexWhere((part) => part.type == PluginMessagePartType.tool);
       expect(finalizedReasoning, isNonNegative);
       expect(finalizedReasoning, lessThan(tool));
-      expect(parts.where((part) => part.type == PluginMessagePartType.tool).single.state?.output, "tool output");
-      final image = parts.where((part) => part.type == PluginMessagePartType.file).single.attachment!;
+      expect(parts.whereType<PluginMessagePartTool>().single.state.output, "tool output");
+      final image = parts.whereType<PluginMessagePartFile>().single.attachment;
       expect(image, isA<PluginMessageAttachmentInlineImage>());
       expect(image.toString(), isNot(contains("/private/")));
-      expect(parts.where((part) => part.type == PluginMessagePartType.text).last.text, "Finished");
+      expect(parts.whereType<PluginMessagePartText>().last.text, "Finished");
     });
 
     test("replays stored OMP history through session load", () async {
@@ -415,12 +415,12 @@ void main() {
 
       final messages = await loading;
       expect(messages, hasLength(2));
-      expect(messages.first.parts.single.text, "Question");
+      expect((messages.first.parts.single as PluginMessagePartText).text, "Question");
       expect(messages.last.parts.map((part) => part.type), [
         PluginMessagePartType.text,
         PluginMessagePartType.file,
       ]);
-      final image = messages.last.parts.last.attachment! as PluginMessageAttachmentInlineImage;
+      final image = (messages.last.parts.last as PluginMessagePartFile).attachment as PluginMessageAttachmentInlineImage;
       expect(image.base64, "AQ==");
       expect(image.filename, "history.webp");
       expect(image.toString(), isNot(contains("/private/")));

@@ -89,7 +89,7 @@ returns nothing.
 eligible plugin, with no recency or terminality filter. Because the hydration
 short-circuit publishes `completed(0, 0)` for every already-hydrated plugin at
 every bridge start, a naive recovery read of `GET /plugin/import` would render
-a "Rescan complete / Nothing new" row on every connect. The recovery read must
+a "Scan complete / No new sessions" row on every connect. The recovery read must
 therefore seed only from non-terminal statuses.
 
 ### The two "ignore arms" are not an event dispatch registry
@@ -187,24 +187,40 @@ projects or sessions from the bridge's committed catalog. Awaited, spinner in
 the refresh control, near-instant. This remains the default and the only
 behavior most pulls produce.
 
-**Stage 2 (deep rescan)** arms when the pull passes `1.6 x triggerDistance`.
-The refresh control's caption follows the pull:
+**Stage 2 (deep rescan)** fires when the pull passes `1.6 x triggerDistance`.
+
+Both stages commit **on crossing their threshold, while the finger is still
+down**, not on release. That is not a choice: `CupertinoSliverRefreshControl`
+invokes `onRefresh` the moment the pull reaches `refreshTriggerPullDistance`,
+from a post-frame callback, and returns `armed` (`cupertino_ui`
+`refresh.dart:504-530`). There is no release-gated commit to hang a second stage
+on, so an earlier draft of this plan describing "release to rescan" was
+unbuildable. Owner decision 2026-08-24: keep the two-depth gesture and fire on
+crossing.
 
 | Pull distance | Caption |
 |---|---|
 | below `triggerDistance` | none (today's indicator) |
-| `triggerDistance` to `1.6 x` | `Keep pulling to rescan harnesses` |
-| past `1.6 x` | `Release to rescan harnesses` |
+| `triggerDistance` to `1.6 x` | `Keep pulling to scan all harnesses`, quiet and text-only |
+| past `1.6 x` | `Scanning for new sessions`, in brand colour with a rotate icon |
 
-Release runs the soft refresh exactly as today **and** additionally triggers the
-catalog import. The import is never awaited: the refresh control settles on the
-soft refresh alone.
+The caption cross-fades between the two, keyed on the phase rather than the
+text, so passing the threshold reads as one label becoming another and a host
+rewording mid-pull cannot look like the stage changed. The fired phase is
+visually distinct rather than only differently worded, so the moment of
+commitment is legible at a glance.
 
-All three arming, caption, and release-dispatch behavior lives in a single
-`module_prego` widget, `PregoSliverRefreshControl`, which wraps
-`CupertinoSliverRefreshControl` and owns the one mutable `bool` recording
-whether the deep threshold was crossed at the moment of release.
-`PregoGlassScaffold` composes it behind a new optional `onDeepRefresh`
+The catalog import is never awaited: the refresh control settles on the soft
+refresh alone. One pull rescans at most once, however far it travels.
+
+Because there is no commit point, a pull past `1.6 x` cannot be taken back by
+dragging up. Cancelling is the progress row's job, which is the affordance that
+exists for it anyway.
+
+All threshold, caption, and dispatch behavior lives in a single `module_prego`
+widget, `PregoSliverRefreshControl`, which wraps `CupertinoSliverRefreshControl`
+and tracks the furthest extent this gesture reached plus whether it has already
+fired. `PregoGlassScaffold` composes it behind a new optional `deepRefresh`
 parameter; `SessionListPanel` uses it directly in place of its bare
 `CupertinoSliverRefreshControl`. No pull-threshold logic is written in
 `client/app`.
@@ -220,13 +236,31 @@ entry. It is not pinned, not a banner, not a toast, not a dialog.
 
 | State | Leading | Title | Subtitle | Trailing |
 |---|---|---|---|---|
-| Starting | indeterminate ring | `Rescanning harnesses` | none | cancel |
-| Running | indeterminate ring | `Rescanning harnesses` | harness currently enumerating plus its running session count | cancel |
-| Succeeded | check | `Rescan complete` | new-item summary | none; the service clears it after 4s |
-| Partly failed | warning | `Rescan finished` | `1 of 3 harnesses could not be rescanned` | dismiss |
-| Failed | warning | `Rescan failed` | `Check the bridge log for details` | dismiss |
-| Unsupported | warning | `Rescan needs a newer bridge` | `Update the bridge to rescan from here` | dismiss |
+| Starting | indeterminate ring | `Scanning all harnesses` | none | cancel |
+| Running | indeterminate ring | `Scanning all harnesses` | the harness currently enumerating and its live session count, e.g. `Codex — 148 sessions` | cancel |
+| Succeeded | check | `Scan complete` | `5 new sessions in 2 new projects`, or `No new sessions` | none; the service clears it after 4s |
+| Partly failed | warning | `Scan finished` | `1 of 3 harnesses could not be scanned` | dismiss |
+| Failed | warning | `Scan failed` | `Check the bridge log for details` | dismiss |
+| Unsupported | warning | `Scanning needs a newer bridge` | `Update the bridge to scan from here` | dismiss |
 | Cancelled | — | — | — | row removed immediately |
+
+The row is a **tinted card**, not a plain tile: a rounded surface in a subtle
+brand tint, visually distinct from the session and project tiles around it. It
+reads as status rather than content, so it is never mistaken for a row that can
+be opened.
+
+The running subtitle names the harness and its **live** session count rather
+than progress across harnesses. A long single-harness scan is exactly when the
+user needs reassurance, and a "2 of 3" line goes completely still there while a
+climbing count keeps showing movement.
+
+Copy leads with sessions throughout and mentions projects only in the completion
+line, and only when there are any. Sessions are what a user notices missing —
+#961 was reported as missing sessions — and it keeps the captions short enough
+for a 226pt split pane.
+
+The Settings action is labelled `Scan for new sessions`, matching the same
+vocabulary.
 
 `Starting` exists because a dispatched request is not yet an enumerating
 harness. Between dispatch and the first progress event there is no active
@@ -250,11 +284,18 @@ the unseen service, neither of which the import touches. The stage-1 soft refres
 runs on release, before the import commits, so without an explicit refresh the
 row would announce new sessions over a list that still lacks them.
 
-`ProjectListCubit` and `SessionListCubit` therefore refresh themselves when the
-rescan reaches `CatalogRescanSucceeded` or `CatalogRescanPartlyFailed`, reusing
-the existing silent refresh each already owns. This is a client-side refresh, not
-a new bridge event: the progress stream is global, so a rescan started from the
-CLI or from another surface refreshes these lists just the same.
+`CatalogRescanService` therefore emits `catalogChanged` for every observed
+`CatalogImportCompleted`, and `ProjectListCubit` and `SessionListCubit` refresh
+from that durable-data signal. This remains a client-side refresh, not a new
+bridge event: the service already receives the global progress stream, so a
+rescan started from the CLI or another surface refreshes these lists just the
+same.
+
+The signal is deliberately tied to `CatalogImportCompleted`, not to closing the
+progress row. A cancel closes that row immediately, but the bridge's `DELETE`
+only requests cancellation; an atomic publish that already began can still
+complete. The terminal completion is the first point at which a list read is
+known to see the durable catalog.
 
 With several harnesses enabled the row stays a single row. Its subtitle names
 whichever harness is currently enumerating; it does not grow one row per
@@ -265,7 +306,7 @@ whichever harness happened to finish last.
 The success summary is worded from the counts carrier:
 
 - delta known, one or more new: `5 new sessions in 2 new projects`;
-- delta known, nothing new: `Nothing new`;
+- delta known, nothing new: `No new sessions`;
 - totals only, which is what an older bridge sends:
   `43 projects, 193 sessions`.
 
@@ -319,15 +360,14 @@ rejection on the card instead of skipping it.
                     +-- ConnectionService.events            (SSE + connection status)
                           |
                           v
-                  ValueStream<CatalogRescanState>
+       ValueStream<CatalogRescanState> + catalogChanged Stream
                           |
         +-----------------+------------------+
         v                 v                  v
   ProjectListCubit  SessionListCubit  PluginManagementCubit
         |                 |                  |
-        |  each exposes the rescan state in  |
-        |  its own state and refreshes its   |
-        |  list on a terminal success        |
+        |  each exposes the rescan state; the|
+        |  lists refresh after durable commits|
         v                 v                  v
   project list      session list +      Settings > Harnesses
                     split-view pane
@@ -337,15 +377,17 @@ rejection on the card instead of skipping it.
 ```
 
 No widget subscribes to `CatalogRescanService`. Each surface's existing cubit
-gains one subscription to its `ValueStream`, surfaces the rescan state through
-its own state, and exposes the intent methods the screen dispatches
-(`startRescan()`, `startRescanFor(pluginId)`, `cancelRescan()`,
-`dismissRescan()`). This keeps the shell's Layer-4 boundary intact and puts the
-post-success list refresh in the object that already owns refreshing.
+surfaces the rescan state through its own state and exposes the intent methods
+the screen dispatches (`startCatalogScan()`, `cancelCatalogScan()`,
+`dismissCatalogScan()` on the two list cubits; `startCatalogScanFor(pluginId)`
+on `PluginManagementCubit`). The list cubits additionally subscribe to
+`catalogChanged`, which is a durable catalog fact rather than row lifecycle.
+This keeps the shell's Layer-4 boundary intact and puts the list refresh in the
+object that already owns refreshing.
 
 A dedicated `CatalogRescanCubit` was considered and rejected: the two list
-surfaces must refresh themselves on success, which only their own cubits can do,
-so a fourth cubit would add an object without removing any wiring.
+surfaces must refresh themselves after a durable commit, which only their own
+cubits can do, so a fourth cubit would add an object without removing any wiring.
 
 `CatalogRescanService` is a `@lazySingleton` in `module_core`, resolved with
 `getIt<CatalogRescanService>()` per the app shell's DI convention. Its declared
@@ -477,10 +519,23 @@ Settlement:
 | `owned`, all members failed | `CatalogRescanFailed` | held until dismissed |
 | `observed` | `CatalogRescanIdle` immediately | no summary is claimed |
 
-**Every** close of a live operation refreshes the two lists, whether it settled
-with a summary, settled as `observed`, or was cancelled. The refresh is tied to
-leaving a live operation, not to the terminal variants, so a run this client
-merely observed still makes its imported sessions appear.
+Every observed `CatalogImportCompleted` with one or more published project or
+session rows announces `catalogChanged`, including a terminal event that arrives
+after this client already closed a cancelled row. The automatic hydration
+shortcut reports zero rows without catalog publication, so it does not displace
+an ordinary list read. Each list cubit records a signalled commit as dirty and
+refreshes from a forced fresh snapshot; a second completion while that read is
+in flight produces one trailing snapshot. The dirty revision is consumed only
+when a snapshot applies, so an older overlapping read cannot overwrite imported
+rows. A failed snapshot stays pending until a later ordinary, reconnect, or
+staleness read applies; a stale superseded read cannot rearm it. A forced
+failure that preempts a full-screen load owns the terminal error, and an
+explicit pull follows the newer read's outcome.
+
+An observed run still surfaces imported sessions because it receives the same
+global completion event. A run that finishes while disconnected has no live
+terminal event to consume; the existing reconnect refresh reads the durable
+catalog instead.
 
 Why `observed` claims nothing: after a reconnect the service knows only which
 harnesses were still enumerating. A harness that completed or failed while the
@@ -501,10 +556,11 @@ cross-harness disabling. Each card is disabled only while that harness is itself
 a member, and starting a second harness while a first is importing simply widens
 the same operation.
 
-This is deliberately the whole model: no generation counters, no request fences,
-no stale-generation tracking. `PluginManagementService` needs that machinery
-because it reconciles mutations against a versioned snapshot token; an operation
-that closes on disconnect does not.
+This is deliberately the whole **service** model: no generation counters, no
+request fences, and no stale-generation tracking inside
+`CatalogRescanService`. `PluginManagementService` needs that machinery because
+it reconciles mutations against a versioned snapshot token; the list cubits need
+small independent guards because they apply asynchronous catalog snapshots.
 
 Because the service owns the operation, two mounted hosts always render the same
 row for the same duration, and revisiting a list after a rescan finished shows
@@ -519,7 +575,7 @@ nothing rather than replaying a stale success.
 - Every package using `json_serializable` in this repository configures
   `include_if_null: false`, so an older bridge simply omits the key and a newer
   client decodes it as `null`. Nullable is required rather than a zero-valued
-  default: defaulting would make an older bridge report `Nothing new` after a
+  default: defaulting would make an older bridge report `No new sessions` after a
   rescan that in fact imported a hundred sessions.
 - A newer bridge talking to an older client is unaffected: the added key is
   ignored by the older decoder.
@@ -561,12 +617,14 @@ New in-memory mutable parts:
 | Part | Owner | Why it must exist |
 |---|---|---|
 | `Map<String, CatalogImportProgress>` | `CatalogRescanService` | Aggregating several concurrent harness imports into one row requires the latest progress per harness. Cleared only when a start **opens** an operation from idle or terminal, and on every reset to idle. A start that joins a live operation must not clear it |
-| `BehaviorSubject<CatalogRescanState>` | `CatalogRescanService` | The published stream, seeded so a late subscriber renders correctly |
+| `BehaviorSubject<CatalogRescanState>` | `CatalogRescanService` | The published row state, seeded so a late subscriber renders correctly |
+| `StreamController<void>` | `CatalogRescanService` | Announces each nonzero `CatalogImportCompleted` as a durable catalog change, even if the progress row was already cancelled and closed |
 | `CompositeSubscription` | `CatalogRescanService` | SSE plus connection-status subscriptions, matching `PluginManagementService` |
 | `Timer?` | `CatalogRescanService` | The 4s success clear. Owned here, not by the row, so two mounted hosts cannot run disagreeing timers. Never armed for a failure state |
 | `bool _disposed` | `CatalogRescanService` | Module convention for `Disposable` services |
 | `bool _deepArmed` | `PregoSliverRefreshControl` | The refresh control reports pull distance continuously but fires `onRefresh` once; the threshold state at release must survive that one frame |
-| One subscription and one state field each | `ProjectListCubit`, `SessionListCubit`, `PluginManagementCubit` | The shell's Layer-4 boundary: widgets render cubit state rather than holding a service stream, and the two list cubits own their own post-success refresh |
+| One state subscription and field each | `ProjectListCubit`, `SessionListCubit`, `PluginManagementCubit` | The shell's Layer-4 boundary: widgets render cubit state rather than holding a service stream |
+| Durable-change subscription plus request and dirty revisions | `ProjectListCubit`, `SessionListCubit` | Each list cubit owns its post-commit snapshot ordering |
 | `bool _recoverySeeded` | `CatalogRescanService` | Marks the live operation `observed` rather than `owned`, so only a fully-seen run reports a terminal summary. Set when an operation opens from the recovery `GET` or from unsolicited progress; cleared when a start opens a new operation and on every reset. A join leaves it untouched, because joining an `observed` run does not make this client the observer of its earlier members |
 | `Map<String, CatalogRescanStartResult>` | `PluginManagementCubit` | Per-card targeted-start results, mirroring the `Map<String, PluginInstallProgress>` the cubit already keeps |
 
@@ -587,8 +645,9 @@ Deliberately **not** added:
   path for older bridges to buy one fewer round trip.
 - **No polling.** `GET /plugin/import` is read once when the service connects or
   reconnects. There is no timer and no repeated read.
-- **No generation or fence machinery.** Resetting to idle on disconnect makes it
-  unnecessary at this scale.
+- **No generation or fence machinery in `CatalogRescanService`.** It only
+  publishes durable completion facts. The two list cubits keep their own small
+  request and dirty-revision guards because they alone own list snapshots.
 - **No third "uncertain" mutation result.** A dispatch-based membership rule
   closes the lost-response hole without a new result variant threaded through
   the API and repository layers.
@@ -598,8 +657,10 @@ Deliberately **not** added:
 - **No client-side sanitizer for `CatalogImportFailed.message`.** The field is
   simply never lifted into client state. Sanitizing at the consumer would still
   have carried the raw string over the wire.
-- **No new bridge event for post-import list invalidation.** The two list cubits
-  already own a silent refresh and already see the global progress stream.
+- **No new bridge event for post-import list invalidation.**
+  `CatalogRescanService` converts the existing global completion progress into
+  its client-local `catalogChanged` stream, and the list cubits already own their
+  silent snapshots.
 - **No changes to the two SSE switch arms.** Both are correct as they stand;
   the service pattern-matches the event itself.
 - **No persisted last-rescan timestamp.** A `Last scanned 6 days ago - Rescan`
@@ -617,7 +678,7 @@ Deliberately **not** added:
 | An older bridge omits `newItems` | Success row shows totals instead of a delta | Accepted. Honest degradation, and the absent group makes the difference explicit rather than silently wrong |
 | A rescan in flight when the connection drops | The row disappears and does not return | Accepted. The bridge continues and commits the import; the next connect seeds only non-terminal statuses, so a rescan that finished meanwhile is simply not announced |
 | Two surfaces trigger a rescan for the same harness at once | The bridge coalesces it: `CatalogImportService.start` finds the active control and applies the trigger to it | No client-side guard needed; existing bridge behavior is correct |
-| A cancel `DELETE` races a harness that just completed | The bridge answers on the already-settled plugin and the SSE terminal event wins | Accepted; no client-side ordering guard |
+| A post-commit list snapshot fails and no later list trigger arrives | Imported rows stay unseen until a later refresh | Accepted. The dirty completion revision is retained and the next ordinary, reconnect, or staleness snapshot that applies re-arms it; no autonomous retry loop is added for this low-frequency recovery path. |
 | A failure row names no cause | The user must open the bridge log to learn why a harness failed | Accepted. `CatalogImportFailed.message` is unbounded `error.toString()`; a vaguer row is the honest trade until a producer-side sanitization boundary exists |
 | A lost response for a start that never arrived | That harness stays in `pluginIds` with no progress until the connection resets | Accepted. Bounded and self-clearing; a third result type across two layers is not worth it |
 | A rescan interrupted by a disconnect reports no summary | The user sees progress resume and the lists refresh, but no "Rescan complete" line for that run | Accepted deliberately. The alternative is claiming a total the client cannot vouch for; the lists, which are what the user actually came for, are still correct |
@@ -670,7 +731,7 @@ Required matrix:
 | Plugin | One native-ownership and one bridge-derived harness for the new-item counts | `_publishCatalog` counts projects differently per `PluginProjectOwnership` branch, so one branch cannot prove the other |
 | Plugin | Two enabled harnesses at once for the aggregate terminal states | A single-harness run cannot prove `CatalogRescanPartlyFailed` |
 | Platform | One mobile platform plus the wide split-view layout | The pane hosts stage 2 through a different scroll owner than the two scaffold hosts |
-| Compatibility | One run against a bridge that omits `newItems` | Proves the totals fallback rather than a false `Nothing new` |
+| Compatibility | One run against a bridge that omits `newItems` | Proves the totals fallback rather than a false `No new sessions` |
 | Recovery | One reconnect against a bridge holding terminal statuses | Proves the recovery read discards them instead of announcing a stale success |
 | Freshness | One rescan that genuinely imports a new session, observed in the list without a second manual refresh | The whole point of the feature; a committed import raises no list invalidation, so the post-success refresh is the only thing making the new row appear |
 | Compatibility | One run against a supported bridge older than `v1.6.0`, which has no `/plugin/import` at all | Proves the gesture reports an unsupported bridge instead of silently doing nothing |
@@ -723,12 +784,26 @@ before the plan is retired.
 | 3/8 | `⚙️ [catalog-rescan] Report new items from a catalog import [step 3/8]` | 350-600 |
 | 4/8 | `⚙️ [catalog-rescan] Add the client catalog rescan service [step 4/8]` | 700-1,050 |
 | 5/8 | `⚙️ [catalog-rescan] Add a second stage to pull-to-refresh [step 5/8]` | 350-600 |
-| 6/8 | `⚙️ [catalog-rescan] Surface catalog rescan in the app [step 6/8]` | 950-1,400 |
+| 6a/8 | `⚙️ [catalog-rescan] Route scan state through the list cubits [step 6a/8]` | 450-750 |
+| 6b/8 | `⚙️ [catalog-rescan] Show the catalog scan in the lists [step 6b/8]` | 500-800 |
+| 6c/8 | `🌿 [catalog-rescan] Scan one harness from Settings [step 6c/8]` | 350-600 |
 | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 |
 | 8/8 | `🌱 [catalog-rescan] Verify and retire the catalog rescan plan [step 8/8]` | 60-140 |
 
 Step 5 is `⚙️` rather than `🌿` because it extracts a new shared component and
 moves the split-view pane onto it, rather than adding a parameter to one widget.
+
+Step 6 is delivered as three sub-steps rather than one PR, split by layer and
+surface so none exceeds the size cap. The denominator stays 8: these are one
+step's worth of scope, not three new steps.
+
+- **6a** is `module_core` only — the two list cubits gain the scan state, the
+  intent methods, and the refresh on leaving a live operation. Nothing renders,
+  so it is reviewable as pure state.
+- **6b** is the row widget and the three list hosts, which is where the feature
+  first becomes visible.
+- **6c** is the Settings action, whose per-harness result and enablement rules
+  are independent of the aggregate row.
 
 Step 1's target is measured against `PLAN.md` alone. Both files are new, so the
 combined numstat counts every line of `TRACKER.md` too — including its review
@@ -874,72 +949,97 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
 ### Scope
 
 - Add `PregoSliverRefreshControl` to `module_prego`: wraps
-  `CupertinoSliverRefreshControl`, owns the `1.6 x triggerDistance` arming, the
-  caption selection, and the release dispatch of both callbacks.
-- `PregoGlassScaffold` composes it behind a new optional `onDeepRefresh`, and
-  asserts that `onDeepRefresh` requires `onRefresh`, matching the existing
+  `CupertinoSliverRefreshControl`, owns the `1.6 x triggerDistance` threshold,
+  the caption selection, and the dispatch of both callbacks.
+- `PregoGlassScaffold` composes it behind a new optional `deepRefresh`, and
+  asserts that `deepRefresh` requires `onRefresh`, matching the existing
   `scrollable`/`onRefresh` assertion.
 - `SessionListPanel` replaces its bare `CupertinoSliverRefreshControl` with
-  `PregoSliverRefreshControl` **and** takes an optional `onDeepRefresh` callback
-  parameter, so the pane gets stage 2 without any threshold logic in
-  `client/app`. The parameter is introduced here, defaulting to null, and step 6
-  wires it to the cubit's `startRescan()`. Without it step 5's pane test would
-  have no deep callback to invoke, because the pane currently hardcodes
-  `refreshSessionList(context)` and the cubit intent does not exist until step 6.
+  `PregoSliverRefreshControl` **and** takes an optional `deepRefresh` parameter,
+  so the pane gets stage 2 without any threshold logic in `client/app`. The
+  parameter is introduced here, defaulting to null, and step 6 supplies it.
 - Render the caption under the existing indicator only once the pull passes the
   soft trigger, so an ordinary pull is visually unchanged.
-- Add a design catalog scenario if the scaffold has one; otherwise widget tests
-  covering: a short pull fires only the soft refresh, a long pull fires both,
-  and a long pull abandoned before release fires neither. Prove all three in
-  the pane as well as in the scaffold.
+- Widget tests covering: an ordinary pull fires only the soft refresh, a pull
+  past the deep threshold fires both, a pull abandoned before the trigger fires
+  neither, one pull rescans at most once however far it travels, arming does not
+  leak between pulls, the control behaves as the bare Cupertino one with no
+  second stage supplied, and the fired caption is visually distinct from the
+  invitation.
 
 ### Verification
 
-- targeted `module_prego` and `client/app` session-pane widget tests
+- targeted `module_prego` widget tests
 - `dart analyze --fatal-infos` from `client/module_prego` and `client/app`
-- `dart run tool/generate_manifest.dart --check` from `client/design_catalog`
-  if a scenario was added
 - architecture implementation review
 
 ## Step 6/8 - Surface Catalog Rescan In The App
+
+Delivered as 6a, 6b, and 6c. The scope and verification below are the
+**aggregate** of all three; the sub-step that owns each part is marked, so a
+reviewer of one PR can see what belongs to it.
+
+- **6a** owns the two list cubits' subscription, intents, and post-scan
+  refresh, plus its module_core verification.
+- **6b** owns the row widget, the three list hosts, and their `app_en.arb`
+  resources, plus the widget tests for the row states.
+- **6c** owns `PluginManagementCubit`'s subscription and
+  `startCatalogScanFor(pluginId)`, the Settings action, its enablement and
+  rejection, and its resources.
 
 ### Scope
 
 - `ProjectListCubit`, `SessionListCubit`, and `PluginManagementCubit` each
   subscribe to `CatalogRescanService`, surface the rescan state through their
-  own state, and expose `startRescan()`, `startRescanFor(pluginId)`,
-  `cancelRescan()`, and `dismissRescan()`. The two list cubits additionally run
-  their existing silent refresh whenever the service **leaves a live operation**
-  — settled with a summary, settled as observed, or cancelled — because a
-  committed import raises no list invalidation of its own. Keying the refresh on
-  leaving a live operation rather than on the terminal variants is what makes an
-  observed run, which never publishes a summary, still surface its imported
-  sessions.
+  own state. The two list cubits expose `startCatalogScan()`,
+  `cancelCatalogScan()` and `dismissCatalogScan()`; `PluginManagementCubit`
+  exposes `startCatalogScanFor(pluginId)`, which is 6c's, because only a
+  targeted start needs a per-harness result. The two list cubits additionally
+  treat each `catalogChanged` emission as a dirty durable commit and force a
+  fresh silent snapshot. Their request generation prevents an older response
+  from overwriting that snapshot; a second commit in flight produces one
+  trailing read, and a failed read remains dirty for the next ordinary,
+  reconnect, or staleness refresh.
 - The aggregate rescan row widget in `client/app/lib/core/widgets/`, beside the
   shell's other cross-feature widgets, with its seven presentations. It renders
-  the state it is given, owns no timer, and renders no bridge-supplied text.
-- Project list, full-screen session list, and split-view pane: wire
-  `onDeepRefresh` to the cubit's `startRescan()`, and render the row as the
-  sliver at index 0 in place of the soft-refresh indicator while a rescan is
-  running.
-- Settings to Harnesses: the per-harness `Rescan` action in
-  `_HarnessControlCard`, calling `startRescanFor(pluginId)`, enabled only for a
-  harness whose `runtimeState.isRoutable` is true and disabled while that
-  harness is itself a member of the live operation; a targeted start joins that
-  operation rather than replacing it, so no cross-harness disabling is needed.
-  The typed `CatalogRescanStartResult` is held
-  per plugin id by `PluginManagementCubit` and rendered on that card, so a
-  targeted `503`, `404`, or unsupported-bridge answer lands on the harness the
-  user selected instead of the shared row.
+  the state it is given, owns no timer, and renders no bridge-supplied text. It
+  is a mapping onto the design system's `PregoInlineAlertsNotifications` rather
+  than a bespoke card, so the tinted treatment, the spinner, and the action
+  button come from the component the connection banner already uses. Both the
+  live row's cancel and the terminal rows' dismiss are that component's labelled
+  secondary action rather than its close button, which is an unlabelled icon and
+  so is not reachable by name from a screen reader.
+- Project list, full-screen session list, and split-view pane: supply
+  `deepRefresh` from the cubit's `startCatalogScan()`, and render the row as the
+  content sliver at index 0. The row is mounted unconditionally and takes no
+  space at all while idle, so a host needs no visibility condition of its own.
+  Delivered without the planned suppression of the soft-refresh indicator: on
+  both lists `isRefreshing` is raised only by the stale-reconnect path, never by
+  a pull or by the scan's own post-settle refresh, so the two surfaces overlap
+  only when a reconnect happens to land mid-scan, and the damage is one
+  redundant progress bar.
+- Settings to Harnesses: the per-harness scan action in `_HarnessControlCard`,
+  calling `startCatalogScanFor(pluginId)`, offered only for a harness whose
+  `runtimeState.isRoutable` is true and not offered again while that harness is
+  itself a member of the live operation; a targeted start joins that operation
+  rather than replacing it, so no cross-harness disabling is needed. The typed
+  `CatalogRescanStartResult` is held per plugin id by `PluginManagementCubit`
+  and rendered on that card in place of its description, so a targeted `503`,
+  `404`, or unsupported-bridge answer lands on the harness the user selected
+  instead of the shared row. A rejection is cleared by the next attempt on that
+  harness or by leaving the screen, which rebuilds the cubit; no dismiss action
+  is offered, because a stale line on a card the user has walked away from is
+  not worth its own control.
 - New `app_en.arb` resources for both captions, the seven row states, the delta
-  and totals wordings, the `Nothing new` case, the partly-failed wording, the
+  and totals wordings, the `No new sessions` case, the partly-failed wording, the
   bounded failure line naming the bridge log, and the Settings action with its
   semantics label and its rejection message.
 - Widget and cubit tests: all seven row states; the totals fallback; cancel;
   dismiss; the Settings action's enablement rules and its targeted rejection;
-  that a terminal success triggers exactly one list refresh per list cubit; and
-  that no test fixture's `CatalogImportFailed.message` reaches a rendered
-  string.
+  that committed imports produce a post-commit list snapshot without an older
+  read overwriting it, a second commit gets a trailing snapshot, a failed
+  snapshot remains dirty for a later refresh, and no test fixture's
+  `CatalogImportFailed.message` reaches a rendered string.
 
 ### Verification
 
@@ -957,8 +1057,10 @@ non-destructive: `_mergeProjectRow` and `_mergeSessionRow` preserve `hidden`,
   and its terminal states, the post-success list refresh, failure rows
   persisting until dismissal, cancellation, new-item reporting with its
   older-bridge fallback, and the recovery read discarding terminal statuses.
-- `docs/regression/plugin-setup-and-lifecycle.md`: record the per-harness
-  `Rescan` action, its `isRoutable` enablement rule, and its targeted rejection.
+- `docs/regression/plugin-setup-and-lifecycle.md`: already reconciled in step
+  6c, which recorded the per-harness scan action, its `isRoutable` rule, its
+  targeted rejection, and its L3/L4 coverage. Step 7 only re-checks it against
+  the shipped behaviour.
 - Record the required plugin, platform, compatibility, recovery, freshness, and
   setup-state matrix in both.
 

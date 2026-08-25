@@ -1,8 +1,30 @@
+import "dart:async";
+import "dart:io";
+
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "runtime_manifest.dart";
 import "runtime_version.dart";
+
+sealed class const RuntimeProbeOutcome();
+
+final class const RuntimeProbeReady({required final RuntimeVersion version}) extends RuntimeProbeOutcome;
+
+sealed class const RuntimeProbeFailure() extends RuntimeProbeOutcome;
+
+final class RuntimeProbeMissing({required final ProcessException innerError, required final StackTrace stackTrace})
+    extends RuntimeProbeFailure;
+
+final class RuntimeProbeTimedOut({required final TimeoutException innerError, required final StackTrace stackTrace})
+    extends RuntimeProbeFailure;
+
+final class const RuntimeProbeNonZeroExit({required final int exitCode}) extends RuntimeProbeFailure;
+
+final class const RuntimeProbeUnrecognized() extends RuntimeProbeFailure;
+
+final class RuntimeProbeFailed({required final Object innerError, required final StackTrace stackTrace})
+    extends RuntimeProbeFailure;
 
 /// Probes a candidate runtime binary's version by running `<bin> --version`.
 ///
@@ -15,10 +37,8 @@ class RuntimeVersionValidator({
   required final RuntimeManifest _manifest,
   final Duration _probeTimeout = const Duration(seconds: 10),
 }) {
-  /// Runs `<executable> --version` and returns the parsed [RuntimeVersion], or
-  /// `null` when the binary cannot be launched, exits non-zero, hangs past the
-  /// probe timeout, or prints no parseable version. Never throws.
-  Future<RuntimeVersion?> detectVersion({
+  /// Runs `<executable> --version` and classifies the result without throwing.
+  Future<RuntimeProbeOutcome> probe({
     required String executable,
     required Map<String, String>? environment,
   }) async {
@@ -30,21 +50,38 @@ class RuntimeVersionValidator({
         environment: environment,
         timeout: _probeTimeout,
       );
+    } on ProcessException catch (error, stackTrace) {
+      return RuntimeProbeMissing(innerError: error, stackTrace: stackTrace);
+    } on TimeoutException catch (error, stackTrace) {
+      Log.w("[${_manifest.runtimeId}] runtime version probe timed out for '$executable --version'", error, stackTrace);
+      return RuntimeProbeTimedOut(innerError: error, stackTrace: stackTrace);
     } on Object catch (error, stackTrace) {
-      // Almost always ENOENT (not installed / not on PATH) or a probe timeout.
-      Log.w("[${_manifest.runtimeId}] version probe could not run '$executable --version'", error, stackTrace);
-      return null;
+      Log.w("[${_manifest.runtimeId}] runtime version probe failed for '$executable --version'", error, stackTrace);
+      return RuntimeProbeFailed(innerError: error, stackTrace: stackTrace);
     }
 
     if (result.exitCode != 0) {
-      Log.d("[${_manifest.runtimeId}] version probe '$executable --version' exited ${result.exitCode}");
-      return null;
+      Log.d("[${_manifest.runtimeId}] runtime version probe '$executable --version' exited ${result.exitCode}");
+      return RuntimeProbeNonZeroExit(exitCode: result.exitCode);
     }
     final version = parseVersionOutput(output: result.stdout);
     if (version == null) {
-      Log.d("[${_manifest.runtimeId}] version probe output had no parseable version");
+      Log.d("[${_manifest.runtimeId}] runtime version probe '$executable --version' returned an unrecognized version");
+      return const RuntimeProbeUnrecognized();
     }
-    return version;
+    return RuntimeProbeReady(version: version);
+  }
+
+  /// Returns only the parsed version for callers that do not need failure
+  /// classification.
+  Future<RuntimeVersion?> detectVersion({
+    required String executable,
+    required Map<String, String>? environment,
+  }) async {
+    return switch (await probe(executable: executable, environment: environment)) {
+      RuntimeProbeReady(:final version) => version,
+      RuntimeProbeFailure() => null,
+    };
   }
 
   /// Extracts the first whitespace-separated token that parses with the

@@ -40,7 +40,7 @@ void main() {
       expect(asset(PlatformOs.linux, PlatformArch.x64).assetName, endsWith(".tar.gz"));
     });
 
-    test("download URL embeds the bundled version and asset name", () {
+    test("download URL preserves the v release tag and asset name", () {
       final asset = manifest.assetFor(
         target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
       )!;

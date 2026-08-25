@@ -147,7 +147,7 @@ void main() {
         final replayPart = collector.build().single.parts.single;
         expect(replayPart.tool, livePart!.tool);
         expect(replayPart.state, livePart.state);
-        expect(replayPart.state?.attachments, isNotEmpty);
+        expect(replayPart.state.attachments, isNotEmpty);
       });
     }
   });
@@ -597,22 +597,23 @@ void main() {
 
       final part = collector.build().single.parts.single;
       expect(part.tool, "read");
-      expect(part.state?.title, "Read source.dart");
-      expect(part.state?.status, PluginToolStatus.completed);
-      expect(part.state?.output, "new output");
-      expect(part.state?.attachments.single.filename, "new.png");
+      expect(part.state.title, "Read source.dart");
+      expect(part.state.status, PluginToolStatus.completed);
+      expect(part.state.output, "new output");
+      expect(part.state.attachments.single.filename, "new.png");
     });
   });
 }
 
 PluginToolState _liveState({required List<BridgeSseEvent> events}) =>
-    events.whereType<BridgeSseMessagePartUpdated>().single.part.state!;
+    events.whereType<BridgeSseMessagePartUpdated>().single.part.state;
 
 AcpReplayCollector _collector() => AcpReplayCollector(
   sessionId: "s1",
   agentId: "ACP",
   initialUserMessageId: null,
+  messageIdOverride: null,
   haltClassifier: null,
 );
 
-PluginToolState _replayState({required AcpReplayCollector collector}) => collector.build().single.parts.single.state!;
+PluginToolState _replayState({required AcpReplayCollector collector}) => collector.build().single.parts.single.state;

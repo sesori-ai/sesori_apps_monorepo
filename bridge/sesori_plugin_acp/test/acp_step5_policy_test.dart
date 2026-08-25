@@ -13,7 +13,7 @@ class _PolicyPlugin({
   required super.eventMapper,
   required super.commandTracker,
   required super.sessionOptionsService,
-  required AcpProcessFactory super.processFactory,
+  required super.processFactory,
 }) extends TestAcpPlugin {
   this
     : super(

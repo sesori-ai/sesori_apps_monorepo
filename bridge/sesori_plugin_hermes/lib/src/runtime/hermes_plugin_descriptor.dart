@@ -3,7 +3,7 @@ import "dart:io" as io;
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
-    show CommandResult, HostProcessCommandExecutor, SemanticVersion;
+    show CommandResult, HostProcessCommandExecutor, SemanticVersion, stripAnsi;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/hermes_acp_api.dart";
@@ -301,7 +301,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
 
   ({String? model, String? provider}) _statusValues({required CommandResult result}) {
     final combined = "${result.stdout}\n${result.stderr}";
-    final output = combined.replaceAll(RegExp(r"\x1B\[[0-?]*[ -/]*[@-~]"), "").trim();
+    final output = stripAnsi(value: combined).trim();
     return (
       model: _statusValue(output: output, field: "model"),
       provider: _statusValue(output: output, field: "provider"),

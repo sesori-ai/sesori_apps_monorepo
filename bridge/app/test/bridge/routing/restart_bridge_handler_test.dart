@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:sesori_bridge/src/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/routing/restart_bridge_handler.dart';
 import 'package:sesori_bridge/src/routing/routed_request.dart';
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
@@ -11,29 +10,8 @@ import 'package:sesori_bridge/src/server/services/bridge_restart_service.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show ServerClock;
 import 'package:test/test.dart';
 
+import '../../helpers/fake_process_runner.dart';
 import 'routing_test_helpers.dart';
-
-class _NoopProcessRunner() implements ProcessRunner {
-  @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
-    Map<String, String>? environment,
-    String? workingDirectory,
-    Duration timeout = const Duration(seconds: 15),
-  }) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) async {
-    throw UnimplementedError();
-  }
-}
 
 void main() {
   late Directory tempDir;
@@ -52,7 +30,7 @@ void main() {
     return BridgeRestartService(
       processRepository: ProcessRepository(
         api: SystemProcessApi(
-          processRunner: _NoopProcessRunner(),
+          processRunner: NoopProcessRunner(),
           clock: const ServerClock(),
           isWindows: false,
           platform: 'linux',
