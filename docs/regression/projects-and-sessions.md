@@ -79,6 +79,11 @@ child sessions with titles, activity, statuses, and unseen state.
   and detail adopt the durable session facts without marking unseen or moving the
   worktree directory. The initial system prompt remains truthful about the
   directory and branch that existed when the backend session was created.
+- Device Canvas ownership is scoped by bridge and canonical session ID, never by
+  a project path or backend session ID. Its links carry only bridge and session
+  identity; the client verifies the account, bridge, and session before deriving
+  the canonical project or rendering session content. Archive and deletion
+  release any claim owned by the affected session family.
 - Pi import discovers persisted JSONL sessions from its inherited environment,
   configured storage, default per-project storage, and bridge-known directories.
   Enumeration is metadata-only and bounded: it reads session headers and
@@ -202,6 +207,8 @@ navigation, and a non-mobile platform; begin drags inside and just outside each
   `client/module_core/test/cubits/session_list/session_list_cubit_test.dart`,
   `client/module_prego/test/interactions/prego_swipe_actions_test.dart`,
   `client/app/test/features/session_list/session_list_panel_test.dart`
+- Device Canvas ownership and projectless navigation:
+  `docs/regression/device-canvas-ownership.md`
 - Client row swipe behavior:
   `client/module_prego/lib/interactions/prego_swipe_actions.dart`
 - Plans (discovery only): `.plan/completed/multi-plugin-release-prep`,

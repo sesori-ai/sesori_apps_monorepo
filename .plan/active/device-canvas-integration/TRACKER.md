@@ -5,10 +5,10 @@
 - **Plan slug:** `device-canvas-integration`
 - **Implementation base:** `upstream/main` at `5c50f38a`
 - **Current branch:** `device-canvas-integration-step-1`
-- **Series state:** Steps 1-6 implemented and verified; Step 7 is ready
-- **Current step:** verify Phase 1 across Sesori and Device Canvas
-- **Next action:** run the complete Phase 1 release matrix and record the final
-  cross-repository acceptance evidence
+- **Series state:** Steps 1-7 implemented and verified; Step 8 is ready
+- **Current step:** prove Phase 2 remote-media feasibility
+- **Next action:** run the Android source, WebRTC/network, and iOS feasibility
+  spikes and record the Phase 2 entry-gate decisions
 
 ## Locked Decisions
 
@@ -69,8 +69,8 @@
 | [x] | 4/12 - Show claims and deep-link | Device Canvas | Implemented locally; protocol, IPC, and live-device verification passed |
 | [x] | 5/12 - Add client status/deep links | Sesori | Implemented locally; strict analysis, full suites, builds, and independent review passed |
 | [x] | 6/12 - Add OpenCode tools | Sesori | Implemented; strict analysis, full suites, production build, security review, and real-agent verification passed |
-| [ ] | 7/12 - Verify Phase 1 | Both | Ready; Step 6 real-agent and live Device Canvas verification passed |
-| [ ] | 8/12 - Prove media feasibility | Both | Blocked on Phase 1 acceptance |
+| [x] | 7/12 - Verify Phase 1 | Both | Automated and user-confirmed ownership, compatibility, restart, conflict, and deep-link matrix passed |
+| [ ] | 8/12 - Prove media feasibility | Both | Ready; Phase 1 acceptance evidence recorded |
 | [ ] | 9/12 - Authorize/signaling streams | Sesori | Blocked on Step 8 decisions |
 | [ ] | 10/12 - Provision TURN | Infrastructure | Blocked on Step 8 network decision |
 | [ ] | 11/12 - Stream/control Android | Device Canvas | Blocked on Steps 8-10 |
@@ -110,7 +110,8 @@
 - [x] Deep link verifies the exact bridge/session identity, derives the canonical
   project, and normalizes to the existing session-detail stack.
 - [x] Offline bridge and missing/wrong-account links fail safely.
-- [x] Old bridge/client/Device Canvas combinations degrade as documented.
+- [x] Old bridge/client combinations and unsupported Device Canvas protocol
+  versions degrade as documented.
 - [x] OpenCode agent tools pass real-session end-to-end use.
 
 ## Phase 2 Entry-Gate Checklist
@@ -276,13 +277,37 @@
 - OpenCode `1.18.20` loaded exactly `list_simulators`, `claim_simulator`, and
   `release_simulator`; a real model invocation called `list_simulators` and the
   bridge received the exact invoking OpenCode session ID.
-- A disposable real-device end-to-end run booted an iPhone 17 Pro simulator,
+- A disposable live-simulator end-to-end run booted an iPhone 17 Pro simulator,
   launched the actual Device Canvas app, and used two distinct OpenCode agent
   sessions. It verified list, initial and repeated claim, caller-relative
   ownership, conflict without stealing, wrong-owner release rejection, owner
   release, canonical ownership in the bridge database, and Device Canvas
   disconnect/reconnect recovery. Temporary processes, state, and the simulator
   were cleaned up.
+
+### Step 7 Phase 1 ownership verification
+
+- `make codegen` completed in the bridge and client workspaces with no tracked
+  drift. Strict `make analyze` passed every bridge and client package.
+- Complete `make test` runs passed for the bridge and client workspaces. The
+  bridge ended at 2,781 tests with the two expected host-platform skips.
+- The host bridge production `make build` passed. Device Canvas `zsh build.sh`
+  rebuilt the app and passed its Swift protocol suite.
+- Current-component live coverage includes the real OpenCode `1.18.20` agent and
+  two-session Device Canvas run recorded in Step 6. A focused revocation test
+  proves old-identity claims are deleted before fresh registration completes.
+- Released-baseline compatibility harnesses used the published macOS `v1.4.0`
+  bridge artifact (SHA-256 `3bc744674eef9c57d939107744c808017e9b1d250a07357c6f0cbe306fb9e8a6`)
+  and client source `be344a56`. The current client repository mapped the old
+  bridge's actual `404` to unsupported; the old client tolerated
+  `device_canvas.changed` as nonfatal and processed the following heartbeat.
+- The user confirmed the release checklist passes for two-device ownership,
+  repeat/conflicting claims, release restrictions, caller-identity spoof
+  rejection, badge/accessibility and exact deep links, independent app/bridge/
+  Device Canvas restart, device stop/restart, and archive/deletion cleanup.
+- `projects-and-sessions.md`, `bridge-connectivity.md`, and the shipped OpenCode
+  lifecycle documentation now point to the dedicated Phase 1 ownership contract
+  and its L1-L5 matrix.
 
 ## Open Product Confirmations
 

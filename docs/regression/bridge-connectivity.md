@@ -27,6 +27,11 @@ explicit restart, and the connection states the app presents.
   once and can never later authenticate.
 - One live bridge per account holds the slot; a second start resolves ownership
   explicitly, and an explicit restart hands off to its successor cleanly.
+- Device Canvas is a separate authenticated loopback peer. An ordinary bridge or
+  Device Canvas restart drops ephemeral presence and peer state without releasing
+  durable claims; the next authenticated snapshot restores the projection. A new
+  bridge identity rotates the rendezvous and secret and releases claims scoped to
+  the replaced identity, while relay takeover alone does not mutate ownership.
 - Bridge registration uses a stable machine name. On macOS, transient
   network-derived numeric hostnames must not replace the machine's LocalHostName.
 - The client distinguishes connected, reconnecting, connection lost, bridge offline, and
@@ -84,4 +89,6 @@ the bridge starts, how many clients are present, and whether restart is explicit
 - Bridge orchestrator, relay, key exchange, server ownership, auth, sleep, and control code.
 - Client relay and connection-overlay capabilities and their owning tests.
 - Bridge orchestrator, `client_test.dart`, `key_exchange_test.dart`, sleep, and control suites.
+- Device Canvas restart and presence details:
+  `docs/regression/device-canvas-ownership.md`
 - Historical: `.plan/completed/relay-request-concurrency/`

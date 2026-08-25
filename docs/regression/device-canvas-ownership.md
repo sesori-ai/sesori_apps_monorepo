@@ -24,9 +24,11 @@ list, claim, and release tools.
   used with an older unsupported bridge. A Device Canvas deep link carries the
   exact bridge and session identity, resolves the canonical project before
   opening session detail, and loads no session content before verification.
-- Managed OpenCode exposes exactly `list_simulators`, `claim_simulator`, and
-  `release_simulator`. Its adapter binds trusted invocation `context.sessionID`
-  to the stored `(pluginId, backendSessionId)` session before calling the neutral
+- When the bridge-side agent-tool server starts and secure managed-runtime
+  injection succeeds, OpenCode exposes exactly `list_simulators`,
+  `claim_simulator`, and `release_simulator`. Otherwise it receives no Device
+  Canvas capability. The adapter binds trusted invocation `context.sessionID` to
+  the stored `(pluginId, backendSessionId)` session before calling the neutral
   claim service. Results expose bounded device metadata and only ownership
   relative to the caller, never another session's identity, project, path,
   prompt, or transcript.
@@ -48,10 +50,35 @@ list, claim, and release tools.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated bridge coverage proves canonical binding, idempotent claim/release, conflict without reassignment, privacy-safe bounded listing, disconnected behavior, bridge-rotation cleanup, loopback authentication, request bounds, and rendezvous cleanup. OpenCode package coverage proves the exact native tool surface, trusted context use, config isolation, capability stripping, and readiness gating. |
-| L2 Routine | Headless bridge with a Device Canvas fixture and two stored OpenCode sessions exercises list, claim, repeat, conflict, wrong-owner release, owner release, archive cleanup, Device Canvas disconnect/reconnect, and bridge restart. A live managed OpenCode runtime must advertise exactly the three native tools through its real tool registry. |
+| L2 Routine | Headless bridge with a Device Canvas fixture and two stored OpenCode sessions exercises list, claim, repeat, conflict, wrong-owner release, owner release, archive cleanup, Device Canvas disconnect/reconnect, and bridge restart. A successfully configured live managed OpenCode runtime must advertise exactly the three native tools through its real tool registry; failed injection must advertise none. |
 | L3 Release | Live OpenCode agent plus Device Canvas and Sesori client: two real sessions demonstrate relative listing, claim, repeat, conflict, release, inability to act as another canonical session, ownership badges/accessibility, and exact deep-link navigation. Client end to end and live plugin on the release-target bridge host. |
 | L4 Extended | Device Canvas and bridge takeover/restart in both orders; device stop/restart; OpenCode crash/restart; malformed, oversized, unauthorized, and stalled local requests; archive/deletion during activity; alternate client platform; older client/new bridge and new client/older bridge degradation. |
 | L5 Full | Packaged Sesori and Device Canvas builds across supported bridge hosts with large bounded inventories, multiple concurrent sessions and devices, repeated lifecycle recovery, and every documented compatible version pairing. |
+
+## Phase 1 Verification Evidence
+
+Recorded on 2026-08-25 on the release-target macOS host:
+
+- Bridge and client code generation left no tracked drift. Strict analysis passed
+  every bridge and client package; the complete bridge suite passed at 2,781
+  tests with two expected host-platform skips, and every client module suite
+  passed. The host bridge production build also passed.
+- `zsh build.sh` rebuilt Device Canvas and passed its Swift protocol suite. A
+  disposable live-simulator run used an iPhone 17 Pro simulator, the actual Device
+  Canvas app, and two distinct OpenCode agent sessions to verify list, repeat
+  claim, caller-relative ownership, conflict, wrong-owner release rejection,
+  owner release, canonical database ownership, and reconnect projection.
+- The user-confirmed release pass covered two-device ownership, exact badge and
+  deep-link routing, spoof rejection, independent Device Canvas/bridge/mobile
+  restarts, device stop/restart, and archive/deletion cleanup.
+- Released-baseline compatibility harnesses used the published macOS `v1.4.0`
+  bridge artifact and its client source at `be344a56`. The current client
+  repository mapped the real old bridge's absent Device Canvas route to
+  unsupported. The old client consumed current `device_canvas.changed`, emitted
+  its expected nonfatal unknown-event diagnostic, and then processed a known
+  heartbeat. Unsupported local protocol versions also failed closed. Current
+  live-agent verification used OpenCode `1.18.20`; automated runtime gates retain
+  PATH minimum `1.14.49` and managed target `1.18.19`.
 
 ## Exploration Guidance
 

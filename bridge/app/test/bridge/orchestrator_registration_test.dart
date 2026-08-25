@@ -100,7 +100,7 @@ void main() {
       expect(authMessage["bridgeId"], equals("br_first001"));
     });
 
-    test("close code 4006 clears the bridge id and re-registers fresh", () async {
+    test("close code 4006 clears claims and re-registers fresh", () async {
       final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
       final harness = await _RegistrationHarness.start(repository: repository);
       addTearDown(harness.close);
@@ -108,8 +108,53 @@ void main() {
       final firstSocket = await harness.relayServer.nextClient();
       await _firstTextMessage(firstSocket);
 
-      repository.nextBridgeId = "br_second002";
+      await harness.database.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
+      await harness.database.sessionDao.insertSession(
+        pluginId: harness.plugin.id,
+        sessionId: "session-1",
+        backendSessionId: "backend-session-1",
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        preservePullRequestScope: false,
+      );
+      expect(
+        await harness.database.deviceCanvasClaimDao.insertClaimIfAbsent(
+          bridgeId: "br_first001",
+          deviceKey: "ios:device-1",
+          sessionId: "session-1",
+          claimRevision: 1,
+          claimedAt: 1,
+          updatedAt: 1,
+        ),
+        isTrue,
+      );
+
+      final registrationGate = Completer<void>();
+      addTearDown(() {
+        if (!registrationGate.isCompleted) registrationGate.complete();
+      });
+      repository
+        ..nextBridgeId = "br_second002"
+        ..registerDelay = registrationGate.future;
       await firstSocket.close(RelayCloseCodes.bridgeRevoked);
+
+      await _waitFor(
+        () => repository.registeredBridgeIds.length >= 2,
+        reason: "blocked post-revocation registration",
+      );
+      expect(
+        await harness.database.deviceCanvasClaimDao.getClaimsForBridge(bridgeId: "br_first001"),
+        isEmpty,
+        reason: "revoked identity cleanup must finish before fresh registration",
+      );
+      registrationGate.complete();
 
       final secondSocket = await harness.relayServer.nextClient();
       final authMessage = await _firstTextMessage(secondSocket);

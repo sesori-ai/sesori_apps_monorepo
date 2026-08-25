@@ -77,6 +77,16 @@ idle suspension, the management snapshot, and lifecycle commands.
 - Codex session metadata uses the top-level `model` and `model_provider` values from
   `~/.codex/config.toml` when durable rollout metadata omits them; rollout metadata
   remains authoritative when present.
+- When the local agent-tool server and secure configuration injection succeed,
+  managed OpenCode receives exactly three native Device Canvas tools at process
+  generation: list, claim, and release. Its capability bootstrap is owner-only
+  and one-time, invocation identity supplies the canonical backend session, and
+  model input cannot select another session, bridge, or force path. Failed
+  bootstrap/configuration and external OpenCode attachments receive no
+  capability. Reserved variables are removed from inherited plugin environments.
+  Because OpenCode's native registry is process-static, a Device Canvas
+  disconnect keeps definitions visible but every operation fails closed with a
+  typed unavailable result.
 - Interactive authentication is optional per descriptor. A capable harness owns its
   backend process and credentials, exposes only a safe challenge and sanitized terminal
   state, cancels cooperatively, and settles process cleanup before the operation ends.
@@ -178,6 +188,8 @@ timeouts, and sessions afterwards.
 - `bridge/sesori_plugin_hermes/lib/src/runtime/hermes_plugin_descriptor.dart` and its tests
 - `bridge/sesori_plugin_deepseek/lib/src/runtime/deepseek_plugin_descriptor.dart` and its tests
 - `bridge/sesori_plugin_codex/lib/src/codex_plugin_impl.dart` and `codex_plugin_write_path_test.dart`
+- `bridge/sesori_plugin_opencode/lib/src/runtime/open_code_device_canvas_tools.dart`,
+  runtime generation/policy tests, and `docs/regression/device-canvas-ownership.md`
 - `client/module_core/.../plugin_management_service.dart`, `PregoBrandLogo`, and the
   harness settings screen
 - Tests: `plugin_lifecycle_service_test.dart`, per-plugin setup and client suites
