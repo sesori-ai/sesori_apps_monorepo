@@ -1025,7 +1025,7 @@ void main() {
         ..stubStartResult(
           CatalogRescanStartResult.failed(cause: ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null)),
         )
-        ..beforeStartAnswers = () => rescan.emit(const CatalogRescanState.failed(harnessCount: 1));
+        ..stubBeforeStartAnswers(() => rescan.emit(const CatalogRescanState.failed(harnessCount: 1)));
 
       await cubit.startCatalogScanFor(pluginId: "codex");
       await _settle();

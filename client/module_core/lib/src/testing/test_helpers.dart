@@ -872,15 +872,17 @@ class FakeCatalogRescanService() implements CatalogRescanService {
   @override
   Future<void> startAll() async => _startAlls.add(null);
 
-  /// Runs inside [start] before it answers, so a test can drive the state the
-  /// real service would already have published by then. A definite rejection
-  /// settles the operation before the call returns.
-  void Function()? beforeStartAnswers;
+  void Function()? _beforeStartAnswers;
+
+  /// Sets a hook that runs inside [start] before it answers, so a test can
+  /// drive the state the real service would already have published by then: a
+  /// definite rejection settles the operation before the call returns.
+  void stubBeforeStartAnswers(void Function() hook) => _beforeStartAnswers = hook;
 
   @override
   Future<CatalogRescanStartResult> start({required String pluginId}) async {
     startedPluginIds.add(pluginId);
-    beforeStartAnswers?.call();
+    _beforeStartAnswers?.call();
     return _startResult;
   }
 
