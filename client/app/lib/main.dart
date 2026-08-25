@@ -185,7 +185,7 @@ Future<AnalyticsRuntimeCapability> _createAnalyticsRuntimeCapability({
 }
 
 Future<void> _startSingularAttribution() async {
-  SingularAttributionStartup(singular: SingularStaticAdapter.enabled()).start(
+  SingularAttributionStartup(singular: getIt<SingularStaticAdapter>()).start(
     isSupportedPlatform: _supportsSingular,
     isEligibleBuild: await _measurementIneligibilityReason(authSession: getIt<AuthSession>()) == null,
     sdkKey: _singularSdkKeyDefine,

@@ -548,6 +548,7 @@ void registerCoreFallbackValues() {
   registerFallbackValue(FakeUri());
   registerFallbackValue(StackTrace.empty);
   registerFallbackValue(const ProductAnalyticsEvent.analyticsSchemaReady());
+  registerFallbackValue(AccountStatus.existing);
   registerFallbackValue(SessionOptionsRequestMode.dynamic);
   registerFallbackValue(ProjectViewClaim());
   registerFallbackValue(ProjectViewPaneClaim());
@@ -826,12 +827,12 @@ class FakeAuthSession({required AuthState initialState}) implements AuthSession 
   Future<bool> restoreLocalSession() async => false;
 
   @override
-  Future<AuthUser> loginWithEmail({required String email, required String password}) async {
+  Future<AuthLoginResult> loginWithEmail({required String email, required String password}) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<AuthUser> loginWithApple({required String idToken, required String nonce}) async {
+  Future<AuthLoginResult> loginWithApple({required String idToken, required String nonce}) async {
     throw UnimplementedError();
   }
 }

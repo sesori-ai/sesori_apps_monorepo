@@ -75,9 +75,11 @@ binary.
 The iOS dependency bundles Singular's vendor privacy manifest. Review the binary and update Apple/Google store
 declarations before distributing it; runtime flags do not alter that manifest.
 
-The initial integration does not set a custom user ID or send custom Singular events. Advertising identifiers and
-partner data sharing are limited in SDK configuration, and Android removes both advertising-ID permissions.
-Distributed builds must satisfy the privacy/store disclosure checklist in
+The integration does not set a custom user ID or send custom Singular events. After interactive authentication it
+sends Singular's parameter-free standard login event, plus the standard complete-registration event only when the
+auth server reports that the operation created the account. Session restore and token refresh send neither event.
+Advertising identifiers and partner data sharing are limited in SDK configuration, and Android removes both
+advertising-ID permissions. Distributed builds must satisfy the privacy/store disclosure checklist in
 [`docs/PRODUCT_ANALYTICS_DISCLOSURE.md`](docs/PRODUCT_ANALYTICS_DISCLOSURE.md).
 
 ## Testing

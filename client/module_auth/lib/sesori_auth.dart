@@ -16,6 +16,7 @@ export "src/di/injection.dart";
 export "src/interfaces/auth_session.dart";
 export "src/interfaces/auth_token_provider.dart";
 export "src/interfaces/oauth_flow_provider.dart";
+export "src/models/auth_login_result.dart";
 export "src/models/auth_state.dart";
 export "src/platform/oauth_device_descriptor_provider.dart";
 export "src/platform/secure_storage.dart";

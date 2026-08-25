@@ -25,10 +25,10 @@ The control does not stop:
 
 - Firebase automatic installation-level events or Firebase's pseudonymous
   installation/device and approximate-location processing;
-- Singular's release-only install/session attribution and SDK-generated device
-  identifier; this initial integration limits advertising identifiers and
-  partner data sharing, sets no Sesori user
-  identity, and sends no custom Singular events;
+- Singular's release-only install/session attribution, SDK-generated device
+  identifier, and parameter-free standard authentication conversion events;
+  this integration limits advertising identifiers and partner data sharing and
+  sets no Sesori user identity;
 - the bounded account-less sign-in funnel, which carries only a pinned sign-in
   provider and bounded failure kind;
 - account and bridge records required to operate Sesori;
@@ -38,7 +38,12 @@ The control does not stop:
 
 The account-less sign-in funnel has no account key or attempt identifier and
 cannot be reliably filtered for internal/test release traffic. It is diagnostic
-only and must not be represented as an account conversion metric.
+only and must not be represented as an account conversion metric. Separately,
+Singular receives `sng_login` after every successful interactive authentication
+and `sng_complete_registration` immediately before it only when the auth server
+reports that the operation created the account. Those standard events carry no
+provider, account identifier, or other event attributes and are not sent for
+session restore, token refresh, failure, cancellation, or a displaced attempt.
 
 ## Singular attribution release gate
 
@@ -52,12 +57,12 @@ and corresponding Apple privacy and Google Play Data safety declarations before
 a production release. The existing Basic Usage Analytics switch does not
 control this attribution SDK.
 
-This initial scope deliberately removes Android's Google Play Services and
-AdServices advertising-ID permissions, sets `limitAdvertisingIdentifiers=true`
-and `limitDataSharing=true`, and does not set a custom user ID, log custom
-Singular events, handle Singular Links, or register
-uninstall tokens. Broadening any of those boundaries requires a separate privacy
-and product decision.
+This scope deliberately removes Android's Google Play Services and AdServices
+advertising-ID permissions, sets `limitAdvertisingIdentifiers=true` and
+`limitDataSharing=true`, and does not set a custom user ID, log custom Singular
+events, attach attributes to the standard authentication events, handle
+Singular Links, or register uninstall tokens. Broadening any of those boundaries
+requires a separate privacy and product decision.
 
 ## Retention and deletion limits
 

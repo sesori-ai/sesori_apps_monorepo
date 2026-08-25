@@ -1,10 +1,12 @@
 import "package:injectable/injectable.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../foundation/models/attribution/attribution_event.dart";
 import "../foundation/models/product_analytics/analytics_runtime_capability.dart";
 import "../foundation/models/product_analytics/installation_analytics_event.dart";
 import "../logging/logging.dart";
 import "../repositories/analytics_repository.dart";
+import "../repositories/attribution_repository.dart";
 import "../repositories/models/analytics_delivery_result.dart";
 
 enum LoginAttemptFailureCause() { authentication, launch, cancelled, timeout, unknown }
@@ -13,6 +15,7 @@ enum LoginAttemptFailureCause() { authentication, launch, cancelled, timeout, un
 class InstallationAnalyticsService({
     required final AnalyticsRuntimeCapability _capability,
     required final AnalyticsRepository _repository,
+    required final AttributionRepository _attributionRepository,
   }) {
 
   Future<AnalyticsDeliveryResult> loginAttemptStarted({required AuthProvider provider}) {
@@ -23,12 +26,26 @@ class InstallationAnalyticsService({
     );
   }
 
-  Future<AnalyticsDeliveryResult> loginAttemptCompleted({required AuthProvider provider}) {
-    return _log(
-      event: InstallationAnalyticsEvent.loginAttemptCompleted(
-        provider: _analyticsProvider(provider: provider),
+  Future<AnalyticsDeliveryResult> loginAttemptCompleted({
+    required AuthProvider provider,
+    required AccountStatus accountStatus,
+  }) async {
+    final results = <AnalyticsDeliveryResult>[
+      await _log(
+        event: InstallationAnalyticsEvent.loginAttemptCompleted(
+          provider: _analyticsProvider(provider: provider),
+        ),
       ),
-    );
+    ];
+
+    if (accountStatus == AccountStatus.created) {
+      results.add(await _attributionRepository.logEvent(event: AttributionEvent.accountCreated));
+    }
+    results.add(await _attributionRepository.logEvent(event: AttributionEvent.accountLogin));
+
+    return results.every((result) => result == AnalyticsDeliveryResult.acceptedBySdk)
+        ? AnalyticsDeliveryResult.acceptedBySdk
+        : AnalyticsDeliveryResult.failed;
   }
 
   Future<AnalyticsDeliveryResult> loginAttemptFailed({

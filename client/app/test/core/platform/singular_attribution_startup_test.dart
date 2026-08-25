@@ -12,7 +12,7 @@ void main() {
   setUp(() {
     startedConfigs = [];
     startup = SingularAttributionStartup(
-      singular: SingularStaticAdapter.test(start: startedConfigs.add),
+      singular: SingularStaticAdapter.test(start: startedConfigs.add, event: (_) {}),
     );
   });
 
@@ -61,6 +61,7 @@ void main() {
     startup = SingularAttributionStartup(
       singular: SingularStaticAdapter.test(
         start: (_) => throw StateError("native startup failed"),
+        event: (_) {},
       ),
     );
 

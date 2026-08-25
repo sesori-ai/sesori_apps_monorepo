@@ -4,7 +4,7 @@ import "package:bloc_test/bloc_test.dart";
 import "package:http/http.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
-import "package:sesori_auth/sesori_auth.dart" show OAuthFlowProvider;
+import "package:sesori_auth/sesori_auth.dart" show AuthLoginResult, OAuthFlowProvider;
 import "package:sesori_dart_core/src/cubits/login/login_cubit.dart";
 import "package:sesori_dart_core/src/cubits/login/login_failed_reason.dart";
 import "package:sesori_dart_core/src/cubits/login/login_state.dart";
@@ -38,6 +38,7 @@ const testAuthUser = AuthUser(
   providerUserId: "user123",
   providerUsername: null,
 );
+const testAuthLoginResult = AuthLoginResult(user: testAuthUser, accountStatus: AccountStatus.existing);
 
 void main() {
   setUpAll(() {
@@ -45,6 +46,7 @@ void main() {
     registerFallbackValue(LoginAttemptFailureCause.unknown);
     registerFallbackValue(Uri.parse(redirectUri));
     registerFallbackValue(testAuthUser);
+    registerFallbackValue(AccountStatus.existing);
   });
 
   group("LoginCubit", () {
@@ -64,14 +66,17 @@ void main() {
       when(
         () => mockOAuthFlowProvider.startOAuthFlow(provider: any(named: "provider")),
       ).thenAnswer((_) async => testAuthInitResponse);
-      when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async => testAuthUser);
+      when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async => testAuthLoginResult);
       when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => false);
-      when(() => mockOAuthFlowProvider.resumeOAuthFlow()).thenAnswer((_) async => testAuthUser);
+      when(() => mockOAuthFlowProvider.resumeOAuthFlow()).thenAnswer((_) async => testAuthLoginResult);
       when(
         () => mockInstallationAnalyticsService.loginAttemptStarted(provider: any(named: "provider")),
       ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
       when(
-        () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: any(named: "provider")),
+        () => mockInstallationAnalyticsService.loginAttemptCompleted(
+          provider: any(named: "provider"),
+          accountStatus: any(named: "accountStatus"),
+        ),
       ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
       when(
         () => mockInstallationAnalyticsService.loginAttemptFailed(
@@ -107,7 +112,10 @@ void main() {
           () => mockInstallationAnalyticsService.loginAttemptStarted(provider: AuthProvider.google),
         ).called(1);
         verify(
-          () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: AuthProvider.google),
+          () => mockInstallationAnalyticsService.loginAttemptCompleted(
+            provider: AuthProvider.google,
+            accountStatus: AccountStatus.existing,
+          ),
         ).called(1);
         verifyNever(
           () => mockInstallationAnalyticsService.loginAttemptFailed(
@@ -134,7 +142,10 @@ void main() {
           ),
         ).called(1);
         verifyNever(
-          () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: any(named: "provider")),
+          () => mockInstallationAnalyticsService.loginAttemptCompleted(
+            provider: any(named: "provider"),
+            accountStatus: any(named: "accountStatus"),
+          ),
         );
         await cubit.close();
       });
@@ -176,7 +187,7 @@ void main() {
       });
 
       test("a replacement terminates the displaced attempt and rejects its stale callbacks", () async {
-        final authentication = Completer<AuthUser>();
+        final authentication = Completer<AuthLoginResult>();
         when(
           () => mockAuthSession.loginWithApple(
             idToken: any(named: "idToken"),
@@ -199,12 +210,15 @@ void main() {
 
         cubit.beginAppleLoginAttempt();
         cubit.onAppleSignInError(attempt: staleAttempt);
-        authentication.complete(testAuthUser);
+        authentication.complete(testAuthLoginResult);
 
         expect(await staleLogin, isFalse);
         expect(cubit.state, isA<LoginAuthenticating>());
         verifyNever(
-          () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: AuthProvider.apple),
+          () => mockInstallationAnalyticsService.loginAttemptCompleted(
+            provider: AuthProvider.apple,
+            accountStatus: AccountStatus.existing,
+          ),
         );
         verify(
           () => mockInstallationAnalyticsService.loginAttemptFailed(
@@ -262,7 +276,10 @@ void main() {
         expect(cubit.state, isA<LoginAuthenticating>());
         verifyNever(() => mockOAuthFlowProvider.resumeOAuthFlow());
         verifyNever(
-          () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: AuthProvider.apple),
+          () => mockInstallationAnalyticsService.loginAttemptCompleted(
+            provider: AuthProvider.apple,
+            accountStatus: AccountStatus.existing,
+          ),
         );
         verifyNever(
           () => mockInstallationAnalyticsService.loginAttemptFailed(
@@ -366,7 +383,7 @@ void main() {
           final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed);
           when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
           when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => true);
-          when(() => mockOAuthFlowProvider.resumeOAuthFlow()).thenAnswer((_) async => testAuthUser);
+          when(() => mockOAuthFlowProvider.resumeOAuthFlow()).thenAnswer((_) async => testAuthLoginResult);
           when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async {
             lifecycleSubject.add(LifecycleState.paused);
             await Future<void>.delayed(Duration.zero);
@@ -478,7 +495,7 @@ void main() {
           expect(cubit.state, isA<LoginPolling>());
 
           when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => true);
-          when(() => mockOAuthFlowProvider.resumeOAuthFlow()).thenAnswer((_) async => testAuthUser);
+          when(() => mockOAuthFlowProvider.resumeOAuthFlow()).thenAnswer((_) async => testAuthLoginResult);
 
           lifecycleSubject.add(LifecycleState.resumed);
           await Future<void>.delayed(Duration.zero);
@@ -494,7 +511,10 @@ void main() {
             () => mockInstallationAnalyticsService.loginAttemptStarted(provider: AuthProvider.google),
           ).called(1);
           verify(
-            () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: AuthProvider.google),
+            () => mockInstallationAnalyticsService.loginAttemptCompleted(
+              provider: AuthProvider.google,
+              accountStatus: AccountStatus.existing,
+            ),
           ).called(1);
           verifyNever(
             () => mockInstallationAnalyticsService.loginAttemptFailed(
@@ -681,7 +701,7 @@ void main() {
         build: buildCubit,
         act: (cubit) async {
           when(() => mockAuthSession.loginWithEmail(email: "test@example.com", password: "password123")).thenAnswer(
-            (_) async => testAuthUser,
+            (_) async => testAuthLoginResult,
           );
           await cubit.loginWithEmail(
             email: "test@example.com",
@@ -694,6 +714,12 @@ void main() {
         ],
         verify: (_) {
           verify(() => mockAuthSession.loginWithEmail(email: "test@example.com", password: "password123")).called(1);
+          verify(
+            () => mockInstallationAnalyticsService.loginAttemptCompleted(
+              provider: AuthProvider.email,
+              accountStatus: AccountStatus.existing,
+            ),
+          ).called(1);
         },
       );
 
