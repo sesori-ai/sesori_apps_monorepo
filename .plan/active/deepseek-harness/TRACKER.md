@@ -233,7 +233,7 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 
 - [x] DeepSeek added to the built-in harness identity and bridge registry; OpenCode remains preferred default
 - [x] Registered CLI exposes `--deepseek-bin`; exact registry identity fixture includes DeepSeek once
-- [x] Client renders the known `DeepSeek` name with the generic plug in light and dark themes
+- [x] Client renders the bridge-supplied `DeepSeek` name with the generic plug in light and dark themes; metadata-free surfaces retain raw-ID fallback
 - [x] Unknown plugin IDs retain generic-icon and raw-ID fallback behavior
 - [x] README documents managed/PATH/explicit install precedence, local provider setup,
   `DSH_HOME` ownership, isolated Sesori session state, telemetry-off, and sandbox/approval defaults

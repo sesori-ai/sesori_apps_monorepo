@@ -116,7 +116,7 @@ void main() {
     expect(PregoBrandLogo.displayNameFor(Harness.hermes.name), "Hermes Agent");
     expect(PregoBrandLogo.displayNameFor(Harness.pi.name), "Pi");
     expect(PregoBrandLogo.displayNameFor(Harness.omp.name), "Oh My Pi");
-    expect(PregoBrandLogo.displayNameFor(Harness.deepseek.name), "DeepSeek");
+    expect(PregoBrandLogo.displayNameFor(Harness.deepseek.name), Harness.deepseek.name);
     expect(PregoBrandLogo.displayNameFor("future-plugin"), "future-plugin");
   });
 
