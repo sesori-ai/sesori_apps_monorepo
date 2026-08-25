@@ -72,8 +72,20 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with SingleTickerProv
   bool get _hasContent => widget._scan is! CatalogRescanIdle;
 
   @override
+  void initState() {
+    super.initState();
+    // Drops the retained card once it has finished folding away. Without this
+    // its labels and its live action button stay mounted at zero height, where
+    // a keyboard or screen reader can still reach an invisible control.
+    _reveal.addStatusListener(_onRevealStatus);
+  }
+
+  @override
   void didUpdateWidget(CatalogScanRow oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Read per change rather than once: the OS preference can be turned on
+    // while this row is on screen.
+    _reveal.duration = context.isReducedMotion ? Duration.zero : _revealDuration;
     if (_hasContent) {
       _reveal.forward();
     } else {
@@ -81,8 +93,14 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with SingleTickerProv
     }
   }
 
+  void _onRevealStatus(AnimationStatus status) {
+    if (status != AnimationStatus.dismissed || _shown == null) return;
+    setState(() => _shown = null);
+  }
+
   @override
   void dispose() {
+    _reveal.removeStatusListener(_onRevealStatus);
     _curve.dispose();
     _reveal.dispose();
     super.dispose();
