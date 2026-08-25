@@ -3,11 +3,11 @@
 ## Current State
 
 - **Plan slug:** `deepseek-harness`
-- **Plan status:** Steps 1-12 merged; Step 13/16 implemented and verifying
+- **Plan status:** Steps 1-12 merged; Step 13/16 open for review
 - **Current repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current branch:** `deepseek-harness/step-13-managed-runtime`
-- **Current open PR:** none
-- **Next action:** finish verification and open the Step 13 managed-runtime PR
+- **Current open PR:** [PR #1109](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1109)
+- **Next action:** review and merge Step 13, then advance Step 14 activation
 - **Implementation started:** yes
 - **Retirement:** blocked until every required row in `PLAN.md` passes
 
@@ -27,7 +27,7 @@
 | [x] | 10/16 | apps monorepo | `🚧 [deepseek-harness] feat(deepseek): map DeepSeek turns and interactions [step 10/16]` | Complex events, questions, and permissions | 1,450 | [PR #1097](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1097) merged |
 | [x] | 11/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): expose options and lifecycle [step 11/16]` | Moderate plugin API and lifecycle composition | 1,350 | [PR #1100](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1100) merged |
 | [x] | 12/16 | deepseek adapter | `🚧 [deepseek-harness] build(runtime): release the managed DeepSeek adapter [step 12/16]` | Complex supply chain and six-platform release | 1,300 | [runtime PR #9](https://github.com/sesori-ai/sesori-deepseek-acp/pull/9) merged; extractor-safe [v0.1.1 release](https://github.com/sesori-ai/sesori-deepseek-acp/releases/tag/v0.1.1) published after [PR #10](https://github.com/sesori-ai/sesori-deepseek-acp/pull/10) |
-| [ ] | 13/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): install the managed DeepSeek runtime [step 13/16]` | Moderate managed-runtime integration | 1,250 | Implemented and verified locally; PR preparation pending |
+| [ ] | 13/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): install the managed DeepSeek runtime [step 13/16]` | Moderate managed-runtime integration | 1,250 | [PR #1109](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1109) open for review |
 | [ ] | 14/16 | apps monorepo | `⚙️ [deepseek-harness] feat(app): activate DeepSeek Harness [step 14/16]` | Moderate registry/client activation | 1,000 | Pending Step 13 |
 | [ ] | 15/16 | apps monorepo | `🌱 [deepseek-harness] docs: document DeepSeek regression coverage [step 15/16]` | Straight documentation reconciliation | 600 | Pending Step 14 |
 | [ ] | 16/16 | apps monorepo | `🌱 [deepseek-harness] docs: verify DeepSeek and retire the plan [step 16/16]` | Trivial evidence/retirement changes after a complex external verification run | 700 | Pending Step 15 |
@@ -224,7 +224,8 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
   its aggregate checksum entry
 - [x] Real managed install plus ACP smoke passes through download, checksum,
   secure extraction, package adoption, version/readiness probes, ACP health, and shutdown
-- [ ] Final changed-line count and PR evidence
+- [x] Final changed-line count: 608, below the 1,250 soft target and 1,500 hard cap
+- [x] PR #1109 opened against `main`
 
 Later implementation and live evidence is appended here by step. Never mark a
 regression row passed without the boundary and matrix required by `PLAN.md`.
