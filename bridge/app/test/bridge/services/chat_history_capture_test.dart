@@ -90,8 +90,8 @@ void main() {
           sessionID: "ses_a",
           messageID: "m1",
           prompt: "delegate this",
-          description: null,
-          agent: null,
+          description: "",
+          agent: "",
         ),
       );
     });

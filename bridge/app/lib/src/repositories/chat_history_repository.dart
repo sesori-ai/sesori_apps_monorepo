@@ -216,15 +216,11 @@ class ChatHistoryRepository({
     }
 
     return switch (part) {
-      MessagePartFile(:final attachment) => part.copyWith(
-        attachment: attachment == null ? null : bound(attachment: attachment),
-      ),
+      MessagePartFile(:final attachment) => part.copyWith(attachment: bound(attachment: attachment)),
       MessagePartTool(:final state) => part.copyWith(
-        state: state == null
-            ? null
-            : state.copyWith(
-                attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(),
-              ),
+        state: state.copyWith(
+          attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(),
+        ),
       ),
       _ => part,
     };
@@ -232,8 +228,9 @@ class ChatHistoryRepository({
 
   bool _hasInlineImage({required MessagePart part}) => switch (part) {
     MessagePartFile(:final attachment) => attachment is MessageAttachmentInlineImage,
-    MessagePartTool(:final state) =>
-      state?.attachments.any((attachment) => attachment is MessageAttachmentInlineImage) ?? false,
+    MessagePartTool(:final state) => state.attachments.any(
+      (attachment) => attachment is MessageAttachmentInlineImage,
+    ),
     _ => false,
   };
 

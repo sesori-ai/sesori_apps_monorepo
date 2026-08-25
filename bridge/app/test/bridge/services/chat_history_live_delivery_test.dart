@@ -474,10 +474,15 @@ MessagePart _part({
   MessageAttachment? attachment,
   ToolState? state,
 }) => state == null
-    ? MessagePart.file(id: id, sessionID: "ses_a", messageID: "m1", attachment: attachment)
+    ? MessagePart.file(
+        id: id,
+        sessionID: "ses_a",
+        messageID: "m1",
+        attachment: attachment ?? const MessageAttachment.unknown(),
+      )
     : MessagePart.tool(id: id, sessionID: "ses_a", messageID: "m1", tool: "tool", state: state);
 
-MessageAttachment? _attachmentOf(MessagePart part) => (part as MessagePartFile).attachment;
+MessageAttachment _attachmentOf(MessagePart part) => (part as MessagePartFile).attachment;
 
 /// Fails the one write the delivery shapes depend on, the way a full or
 /// unwritable disk does.

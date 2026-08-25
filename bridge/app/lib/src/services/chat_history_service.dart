@@ -341,8 +341,9 @@ class ChatHistoryService({
   /// and "may be delivered as a reference" can never disagree.
   bool requiresAwaitedAttachmentCapture({required MessagePart part}) => switch (part) {
     MessagePartFile(:final attachment) => attachment is MessageAttachmentInlineImage,
-    MessagePartTool(:final state) =>
-      state?.attachments.any((attachment) => attachment is MessageAttachmentInlineImage) ?? false,
+    MessagePartTool(:final state) => state.attachments.any(
+      (attachment) => attachment is MessageAttachmentInlineImage,
+    ),
     _ => false,
   };
 
@@ -433,15 +434,11 @@ class ChatHistoryService({
     }
 
     return switch (part) {
-      MessagePartFile(:final attachment) => part.copyWith(
-        attachment: attachment == null ? null : bound(attachment: attachment),
-      ),
+      MessagePartFile(:final attachment) => part.copyWith(attachment: bound(attachment: attachment)),
       MessagePartTool(:final state) => part.copyWith(
-        state: state == null
-            ? null
-            : state.copyWith(
-                attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(),
-              ),
+        state: state.copyWith(
+          attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(),
+        ),
       ),
       _ => part,
     };
@@ -507,8 +504,7 @@ class ChatHistoryService({
     for (final message in page.messages) {
       for (final part in message.parts) {
         if (part is! MessagePartTool) continue;
-        final state = part.state;
-        final status = state?.status;
+        final status = part.state.status;
         if (status == ToolStatus.pending || status == ToolStatus.running) return true;
       }
     }

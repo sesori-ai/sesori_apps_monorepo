@@ -7,8 +7,8 @@ extension SessionMessagePresentation on MessageWithParts {
     if (info is! MessageUser) return true;
     return parts.any(
       (part) => switch (part) {
-        MessagePartText(:final text) => text?.isNotEmpty ?? false,
-        MessagePartFile(:final attachment) => attachment != null && attachment is! MessageAttachmentUnknown,
+        MessagePartText(:final text) => text.isNotEmpty,
+        MessagePartFile(:final attachment) => attachment is! MessageAttachmentUnknown,
         MessagePartReasoning() ||
         MessagePartTool() ||
         MessagePartSubtask() ||

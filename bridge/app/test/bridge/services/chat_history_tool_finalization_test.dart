@@ -264,7 +264,7 @@ MessagePart _textPart({required String id, required String messageId, required S
   text: text,
 );
 
-ToolState _stateOf(MessagePart part) => (part as MessagePartTool).state!;
+ToolState _stateOf(MessagePart part) => (part as MessagePartTool).state;
 
 class _FakeSessionRepository({
   required final List<MessageWithParts> transcript,

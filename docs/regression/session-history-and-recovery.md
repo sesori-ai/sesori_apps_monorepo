@@ -39,7 +39,8 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
   never blocks unrelated requests, other plugins, key exchange, or reconnects.
 - Database rows and audit files written with the released flattened message-part
   contract remain readable after the in-memory model becomes sealed variants,
-  including known part types whose variant-specific fields were omitted.
+  including known part types whose variant-specific fields were omitted. Those
+  omissions become temporary non-null compatibility defaults when decoded.
 - A tool part stranded in `pending`/`running` after its turn ended is finalized
   to a terminal error, for every backend. The sweep runs when the session goes
   idle (finalized parts are also delivered live as part updates) and on a
@@ -91,7 +92,8 @@ image parts converge by their own rules.
   transcripts are marked complete after a gap without a full re-sync.
 - A stale re-read moves an older retained message to the newest edge.
 - A released database row or audit file is rejected because a known message-part
-  payload omitted variant-specific data.
+  payload omitted variant-specific data, or a decoded known variant still carries
+  null variant data.
 - Pi falls back after an arbitrary RPC failure, shows an abandoned branch or
   summary payload, or exposes a private path, raw backend error, or hidden prompt
   prefix in mapped history.

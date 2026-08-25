@@ -1698,4 +1698,5 @@ one bridge layer tree that matches its architecture document, one fake per
 shared contract, tested primitives instead of hand-rolled lanes and
 request tables, sealed states where flags used to coordinate, dated and correctly
 labelled compatibility markers with a recorded support baseline, CI covering the
-shared crypto/protocol package, and no database or default wire-contract change.
+shared crypto/protocol package, no database change, and only Step 28's additive
+non-null message-part defaults changing the default wire contract.

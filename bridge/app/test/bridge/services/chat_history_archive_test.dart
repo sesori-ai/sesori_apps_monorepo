@@ -72,7 +72,7 @@ void main() {
           sessionID: "ses_a",
           messageID: "m1",
           attempt: 2,
-          retryError: null,
+          retryError: "",
         ),
       );
     });

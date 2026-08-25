@@ -10,7 +10,7 @@ MessagePartText _$MessagePartTextFromJson(Map json) => MessagePartText(
   id: json['id'] as String,
   sessionID: json['sessionID'] as String,
   messageID: json['messageID'] as String,
-  text: json['text'] as String?,
+  text: json['text'] as String? ?? "",
   $type: json['type'] as String?,
 );
 
@@ -19,7 +19,7 @@ Map<String, dynamic> _$MessagePartTextToJson(MessagePartText instance) =>
       'id': instance.id,
       'sessionID': instance.sessionID,
       'messageID': instance.messageID,
-      'text': ?instance.text,
+      'text': instance.text,
       'type': instance.$type,
     };
 
@@ -28,7 +28,7 @@ MessagePartReasoning _$MessagePartReasoningFromJson(Map json) =>
       id: json['id'] as String,
       sessionID: json['sessionID'] as String,
       messageID: json['messageID'] as String,
-      text: json['text'] as String?,
+      text: json['text'] as String? ?? "",
       $type: json['type'] as String?,
     );
 
@@ -38,7 +38,7 @@ Map<String, dynamic> _$MessagePartReasoningToJson(
   'id': instance.id,
   'sessionID': instance.sessionID,
   'messageID': instance.messageID,
-  'text': ?instance.text,
+  'text': instance.text,
   'type': instance.$type,
 };
 
@@ -46,9 +46,14 @@ MessagePartTool _$MessagePartToolFromJson(Map json) => MessagePartTool(
   id: json['id'] as String,
   sessionID: json['sessionID'] as String,
   messageID: json['messageID'] as String,
-  tool: json['tool'] as String?,
+  tool: json['tool'] as String? ?? "",
   state: json['state'] == null
-      ? null
+      ? const ToolState(
+          status: ToolStatus.pending,
+          title: null,
+          output: null,
+          error: null,
+        )
       : ToolState.fromJson(Map<String, dynamic>.from(json['state'] as Map)),
   $type: json['type'] as String?,
 );
@@ -58,8 +63,8 @@ Map<String, dynamic> _$MessagePartToolToJson(MessagePartTool instance) =>
       'id': instance.id,
       'sessionID': instance.sessionID,
       'messageID': instance.messageID,
-      'tool': ?instance.tool,
-      'state': ?instance.state?.toJson(),
+      'tool': instance.tool,
+      'state': instance.state.toJson(),
       'type': instance.$type,
     };
 
@@ -67,9 +72,9 @@ MessagePartSubtask _$MessagePartSubtaskFromJson(Map json) => MessagePartSubtask(
   id: json['id'] as String,
   sessionID: json['sessionID'] as String,
   messageID: json['messageID'] as String,
-  prompt: json['prompt'] as String?,
-  description: json['description'] as String?,
-  agent: json['agent'] as String?,
+  prompt: json['prompt'] as String? ?? "",
+  description: json['description'] as String? ?? "",
+  agent: json['agent'] as String? ?? "",
   $type: json['type'] as String?,
 );
 
@@ -78,9 +83,9 @@ Map<String, dynamic> _$MessagePartSubtaskToJson(MessagePartSubtask instance) =>
       'id': instance.id,
       'sessionID': instance.sessionID,
       'messageID': instance.messageID,
-      'prompt': ?instance.prompt,
-      'description': ?instance.description,
-      'agent': ?instance.agent,
+      'prompt': instance.prompt,
+      'description': instance.description,
+      'agent': instance.agent,
       'type': instance.$type,
     };
 
@@ -122,7 +127,9 @@ MessagePartFile _$MessagePartFileFromJson(Map json) => MessagePartFile(
   id: json['id'] as String,
   sessionID: json['sessionID'] as String,
   messageID: json['messageID'] as String,
-  attachment: _messageAttachmentFromJson(json['attachment']),
+  attachment: json['attachment'] == null
+      ? const MessageAttachment.unknown()
+      : _messageAttachmentFromJson(json['attachment']),
   $type: json['type'] as String?,
 );
 
@@ -131,7 +138,7 @@ Map<String, dynamic> _$MessagePartFileToJson(MessagePartFile instance) =>
       'id': instance.id,
       'sessionID': instance.sessionID,
       'messageID': instance.messageID,
-      'attachment': ?instance.attachment?.toJson(),
+      'attachment': instance.attachment.toJson(),
       'type': instance.$type,
     };
 
@@ -171,7 +178,7 @@ MessagePartAgent _$MessagePartAgentFromJson(Map json) => MessagePartAgent(
   id: json['id'] as String,
   sessionID: json['sessionID'] as String,
   messageID: json['messageID'] as String,
-  agentName: json['agentName'] as String?,
+  agentName: json['agentName'] as String? ?? "",
   $type: json['type'] as String?,
 );
 
@@ -180,7 +187,7 @@ Map<String, dynamic> _$MessagePartAgentToJson(MessagePartAgent instance) =>
       'id': instance.id,
       'sessionID': instance.sessionID,
       'messageID': instance.messageID,
-      'agentName': ?instance.agentName,
+      'agentName': instance.agentName,
       'type': instance.$type,
     };
 
@@ -188,8 +195,8 @@ MessagePartRetry _$MessagePartRetryFromJson(Map json) => MessagePartRetry(
   id: json['id'] as String,
   sessionID: json['sessionID'] as String,
   messageID: json['messageID'] as String,
-  attempt: (json['attempt'] as num?)?.toInt(),
-  retryError: json['retryError'] as String?,
+  attempt: (json['attempt'] as num?)?.toInt() ?? 0,
+  retryError: json['retryError'] as String? ?? "",
   $type: json['type'] as String?,
 );
 
@@ -198,8 +205,8 @@ Map<String, dynamic> _$MessagePartRetryToJson(MessagePartRetry instance) =>
       'id': instance.id,
       'sessionID': instance.sessionID,
       'messageID': instance.messageID,
-      'attempt': ?instance.attempt,
-      'retryError': ?instance.retryError,
+      'attempt': instance.attempt,
+      'retryError': instance.retryError,
       'type': instance.$type,
     };
 

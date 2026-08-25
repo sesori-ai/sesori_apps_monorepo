@@ -72,9 +72,9 @@ MessagePartSubtask _subtaskPart({String? description}) {
     id: "part-1",
     sessionID: "session-parent",
     messageID: "msg-1",
-    prompt: description,
-    description: description,
-    agent: null,
+    prompt: description ?? "",
+    description: description ?? "",
+    agent: "",
   );
   if (part case final MessagePartSubtask subtask) return subtask;
   throw StateError("MessagePart.subtask returned a non-subtask variant");

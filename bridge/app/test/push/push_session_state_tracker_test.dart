@@ -687,8 +687,6 @@ void main() {
               id: "p-1",
               sessionID: "session-a",
               messageID: "m-1",
-              tool: null,
-              state: null,
             ),
           ),
         );

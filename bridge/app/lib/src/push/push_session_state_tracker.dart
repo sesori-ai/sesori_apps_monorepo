@@ -505,7 +505,7 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
     };
     if (!isAssistant) return;
 
-    _stateForSession(sessionId: part.sessionID).latestAssistantText = part.text ?? "";
+    _stateForSession(sessionId: part.sessionID).latestAssistantText = part.text;
   }
 
   void _upsertSession({required Session session, required DateTime touchedAt}) {

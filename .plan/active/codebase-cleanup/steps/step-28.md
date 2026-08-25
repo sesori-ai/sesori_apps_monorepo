@@ -30,8 +30,10 @@ compaction commands; and selected message-part/tool-status construction.
   repositories, tags, asset names, or Cursor's non-GitHub URL.
 - Added contextual logging to remaining Codex recovered failures and simplified
   stale-selection exception construction locally in Claude and Pi.
-- There is no intended user-visible, wire-contract, database, or persisted-data
-  change.
+- There is no intended user-visible, database, or persisted-data change. The
+  shared-union follow-up intentionally makes variant data non-null on the wire:
+  legacy omissions decode to temporary defaults and current peers serialize
+  those values.
 
 ## Verification
 
@@ -55,8 +57,9 @@ compaction commands; and selected message-part/tool-status construction.
 - Human-review follow-up replaced flattened `PluginMessagePart` fields with one
   Freezed variant per part type; bridge-wide `make analyze` passed.
 - Follow-up also replaced the shared `MessagePart` product with matching Freezed
-  variants. The released JSON discriminators, null-key omission, and decoding
-  of known legacy payloads with omitted variant fields remain unchanged.
+  variants. The released JSON discriminators remain unchanged; known legacy
+  payloads with omitted variant fields decode to temporary non-null defaults,
+  and current peers serialize non-null variant data.
 - Follow-up verification passed: full interface (160), Cursor (138), OMP (53),
   and DeepSeek (31) suites; focused OpenCode (11), ACP (138), Codex (155),
   Claude (33), Pi (44), and bridge app mapper/SSE/repository (157) suites.
@@ -70,4 +73,11 @@ compaction commands; and selected message-part/tool-status construction.
   workspace module. Architecture implementation review approved the shared
   union and cross-layer migration with no findings; correctness review also had
   no findings.
+- Non-null compatibility-default follow-up passed shared code generation; full
+  shared (376), bridge app (2693, with 2 skips), and module-core (1353) suites;
+  affected mobile widget suites (26); all bridge workspace analyzers; and shared,
+  mobile app, module-core, desktop, and desktop-core analyzers.
+- Architecture implementation review approved the non-null wire and persistence
+  follow-up with no findings; correctness and compatibility review also had no
+  findings.
 - `git diff --check`: passed.
