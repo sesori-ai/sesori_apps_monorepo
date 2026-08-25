@@ -61,7 +61,7 @@ void main() {
     verifyNever(roomKeyStorage.clearRoomKey);
   });
 
-  test("request envelope bounded encoding preserves exact bytes and yields", () async {
+  test("representative offer preserves plaintext through encryption and correlates answer", () async {
     final roomKey = Uint8List.fromList(List<int>.generate(32, (index) => index));
     final roomKeyStorage = _MockRoomKeyStorage();
     when(roomKeyStorage.getRoomKey).thenAnswer((_) async => roomKey);
@@ -101,14 +101,16 @@ void main() {
       await frame(utf8.encode(jsonEncode(const RelayMessage.resumeAck().toJson())), encryptor: encryptor),
     );
     await connectFuture.timeout(const Duration(seconds: 1));
-    const request = RelayRequest(
+    final requestBody = jsonEncode(_offerFixture());
+    final request = RelayRequest(
       id: "request-1",
       method: "POST",
-      path: "/session/create",
-      headers: {"content-type": "application/json"},
-      body: '{"parts":[{"base64":"AQIDBAUGBwg="}]}',
+      path: "/test/device-canvas/signaling",
+      headers: const {"content-type": "application/json"},
+      body: requestBody,
     );
     final expected = utf8.encode(jsonEncode(request.toJson()));
+    final responseBody = jsonEncode(_answerFixture());
 
     final frameReady = outgoing.moveNext();
     final responseFuture = client.sendRequest(request: request, timeout: const Duration(seconds: 1));
@@ -123,18 +125,36 @@ void main() {
       await frame(
         utf8.encode(
           jsonEncode(
-            const RelayMessage.response(
-              id: "request-1",
+            RelayMessage.response(
+              id: "different-request",
               status: 200,
-              headers: <String, String>{},
-              body: "{}",
+              headers: const <String, String>{},
+              body: jsonEncode({"unexpected": true}),
             ).toJson(),
           ),
         ),
         encryptor: encryptor,
       ),
     );
-    await responseFuture;
+    socket.serverSink.add(
+      await frame(
+        utf8.encode(
+          jsonEncode(
+            RelayMessage.response(
+              id: "request-1",
+              status: 200,
+              headers: const <String, String>{},
+              body: responseBody,
+            ).toJson(),
+          ),
+        ),
+        encryptor: encryptor,
+      ),
+    );
+    final response = await responseFuture;
+    expect(response.id, "request-1");
+    expect(response.body, responseBody);
+    expect(_hasMatchingFingerprint(jsonDecode(response.body!) as Map<String, dynamic>), isTrue);
   });
 
   test("request prepared before socket disconnect is not dispatched", () async {
@@ -295,6 +315,101 @@ void main() {
     )!;
     expect(uncaughtErrors, isEmpty);
   });
+}
+
+const _offerFingerprint =
+    "sha-256 00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:10:21:32:43:54:65:76:87:98:A9:BA:CB:DC:ED:FE:0F";
+const _answerFingerprint =
+    "sha-256 FF:EE:DD:CC:BB:AA:99:88:77:66:55:44:33:22:11:00:0F:1E:2D:3C:4B:5A:69:78:87:96:A5:B4:C3:D2:E1:F0";
+
+Map<String, dynamic> _offerFixture() {
+  return {
+    "bridgeId": "bridge-1",
+    "claimRevision": 42,
+    "leaseId": "lease-1",
+    "description": {
+      "type": "offer",
+      "sdp": _sdp(
+        fingerprint: _offerFingerprint,
+        setup: "actpass",
+        direction: "recvonly",
+        iceUfrag: "offerufrag",
+        icePwd: "offerpassword123456789012",
+      ),
+      "fingerprint": _offerFingerprint,
+    },
+    "iceCandidates": [
+      {
+        "candidate": "candidate:1 1 udp 2122260223 192.0.2.1 50000 typ host",
+        "sdpMid": "0",
+        "sdpMLineIndex": 0,
+      },
+    ],
+  };
+}
+
+Map<String, dynamic> _answerFixture() {
+  return {
+    "bridgeId": "bridge-1",
+    "claimRevision": 42,
+    "leaseId": "lease-1",
+    "description": {
+      "type": "answer",
+      "sdp": _sdp(
+        fingerprint: _answerFingerprint,
+        setup: "active",
+        direction: "sendonly",
+        iceUfrag: "answerufrag",
+        icePwd: "answerpassword1234567890",
+      ),
+      "fingerprint": _answerFingerprint,
+    },
+    "iceCandidates": [
+      {
+        "candidate": "candidate:2 1 udp 16777215 192.0.2.2 50001 typ relay raddr 0.0.0.0 rport 0",
+        "sdpMid": "0",
+        "sdpMLineIndex": 0,
+      },
+    ],
+    "turn": {
+      "urls": ["turn:relay.example.com:3478?transport=udp"],
+      "username": "ephemeral-user",
+      "credential": "ephemeral-secret",
+      "expiresAt": "2026-08-25T17:15:00Z",
+    },
+  };
+}
+
+String _sdp({
+  required String fingerprint,
+  required String setup,
+  required String direction,
+  required String iceUfrag,
+  required String icePwd,
+}) {
+  return "v=0\r\n"
+      "o=- 1 2 IN IP4 127.0.0.1\r\n"
+      "s=-\r\n"
+      "t=0 0\r\n"
+      "m=video 9 UDP/TLS/RTP/SAVPF 96\r\n"
+      "c=IN IP4 0.0.0.0\r\n"
+      "a=fingerprint:$fingerprint\r\n"
+      "a=setup:$setup\r\n"
+      "a=ice-ufrag:$iceUfrag\r\n"
+      "a=ice-pwd:$icePwd\r\n"
+      "a=mid:0\r\n"
+      "a=rtcp-mux\r\n"
+      "a=$direction\r\n"
+      "a=rtpmap:96 H264/90000\r\n";
+}
+
+bool _hasMatchingFingerprint(Map<String, dynamic> signaling) {
+  final description = signaling["description"] as Map<String, dynamic>?;
+  final fingerprint = description?["fingerprint"] as String?;
+  final sdp = description?["sdp"] as String?;
+  if (fingerprint == null || sdp == null) return false;
+  final fingerprintLines = sdp.split("\r\n").where((line) => line.startsWith("a=fingerprint:")).toList();
+  return fingerprintLines.length == 1 && fingerprintLines.single == "a=fingerprint:$fingerprint";
 }
 
 class _FakeWebSocket() {

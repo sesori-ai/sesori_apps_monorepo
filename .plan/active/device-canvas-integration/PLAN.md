@@ -3,7 +3,8 @@
 ## Status
 
 - **Plan slug:** `device-canvas-integration`
-- **Status:** Active - Steps 1-7 implemented and verified; Step 8 ready
+- **Status:** Active - Steps 1-7 implemented and verified; Step 8 spike executed
+  with a Phase 2 entry-gate NO-GO
 - **Plan date:** 2026-08-18
 - **Primary repository:** `sesori-ai/sesori_apps_monorepo`
 - **Companion repository:** `daniil-shumko/device-canvas`
@@ -40,7 +41,7 @@ Phase 2 delivers remote interaction:
    input from the Sesori app.
 4. Android ships first from the existing scrcpy integration. iOS remote view and
    control remain unavailable until a feasibility gate proves both frame capture
-   and input injection against the supported private DeviceKit versions.
+   and input injection against the supported private simulator-framework versions.
 
 ## Terminology
 
@@ -544,12 +545,14 @@ iOS may advertise remote video/control only after proving all of:
 2. stable touch, keyboard, and text injection into the selected simulator;
 3. no unavailable Apple-private entitlement;
 4. acceptable interaction latency and frame pacing;
-5. repeatability across every Xcode/DeviceKit version claimed by Device Canvas;
+5. repeatability across every Xcode/SimulatorKit/DTUHID combination claimed by
+   Device Canvas;
 6. failure containment when the private API changes.
 
-Investigate DeviceKit frame/HID providers, supported simulator tooling, and
-window capture only as candidates. A spike failure results in
-`remoteVideo=false` and `remoteControl=false`; it does not block Android.
+Investigate SimulatorKit and DTUHID first, with DeviceKit frame/HID providers,
+supported simulator tooling, and window capture only as candidates. A spike
+failure results in `remoteVideo=false` and `remoteControl=false`; it does not
+block Android.
 
 ## Phase 2 Design: Remote View And Control
 
@@ -650,9 +653,13 @@ It is responsible for:
 - preserving local rendering;
 - ending the peer when the bridge revokes the lease.
 
-The Bridge never imports scrcpy or DeviceKit concepts. A future iOS provider is
-added only after the gate passes and implements the same externally observable
-capabilities without making Android depend on private iOS behavior.
+The Bridge never imports scrcpy, SimulatorKit, or DeviceKit concepts. The iOS
+component probes succeeded under Xcode 26.6 and Xcode 27 beta 5, but its full
+feasibility gate remains open. Any separately planned private
+SimulatorKit/DTUHID provider must first close the sustained stability,
+rotation/restart, input coverage, coordinate mapping, latency, text,
+production-signing, and ABI-failure-containment gaps without making Android
+depend on private iOS behavior.
 
 ### 6. Sesori client viewport
 
@@ -694,8 +701,8 @@ notifications, or analytics.
   claim revalidation.
 - **App background:** pause/close according to measured platform constraints;
   foreground always reauthorizes.
-- **Private DeviceKit change:** iOS remote capability disappears without affecting
-  claims, local Device Canvas, Android, or Sesori sessions.
+- **Private iOS framework change:** iOS remote capability disappears without
+  affecting claims, local Device Canvas, Android, or Sesori sessions.
 
 ## Phase 2 Verification
 
@@ -714,8 +721,9 @@ notifications, or analytics.
 
 ### Performance and end-to-end
 
-Before implementation, the media spike records a baseline and fixes release
-targets for representative LAN and TURN paths. At minimum, record:
+Before implementation, the media spike records a baseline and proposes release
+targets for representative LAN and TURN paths. The entry gate closes only after
+the complete matrix validates and fixes those targets. At minimum, record:
 
 - capture-to-display latency distribution;
 - input-to-visible-response latency distribution;
@@ -730,6 +738,159 @@ background/foreground, bridge and Device Canvas restart, claim reassignment, and
 network loss. Chat/session control must remain responsive under media load.
 
 iOS receives its own matrix only after its feasibility gate passes.
+
+## Phase 2 Entry-Gate Decision
+
+Step 8's time-boxed spikes completed on 2026-08-25. The resulting Phase 2 entry
+gate is **NO-GO**: the component probes support the proposed architecture, but
+they do not yet prove the integrated production source, authorization, and
+latency boundaries required before Steps 9-12. Step 8 ships no stream, signaling
+route, lease, or viewport.
+
+The component-level decisions are:
+
+- **GO, Android architecture candidate:** retain the existing scrcpy compressed
+  path for local display, decode the same access units to `CVPixelBuffer`, and
+  pass decoded frames to WebRTC for H.264 re-encode.
+- **GO, WebRTC protocol candidate:** the selected native and Flutter libraries
+  can negotiate H.264, DTLS-SRTP, relay candidates, and a reliable ordered
+  DataChannel in disposable peers.
+- **PARTIAL, existing signaling seam:** real relay framing and generic bridge
+  routing can carry representative offer/answer JSON, but no single authorized
+  production or test-only Sesori route yet joins the client, relay, bridge,
+  claim revision, and Device Canvas peer.
+- **PARTIAL, iOS private seams:** raw SimulatorKit surfaces and DTUHID touch plus
+  one USB keyboard usage work under both tested toolchains. General text input,
+  interaction latency, long-run and restart/rotation stability, drag/multitouch,
+  coordinate mapping, keyboard-up/modifier behavior, production-signing
+  constraints, and fail-closed behavior on ABI drift remain unproven.
+
+The gate remains closed until one executable matrix proves all of:
+
+1. one real scrcpy source feeding both the existing local renderer and the
+   WebRTC track through the selected shared lifecycle;
+2. authenticated fingerprint comparison and tamper rejection through a bounded
+   authorized Sesori signaling route;
+3. claim-revision/release/archive-driven input rejection and peer closure;
+4. capture-to-display, input-to-visible, reconnect/revocation, resource, and
+   Sesori request/SSE latency distributions on release-target clients;
+5. representative LAN and externally operated TURN paths; and
+6. complete dependency acceptance, including transitive notices, supported
+   platform policy, and a defensible maintenance/version-pinning plan.
+
+Closing those Android-first conditions does not enable iOS. iOS additionally
+requires sustained frame/input runs across rotation and restart, repeated touch
+and keyboard variants, general text, coordinate mapping, latency, production
+signing, and deliberate private-ABI failure tests on every claimed toolchain.
+
+### Candidate dependencies and source paths
+
+- The Flutter client candidate is `flutter_webrtc 1.6.0` (MIT), which currently
+  pins native WebRTC `144.7559.09`. Disposable macOS and Android debug clients
+  built and ran. Android requires `INTERNET`, `ACCESS_NETWORK_STATE`,
+  `CHANGE_NETWORK_STATE`, and `MODIFY_AUDIO_SETTINGS`; omitting
+  `ACCESS_NETWORK_STATE` caused the native network monitor to abort. The plugin
+  also emits a forward-compatibility warning because it still applies the Kotlin
+  Gradle plugin instead of Built-in Kotlin.
+- The Device Canvas candidate is `stasel/WebRTC 151.0.0` (WebRTC BSD-3 license).
+  Its release XCFramework is 42.6 MiB compressed, 95.7 MiB unpacked, and its
+  universal macOS binary is 27.1 MiB. The actively maintained LiveKit build was
+  also reviewed, but its 63.5 MiB archive and 141.3 MiB unpacked footprint add no
+  required API for this separate-process integration. These build, API, license,
+  and size checks do not by themselves close the full dependency gate.
+- The selected public ObjC API accepts decoded `CVPixelBuffer` frames through
+  `RTCVideoSource`/`RTCCVPixelBuffer`; it exposes no stable encoded-H.264 track
+  injection API. Android therefore keeps scrcpy Annex-B H.264 for local
+  `AVSampleBufferDisplayLayer` rendering and adds a VideoToolbox decode feeding
+  WebRTC's encoder. Production versions remain exactly pinned and retain binary
+  license notices.
+
+### Measured evidence
+
+- A real Pixel 10 Pro Android 17 scrcpy 4.1 source produced 210 constrained-
+  baseline H.264 frames over 25.57 seconds, including live rotation between
+  `716x1600` and `1600x716`, at 739 kbit/s. The mostly static workload was VFR at
+  8.21 frames/s; it is not a release frame-rate measurement.
+- Copying the H.264 source took 0.07 seconds and 22.0 MiB peak RSS. VideoToolbox
+  decode took 0.36 seconds and 85.5 MiB peak RSS. Decode plus H.264 VideoToolbox
+  re-encode took 0.77 seconds and 127.7 MiB peak RSS, processing about 273 source
+  frames/s. Source timestamps caused duplicate/drop warnings, so production must
+  stamp decoded WebRTC frames from one monotonic host clock.
+- During a separate real-time file re-encode and repeated emulator input, the
+  existing local Device Canvas renderer and scrcpy process stayed alive. Device
+  Canvas averaged 14.8% of one host core, peaked at 35.6%, and held 56.6-58.1 MiB
+  RSS; the separate re-encode process averaged 0.6%, peaked at 3.2%, and reached
+  about 116 MiB RSS. The re-encode process wrote to `/dev/null`; it did not
+  consume the live renderer's access units or feed WebRTC, so this is only a
+  coexistence baseline.
+- A native WebRTC 151 peer generating synthetic `640x360` frames and a Flutter
+  WebRTC peer negotiated H.264, a reliable ordered DataChannel, SDP fingerprints,
+  DTLS `TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256`, and SRTP AES-128. Direct host ICE
+  rendered its first frame 209 ms after remote-description application and had
+  input acknowledgement p95 of 25.4 ms. Local coturn relay rendered in 307 ms
+  with 27.2 ms input p95.
+- An Android-emulator client behind emulator NAT selected relay/relay candidates
+  through local coturn, decoded 67 frames, acknowledged 128 ordered inputs, and
+  rejected input sent after test revocation. First frame was 1.67 seconds after
+  remote-description application because the non-trickle harness deliberately
+  settled both relay candidates; input p95 was 47.0 ms. The client peaked at
+  268 MiB PSS and 379 MiB RSS during startup/streaming.
+- The client focused test decrypts `RelayClient`'s emitted frame to prove exact
+  serialized plaintext for a representative offer fixture, ignores a wrong-ID
+  response, and correlates a synthetic answer response. The independent bridge
+  test exercises framing primitives around generic routing, validates that the
+  fixture contains exactly one fingerprint line matching its declared value,
+  rejects a mismatch, and returns a representative answer/TURN response through
+  a test-only handler. These tests prove reusable seams, not parser-valid WebRTC
+  signaling, production receive/send integration, one connected client-to-bridge
+  route, or an independently authenticated DTLS fingerprint.
+- The transport revocation probe flips a local native-peer boolean after 128
+  inputs and proves later DataChannel input is rejected. Existing claim tests
+  separately prove stale revisions are rejected. No test joins a real claim
+  revision/release/archive event to input rejection and active peer closure.
+- Local coturn proves the relay protocol and emulator-NAT topology. Arbitrary-
+  network reliability, short-lived credential issuance, and external TURN
+  operations remain Step 10 release gates.
+
+### iOS feasibility matrix
+
+| Host toolchain | Raw frame result | Input result | Selected seam |
+|---|---|---|---|
+| Xcode 26.6 (`17F113`), iOS 26.5 runtime | `SimDeviceScreen` exposed live `1206x2622` BGRA IOSurfaces at 59.97 callbacks/s | DTUHID touch and USB-keyboard events changed a UIKit probe | SimulatorKit under `Developer/Library/PrivateFrameworks`; DeviceKit unavailable |
+| Xcode 27 beta 5 (`27A5237l`), iOS 26.5 runtime | Same IOSurface shape at 59.93 callbacks/s | Same DTUHID touch and single-key-to-text behavior | SimulatorKit under `Contents/SharedFrameworks`; DeviceKit 255 remains local-view-only |
+
+Public `simctl screenshot` averaged 444 ms under Xcode 26.6 and 367 ms under
+Xcode 27 beta 5, which is too slow for interactive raw capture. Public
+`recordVideo` produced H.264 at about 60 frames/s and remains an encoded fallback,
+not the selected low-latency source. The iOS provider uses private
+`SimulatorKit.SimDeviceScreen.unmaskedSurface` and the private DTUHID XPC service;
+its compile shim requires library evolution. The ad hoc probe executed without a
+private entitlement, but production signing and capability discovery have not
+yet proved fail-closed behavior when either ABI changes.
+
+### Provisional release targets
+
+These candidate thresholds constrain the eventual release design, but the
+required distributions have not all been measured and therefore they do not
+close the entry gate:
+
+| Metric | Candidate target |
+|---|---|
+| Stream start to first frame | p95 <= 1 second on direct LAN; p95 <= 3 seconds through TURN |
+| Steady capture-to-display latency | p95 <= 250 ms on direct LAN; p95 <= 500 ms through TURN |
+| Ordered input acknowledgement | p95 <= 100 ms direct or TURN |
+| Input-to-visible-response latency | p95 <= 250 ms direct; p95 <= 500 ms through TURN |
+| Android video | H.264, maximum dimension 1600, nominal 30 frames/s under active animation, >= 20 frames/s floor, <= 4 Mbit/s |
+| Revocation | reject new input within 250 ms of Device Canvas receiving revocation and close the peer within 1 second |
+| Release-host overhead | <= 200 MiB incremental RSS and <= 50% of one logical core averaged over 30 seconds |
+| Mobile-client overhead | <= 450 MiB total RSS, <= 325 MiB PSS, and <= one logical core averaged over 30 seconds |
+| Sesori responsiveness | active streaming adds no more than 100 ms or 25%, whichever is greater, to request/SSE p95 latency |
+
+The gate-closing matrix must measure distributions from capture timestamp to
+display and from input send to visible frame response. Setup latency and
+DataChannel acknowledgements are only Step 8 baselines and cannot substitute for
+those measurements. The thresholds become fixed only after that matrix shows
+they are attainable on every claimed release target.
 
 ## Security And Privacy
 
@@ -813,8 +974,8 @@ generator. Device Canvas steps require `zsh build.sh` plus real local use with
 supported simulators/emulators. Media steps require end-to-end use across the
 actual network paths, not source inspection alone.
 
-Conditional iOS implementation is a separately planned series after Step 8's
-gate passes. It is not silently folded into Steps 9-12.
+Conditional iOS implementation is a separately planned series after follow-up
+evidence closes its private-API gate. It is not silently folded into Steps 9-12.
 
 ## Regression Documentation
 
@@ -868,12 +1029,14 @@ media plan, separate WebRTC media plane, and iOS gate.
   conflict review.
 - Direct WebRTC cannot satisfy arbitrary-network reliability. TURN cost,
   operations, abuse prevention, and jurisdiction are real release dependencies.
-- Android encoded H.264 pass-through may not be supported by the selected WebRTC
-  API; measured decode/re-encode may be necessary.
+- The selected WebRTC APIs do not support Android encoded-H.264 injection.
+  VideoToolbox decode/re-encode is the measured path and must synthesize
+  monotonic frame timestamps.
 - Local and remote input may interleave. The first release arbitrates only remote
   controllers and does not lock out a person using Device Canvas locally.
-- iOS remote view/control may fail its feasibility gate. Android delivery and all
-  Phase 1 behavior remain independently releasable.
+- iOS raw view/control passed only through private SimulatorKit and DTUHID APIs
+  on the recorded matrix. ABI drift disables the capability, and its separate
+  delivery remains independent of Android and all Phase 1 behavior.
 
 ## Expected Result
 
@@ -886,5 +1049,6 @@ process/device outages and release predictably with session lifecycle.
 After Phase 2, the owner can explicitly open an Android emulator viewport from
 the Sesori session and control it over an authorized, encrypted,
 media-appropriate connection from local or remote networks. Sesori chat remains
-responsive, ownership changes revoke access immediately, and iOS is exposed only
-if its separate evidence gate proves safe, maintainable frame and input support.
+responsive, ownership changes revoke access immediately, and iOS remains
+unavailable unless a separately planned private-API provider closes its full
+evidence gate on every claimed toolchain.

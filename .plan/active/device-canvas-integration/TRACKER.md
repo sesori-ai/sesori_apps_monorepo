@@ -5,10 +5,11 @@
 - **Plan slug:** `device-canvas-integration`
 - **Implementation base:** `upstream/main` at `5c50f38a`
 - **Current branch:** `device-canvas-integration-step-1`
-- **Series state:** Steps 1-7 implemented and verified; Step 8 is ready
-- **Current step:** prove Phase 2 remote-media feasibility
-- **Next action:** run the Android source, WebRTC/network, and iOS feasibility
-  spikes and record the Phase 2 entry-gate decisions
+- **Series state:** Steps 1-7 implemented and verified; Step 8 spike completed
+  with a Phase 2 entry-gate NO-GO; Step 9 is blocked
+- **Current step:** close the integrated Phase 2 evidence gaps
+- **Next action:** prove one real scrcpy source through local rendering and
+  WebRTC, then measure authorized signaling, revocation, and end-to-end latency
 
 ## Locked Decisions
 
@@ -70,10 +71,10 @@
 | [x] | 5/12 - Add client status/deep links | Sesori | Implemented locally; strict analysis, full suites, builds, and independent review passed |
 | [x] | 6/12 - Add OpenCode tools | Sesori | Implemented; strict analysis, full suites, production build, security review, and real-agent verification passed |
 | [x] | 7/12 - Verify Phase 1 | Both | Automated and user-confirmed ownership, compatibility, restart, conflict, and deep-link matrix passed |
-| [ ] | 8/12 - Prove media feasibility | Both | Ready; Phase 1 acceptance evidence recorded |
-| [ ] | 9/12 - Authorize/signaling streams | Sesori | Blocked on Step 8 decisions |
-| [ ] | 10/12 - Provision TURN | Infrastructure | Blocked on Step 8 network decision |
-| [ ] | 11/12 - Stream/control Android | Device Canvas | Blocked on Steps 8-10 |
+| [x] | 8/12 - Prove media feasibility | Both | Spikes completed; component architecture is feasible, but the integrated Phase 2 entry gate is NO-GO |
+| [ ] | 9/12 - Authorize/signaling streams | Sesori | Blocked until the Phase 2 entry-gate gaps close |
+| [ ] | 10/12 - Provision TURN | Infrastructure | Blocked on the Step 9 credential contract and external TURN matrix |
+| [ ] | 11/12 - Stream/control Android | Device Canvas | Blocked on Steps 9-10 |
 | [ ] | 12/12 - Add Sesori viewport/verify | Sesori | Blocked on Steps 9-11 |
 
 ## Step 1 Checklist
@@ -116,17 +117,30 @@
 
 ## Phase 2 Entry-Gate Checklist
 
-- [ ] Android encoded-frame versus decode/re-encode evidence recorded.
-- [ ] Local rendering and remote streaming coexist without lifecycle regressions.
-- [ ] Swift and Flutter WebRTC dependencies pass platform, license, maintenance,
-  binary-size, and required-API review.
-- [ ] SDP/ICE/fingerprint negotiation through existing E2E requests proven.
-- [ ] Direct ICE and TURN paths measured.
-- [ ] SRTP video and DataChannel input proven with claim revocation.
-- [ ] iOS frame extraction proven or rejected explicitly.
-- [ ] iOS touch/keyboard/text injection proven or rejected explicitly.
-- [ ] Supported Xcode/DeviceKit matrix recorded.
-- [ ] Release latency/resource targets fixed from measurements.
+- [x] Android source shape plus copy versus VideoToolbox decode/re-encode evidence
+  recorded.
+- [ ] One real scrcpy source feeds both local rendering and WebRTC without
+  lifecycle regressions.
+- [ ] Swift and Flutter WebRTC dependencies pass the complete platform, license,
+  transitive-notice, maintenance, binary-size, and required-API review.
+- [x] Existing encrypted relay framing and generic bridge routing carry
+  representative offer/answer fixtures without adding a media-specific relay
+  message.
+- [ ] One authorized signaling route compares the advertised DTLS fingerprint,
+  rejects tampering, and joins client, bridge, claim revision, and Device Canvas.
+- [x] Direct host ICE and local coturn relay paths measured with synthetic video.
+- [ ] Representative LAN and externally operated TURN paths measured.
+- [x] Synthetic SRTP video and ordered DataChannel input proven.
+- [ ] Claim revision/release/archive drives input rejection and active peer
+  closure within the candidate thresholds.
+- [x] Short-run iOS raw-frame extraction proven through private SimulatorKit.
+- [x] One iOS touch and one USB keyboard usage proven through private DTUHID.
+- [ ] iOS sustained frame/input stability across rotation and restart, repeated
+  touch and keyboard variants, drag/multitouch, coordinate mapping, general text,
+  latency, production signing, and private-ABI failure containment proven.
+- [x] Two-toolchain iOS probe matrix recorded with exact build identifiers.
+- [ ] Capture-to-display, input-to-visible, reconnect/revocation, resource, and
+  Sesori request/SSE distributions support fixed release targets.
 
 ## Phase 2 Acceptance Checklist
 
@@ -308,6 +322,62 @@
 - `projects-and-sessions.md`, `bridge-connectivity.md`, and the shipped OpenCode
   lifecycle documentation now point to the dedicated Phase 1 ownership contract
   and its L1-L5 matrix.
+
+### Step 8 remote simulator transport feasibility
+
+- Android scrcpy 4.1 exposed Annex-B constrained-baseline H.264 before local
+  decode. A real Pixel 10 Pro Android 17 source covered portrait/landscape
+  resolution changes at maximum dimension 1600 and the existing 4 Mbit/s cap.
+  The selected public WebRTC APIs have no encoded-frame injection seam, so the
+  candidate path is VideoToolbox decode to `CVPixelBuffer` followed by WebRTC
+  H.264 encode.
+- Copy, decode, and decode/re-encode completed the 25.57-second, 210-frame source
+  in 0.07, 0.36, and 0.77 seconds respectively. During real-time re-encode and
+  repeated emulator input, the production local renderer stayed connected.
+  Device Canvas averaged 14.8% host CPU and 56.6-58.1 MiB RSS, but the re-encode
+  was an independent file replay to `/dev/null`, not a shared scrcpy/WebRTC
+  lifecycle.
+- `flutter_webrtc 1.6.0` and `stasel/WebRTC 151.0.0` passed focused build,
+  platform-slice, direct-license, binary-size, and required-API checks. Complete
+  maintenance policy and transitive-notice acceptance remain open. Android must
+  declare network-state/change and audio-settings permissions in addition to
+  internet. The Flutter plugin's Built-in Kotlin migration warning remains an
+  implementation dependency risk.
+- Disposable native and Flutter peers using synthetic `640x360` video passed
+  direct host ICE, local coturn, and Android-emulator-NAT TURN. The final Android
+  run selected relay/relay, negotiated H.264 with connected DTLS and AES-128 SRTP,
+  decoded 67 frames, acknowledged 128 ordered inputs at 47.0 ms p95, and rejected
+  input after a local test boolean changed. It did not consume scrcpy frames or a
+  real claim event.
+- A representative offer request and answer/TURN response now have focused tests.
+  The client test proves exact serialized request plaintext after decrypting its
+  emitted frame, ignores a wrong-ID response, and correlates the answer. The
+  independent bridge test exercises framing primitives around a generic test-only
+  route, captures the parsed body, and rejects an internally mismatched
+  fingerprint. It proves neither parser-valid WebRTC signaling nor production
+  receive/send integration. No connected authorized client-to-bridge route,
+  independently authenticated fingerprint, production route, or top-level relay
+  message was added.
+- Xcode 26.6 and Xcode 27 beta 5 both exposed live `1206x2622` BGRA IOSurfaces
+  through private `SimulatorKit.SimDeviceScreen` at approximately 60 callbacks/s.
+  Private DTUHID touch and USB usage 4 changed a UIKit probe and entered `a` under
+  both toolchains. Sustained rotation/restart runs, repeated touch and key events,
+  drag/multitouch, coordinate mapping, general text, input latency, production
+  signing, and ABI-drift containment remain open; iOS remote capability stays
+  unavailable.
+- The plan and regression contract retain provisional direct/TURN, video, input,
+  revocation, resource, and Sesori responsiveness thresholds. External TURN,
+  claim-bound active peer revocation, shared production source wiring, and the
+  required capture/input-to-visible and responsiveness distributions must close
+  before those targets become fixed.
+- Strict analysis passed every bridge and client package. Complete bridge and
+  client workspace test runs passed; the bridge ended at 2,783 tests with the two
+  expected host-platform skips. `zsh build.sh` rebuilt Device Canvas and passed
+  its Swift protocol suite. Focused signaling tests and `git diff --check` passed.
+- Independent review rejected the initial unconditional gate-pass claim because
+  the component probes did not cover the integrated source, authorization,
+  revocation, latency, and iOS containment boundaries. This tracker now records
+  the resulting NO-GO rather than advancing to Step 9.
 
 ## Open Product Confirmations
 

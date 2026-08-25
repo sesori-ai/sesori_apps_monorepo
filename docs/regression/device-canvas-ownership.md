@@ -80,6 +80,80 @@ Recorded on 2026-08-25 on the release-target macOS host:
   live-agent verification used OpenCode `1.18.20`; automated runtime gates retain
   PATH minimum `1.14.49` and managed target `1.18.19`.
 
+## Phase 2 Transport Gate
+
+Step 8 records an evidence gate only. Remote video, input, stream leases,
+signaling routes, and a client viewport are not shipped behavior yet. The
+time-boxed spikes completed with a **NO-GO** for Phase 2 implementation: the
+individual components support the proposed architecture, but the integrated
+source, authorization, revocation, and latency boundaries are not yet proven.
+
+- Android keeps scrcpy H.264 for the existing local display and uses
+  VideoToolbox decode to `CVPixelBuffer` before WebRTC re-encode. The selected
+  public WebRTC ObjC API has no stable encoded-H.264 injection seam. This is a
+  candidate architecture until one real scrcpy source feeds both consumers.
+- SDP, fingerprints, ICE candidates, TURN fields, lease identity, and claim
+  revision remain bounded JSON inside existing encrypted routed requests. Media
+  uses DTLS-SRTP and ordered input uses the WebRTC DataChannel; neither belongs
+  in `RelayMessage`, request/SSE, transcripts, attachments, or analytics.
+- The provisional Android release profile is H.264 with maximum dimension 1600,
+  nominal 30 frames/s under active animation, a 20 frames/s floor, and at most 4
+  Mbit/s.
+  Stream-start p95 must be at most 1 second direct and 3 seconds through TURN.
+  Steady capture-to-display p95 must be at most 250 ms direct and 500 ms through
+  TURN. Input acknowledgement p95 must be at most 100 ms.
+- Revocation must reject new input within 250 ms of Device Canvas receiving it
+  and close the peer within 1 second. Active streaming may add no more than 100
+  ms or 25%, whichever is greater, to Sesori request/SSE p95 latency.
+- Release-host streaming overhead is capped at 200 MiB incremental RSS and 50%
+  of one logical core averaged over 30 seconds. A mobile client is capped at 450
+  MiB total RSS, 325 MiB PSS, and one logical core averaged over 30 seconds.
+- These thresholds are planning hypotheses, not fixed release targets. The
+  missing capture-to-display, input-to-visible, revocation, reconnect, and Sesori
+  responsiveness distributions must show they are attainable first.
+- iOS component probes under Xcode 26.6 and Xcode 27 beta 5 exposed live BGRA
+  IOSurfaces at about 60 callbacks/s, activated a UIKit button through DTUHID, and
+  entered `a` through USB usage 4. Sustained rotation/restart runs, repeated
+  touch and keyboard variants, drag/multitouch, coordinate mapping, general text,
+  input latency, production signing, and fail-closed private-ABI containment
+  remain unproven, so iOS remote capability remains unavailable.
+
+## Phase 2 Feasibility Evidence
+
+Recorded on 2026-08-25 on the release-target macOS host:
+
+- A real Pixel 10 Pro Android 17 source produced 210 H.264 frames over 25.57
+  seconds with live portrait/landscape changes. VideoToolbox decode/re-encode
+  processed about 273 source frames/s from wall-clock elapsed time. The local
+  Device Canvas renderer stayed connected during a separate file replay to
+  `/dev/null`, averaging 14.8% host CPU and 56.6-58.1 MiB RSS. This did not feed
+  WebRTC from the live scrcpy source.
+- Direct and local-coturn native/Flutter peers using synthetic `640x360` frames
+  negotiated H.264, connected DTLS, AES-128 SRTP, and an ordered reliable
+  DataChannel. An Android-emulator-NAT run selected relay/relay, acknowledged 128
+  ordered inputs at 47.0 ms p95, and rejected input after a local test boolean
+  changed. It did not exercise external TURN or claim-bound revocation.
+- The client focused test decrypts its emitted frame to prove exact serialized
+  plaintext for a representative offer request, ignores a wrong-ID response, and
+  correlates a synthetic answer. An independent bridge test exercises framing
+  primitives around a test-only generic route, captures the parsed fixture,
+  rejects an internally mismatched fingerprint, and returns a representative
+  answer/TURN response. This is not parser-valid WebRTC signaling or production
+  transport integration; no connected authorized Sesori route or independent
+  fingerprint trust comparison is proven.
+- Under Xcode 26.6 and Xcode 27 beta 5, raw iOS frame callbacks measured 59.97/s
+  and 59.93/s. Public screenshots averaged 444 ms and 367 ms respectively and
+  are not an interactive capture path. Runtime screenshots confirmed DTUHID
+  touch and single-key-to-text effects under both toolchains. Xcode 27 beta 5's
+  recorded build identifier is `27A5237l`.
+
+The gate remains closed until release-target evidence joins the real Android
+source to local and remote rendering, exercises an authorized signaling route,
+binds revocation to real claim lifecycle events, passes representative LAN and
+external TURN paths, and records every required latency/resource distribution.
+Complete dependency acceptance, including transitive notices, supported-platform
+policy, maintenance, and version pinning, is also required.
+
 ## Exploration Guidance
 
 Vary which session claims first, whether devices are iOS or Android, whether a
@@ -116,7 +190,14 @@ claims, sessions, plugin eligibility, and local processes after the run.
 - User-installed OpenCode plugins execute inside the same trusted backend
   process. Capability isolation protects other bridge backends and model shell
   commands; it is not a sandbox against a malicious in-process OpenCode plugin.
-- Remote video and control are not part of Phase 1 ownership behavior.
+- Remote video and control are not yet product behavior. Step 8 records
+  component-level transport feasibility but leaves the Phase 2 entry gate
+  closed. External-network TURN, claim-bound active peer revocation, shared
+  production-source wiring, and capture/input-to-visible distributions remain
+  unresolved gate work.
+- iOS transport depends on private SimulatorKit and DTUHID APIs, not a public
+  simulator control contract. Compatibility is limited to the recorded matrix
+  until a separately planned implementation expands it.
 
 ## Sources
 
@@ -128,4 +209,6 @@ claims, sessions, plugin eligibility, and local processes after the run.
 - Focused tests under `bridge/app/test/bridge/device_canvas/`,
   `bridge/app/test/bridge/services/`, and
   `bridge/sesori_plugin_opencode/test/runtime/`
+- `client/module_core/test/capabilities/relay/relay_client_handshake_replay_test.dart`
+- `bridge/app/test/bridge/routing/routed_request_dispatcher_test.dart`
 - Active plan: `.plan/active/device-canvas-integration/`
