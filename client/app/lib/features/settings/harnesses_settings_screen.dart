@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/semantics.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
@@ -82,6 +83,14 @@ class const _HarnessesSettingsBody({required final HarnessSettingsPresentation p
               ),
             };
             PregoPopupAlertPresenter.of(context).show(title: title, variant: variant);
+            // Announced as well as shown. The popup renders ordinary text into
+            // an overlay, which moves no semantic focus and carries no live
+            // region, so on its own it tells a screen-reader user nothing —
+            // and they are the reason this surface exists, the pull being a
+            // gesture they cannot perform.
+            unawaited(
+              SemanticsService.sendAnnouncement(View.of(context), title, Directionality.of(context)),
+            );
             cubit.dismissCatalogScanOutcome();
           },
         ),

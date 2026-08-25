@@ -27,12 +27,15 @@ class PluginManagementCubit({
 
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
-  /// Whether a scan this screen started is still owed an outcome.
+  /// Harnesses this screen has started a scan for and not yet heard back about.
   ///
-  /// Only a run this screen began is announced here. A scan a list's pull
-  /// started is already reported by the row above that list, and toasting it
-  /// again on an unrelated screen would report one run in two places.
-  bool _reportsScanOutcome = false;
+  /// A set rather than a flag, because more than one card can be started before
+  /// the first finishes: a second harness being refused must not cancel the
+  /// first harness's claim on the outcome. Only a run this screen began is
+  /// announced here — a scan a list's pull started is already reported by the
+  /// row above that list, and announcing it again on an unrelated screen would
+  /// report one run in two places.
+  final Set<String> _scanClaims = {};
   int _actionGeneration = 0;
   int _authenticationGeneration = 0;
 
@@ -214,21 +217,25 @@ class PluginManagementCubit({
     _setScanRejection(pluginId: pluginId, result: null);
     // Claimed before dispatch, not after: the run can reach a terminal state
     // while this request is still awaiting its own response.
-    _reportsScanOutcome = true;
+    _scanClaims.add(pluginId);
     final result = await _catalogRescanService.start(pluginId: pluginId);
     if (isClosed) return;
-    final joined = result is CatalogRescanStartAccepted || _scanningPluginIds.contains(pluginId);
-    // A start the bridge refused outright never becomes an outcome: the card
-    // reports it, and a toast would say the same thing twice.
-    if (!joined) _reportsScanOutcome = false;
-    _setScanRejection(
-      pluginId: pluginId,
-      // A harness still in the live operation has no refusal to report. An
-      // uncertain start keeps it a member precisely because the request may
-      // have landed, so the card would otherwise pair a spinner with a line
-      // telling the user to try again. That run belongs to the aggregate row.
-      result: joined ? null : result,
-    );
+    // A harness still in the live operation has no refusal to report. An
+    // uncertain start keeps it a member precisely because the request may have
+    // landed, so the card would otherwise pair a spinner with a line telling
+    // the user to try again. That run belongs to the aggregate row.
+    if (result is CatalogRescanStartAccepted || _scanningPluginIds.contains(pluginId)) {
+      _setScanRejection(pluginId: pluginId, result: null);
+      return;
+    }
+    // Membership alone cannot tell a refusal from a run that already finished:
+    // a definite rejection settles the operation before this call returns, so
+    // the harness has left the live set either way. The claim can, because an
+    // announced outcome spends it. Without this, a bridge that answers with an
+    // error produces both a finished-scan announcement and a could-not-start
+    // line on the card for one attempt.
+    if (!_scanClaims.remove(pluginId)) return;
+    _setScanRejection(pluginId: pluginId, result: result);
   }
 
   /// Clears an outcome the screen has now reported, so it is announced once.
@@ -598,9 +605,9 @@ class PluginManagementCubit({
     if (isClosed) return;
     // Dropped before the readiness check, not after: a disconnect resets the
     // scan to idle and reloads the snapshot, and the reload reaches this cubit
-    // first. Reading the claim only while ready would let it survive the run it
-    // belongs to.
-    if (scan is CatalogRescanIdle) _reportsScanOutcome = false;
+    // first. Reading the claims only while ready would let them survive the run
+    // they belong to.
+    if (scan is CatalogRescanIdle) _scanClaims.clear();
     final current = state;
     if (current is! PluginManagementReady) return;
     final scanning = _scanningPluginIds;
@@ -611,10 +618,11 @@ class PluginManagementCubit({
     final rejections = Map<String, CatalogRescanStartResult>.of(current.scanRejections)
       ..removeWhere((pluginId, _) => scanning.contains(pluginId));
     // A run that ends without a terminal state — cancelled, or recovered and
-    // settled quietly — has nothing to announce, which the idle drop above
-    // covers. Announcing one spends the claim the same way.
-    final outcome = _reportsScanOutcome ? _outcomeOf(scan) : null;
-    if (outcome != null) _reportsScanOutcome = false;
+    // settled quietly — has nothing to announce, which the idle clear above
+    // covers. Announcing one spends every claim in it: the operation is one
+    // run however many cards started members of it, and it ends once.
+    final outcome = _scanClaims.isEmpty ? null : _outcomeOf(scan);
+    if (outcome != null) _scanClaims.clear();
     if (outcome == null &&
         const SetEquality<String>().equals(current.scanningPluginIds, scanning) &&
         rejections.length == current.scanRejections.length) {

@@ -1016,6 +1016,58 @@ void main() {
       expect((cubit.state as PluginManagementReady).scanOutcome, isNull);
     });
 
+    // A definite rejection settles the operation before start() returns, so the
+    // harness has left the live set by then — exactly as it would have if the
+    // run had simply finished. Only the claim can tell those apart.
+    test("a run that already announced its end adds no refusal to the card", () async {
+      await ready();
+      rescan
+        ..stubStartResult(
+          CatalogRescanStartResult.failed(cause: ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null)),
+        )
+        ..beforeStartAnswers = () => rescan.emit(const CatalogRescanState.failed(harnessCount: 1));
+
+      await cubit.startCatalogScanFor(pluginId: "codex");
+      await _settle();
+
+      final state = cubit.state as PluginManagementReady;
+      expect(state.scanOutcome, isA<CatalogRescanOutcomeFailed>());
+      expect(
+        state.scanRejections,
+        isEmpty,
+        reason: "one attempt must not be reported as both a finished scan and a refused start",
+      );
+    });
+
+    // Cards for harnesses outside the live operation stay enabled, so a second
+    // one can be started and refused while the first is still running.
+    test("a second harness being refused leaves the first one's claim alone", () async {
+      await ready();
+      await cubit.startCatalogScanFor(pluginId: "codex");
+      rescan.emit(const CatalogRescanState.starting(pluginIds: {"codex"}));
+      await _settle();
+
+      rescan.stubStartResult(const CatalogRescanStartResult.notImportable());
+      await cubit.startCatalogScanFor(pluginId: "claude");
+      await _settle();
+
+      rescan.emit(
+        const CatalogRescanState.succeeded(
+          harnessCount: 1,
+          counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 4),
+        ),
+      );
+      await _settle();
+
+      final state = cubit.state as PluginManagementReady;
+      expect(state.scanRejections, {"claude": isA<CatalogRescanStartNotImportable>()});
+      expect(
+        state.scanOutcome,
+        isA<CatalogRescanOutcomeSucceeded>(),
+        reason: "the run codex started still ends with an announcement",
+      );
+    });
+
     test("an announced outcome is cleared so it is reported once", () async {
       await ready();
       await cubit.startCatalogScanFor(pluginId: "codex");
