@@ -12,6 +12,7 @@ import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/utils/copy_text_to_clipboard.dart";
+import "../../core/widgets/catalog_scan_row.dart";
 import "../../core/widgets/connection_banner.dart";
 import "widgets/settings_section.dart";
 
@@ -55,6 +56,33 @@ class const _HarnessesSettingsBody({required final HarnessSettingsPresentation p
             final confirmation = _forceConfirmation(state);
             if (confirmation == null) return;
             unawaited(_showForceConfirmation(context: context, cubit: cubit, confirmation: confirmation));
+          },
+        ),
+        // This screen hosts no progress row, so a scan started here would
+        // otherwise end in silence: the spinner stops and the service clears
+        // its result before the user could reach a list to read it.
+        BlocListener<PluginManagementCubit, PluginManagementState>(
+          listenWhen: (previous, current) => _scanOutcome(previous) == null && _scanOutcome(current) != null,
+          listener: (context, state) {
+            final outcome = _scanOutcome(state);
+            if (outcome == null) return;
+            final loc = context.loc;
+            final (title, variant) = switch (outcome) {
+              CatalogRescanOutcomeSucceeded(:final counts) => (
+                loc.harnessManagementScanFinished(catalogScanCountsLine(loc: loc, counts: counts)),
+                PregoPopupAlertsNotificationsVariant.success,
+              ),
+              CatalogRescanOutcomePartlyFailed(:final succeededCount, :final failedCount) => (
+                loc.harnessManagementScanPartlyFailed(failedCount, succeededCount + failedCount),
+                PregoPopupAlertsNotificationsVariant.error,
+              ),
+              CatalogRescanOutcomeFailed() => (
+                loc.harnessManagementScanFinishedFailed,
+                PregoPopupAlertsNotificationsVariant.error,
+              ),
+            };
+            PregoPopupAlertPresenter.of(context).show(title: title, variant: variant);
+            cubit.dismissCatalogScanOutcome();
           },
         ),
         BlocListener<PluginManagementCubit, PluginManagementState>(
@@ -125,6 +153,11 @@ PluginAuthenticationPresentationState? _authenticationChallenge({required Plugin
   PluginManagementUnsupported() ||
   PluginManagementFailure() => null,
     };
+
+CatalogRescanOutcome? _scanOutcome(PluginManagementState state) => switch (state) {
+  PluginManagementReady(:final scanOutcome) => scanOutcome,
+  PluginManagementLoading() || PluginManagementUnsupported() || PluginManagementFailure() => null,
+};
 
 PluginManagementActionForceConfirmationRequired? _forceConfirmation(PluginManagementState state) => switch (state) {
   PluginManagementReady(action: final PluginManagementActionForceConfirmationRequired confirmation) => confirmation,

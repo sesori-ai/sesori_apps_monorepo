@@ -1158,6 +1158,32 @@
   "@catalogScanNoHarnessDetail": {
     "description": "Supporting line on the no-harness scan row, naming where the user can see and fix their harness setup."
   },
+  "harnessManagementScanFinished": "Scan complete — {result}",
+  "@harnessManagementScanFinished": {
+    "description": "Popup shown on Settings to Harnesses when a scan started there finishes. The placeholder is the same result wording the lists' scan row uses, so one scan reads the same everywhere.",
+    "placeholders": {
+      "result": {
+        "type": "String",
+        "example": "5 new sessions in 2 new projects"
+      }
+    }
+  },
+  "harnessManagementScanPartlyFailed": "{failed} of {total} harnesses could not be scanned",
+  "@harnessManagementScanPartlyFailed": {
+    "description": "Popup shown on Settings to Harnesses when a scan started there finished with some harnesses failing. Both counts are at least one, so the total is always plural.",
+    "placeholders": {
+      "failed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "harnessManagementScanFinishedFailed": "Scan failed. Check the bridge log for details",
+  "@harnessManagementScanFinishedFailed": {
+    "description": "Popup shown on Settings to Harnesses when a scan started there failed outright. Names the bridge log because this outcome comes from the bridge's own progress events, unlike a request that never reached it."
+  },
   "harnessManagementScan": "Scan for sessions",
   "@harnessManagementScan": {
     "description": "Settings action on a harness card that re-imports that one harness's catalog, the pointer-and-keyboard equivalent of the lists' deep pull."

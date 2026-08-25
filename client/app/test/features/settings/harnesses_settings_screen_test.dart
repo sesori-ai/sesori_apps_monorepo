@@ -1491,6 +1491,53 @@ void main() {
       expect(find.textContaining("secret"), findsNothing);
     });
 
+    // This screen has no progress row, so without the popup a scan started
+    // here ends in silence and its result is auto-cleared before the user
+    // could reach a list to read it.
+    testWidgets("announces what a scan started here found", (tester) async {
+      await openHarnesses(tester);
+      await _openRow(tester, "harness_management_scan_future-harness");
+
+      rescan.emit(
+        const CatalogRescanState.succeeded(
+          harnessCount: 1,
+          counts: CatalogRescanCounts.delta(newProjects: 2, newSessions: 5),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.textContaining("5 new sessions in 2 new projects"), findsOneWidget);
+    });
+
+    testWidgets("announces a failure rather than letting the spinner just stop", (tester) async {
+      await openHarnesses(tester);
+      await _openRow(tester, "harness_management_scan_future-harness");
+
+      rescan.emit(const CatalogRescanState.failed(harnessCount: 1));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final loc = await AppLocalizations.delegate.load(const Locale("en"));
+      expect(find.text(loc.harnessManagementScanFinishedFailed), findsOneWidget);
+    });
+
+    // The row above that list already reported it.
+    testWidgets("says nothing about a scan a list started", (tester) async {
+      await openHarnesses(tester);
+
+      rescan.emit(
+        const CatalogRescanState.succeeded(
+          harnessCount: 1,
+          counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 3),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.textContaining("3 new sessions"), findsNothing);
+    });
+
     testWidgets("a retry clears the rejection the previous attempt left", (tester) async {
       await openHarnesses(tester);
       rescan.stubStartResult(const CatalogRescanStartResult.notImportable());

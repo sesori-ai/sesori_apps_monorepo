@@ -5,9 +5,9 @@
 - **Plan slug:** `catalog-rescan`
 - **Implementation base:** `main` at
   `7b1ebe9bc629d05b5d104e76cd5dbaa1514d65a2`
-- **Series state:** Steps 1/8 to 6c/8 merged; Step 6d/8 open
-- **Current step:** quieten the scan row and its pull
-- **Next action:** land 6d, then reconcile projects-and-sessions.md in step 7
+- **Series state:** Steps 1/8 to 6d/8 merged; Step 6e/8 open
+- **Current step:** report a Settings-started scan's outcome
+- **Next action:** land 6e, then reconcile projects-and-sessions.md in step 7
 - **Origin issue:** [#961](https://github.com/sesori-ai/sesori_apps_monorepo/issues/961)
 - **External overlap:** [#1008](https://github.com/sesori-ai/sesori_apps_monorepo/issues/1008)
   owns Codex live updates; do not address it here
@@ -140,7 +140,8 @@
 | [x] | 6a/8 | `⚙️ [catalog-rescan] Route scan state through the list cubits [step 6a/8]` | 450-750 | Merged |
 | [x] | 6b/8 | `⚙️ [catalog-rescan] Show the catalog scan in the lists [step 6b/8]` | 500-800 | [PR #1103](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1103) merged |
 | [x] | 6c/8 | `🌿 [catalog-rescan] Scan one harness from Settings [step 6c/8]` | 350-600 | [PR #1113](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1113) merged |
-| [ ] | 6d/8 | `⚙️ [catalog-rescan] Quieten the scan row and its pull [step 6d/8]` | 400-700 | [PR #1114](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1114) open |
+| [x] | 6d/8 | `⚙️ [catalog-rescan] Quieten the scan row and its pull [step 6d/8]` | 400-700 | [PR #1114](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1114) merged |
+| [ ] | 6e/8 | `🌿 [catalog-rescan] Report a Settings scan's outcome [step 6e/8]` | 350-600 | Open |
 | [ ] | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 | Not started |
 | [ ] | 8/8 | `🌱 [catalog-rescan] Verify and retire the catalog rescan plan [step 8/8]` | 60-140 | Not started |
 
@@ -656,4 +657,24 @@ duplicate-emission nicety.
   through two stateless session hosts to restore a success confirmation for a
   shallow pull taken during someone else's scan, where a progress row is already
   on screen
+- **Step 6e origin:** owner question — does a Settings-started scan indicate
+  success? It does not, and the gap is one this plan created. The aggregate row
+  is hosted only by the three lists, and `_successVisibleFor` clears a success
+  after four seconds, so the outcome of a Settings-started scan was published
+  where its user could never reach it. Only start-time rejections showed there;
+  a scan that started fine and then failed was equally silent
+- **Step 6e approach:** owner chose a popup on completion over hosting the
+  aggregate row on Settings or reporting inline on the card
+- **Step 6e ownership:** the cubit claims the run at dispatch, before the start
+  request resolves, because the run can reach a terminal state while that
+  request is still awaiting its own response. A start the bridge refuses drops
+  the claim, since the card already reports it; so does a run that ends without
+  a terminal state, so a dropped claim cannot attach itself to the next run
+- **Step 6e wording reuse:** `catalogScanCountsLine` was lifted out of
+  `CatalogScanRow` so the row and the popup cannot describe one scan two ways
+- **Step 6e verification:** `flutter analyze lib test` clean on `client/app`;
+  `dart analyze --fatal-infos lib test` clean on `client/module_core`; app 897
+  tests passed, module_core 1,381 passed (9 new: 6 cubit, 3 widget). The popup
+  test was confirmed to fail with the presenter call removed
+- **Step 6e PR:** pending
 - **Final disposition:** pending

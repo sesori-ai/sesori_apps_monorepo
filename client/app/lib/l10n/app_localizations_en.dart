@@ -1848,6 +1848,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catalogScanNoHarnessDetail => 'Check your harnesses in Settings';
 
   @override
+  String harnessManagementScanFinished(String result) {
+    return 'Scan complete — $result';
+  }
+
+  @override
+  String harnessManagementScanPartlyFailed(int failed, int total) {
+    return '$failed of $total harnesses could not be scanned';
+  }
+
+  @override
+  String get harnessManagementScanFinishedFailed => 'Scan failed. Check the bridge log for details';
+
+  @override
   String get harnessManagementScan => 'Scan for sessions';
 
   @override

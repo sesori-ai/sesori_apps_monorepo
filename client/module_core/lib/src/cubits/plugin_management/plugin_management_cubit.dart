@@ -26,6 +26,13 @@ class PluginManagementCubit({
   }
 
   final CompositeSubscription _subscriptions = CompositeSubscription();
+
+  /// Whether a scan this screen started is still owed an outcome.
+  ///
+  /// Only a run this screen began is announced here. A scan a list's pull
+  /// started is already reported by the row above that list, and toasting it
+  /// again on an unrelated screen would report one run in two places.
+  bool _reportsScanOutcome = false;
   int _actionGeneration = 0;
   int _authenticationGeneration = 0;
 
@@ -205,16 +212,30 @@ class PluginManagementCubit({
     // Drop any earlier rejection first, so a retry does not read as though it
     // had already failed again before the answer arrives.
     _setScanRejection(pluginId: pluginId, result: null);
+    // Claimed before dispatch, not after: the run can reach a terminal state
+    // while this request is still awaiting its own response.
+    _reportsScanOutcome = true;
     final result = await _catalogRescanService.start(pluginId: pluginId);
     if (isClosed) return;
+    final joined = result is CatalogRescanStartAccepted || _scanningPluginIds.contains(pluginId);
+    // A start the bridge refused outright never becomes an outcome: the card
+    // reports it, and a toast would say the same thing twice.
+    if (!joined) _reportsScanOutcome = false;
     _setScanRejection(
       pluginId: pluginId,
       // A harness still in the live operation has no refusal to report. An
       // uncertain start keeps it a member precisely because the request may
       // have landed, so the card would otherwise pair a spinner with a line
       // telling the user to try again. That run belongs to the aggregate row.
-      result: result is CatalogRescanStartAccepted || _scanningPluginIds.contains(pluginId) ? null : result,
+      result: joined ? null : result,
     );
+  }
+
+  /// Clears an outcome the screen has now reported, so it is announced once.
+  void dismissCatalogScanOutcome() {
+    final current = state;
+    if (isClosed || current is! PluginManagementReady || current.scanOutcome == null) return;
+    emit(current.copyWith(scanOutcome: null));
   }
 
   void _setScanRejection({required String pluginId, required CatalogRescanStartResult? result}) {
@@ -497,6 +518,12 @@ class PluginManagementCubit({
               PluginManagementUnsupported() ||
               PluginManagementFailure() => const {},
             },
+            scanOutcome: switch (state) {
+              PluginManagementReady(:final scanOutcome) => scanOutcome,
+              PluginManagementLoading() ||
+              PluginManagementUnsupported() ||
+              PluginManagementFailure() => null,
+            },
           ),
         );
       case PluginManagementLoadResultUnsupported():
@@ -578,12 +605,42 @@ class PluginManagementCubit({
     // restore the refusal once the scan succeeded.
     final rejections = Map<String, CatalogRescanStartResult>.of(current.scanRejections)
       ..removeWhere((pluginId, _) => scanning.contains(pluginId));
-    if (const SetEquality<String>().equals(current.scanningPluginIds, scanning) &&
+    final outcome = _reportsScanOutcome ? _outcomeOf(scan) : null;
+    // A run that ends without a terminal state — cancelled, or recovered and
+    // settled quietly — has nothing to announce, so the claim is dropped
+    // rather than left to attach itself to the next run.
+    if (outcome != null || scan is CatalogRescanIdle) _reportsScanOutcome = false;
+    if (outcome == null &&
+        const SetEquality<String>().equals(current.scanningPluginIds, scanning) &&
         rejections.length == current.scanRejections.length) {
       return;
     }
-    emit(current.copyWith(scanningPluginIds: scanning, scanRejections: rejections));
+    emit(
+      current.copyWith(
+        scanningPluginIds: scanning,
+        scanRejections: rejections,
+        scanOutcome: outcome ?? current.scanOutcome,
+      ),
+    );
   }
+
+  /// The three ways a scan that actually started can end.
+  ///
+  /// Everything else is either still running or an answer the harness card
+  /// already owns, so it produces nothing to announce.
+  CatalogRescanOutcome? _outcomeOf(CatalogRescanState scan) => switch (scan) {
+    CatalogRescanSucceeded(:final counts) => CatalogRescanOutcome.succeeded(counts: counts),
+    CatalogRescanPartlyFailed(:final succeededCount, :final failedCount) => CatalogRescanOutcome.partlyFailed(
+      succeededCount: succeededCount,
+      failedCount: failedCount,
+    ),
+    CatalogRescanFailed() => const CatalogRescanOutcome.failed(),
+    CatalogRescanIdle() ||
+    CatalogRescanStarting() ||
+    CatalogRescanRunning() ||
+    CatalogRescanUnsupported() ||
+    CatalogRescanNoHarness() => null,
+  };
 
   void _onInstallProgress({required Map<String, PluginInstallProgress> installs}) {
     if (isClosed) return;

@@ -106,6 +106,23 @@ sealed class PluginAuthenticationPresentationState with _$PluginAuthenticationPr
   }) = PluginAuthenticationPresentationFailed;
 }
 
+/// How a catalog scan this screen started actually ended.
+///
+/// Only the three outcomes a *started* scan can reach. A bridge that refused
+/// the start never gets here: that answer is a [CatalogRescanStartResult] and
+/// belongs on the harness card, which is where the user aimed the request.
+@Freezed()
+sealed class CatalogRescanOutcome with _$CatalogRescanOutcome {
+  const factory succeeded({required CatalogRescanCounts counts}) = CatalogRescanOutcomeSucceeded;
+
+  const factory partlyFailed({
+    required int succeededCount,
+    required int failedCount,
+  }) = CatalogRescanOutcomePartlyFailed;
+
+  const factory failed() = CatalogRescanOutcomeFailed;
+}
+
 @Freezed()
 sealed class PluginManagementState with _$PluginManagementState {
   const factory loading() = PluginManagementLoading;
@@ -131,5 +148,13 @@ sealed class PluginManagementState with _$PluginManagementState {
     /// named. An accepted start is never recorded: the card reports it by
     /// disabling its own action, and the aggregate row reports the run.
     required Map<String, CatalogRescanStartResult> scanRejections,
+
+    /// How a scan started from this screen ended, held until it is reported.
+    ///
+    /// This screen hosts no progress row, so a scan started here would
+    /// otherwise finish in silence: the spinner simply stops, and the result
+    /// the service published is auto-cleared before the user could reach a
+    /// list to read it.
+    required CatalogRescanOutcome? scanOutcome,
   }) = PluginManagementReady;
 }
