@@ -57,6 +57,7 @@ class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHar
       home: Scaffold(
         body: AssistantMessageCard(
           projectId: null,
+          bridgeId: null,
           message: widget.message,
           streamingText: _streamingText,
           children: const <Session>[],

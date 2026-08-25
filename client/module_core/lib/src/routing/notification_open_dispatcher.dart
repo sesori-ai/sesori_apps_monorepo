@@ -83,12 +83,14 @@ class NotificationOpenDispatcher({
       return;
     }
 
+    _pendingOpenRequest = null;
     _dispatch(request);
   }
 
   void _onAuthStateChanged(AuthState state) {
     switch (state) {
       case AuthAuthenticated():
+        if (_authSession.currentState is! AuthAuthenticated) return;
         final pendingOpenRequest = _pendingOpenRequest;
         if (pendingOpenRequest == null) {
           return;
@@ -107,6 +109,7 @@ class NotificationOpenDispatcher({
       sessionId: request.sessionId,
       sessionTitle: request.sessionTitle,
       readOnly: false,
+      bridgeId: null,
     );
 
     // Replacing the stack tears down the live session detail screen and builds

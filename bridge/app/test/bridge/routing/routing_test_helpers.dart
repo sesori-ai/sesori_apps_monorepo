@@ -5,6 +5,8 @@ import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
+import "package:sesori_bridge/src/bridge/device_canvas/integration_state.dart";
+import "package:sesori_bridge/src/bridge/repositories/device_canvas_claim_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_command_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_message_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/mappers/plugin_session_mapper.dart";
@@ -22,6 +24,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/request_handler.dart";
 import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/bridge/services/device_canvas_claim_service.dart";
 import "package:sesori_bridge/src/bridge/services/pending_interaction_service.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
@@ -40,6 +43,14 @@ import "../../helpers/single_plugin_repository_test_support.dart";
 /// Builds a real [SessionUnseenService] backed by [db] for handler/router tests.
 SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginApi plugin) {
   const calculator = SessionUnseenCalculator();
+  final deviceCanvasClaimService = DeviceCanvasClaimService(
+    repository: DeviceCanvasClaimRepository(
+      claimDao: db.deviceCanvasClaimDao,
+      sessionDao: db.sessionDao,
+      now: () => DateTime.now().millisecondsSinceEpoch,
+    ),
+    integrationState: DeviceCanvasIntegrationState(),
+  );
   return SessionUnseenService(
     unseenRepository: SessionUnseenRepository(
       sessionDao: db.sessionDao,
@@ -52,6 +63,7 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
       unseenCalculator: calculator,
       filesystemApi: FakeFilesystemApi(),
     ),
+    deviceCanvasClaimService: deviceCanvasClaimService,
     viewTracker: SessionViewTracker(),
   );
 }
@@ -861,7 +873,14 @@ class _NoopSessionRepository() implements SessionRepository {
   }) async => false;
 
   @override
-  Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
+  Future<DeletedSessionSubtree> deleteSession({
+    required String sessionId,
+    required BeforePersistedSessionDelete beforePersistedDelete,
+  }) async {
+    final deleted = _deletedSession(sessionId);
+    await beforePersistedDelete(sessionIds: deleted.sessionIds);
+    return deleted;
+  }
 
   @override
   Future<bool> isSessionTombstoned({required String sessionId}) async => false;
@@ -1174,7 +1193,14 @@ class FakeSessionRepository({
   }) async => false;
 
   @override
-  Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
+  Future<DeletedSessionSubtree> deleteSession({
+    required String sessionId,
+    required BeforePersistedSessionDelete beforePersistedDelete,
+  }) async {
+    final deleted = _deletedSession(sessionId);
+    await beforePersistedDelete(sessionIds: deleted.sessionIds);
+    return deleted;
+  }
 
   @override
   Future<bool> isSessionTombstoned({required String sessionId}) async => false;

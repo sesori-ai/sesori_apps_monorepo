@@ -67,6 +67,7 @@ void main() {
         sessionId: "session/with?special&chars",
         sessionTitle: "Title / Name?",
         readOnly: false,
+        bridgeId: "bridge/with?special&chars",
       );
 
       final path = route.buildPath();
@@ -89,6 +90,54 @@ void main() {
       expect(detail.sessionId, "session/with?special&chars");
       expect(detail.sessionTitle, "Title / Name?");
       expect(detail.readOnly, isFalse);
+      expect(detail.bridgeId, "bridge/with?special&chars");
+    });
+
+    test("Device Canvas session route omits project identity and round-trips", () {
+      const route = AppRoute.deviceCanvasSession(
+        sessionId: "session/with?special&chars",
+        bridgeId: "bridge/with?special&chars",
+        readOnly: false,
+      );
+
+      final path = route.buildPath();
+      final uri = Uri.parse(path);
+      final decoded = AppRoute.fromDef(
+        def: AppRouteDef.deviceCanvasSession,
+        pathParams: {"sessionId": uri.pathSegments[1]},
+        queryParams: uri.queryParameters,
+      ) as AppRouteDeviceCanvasSession;
+
+      expect(path, startsWith("/sessions/session%2Fwith%3Fspecial%26chars?"));
+      expect(path, isNot(contains("project")));
+      expect(path, isNot(contains("%252F")));
+      expect(decoded.sessionId, "session/with?special&chars");
+      expect(decoded.bridgeId, "bridge/with?special&chars");
+      expect(decoded.readOnly, isFalse);
+    });
+
+    test("session detail editable matching preserves bridge scope", () {
+      const unscoped = AppRouteSessionDetail(
+        projectId: "project-1",
+        projectName: null,
+        sessionId: "session-1",
+        sessionTitle: null,
+        readOnly: false,
+        bridgeId: null,
+      );
+      const scoped = AppRouteSessionDetail(
+        projectId: "project-1",
+        projectName: null,
+        sessionId: "session-1",
+        sessionTitle: null,
+        readOnly: false,
+        bridgeId: "bridge-1",
+      );
+
+      expect(unscoped.showsEditableLocation(location: Uri.parse(unscoped.buildPath())), isTrue);
+      expect(scoped.showsEditableLocation(location: Uri.parse(scoped.buildPath())), isTrue);
+      expect(unscoped.showsEditableLocation(location: Uri.parse(scoped.buildPath())), isFalse);
+      expect(scoped.showsEditableLocation(location: Uri.parse(unscoped.buildPath())), isFalse);
     });
 
     test("session diffs with name encodes path params exactly once and round-trips", () {
@@ -96,6 +145,7 @@ void main() {
         projectId: "project/with?special&chars",
         projectName: "Project / Name?",
         sessionId: "session/with?special&chars",
+        bridgeId: "bridge/with?special&chars",
       );
 
       final path = route.buildPath();
@@ -119,6 +169,26 @@ void main() {
       expect(diffs.projectId, "project/with?special&chars");
       expect(diffs.projectName, "Project / Name?");
       expect(diffs.sessionId, "session/with?special&chars");
+      expect(diffs.bridgeId, "bridge/with?special&chars");
+    });
+
+    test("session diffs preserves unscoped navigation", () {
+      const route = AppRoute.sessionDiffs(
+        projectId: "project-1",
+        projectName: null,
+        sessionId: "session-1",
+        bridgeId: null,
+      );
+
+      final uri = Uri.parse(route.buildPath());
+      final decoded = AppRoute.fromDef(
+        def: AppRouteDef.sessionDiffs,
+        pathParams: const {"projectId": "project-1", "sessionId": "session-1"},
+        queryParams: uri.queryParameters,
+      ) as AppRouteSessionDiffs;
+
+      expect(uri.queryParameters, isNot(contains(bridgeIdQueryParam)));
+      expect(decoded.bridgeId, isNull);
     });
   });
 }

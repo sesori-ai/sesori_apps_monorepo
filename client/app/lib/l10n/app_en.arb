@@ -438,6 +438,70 @@
   "sessionDetailEmpty": "No messages yet",
   "sessionDetailErrorTitle": "Failed to load messages",
   "sessionDetailRetry": "Retry",
+  "deviceCanvasLinkWaiting": "Waiting for the expected Sesori bridge...",
+  "deviceCanvasLinkUnavailable": "This Device Canvas session is not available from the connected Sesori bridge or account.",
+  "deviceCanvasTitle": "Device Canvas",
+  "deviceCanvasLoading": "Loading Device Canvas status",
+  "deviceCanvasBannerLabel": "Device Canvas. {status}",
+  "@deviceCanvasBannerLabel": {
+    "placeholders": {"status": {"type": "String"}}
+  },
+  "deviceCanvasOpenDetailsHint": "Open Device Canvas details",
+  "deviceCanvasRetryHint": "Retry Device Canvas status",
+  "deviceCanvasDisconnected": "Device Canvas is disconnected",
+  "deviceCanvasUnavailable": "Device Canvas status is unavailable",
+  "deviceCanvasNoDevices": "No devices available",
+  "deviceCanvasSummary": "{available} available, {assigned} assigned here",
+  "@deviceCanvasSummary": {
+    "placeholders": {
+      "available": {"type": "int"},
+      "assigned": {"type": "int"}
+    }
+  },
+  "deviceCanvasInventoryTruncated": "Additional devices are not shown",
+  "deviceCanvasDevicePresent": "Available",
+  "deviceCanvasDeviceMissing": "Not currently available",
+  "deviceCanvasUnknownDevice": "Unnamed device",
+  "deviceCanvasUnknownSession": "another session",
+  "deviceCanvasDeviceUnclaimed": "Unclaimed",
+  "deviceCanvasDeviceClaimedHere": "Assigned to this session",
+  "deviceCanvasDeviceClaimedElsewhere": "Assigned to {sessionTitle}",
+  "@deviceCanvasDeviceClaimedElsewhere": {
+    "placeholders": {"sessionTitle": {"type": "String"}}
+  },
+  "deviceCanvasClaim": "Assign",
+  "deviceCanvasReassign": "Reassign",
+  "deviceCanvasRelease": "Release",
+  "deviceCanvasClaimDevice": "Assign {deviceName}",
+  "@deviceCanvasClaimDevice": {
+    "placeholders": {"deviceName": {"type": "String"}}
+  },
+  "deviceCanvasReassignDevice": "Reassign {deviceName}",
+  "@deviceCanvasReassignDevice": {
+    "placeholders": {"deviceName": {"type": "String"}}
+  },
+  "deviceCanvasReleaseDevice": "Release {deviceName}",
+  "@deviceCanvasReleaseDevice": {
+    "placeholders": {"deviceName": {"type": "String"}}
+  },
+  "deviceCanvasUpdatingDevice": "Updating {deviceName}",
+  "@deviceCanvasUpdatingDevice": {
+    "placeholders": {"deviceName": {"type": "String"}}
+  },
+  "deviceCanvasReassignTitle": "Reassign {deviceName}?",
+  "@deviceCanvasReassignTitle": {
+    "placeholders": {"deviceName": {"type": "String"}}
+  },
+  "deviceCanvasReassignMessage": "This removes {deviceName} from its current session and assigns it here.",
+  "@deviceCanvasReassignMessage": {
+    "placeholders": {"deviceName": {"type": "String"}}
+  },
+  "deviceCanvasReadOnly": "Assignments are read-only in this session.",
+  "deviceCanvasCancel": "Cancel",
+  "deviceCanvasMutationFailed": "The Device Canvas update failed. Try again.",
+  "deviceCanvasMutationConflict": "This device was updated elsewhere. Review its current assignment and try again.",
+  "deviceCanvasMutationUnavailable": "This device or session is no longer available.",
+  "deviceCanvasMutationUncertain": "The request may have completed, but its result could not be confirmed. Status was refreshed.",
   "sessionDetailPromptHint": "Ask anything...",
   "sessionDetailHoldToTalk": "Hold to talk",
   "@sessionDetailHoldToTalk": {

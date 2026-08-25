@@ -56,6 +56,7 @@ Widget _buildApp({
   ChatInputMode chatInputMode = ChatInputMode.voiceFirst,
   StubChatInputModeCubit? chatInputModeCubit,
   bool startAtPreviousScreen = false,
+  String? bridgeId,
 }) {
   final router = GoRouter(
     initialLocation: startAtPreviousScreen ? "/previous" : "/",
@@ -75,18 +76,21 @@ Widget _buildApp({
         path: "/",
         builder: (context, state) => BlocProvider<SessionDetailCubit>.value(
           value: cubit,
-          child: const SessionDetailBody(
+          child: SessionDetailBody(
             projectId: "project-1",
             projectName: null,
             sessionId: "session-1",
             sessionTitle: "Session",
             readOnly: false,
+            bridgeId: bridgeId,
           ),
         ),
       ),
       GoRoute(
         path: "/projects/:projectId/sessions/:sessionId/diffs",
-        builder: (context, state) => const Scaffold(body: Text("Diffs")),
+        builder: (context, state) => Scaffold(
+          body: Text('Diffs bridgeId=${state.uri.queryParameters["bridgeId"]}'),
+        ),
       ),
     ],
   );
@@ -704,7 +708,17 @@ void main() {
     await tester.tap(find.byIcon(TablerRegular.git_compare));
     await tester.pumpAndSettle();
 
-    expect(find.text("Diffs"), findsOneWidget);
+    expect(find.text("Diffs bridgeId=null"), findsOneWidget);
+  });
+
+  testWidgets("diff button preserves bridge scope", (tester) async {
+    await tester.pumpWidget(_buildApp(cubit: cubit, bridgeId: "bridge-1"));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(TablerRegular.git_compare));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Diffs bridgeId=bridge-1"), findsOneWidget);
   });
 
   testWidgets("hides the diff button for archived sessions", (tester) async {

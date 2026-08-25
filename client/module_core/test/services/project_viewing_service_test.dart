@@ -108,6 +108,18 @@ void main() {
       expect(sent, ["project-1"], reason: "unchanged ready snapshots must not resend");
     });
 
+    test("a verified Device Canvas detail declares its resolved project", () async {
+      routeSource.routes.add(AppRouteDef.deviceCanvasSession);
+      final detail = service.beginDetailClaim(projectId: "project-1");
+      await drain();
+      expect(sent, isEmpty);
+
+      service.markClaimReady(claim: detail, projectId: "project-1");
+      await drain();
+
+      expect(sent, ["project-1"]);
+    });
+
     test("same-project list to detail handoff never declares a false clear", () async {
       readyList("project-1");
       await drain();

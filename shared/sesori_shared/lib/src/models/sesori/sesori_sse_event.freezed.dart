@@ -52,6 +52,10 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriCommandCatalogUpdated.fromJson(
             json
           );
+                case 'device_canvas.changed':
+          return SesoriDeviceCanvasChanged.fromJson(
+            json
+          );
                 case 'session.created':
           return SesoriSessionCreated.fromJson(
             json
@@ -831,6 +835,45 @@ as String,
 
 
 }
+
+/// @nodoc
+@JsonSerializable()
+
+class SesoriDeviceCanvasChanged implements SesoriSseEvent {
+  const SesoriDeviceCanvasChanged({ String? $type}): $type = $type ?? 'device_canvas.changed';
+  factory SesoriDeviceCanvasChanged.fromJson(Map<String, dynamic> json) => _$SesoriDeviceCanvasChangedFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SesoriDeviceCanvasChangedToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriDeviceCanvasChanged);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'SesoriSseEvent.deviceCanvasChanged()';
+}
+
+
+}
+
+
+
 
 /// @nodoc
 @JsonSerializable()

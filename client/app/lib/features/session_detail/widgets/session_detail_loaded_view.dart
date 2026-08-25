@@ -9,6 +9,7 @@ import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/agent_model_buttons.dart";
 import "../../../core/widgets/composer_surface_style.dart";
 import "background_tasks_bar.dart";
+import "device_canvas_status_banner.dart";
 import "prompt_input.dart";
 import "session_detail_message_list.dart";
 import "session_detail_scaffold_sections.dart";
@@ -16,6 +17,7 @@ import "session_detail_scaffold_sections.dart";
 class SessionDetailLoadedView extends StatefulWidget {
   final String? projectId;
   final String sessionId;
+  final String? bridgeId;
   final SessionDetailLoaded state;
   final bool readOnly;
   final VoidCallback onShowPendingQuestions;
@@ -25,6 +27,7 @@ class SessionDetailLoadedView extends StatefulWidget {
     super.key,
     required this.projectId,
     required this.sessionId,
+    required this.bridgeId,
     required this.state,
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
@@ -34,6 +37,7 @@ class SessionDetailLoadedView extends StatefulWidget {
     super.key,
     required this.projectId,
     required this.sessionId,
+    required this.bridgeId,
     required this.state,
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
@@ -109,6 +113,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                         valueListenable: _bottomControlsHeight,
                         builder: (context, bottomControlsHeight, _) => SessionDetailMessageList(
                           projectId: widget.projectId,
+                          bridgeId: widget.bridgeId,
                           messages: state.messages,
                           sendingSubmission: state.sendingSubmission,
                           queuedMessages: state.queuedMessages,
@@ -154,6 +159,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (state.isRefreshing) const LinearProgressIndicator(),
+              DeviceCanvasStatusBanner(state: state.deviceCanvas, readOnly: widget.readOnly),
               // Archiving is permanent, so this session is audit-only: say so
               // where the composer used to be, and drop the pending banners —
               // an archived session's requests can never be answered.
@@ -200,6 +206,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                       builder: (context, surfaceStyle, _) => BackgroundTasksBar(
                         surfaceStyle: surfaceStyle,
                         projectId: widget.projectId,
+                        bridgeId: widget.bridgeId,
                         children: state.children,
                         childStatuses: state.childStatuses,
                       ),

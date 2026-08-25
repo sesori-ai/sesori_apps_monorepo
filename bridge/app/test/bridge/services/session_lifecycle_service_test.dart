@@ -3,8 +3,10 @@ import "dart:io";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
+import "package:sesori_bridge/src/bridge/device_canvas/integration_state.dart";
 import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
+import "package:sesori_bridge/src/bridge/repositories/device_canvas_claim_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
@@ -12,6 +14,7 @@ import "package:sesori_bridge/src/bridge/repositories/models/verified_github_log
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/bridge/services/device_canvas_claim_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_cleanup_result.dart";
 import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
@@ -46,6 +49,7 @@ void main() {
         sessionOperationDispatcher: operationDispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
         chatHistoryService: createTestChatHistory().service,
+        deviceCanvasClaimService: _claimService(db),
       );
     });
 
@@ -321,6 +325,7 @@ void main() {
         sessionOperationDispatcher: operationDispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
         chatHistoryService: createTestChatHistory().service,
+        deviceCanvasClaimService: _claimService(db),
       );
       await db.sessionDao.insertSession(
         sessionId: "root-session",
@@ -344,6 +349,13 @@ void main() {
     });
 
     test("archive routes plugin I/O through the stored backend id", () async {
+      final claimService = _claimService(db);
+      await claimService.claim(
+        bridgeId: "bridge-a",
+        deviceKey: "ios:booted",
+        sessionId: "root-session",
+      );
+
       final update = await service.updateArchiveStatus(
         sessionId: "root-session",
         archived: true,
@@ -356,6 +368,7 @@ void main() {
       expect(update.changed, isTrue);
       expect(plugin.lastArchivedSessionId, "backend-session");
       expect((await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt, isNotNull);
+      expect(await db.deviceCanvasClaimDao.getClaimsForBridge(bridgeId: "bridge-a"), isEmpty);
     });
 
     test("archived: false on an archived session is refused and keeps it archived", () async {
@@ -400,6 +413,17 @@ void main() {
       expect((await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt, isNull);
     });
   });
+}
+
+DeviceCanvasClaimService _claimService(AppDatabase db) {
+  return DeviceCanvasClaimService(
+    repository: DeviceCanvasClaimRepository(
+      claimDao: db.deviceCanvasClaimDao,
+      sessionDao: db.sessionDao,
+      now: () => DateTime.now().millisecondsSinceEpoch,
+    ),
+    integrationState: DeviceCanvasIntegrationState(),
+  );
 }
 
 Future<CleanupResult> _cleanup({

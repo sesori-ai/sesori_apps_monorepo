@@ -69,6 +69,7 @@ void main() {
             sessionId: "session-1",
             sessionTitle: "Weekly planning",
             readOnly: false,
+            bridgeId: null,
           ).buildPath(),
         ]),
       );
@@ -96,6 +97,19 @@ void main() {
       // route, which renders without the composer. The notification wants the
       // editable screen, so it must still navigate.
       routeSource.currentLocation = "/projects/project-1/sessions/session-1?readOnly=true";
+      pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
+        projectId: "project-1",
+        sessionId: "session-1",
+        sessionTitle: "Weekly planning",
+      );
+
+      await dispatcher.start();
+
+      expect(routeDispatcher.replacedStacks, hasLength(1));
+    });
+
+    test("rebuilds when that session is gated to a Device Canvas bridge", () async {
+      routeSource.currentLocation = "/projects/project-1/sessions/session-1?readOnly=false&bridgeId=bridge-1";
       pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
         projectId: "project-1",
         sessionId: "session-1",
@@ -170,6 +184,7 @@ void main() {
             sessionId: "session-2",
             sessionTitle: "Latest title",
             readOnly: false,
+            bridgeId: null,
           ).buildPath(),
         ),
       );
@@ -197,6 +212,7 @@ void main() {
             sessionId: "session-1",
             sessionTitle: "Weekly planning",
             readOnly: false,
+            bridgeId: null,
           ).buildPath(),
         ),
       );

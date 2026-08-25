@@ -869,6 +869,27 @@ class const BridgeRuntimeRunner._() {
       );
       final activeRuntime = runtime;
 
+      final previousBridgeId = await bridgeIdStorage.read();
+      await bridgeRegistrationService.ensureRegistered();
+      final currentBridgeId = bridgeRegistrationService.bridgeId;
+      if (currentBridgeId == null) {
+        throw StateError("Bridge registration completed without an assigned bridge id");
+      }
+      if (previousBridgeId != null && previousBridgeId != currentBridgeId) {
+        await composition.deviceCanvasClaimService.cleanupBridgeIdentity(bridgeId: previousBridgeId);
+      }
+      await activeRuntime.cleanupDeviceCanvasClaimsOnStartup(bridgeId: currentBridgeId);
+      try {
+        await activeRuntime.startDeviceCanvasIpcServer(
+          dataDirectory: options.dataDirectory,
+          bridgeId: currentBridgeId,
+          processGeneration: "${io.pid}:${DateTime.now().microsecondsSinceEpoch}",
+          bridgeRegistrations: bridgeRegistrationService.registrations,
+        );
+      } on Object catch (error, stackTrace) {
+        Log.w("failed to start Device Canvas IPC server", error, stackTrace);
+      }
+
       // Run before imports, debug routes, or relay traffic can load a session
       // into a backend process and retain handles to its persisted storage.
       await activeRuntime.reconcileDeletedSessionStorage();

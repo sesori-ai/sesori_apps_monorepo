@@ -387,6 +387,7 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
               sessionId: session.id,
               sessionTitle: session.title,
               readOnly: false,
+              bridgeId: null,
             ),
           );
         }

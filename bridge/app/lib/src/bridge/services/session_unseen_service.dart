@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../repositories/project_repository.dart";
 import "../repositories/session_unseen_repository.dart";
+import "device_canvas_claim_service.dart";
 import "session_view_tracker.dart";
 
 /// Thrown by [SessionUnseenService.markUnread] when the target session has no
@@ -33,6 +34,7 @@ typedef UnseenChange = ({
 class SessionUnseenService({
   required final SessionUnseenRepository _unseenRepository,
   required final ProjectRepository _projectRepository,
+  required final DeviceCanvasClaimService _deviceCanvasClaimService,
   required final SessionViewTracker _viewTracker,
   int Function()? now,
 }) {
@@ -290,7 +292,14 @@ class SessionUnseenService({
   /// Shared delete pipeline: removes the row (no-op when absent) and emits the
   /// cleared per-session state plus the recomputed project aggregate.
   Future<void> _deleteRowAndEmit({required String sessionId, required String projectId}) async {
-    await _unseenRepository.deleteSession(sessionId: sessionId);
+    List<DeviceCanvasClaimRemoved> claimRemovals = const [];
+    await _unseenRepository.deleteSession(
+      sessionId: sessionId,
+      beforeDelete: (sessionIds) async {
+        claimRemovals = await _deviceCanvasClaimService.snapshotRemovalsForSessions(sessionIds: sessionIds);
+      },
+    );
+    _deviceCanvasClaimService.publishRemovals(claimRemovals);
     await _emitDeleted(sessionId: sessionId, projectId: projectId);
   }
 

@@ -1,7 +1,10 @@
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/bridge/device_canvas/integration_state.dart";
+import "package:sesori_bridge/src/bridge/repositories/device_canvas_claim_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
+import "package:sesori_bridge/src/bridge/services/device_canvas_claim_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:test/test.dart";
@@ -14,6 +17,7 @@ void main() {
   group("SessionUnseenService", () {
     late AppDatabase db;
     late SessionViewTracker viewTracker;
+    late DeviceCanvasClaimService deviceCanvasClaimService;
     late SessionUnseenService service;
     var clock = 1000;
 
@@ -55,9 +59,18 @@ void main() {
       db = createTestDatabase();
       clock = 1000;
       viewTracker = SessionViewTracker();
+      deviceCanvasClaimService = DeviceCanvasClaimService(
+        repository: DeviceCanvasClaimRepository(
+          claimDao: db.deviceCanvasClaimDao,
+          sessionDao: db.sessionDao,
+          now: () => clock,
+        ),
+        integrationState: DeviceCanvasIntegrationState(),
+      );
       service = SessionUnseenService(
         unseenRepository: unseenRepository(),
         projectRepository: projectRepository(),
+        deviceCanvasClaimService: deviceCanvasClaimService,
         viewTracker: viewTracker,
         now: () => clock,
       );
@@ -65,6 +78,7 @@ void main() {
 
     tearDown(() async {
       await service.dispose();
+      await deviceCanvasClaimService.dispose();
       await viewTracker.dispose();
       await db.close();
     });
@@ -316,6 +330,44 @@ void main() {
       await service.recordSessionDeleted(sessionId: "s1", projectId: "p1");
       // Row is gone -> session is no longer unseen and can't keep the project bold.
       expect(await projectRepository().projectHasUnseenChanges(projectId: "p1"), isFalse);
+    });
+
+    test("recordSessionDeleted publishes claim removals for the cascaded subtree", () async {
+      await persistRoot(sessionId: "root");
+      await db.sessionDao.insertObservedChild(
+        sessionId: "child",
+        backendSessionId: "backend-child",
+        projectId: "p1",
+        parentSessionId: "root",
+        directory: "/projects/p1",
+        catalogTitle: null,
+        archivedAt: null,
+        createdAt: 501,
+        updatedAt: 501,
+        projectionUpdatedAt: 501,
+        pluginId: "opencode",
+      );
+      for (final (sessionId, deviceKey) in [("root", "ios:root"), ("child", "ios:child")]) {
+        await db.deviceCanvasClaimDao.insertClaimIfAbsent(
+          bridgeId: "bridge-a",
+          deviceKey: deviceKey,
+          sessionId: sessionId,
+          claimRevision: 1,
+          claimedAt: 1,
+          updatedAt: 1,
+        );
+      }
+      final removals = <DeviceCanvasClaimRemoved>[];
+      final subscription = deviceCanvasClaimService.changes
+          .where((change) => change is DeviceCanvasClaimRemoved)
+          .cast<DeviceCanvasClaimRemoved>()
+          .listen(removals.add);
+
+      await service.recordSessionDeleted(sessionId: "root", projectId: "p1");
+
+      expect(removals.map((removal) => removal.deviceKey), unorderedEquals(["ios:root", "ios:child"]));
+      expect(await db.deviceCanvasClaimDao.getClaimsForBridge(bridgeId: "bridge-a"), isEmpty);
+      await subscription.cancel();
     });
 
     test("recordSessionDeleted emits against the STORED project id, not the event's", () async {
@@ -667,6 +719,7 @@ void main() {
       final failing = SessionUnseenService(
         unseenRepository: unseenRepository(),
         projectRepository: _ThrowingProjectRepository(),
+        deviceCanvasClaimService: deviceCanvasClaimService,
         viewTracker: SessionViewTracker(),
         now: () => clock,
       );
@@ -702,6 +755,7 @@ void main() {
       final failing = SessionUnseenService(
         unseenRepository: unseenRepository(),
         projectRepository: _ThrowingProjectRepository(),
+        deviceCanvasClaimService: deviceCanvasClaimService,
         viewTracker: SessionViewTracker(),
         now: () => clock,
       );

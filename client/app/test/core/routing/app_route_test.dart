@@ -69,8 +69,20 @@ void main() {
         sessionId: "ses-456",
         sessionTitle: null,
         readOnly: false,
+        bridgeId: null,
       ).buildPath();
       expect(result, "/projects/proj-123/sessions/ses-456?readOnly=false");
+    });
+
+    test("builds Device Canvas session routes without project identity", () {
+      final result = const AppRoute.deviceCanvasSession(
+        sessionId: "ses/456",
+        bridgeId: "bridge-1",
+        readOnly: false,
+      ).buildPath();
+
+      expect(result, "/sessions/ses%2F456?bridgeId=bridge-1&readOnly=false");
+      expect(result, isNot(contains("project")));
     });
 
     test("includes projectName as query param for sessions", () {
@@ -98,11 +110,13 @@ void main() {
         sessionId: "ses-1",
         sessionTitle: "hello world & more",
         readOnly: true,
+        bridgeId: "bridge-1",
       ).buildPath();
       expect(result, contains("/projects/proj-1/sessions/ses-1?"));
       expect(result, isNot(contains("& more")));
       expect(result, contains("name=Project+One"));
       expect(result, contains("readOnly=true"));
+      expect(result, contains("bridgeId=bridge-1"));
     });
 
     test("always includes readOnly in query when false", () {
@@ -112,6 +126,7 @@ void main() {
         sessionId: "ses-1",
         sessionTitle: null,
         readOnly: false,
+        bridgeId: null,
       ).buildPath();
       expect(result, "/projects/proj-1/sessions/ses-1?readOnly=false");
     });
@@ -123,6 +138,7 @@ void main() {
         sessionId: "id/with?special&chars",
         sessionTitle: null,
         readOnly: false,
+        bridgeId: null,
       ).buildPath();
       expect(
         result,
@@ -162,6 +178,22 @@ void main() {
       final page = AppRouteDef.projects.toGoRoute().pageBuilder!(_FakeBuildContext(), _FakeGoRouterState());
       expect(page, isA<MaterialPage<void>>());
       expect((page as MaterialPage<void>).child, isA<ProjectListScreen>());
+    });
+
+    test("Device Canvas session route builds a projectless detail screen", () {
+      final page = AppRouteDef.deviceCanvasSession.toGoRoute().pageBuilder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(
+          pathParameters: {"sessionId": "ses-1"},
+          queryParameters: {"bridgeId": "bridge-1", "readOnly": "false"},
+        ),
+      ) as MaterialPage<void>;
+
+      expect(page.child, isA<DeviceCanvasSessionDetailScreen>());
+      final screen = page.child as DeviceCanvasSessionDetailScreen;
+      expect(screen.sessionId, "ses-1");
+      expect(screen.bridgeId, "bridge-1");
+      expect(screen.readOnly, isFalse);
     });
 
     // A CupertinoPage, so the bottom-up modal slide is the same on Android,
@@ -293,7 +325,13 @@ void main() {
 
       expect(
         flatPaths,
-        equals([AppRouteDef.splash.path, AppRouteDef.login.path, AppRouteDef.projects.path, AppRouteDef.settings.path]),
+        equals([
+          AppRouteDef.splash.path,
+          AppRouteDef.login.path,
+          AppRouteDef.projects.path,
+          AppRouteDef.deviceCanvasSession.path,
+          AppRouteDef.settings.path,
+        ]),
       );
       expect(shell.routes, hasLength(1));
       expect(
@@ -306,6 +344,7 @@ void main() {
           AppRouteDef.newSession.path,
           AppRouteDef.sessionDetail.path,
           AppRouteDef.sessionDiffs.path,
+          AppRouteDef.deviceCanvasSession.path,
           AppRouteDef.settings.path,
           AppRouteDef.settingsNotifications.path,
           AppRouteDef.settingsHarnesses.path,
@@ -376,12 +415,37 @@ void main() {
       expect(screen.readOnly, isTrue);
     });
 
+    test("detail route changes page identity when only the Device Canvas bridge changes", () {
+      final detailRoute = _sessionDetailRoute();
+      final bridgeOne = detailRoute.pageBuilder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(
+          pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"},
+          queryParameters: {"bridgeId": "bridge-1", "readOnly": "false"},
+        ),
+      );
+      final bridgeTwo = detailRoute.pageBuilder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(
+          pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"},
+          queryParameters: {"bridgeId": "bridge-2", "readOnly": "false"},
+        ),
+      );
+
+      expect(bridgeOne.key, isNot(bridgeTwo.key));
+      final bridgeTwoScope = (bridgeTwo as CustomTransitionPage<void>).child as ImperativePaneRouteScope;
+      expect((bridgeTwoScope.child as SessionDetailScreen).bridgeId, "bridge-2");
+    });
+
     test("diffs route preserves typed route decoding and stable key", () {
       final diffsRoute = _sessionDiffsRoute();
 
       final page = diffsRoute.pageBuilder!(
         _FakeBuildContext(),
-        _FakeGoRouterState(pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"}),
+        _FakeGoRouterState(
+          pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"},
+          queryParameters: {"bridgeId": "bridge-1"},
+        ),
       );
       final scope = (page as CustomTransitionPage<void>).child as ImperativePaneRouteScope;
       final widget = scope.child;
@@ -391,6 +455,7 @@ void main() {
       expect(screen.key, const ValueKey("session-diffs-ses-99"));
       expect(screen.projectId, "proj-42");
       expect(screen.sessionId, "ses-99");
+      expect(screen.bridgeId, "bridge-1");
     });
 
     group("nested route tree invariants", () {
@@ -432,11 +497,12 @@ void main() {
         expect(sessionsRoute.routes.whereType<GoRoute>().map((route) => route.path), equals(["new", ":sessionId"]));
       });
 
-      test("only non-session routes remain top-level GoRoutes", () {
+      test("only shell-independent routes remain top-level GoRoutes", () {
         expect(buildAppRoutes().whereType<GoRoute>().map((route) => route.path), [
           AppRouteDef.splash.path,
           AppRouteDef.login.path,
           AppRouteDef.projects.path,
+          AppRouteDef.deviceCanvasSession.path,
           AppRouteDef.settings.path,
         ]);
       });
@@ -488,6 +554,7 @@ void main() {
               sessionId: "ses_1",
               sessionTitle: "Session Title",
               readOnly: false,
+              bridgeId: null,
             ).buildPath(),
           ],
         ),
@@ -508,6 +575,7 @@ void main() {
             sessionId: "ses_1",
             sessionTitle: "Session Title",
             readOnly: false,
+            bridgeId: null,
           ).buildPath(),
         ]),
       );

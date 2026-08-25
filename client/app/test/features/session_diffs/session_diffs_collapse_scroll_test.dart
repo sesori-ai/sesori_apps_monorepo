@@ -51,7 +51,11 @@ Future<void> _pumpLoadedScreen(WidgetTester tester) async {
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: const SessionDiffsScreen(projectId: "project-1", sessionId: "session-1"),
+        home: const SessionDiffsScreen(
+          projectId: "project-1",
+          sessionId: "session-1",
+          bridgeId: null,
+        ),
       ),
     ),
   );

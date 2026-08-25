@@ -96,6 +96,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
       home: Scaffold(
         body: SessionDetailMessageList(
           projectId: null,
+          bridgeId: null,
           onLoadOlderMessages: widget.onLoadOlderMessages,
           messages: _messages,
           sendingSubmission: _sendingSubmission,

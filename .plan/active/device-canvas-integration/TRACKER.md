@@ -5,10 +5,10 @@
 - **Plan slug:** `device-canvas-integration`
 - **Implementation base:** `upstream/main` at `5c50f38a`
 - **Current branch:** `device-canvas-integration-step-1`
-- **Series state:** Step 1 plan prepared; no production implementation started
-- **Current step:** publish the reviewed plan
-- **Next action:** open/review Step 1, then begin bridge claim persistence only
-  after the plan is accepted
+- **Series state:** Steps 1-5 implemented and verified; Step 6 is ready
+- **Current step:** add OpenCode-native simulator tools
+- **Next action:** bind list, claim, and release operations to the invoking
+  OpenCode session's canonical identity and verify real agent behavior
 
 ## Locked Decisions
 
@@ -28,7 +28,9 @@
   ownership.
 - [x] Local IPC is loopback-only with a rotating bearer secret delivered through
   an owner-readable rendezvous file.
-- [x] Deep links reuse the existing session-detail route and include bridge scope.
+- [x] Device Canvas links omit project identity, enter a bridge-scoped transient
+  resolver, and replace themselves with the canonical session-detail stack only
+  after exact identity verification.
 - [x] OpenCode is the first autonomous agent adapter.
 - [x] Relay requests carry Phase 2 signaling only, never continuous media/input.
 - [x] WebRTC SRTP/DataChannel is the preferred media/input plane, subject to the
@@ -39,7 +41,8 @@
 
 ## Complexity Guardrails
 
-- [x] One durable claim table, not an event store or Device Canvas database.
+- [x] One durable claim table plus one bounded per-bridge revision-counter table,
+  not an event store or Device Canvas database.
 - [x] Separate claim, presence, and integration-connectivity state machines.
 - [x] Normal Bridge table/DAO -> repository -> service -> transport layering.
 - [x] No Drift writes from local IPC or relay handlers.
@@ -49,7 +52,8 @@
 - [x] No generic plugin-extension framework for this feature.
 - [x] No fake cross-backend autonomous-tool abstraction.
 - [x] Additive client/bridge contracts with unsupported degradation.
-- [x] No second session-detail route.
+- [x] One transient projectless resolver route, with no duplicate session-detail
+  surface or pre-verification content load.
 - [x] No media-specific top-level `RelayMessage` variant.
 - [x] No persisted peer, ICE, TURN, or stream-lease state.
 - [x] No iOS production implementation before all feasibility gates pass.
@@ -59,13 +63,13 @@
 
 | Done | Step | Repository | State |
 |---|---|---|---|
-| [ ] | 1/12 - Publish plan | Sesori | Prepared on `device-canvas-integration-step-1` |
-| [ ] | 2/12 - Persist claims | Sesori | Blocked on Step 1 acceptance |
-| [ ] | 3/12 - Connect local inventory | Sesori | Blocked on Step 2 |
-| [ ] | 4/12 - Show claims and deep-link | Device Canvas | Blocked on Step 3 contract |
-| [ ] | 5/12 - Add client status/deep links | Sesori | Blocked on Steps 3-4 |
-| [ ] | 6/12 - Add OpenCode tools | Sesori | Blocked on Step 2 service and Step 3 inventory |
-| [ ] | 7/12 - Verify Phase 1 | Both | Blocked on Steps 2-6 |
+| [x] | 1/12 - Publish plan | Sesori | Published in `00ca3a94` |
+| [x] | 2/12 - Persist claims | Sesori | Implemented locally; focused and full verification passed |
+| [x] | 3/12 - Connect local inventory | Sesori | Implemented locally; architecture and review gates passed |
+| [x] | 4/12 - Show claims and deep-link | Device Canvas | Implemented locally; protocol, IPC, and live-device verification passed |
+| [x] | 5/12 - Add client status/deep links | Sesori | Implemented locally; strict analysis, full suites, builds, and independent review passed |
+| [ ] | 6/12 - Add OpenCode tools | Sesori | Ready; Steps 2-5 service and client contracts verified |
+| [ ] | 7/12 - Verify Phase 1 | Both | Blocked on Step 6 |
 | [ ] | 8/12 - Prove media feasibility | Both | Blocked on Phase 1 acceptance |
 | [ ] | 9/12 - Authorize/signaling streams | Sesori | Blocked on Step 8 decisions |
 | [ ] | 10/12 - Provision TURN | Infrastructure | Blocked on Step 8 network decision |
@@ -81,7 +85,8 @@
 - [x] Distinguish user-dispatched commands from autonomous backend-native tools.
 - [x] Define one authoritative claim owner and independent presence/connectivity.
 - [x] Define same-user local IPC authentication and credential bootstrap.
-- [x] Define bridge-scoped deep-link identity and reuse the existing route.
+- [x] Define bridge-scoped projectless deep-link identity and canonical route
+  resolution.
 - [x] Keep media off the JSON request/SSE data path.
 - [x] Define Android, WebRTC/TURN, and iOS feasibility gates.
 - [x] Record security, compatibility, failure, complexity, and verification
@@ -92,19 +97,20 @@
 
 ## Phase 1 Acceptance Checklist
 
-- [ ] Same-session claim is idempotent.
-- [ ] Different-session claim conflicts without stealing.
-- [ ] Different sessions can own different devices concurrently.
+- [x] Same-session claim is idempotent.
+- [x] Different-session claim conflicts without stealing.
+- [x] Different sessions can own different devices concurrently.
 - [ ] Agent calls infer canonical session identity and cannot name another
   session.
-- [ ] Device Canvas and Bridge restart recover claims and presence correctly.
-- [ ] Device stop/restart retains ownership while changing presence.
-- [ ] Archive, deletion, explicit release, and bridge-identity change release.
-- [ ] Bridge takeover does not mutate ownership.
-- [ ] Device Canvas badge and accessibility identify the correct owner.
-- [ ] Deep link opens the exact bridge/project/session route.
-- [ ] Offline bridge and missing/wrong-account links fail safely.
-- [ ] Old bridge/client/Device Canvas combinations degrade as documented.
+- [x] Device Canvas and Bridge restart recover claims and presence correctly.
+- [x] Device stop/restart retains ownership while changing presence.
+- [x] Archive, deletion, explicit release, and bridge-identity change release.
+- [x] Bridge takeover does not mutate ownership.
+- [x] Device Canvas badge and accessibility identify the correct owner.
+- [x] Deep link verifies the exact bridge/session identity, derives the canonical
+  project, and normalizes to the existing session-detail stack.
+- [x] Offline bridge and missing/wrong-account links fail safely.
+- [x] Old bridge/client/Device Canvas combinations degrade as documented.
 - [ ] OpenCode agent tools pass real-session end-to-end use.
 
 ## Phase 2 Entry-Gate Checklist
@@ -146,6 +152,12 @@
   signaling-only RelayMessage use; Device Canvas ownership of scrcpy/DeviceKit
 - **Oracle consultation:** agreed with bridge-owned claims, backend-neutral service,
   plugin adapters, Android-first WebRTC plane, TURN requirement, and iOS gate
+- **Implementation review:** Step 3 passed architecture re-review on 2026-08-24
+  after moving deletion claim-removal capture into the persisted delete
+  transaction and adding deterministic late-claim race coverage
+- **Step 5 review:** independent bridge and client re-reviews on 2026-08-25 found
+  no remaining correctness, security, privacy, or test findings after the final
+  transaction-race and reconciliation fixes
 
 ## Verification Record
 
@@ -160,11 +172,86 @@
 - Dart/Flutter/Swift suites are intentionally not required for this plan-only
   step under repository documentation verification rules.
 
-### Production and manual evidence
+### Steps 2-3 bridge claims and local IPC
 
-Pending implementation steps. Record focused commands, totals, target devices,
-network paths, compatibility peers, privacy-safe measurements, and architecture
-implementation reviews as each step lands.
+- Drift schema v14, migration, DAO, repository, claim service, lifecycle cleanup,
+  authenticated loopback IPC, typed protocol, rendezvous, presence, projection,
+  bridge-identity rotation, and runtime disposal are implemented.
+- Claim revisions use one monotonic high-water row per bridge. Restart, deletion,
+  archive, release, and cascade cannot permit stale CAS operations after an ABA
+  cycle, and revision storage does not grow by historical device key.
+- Session deletion re-reads the persisted subtree inside the delete transaction,
+  captures late descendants and their claims immediately before the FK cascade,
+  and publishes removals only after successful deletion. Deterministic
+  real-database tests cover late claims and late descendants while backend
+  deletion is blocked.
+- `dart test --concurrency=4` passed the complete bridge-app suite after the final
+  revision, availability, deletion-race, and IPC-buffer fixes.
+- Focused Device Canvas IPC, claim-service, deletion-race, and runtime-rotation
+  verification passed.
+- `dart analyze --fatal-infos`, `make build`, Dart LSP diagnostics, and
+  `git diff --check` passed.
+- A real typed WebSocket smoke connected through the rendezvous file, completed
+  authenticated hello/inventory exchange, and returned `IPC_SMOKE_OK`.
+- Architecture, goal, code-quality, and security reviews passed with no blocking
+  findings.
+- The prior hardening items are closed: authenticated IPC inputs and pending
+  initial-snapshot deltas are bounded, overflow fails closed, and neither the IPC
+  claim projection nor Device Canvas links expose project identifiers.
+
+### Step 4 Device Canvas projection and navigation
+
+- Added an owner-permission-validated rendezvous reader, authenticated loopback
+  WebSocket client, typed protocol codec, heartbeat, reconnect/rotation handling,
+  and revision-fenced in-memory claim projection. Device Canvas persists no claim
+  ownership.
+- Live discovery publishes only online iOS/Android inventory. A claimed pane
+  remains visible when its device stops, independently changes to offline, and
+  avoids starting its DeviceKit/scrcpy presentation while unavailable.
+- Pane UI now distinguishes Sesori disconnected, syncing, incompatible,
+  unclaimed, and claimed states; claimed panes expose the owning title, generic
+  fallback, accessibility metadata, and a percent-encoded bridge-scoped Open
+  action.
+- `zsh build.sh` passed and runs the focused Swift protocol tests. The protocol
+  tests also passed under complete strict concurrency with warnings as errors.
+- A real Swift client connected to the Dart bridge server through an owner-only
+  temporary rendezvous, published inventory, received snapshot/update/removal,
+  and remained connected through heartbeat (`SWIFT_IPC_SMOKE_OK` and
+  `SERVER_IPC_SMOKE_OK`).
+- Real local use passed with an iPhone 17 Pro simulator and Pixel 10 Pro emulator.
+  Window-specific captures verified claimed/unclaimed presentation and verified
+  that a claimed iOS pane retained its owner and Open action after shutdown while
+  changing to the offline presentation.
+- `plutil -lint Info.plist` and `git diff --check` passed. The private DeviceKit
+  runtime continues to emit its pre-existing duplicate `UniversalHID` warnings
+  without preventing local presentation.
+
+### Step 5 Sesori client status and navigation
+
+- Added additive shared/bridge/client contracts, pure-Dart repository/service/
+  cubit layering, session status and mutation UI, custom-scheme registration, and
+  unsupported degradation.
+- Device Canvas now opens
+  `com.sesori.app:///sessions/<sessionId>?bridgeId=<bridgeId>&readOnly=false`.
+  Parsing is strict, unauthenticated links queue safely, and the transient route
+  renders no project or session metadata until the exact bridge/account/session
+  identity is verified.
+- Registered offline target bridges remain in a bounded waiting state and recover
+  when that exact bridge reconnects. Missing, wrong-account, wrong-project, and
+  mismatched-session targets fail without rendering session content.
+- Background-task, subtask, and diff navigation preserve verified bridge scope.
+  The diff screen does not create `DiffCubit` until the bridge/session/project
+  gate succeeds.
+- Human reassignment and release use revision-fenced compare-and-set operations.
+  Server errors, transport loss, empty/truncated responses, and JSON parse failures
+  preserve mutation uncertainty through queued refreshes and refresh failures
+  until an authoritative projection proves the outcome.
+- `dart analyze --fatal-infos` passed in shared, bridge app, client module-core,
+  and client app. `dart test --concurrency=4` passed each package's complete suite
+  after the final fixes.
+- `make build` passed in `bridge/app`; `zsh build.sh` and focused Swift protocol
+  tests passed in Device Canvas; `plutil -lint Info.plist` passed.
+- Independent bridge and client reviews found no remaining findings.
 
 ## Open Product Confirmations
 

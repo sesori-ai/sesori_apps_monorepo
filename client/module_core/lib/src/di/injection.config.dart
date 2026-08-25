@@ -18,6 +18,7 @@ import 'package:sesori_dart_core/src/api/bridge_api.dart' as _i384;
 import 'package:sesori_dart_core/src/api/bridge_settings_api.dart' as _i415;
 import 'package:sesori_dart_core/src/api/client/relay_http_client.dart'
     as _i857;
+import 'package:sesori_dart_core/src/api/device_canvas_api.dart' as _i782;
 import 'package:sesori_dart_core/src/api/filesystem_api.dart' as _i1068;
 import 'package:sesori_dart_core/src/api/legal_api.dart' as _i835;
 import 'package:sesori_dart_core/src/api/message_image_api.dart' as _i938;
@@ -72,6 +73,8 @@ import 'package:sesori_dart_core/src/repositories/chat_input_mode_store.dart'
     as _i901;
 import 'package:sesori_dart_core/src/repositories/composer_draft_repository.dart'
     as _i198;
+import 'package:sesori_dart_core/src/repositories/device_canvas_repository.dart'
+    as _i990;
 import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
     as _i933;
 import 'package:sesori_dart_core/src/repositories/message_image_repository.dart'
@@ -104,6 +107,8 @@ import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
     as _i516;
 import 'package:sesori_dart_core/src/services/bridge_settings_service.dart'
     as _i1033;
+import 'package:sesori_dart_core/src/services/device_canvas_service.dart'
+    as _i129;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
@@ -377,6 +382,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i415.BridgeSettingsApi>(
       () => _i415.BridgeSettingsApi(client: gh<_i857.RelayHttpApiClient>()),
     );
+    gh.lazySingleton<_i782.DeviceCanvasApi>(
+      () => _i782.DeviceCanvasApi(client: gh<_i857.RelayHttpApiClient>()),
+    );
     gh.lazySingleton<_i1068.FilesystemApi>(
       () => _i1068.FilesystemApi(client: gh<_i857.RelayHttpApiClient>()),
     );
@@ -414,6 +422,14 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i337.PluginRepository>(
       () => _i337.PluginRepository(api: gh<_i546.PluginApi>()),
+    );
+    gh.lazySingleton<_i990.DeviceCanvasRepository>(
+      () => _i990.DeviceCanvasRepository(api: gh<_i782.DeviceCanvasApi>()),
+    );
+    gh.lazySingleton<_i129.DeviceCanvasService>(
+      () => _i129.DeviceCanvasService(
+        repository: gh<_i990.DeviceCanvasRepository>(),
+      ),
     );
     gh.lazySingleton<_i102.BridgeSettingsRepository>(
       () => _i102.BridgeSettingsRepository(

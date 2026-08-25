@@ -7,6 +7,7 @@ import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:sesori_bridge/src/api/app_onboarding_state_storage.dart';
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
+import 'package:sesori_bridge/src/api/database/database.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
 import 'package:sesori_bridge/src/auth/bridge_id_migration_service.dart';
@@ -16,15 +17,18 @@ import 'package:sesori_bridge/src/auth/bridge_registration_repository.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_service.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
 import 'package:sesori_bridge/src/auth/token_manager.dart';
+import 'package:sesori_bridge/src/bridge/device_canvas/integration_state.dart';
 import 'package:sesori_bridge/src/bridge/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/bridge/foundation/process_runner_command_executor.dart';
+import 'package:sesori_bridge/src/bridge/repositories/device_canvas_claim_repository.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_dispatch.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_logout_runner.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart';
 import 'package:sesori_bridge/src/bridge/runtime/plugin_cli_options_mapper.dart';
 import 'package:sesori_bridge/src/bridge/runtime/plugin_registry.dart';
+import 'package:sesori_bridge/src/bridge/services/device_canvas_claim_service.dart';
 import 'package:sesori_bridge/src/foundation/bridge_startup_banner_formatter.dart';
 import 'package:sesori_bridge/src/repositories/app_onboarding_state_repository.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
@@ -301,6 +305,7 @@ class LogoutCommand() extends cli.Command<void> {
         authBackendUrl: authBackendUrl,
         dataDirectory: dataDirectory,
       ),
+      cleanupBridgeClaims: () => _cleanupDeviceCanvasClaimsForLogout(dataDirectory: dataDirectory),
       appOnboardingStateRepository: AppOnboardingStateRepository(
         storage: AppOnboardingStateStorage(
           directoryPath: appOnboardingStateDirectoryPath(dataDirectory: dataDirectory),
@@ -387,6 +392,31 @@ Future<void> _unregisterBridgeRegistration({
   } finally {
     tokenManager.dispose();
     httpClient.close();
+  }
+}
+
+Future<void> _cleanupDeviceCanvasClaimsForLogout({required String dataDirectory}) async {
+  final bridgeIdStorage = BridgeIdStorage(
+    filePath: bridgeIdPath(dataDirectory: dataDirectory),
+  );
+  final bridgeId = await bridgeIdStorage.read();
+  if (bridgeId == null) return;
+  final database = AppDatabase.create(dataDirectory: dataDirectory);
+  final integrationState = DeviceCanvasIntegrationState();
+  final claimService = DeviceCanvasClaimService(
+    repository: DeviceCanvasClaimRepository(
+      claimDao: database.deviceCanvasClaimDao,
+      sessionDao: database.sessionDao,
+      now: () => DateTime.now().millisecondsSinceEpoch,
+    ),
+    integrationState: integrationState,
+  );
+  try {
+    await claimService.cleanupBridgeIdentity(bridgeId: bridgeId);
+  } finally {
+    await claimService.dispose();
+    await integrationState.dispose();
+    await database.close();
   }
 }
 

@@ -108,12 +108,22 @@ class DebugServer({
   }
 
   Future<void> _handleRequest(HttpRequest request) async {
+    if (_isRelayOnlyPath(request.uri.path)) {
+      request.response.statusCode = HttpStatus.notFound;
+      await request.response.close();
+      return;
+    }
     if (request.uri.path == "/global/event") {
       await _handleSSE(request);
       return;
     }
 
     await _handleHTTP(request);
+  }
+
+  static bool _isRelayOnlyPath(String path) {
+    final segments = path.split("/").where((segment) => segment.isNotEmpty);
+    return segments.firstOrNull == "device-canvas";
   }
 
   Future<void> _handleHTTP(HttpRequest request) async {

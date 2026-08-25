@@ -3288,6 +3288,704 @@ class SessionOptionsCacheTableCompanion
   }
 }
 
+mixin $DeviceCanvasClaimsTableTableToColumns
+    implements Insertable<DeviceCanvasClaimsTableData> {
+  String get bridgeId;
+  String get deviceKey;
+  String get sessionId;
+  int get claimRevision;
+  int get claimedAt;
+  int get updatedAt;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['bridge_id'] = Variable<String>(bridgeId);
+    map['device_key'] = Variable<String>(deviceKey);
+    map['session_id'] = Variable<String>(sessionId);
+    map['claim_revision'] = Variable<int>(claimRevision);
+    map['claimed_at'] = Variable<int>(claimedAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+}
+
+class $DeviceCanvasClaimsTableTable extends DeviceCanvasClaimsTable
+    with TableInfo<$DeviceCanvasClaimsTableTable, DeviceCanvasClaimsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DeviceCanvasClaimsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _bridgeIdMeta = const VerificationMeta(
+    'bridgeId',
+  );
+  @override
+  late final GeneratedColumn<String> bridgeId = GeneratedColumn<String>(
+    'bridge_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deviceKeyMeta = const VerificationMeta(
+    'deviceKey',
+  );
+  @override
+  late final GeneratedColumn<String> deviceKey = GeneratedColumn<String>(
+    'device_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES sessions_table (session_id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _claimRevisionMeta = const VerificationMeta(
+    'claimRevision',
+  );
+  @override
+  late final GeneratedColumn<int> claimRevision = GeneratedColumn<int>(
+    'claim_revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _claimedAtMeta = const VerificationMeta(
+    'claimedAt',
+  );
+  @override
+  late final GeneratedColumn<int> claimedAt = GeneratedColumn<int>(
+    'claimed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    bridgeId,
+    deviceKey,
+    sessionId,
+    claimRevision,
+    claimedAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'device_canvas_claims_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DeviceCanvasClaimsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('bridge_id')) {
+      context.handle(
+        _bridgeIdMeta,
+        bridgeId.isAcceptableOrUnknown(data['bridge_id']!, _bridgeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bridgeIdMeta);
+    }
+    if (data.containsKey('device_key')) {
+      context.handle(
+        _deviceKeyMeta,
+        deviceKey.isAcceptableOrUnknown(data['device_key']!, _deviceKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceKeyMeta);
+    }
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('claim_revision')) {
+      context.handle(
+        _claimRevisionMeta,
+        claimRevision.isAcceptableOrUnknown(
+          data['claim_revision']!,
+          _claimRevisionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_claimRevisionMeta);
+    }
+    if (data.containsKey('claimed_at')) {
+      context.handle(
+        _claimedAtMeta,
+        claimedAt.isAcceptableOrUnknown(data['claimed_at']!, _claimedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_claimedAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {bridgeId, deviceKey};
+  @override
+  DeviceCanvasClaimsTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DeviceCanvasClaimsTableData(
+      bridgeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bridge_id'],
+      )!,
+      deviceKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_key'],
+      )!,
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      )!,
+      claimRevision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}claim_revision'],
+      )!,
+      claimedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}claimed_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DeviceCanvasClaimsTableTable createAlias(String alias) {
+    return $DeviceCanvasClaimsTableTable(attachedDatabase, alias);
+  }
+}
+
+class DeviceCanvasClaimsTableData extends DataClass
+    with $DeviceCanvasClaimsTableTableToColumns {
+  @override
+  final String bridgeId;
+  @override
+  final String deviceKey;
+  @override
+  final String sessionId;
+  @override
+  final int claimRevision;
+  @override
+  final int claimedAt;
+  @override
+  final int updatedAt;
+  const DeviceCanvasClaimsTableData({
+    required this.bridgeId,
+    required this.deviceKey,
+    required this.sessionId,
+    required this.claimRevision,
+    required this.claimedAt,
+    required this.updatedAt,
+  });
+  DeviceCanvasClaimsTableCompanion toCompanion(bool nullToAbsent) {
+    return DeviceCanvasClaimsTableCompanion(
+      bridgeId: Value(bridgeId),
+      deviceKey: Value(deviceKey),
+      sessionId: Value(sessionId),
+      claimRevision: Value(claimRevision),
+      claimedAt: Value(claimedAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory DeviceCanvasClaimsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DeviceCanvasClaimsTableData(
+      bridgeId: serializer.fromJson<String>(json['bridgeId']),
+      deviceKey: serializer.fromJson<String>(json['deviceKey']),
+      sessionId: serializer.fromJson<String>(json['sessionId']),
+      claimRevision: serializer.fromJson<int>(json['claimRevision']),
+      claimedAt: serializer.fromJson<int>(json['claimedAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'bridgeId': serializer.toJson<String>(bridgeId),
+      'deviceKey': serializer.toJson<String>(deviceKey),
+      'sessionId': serializer.toJson<String>(sessionId),
+      'claimRevision': serializer.toJson<int>(claimRevision),
+      'claimedAt': serializer.toJson<int>(claimedAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  DeviceCanvasClaimsTableData copyWith({
+    String? bridgeId,
+    String? deviceKey,
+    String? sessionId,
+    int? claimRevision,
+    int? claimedAt,
+    int? updatedAt,
+  }) => DeviceCanvasClaimsTableData(
+    bridgeId: bridgeId ?? this.bridgeId,
+    deviceKey: deviceKey ?? this.deviceKey,
+    sessionId: sessionId ?? this.sessionId,
+    claimRevision: claimRevision ?? this.claimRevision,
+    claimedAt: claimedAt ?? this.claimedAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  DeviceCanvasClaimsTableData copyWithCompanion(
+    DeviceCanvasClaimsTableCompanion data,
+  ) {
+    return DeviceCanvasClaimsTableData(
+      bridgeId: data.bridgeId.present ? data.bridgeId.value : this.bridgeId,
+      deviceKey: data.deviceKey.present ? data.deviceKey.value : this.deviceKey,
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      claimRevision: data.claimRevision.present
+          ? data.claimRevision.value
+          : this.claimRevision,
+      claimedAt: data.claimedAt.present ? data.claimedAt.value : this.claimedAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeviceCanvasClaimsTableData(')
+          ..write('bridgeId: $bridgeId, ')
+          ..write('deviceKey: $deviceKey, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('claimRevision: $claimRevision, ')
+          ..write('claimedAt: $claimedAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    bridgeId,
+    deviceKey,
+    sessionId,
+    claimRevision,
+    claimedAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DeviceCanvasClaimsTableData &&
+          other.bridgeId == this.bridgeId &&
+          other.deviceKey == this.deviceKey &&
+          other.sessionId == this.sessionId &&
+          other.claimRevision == this.claimRevision &&
+          other.claimedAt == this.claimedAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class DeviceCanvasClaimsTableCompanion
+    extends UpdateCompanion<DeviceCanvasClaimsTableData> {
+  final Value<String> bridgeId;
+  final Value<String> deviceKey;
+  final Value<String> sessionId;
+  final Value<int> claimRevision;
+  final Value<int> claimedAt;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const DeviceCanvasClaimsTableCompanion({
+    this.bridgeId = const Value.absent(),
+    this.deviceKey = const Value.absent(),
+    this.sessionId = const Value.absent(),
+    this.claimRevision = const Value.absent(),
+    this.claimedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DeviceCanvasClaimsTableCompanion.insert({
+    required String bridgeId,
+    required String deviceKey,
+    required String sessionId,
+    required int claimRevision,
+    required int claimedAt,
+    required int updatedAt,
+    this.rowid = const Value.absent(),
+  }) : bridgeId = Value(bridgeId),
+       deviceKey = Value(deviceKey),
+       sessionId = Value(sessionId),
+       claimRevision = Value(claimRevision),
+       claimedAt = Value(claimedAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<DeviceCanvasClaimsTableData> custom({
+    Expression<String>? bridgeId,
+    Expression<String>? deviceKey,
+    Expression<String>? sessionId,
+    Expression<int>? claimRevision,
+    Expression<int>? claimedAt,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (bridgeId != null) 'bridge_id': bridgeId,
+      if (deviceKey != null) 'device_key': deviceKey,
+      if (sessionId != null) 'session_id': sessionId,
+      if (claimRevision != null) 'claim_revision': claimRevision,
+      if (claimedAt != null) 'claimed_at': claimedAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DeviceCanvasClaimsTableCompanion copyWith({
+    Value<String>? bridgeId,
+    Value<String>? deviceKey,
+    Value<String>? sessionId,
+    Value<int>? claimRevision,
+    Value<int>? claimedAt,
+    Value<int>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return DeviceCanvasClaimsTableCompanion(
+      bridgeId: bridgeId ?? this.bridgeId,
+      deviceKey: deviceKey ?? this.deviceKey,
+      sessionId: sessionId ?? this.sessionId,
+      claimRevision: claimRevision ?? this.claimRevision,
+      claimedAt: claimedAt ?? this.claimedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (bridgeId.present) {
+      map['bridge_id'] = Variable<String>(bridgeId.value);
+    }
+    if (deviceKey.present) {
+      map['device_key'] = Variable<String>(deviceKey.value);
+    }
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (claimRevision.present) {
+      map['claim_revision'] = Variable<int>(claimRevision.value);
+    }
+    if (claimedAt.present) {
+      map['claimed_at'] = Variable<int>(claimedAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeviceCanvasClaimsTableCompanion(')
+          ..write('bridgeId: $bridgeId, ')
+          ..write('deviceKey: $deviceKey, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('claimRevision: $claimRevision, ')
+          ..write('claimedAt: $claimedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+mixin $DeviceCanvasClaimRevisionsTableTableToColumns
+    implements Insertable<DeviceCanvasClaimRevisionsTableData> {
+  String get bridgeId;
+  int get lastRevision;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['bridge_id'] = Variable<String>(bridgeId);
+    map['last_revision'] = Variable<int>(lastRevision);
+    return map;
+  }
+}
+
+class $DeviceCanvasClaimRevisionsTableTable
+    extends DeviceCanvasClaimRevisionsTable
+    with
+        TableInfo<
+          $DeviceCanvasClaimRevisionsTableTable,
+          DeviceCanvasClaimRevisionsTableData
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DeviceCanvasClaimRevisionsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _bridgeIdMeta = const VerificationMeta(
+    'bridgeId',
+  );
+  @override
+  late final GeneratedColumn<String> bridgeId = GeneratedColumn<String>(
+    'bridge_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastRevisionMeta = const VerificationMeta(
+    'lastRevision',
+  );
+  @override
+  late final GeneratedColumn<int> lastRevision = GeneratedColumn<int>(
+    'last_revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [bridgeId, lastRevision];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'device_canvas_claim_revisions_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DeviceCanvasClaimRevisionsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('bridge_id')) {
+      context.handle(
+        _bridgeIdMeta,
+        bridgeId.isAcceptableOrUnknown(data['bridge_id']!, _bridgeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bridgeIdMeta);
+    }
+    if (data.containsKey('last_revision')) {
+      context.handle(
+        _lastRevisionMeta,
+        lastRevision.isAcceptableOrUnknown(
+          data['last_revision']!,
+          _lastRevisionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastRevisionMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {bridgeId};
+  @override
+  DeviceCanvasClaimRevisionsTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DeviceCanvasClaimRevisionsTableData(
+      bridgeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bridge_id'],
+      )!,
+      lastRevision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_revision'],
+      )!,
+    );
+  }
+
+  @override
+  $DeviceCanvasClaimRevisionsTableTable createAlias(String alias) {
+    return $DeviceCanvasClaimRevisionsTableTable(attachedDatabase, alias);
+  }
+}
+
+class DeviceCanvasClaimRevisionsTableData extends DataClass
+    with $DeviceCanvasClaimRevisionsTableTableToColumns {
+  @override
+  final String bridgeId;
+  @override
+  final int lastRevision;
+  const DeviceCanvasClaimRevisionsTableData({
+    required this.bridgeId,
+    required this.lastRevision,
+  });
+  DeviceCanvasClaimRevisionsTableCompanion toCompanion(bool nullToAbsent) {
+    return DeviceCanvasClaimRevisionsTableCompanion(
+      bridgeId: Value(bridgeId),
+      lastRevision: Value(lastRevision),
+    );
+  }
+
+  factory DeviceCanvasClaimRevisionsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DeviceCanvasClaimRevisionsTableData(
+      bridgeId: serializer.fromJson<String>(json['bridgeId']),
+      lastRevision: serializer.fromJson<int>(json['lastRevision']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'bridgeId': serializer.toJson<String>(bridgeId),
+      'lastRevision': serializer.toJson<int>(lastRevision),
+    };
+  }
+
+  DeviceCanvasClaimRevisionsTableData copyWith({
+    String? bridgeId,
+    int? lastRevision,
+  }) => DeviceCanvasClaimRevisionsTableData(
+    bridgeId: bridgeId ?? this.bridgeId,
+    lastRevision: lastRevision ?? this.lastRevision,
+  );
+  DeviceCanvasClaimRevisionsTableData copyWithCompanion(
+    DeviceCanvasClaimRevisionsTableCompanion data,
+  ) {
+    return DeviceCanvasClaimRevisionsTableData(
+      bridgeId: data.bridgeId.present ? data.bridgeId.value : this.bridgeId,
+      lastRevision: data.lastRevision.present
+          ? data.lastRevision.value
+          : this.lastRevision,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeviceCanvasClaimRevisionsTableData(')
+          ..write('bridgeId: $bridgeId, ')
+          ..write('lastRevision: $lastRevision')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(bridgeId, lastRevision);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DeviceCanvasClaimRevisionsTableData &&
+          other.bridgeId == this.bridgeId &&
+          other.lastRevision == this.lastRevision);
+}
+
+class DeviceCanvasClaimRevisionsTableCompanion
+    extends UpdateCompanion<DeviceCanvasClaimRevisionsTableData> {
+  final Value<String> bridgeId;
+  final Value<int> lastRevision;
+  final Value<int> rowid;
+  const DeviceCanvasClaimRevisionsTableCompanion({
+    this.bridgeId = const Value.absent(),
+    this.lastRevision = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DeviceCanvasClaimRevisionsTableCompanion.insert({
+    required String bridgeId,
+    required int lastRevision,
+    this.rowid = const Value.absent(),
+  }) : bridgeId = Value(bridgeId),
+       lastRevision = Value(lastRevision);
+  static Insertable<DeviceCanvasClaimRevisionsTableData> custom({
+    Expression<String>? bridgeId,
+    Expression<int>? lastRevision,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (bridgeId != null) 'bridge_id': bridgeId,
+      if (lastRevision != null) 'last_revision': lastRevision,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DeviceCanvasClaimRevisionsTableCompanion copyWith({
+    Value<String>? bridgeId,
+    Value<int>? lastRevision,
+    Value<int>? rowid,
+  }) {
+    return DeviceCanvasClaimRevisionsTableCompanion(
+      bridgeId: bridgeId ?? this.bridgeId,
+      lastRevision: lastRevision ?? this.lastRevision,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (bridgeId.present) {
+      map['bridge_id'] = Variable<String>(bridgeId.value);
+    }
+    if (lastRevision.present) {
+      map['last_revision'] = Variable<int>(lastRevision.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeviceCanvasClaimRevisionsTableCompanion(')
+          ..write('bridgeId: $bridgeId, ')
+          ..write('lastRevision: $lastRevision, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3301,6 +3999,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $CatalogHydrationsTableTable(this);
   late final $SessionOptionsCacheTableTable sessionOptionsCacheTable =
       $SessionOptionsCacheTableTable(this);
+  late final $DeviceCanvasClaimsTableTable deviceCanvasClaimsTable =
+      $DeviceCanvasClaimsTableTable(this);
+  late final $DeviceCanvasClaimRevisionsTableTable
+  deviceCanvasClaimRevisionsTable = $DeviceCanvasClaimRevisionsTableTable(this);
   late final Index idxProjectsPath = Index(
     'idx_projects_path',
     'CREATE INDEX idx_projects_path ON projects_table (path)',
@@ -3329,12 +4031,19 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_pull_requests_scope',
     'CREATE INDEX idx_pull_requests_scope ON pull_requests_table (project_id, github_repository_identity, branch_name, github_login)',
   );
+  late final Index idxDeviceCanvasClaimsSession = Index(
+    'idx_device_canvas_claims_session',
+    'CREATE INDEX idx_device_canvas_claims_session ON device_canvas_claims_table (session_id)',
+  );
   late final ProjectsDao projectsDao = ProjectsDao(this as AppDatabase);
   late final SessionDao sessionDao = SessionDao(this as AppDatabase);
   late final PullRequestDao pullRequestDao = PullRequestDao(
     this as AppDatabase,
   );
   late final CatalogHydrationsDao catalogHydrationsDao = CatalogHydrationsDao(
+    this as AppDatabase,
+  );
+  late final DeviceCanvasClaimDao deviceCanvasClaimDao = DeviceCanvasClaimDao(
     this as AppDatabase,
   );
   @override
@@ -3348,6 +4057,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     pullRequestsTable,
     catalogHydrationsTable,
     sessionOptionsCacheTable,
+    deviceCanvasClaimsTable,
+    deviceCanvasClaimRevisionsTable,
     idxProjectsPath,
     idxProjectsUpdated,
     idxSessionsPluginBackend,
@@ -3355,6 +4066,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     idxSessionsChildren,
     idxSessionsArchive,
     idxPullRequestsScope,
+    idxDeviceCanvasClaimsSession,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -3378,6 +4090,15 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('pull_requests_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate('device_canvas_claims_table', kind: UpdateKind.delete),
+      ],
     ),
   ]);
 }
@@ -3973,6 +4694,38 @@ final class $$SessionTableTableReferences
       manager.$state.copyWith(prefetchedData: [item]),
     );
   }
+
+  static MultiTypedResultKey<
+    $DeviceCanvasClaimsTableTable,
+    List<DeviceCanvasClaimsTableData>
+  >
+  _deviceCanvasClaimsTableRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.deviceCanvasClaimsTable,
+    aliasName:
+        'sessions_table__session_id__device_canvas_claims_table__session_id',
+  );
+
+  $$DeviceCanvasClaimsTableTableProcessedTableManager
+  get deviceCanvasClaimsTableRefs {
+    final manager =
+        $$DeviceCanvasClaimsTableTableTableManager(
+          $_db,
+          $_db.deviceCanvasClaimsTable,
+        ).filter(
+          (f) => f.sessionId.sessionId.sqlEquals(
+            $_itemColumn<String>('session_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _deviceCanvasClaimsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$SessionTableTableFilterComposer
@@ -4140,6 +4893,32 @@ class $$SessionTableTableFilterComposer
           ),
     );
     return composer;
+  }
+
+  Expression<bool> deviceCanvasClaimsTableRefs(
+    Expression<bool> Function($$DeviceCanvasClaimsTableTableFilterComposer f) f,
+  ) {
+    final $$DeviceCanvasClaimsTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.deviceCanvasClaimsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DeviceCanvasClaimsTableTableFilterComposer(
+                $db: $db,
+                $table: $db.deviceCanvasClaimsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
   }
 }
 
@@ -4462,6 +5241,33 @@ class $$SessionTableTableAnnotationComposer
     );
     return composer;
   }
+
+  Expression<T> deviceCanvasClaimsTableRefs<T extends Object>(
+    Expression<T> Function($$DeviceCanvasClaimsTableTableAnnotationComposer a)
+    f,
+  ) {
+    final $$DeviceCanvasClaimsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.deviceCanvasClaimsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DeviceCanvasClaimsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.deviceCanvasClaimsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$SessionTableTableTableManager
@@ -4477,7 +5283,11 @@ class $$SessionTableTableTableManager
           $$SessionTableTableUpdateCompanionBuilder,
           (SessionDto, $$SessionTableTableReferences),
           SessionDto,
-          PrefetchHooks Function({bool projectId, bool parentSessionId})
+          PrefetchHooks Function({
+            bool projectId,
+            bool parentSessionId,
+            bool deviceCanvasClaimsTableRefs,
+          })
         > {
   $$SessionTableTableTableManager(_$AppDatabase db, $SessionTableTable table)
     : super(
@@ -4607,10 +5417,16 @@ class $$SessionTableTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({projectId = false, parentSessionId = false}) {
+              ({
+                projectId = false,
+                parentSessionId = false,
+                deviceCanvasClaimsTableRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
-                  explicitlyWatchedTables: [],
+                  explicitlyWatchedTables: [
+                    if (deviceCanvasClaimsTableRefs) db.deviceCanvasClaimsTable,
+                  ],
                   addJoins:
                       <
                         T extends TableManagerState<
@@ -4653,7 +5469,29 @@ class $$SessionTableTableTableManager
                         return state;
                       },
                   getPrefetchedDataCallback: (items) async {
-                    return [];
+                    return [
+                      if (deviceCanvasClaimsTableRefs)
+                        await $_getPrefetchedData<
+                          SessionDto,
+                          $SessionTableTable,
+                          DeviceCanvasClaimsTableData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SessionTableTableReferences
+                              ._deviceCanvasClaimsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).deviceCanvasClaimsTableRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.sessionId == item.sessionId,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
                   },
                 );
               },
@@ -4673,7 +5511,11 @@ typedef $$SessionTableTableProcessedTableManager =
       $$SessionTableTableUpdateCompanionBuilder,
       (SessionDto, $$SessionTableTableReferences),
       SessionDto,
-      PrefetchHooks Function({bool projectId, bool parentSessionId})
+      PrefetchHooks Function({
+        bool projectId,
+        bool parentSessionId,
+        bool deviceCanvasClaimsTableRefs,
+      })
     >;
 typedef $$DeletedSessionsTableTableCreateCompanionBuilder =
     DeletedSessionsTableCompanion Function({
@@ -5895,6 +6737,533 @@ typedef $$SessionOptionsCacheTableTableProcessedTableManager =
       SessionOptionsCacheTableData,
       PrefetchHooks Function()
     >;
+typedef $$DeviceCanvasClaimsTableTableCreateCompanionBuilder =
+    DeviceCanvasClaimsTableCompanion Function({
+      required String bridgeId,
+      required String deviceKey,
+      required String sessionId,
+      required int claimRevision,
+      required int claimedAt,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$DeviceCanvasClaimsTableTableUpdateCompanionBuilder =
+    DeviceCanvasClaimsTableCompanion Function({
+      Value<String> bridgeId,
+      Value<String> deviceKey,
+      Value<String> sessionId,
+      Value<int> claimRevision,
+      Value<int> claimedAt,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$DeviceCanvasClaimsTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $DeviceCanvasClaimsTableTable,
+          DeviceCanvasClaimsTableData
+        > {
+  $$DeviceCanvasClaimsTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'device_canvas_claims_table__session_id__sessions_table__session_id',
+      );
+
+  $$SessionTableTableProcessedTableManager get sessionId {
+    final $_column = $_itemColumn<String>('session_id')!;
+
+    final manager = $$SessionTableTableTableManager(
+      $_db,
+      $_db.sessionTable,
+    ).filter((f) => f.sessionId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$DeviceCanvasClaimsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $DeviceCanvasClaimsTableTable> {
+  $$DeviceCanvasClaimsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get bridgeId => $composableBuilder(
+    column: $table.bridgeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deviceKey => $composableBuilder(
+    column: $table.deviceKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get claimRevision => $composableBuilder(
+    column: $table.claimRevision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get claimedAt => $composableBuilder(
+    column: $table.claimedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SessionTableTableFilterComposer get sessionId {
+    final $$SessionTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableFilterComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DeviceCanvasClaimsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $DeviceCanvasClaimsTableTable> {
+  $$DeviceCanvasClaimsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get bridgeId => $composableBuilder(
+    column: $table.bridgeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deviceKey => $composableBuilder(
+    column: $table.deviceKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get claimRevision => $composableBuilder(
+    column: $table.claimRevision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get claimedAt => $composableBuilder(
+    column: $table.claimedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SessionTableTableOrderingComposer get sessionId {
+    final $$SessionTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DeviceCanvasClaimsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DeviceCanvasClaimsTableTable> {
+  $$DeviceCanvasClaimsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get bridgeId =>
+      $composableBuilder(column: $table.bridgeId, builder: (column) => column);
+
+  GeneratedColumn<String> get deviceKey =>
+      $composableBuilder(column: $table.deviceKey, builder: (column) => column);
+
+  GeneratedColumn<int> get claimRevision => $composableBuilder(
+    column: $table.claimRevision,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get claimedAt =>
+      $composableBuilder(column: $table.claimedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$SessionTableTableAnnotationComposer get sessionId {
+    final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DeviceCanvasClaimsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DeviceCanvasClaimsTableTable,
+          DeviceCanvasClaimsTableData,
+          $$DeviceCanvasClaimsTableTableFilterComposer,
+          $$DeviceCanvasClaimsTableTableOrderingComposer,
+          $$DeviceCanvasClaimsTableTableAnnotationComposer,
+          $$DeviceCanvasClaimsTableTableCreateCompanionBuilder,
+          $$DeviceCanvasClaimsTableTableUpdateCompanionBuilder,
+          (
+            DeviceCanvasClaimsTableData,
+            $$DeviceCanvasClaimsTableTableReferences,
+          ),
+          DeviceCanvasClaimsTableData,
+          PrefetchHooks Function({bool sessionId})
+        > {
+  $$DeviceCanvasClaimsTableTableTableManager(
+    _$AppDatabase db,
+    $DeviceCanvasClaimsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DeviceCanvasClaimsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$DeviceCanvasClaimsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DeviceCanvasClaimsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> bridgeId = const Value.absent(),
+                Value<String> deviceKey = const Value.absent(),
+                Value<String> sessionId = const Value.absent(),
+                Value<int> claimRevision = const Value.absent(),
+                Value<int> claimedAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DeviceCanvasClaimsTableCompanion(
+                bridgeId: bridgeId,
+                deviceKey: deviceKey,
+                sessionId: sessionId,
+                claimRevision: claimRevision,
+                claimedAt: claimedAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String bridgeId,
+                required String deviceKey,
+                required String sessionId,
+                required int claimRevision,
+                required int claimedAt,
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => DeviceCanvasClaimsTableCompanion.insert(
+                bridgeId: bridgeId,
+                deviceKey: deviceKey,
+                sessionId: sessionId,
+                claimRevision: claimRevision,
+                claimedAt: claimedAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DeviceCanvasClaimsTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({sessionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (sessionId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.sessionId,
+                        referencedTable:
+                            $$DeviceCanvasClaimsTableTableReferences
+                                ._sessionIdTable(db),
+                        referencedColumn:
+                            $$DeviceCanvasClaimsTableTableReferences
+                                ._sessionIdTable(db)
+                                .sessionId,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$DeviceCanvasClaimsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DeviceCanvasClaimsTableTable,
+      DeviceCanvasClaimsTableData,
+      $$DeviceCanvasClaimsTableTableFilterComposer,
+      $$DeviceCanvasClaimsTableTableOrderingComposer,
+      $$DeviceCanvasClaimsTableTableAnnotationComposer,
+      $$DeviceCanvasClaimsTableTableCreateCompanionBuilder,
+      $$DeviceCanvasClaimsTableTableUpdateCompanionBuilder,
+      (DeviceCanvasClaimsTableData, $$DeviceCanvasClaimsTableTableReferences),
+      DeviceCanvasClaimsTableData,
+      PrefetchHooks Function({bool sessionId})
+    >;
+typedef $$DeviceCanvasClaimRevisionsTableTableCreateCompanionBuilder =
+    DeviceCanvasClaimRevisionsTableCompanion Function({
+      required String bridgeId,
+      required int lastRevision,
+      Value<int> rowid,
+    });
+typedef $$DeviceCanvasClaimRevisionsTableTableUpdateCompanionBuilder =
+    DeviceCanvasClaimRevisionsTableCompanion Function({
+      Value<String> bridgeId,
+      Value<int> lastRevision,
+      Value<int> rowid,
+    });
+
+class $$DeviceCanvasClaimRevisionsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $DeviceCanvasClaimRevisionsTableTable> {
+  $$DeviceCanvasClaimRevisionsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get bridgeId => $composableBuilder(
+    column: $table.bridgeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastRevision => $composableBuilder(
+    column: $table.lastRevision,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DeviceCanvasClaimRevisionsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $DeviceCanvasClaimRevisionsTableTable> {
+  $$DeviceCanvasClaimRevisionsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get bridgeId => $composableBuilder(
+    column: $table.bridgeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastRevision => $composableBuilder(
+    column: $table.lastRevision,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DeviceCanvasClaimRevisionsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DeviceCanvasClaimRevisionsTableTable> {
+  $$DeviceCanvasClaimRevisionsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get bridgeId =>
+      $composableBuilder(column: $table.bridgeId, builder: (column) => column);
+
+  GeneratedColumn<int> get lastRevision => $composableBuilder(
+    column: $table.lastRevision,
+    builder: (column) => column,
+  );
+}
+
+class $$DeviceCanvasClaimRevisionsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DeviceCanvasClaimRevisionsTableTable,
+          DeviceCanvasClaimRevisionsTableData,
+          $$DeviceCanvasClaimRevisionsTableTableFilterComposer,
+          $$DeviceCanvasClaimRevisionsTableTableOrderingComposer,
+          $$DeviceCanvasClaimRevisionsTableTableAnnotationComposer,
+          $$DeviceCanvasClaimRevisionsTableTableCreateCompanionBuilder,
+          $$DeviceCanvasClaimRevisionsTableTableUpdateCompanionBuilder,
+          (
+            DeviceCanvasClaimRevisionsTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $DeviceCanvasClaimRevisionsTableTable,
+              DeviceCanvasClaimRevisionsTableData
+            >,
+          ),
+          DeviceCanvasClaimRevisionsTableData,
+          PrefetchHooks Function()
+        > {
+  $$DeviceCanvasClaimRevisionsTableTableTableManager(
+    _$AppDatabase db,
+    $DeviceCanvasClaimRevisionsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DeviceCanvasClaimRevisionsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$DeviceCanvasClaimRevisionsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DeviceCanvasClaimRevisionsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> bridgeId = const Value.absent(),
+                Value<int> lastRevision = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DeviceCanvasClaimRevisionsTableCompanion(
+                bridgeId: bridgeId,
+                lastRevision: lastRevision,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String bridgeId,
+                required int lastRevision,
+                Value<int> rowid = const Value.absent(),
+              }) => DeviceCanvasClaimRevisionsTableCompanion.insert(
+                bridgeId: bridgeId,
+                lastRevision: lastRevision,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DeviceCanvasClaimRevisionsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DeviceCanvasClaimRevisionsTableTable,
+      DeviceCanvasClaimRevisionsTableData,
+      $$DeviceCanvasClaimRevisionsTableTableFilterComposer,
+      $$DeviceCanvasClaimRevisionsTableTableOrderingComposer,
+      $$DeviceCanvasClaimRevisionsTableTableAnnotationComposer,
+      $$DeviceCanvasClaimRevisionsTableTableCreateCompanionBuilder,
+      $$DeviceCanvasClaimRevisionsTableTableUpdateCompanionBuilder,
+      (
+        DeviceCanvasClaimRevisionsTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $DeviceCanvasClaimRevisionsTableTable,
+          DeviceCanvasClaimRevisionsTableData
+        >,
+      ),
+      DeviceCanvasClaimRevisionsTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5916,5 +7285,16 @@ class $AppDatabaseManager {
       $$SessionOptionsCacheTableTableTableManager(
         _db,
         _db.sessionOptionsCacheTable,
+      );
+  $$DeviceCanvasClaimsTableTableTableManager get deviceCanvasClaimsTable =>
+      $$DeviceCanvasClaimsTableTableTableManager(
+        _db,
+        _db.deviceCanvasClaimsTable,
+      );
+  $$DeviceCanvasClaimRevisionsTableTableTableManager
+  get deviceCanvasClaimRevisionsTable =>
+      $$DeviceCanvasClaimRevisionsTableTableTableManager(
+        _db,
+        _db.deviceCanvasClaimRevisionsTable,
       );
 }

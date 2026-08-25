@@ -12,6 +12,7 @@ import "tool_part_widget.dart";
 class const AssistantMessageCard({
   super.key,
   required final String? projectId,
+  required final String? bridgeId,
   required final MessageWithParts message,
   required final Map<String, String> streamingText,
   required final List<Session> children,
@@ -96,6 +97,7 @@ class const AssistantMessageCard({
       MessagePartType.subtask => SubtaskPartWidget(
         key: ValueKey(part.id),
         projectId: projectId,
+        bridgeId: bridgeId,
         part: part,
         children: children,
         childStatuses: childStatuses,

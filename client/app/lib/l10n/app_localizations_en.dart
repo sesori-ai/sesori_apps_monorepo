@@ -788,6 +788,129 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailRetry => 'Retry';
 
   @override
+  String get deviceCanvasLinkWaiting => 'Waiting for the expected Sesori bridge...';
+
+  @override
+  String get deviceCanvasLinkUnavailable =>
+      'This Device Canvas session is not available from the connected Sesori bridge or account.';
+
+  @override
+  String get deviceCanvasTitle => 'Device Canvas';
+
+  @override
+  String get deviceCanvasLoading => 'Loading Device Canvas status';
+
+  @override
+  String deviceCanvasBannerLabel(String status) {
+    return 'Device Canvas. $status';
+  }
+
+  @override
+  String get deviceCanvasOpenDetailsHint => 'Open Device Canvas details';
+
+  @override
+  String get deviceCanvasRetryHint => 'Retry Device Canvas status';
+
+  @override
+  String get deviceCanvasDisconnected => 'Device Canvas is disconnected';
+
+  @override
+  String get deviceCanvasUnavailable => 'Device Canvas status is unavailable';
+
+  @override
+  String get deviceCanvasNoDevices => 'No devices available';
+
+  @override
+  String deviceCanvasSummary(int available, int assigned) {
+    return '$available available, $assigned assigned here';
+  }
+
+  @override
+  String get deviceCanvasInventoryTruncated => 'Additional devices are not shown';
+
+  @override
+  String get deviceCanvasDevicePresent => 'Available';
+
+  @override
+  String get deviceCanvasDeviceMissing => 'Not currently available';
+
+  @override
+  String get deviceCanvasUnknownDevice => 'Unnamed device';
+
+  @override
+  String get deviceCanvasUnknownSession => 'another session';
+
+  @override
+  String get deviceCanvasDeviceUnclaimed => 'Unclaimed';
+
+  @override
+  String get deviceCanvasDeviceClaimedHere => 'Assigned to this session';
+
+  @override
+  String deviceCanvasDeviceClaimedElsewhere(String sessionTitle) {
+    return 'Assigned to $sessionTitle';
+  }
+
+  @override
+  String get deviceCanvasClaim => 'Assign';
+
+  @override
+  String get deviceCanvasReassign => 'Reassign';
+
+  @override
+  String get deviceCanvasRelease => 'Release';
+
+  @override
+  String deviceCanvasClaimDevice(String deviceName) {
+    return 'Assign $deviceName';
+  }
+
+  @override
+  String deviceCanvasReassignDevice(String deviceName) {
+    return 'Reassign $deviceName';
+  }
+
+  @override
+  String deviceCanvasReleaseDevice(String deviceName) {
+    return 'Release $deviceName';
+  }
+
+  @override
+  String deviceCanvasUpdatingDevice(String deviceName) {
+    return 'Updating $deviceName';
+  }
+
+  @override
+  String deviceCanvasReassignTitle(String deviceName) {
+    return 'Reassign $deviceName?';
+  }
+
+  @override
+  String deviceCanvasReassignMessage(String deviceName) {
+    return 'This removes $deviceName from its current session and assigns it here.';
+  }
+
+  @override
+  String get deviceCanvasReadOnly => 'Assignments are read-only in this session.';
+
+  @override
+  String get deviceCanvasCancel => 'Cancel';
+
+  @override
+  String get deviceCanvasMutationFailed => 'The Device Canvas update failed. Try again.';
+
+  @override
+  String get deviceCanvasMutationConflict =>
+      'This device was updated elsewhere. Review its current assignment and try again.';
+
+  @override
+  String get deviceCanvasMutationUnavailable => 'This device or session is no longer available.';
+
+  @override
+  String get deviceCanvasMutationUncertain =>
+      'The request may have completed, but its result could not be confirmed. Status was refreshed.';
+
+  @override
   String get sessionDetailPromptHint => 'Ask anything...';
 
   @override

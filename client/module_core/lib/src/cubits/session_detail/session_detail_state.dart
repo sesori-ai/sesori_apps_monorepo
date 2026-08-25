@@ -2,6 +2,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
+import "device_canvas_session_state.dart";
 import "queued_session_submission.dart";
 
 part "session_detail_state.freezed.dart";
@@ -59,6 +60,7 @@ sealed class SessionDetailState with _$SessionDetailState {
     @Default([]) List<SessionVariant> availableVariants,
     // Transient retry error message from the AI provider (e.g. "Provider is overloaded").
     required String? retryErrorMessage,
+    @Default(DeviceCanvasSessionHidden()) DeviceCanvasSessionState deviceCanvas,
   }) = SessionDetailLoaded;
 
   const factory failed({required RemoteFailureReason reason}) = SessionDetailFailed;

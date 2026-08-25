@@ -1,10 +1,12 @@
 import "dart:async";
 
+import "package:sesori_bridge/src/bridge/repositories/device_canvas_claim_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/bridge/services/device_canvas_claim_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_cleanup_result.dart";
 import "package:sesori_bridge/src/bridge/services/session_deletion_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
@@ -277,12 +279,14 @@ class _Fixture() {
       sessionOperationDispatcher: operations,
       archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
       chatHistoryService: createTestChatHistory().service,
+      deviceCanvasClaimService: _NoopDeviceCanvasClaimService(),
     );
     chatHistory = createTestChatHistory();
     deletions = SessionDeletionService(
       sessionLifecycleService: lifecycle,
       sessionMutationDispatcher: mutations,
       chatHistoryService: chatHistory.service,
+      deviceCanvasClaimService: _NoopDeviceCanvasClaimService(),
     );
   }
 
@@ -316,6 +320,76 @@ class _Fixture() {
     await operations.dispose();
     await mutations.dispose();
   }
+}
+
+class _NoopDeviceCanvasClaimService() implements DeviceCanvasClaimService {
+  @override
+  Future<DeviceCanvasClaimAttempt> claim({
+    required String bridgeId,
+    required String deviceKey,
+    required String sessionId,
+  }) {
+    return Future.value(const DeviceCanvasClaimSessionUnavailable());
+  }
+
+  @override
+  Future<DeviceCanvasClaimAttempt> reassign({
+    required String bridgeId,
+    required String deviceKey,
+    required String sessionId,
+    required String expectedOwnerSessionId,
+    required int expectedClaimRevision,
+  }) {
+    return Future.value(const DeviceCanvasClaimSessionUnavailable());
+  }
+
+  @override
+  Future<void> cleanupBridgeIdentity({required String bridgeId}) async {}
+
+  @override
+  Future<void> cleanupForStartup({required String bridgeId}) async {}
+
+  @override
+  Future<DeviceCanvasReleaseAttempt> release({
+    required String bridgeId,
+    required String deviceKey,
+    required String sessionId,
+    int? expectedClaimRevision,
+  }) async => const DeviceCanvasAlreadyReleased();
+
+  @override
+  Future<void> releaseSessionClaims({required String sessionId}) async {}
+
+  @override
+  Future<void> releaseSessionsClaims({required List<String> sessionIds}) async {}
+
+  @override
+  Future<List<DeviceCanvasClaimRemoved>> snapshotRemovalsForSessions({required List<String> sessionIds}) async =>
+      const [];
+
+  @override
+  void publishRemovals(List<DeviceCanvasClaimRemoved> removals) {}
+
+  @override
+  Future<void> publishSessionClaimUpdates({required String sessionId}) async {}
+
+  @override
+  Stream<DeviceCanvasClaimChange> get changes => const Stream.empty();
+
+  @override
+  Future<DeviceCanvasClaimProjectionPage> clientSnapshot({
+    required String bridgeId,
+    required String sessionId,
+    required Set<String> liveDeviceKeys,
+    required String? priorityDeviceKey,
+    required int limit,
+  }) async => const DeviceCanvasClaimProjectionPage(projections: [], truncated: false);
+
+  @override
+  Future<void> dispose() async {}
+
+  @override
+  Future<List<DeviceCanvasClaimProjection>> snapshot({required String bridgeId}) async => const [];
 }
 
 class _FamilyRepository() implements SessionRepository {
@@ -398,7 +472,10 @@ class _FamilyRepository() implements SessionRepository {
   }
 
   @override
-  Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async {
+  Future<DeletedSessionSubtree> deleteSession({
+    required String sessionId,
+    required BeforePersistedSessionDelete beforePersistedDelete,
+  }) async {
     deleteCalls++;
     if (!deleteStarted.isCompleted) deleteStarted.complete();
     final snapshot = _sessions[sessionId];
@@ -412,6 +489,7 @@ class _FamilyRepository() implements SessionRepository {
       for (final record in _sessions.values)
         if (record.rootId == sessionId || record.id == sessionId) record.id,
     ];
+    await beforePersistedDelete(sessionIds: removed);
     _sessions.removeWhere((_, record) => record.rootId == sessionId || record.id == sessionId);
     return (session: snapshot.session, sessionIds: removed);
   }

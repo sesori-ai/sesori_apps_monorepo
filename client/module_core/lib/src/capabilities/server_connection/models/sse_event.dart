@@ -37,6 +37,7 @@ class SseEvent({required final SesoriSseEvent data, final String? directory}) {
     SesoriPluginInstallProgress() ||
     SesoriPluginAuthenticationProgress() ||
     SesoriCommandCatalogUpdated() ||
+    SesoriDeviceCanvasChanged() ||
     SesoriPtyCreated() ||
     SesoriPtyUpdated() ||
     SesoriPtyExited() ||

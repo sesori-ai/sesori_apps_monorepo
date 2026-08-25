@@ -11,6 +11,7 @@ import "background_tasks_toggle.dart";
 class const BackgroundTasksList({
   super.key,
   required final String? projectId,
+  required final String? bridgeId,
   required final List<Session> runningTasks,
   required final List<Session> completedTasks,
   required final Map<String, SessionStatus> childStatuses,
@@ -55,6 +56,7 @@ class const BackgroundTasksList({
               final isLast = !showToggle && index == visibleTasks.length - 1;
               return BackgroundTaskRow(
                 projectId: projectId,
+                bridgeId: bridgeId,
                 session: child,
                 status: childStatuses[child.id],
                 isLast: isLast,

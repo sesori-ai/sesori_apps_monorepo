@@ -24,6 +24,7 @@ class const SessionDetailBody({
   required final String sessionId,
   required final String? sessionTitle,
   required final bool readOnly,
+  required final String? bridgeId,
 }) extends StatefulWidget {
   @override
   State<SessionDetailBody> createState() => _SessionDetailBodyState();
@@ -89,6 +90,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
               projectId: widget.projectId,
               projectName: widget.projectName,
               sessionId: widget.sessionId,
+              bridgeId: widget.bridgeId,
             ),
           ),
         ),
@@ -161,6 +163,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
                 ? SessionDetailLoadedView.readOnly(
                     projectId: widget.projectId,
                     sessionId: widget.sessionId,
+                    bridgeId: widget.bridgeId,
                     state: loaded,
                     onShowPendingQuestions: _showPendingQuestions,
                     onShowPendingPermissions: _showPendingPermissions,
@@ -168,6 +171,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
                 : SessionDetailLoadedView.editable(
                     projectId: widget.projectId,
                     sessionId: widget.sessionId,
+                    bridgeId: widget.bridgeId,
                     state: loaded,
                     onShowPendingQuestions: _showPendingQuestions,
                     onShowPendingPermissions: _showPendingPermissions,

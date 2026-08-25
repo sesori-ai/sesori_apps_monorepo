@@ -45,6 +45,7 @@ class const _SessionListBody({required final String projectId, final String? pro
             sessionId: session.id,
             sessionTitle: session.title ?? "",
             readOnly: false,
+            bridgeId: null,
           ),
         );
       },

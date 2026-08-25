@@ -62,6 +62,7 @@ import "user_message_card.dart";
 class const SessionDetailMessageList({
   super.key,
   required final String? projectId,
+  required final String? bridgeId,
   required final List<MessageWithParts> messages,
   required final QueuedSessionSubmission? sendingSubmission,
   required final List<QueuedSessionSubmission> queuedMessages,
@@ -639,6 +640,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       MessageUser() => UserMessageCard(message: message),
       MessageAssistant() => AssistantMessageCard(
         projectId: widget.projectId,
+        bridgeId: widget.bridgeId,
         message: message,
         streamingText: streamingText,
         children: children,

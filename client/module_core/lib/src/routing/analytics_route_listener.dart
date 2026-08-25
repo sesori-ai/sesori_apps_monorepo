@@ -119,7 +119,7 @@ class AnalyticsRouteListener {
     AppRouteDef.settingsProfile => AnalyticsScreen.settingsProfile,
     AppRouteDef.sessions => AnalyticsScreen.sessions,
     AppRouteDef.newSession => AnalyticsScreen.newSession,
-    AppRouteDef.sessionDetail => AnalyticsScreen.sessionDetail,
+    AppRouteDef.sessionDetail || AppRouteDef.deviceCanvasSession => AnalyticsScreen.sessionDetail,
     AppRouteDef.sessionDiffs => AnalyticsScreen.sessionDiffs,
   };
 

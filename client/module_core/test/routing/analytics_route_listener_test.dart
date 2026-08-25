@@ -108,6 +108,7 @@ void main() {
       AppRouteDef.sessions,
       AppRouteDef.newSession,
       AppRouteDef.sessionDetail,
+      AppRouteDef.deviceCanvasSession,
       AppRouteDef.sessionDiffs,
     ];
     for (final route in sequence) {

@@ -3,6 +3,7 @@ const redirectUri = "$bundleId://auth/callback";
 const projectNameQueryParam = "name";
 const projectIdPathParam = "projectId";
 const sessionIdPathParam = "sessionId";
+const bridgeIdQueryParam = "bridgeId";
 const harnessSettingsPresentationQueryParam = "presentation";
 
 /// How the harness settings page was raised, which decides both its page
@@ -39,6 +40,7 @@ enum AppRouteDef(final String path) {
   splash("/splash"),
   login("/login"),
   projects("/projects"),
+  deviceCanvasSession("/sessions/:$sessionIdPathParam"),
   settings("/settings"),
   settingsNotifications("/settings/notifications"),
   settingsHarnesses("/settings/harnesses"),
@@ -63,6 +65,7 @@ enum AppRouteDef(final String path) {
 ///   sessionId: 's1',
 ///   sessionTitle: null,
 ///   readOnly: false,
+///   bridgeId: null,
 /// ));
 /// ```
 sealed class const AppRoute() {
@@ -78,6 +81,11 @@ sealed class const AppRoute() {
   const factory splash() = AppRouteSplash;
   const factory login() = AppRouteLogin;
   const factory projects() = AppRouteProjects;
+  const factory deviceCanvasSession({
+    required String sessionId,
+    required String bridgeId,
+    required bool readOnly,
+  }) = AppRouteDeviceCanvasSession;
   const factory settings() = AppRouteSettings;
   const factory settingsNotifications() = AppRouteSettingsNotifications;
   const factory settingsHarnesses({
@@ -98,11 +106,13 @@ sealed class const AppRoute() {
     required String sessionId,
     required String? sessionTitle,
     required bool readOnly,
+    required String? bridgeId,
   }) = AppRouteSessionDetail;
   const factory sessionDiffs({
     required String projectId,
     required String? projectName,
     required String sessionId,
+    required String? bridgeId,
   }) = AppRouteSessionDiffs;
 
   /// Creates the correct subclass by decoding path/query params for [def].
@@ -118,6 +128,10 @@ sealed class const AppRoute() {
       AppRouteDef.splash => const AppRoute.splash(),
       AppRouteDef.login => const AppRoute.login(),
       AppRouteDef.projects => const AppRoute.projects(),
+      AppRouteDef.deviceCanvasSession => AppRouteDeviceCanvasSession.fromParams(
+        pathParams: pathParams,
+        queryParams: queryParams,
+      ),
       AppRouteDef.settings => const AppRoute.settings(),
       AppRouteDef.settingsNotifications => const AppRoute.settingsNotifications(),
       AppRouteDef.settingsHarnesses => AppRouteSettingsHarnesses.fromParams(queryParams: queryParams),
@@ -158,6 +172,41 @@ class const AppRouteProjects() extends AppRoute {
 
   @override
   String buildPath() => def.path;
+}
+
+class const AppRouteDeviceCanvasSession({
+  required final String sessionId,
+  required final String bridgeId,
+  required final bool readOnly,
+}) extends AppRoute {
+  static const _sessionIdPathParam = sessionIdPathParam;
+  static const _bridgeIdQueryParam = bridgeIdQueryParam;
+  static const _readOnlyQueryParam = "readOnly";
+
+  factory fromParams({
+    required Map<String, String> pathParams,
+    required Map<String, String> queryParams,
+  }) {
+    return AppRouteDeviceCanvasSession(
+      sessionId: pathParams[_sessionIdPathParam] ?? "",
+      bridgeId: queryParams[_bridgeIdQueryParam] ?? "",
+      readOnly: queryParams[_readOnlyQueryParam] == "true",
+    );
+  }
+
+  @override
+  AppRouteDef get def => AppRouteDef.deviceCanvasSession;
+
+  @override
+  String buildPath() {
+    return _appendQuery(
+      path: "/sessions/${Uri.encodeComponent(sessionId)}",
+      queryParameters: {
+        _bridgeIdQueryParam: bridgeId,
+        _readOnlyQueryParam: readOnly.toString(),
+      },
+    );
+  }
 }
 
 class const AppRouteSettings() extends AppRoute {
@@ -276,12 +325,14 @@ class const AppRouteSessionDetail({
   required final String sessionId,
   required final String? sessionTitle,
   required final bool readOnly,
+  required final String? bridgeId,
 }) extends AppRoute {
   static const _projectIdPathParam = projectIdPathParam;
   static const _sessionIdPathParam = sessionIdPathParam;
   static const _nameQueryParam = projectNameQueryParam;
   static const _titleQueryParam = "title";
   static const _readOnlyQueryParam = "readOnly";
+  static const _bridgeIdQueryParam = bridgeIdQueryParam;
 
   /// Decodes from path/query parameter maps (inverse of [buildPath]).
   factory fromParams({
@@ -294,6 +345,7 @@ class const AppRouteSessionDetail({
       sessionId: pathParams[_sessionIdPathParam] ?? "",
       sessionTitle: queryParams[_titleQueryParam],
       readOnly: queryParams[_readOnlyQueryParam] == "true",
+      bridgeId: queryParams[_bridgeIdQueryParam],
     );
   }
 
@@ -307,6 +359,7 @@ class const AppRouteSessionDetail({
       _readOnlyQueryParam: readOnly.toString(),
       _nameQueryParam: ?projectName,
       _titleQueryParam: ?sessionTitle,
+      _bridgeIdQueryParam: ?bridgeId,
     };
     return _appendQuery(path: base, queryParameters: queryParams);
   }
@@ -323,8 +376,10 @@ class const AppRouteSessionDetail({
   ///
   /// [projectName] and [sessionTitle] are display-only and deliberately
   /// ignored — the same session labelled differently is still the same screen.
+  /// [bridgeId] is not display-only: it gates loading to one bridge identity.
   bool showsEditableLocation({required Uri location}) {
     if (location.path != Uri.parse(buildPath()).path) return false;
+    if (location.queryParameters[_bridgeIdQueryParam] != bridgeId) return false;
     return location.queryParameters[_readOnlyQueryParam] != true.toString();
   }
 }
@@ -333,10 +388,12 @@ class const AppRouteSessionDiffs({
   required final String projectId,
   required final String? projectName,
   required final String sessionId,
+  required final String? bridgeId,
 }) extends AppRoute {
   static const _projectIdPathParam = projectIdPathParam;
   static const _sessionIdPathParam = sessionIdPathParam;
   static const _nameQueryParam = projectNameQueryParam;
+  static const _bridgeIdQueryParam = bridgeIdQueryParam;
 
   /// Decodes from path/query parameter maps (inverse of [buildPath]).
   factory fromParams({
@@ -347,6 +404,7 @@ class const AppRouteSessionDiffs({
       projectId: pathParams[_projectIdPathParam] ?? "",
       projectName: queryParams[_nameQueryParam],
       sessionId: pathParams[_sessionIdPathParam] ?? "",
+      bridgeId: queryParams[_bridgeIdQueryParam],
     );
   }
 
@@ -358,6 +416,7 @@ class const AppRouteSessionDiffs({
     final base = "/projects/${Uri.encodeComponent(projectId)}/sessions/${Uri.encodeComponent(sessionId)}/diffs";
     final queryParams = <String, String>{
       _nameQueryParam: ?projectName,
+      _bridgeIdQueryParam: ?bridgeId,
     };
     return _appendQuery(path: base, queryParameters: queryParams);
   }

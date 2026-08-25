@@ -10,6 +10,7 @@ import "../../../core/routing/current_project_name.dart";
 class const SubtaskPartWidget({
   super.key,
   required final String? projectId,
+  required final String? bridgeId,
   required final MessagePart part,
   required final List<Session> children,
   required final Map<String, SessionStatus> childStatuses,
@@ -42,6 +43,7 @@ class const SubtaskPartWidget({
                     sessionId: childSession.id,
                     readOnly: true,
                     sessionTitle: childSession.title,
+                    bridgeId: bridgeId,
                   ),
                 )
               : null,

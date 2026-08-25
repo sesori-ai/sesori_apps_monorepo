@@ -22,6 +22,7 @@ import 'package:http/http.dart' as _i519;
 import 'package:image_picker/image_picker.dart' as _i183;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:record/record.dart' as _i1039;
+import 'package:sesori_auth/sesori_auth.dart' as _i442;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
 import 'package:sesori_mobile/capabilities/media/composer_image_picker.dart'
     as _i140;
@@ -216,7 +217,11 @@ extension GetItInjectableX on _i174.GetIt {
       registerFor: {_firebaseDisabled},
     );
     gh.lazySingleton<_i901.DeepLinkService>(
-      () => _i901.DeepLinkService(gh<_i948.DeepLinkSource>()),
+      () => _i901.DeepLinkService(
+        gh<_i948.DeepLinkSource>(),
+        gh<_i442.AuthSession>(),
+        gh<_i948.RouteDispatcher>(),
+      ),
       dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i553.FailureReporter>(

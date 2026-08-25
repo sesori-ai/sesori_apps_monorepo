@@ -27,12 +27,14 @@ Widget _buildApp({
           }
           final readOnly = state.uri.queryParameters["readOnly"];
           final projectName = state.uri.queryParameters["name"];
+          final bridgeId = state.uri.queryParameters["bridgeId"];
           return Scaffold(
             body: Column(
               children: [
                 Text('sessionId=${state.pathParameters["sessionId"]}'),
                 Text('readOnly=$readOnly'),
                 Text('name=$projectName'),
+                Text('bridgeId=$bridgeId'),
                 if (GoRouter.of(context).canPop()) const Text('canPop=true'),
               ],
             ),
@@ -95,6 +97,7 @@ void main() {
           child: Scaffold(
             body: SubtaskPartWidget(
               projectId: "project-1",
+              bridgeId: null,
               part: _subtaskPart(description: "Child Session"),
               children: [child],
               childStatuses: const {},
@@ -111,6 +114,7 @@ void main() {
       expect(find.text("canPop=true"), findsOneWidget);
       expect(find.text("sessionId=child-1"), findsOneWidget);
       expect(find.text("readOnly=true"), findsOneWidget);
+      expect(find.text("bridgeId=null"), findsOneWidget);
     });
 
     testWidgets("tapping child session pushes route with readOnly=true from split context", (tester) async {
@@ -123,6 +127,7 @@ void main() {
               isSplit: true,
               child: SubtaskPartWidget(
                 projectId: "project-1",
+                bridgeId: "bridge-1",
                 part: _subtaskPart(description: "Child Session"),
                 children: [child],
                 childStatuses: const {},
@@ -140,6 +145,7 @@ void main() {
       expect(find.text("sessionId=child-1"), findsOneWidget);
       expect(find.text("readOnly=true"), findsOneWidget);
       expect(find.text("name=Project One"), findsOneWidget);
+      expect(find.text("bridgeId=bridge-1"), findsOneWidget);
     });
   });
 
@@ -152,6 +158,7 @@ void main() {
             body: BackgroundTasksBar(
               surfaceStyle: PregoComposerSurfaceStyle.subtle,
               projectId: "project-1",
+              bridgeId: null,
               children: [child],
               childStatuses: const {},
             ),
@@ -169,6 +176,7 @@ void main() {
       expect(find.text("canPop=true"), findsOneWidget);
       expect(find.text("sessionId=task-1"), findsOneWidget);
       expect(find.text("readOnly=true"), findsOneWidget);
+      expect(find.text("bridgeId=null"), findsOneWidget);
     });
 
     testWidgets("tapping task row pushes route with readOnly=true from split context", (tester) async {
@@ -182,6 +190,7 @@ void main() {
               child: BackgroundTasksBar(
                 surfaceStyle: PregoComposerSurfaceStyle.subtle,
                 projectId: "project-1",
+                bridgeId: "bridge-1",
                 children: [child],
                 childStatuses: const {},
               ),
@@ -201,6 +210,7 @@ void main() {
       expect(find.text("sessionId=task-1"), findsOneWidget);
       expect(find.text("readOnly=true"), findsOneWidget);
       expect(find.text("name=Project One"), findsOneWidget);
+      expect(find.text("bridgeId=bridge-1"), findsOneWidget);
     });
   });
 }

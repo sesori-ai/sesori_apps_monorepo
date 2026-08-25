@@ -402,6 +402,26 @@ void main() {
       expect(response.statusCode, equals(HttpStatus.badRequest));
     });
 
+    test("Device Canvas client routes are unavailable without relay authentication", () async {
+      final client = HttpClient();
+      addTearDown(client.close);
+
+      for (final path in [
+        "status",
+        "claim",
+        "release",
+        "status/",
+        "/claim",
+        "//release//",
+      ]) {
+        final request = await client.postUrl(
+          Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/device-canvas/$path"),
+        );
+        final response = await request.close();
+        expect(response.statusCode, HttpStatus.notFound);
+      }
+    });
+
     test("POST /sessions with body returns session list", () async {
       plugin.sessionsResult = [
         const PluginSession(

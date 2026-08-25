@@ -40,6 +40,7 @@ export "src/models/sesori/command_info.dart";
 export "src/models/sesori/command_list_response.dart";
 export "src/models/sesori/create_session_request.dart";
 export "src/models/sesori/delete_session_request.dart";
+export "src/models/sesori/device_canvas_client.dart";
 export "src/models/sesori/device_platform.dart";
 export "src/models/sesori/discover_project_request.dart";
 export "src/models/sesori/file_diff.dart";

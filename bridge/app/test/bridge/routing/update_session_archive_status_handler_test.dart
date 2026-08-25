@@ -6,12 +6,15 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
+import "package:sesori_bridge/src/bridge/device_canvas/integration_state.dart";
 import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
+import "package:sesori_bridge/src/bridge/repositories/device_canvas_claim_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/update_session_archive_status_handler.dart";
 import "package:sesori_bridge/src/bridge/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/bridge/services/device_canvas_claim_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
@@ -57,6 +60,7 @@ void main() {
           sessionOperationDispatcher: operationDispatcher,
           archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
           chatHistoryService: createTestChatHistory().service,
+          deviceCanvasClaimService: _claimService(db),
         ),
         sessionUnseenService: unseenService = buildTestSessionUnseenService(db, plugin),
       );
@@ -118,6 +122,11 @@ void main() {
         ),
       ];
       await _setPullRequestScope(db: db, sessionId: "s1");
+      await _claimService(db).claim(
+        bridgeId: "bridge-a",
+        deviceKey: "ios:booted",
+        sessionId: "s1",
+      );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "/repo",
@@ -157,6 +166,7 @@ void main() {
       expect(result.id, equals("s1"));
       expect(result.time?.archived, equals(persisted?.archivedAt));
       expect(result.pullRequest, isNull);
+      expect(await db.deviceCanvasClaimDao.getClaimsForBridge(bridgeId: "bridge-a"), isEmpty);
     });
 
     test("archiving an already-archived session emits no unseen change", () async {
@@ -777,6 +787,17 @@ void main() {
       expect(result.hasWorktree, isFalse);
     });
   });
+}
+
+DeviceCanvasClaimService _claimService(AppDatabase db) {
+  return DeviceCanvasClaimService(
+    repository: DeviceCanvasClaimRepository(
+      claimDao: db.deviceCanvasClaimDao,
+      sessionDao: db.sessionDao,
+      now: () => DateTime.now().millisecondsSinceEpoch,
+    ),
+    integrationState: DeviceCanvasIntegrationState(),
+  );
 }
 
 Future<void> _setPullRequestScope({required AppDatabase db, required String sessionId}) async {

@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `device-canvas-integration`
-- **Status:** Active - reviewed plan ready for delivery
+- **Status:** Active - Steps 1-5 implemented and verified
 - **Plan date:** 2026-08-18
 - **Primary repository:** `sesori-ai/sesori_apps_monorepo`
 - **Companion repository:** `daniil-shumko/device-canvas`
@@ -127,15 +127,18 @@ MCP, skill, command, or extension seam.
 
 ### Sesori routing
 
-The existing session route is
+The canonical session route is
 `/projects/:projectId/sessions/:sessionId`. Notification navigation already
-resolves to that route. `DeepLinkService` currently handles the legacy OAuth
-callback and ignores other incoming URLs, so Device Canvas session links need a
-new parser but not a new product route.
+resolves to that route. Device Canvas must not receive a project ID because it
+may disclose source-path information, so its external link instead enters a
+narrow `/sessions/:sessionId` resolver route scoped by `bridgeId`.
 
-The canonical session and project IDs are not sufficient to disambiguate a
-local external link when more than one bridge is known. The link therefore also
-carries `bridgeId`, while the route itself remains unchanged.
+The resolver waits when that registered bridge is offline, verifies the exact
+account/bridge/session binding, derives the canonical project from trusted
+client state, and replaces itself with the normal project/session stack. It has
+only bounded loading and unavailable presentation; it is not a second session
+detail surface. `DeepLinkService` retains the legacy OAuth callback behavior and
+dispatches valid Device Canvas links to this resolver.
 
 ### Sesori relay transport
 
@@ -165,8 +168,9 @@ suitable for continuous interactive video.
    session. The model cannot supply an arbitrary Sesori session ID.
 7. OpenCode is the first agent-initiated adapter. Other backends remain
    unsupported until their native adapter is implemented and verified.
-8. Device Canvas links into Sesori's existing session-detail route. The link
-   carries `bridgeId`, `projectId`, and canonical `sessionId`.
+8. Device Canvas links carry only `bridgeId` and canonical `sessionId`. A narrow
+   projectless resolver derives the project after exact identity verification,
+   then replaces itself with Sesori's existing session-detail stack.
 9. Sesori's existing encrypted relay channel carries only low-rate Phase 2
    authorization and WebRTC signaling. Video uses SRTP and input uses an
    encrypted data channel.
@@ -206,7 +210,7 @@ devices. Losing IPC clears live presence but does not mutate claims.
 
 ### 2. Durable claim schema
 
-Add a Drift table under `bridge/app/lib/src/api/database/tables/` with:
+Add a Drift claim table under `bridge/app/lib/src/api/database/tables/` with:
 
 - `bridge_id TEXT NOT NULL`;
 - `device_key TEXT NOT NULL`;
@@ -217,6 +221,18 @@ Add a Drift table under `bridge/app/lib/src/api/database/tables/` with:
 - `updated_at INTEGER NOT NULL`;
 - primary key `(bridge_id, device_key)`;
 - index on `session_id`.
+
+Add a bounded revision-counter table with:
+
+- `bridge_id TEXT NOT NULL` as the primary key;
+- `last_revision INTEGER NOT NULL`.
+
+Every ownership-creating claim or reassignment allocates the next revision from
+the bridge's counter in the same transaction. A removal carries the removed
+claim's revision, and any later ownership receives a strictly greater revision.
+The high-water mark survives claim deletion, session cascade, archive cleanup,
+and restart, preventing stale compare-and-set operations from succeeding after
+an ABA cycle. The table grows by bridge identity, not by historical device key.
 
 Do not duplicate project, plugin, backend-session, session-title, or device-name
 facts in the durable row. Those are resolved from the canonical session binding
@@ -311,9 +327,10 @@ Each inventory descriptor contains only:
 - local dimensions/orientation when known;
 - local-view, remote-video, remote-control, and input capability flags.
 
-Each claim projection contains only bridge, project, session, device, revision,
-and display-title facts needed for the badge and link. Prompts, transcript text,
-source paths, diffs, tool input, and backend secrets never cross IPC.
+Each claim projection contains only bridge, session, device, revision, and
+bounded display-title facts needed for the badge and link. Project identifiers,
+prompts, transcript text, source paths, diffs, tool input, and backend secrets
+never cross IPC.
 
 Unknown protocol versions fail closed with a clear compatibility status. A
 heartbeat timeout marks the canvas disconnected; it does not release ownership.
@@ -377,8 +394,7 @@ Each pane displays:
 - claiming session title with a generic fallback;
 - online/offline state independently;
 - an accessibility description of ownership;
-- an `Open Sesori session` action when bridge, project, and session IDs are
-  present.
+- an `Open Sesori session` action when bridge and session IDs are present.
 
 Device Canvas never persists claim ownership. Reconnect always replaces its
 projection from `claimsSnapshot` before applying later revisions.
@@ -388,28 +404,30 @@ projection from `claimsSnapshot` before applying later revisions.
 Device Canvas opens:
 
 ```text
-com.sesori.app:///projects/<projectId>/sessions/<sessionId>
-  ?bridgeId=<bridgeId>&readOnly=false
+com.sesori.app:///sessions/<sessionId>?bridgeId=<bridgeId>&readOnly=false
 ```
 
 Every path/query value is percent-encoded through one URL builder. The device key
-is not navigation identity and is omitted.
+and project ID are not navigation identity and are omitted.
 
 Extend the existing app deep-link service to:
 
 1. retain the OAuth callback behavior;
-2. recognize this session path;
-3. validate required bridge, project, and session values;
-4. normalize through `AppRouteSessionDetail.buildPath`;
+2. recognize this projectless session path;
+3. strictly validate the bridge, session, and editable-only query values;
+4. queue the resolver route until authentication completes;
 5. replace the navigation stack through the existing route dispatcher;
-6. open the session waiting state when the named bridge is known but offline;
-7. show a bounded not-found/wrong-bridge result when identity cannot be resolved;
-8. avoid exposing another account's session metadata.
+6. wait when the named registered bridge is offline;
+7. verify the exact bridge/account/session identity before deriving the project;
+8. replace the resolver with the canonical project/session stack;
+9. show a bounded unavailable result when identity cannot be resolved without
+   exposing another account's session or project metadata.
 
 Register the custom scheme on the macOS mobile-app runner if it is not already
-present. Do not introduce a second session-detail route. Universal links may be
-added later using the same normalized target, but are not required for local
-Device Canvas launch.
+present. The projectless route is a transient resolver and must not duplicate the
+session-detail UI or load session content before verification. Universal links
+may be added later using the same normalized target, but are not required for
+local Device Canvas launch.
 
 ## Phase 1 Failure Semantics
 
@@ -431,8 +449,8 @@ Device Canvas launch.
 
 ## Phase 1 Compatibility
 
-- Database migration adds one table and indexes; no existing session row is
-  rewritten or backfilled.
+- Database migration adds the claim table, one bounded per-bridge revision table,
+  and indexes; no existing session row is rewritten or backfilled.
 - Internal Bridge packages update in lockstep; no internal compatibility shim.
 - Client/Bridge messages are additive and remain forward/backward tolerant for
   public release skew.
@@ -741,7 +759,8 @@ any event. No analytics event is mandated by this plan.
 
 ### Phase 1 allowed mutable parts
 
-1. One durable claim table and DAO.
+1. One durable claim table, one bounded per-bridge revision-counter table, and
+   one DAO boundary.
 2. One bridge claim repository/service boundary.
 3. One current Device Canvas inventory projection in bridge memory.
 4. One authenticated local IPC peer and heartbeat lifecycle.
@@ -814,8 +833,9 @@ An `architecture-plan-review` sub-agent reviewed the draft on 2026-08-18 and
 rejected six under-specified boundaries. This plan applies those findings
 directly without a second review, following repository policy:
 
-1. Deep links extend `DeepLinkService` and reuse `AppRouteSessionDetail` rather
-   than adding a route.
+1. Deep links extend `DeepLinkService` and enter a narrow projectless resolver
+   before replacing themselves with `AppRouteSessionDetail`; they do not add a
+   second detail surface.
 2. Claim projections and links carry bridge scope while durable ownership remains
    local to the bridge database.
 3. Local IPC specifies credential bootstrap, loopback enforcement, one-peer

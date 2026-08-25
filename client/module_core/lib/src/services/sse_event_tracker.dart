@@ -127,6 +127,7 @@ class SseEventTracker(
             SesoriCommandExecuted() ||
             SesoriTodoUpdated() ||
             SesoriSessionPromptDefaultsChanged() ||
+            SesoriDeviceCanvasChanged() ||
             SesoriVcsBranchUpdated() ||
             SesoriSessionsUpdated() ||
             SesoriSessionUnseenChanged() ||

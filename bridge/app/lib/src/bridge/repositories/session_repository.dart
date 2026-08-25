@@ -66,6 +66,8 @@ typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
 /// The deleted root as clients see it, plus every session id removed with it.
 typedef DeletedSessionSubtree = ({Session session, List<String> sessionIds});
 
+typedef BeforePersistedSessionDelete = Future<void> Function({required List<String> sessionIds});
+
 class SessionRepository({
     required final PluginRuntime _runtime,
     required Set<String> bridgeDerivedProjectPluginIds,
@@ -495,12 +497,14 @@ class SessionRepository({
   /// Returns the deleted root snapshot plus the exact set of session ids the
   /// deletion removed, so per-session cleanup outside this repository operates
   /// on what was actually deleted rather than on an earlier snapshot.
-  Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async {
+  Future<DeletedSessionSubtree> deleteSession({
+    required String sessionId,
+    required BeforePersistedSessionDelete beforePersistedDelete,
+  }) async {
     final binding = await _requireBinding(
       sessionId: sessionId,
       operation: SessionOperation.deleteSession,
     );
-    final subtree = await _getSessionSubtree(root: binding);
     final deletionSnapshot = (await _mapCatalogSessions(
       rows: [binding],
       verifiedGithubLogin: null,
@@ -517,24 +521,29 @@ class SessionRepository({
         }
       },
     );
+    var deletedSubtree = const <SessionDto>[];
     await _sessionDao.transaction(() async {
+      final persistedRoot = await _sessionDao.getSession(sessionId: binding.sessionId);
+      if (persistedRoot == null) return;
+      deletedSubtree = await _getSessionSubtree(root: persistedRoot);
       final deletedAt = DateTime.now().millisecondsSinceEpoch;
-      for (final binding in subtree) {
+      for (final binding in deletedSubtree) {
         await _sessionDao.insertSessionTombstone(
           backendSessionId: binding.backendSessionId,
           pluginId: binding.pluginId,
           deletedAt: deletedAt,
         );
       }
+      await beforePersistedDelete(sessionIds: [for (final binding in deletedSubtree) binding.sessionId]);
       await _sessionDao.deleteSession(sessionId: binding.sessionId);
     });
-    _deletedSessionIds.addAll(subtree.map((binding) => binding.sessionId));
-    for (final binding in subtree) {
+    _deletedSessionIds.addAll(deletedSubtree.map((binding) => binding.sessionId));
+    for (final binding in deletedSubtree) {
       _tombstonesFor(binding.pluginId).add(binding.backendSessionId);
     }
     return (
       session: deletionSnapshot,
-      sessionIds: [for (final binding in subtree) binding.sessionId],
+      sessionIds: [for (final binding in deletedSubtree) binding.sessionId],
     );
   }
 

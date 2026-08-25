@@ -11,6 +11,7 @@ import 'generated/schema.dart';
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v10.dart' as v10;
 import 'generated/schema_v11.dart' as v11;
+import 'generated/schema_v13.dart' as v13;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
@@ -1642,6 +1643,117 @@ void main() {
     expect(await db.select(db.pullRequestsTable).get(), isEmpty);
     expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
   });
+
+  test('migrates schema from v13 to v14', () async {
+    final connection = await verifier.startAt(13);
+    final db = AppDatabase(connection);
+
+    await verifier.migrateAndValidate(
+      db,
+      14,
+      options: const ValidationOptions(validateDropped: true),
+    );
+    await db.close();
+  });
+
+  test('v14 device canvas claims enforce scoped uniqueness and session cascade', () async {
+    await verifier.testWithDataIntegrity(
+      oldVersion: 13,
+      newVersion: 14,
+      createOld: v13.DatabaseAtV13.new,
+      createNew: AppDatabase.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, oldDb) {
+        batch.insert(
+          oldDb.projectsTable,
+          const v13.ProjectsTableData(
+            projectId: 'project-1',
+            hidden: 0,
+            baseBranch: null,
+            path: '/repo',
+            displayName: null,
+            createdAt: 1,
+            updatedAt: 1,
+            projectionUpdatedAt: 1,
+            prCacheGithubLogin: null,
+          ),
+        );
+        batch.insert(
+          oldDb.sessionsTable,
+          const v13.SessionsTableData(
+            sessionId: 'session-1',
+            backendSessionId: 'backend-1',
+            projectId: 'project-1',
+            parentSessionId: null,
+            directory: '/repo',
+            worktreePath: null,
+            branchName: null,
+            currentBranchName: null,
+            currentGithubRepositoryIdentity: null,
+            isDedicated: 0,
+            archivedAt: null,
+            baseBranch: null,
+            baseCommit: null,
+            lastAgent: null,
+            lastAgentModel: null,
+            createdAt: 1,
+            updatedAt: 1,
+            projectionUpdatedAt: 1,
+            lastActivityAt: null,
+            lastSeenAt: null,
+            lastUserMessageAt: null,
+            pluginId: 'opencode',
+            title: null,
+            catalogTitle: null,
+          ),
+        );
+      },
+      validateItems: (db) async {
+        await db
+            .into(db.deviceCanvasClaimsTable)
+            .insert(
+              DeviceCanvasClaimsTableCompanion.insert(
+                bridgeId: 'bridge-a',
+                deviceKey: 'ios:booted',
+                sessionId: 'session-1',
+                claimRevision: 1,
+                claimedAt: 10,
+                updatedAt: 10,
+              ),
+            );
+        await db
+            .into(db.deviceCanvasClaimsTable)
+            .insert(
+              DeviceCanvasClaimsTableCompanion.insert(
+                bridgeId: 'bridge-b',
+                deviceKey: 'ios:booted',
+                sessionId: 'session-1',
+                claimRevision: 1,
+                claimedAt: 11,
+                updatedAt: 11,
+              ),
+            );
+
+        await expectLater(
+          db.into(db.deviceCanvasClaimsTable).insert(
+                DeviceCanvasClaimsTableCompanion.insert(
+                  bridgeId: 'bridge-a',
+                  deviceKey: 'ios:booted',
+                  sessionId: 'session-1',
+                  claimRevision: 2,
+                  claimedAt: 12,
+                  updatedAt: 12,
+                ),
+              ),
+          throwsA(isA<SqliteException>()),
+        );
+
+        await (db.delete(db.sessionTable)..where((table) => table.sessionId.equals('session-1'))).go();
+        expect(await db.select(db.deviceCanvasClaimsTable).get(), isEmpty);
+        expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
+      },
+    );
+  });
 }
 
 /// Migrates a v4 database to the current schema, so tests can insert rows with
@@ -1652,7 +1764,7 @@ Future<AppDatabase> _migrateFromV4({required SchemaVerifier verifier}) async {
   final db = AppDatabase(connection);
   await verifier.migrateAndValidate(
     db,
-    13,
+    14,
     options: const ValidationOptions(validateDropped: true),
   );
   return db;

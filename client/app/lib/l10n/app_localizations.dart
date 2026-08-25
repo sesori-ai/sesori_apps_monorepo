@@ -1543,6 +1543,210 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get sessionDetailRetry;
 
+  /// No description provided for @deviceCanvasLinkWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the expected Sesori bridge...'**
+  String get deviceCanvasLinkWaiting;
+
+  /// No description provided for @deviceCanvasLinkUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This Device Canvas session is not available from the connected Sesori bridge or account.'**
+  String get deviceCanvasLinkUnavailable;
+
+  /// No description provided for @deviceCanvasTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Device Canvas'**
+  String get deviceCanvasTitle;
+
+  /// No description provided for @deviceCanvasLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading Device Canvas status'**
+  String get deviceCanvasLoading;
+
+  /// No description provided for @deviceCanvasBannerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Device Canvas. {status}'**
+  String deviceCanvasBannerLabel(String status);
+
+  /// No description provided for @deviceCanvasOpenDetailsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Device Canvas details'**
+  String get deviceCanvasOpenDetailsHint;
+
+  /// No description provided for @deviceCanvasRetryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry Device Canvas status'**
+  String get deviceCanvasRetryHint;
+
+  /// No description provided for @deviceCanvasDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Device Canvas is disconnected'**
+  String get deviceCanvasDisconnected;
+
+  /// No description provided for @deviceCanvasUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Device Canvas status is unavailable'**
+  String get deviceCanvasUnavailable;
+
+  /// No description provided for @deviceCanvasNoDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'No devices available'**
+  String get deviceCanvasNoDevices;
+
+  /// No description provided for @deviceCanvasSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{available} available, {assigned} assigned here'**
+  String deviceCanvasSummary(int available, int assigned);
+
+  /// No description provided for @deviceCanvasInventoryTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'Additional devices are not shown'**
+  String get deviceCanvasInventoryTruncated;
+
+  /// No description provided for @deviceCanvasDevicePresent.
+  ///
+  /// In en, this message translates to:
+  /// **'Available'**
+  String get deviceCanvasDevicePresent;
+
+  /// No description provided for @deviceCanvasDeviceMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Not currently available'**
+  String get deviceCanvasDeviceMissing;
+
+  /// No description provided for @deviceCanvasUnknownDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Unnamed device'**
+  String get deviceCanvasUnknownDevice;
+
+  /// No description provided for @deviceCanvasUnknownSession.
+  ///
+  /// In en, this message translates to:
+  /// **'another session'**
+  String get deviceCanvasUnknownSession;
+
+  /// No description provided for @deviceCanvasDeviceUnclaimed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unclaimed'**
+  String get deviceCanvasDeviceUnclaimed;
+
+  /// No description provided for @deviceCanvasDeviceClaimedHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned to this session'**
+  String get deviceCanvasDeviceClaimedHere;
+
+  /// No description provided for @deviceCanvasDeviceClaimedElsewhere.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned to {sessionTitle}'**
+  String deviceCanvasDeviceClaimedElsewhere(String sessionTitle);
+
+  /// No description provided for @deviceCanvasClaim.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign'**
+  String get deviceCanvasClaim;
+
+  /// No description provided for @deviceCanvasReassign.
+  ///
+  /// In en, this message translates to:
+  /// **'Reassign'**
+  String get deviceCanvasReassign;
+
+  /// No description provided for @deviceCanvasRelease.
+  ///
+  /// In en, this message translates to:
+  /// **'Release'**
+  String get deviceCanvasRelease;
+
+  /// No description provided for @deviceCanvasClaimDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign {deviceName}'**
+  String deviceCanvasClaimDevice(String deviceName);
+
+  /// No description provided for @deviceCanvasReassignDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Reassign {deviceName}'**
+  String deviceCanvasReassignDevice(String deviceName);
+
+  /// No description provided for @deviceCanvasReleaseDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Release {deviceName}'**
+  String deviceCanvasReleaseDevice(String deviceName);
+
+  /// No description provided for @deviceCanvasUpdatingDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating {deviceName}'**
+  String deviceCanvasUpdatingDevice(String deviceName);
+
+  /// No description provided for @deviceCanvasReassignTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reassign {deviceName}?'**
+  String deviceCanvasReassignTitle(String deviceName);
+
+  /// No description provided for @deviceCanvasReassignMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes {deviceName} from its current session and assigns it here.'**
+  String deviceCanvasReassignMessage(String deviceName);
+
+  /// No description provided for @deviceCanvasReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Assignments are read-only in this session.'**
+  String get deviceCanvasReadOnly;
+
+  /// No description provided for @deviceCanvasCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get deviceCanvasCancel;
+
+  /// No description provided for @deviceCanvasMutationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The Device Canvas update failed. Try again.'**
+  String get deviceCanvasMutationFailed;
+
+  /// No description provided for @deviceCanvasMutationConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'This device was updated elsewhere. Review its current assignment and try again.'**
+  String get deviceCanvasMutationConflict;
+
+  /// No description provided for @deviceCanvasMutationUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This device or session is no longer available.'**
+  String get deviceCanvasMutationUnavailable;
+
+  /// No description provided for @deviceCanvasMutationUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'The request may have completed, but its result could not be confirmed. Status was refreshed.'**
+  String get deviceCanvasMutationUncertain;
+
   /// No description provided for @sessionDetailPromptHint.
   ///
   /// In en, this message translates to:

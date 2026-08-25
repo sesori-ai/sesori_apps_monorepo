@@ -65,6 +65,7 @@ import "../version.dart";
 import "api/filesystem_api.dart";
 import "api/gh_cli_api.dart";
 import "api/git_cli_api.dart";
+import "device_canvas/integration_state.dart";
 import "foundation/filesystem_permission_validator.dart";
 import "foundation/process_runner.dart";
 import "key_exchange.dart";
@@ -73,6 +74,7 @@ import "relay_client.dart";
 import "repositories/agent_repository.dart";
 import "repositories/attachment_thumbnail_builder.dart";
 import "repositories/chat_history_repository.dart";
+import "repositories/device_canvas_claim_repository.dart";
 import "repositories/filesystem_repository.dart";
 import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
@@ -119,6 +121,9 @@ import "routing/health_check_handler.dart";
 import "routing/hide_project_handler.dart";
 import "routing/open_project_handler.dart";
 import "routing/post_agents_handler.dart";
+import "routing/post_device_canvas_claim_handler.dart";
+import "routing/post_device_canvas_release_handler.dart";
+import "routing/post_device_canvas_status_handler.dart";
 import "routing/post_session_options_handler.dart";
 import "routing/reject_question_handler.dart";
 import "routing/rename_project_handler.dart";
@@ -137,6 +142,8 @@ import "services/archived_session_validator.dart";
 import "services/chat_history_reconcile_service.dart";
 import "services/chat_history_service.dart";
 import "services/deleted_session_storage_cleanup_service.dart";
+import "services/device_canvas_claim_service.dart";
+import "services/device_canvas_client_service.dart";
 import "services/pending_interaction_service.dart";
 import "services/permission_auto_approval_service.dart";
 import "services/pr_sync_service.dart";
@@ -170,6 +177,8 @@ typedef OrchestratorComposition = ({
   BridgeRestartDispatcher restartDispatcher,
   RoutedRequestDispatcher routedRequestDispatcher,
   SessionRepository sessionRepository,
+  DeviceCanvasClaimService deviceCanvasClaimService,
+  DeviceCanvasIntegrationState deviceCanvasIntegrationState,
   SessionUnseenService sessionUnseenService,
   SessionViewTracker sessionViewTracker,
   ProjectViewTracker projectViewTracker,
@@ -210,6 +219,7 @@ class Orchestrator({
     const unseenCalculator = SessionUnseenCalculator();
     const projectCatalogIdentityCalculator = ProjectCatalogIdentityCalculator();
     final gitCliApi = GitCliApi(processRunner: _processRunner, gitPathExists: _gitPathExists);
+    final deviceCanvasIntegrationState = DeviceCanvasIntegrationState();
     final sessionRepository = SessionRepository(
       runtime: _pluginRuntime,
       bridgeDerivedProjectPluginIds: {
@@ -222,6 +232,20 @@ class Orchestrator({
       unseenCalculator: unseenCalculator,
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
       aggregateSourceDeadline: aggregateSourceDeadline,
+    );
+    final deviceCanvasClaimService = DeviceCanvasClaimService(
+      repository: DeviceCanvasClaimRepository(
+        claimDao: _database.deviceCanvasClaimDao,
+        sessionDao: _database.sessionDao,
+        now: () => DateTime.now().millisecondsSinceEpoch,
+      ),
+      integrationState: deviceCanvasIntegrationState,
+    );
+    final deviceCanvasClientService = DeviceCanvasClientService(
+      bridgeIdProvider: _bridgeRegistrationService,
+      claimService: deviceCanvasClaimService,
+      integrationState: deviceCanvasIntegrationState,
+      sessionRepository: sessionRepository,
     );
     final sessionOptionsRepository = SessionOptionsRepository(
       runtime: _pluginRuntime,
@@ -254,6 +278,7 @@ class Orchestrator({
         calculator: unseenCalculator,
       ),
       projectRepository: projectRepository,
+      deviceCanvasClaimService: deviceCanvasClaimService,
       viewTracker: sessionViewTracker,
     );
     final filesystemRepository = FilesystemRepository(
@@ -451,11 +476,13 @@ class Orchestrator({
       sessionOperationDispatcher: sessionOperationDispatcher,
       archivedSessionValidator: archivedSessionValidator,
       chatHistoryService: chatHistoryService,
+      deviceCanvasClaimService: deviceCanvasClaimService,
     );
     final sessionDeletionService = SessionDeletionService(
       sessionLifecycleService: sessionLifecycleService,
       sessionMutationDispatcher: sessionMutationDispatcher,
       chatHistoryService: chatHistoryService,
+      deviceCanvasClaimService: deviceCanvasClaimService,
     );
     final sessionAbortService = SessionAbortService(
       sessionRepository: sessionRepository,
@@ -545,6 +572,9 @@ class Orchestrator({
         GetProjectsHandler(projectActivityService: projectActivityService),
         GetCommandsHandler(sessionRepository: sessionRepository),
         GetSessionStatusesHandler(sessionRepository: sessionRepository),
+        PostDeviceCanvasStatusHandler(service: deviceCanvasClientService),
+        PostDeviceCanvasClaimHandler(service: deviceCanvasClientService),
+        PostDeviceCanvasReleaseHandler(service: deviceCanvasClientService),
         GetChildSessionsHandler(sessionRepository: sessionRepository),
         GetSessionHandler(
           sessionRepository: sessionRepository,
@@ -629,6 +659,8 @@ class Orchestrator({
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
       sessionRepository: sessionRepository,
+      deviceCanvasClaimService: deviceCanvasClaimService,
+      deviceCanvasIntegrationState: deviceCanvasIntegrationState,
       prSyncService: prSyncService,
       viewedProjectPrRefreshListener: viewedProjectPrRefreshListener,
       sessionUnseenService: sessionUnseenService,
@@ -658,6 +690,8 @@ class Orchestrator({
       restartDispatcher: restartDispatcher,
       routedRequestDispatcher: routedRequestDispatcher,
       sessionRepository: sessionRepository,
+      deviceCanvasClaimService: deviceCanvasClaimService,
+      deviceCanvasIntegrationState: deviceCanvasIntegrationState,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
       projectViewTracker: projectViewTracker,
@@ -727,6 +761,8 @@ class OrchestratorSession._({
     required final StreamController<SesoriSseEvent> _localWireEventsController,
     required final FailureReporter _failureReporter,
     required final SessionRepository _sessionRepository,
+    required final DeviceCanvasClaimService _deviceCanvasClaimService,
+    required final DeviceCanvasIntegrationState _deviceCanvasIntegrationState,
     required final PrSyncService _prSyncService,
     required final ViewedProjectPrRefreshListener _viewedProjectPrRefreshListener,
     required final SessionUnseenService _sessionUnseenService,
@@ -829,6 +865,15 @@ class OrchestratorSession._({
           );
         })
         .addTo(_promptDefaultsSubscriptions);
+    _deviceCanvasClaimService.changes
+        .listen((_) => _enqueueWireEvent(const SesoriSseEvent.deviceCanvasChanged()))
+        .addTo(_subscriptions);
+    _deviceCanvasIntegrationState.connectionChanges
+        .listen((_) => _enqueueWireEvent(const SesoriSseEvent.deviceCanvasChanged()))
+        .addTo(_subscriptions);
+    _deviceCanvasIntegrationState.presenceChanges
+        .listen((_) => _enqueueWireEvent(const SesoriSseEvent.deviceCanvasChanged()))
+        .addTo(_subscriptions);
   }
 
   /// Broadcast stream of byte counts emitted each time data is sent to a phone.
@@ -1192,7 +1237,11 @@ class OrchestratorSession._({
 
       if (_client.closeCode(connection: connection) == RelayCloseCodes.bridgeRevoked) {
         Log.w("Relay reports this bridge as revoked — re-registering with a fresh bridge id");
+        final revokedBridgeId = _bridgeRegistrationService.bridgeId;
         await _bridgeRegistrationService.handleBridgeRevoked();
+        if (revokedBridgeId != null) {
+          await _deviceCanvasClaimService.cleanupBridgeIdentity(bridgeId: revokedBridgeId);
+        }
       }
 
       // Another bridge on this account took the single relay slot. Reconnect
@@ -1422,6 +1471,17 @@ class OrchestratorSession._({
 
       if (_yoloSettingsService.currentSettings.enabled && event is BridgeSseProjectUpdated && !terminalHandoff) {
         await _permissionAutoApprovalService.approvePending();
+      }
+
+      if (event case BridgeSseSessionUpdated(:final info)) {
+        final sessionId = info["id"];
+        if (sessionId is String) {
+          try {
+            await _deviceCanvasClaimService.publishSessionClaimUpdates(sessionId: sessionId);
+          } on Object catch (error, stackTrace) {
+            Log.w("Failed to refresh Device Canvas claim title", error, stackTrace);
+          }
+        }
       }
 
       final refreshProjectsSummary = event is BridgeSseProjectUpdated || event is BridgeSseSessionDeleted;

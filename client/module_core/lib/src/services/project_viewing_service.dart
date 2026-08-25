@@ -202,9 +202,9 @@ class ProjectViewingService({
     final previousVisibleProjectId = _resolveVisibleProjectId();
     final previousRoute = _route;
     _route = route;
-    if (route == AppRouteDef.sessionDetail && previousRoute != AppRouteDef.sessionDetail) {
+    if (_isSessionDetailRoute(route) && !_isSessionDetailRoute(previousRoute)) {
       _detailTransitionProjectId = previousVisibleProjectId;
-    } else if (route != AppRouteDef.sessionDetail) {
+    } else if (!_isSessionDetailRoute(route)) {
       _detailTransitionProjectId = null;
     }
     _recomputeDeclaration();
@@ -245,7 +245,7 @@ class ProjectViewingService({
     return switch (_route) {
       AppRouteDef.sessions => listProjectId,
       AppRouteDef.newSession || AppRouteDef.sessionDiffs => wideListPaneVisible ? listProjectId : null,
-      AppRouteDef.sessionDetail => switch (_detailClaim) {
+      AppRouteDef.sessionDetail || AppRouteDef.deviceCanvasSession => switch (_detailClaim) {
         _ProjectViewClaimReady(:final projectId) => projectId,
         _ProjectViewClaimPending(:final projectId) =>
           _detailTransitionProjectId == projectId ? projectId : (wideListPaneVisible ? listProjectId : null),
@@ -316,6 +316,10 @@ class ProjectViewingService({
     _recomputeDeclaration();
     await _sendTail;
   }
+}
+
+bool _isSessionDetailRoute(AppRouteDef? route) {
+  return route == AppRouteDef.sessionDetail || route == AppRouteDef.deviceCanvasSession;
 }
 
 sealed class const _ProjectViewClaimState({required final ProjectViewClaim claim, required final String projectId});

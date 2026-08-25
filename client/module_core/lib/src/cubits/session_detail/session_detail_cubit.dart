@@ -17,14 +17,17 @@ import "../../platform/lifecycle_source.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/composer_draft_repository.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
+import "../../repositories/models/device_canvas_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
+import "../../services/device_canvas_service.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/project_viewing_service.dart";
 import "../../services/session_detail_load_service.dart";
 import "../../services/session_viewing_service.dart";
 import "../../utils/model_filter/default_model_selector.dart";
 import "deferred_part_event_buffer.dart";
+import "device_canvas_session_state.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
 import "session_detail_state.dart";
@@ -58,6 +61,8 @@ class SessionDetailCubit(
     required final String _projectId,
     required final NotificationCanceller _notificationCanceller,
     required final FailureReporter _failureReporter,
+    final DeviceCanvasService? _deviceCanvasService,
+    final DeviceCanvasSessionStatusResponse? _initialDeviceCanvasStatus,
     /// Cooldown between silent refreshes triggered by staleness events.
   /// Overridable so tests can exercise the coalescing without real waits.
   final Duration eventRefreshMinInterval = const Duration(seconds: 5),
@@ -87,6 +92,12 @@ class SessionDetailCubit(
   bool _waitingForConnection = false;
   bool _wasPaused = false;
   bool _wasConnected = false;
+  bool _initialDeviceCanvasStatusConsumed = false;
+  Future<void>? _activeDeviceCanvasRefresh;
+  bool _deviceCanvasRefreshPending = false;
+  bool _deviceCanvasMutationInProgress = false;
+  int _deviceCanvasStateGeneration = 0;
+  final String? _expectedDeviceCanvasBridgeId = _initialDeviceCanvasStatus?.bridgeId;
 
   // A disconnect invalidates capability snapshots that could authorize image sends.
   int _connectionGeneration = 0;
@@ -181,7 +192,11 @@ class SessionDetailCubit(
           messageIds: snapshot.messages.map((message) => message.info.id),
           sequence: deferredPartEventSequence,
         );
-        emit(_buildLoadedState(snapshot: snapshot));
+        final loaded = _buildLoadedState(snapshot: snapshot);
+        emit(loaded);
+        if (loaded.deviceCanvas is DeviceCanvasSessionLoading) {
+          unawaited(refreshDeviceCanvas());
+        }
         final effectiveProjectId = snapshot.projectId;
         if (effectiveProjectId == null || effectiveProjectId.isEmpty) {
           _projectViewingService.markClaimFailed(claim: _projectViewClaim);
@@ -582,6 +597,7 @@ class SessionDetailCubit(
               availableVariants: availableVariants,
             ),
           );
+          unawaited(refreshDeviceCanvas());
           _tryDrainQueue();
           if (_reassertViewAfterRefresh) {
             // A resume/reconnect requested this refresh; the refreshed
@@ -839,6 +855,7 @@ class SessionDetailCubit(
       // The loaded session identifies its plugin after the initial snapshot,
       // so retain catalog invalidations until that scope can be matched.
       SesoriCommandCatalogUpdated() => true,
+      SesoriDeviceCanvasChanged() => true,
       // Definitively irrelevant high-volume events.
       SesoriServerConnected() ||
       SesoriServerHeartbeat() ||
@@ -919,6 +936,8 @@ class SessionDetailCubit(
           _onQuestionResolved(event.requestID);
         case SesoriCommandCatalogUpdated(:final pluginId):
           _onCommandCatalogUpdated(pluginId: pluginId);
+        case SesoriDeviceCanvasChanged():
+          unawaited(refreshDeviceCanvas());
         case SesoriSessionCreated() ||
             SesoriSessionDeleted() ||
             SesoriSessionDiff() ||
@@ -1334,10 +1353,17 @@ class SessionDetailCubit(
     if (!isConnected) {
       _connectionRefreshQueued = false;
       final current = state;
-      if (current is SessionDetailLoaded && current.supportsPromptAttachments != null) {
-        // Plugin capabilities belong to the bridge behind the connection and
-        // must be resolved again before another bridge can receive images.
-        emit(current.copyWith(supportsPromptAttachments: null));
+      if (current is SessionDetailLoaded) {
+        // Capabilities and Device Canvas status belong to the bridge behind the
+        // connection and must be resolved again before another bridge can act.
+        emit(
+          current.copyWith(
+            supportsPromptAttachments: null,
+            deviceCanvas: _deviceCanvasService == null
+                ? current.deviceCanvas
+                : const DeviceCanvasSessionDisconnected(),
+          ),
+        );
       }
       return;
     }
@@ -1366,6 +1392,401 @@ class SessionDetailCubit(
       _reassertViewAfterRefresh = true;
       _silentRefresh(trigger: trigger);
     }
+  }
+
+  Future<void> refreshDeviceCanvas() {
+    if (_deviceCanvasService == null || isClosed) return Future<void>.value();
+    if (_deviceCanvasMutationInProgress) {
+      _deviceCanvasRefreshPending = true;
+      return Future<void>.value();
+    }
+    final active = _activeDeviceCanvasRefresh;
+    if (active != null) {
+      _deviceCanvasRefreshPending = true;
+      return active;
+    }
+    if (!_isConnected || state is! SessionDetailLoaded) return Future<void>.value();
+
+    late final Future<void> refresh;
+    refresh = _refreshDeviceCanvas().whenComplete(() {
+      if (identical(_activeDeviceCanvasRefresh, refresh)) {
+        _activeDeviceCanvasRefresh = null;
+      }
+      if (_deviceCanvasRefreshPending && !isClosed) {
+        _deviceCanvasRefreshPending = false;
+        unawaited(refreshDeviceCanvas());
+      }
+    });
+    _activeDeviceCanvasRefresh = refresh;
+    return refresh;
+  }
+
+  Future<void> _refreshDeviceCanvas() async {
+    final service = _deviceCanvasService;
+    if (service == null) return;
+    final connectionGeneration = _connectionGeneration;
+    final stateGeneration = _deviceCanvasStateGeneration;
+    try {
+      final result = await service.getSessionStatus(sessionId: _sessionId);
+      if (isClosed ||
+          connectionGeneration != _connectionGeneration ||
+          stateGeneration != _deviceCanvasStateGeneration) {
+        return;
+      }
+      final current = state;
+      if (current is! SessionDetailLoaded) return;
+      switch (result) {
+        case DeviceCanvasStatusSupported(:final status):
+          if (!_isExpectedDeviceCanvasStatus(status, bridgeId: null)) {
+            emit(current.copyWith(deviceCanvas: const DeviceCanvasSessionHidden()));
+            return;
+          }
+          final previousMutation = switch (current.deviceCanvas) {
+            DeviceCanvasSessionReady(:final mutation) => mutation,
+            DeviceCanvasSessionHidden() ||
+            DeviceCanvasSessionLoading() ||
+            DeviceCanvasSessionDisconnected() ||
+            DeviceCanvasSessionFailure() =>
+              null,
+          };
+          final mutation = switch (previousMutation) {
+            DeviceCanvasSessionMutationFailed(
+              :final deviceKey,
+              :final action,
+              reason: DeviceCanvasSessionMutationFailure.uncertain,
+            )
+                when !_isDeviceCanvasMutationCommitted(
+                  status: status,
+                  deviceKey: deviceKey,
+                  action: action,
+                ) =>
+              previousMutation,
+            DeviceCanvasSessionMutationIdle() ||
+            DeviceCanvasSessionMutationInProgress() ||
+            DeviceCanvasSessionMutationFailed() ||
+            null =>
+              const DeviceCanvasSessionMutationIdle(),
+          };
+          emit(
+            current.copyWith(
+              deviceCanvas: DeviceCanvasSessionReady(
+                status: status,
+                mutation: mutation,
+              ),
+            ),
+          );
+        case DeviceCanvasStatusUnsupported():
+          emit(current.copyWith(deviceCanvas: const DeviceCanvasSessionHidden()));
+        case DeviceCanvasStatusFailure(:final error):
+          if (_hasUncertainDeviceCanvasMutation(current.deviceCanvas)) return;
+          emit(current.copyWith(deviceCanvas: DeviceCanvasSessionFailure(error: error)));
+      }
+    } on Object catch (error, stackTrace) {
+      if (isClosed ||
+          connectionGeneration != _connectionGeneration ||
+          stateGeneration != _deviceCanvasStateGeneration) {
+        return;
+      }
+      final current = state;
+      if (current is! SessionDetailLoaded) return;
+      loge("Failed to refresh Device Canvas status", error, stackTrace);
+      if (_hasUncertainDeviceCanvasMutation(current.deviceCanvas)) return;
+      emit(
+        current.copyWith(
+          deviceCanvas: DeviceCanvasSessionFailure(error: ApiError.dartHttpClient(error)),
+        ),
+      );
+    }
+  }
+
+  Future<void> claimDeviceCanvasDevice({required String deviceKey, required bool reassign}) {
+    return _mutateDeviceCanvas(
+      deviceKey: deviceKey,
+      action: reassign ? DeviceCanvasSessionMutationAction.reassign : DeviceCanvasSessionMutationAction.claim,
+    );
+  }
+
+  Future<void> releaseDeviceCanvasDevice({required String deviceKey}) {
+    return _mutateDeviceCanvas(deviceKey: deviceKey, action: DeviceCanvasSessionMutationAction.release);
+  }
+
+  Future<void> _mutateDeviceCanvas({
+    required String deviceKey,
+    required DeviceCanvasSessionMutationAction action,
+  }) async {
+    final service = _deviceCanvasService;
+    final current = state;
+    if (service == null ||
+        current is! SessionDetailLoaded ||
+        _deviceCanvasMutationInProgress ||
+        !_isConnected ||
+        isClosed) {
+      return;
+    }
+    final deviceCanvas = current.deviceCanvas;
+    if (deviceCanvas is! DeviceCanvasSessionReady) return;
+    final ready = deviceCanvas;
+    if (action == DeviceCanvasSessionMutationAction.reassign && !ready.status.supportsReassignment) return;
+    final selectedDevice = ready.status.devices.where((device) => device.deviceKey == deviceKey).firstOrNull;
+    final observedClaim = selectedDevice?.claim;
+    if ((action == DeviceCanvasSessionMutationAction.reassign &&
+            (observedClaim == null || observedClaim.sessionId == _sessionId)) ||
+        (action == DeviceCanvasSessionMutationAction.release && observedClaim?.sessionId != _sessionId)) {
+      return;
+    }
+
+    _deviceCanvasStateGeneration++;
+    if (_activeDeviceCanvasRefresh != null) _deviceCanvasRefreshPending = true;
+    _deviceCanvasMutationInProgress = true;
+    final connectionGeneration = _connectionGeneration;
+    emit(
+      current.copyWith(
+        deviceCanvas: DeviceCanvasSessionReady(
+          status: ready.status,
+          mutation: DeviceCanvasSessionMutationInProgress(deviceKey: deviceKey, action: action),
+        ),
+      ),
+    );
+    try {
+      final result = switch (action) {
+        DeviceCanvasSessionMutationAction.claim => service.claim(
+          expectedBridgeId: ready.status.bridgeId,
+          sessionId: _sessionId,
+          deviceKey: deviceKey,
+          reassign: false,
+          expectedOwnerSessionId: null,
+          expectedClaimRevision: null,
+        ),
+        DeviceCanvasSessionMutationAction.reassign => switch (observedClaim) {
+          final claim? => service.claim(
+            expectedBridgeId: ready.status.bridgeId,
+            sessionId: _sessionId,
+            deviceKey: deviceKey,
+            reassign: true,
+            expectedOwnerSessionId: claim.sessionId,
+            expectedClaimRevision: claim.revision,
+          ),
+          null => throw StateError("Reassignment requires an observed claim."),
+        },
+        DeviceCanvasSessionMutationAction.release => switch (observedClaim) {
+          final claim? => service.release(
+            expectedBridgeId: ready.status.bridgeId,
+            sessionId: _sessionId,
+            deviceKey: deviceKey,
+            expectedClaimRevision: claim.revision,
+          ),
+          null => throw StateError("Release requires an observed claim."),
+        },
+      };
+      final mutationResult = await result;
+      if (isClosed || connectionGeneration != _connectionGeneration) return;
+      switch (mutationResult) {
+        case DeviceCanvasMutationCommitted(:final response):
+          _publishDeviceCanvasMutationResponse(
+            response: response,
+            deviceKey: deviceKey,
+            action: action,
+            expectedBridgeId: ready.status.bridgeId,
+          );
+        case DeviceCanvasMutationUnsupported():
+          _replaceDeviceCanvasState(const DeviceCanvasSessionHidden());
+        case DeviceCanvasMutationUncertain():
+          await _reconcileDeviceCanvasMutation(
+            deviceKey: deviceKey,
+            action: action,
+            connectionGeneration: connectionGeneration,
+            expectedBridgeId: ready.status.bridgeId,
+          );
+        case DeviceCanvasMutationFailure():
+          _replaceDeviceCanvasState(
+            DeviceCanvasSessionReady(
+              status: ready.status,
+              mutation: DeviceCanvasSessionMutationFailed(
+                deviceKey: deviceKey,
+                action: action,
+                reason: DeviceCanvasSessionMutationFailure.requestFailed,
+              ),
+            ),
+          );
+      }
+    } on Object catch (error, stackTrace) {
+      if (!isClosed && connectionGeneration == _connectionGeneration) {
+        loge("Device Canvas mutation failed", error, stackTrace);
+        _replaceDeviceCanvasState(
+          DeviceCanvasSessionReady(
+            status: ready.status,
+            mutation: DeviceCanvasSessionMutationFailed(
+              deviceKey: deviceKey,
+              action: action,
+              reason: DeviceCanvasSessionMutationFailure.requestFailed,
+            ),
+          ),
+        );
+      }
+    } finally {
+      _deviceCanvasMutationInProgress = false;
+      if (_deviceCanvasRefreshPending && !isClosed) {
+        _deviceCanvasRefreshPending = false;
+        unawaited(refreshDeviceCanvas());
+      }
+    }
+  }
+
+  void _publishDeviceCanvasMutationResponse({
+    required DeviceCanvasMutationResponse response,
+    required String deviceKey,
+    required DeviceCanvasSessionMutationAction action,
+    required String expectedBridgeId,
+  }) {
+    if (!_isExpectedDeviceCanvasStatus(response.status, bridgeId: expectedBridgeId)) {
+      _replaceDeviceCanvasState(const DeviceCanvasSessionHidden());
+      return;
+    }
+    final succeeded = switch ((action, response.outcome)) {
+      (
+        DeviceCanvasSessionMutationAction.claim || DeviceCanvasSessionMutationAction.reassign,
+        DeviceCanvasMutationOutcome.claimed ||
+            DeviceCanvasMutationOutcome.alreadyOwned ||
+            DeviceCanvasMutationOutcome.reassigned,
+      ) =>
+        true,
+      (
+        DeviceCanvasSessionMutationAction.release,
+        DeviceCanvasMutationOutcome.released || DeviceCanvasMutationOutcome.alreadyReleased,
+      ) =>
+        true,
+      _ => false,
+    };
+    final failure = switch (response.outcome) {
+      DeviceCanvasMutationOutcome.conflict => DeviceCanvasSessionMutationFailure.conflict,
+      DeviceCanvasMutationOutcome.deviceUnavailable => DeviceCanvasSessionMutationFailure.deviceUnavailable,
+      DeviceCanvasMutationOutcome.sessionUnavailable => DeviceCanvasSessionMutationFailure.sessionUnavailable,
+      DeviceCanvasMutationOutcome.unknown ||
+      DeviceCanvasMutationOutcome.claimed ||
+      DeviceCanvasMutationOutcome.alreadyOwned ||
+      DeviceCanvasMutationOutcome.reassigned ||
+      DeviceCanvasMutationOutcome.released ||
+      DeviceCanvasMutationOutcome.alreadyReleased => DeviceCanvasSessionMutationFailure.requestFailed,
+    };
+    _replaceDeviceCanvasState(
+      DeviceCanvasSessionReady(
+        status: response.status,
+        mutation: succeeded
+            ? const DeviceCanvasSessionMutationIdle()
+            : DeviceCanvasSessionMutationFailed(
+                deviceKey: deviceKey,
+                action: action,
+                reason: failure,
+              ),
+      ),
+    );
+  }
+
+  Future<void> _reconcileDeviceCanvasMutation({
+    required String deviceKey,
+    required DeviceCanvasSessionMutationAction action,
+    required int connectionGeneration,
+    required String expectedBridgeId,
+  }) async {
+    final service = _deviceCanvasService;
+    if (service == null) return;
+    final current = state;
+    final previousStatus = switch (current) {
+      SessionDetailLoaded(deviceCanvas: DeviceCanvasSessionReady(:final status)) => status,
+      SessionDetailLoaded() || SessionDetailLoading() || SessionDetailFailed() => null,
+    };
+    final result = await service.getSessionStatus(sessionId: _sessionId);
+    if (isClosed || connectionGeneration != _connectionGeneration) return;
+    switch (result) {
+      case DeviceCanvasStatusSupported(:final status):
+        if (!_isExpectedDeviceCanvasStatus(status, bridgeId: expectedBridgeId)) {
+          _replaceDeviceCanvasState(const DeviceCanvasSessionHidden());
+          return;
+        }
+        final committed = _isDeviceCanvasMutationCommitted(
+          status: status,
+          deviceKey: deviceKey,
+          action: action,
+        );
+        _replaceDeviceCanvasState(
+          DeviceCanvasSessionReady(
+            status: status,
+            mutation: committed
+                ? const DeviceCanvasSessionMutationIdle()
+                  : DeviceCanvasSessionMutationFailed(
+                      deviceKey: deviceKey,
+                      action: action,
+                      reason: DeviceCanvasSessionMutationFailure.uncertain,
+                  ),
+          ),
+        );
+      case DeviceCanvasStatusUnsupported():
+        _replaceDeviceCanvasState(const DeviceCanvasSessionHidden());
+      case DeviceCanvasStatusFailure():
+        if (previousStatus != null) {
+          _replaceDeviceCanvasState(
+            DeviceCanvasSessionReady(
+              status: previousStatus,
+              mutation: DeviceCanvasSessionMutationFailed(
+                deviceKey: deviceKey,
+                action: action,
+                reason: DeviceCanvasSessionMutationFailure.uncertain,
+              ),
+            ),
+          );
+        }
+    }
+  }
+
+  bool _isDeviceCanvasMutationCommitted({
+    required DeviceCanvasSessionStatusResponse status,
+    required String deviceKey,
+    required DeviceCanvasSessionMutationAction action,
+  }) {
+    final device = status.devices.where((device) => device.deviceKey == deviceKey).firstOrNull;
+    final claim = device?.claim;
+    return switch (action) {
+      DeviceCanvasSessionMutationAction.claim || DeviceCanvasSessionMutationAction.reassign =>
+        claim?.sessionId == _sessionId,
+      DeviceCanvasSessionMutationAction.release =>
+        (device != null || !status.inventoryTruncated) && claim?.sessionId != _sessionId,
+    };
+  }
+
+  bool _hasUncertainDeviceCanvasMutation(DeviceCanvasSessionState state) {
+    return switch (state) {
+      DeviceCanvasSessionReady(
+        mutation: DeviceCanvasSessionMutationFailed(
+          reason: DeviceCanvasSessionMutationFailure.uncertain,
+        ),
+      ) =>
+        true,
+      DeviceCanvasSessionHidden() ||
+      DeviceCanvasSessionLoading() ||
+      DeviceCanvasSessionDisconnected() ||
+      DeviceCanvasSessionFailure() ||
+      DeviceCanvasSessionReady() =>
+        false,
+    };
+  }
+
+  void _replaceDeviceCanvasState(DeviceCanvasSessionState deviceCanvas) {
+    final current = state;
+    if (current is SessionDetailLoaded && !isClosed) {
+      emit(current.copyWith(deviceCanvas: deviceCanvas));
+    }
+  }
+
+  bool _isExpectedDeviceCanvasStatus(
+    DeviceCanvasSessionStatusResponse status, {
+    required String? bridgeId,
+  }) {
+    final expectedBridgeId = bridgeId ?? _expectedDeviceCanvasBridgeId;
+    return status.bridgeId.isNotEmpty &&
+        (expectedBridgeId == null || status.bridgeId == expectedBridgeId) &&
+        status.sessionId == _sessionId &&
+        status.sessionAvailable &&
+        status.projectId == _projectId;
   }
 
   /// Attempts to send the next queued message when the condition is met:
@@ -1949,6 +2370,17 @@ class SessionDetailCubit(
       SessionStatusIdle() => null,
       SessionStatusBusy() => null,
     };
+    final initialDeviceCanvasStatus = !_initialDeviceCanvasStatusConsumed ? _initialDeviceCanvasStatus : null;
+    _initialDeviceCanvasStatusConsumed = true;
+    final deviceCanvas = switch ((_deviceCanvasService, initialDeviceCanvasStatus)) {
+      (null, _) => const DeviceCanvasSessionHidden(),
+      (_, final status?) when _isExpectedDeviceCanvasStatus(status, bridgeId: null) => DeviceCanvasSessionReady(
+        status: status,
+        mutation: const DeviceCanvasSessionMutationIdle(),
+      ),
+      (_, DeviceCanvasSessionStatusResponse()) => const DeviceCanvasSessionHidden(),
+      (_, null) => const DeviceCanvasSessionLoading(),
+    };
 
     _transcriptGeneration++;
     return SessionDetailLoaded(
@@ -1978,6 +2410,7 @@ class SessionDetailCubit(
       stagedCommand: null,
       isRefreshing: false,
       availableVariants: availableVariants,
+      deviceCanvas: deviceCanvas,
     );
   }
 

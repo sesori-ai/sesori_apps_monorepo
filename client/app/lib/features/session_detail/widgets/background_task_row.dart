@@ -14,6 +14,7 @@ import "../../../l10n/app_localizations.dart";
 class const BackgroundTaskRow({
   super.key,
   required final String? projectId,
+  required final String? bridgeId,
   required final Session session,
   final SessionStatus? status,
   final bool isLast = false,
@@ -33,6 +34,7 @@ class const BackgroundTaskRow({
           sessionId: session.id,
           readOnly: true,
           sessionTitle: session.title,
+          bridgeId: bridgeId,
         ),
       ),
       leading: _statusIcon(status: status, prego: prego),

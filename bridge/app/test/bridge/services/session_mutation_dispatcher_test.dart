@@ -156,6 +156,7 @@ void main() {
       await dispatcher.deleteSession(
         sessionId: "s1",
         cleanup: () async => CleanupSuccess(),
+        beforePersistedDelete: ({required sessionIds}) async {},
         onDeleted: (_) async {},
       );
       final mutations = <LocalSessionMutation>[];
@@ -296,6 +297,7 @@ void main() {
       await dispatcher.deleteSession(
         sessionId: "s1",
         cleanup: () async => CleanupSuccess(),
+        beforePersistedDelete: ({required sessionIds}) async {},
         onDeleted: (_) async {},
       );
       await dispatcher.dispose();
@@ -304,6 +306,7 @@ void main() {
         () => dispatcher.deleteSession(
           sessionId: "after-dispose",
           cleanup: () async => CleanupSuccess(),
+          beforePersistedDelete: ({required sessionIds}) async {},
           onDeleted: (_) async {},
         ),
         throwsStateError,

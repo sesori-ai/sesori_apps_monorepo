@@ -25,6 +25,7 @@ class const BackgroundTasksBar({
   super.key,
   required final PregoComposerSurfaceStyle surfaceStyle,
   required final String? projectId,
+  required final String? bridgeId,
   required final List<Session> children,
   required final Map<String, SessionStatus> childStatuses,
 }) extends StatefulWidget {
@@ -140,6 +141,7 @@ class _BackgroundTasksBarState() extends State<BackgroundTasksBar> {
           if (expanded)
             BackgroundTasksList(
               projectId: widget.projectId,
+              bridgeId: widget.bridgeId,
               runningTasks: _runningTasks,
               completedTasks: _completedTasks,
               childStatuses: widget.childStatuses,
