@@ -9,12 +9,17 @@ defaults and queued client sends coherent.
 ## Required Behavior
 
 - A prompt send targets one session with optional agent, model, and variant.
-  Prompt and slash-command sends complete on acceptance — durably enqueued by
+  For plugins with acceptance-style sends, prompt and slash-command sends complete on acceptance — durably enqueued by
   the plugin or taken by the backend — never on run completion, so no client
   request is held open for a running or queued agent turn. Acceptance while
   another turn runs therefore returns in sub-seconds, and session-lane
   operations queued behind a send (abort, permission and question replies)
   are never blocked for the duration of a turn.
+- DeepSeek is an explicit exception to acceptance-style settlement: its ACP
+  `session/prompt` response settles after owned work, projected output, and
+  durability quiesce. The plugin keeps only one prompt in flight per DeepSeek
+  session while allowing different sessions to run concurrently. Exact advertised
+  slash commands dispatch as commands; unknown slash prefixes remain prose.
 - Every send carries a client-generated prompt id, stable across retries. A
   queue-owning plugin refuses a duplicate id (already queued or within its
   bounded recently-dispatched window) as an idempotent success, so a retry of
@@ -123,6 +128,11 @@ defaults and queued client sends coherent.
   remain absent. OMP runs different sessions concurrently because its permission
   and form requests carry explicit session IDs. OMP uses the same stop-and-send
   sequence for its ACP server's replacement semantics.
+- DeepSeek maps text, reasoning, tools, plans, title/config updates, compaction
+  completion, and bounded warning errors through standard ACP plus its narrow
+  status extension. Retry and compaction-start notifications are validated but
+  intentionally emit no shared event because DeepSeek does not supply the timing
+  required by the shared retry state and the active turn is already busy.
 - Normalized user-message events feed the durable user-side activity marker used
   to order running roots. Known event times are applied monotonically. Backend
   input represented as a user message, including automatic compaction or other
@@ -301,6 +311,10 @@ replay, and abort after output has started.
   was never observed from Hermes. An explicit chain-of-thought prompt produced
   no `agent_thought_chunk` against the tested model, so thought-part
   normalization is unverified for this harness.
+- DeepSeek protocol projection, question/permission settlement, slash admission,
+  and prompt identity are automated. Live provider output, concurrent sessions,
+  abort/recovery, refusal/error/max-token, and process restart remain required
+  Step 16 evidence.
 
 ## Sources
 

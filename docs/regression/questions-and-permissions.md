@@ -28,8 +28,10 @@ reaches the backend so the turn continues.
   under their top-most display root and owning worktree project, and does not
   persist process-local dialog promises. Decorative extension UI is ignored;
   bounded `notify` messages use the existing toast event.
-- DeepSeek standard ACP permissions preserve exact session and tool correlation
-  and expose only the scopes the adapter offers; v1 does not offer allow-always.
+- DeepSeek standard ACP permissions use the request's explicit session ID when
+  present and retain the ACP active-turn fallback when an agent omits it. They
+  preserve the exact tool call ID and expose only the scopes the adapter offers;
+  v1 does not offer allow-always.
   DeepSeek extension questions preserve ordered question IDs, single/multiple/
   custom answer variants, plan-review fixed choices, and supplemental free-form
   detail. Abort, process exit, and disposal cancel pending requests and reject
@@ -72,7 +74,7 @@ reaches the backend so the turn continues.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Live plugin, one representative plugin: a permission raised by a real turn appears as pending and one reply lets the turn proceed. |
-| L2 Routine | Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated Pi coverage: select/confirm/input/editor exact replies and timeout cleanup. Automated DeepSeek coverage: exact two-session correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, abort, late reply, and disposal. |
+| L2 Routine | Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated Pi coverage: select/confirm/input/editor exact replies and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, abort, late reply, and disposal. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: both request kinds per plugin, per-plugin "always" availability, child attribution, archived-session refusal, and pending requests suppressing completion notifications until resolved. |
 | L4 Extended | Relay integration, every supporting production plugin: per-session empty lists while stopped or terminally failed, project-wide question unavailability with no active plugin, pending state re-read after restart, competing replies to one request, two logical clients observing one request and its retirement, and reconnect inside the replay window. |
 | L5 Full | Headless bridge and live plugin for malformed requests and degenerate option sets; packaged or external on alternate client platforms for an older bridge not declaring "always". Every supporting production plugin where applicable. |
@@ -87,9 +89,11 @@ different combination than the previous recorded run.
 
 ## Failure Signals
 
-- A permission or question reply stalls behind a prompt sent to the same busy
-  session (the send must be accepted at enqueue and release the session lane
-  immediately).
+- For an acceptance-style plugin, a permission or question reply stalls behind
+  a prompt sent to the same busy session instead of the accepted send releasing
+  its session lane immediately. DeepSeek keeps `session/prompt` pending through
+  turn settlement, but ACP server requests and replies continue concurrently on
+  the same transport.
 - A request never appears, appears under the wrong session, or omits options the
   backend actually offered.
 - An answer does not reach the backend, arrives with a different scope than the
@@ -128,6 +132,10 @@ different combination than the previous recorded run.
   request was ever observed. The tested provider completed file tools without
   emitting an ACP permission request, so once/reject/always handling and
   two-session correlation are unexercised for this harness.
+- DeepSeek extension-question two-session correlation, standard permission
+  once/reject, question variants, invalid-answer settlement, abort, late reply,
+  and disposal are automated. Real provider prompts, process exit, and
+  client/relay presentation remain required Step 16 evidence.
 
 ## Sources
 

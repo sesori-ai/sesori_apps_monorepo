@@ -22,8 +22,9 @@ idle suspension, the management snapshot, and lifecycle commands.
   Provider setup remains an out-of-band Hermes CLI action, so authentication-required
   Hermes entries give local setup guidance rather than offering bridge-managed login.
 - DeepSeek is an ACP harness with six-platform managed package archives. Its
-  descriptor honors an explicit adapter path before a supported PATH release
-  and the exact managed release, performs bounded parseable-version and
+  descriptor honors an explicit `--deepseek-bin` path before a compatible PATH
+  release (`>=0.1.0`) and the exact managed `0.1.1` release. An old or malformed
+  PATH candidate falls through to managed selection. It performs bounded parseable-version and
   side-effect-free `check --state-dir` probes, advertises install only on a
   supported platform without an explicit path, and gives local DeepSeek
   provider/setup guidance. Managed installation verifies the immutable archive
@@ -32,6 +33,12 @@ idle suspension, the management snapshot, and lifecycle commands.
   child through the host process seam, degrades on an unexpected exit, lazily
   reconnects on demand, and shuts down idempotently without treating its own
   termination as a crash.
+- Standard ACP owns DeepSeek lifecycle, prompts, config options, and permissions;
+  `deepseek/*` is limited to catalog, detached history, rename, questions, and
+  bounded statuses on that same connection. Normal `DSH_HOME` remains the source
+  of settings, credentials, providers, and skills but its session root is never
+  scanned. Session, attachment, query, and spill mutations stay below plugin
+  state, and session-local model/reasoning writes never modify user settings.
 - Pi and Oh My Pi are registered harnesses with managed installs where a platform
   archive exists and explicit `--pi-bin`/`--omp-bin` paths stay authoritative. Pi
   sessions always launch with `--approve` (project-local Pi settings, extensions,
@@ -156,6 +163,9 @@ timeouts, and sessions afterwards.
 - DeepSeek is registered and enabled by default. Its generic-icon presentation,
   local provider setup guidance, and managed install controls follow the same
   backend-neutral registry and client surfaces as every other harness.
+- DeepSeek setup/lifecycle and light/dark generic branding have automated coverage.
+  Real provider startup, client lifecycle controls, and older-client/bridge
+  build-pair fallback remain required Step 16 evidence.
 - Backend authentication and credential persistence happen on the bridge machine. A forced
   disable leaves work interrupted.
 - Hermes model/provider configuration is intentionally unavailable through Sesori and must

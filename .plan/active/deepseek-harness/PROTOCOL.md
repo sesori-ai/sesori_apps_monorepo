@@ -2,8 +2,8 @@
 
 ## Status And Sources
 
-- **State:** runtime protocol implemented and merged through Step 6, including
-  the protocol-v1 invariant corrections in runtime PRs #6-8.
+- **State:** runtime protocol, Dart consumer, managed package, and bridge plugin
+  implemented; product activation is open for review in Step 14.
 - **Observed:** 2026-08-22.
 - **DeepSeek baseline:** `0.1.1-rc.2`, tag `dsh-v0.1.1-rc.2`, commit
   `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`.
@@ -20,13 +20,12 @@
 - **Sesori source:** `bridge/sesori_plugin_acp/`, plugin interface/runtime
   packages, and the Pi/OMP/Hermes plugin precedents at the plan base.
 
-This document explains the intended adapter contract. The sole
-machine-verifiable source is the runtime repository's planned
-`protocol/v1/deepseek-acp.schema.json` plus its synthetic conformance corpus.
-Step 2 creates that source and validates runtime handlers/types against it.
-Step 7 vendors the exact schema/corpus commit and digests into a test-only
-package workspace and Makefile inventory, then tests schema/corpus/source-manifest
-integrity. Step 8 validates generated Dart DTOs against every fixture. If
+This document explains the shipped adapter contract. The sole machine-verifiable
+source is the runtime repository's `protocol/v1/deepseek-acp.schema.json` plus
+its synthetic conformance corpus. The runtime validates handlers/types against
+that source. The monorepo vendors the exact schema/corpus commit and digests in
+a test-only package workspace and Makefile inventory, tests their integrity,
+and validates generated Dart DTOs against every fixture. If
 implementation discovers an upstream mismatch, change the runtime schema/corpus
 first, then update this explanation and the vendored Dart consumer in the release
 order recorded in `PLAN.md`.
@@ -115,8 +114,7 @@ Rules:
 
 ## 4. State Layout And Ownership
 
-The exact internal names may change before Step 3, but all mutable session data
-must remain below the supplied root:
+The shipped layout confines all mutable session data below the supplied root:
 
 ```text
 <state-dir>/
@@ -475,11 +473,11 @@ The runtime repository owns deterministic protocol fixtures for:
 - telemetry/state/config isolation and stdout/content-log privacy; and
 - archive relocation/launch on all six target artifacts.
 
-Step 7 vendors the runtime repository's synthetic wire corpus and schema in a
-test-only package workspace and Makefile inventory, with a manifest recording
-the source commit and SHA-256 values; it does not copy DeepSeek private session
-files or add production DTOs, APIs, or ACP hooks. Step 8 adds consumer DTO tests.
-Runtime and Dart protocol-changing PRs must update and run that corpus in
-source/consumer order. Step 12 reruns cross-repository conformance without
-changing protocol v1 before publishing the adapter release; Step 16 repeats the
-complete product boundary with the exact managed artifacts pinned by the bridge.
+The monorepo vendors the runtime repository's synthetic wire corpus and schema
+in a test-only package workspace and Makefile inventory, with a manifest
+recording the source commit and SHA-256 values; it does not copy DeepSeek private
+session files or add production DTOs, APIs, or ACP hooks. Generated consumer DTO
+tests pass every fixture. Cross-repository conformance and all six matching-native
+package jobs passed before publication. Runtime and Dart protocol-changing PRs
+must update and run that corpus in source/consumer order. Step 16 still repeats
+the complete product boundary with the exact managed artifacts pinned by the bridge.

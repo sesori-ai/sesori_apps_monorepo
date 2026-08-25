@@ -23,6 +23,10 @@ signal that a tool changed files.
   reload with the same identity, status, and output; unknown status renders as
   the fallback. A backend abort without a turn identifier still finalizes tools
   in the active turn.
+- DeepSeek projects tool calls and updates through standard ACP with exact call
+  identity, bounded presenter output, terminal result/error state, and diff
+  content. Presenter failure degrades to a generic bounded tool card instead of
+  dropping the call or result.
 
 ## Regression Levels
 
@@ -61,6 +65,9 @@ multi-byte, and empty output; compare live with a later reload.
 - An older client does not tolerate an unknown `MessagePartType` from a newer
   bridge: history decoding fails and the corresponding SSE event is dropped as
   malformed. Unknown tool status remains forward-compatible.
+- DeepSeek tool projection is automated at the protocol/mapper boundary. A live
+  workspace mutation, file-change signal, client tool card, failure, and replay
+  parity remain required Step 16 evidence.
 
 ## Sources
 

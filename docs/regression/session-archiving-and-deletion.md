@@ -102,6 +102,13 @@ and branches that remain after the asserted cleanup behavior.
   transcript and retains a plugin-scoped tombstone, but the corresponding ACP
   row can remain in Hermes storage until upstream provides a supported deletion
   surface; later import must not resurrect it.
+- DeepSeek standard close cancels and drains a live resident session but retains
+  adapter persistence because the pinned upstream owner has no delete API. Sesori
+  purges its database, transcript, and requested worktree state and retains a
+  plugin-scoped tombstone; it never infers and deletes private JSONL or attachment
+  paths. A later explicit import must not resurrect the retained adapter row.
+- DeepSeek close ordering is automated. Live deletion residue, tombstone
+  no-reimport, and client presentation remain required Step 16 evidence.
 
 ## Sources
 
