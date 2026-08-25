@@ -1158,6 +1158,26 @@
   "@catalogScanNoHarnessDetail": {
     "description": "Supporting line on the no-harness scan row, naming where the user can see and fix their harness setup."
   },
+  "harnessManagementScan": "Scan for sessions",
+  "@harnessManagementScan": {
+    "description": "Settings action on a harness card that re-imports that one harness's catalog, the pointer-and-keyboard equivalent of the lists' deep pull."
+  },
+  "harnessManagementScanDescription": "Import projects and sessions this harness has on disk",
+  "@harnessManagementScanDescription": {
+    "description": "Supporting line under the per-harness scan action, saying what scanning does."
+  },
+  "harnessManagementScanNotReady": "This harness cannot be scanned right now",
+  "@harnessManagementScanNotReady": {
+    "description": "Replaces the scan action's description when the bridge refused to import from this harness, usually because it is not running or its setup is incomplete."
+  },
+  "harnessManagementScanUnsupported": "Update the bridge to scan from here",
+  "@harnessManagementScanUnsupported": {
+    "description": "Replaces the scan action's description when the connected bridge is too old to import catalogs on request."
+  },
+  "harnessManagementScanFailed": "Could not start the scan. Check the bridge log for details",
+  "@harnessManagementScanFailed": {
+    "description": "Replaces the scan action's description when the request itself failed. The underlying error is kept for the local log rather than shown."
+  },
   "catalogScanDismiss": "Dismiss",
   "@catalogScanDismiss": {
     "description": "Action on a finished scan row that clears it once the user has read the result."

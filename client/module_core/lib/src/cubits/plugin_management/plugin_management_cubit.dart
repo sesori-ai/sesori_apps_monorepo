@@ -7,16 +7,22 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../platform/url_launcher.dart";
 import "../../repositories/models/plugin_management_result.dart";
+import "../../services/catalog_rescan_service.dart";
+import "../../services/models/catalog_rescan_state.dart";
 import "../../services/plugin_management_service.dart";
 import "plugin_management_state.dart";
 
-class PluginManagementCubit({required final PluginManagementService _service, required final UrlLauncher _urlLauncher})
-    extends Cubit<PluginManagementState> {
+class PluginManagementCubit({
+  required final PluginManagementService _service,
+  required final UrlLauncher _urlLauncher,
+  required final CatalogRescanService _catalogRescanService,
+}) extends Cubit<PluginManagementState> {
   this : super(const PluginManagementState.loading()) {
     _subscriptions
       ..add(_service.snapshots.listen((snapshot) => _onSnapshot(snapshot: snapshot)))
       ..add(_service.installProgress.listen((installs) => _onInstallProgress(installs: installs)))
-      ..add(_service.authenticationTerminal.listen(_onAuthenticationTerminal));
+      ..add(_service.authenticationTerminal.listen(_onAuthenticationTerminal))
+      ..add(_catalogRescanService.state.listen(_onCatalogScan));
   }
 
   final CompositeSubscription _subscriptions = CompositeSubscription();
@@ -191,6 +197,37 @@ class PluginManagementCubit({required final PluginManagementService _service, re
 
   /// Installs the harness' managed runtime. The bridge accepts immediately;
   /// phase progress arrives through [PluginManagementReady.installs].
+  /// Rescans one harness's catalog, reporting a rejection on its own card.
+  ///
+  /// Unlike the lists' aggregate scan, the user named this harness, so a
+  /// bridge that will not import from it has to say so here rather than let
+  /// the fan-out skip it silently.
+  Future<void> startCatalogScanFor({required String pluginId}) async {
+    if (isClosed || state is! PluginManagementReady) return;
+    // Drop any earlier rejection first, so a retry does not read as though it
+    // had already failed again before the answer arrives.
+    _setScanRejection(pluginId: pluginId, result: null);
+    final result = await _catalogRescanService.start(pluginId: pluginId);
+    if (isClosed) return;
+    _setScanRejection(
+      pluginId: pluginId,
+      result: result is CatalogRescanStartAccepted ? null : result,
+    );
+  }
+
+  void _setScanRejection({required String pluginId, required CatalogRescanStartResult? result}) {
+    final current = state;
+    if (isClosed || current is! PluginManagementReady) return;
+    if (current.scanRejections[pluginId] == result) return;
+    final next = Map<String, CatalogRescanStartResult>.of(current.scanRejections);
+    if (result == null) {
+      next.remove(pluginId);
+    } else {
+      next[pluginId] = result;
+    }
+    emit(current.copyWith(scanRejections: next));
+  }
+
   Future<void> install({required String pluginId}) => _runCommand(
     pluginId: pluginId,
     request: const PluginLifecycleCommandRequest.install(),
@@ -445,6 +482,17 @@ class PluginManagementCubit({required final PluginManagementService _service, re
               PluginManagementFailure() => const PluginAuthenticationPresentationState.idle(),
             },
             installs: installs,
+            // Re-read from the service for the same reason as installs: a scan
+            // outlives this cubit, which the screen rebuilds per visit.
+            scanningPluginIds: _scanningPluginIds,
+            // Carried forward instead, because nothing outside this cubit
+            // holds a rejection the user has not read yet.
+            scanRejections: switch (state) {
+              PluginManagementReady(:final scanRejections) => scanRejections,
+              PluginManagementLoading() ||
+              PluginManagementUnsupported() ||
+              PluginManagementFailure() => const {},
+            },
           ),
         );
       case PluginManagementLoadResultUnsupported():
@@ -499,6 +547,29 @@ class PluginManagementCubit({required final PluginManagementService _service, re
     required PluginAuthenticationPresentationError error,
   }) {
     _setAuthentication(PluginAuthenticationPresentationState.failed(pluginId: pluginId, error: error));
+  }
+
+  /// The harnesses the live scan covers, or empty when none is running.
+  ///
+  /// Only a live operation names members worth disabling an action for: a
+  /// terminal state still carries no ids, and an idle one covers nothing.
+  Set<String> get _scanningPluginIds => switch (_catalogRescanService.state.value) {
+    CatalogRescanStarting(:final pluginIds) || CatalogRescanRunning(:final pluginIds) => pluginIds,
+    CatalogRescanIdle() ||
+    CatalogRescanSucceeded() ||
+    CatalogRescanPartlyFailed() ||
+    CatalogRescanFailed() ||
+    CatalogRescanUnsupported() ||
+    CatalogRescanNoHarness() => const {},
+  };
+
+  void _onCatalogScan(CatalogRescanState scan) {
+    if (isClosed) return;
+    final current = state;
+    if (current is! PluginManagementReady) return;
+    final scanning = _scanningPluginIds;
+    if (const SetEquality<String>().equals(current.scanningPluginIds, scanning)) return;
+    emit(current.copyWith(scanningPluginIds: scanning));
   }
 
   void _onInstallProgress({required Map<String, PluginInstallProgress> installs}) {

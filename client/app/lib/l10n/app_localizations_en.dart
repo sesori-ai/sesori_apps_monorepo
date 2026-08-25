@@ -1848,5 +1848,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catalogScanNoHarnessDetail => 'Check your harnesses in Settings';
 
   @override
+  String get harnessManagementScan => 'Scan for sessions';
+
+  @override
+  String get harnessManagementScanDescription => 'Import projects and sessions this harness has on disk';
+
+  @override
+  String get harnessManagementScanNotReady => 'This harness cannot be scanned right now';
+
+  @override
+  String get harnessManagementScanUnsupported => 'Update the bridge to scan from here';
+
+  @override
+  String get harnessManagementScanFailed => 'Could not start the scan. Check the bridge log for details';
+
+  @override
   String get catalogScanDismiss => 'Dismiss';
 }

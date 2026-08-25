@@ -1018,15 +1018,18 @@ reviewer of one PR can see what belongs to it.
   a pull or by the scan's own post-settle refresh, so the two surfaces overlap
   only when a reconnect happens to land mid-scan, and the damage is one
   redundant progress bar.
-- Settings to Harnesses: the per-harness `Rescan` action in
-  `_HarnessControlCard`, calling `startCatalogScanFor(pluginId)`, enabled only for a
-  harness whose `runtimeState.isRoutable` is true and disabled while that
-  harness is itself a member of the live operation; a targeted start joins that
-  operation rather than replacing it, so no cross-harness disabling is needed.
-  The typed `CatalogRescanStartResult` is held
-  per plugin id by `PluginManagementCubit` and rendered on that card, so a
-  targeted `503`, `404`, or unsupported-bridge answer lands on the harness the
-  user selected instead of the shared row.
+- Settings to Harnesses: the per-harness scan action in `_HarnessControlCard`,
+  calling `startCatalogScanFor(pluginId)`, offered only for a harness whose
+  `runtimeState.isRoutable` is true and not offered again while that harness is
+  itself a member of the live operation; a targeted start joins that operation
+  rather than replacing it, so no cross-harness disabling is needed. The typed
+  `CatalogRescanStartResult` is held per plugin id by `PluginManagementCubit`
+  and rendered on that card in place of its description, so a targeted `503`,
+  `404`, or unsupported-bridge answer lands on the harness the user selected
+  instead of the shared row. A rejection is cleared by the next attempt on that
+  harness or by leaving the screen, which rebuilds the cubit; no dismiss action
+  is offered, because a stale line on a card the user has walked away from is
+  not worth its own control.
 - New `app_en.arb` resources for both captions, the seven row states, the delta
   and totals wordings, the `No new sessions` case, the partly-failed wording, the
   bounded failure line naming the bridge log, and the Settings action with its
