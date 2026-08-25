@@ -54,23 +54,12 @@ end
 PLAY_UPLOAD_MAX_ATTEMPTS = 3
 PLAY_UPLOAD_RETRY_BASE_DELAY = 45 # seconds, multiplied by the attempt number
 
-# Supplies Singular's compile-time credentials through a mode-0600 temporary
-# JSON file. The flutter command logs only this temporary path, never either
-# credential. Both absent intentionally builds a binary whose Singular startup
-# remains dormant; a partial pair is always a release configuration error.
+# Supplies Singular's required compile-time credentials through a mode-0600
+# temporary JSON file. The flutter command logs only this temporary path, never
+# either credential.
 def with_singular_dart_defines
-  sdk_key = ENV["SINGULAR_SDK_KEY"].to_s.strip
-  sdk_secret = ENV["SINGULAR_SDK_SECRET"].to_s.strip
-
-  if sdk_key.empty? && sdk_secret.empty?
-    UI.important("Singular SDK credentials are not configured; attribution will remain disabled.")
-    yield nil
-    return
-  end
-
-  if sdk_key.empty? || sdk_secret.empty?
-    UI.user_error!("SINGULAR_SDK_KEY and SINGULAR_SDK_SECRET must be configured together.")
-  end
+  sdk_key = ENV.fetch("SINGULAR_SDK_KEY")
+  sdk_secret = ENV.fetch("SINGULAR_SDK_SECRET")
 
   if ENV["GITHUB_ACTIONS"] == "true"
     {
@@ -271,12 +260,9 @@ platform :android do
     flutter_root = File.expand_path(File.join("..", ".."), Dir.pwd)
     Dir.chdir(flutter_root) do
       with_singular_dart_defines do |singular_defines_path|
-        singular_defines_arg = singular_defines_path.nil? \
-          ? "" \
-          : " --dart-define-from-file=#{Shellwords.escape(singular_defines_path)}"
         sh "flutter build appbundle --release --build-number=#{build_number} " \
-           "--dart-define=SESORI_BUILD_EPOCH_SECONDS=#{Time.now.utc.to_i}" \
-           "#{singular_defines_arg}"
+           "--dart-define=SESORI_BUILD_EPOCH_SECONDS=#{Time.now.utc.to_i} " \
+           "--dart-define-from-file=#{Shellwords.escape(singular_defines_path)}"
       end
     end
   end

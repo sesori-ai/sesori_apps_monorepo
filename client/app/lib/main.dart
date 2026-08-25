@@ -185,30 +185,12 @@ Future<AnalyticsRuntimeCapability> _createAnalyticsRuntimeCapability({
 }
 
 Future<void> _startSingularAttribution() async {
-  final status = SingularAttributionStartup(singular: SingularStaticAdapter.enabled()).start(
+  SingularAttributionStartup(singular: SingularStaticAdapter.enabled()).start(
     isSupportedPlatform: _supportsSingular,
     isEligibleBuild: await _measurementIneligibilityReason(authSession: getIt<AuthSession>()) == null,
-    sdkKey: _definedValueOrNull(value: _singularSdkKeyDefine),
-    sdkSecret: _definedValueOrNull(value: _singularSdkSecretDefine),
+    sdkKey: _singularSdkKeyDefine,
+    sdkSecret: _singularSdkSecretDefine,
   );
-
-  switch (status) {
-    case SingularAttributionStartupStatus.started:
-      logi("Singular attribution started");
-    case SingularAttributionStartupStatus.missingCredentials:
-      logi("Singular attribution disabled (SDK credentials are not configured)");
-    case SingularAttributionStartupStatus.invalidCredentials:
-      logw("Singular attribution disabled (SDK credentials are incomplete)");
-    case SingularAttributionStartupStatus.unsupportedPlatform ||
-        SingularAttributionStartupStatus.ineligibleBuild ||
-        SingularAttributionStartupStatus.failed:
-      break;
-  }
-}
-
-String? _definedValueOrNull({required String value}) {
-  final normalized = value.trim();
-  return normalized.isEmpty ? null : normalized;
 }
 
 /// Unix seconds at which the release lanes compiled this binary. Builds made

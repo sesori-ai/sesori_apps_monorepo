@@ -17,14 +17,13 @@ void main() {
   });
 
   test("starts an eligible supported build with privacy-minimized configuration", () {
-    final status = startup.start(
+    startup.start(
       isSupportedPlatform: true,
       isEligibleBuild: true,
       sdkKey: "test-sdk-key",
       sdkSecret: "test-sdk-secret",
     );
 
-    expect(status, SingularAttributionStartupStatus.started);
     expect(startedConfigs, hasLength(1));
     expect(
       startedConfigs.single.toMap,
@@ -42,55 +41,19 @@ void main() {
   });
 
   test("does not start on unsupported platforms or ineligible builds", () {
-    expect(
-      startup.start(
-        isSupportedPlatform: false,
-        isEligibleBuild: true,
-        sdkKey: "test-sdk-key",
-        sdkSecret: "test-sdk-secret",
-      ),
-      SingularAttributionStartupStatus.unsupportedPlatform,
+    startup.start(
+      isSupportedPlatform: false,
+      isEligibleBuild: true,
+      sdkKey: "test-sdk-key",
+      sdkSecret: "test-sdk-secret",
     );
-    expect(
-      startup.start(
-        isSupportedPlatform: true,
-        isEligibleBuild: false,
-        sdkKey: "test-sdk-key",
-        sdkSecret: "test-sdk-secret",
-      ),
-      SingularAttributionStartupStatus.ineligibleBuild,
+    startup.start(
+      isSupportedPlatform: true,
+      isEligibleBuild: false,
+      sdkKey: "test-sdk-key",
+      sdkSecret: "test-sdk-secret",
     );
-    expect(startedConfigs, isEmpty);
-  });
 
-  test("does not start when credentials are absent or incomplete", () {
-    expect(
-      startup.start(
-        isSupportedPlatform: true,
-        isEligibleBuild: true,
-        sdkKey: null,
-        sdkSecret: null,
-      ),
-      SingularAttributionStartupStatus.missingCredentials,
-    );
-    expect(
-      startup.start(
-        isSupportedPlatform: true,
-        isEligibleBuild: true,
-        sdkKey: "test-sdk-key",
-        sdkSecret: null,
-      ),
-      SingularAttributionStartupStatus.invalidCredentials,
-    );
-    expect(
-      startup.start(
-        isSupportedPlatform: true,
-        isEligibleBuild: true,
-        sdkKey: null,
-        sdkSecret: "test-sdk-secret",
-      ),
-      SingularAttributionStartupStatus.invalidCredentials,
-    );
     expect(startedConfigs, isEmpty);
   });
 
@@ -101,13 +64,14 @@ void main() {
       ),
     );
 
-    final status = startup.start(
-      isSupportedPlatform: true,
-      isEligibleBuild: true,
-      sdkKey: "test-sdk-key",
-      sdkSecret: "test-sdk-secret",
+    expect(
+      () => startup.start(
+        isSupportedPlatform: true,
+        isEligibleBuild: true,
+        sdkKey: "test-sdk-key",
+        sdkSecret: "test-sdk-secret",
+      ),
+      returnsNormally,
     );
-
-    expect(status, SingularAttributionStartupStatus.failed);
   });
 }

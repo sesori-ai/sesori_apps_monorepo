@@ -20,9 +20,9 @@ on:
       ANDROID_PROPERTIES:
         required: true
       SINGULAR_SDK_KEY:
-        required: false
+        required: true
       SINGULAR_SDK_SECRET:
-        required: false
+        required: true
 
 jobs:
   deploy:

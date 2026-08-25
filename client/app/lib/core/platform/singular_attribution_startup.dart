@@ -3,28 +3,16 @@ import "package:singular_flutter_sdk/singular_config.dart";
 
 import "singular/singular_static_adapter.dart";
 
-enum SingularAttributionStartupStatus() {
-  started,
-  unsupportedPlatform,
-  ineligibleBuild,
-  missingCredentials,
-  invalidCredentials,
-  failed,
-}
-
 /// Starts Singular's install/session attribution without coupling it to
 /// account-linked Sesori product analytics.
 class const SingularAttributionStartup({required final SingularStaticAdapter _singular}) {
-  SingularAttributionStartupStatus start({
+  void start({
     required bool isSupportedPlatform,
     required bool isEligibleBuild,
-    required String? sdkKey,
-    required String? sdkSecret,
+    required String sdkKey,
+    required String sdkSecret,
   }) {
-    if (!isSupportedPlatform) return SingularAttributionStartupStatus.unsupportedPlatform;
-    if (!isEligibleBuild) return SingularAttributionStartupStatus.ineligibleBuild;
-    if (sdkKey == null && sdkSecret == null) return SingularAttributionStartupStatus.missingCredentials;
-    if (sdkKey == null || sdkSecret == null) return SingularAttributionStartupStatus.invalidCredentials;
+    if (!isSupportedPlatform || !isEligibleBuild) return;
 
     final config = SingularConfig(sdkKey, sdkSecret)
       // Preserve Sesori's existing no-advertising-identifier boundary. Singular
@@ -38,10 +26,9 @@ class const SingularAttributionStartup({required final SingularStaticAdapter _si
 
     try {
       _singular.start(config: config);
-      return SingularAttributionStartupStatus.started;
+      logi("Singular attribution started");
     } on Object catch (error, stackTrace) {
       logw("Failed to start Singular attribution", error, stackTrace);
-      return SingularAttributionStartupStatus.failed;
     }
   }
 }

@@ -50,7 +50,7 @@ void main() {
     expect(iosProject, contains("ATTRIBUTES = (Weak, );"));
   });
 
-  test("release lanes inject Singular credentials without command-line values", () {
+  test("release lanes inject required Singular credentials without command-line values", () {
     for (final source in [androidFastfile, iosReleaseWorkflow]) {
       expect(source, contains("SINGULAR_SDK_KEY"));
       expect(source, contains("SINGULAR_SDK_SECRET"));
