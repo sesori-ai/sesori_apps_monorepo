@@ -52,4 +52,9 @@ compaction commands; and selected message-part/tool-status construction.
 - Correctness review: no findings.
 - Interface, ACP, Codex, and Cursor analyzers and full suites passed again after
   merging Step 27's review fixes forward.
+- Human-review follow-up replaced flattened `PluginMessagePart` fields with one
+  Freezed variant per part type; bridge-wide `make analyze` passed.
+- Follow-up verification passed: full interface (160), Cursor (138), OMP (53),
+  and DeepSeek (31) suites; focused OpenCode (11), ACP (138), Codex (155),
+  Claude (33), Pi (44), and bridge app mapper/SSE/repository (157) suites.
 - `git diff --check`: passed.

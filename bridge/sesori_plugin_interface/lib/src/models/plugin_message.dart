@@ -58,51 +58,178 @@ sealed class PluginMessageWithParts with _$PluginMessageWithParts {
   }) = _PluginMessageWithParts;
 }
 
-@freezed
-sealed class PluginMessagePart with _$PluginMessagePart {
+@Freezed(unionKey: "type")
+sealed class const PluginMessagePart._() with _$PluginMessagePart {
+  @FreezedUnionValue("text")
+  const factory text({required String id, required String sessionID, required String messageID, @JsonKey(includeToJson: true) required String text}) =
+      PluginMessagePartText;
+
+  @FreezedUnionValue("reasoning")
+  const factory reasoning({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    @JsonKey(includeToJson: true) required String text,
+  }) = PluginMessagePartReasoning;
+
+  @FreezedUnionValue("tool")
+  const factory tool({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    @JsonKey(includeToJson: true) required String? tool,
+    @JsonKey(includeToJson: true) required PluginToolState state,
+  }) = PluginMessagePartTool;
+
+  @FreezedUnionValue("subtask")
+  const factory subtask({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    required String prompt,
+    required String description,
+    required String agent,
+  }) = PluginMessagePartSubtask;
+
+  @FreezedUnionValue("step-start")
+  const factory stepStart({required String id, required String sessionID, required String messageID}) =
+      PluginMessagePartStepStart;
+
+  @FreezedUnionValue("step-finish")
+  const factory stepFinish({required String id, required String sessionID, required String messageID}) =
+      PluginMessagePartStepFinish;
+
+  @FreezedUnionValue("file")
+  const factory file({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    @JsonKey(includeToJson: true) required PluginMessageAttachment attachment,
+  }) = PluginMessagePartFile;
+
+  @FreezedUnionValue("snapshot")
+  const factory snapshot({required String id, required String sessionID, required String messageID}) =
+      PluginMessagePartSnapshot;
+
+  @FreezedUnionValue("patch")
+  const factory patch({required String id, required String sessionID, required String messageID}) =
+      PluginMessagePartPatch;
+
+  @FreezedUnionValue("agent")
+  const factory agent({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    @JsonKey(includeToJson: true) required String agentName,
+  }) = PluginMessagePartAgent;
+
+  @FreezedUnionValue("retry")
+  const factory retry({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    @JsonKey(includeToJson: true) required int attempt,
+    @JsonKey(includeToJson: true) required String retryError,
+  }) = PluginMessagePartRetry;
+
+  @FreezedUnionValue("compaction")
+  const factory compaction({required String id, required String sessionID, required String messageID}) =
+      PluginMessagePartCompaction;
+
+  @FreezedUnionValue("unknown")
+  const factory unknown({required String id, required String sessionID, required String messageID}) =
+      PluginMessagePartUnknown;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  String get text {
+    if (this case PluginMessagePartText(:final text) || PluginMessagePartReasoning(:final text)) return text;
+    throw StateError("Expected textual message part, got ${type.name}");
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  String? get tool => asTool.tool;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  PluginToolState get state => asTool.state;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  PluginMessageAttachment get attachment => asFile.attachment;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  String get agentName => asAgent.agentName;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  int get attempt => asRetry.attempt;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  String get retryError => asRetry.retryError;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  PluginMessagePartText get asText {
+    if (this case final PluginMessagePartText part) return part;
+    throw StateError("Expected text message part, got ${type.name}");
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  PluginMessagePartReasoning get asReasoning {
+    if (this case final PluginMessagePartReasoning part) return part;
+    throw StateError("Expected reasoning message part, got ${type.name}");
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  PluginMessagePartTool get asTool {
+    if (this case final PluginMessagePartTool part) return part;
+    throw StateError("Expected tool message part, got ${type.name}");
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  PluginMessagePartFile get asFile {
+    if (this case final PluginMessagePartFile part) return part;
+    throw StateError("Expected file message part, got ${type.name}");
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  PluginMessagePartAgent get asAgent {
+    if (this case final PluginMessagePartAgent part) return part;
+    throw StateError("Expected agent message part, got ${type.name}");
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  PluginMessagePartRetry get asRetry {
+    if (this case final PluginMessagePartRetry part) return part;
+    throw StateError("Expected retry message part, got ${type.name}");
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  PluginMessagePartType get type => switch (this) {
+    PluginMessagePartText() => PluginMessagePartType.text,
+    PluginMessagePartReasoning() => PluginMessagePartType.reasoning,
+    PluginMessagePartTool() => PluginMessagePartType.tool,
+    PluginMessagePartSubtask() => PluginMessagePartType.subtask,
+    PluginMessagePartStepStart() => PluginMessagePartType.stepStart,
+    PluginMessagePartStepFinish() => PluginMessagePartType.stepFinish,
+    PluginMessagePartFile() => PluginMessagePartType.file,
+    PluginMessagePartSnapshot() => PluginMessagePartType.snapshot,
+    PluginMessagePartPatch() => PluginMessagePartType.patch,
+    PluginMessagePartAgent() => PluginMessagePartType.agent,
+    PluginMessagePartRetry() => PluginMessagePartType.retry,
+    PluginMessagePartCompaction() => PluginMessagePartType.compaction,
+    PluginMessagePartUnknown() => PluginMessagePartType.unknown,
+  };
+
   static PluginMessagePart fromText({
     required String id,
     required String sessionID,
     required String messageID,
-    required String text,
-  }) => PluginMessagePart(
-    id: id,
-    sessionID: sessionID,
-    messageID: messageID,
-    type: PluginMessagePartType.text,
-    text: text,
-    tool: null,
-    state: null,
-    prompt: null,
-    description: null,
-    agent: null,
-    agentName: null,
-    attempt: null,
-    retryError: null,
-    attachment: null,
-  );
+    @JsonKey(includeToJson: true) required String text,
+  }) => .text(id: id, sessionID: sessionID, messageID: messageID, text: text);
 
   static PluginMessagePart fromThinking({
     required String id,
     required String sessionID,
     required String messageID,
-    required String text,
-  }) => PluginMessagePart(
-    id: id,
-    sessionID: sessionID,
-    messageID: messageID,
-    type: PluginMessagePartType.reasoning,
-    text: text,
-    tool: null,
-    state: null,
-    prompt: null,
-    description: null,
-    agent: null,
-    agentName: null,
-    attempt: null,
-    retryError: null,
-    attachment: null,
-  );
+    @JsonKey(includeToJson: true) required String text,
+  }) => .reasoning(id: id, sessionID: sessionID, messageID: messageID, text: text);
 
   static PluginMessagePart fromTool({
     required String id,
@@ -110,45 +237,7 @@ sealed class PluginMessagePart with _$PluginMessagePart {
     required String messageID,
     required String tool,
     required PluginToolState state,
-  }) => PluginMessagePart(
-    id: id,
-    sessionID: sessionID,
-    messageID: messageID,
-    type: PluginMessagePartType.tool,
-    text: null,
-    tool: tool,
-    state: state,
-    prompt: null,
-    description: null,
-    agent: null,
-    agentName: null,
-    attempt: null,
-    retryError: null,
-    attachment: null,
-  );
-
-  const factory({
-    required String id,
-    required String sessionID,
-    required String messageID,
-    required PluginMessagePartType type,
-    // text / reasoning
-    required String? text,
-    // tool
-    required String? tool,
-    required PluginToolState? state,
-    // subtask
-    required String? prompt,
-    required String? description,
-    required String? agent,
-    // agent
-    required String? agentName,
-    // retry
-    required int? attempt,
-    required String? retryError,
-    // file
-    required PluginMessageAttachment? attachment,
-  }) = _PluginMessagePart;
+  }) => .tool(id: id, sessionID: sessionID, messageID: messageID, tool: tool, state: state);
 }
 
 /// A backend-normalized attachment that is safe to expose outside the plugin.

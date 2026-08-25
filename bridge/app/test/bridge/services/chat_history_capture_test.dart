@@ -199,21 +199,11 @@ void main() {
         pluginId: "opencode",
         generation: 1,
         event: const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
+          part: PluginMessagePart.text(
             id: "p1",
             sessionID: "ses_a",
             messageID: "m1",
-            type: PluginMessagePartType.text,
             text: "one",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
         allowDuringStop: false,

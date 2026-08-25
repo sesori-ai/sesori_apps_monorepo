@@ -102,16 +102,46 @@ extension PluginMessagePartMapping on PluginMessagePart {
     sessionID: sessionId,
     messageID: messageID,
     type: type.toShared(),
-    text: text,
-    tool: tool,
-    state: state?.toShared(),
-    prompt: prompt,
-    description: description,
-    agent: agent,
-    agentName: agentName,
-    attempt: attempt,
-    retryError: retryError,
-    attachment: attachment?.toShared(),
+    text: switch (this) {
+      PluginMessagePartText(:final text) || PluginMessagePartReasoning(:final text) => text,
+      _ => null,
+    },
+    tool: switch (this) {
+      PluginMessagePartTool(:final tool) => tool,
+      _ => null,
+    },
+    state: switch (this) {
+      PluginMessagePartTool(:final state) => state.toShared(),
+      _ => null,
+    },
+    prompt: switch (this) {
+      PluginMessagePartSubtask(:final prompt) => prompt,
+      _ => null,
+    },
+    description: switch (this) {
+      PluginMessagePartSubtask(:final description) => description,
+      _ => null,
+    },
+    agent: switch (this) {
+      PluginMessagePartSubtask(:final agent) => agent,
+      _ => null,
+    },
+    agentName: switch (this) {
+      PluginMessagePartAgent(:final agentName) => agentName,
+      _ => null,
+    },
+    attempt: switch (this) {
+      PluginMessagePartRetry(:final attempt) => attempt,
+      _ => null,
+    },
+    retryError: switch (this) {
+      PluginMessagePartRetry(:final retryError) => retryError,
+      _ => null,
+    },
+    attachment: switch (this) {
+      PluginMessagePartFile(:final attachment) => attachment.toShared(),
+      _ => null,
+    },
   );
 }
 

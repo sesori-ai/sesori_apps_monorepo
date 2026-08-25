@@ -27,22 +27,7 @@ void main() {
       expect(
         mapper.map(
           event: const BridgeSseMessagePartUpdated(
-            part: PluginMessagePart(
-              id: "p1",
-              sessionID: "s1",
-              messageID: "m1",
-              type: PluginMessagePartType.text,
-              text: "hello",
-              tool: null,
-              state: null,
-              prompt: null,
-              description: null,
-              agent: null,
-              agentName: null,
-              attempt: null,
-              retryError: null,
-              attachment: null,
-            ),
+            part: PluginMessagePart.text(id: "p1", sessionID: "s1", messageID: "m1", text: "hello"),
           ),
           pluginId: "test-plugin",
         ),
@@ -188,20 +173,10 @@ void main() {
     test("passes file message part updates with normalized attachment data", () async {
       final result = mapEvent(
         const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
+          part: PluginMessagePart.file(
             id: "p1",
             sessionID: "s1",
             messageID: "m1",
-            type: PluginMessagePartType.file,
-            text: null,
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
             attachment: PluginMessageAttachment.metadata(mime: "text/plain", filename: "notes.txt"),
           ),
         ),
@@ -218,22 +193,7 @@ void main() {
     test("filters snapshot message part updates", () async {
       final result = mapEvent(
         const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
-            id: "p1",
-            sessionID: "s1",
-            messageID: "m1",
-            type: PluginMessagePartType.snapshot,
-            text: null,
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
-          ),
+          part: PluginMessagePart.snapshot(id: "p1", sessionID: "s1", messageID: "m1"),
         ),
       );
 
@@ -243,22 +203,7 @@ void main() {
     test("filters patch message part updates", () async {
       final result = mapEvent(
         const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
-            id: "p1",
-            sessionID: "s1",
-            messageID: "m1",
-            type: PluginMessagePartType.patch,
-            text: null,
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
-          ),
+          part: PluginMessagePart.patch(id: "p1", sessionID: "s1", messageID: "m1"),
         ),
       );
 
@@ -268,22 +213,7 @@ void main() {
     test("filters compaction message part updates", () async {
       final result = mapEvent(
         const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
-            id: "p1",
-            sessionID: "s1",
-            messageID: "m1",
-            type: PluginMessagePartType.compaction,
-            text: null,
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
-          ),
+          part: PluginMessagePart.compaction(id: "p1", sessionID: "s1", messageID: "m1"),
         ),
       );
 
@@ -293,21 +223,11 @@ void main() {
     test("passes agent message part updates", () async {
       final result = mapEvent(
         const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
+          part: PluginMessagePart.agent(
             id: "p1",
             sessionID: "s1",
             messageID: "m1",
-            type: PluginMessagePartType.agent,
-            text: null,
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
             agentName: "test-agent",
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
@@ -319,21 +239,12 @@ void main() {
     test("passes retry message part updates", () async {
       final result = mapEvent(
         const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
+          part: PluginMessagePart.retry(
             id: "p1",
             sessionID: "s1",
             messageID: "m1",
-            type: PluginMessagePartType.retry,
-            text: null,
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
             attempt: 2,
             retryError: "timeout",
-            attachment: null,
           ),
         ),
       );
@@ -346,13 +257,11 @@ void main() {
       final longOutput = List.filled(1000, "x").join();
       final result = mapEvent(
         BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
+          part: PluginMessagePart.tool(
             id: "p1",
             sessionID: "s1",
             messageID: "m1",
-            type: PluginMessagePartType.tool,
-            text: null,
-            tool: null,
+            tool: "tool",
             state: PluginToolState(
               status: PluginToolStatus.completed,
               title: null,
@@ -360,13 +269,6 @@ void main() {
               error: null,
               attachments: const [],
             ),
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
@@ -380,22 +282,7 @@ void main() {
     test("passes through text message parts", () async {
       final result = mapEvent(
         const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
-            id: "p1",
-            sessionID: "s1",
-            messageID: "m1",
-            type: PluginMessagePartType.text,
-            text: "hello",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
-          ),
+          part: PluginMessagePart.text(id: "p1", sessionID: "s1", messageID: "m1", text: "hello"),
         ),
       );
 
@@ -408,13 +295,11 @@ void main() {
     test("keeps short tool output unchanged", () async {
       final result = mapEvent(
         const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
+          part: PluginMessagePart.tool(
             id: "p1",
             sessionID: "s1",
             messageID: "m1",
-            type: PluginMessagePartType.tool,
-            text: null,
-            tool: null,
+            tool: "tool",
             state: PluginToolState(
               status: PluginToolStatus.completed,
               title: null,
@@ -422,13 +307,6 @@ void main() {
               error: null,
               attachments: [],
             ),
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );

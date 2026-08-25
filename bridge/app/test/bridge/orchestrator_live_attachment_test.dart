@@ -264,22 +264,32 @@ PluginMessagePart _pluginPart({
   String messageId = "m1",
   PluginMessagePartType type = PluginMessagePartType.text,
   PluginMessageAttachment? attachment,
-}) => PluginMessagePart(
-  id: id,
-  sessionID: _backendSessionId,
-  messageID: messageId,
-  type: attachment == null ? type : PluginMessagePartType.file,
-  text: text,
-  tool: null,
-  state: null,
-  prompt: null,
-  description: null,
-  agent: null,
-  agentName: null,
-  attempt: null,
-  retryError: null,
-  attachment: attachment,
-);
+}) => attachment != null
+    ? PluginMessagePart.file(
+        id: id,
+        sessionID: _backendSessionId,
+        messageID: messageId,
+        attachment: attachment,
+      )
+    : switch (type) {
+        PluginMessagePartType.text => PluginMessagePart.text(
+          id: id,
+          sessionID: _backendSessionId,
+          messageID: messageId,
+          text: text!,
+        ),
+        PluginMessagePartType.snapshot => PluginMessagePart.snapshot(
+          id: id,
+          sessionID: _backendSessionId,
+          messageID: messageId,
+        ),
+        PluginMessagePartType.unknown => PluginMessagePart.unknown(
+          id: id,
+          sessionID: _backendSessionId,
+          messageID: messageId,
+        ),
+        _ => throw StateError("Unsupported test part type: $type"),
+      };
 
 class _LiveAttachmentHarness({
   required final FakeBridgePlugin plugin,

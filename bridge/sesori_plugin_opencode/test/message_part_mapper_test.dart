@@ -198,10 +198,10 @@ void main() {
       ),
     );
 
-    final attachments = part.state?.attachments;
+    final attachments = part.state.attachments;
     expect(attachments, hasLength(4));
     expect(
-      attachments?.first,
+      attachments.first,
       equals(
         const PluginMessageAttachment.inlineImage(
           mime: "image/png",
@@ -240,7 +240,7 @@ void main() {
     );
 
     expect(
-      part.state?.attachments.single,
+      part.state.attachments.single,
       equals(
         const PluginMessageAttachment.inlineImage(
           mime: "image/png",
@@ -279,7 +279,7 @@ void main() {
     );
 
     expect(
-      part.state?.attachments.single,
+      part.state.attachments.single,
       equals(
         const PluginMessageAttachment.inlineImage(
           mime: "image/png",
@@ -324,8 +324,8 @@ void main() {
       ),
     );
 
-    expect(part.state?.attachments.first, isA<PluginMessageAttachmentInlineImage>());
-    expect(part.state?.attachments.last, isA<PluginMessageAttachmentInlineImage>());
+    expect(part.state.attachments.first, isA<PluginMessageAttachmentInlineImage>());
+    expect(part.state.attachments.last, isA<PluginMessageAttachmentInlineImage>());
   });
 
   test("enforces transcript image per-image and aggregate retention limits", () {
@@ -366,9 +366,9 @@ void main() {
       ),
     );
 
-    expect(aggregate.state!.attachments[0], isA<PluginMessageAttachmentInlineImage>());
-    expect(aggregate.state!.attachments[1], isA<PluginMessageAttachmentInlineImage>());
-    expect(aggregate.state!.attachments[2], isA<PluginMessageAttachmentMetadata>());
+    expect(aggregate.state.attachments[0], isA<PluginMessageAttachmentInlineImage>());
+    expect(aggregate.state.attachments[1], isA<PluginMessageAttachmentInlineImage>());
+    expect(aggregate.state.attachments[2], isA<PluginMessageAttachmentMetadata>());
     expect(oversized.attachment, isA<PluginMessageAttachmentMetadata>());
   });
 }

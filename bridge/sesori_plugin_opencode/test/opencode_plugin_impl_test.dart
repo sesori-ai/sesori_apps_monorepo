@@ -990,7 +990,7 @@ void main() {
       final messages = await plugin.getSessionMessages("ses-tool-long");
 
       expect(messages, hasLength(2));
-      final output = messages.last.parts.single.state?.output;
+      final output = messages.last.parts.single.state.output;
       expect(output, isNotNull);
       expect(output!.length, lessThanOrEqualTo(500));
       expect(output.length, equals(500));
@@ -1003,7 +1003,7 @@ void main() {
       final messages = await plugin.getSessionMessages("ses-tool-short");
 
       expect(messages, hasLength(2));
-      expect(messages.last.parts.single.state?.output, equals("short"));
+      expect(messages.last.parts.single.state.output, equals("short"));
     });
 
     test("getProviders with connectedOnly false returns config providers with variants", () async {

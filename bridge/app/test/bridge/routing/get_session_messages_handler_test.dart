@@ -129,20 +129,10 @@ void main() {
             time: null,
           ),
           parts: [
-            PluginMessagePart(
+            PluginMessagePart.file(
               id: "p1",
               sessionID: "s1",
               messageID: "m1",
-              type: PluginMessagePartType.file,
-              text: null,
-              tool: null,
-              state: null,
-              prompt: null,
-              description: null,
-              agent: null,
-              agentName: null,
-              attempt: null,
-              retryError: null,
               attachment: PluginMessageAttachment.inlineImage(
                 mime: "image/png",
                 base64: base64Encode(const [1, 2, 3]),

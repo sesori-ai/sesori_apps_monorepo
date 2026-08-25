@@ -28,21 +28,11 @@ void main() {
 
   group("PluginMessagePartMapping.toShared()", () {
     test("passes through agentName", () {
-      const part = PluginMessagePart(
+      const part = PluginMessagePart.agent(
         id: "p1",
         sessionID: "s1",
         messageID: "m1",
-        type: PluginMessagePartType.agent,
-        text: null,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
         agentName: "my-agent",
-        attempt: null,
-        retryError: null,
-        attachment: null,
       );
 
       final shared = part.toShared(sessionId: "stable-session");
@@ -52,21 +42,12 @@ void main() {
     });
 
     test("passes through attempt", () {
-      const part = PluginMessagePart(
+      const part = PluginMessagePart.retry(
         id: "p1",
         sessionID: "s1",
         messageID: "m1",
-        type: PluginMessagePartType.retry,
-        text: null,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        agentName: null,
         attempt: 3,
-        retryError: null,
-        attachment: null,
+        retryError: "retry",
       );
 
       final shared = part.toShared(sessionId: "stable-session");
@@ -75,21 +56,12 @@ void main() {
     });
 
     test("passes through retryError", () {
-      const part = PluginMessagePart(
+      const part = PluginMessagePart.retry(
         id: "p1",
         sessionID: "s1",
         messageID: "m1",
-        type: PluginMessagePartType.retry,
-        text: null,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        agentName: null,
         attempt: 1,
         retryError: "connection timeout",
-        attachment: null,
       );
 
       final shared = part.toShared(sessionId: "stable-session");
@@ -98,22 +70,7 @@ void main() {
     });
 
     test("passes through null values for new fields", () {
-      const part = PluginMessagePart(
-        id: "p1",
-        sessionID: "s1",
-        messageID: "m1",
-        type: PluginMessagePartType.text,
-        text: "hello",
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
-        attachment: null,
-      );
+      const part = PluginMessagePart.text(id: "p1", sessionID: "s1", messageID: "m1", text: "hello");
 
       final shared = part.toShared(sessionId: "stable-session");
 
@@ -123,20 +80,10 @@ void main() {
     });
 
     test("maps normalized remote attachment data", () {
-      final part = PluginMessagePart(
+      final part = PluginMessagePart.file(
         id: "p1",
         sessionID: "s1",
         messageID: "m1",
-        type: PluginMessagePartType.file,
-        text: null,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
         attachment: PluginMessageAttachment.remoteUrl(
           mime: "application/pdf",
           url: Uri.parse("https://files.example.com/report.pdf"),
@@ -157,20 +104,10 @@ void main() {
     });
 
     test("degrades a plugin remote attachment outside HTTP(S) to metadata", () {
-      final part = PluginMessagePart(
+      final part = PluginMessagePart.file(
         id: "p1",
         sessionID: "s1",
         messageID: "m1",
-        type: PluginMessagePartType.file,
-        text: null,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
         attachment: PluginMessageAttachment.remoteUrl(
           mime: "text/plain",
           url: Uri.parse("file:///private/secret.txt"),
@@ -185,20 +122,10 @@ void main() {
     });
 
     test("strips path components from plugin-provided filenames", () {
-      const part = PluginMessagePart(
+      const part = PluginMessagePart.file(
         id: "p1",
         sessionID: "s1",
         messageID: "m1",
-        type: PluginMessagePartType.file,
-        text: null,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
         attachment: PluginMessageAttachment.metadata(
           mime: "text/plain",
           filename: "/Users/alice/private/project/secret.txt",

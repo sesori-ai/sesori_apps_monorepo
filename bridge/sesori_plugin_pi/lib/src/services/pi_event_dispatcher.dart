@@ -246,7 +246,7 @@ final class PiEventDispatcher({
     final parts = <PluginMessagePart>[];
     var sessionDiffRequired = false;
     for (final part in mapped.parts) {
-      if (part.type != PluginMessagePartType.tool) {
+      if (part is! PluginMessagePartTool) {
         parts.add(part);
         continue;
       }

@@ -640,21 +640,11 @@ final class ClaudePlugin({
     );
     _eventBuffer.add(
       BridgeSseMessagePartUpdated(
-        part: PluginMessagePart(
+        part: PluginMessagePart.text(
           id: "$messageId-text",
           sessionID: sessionId,
           messageID: messageId,
-          type: PluginMessagePartType.text,
           text: visible,
-          tool: null,
-          state: null,
-          prompt: null,
-          description: null,
-          agent: null,
-          agentName: null,
-          attempt: null,
-          retryError: null,
-          attachment: null,
         ),
       ),
     );

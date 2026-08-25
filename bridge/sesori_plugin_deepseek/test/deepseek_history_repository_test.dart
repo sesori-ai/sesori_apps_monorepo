@@ -27,7 +27,11 @@ void main() {
       "s1-massistant-reply-assistant",
       "user-later",
     ]);
-    expect(messages.expand((message) => message.parts).map((part) => part.text), ["initial", "reply", "later"]);
+    expect(messages.expand((message) => message.parts).whereType<PluginMessagePartText>().map((part) => part.text), [
+      "initial",
+      "reply",
+      "later",
+    ]);
   });
 
   test("history rejects a non-progressing cursor with preserved cause", () async {

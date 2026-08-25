@@ -123,8 +123,8 @@ void main() {
       final tool = assistant.parts[1];
       expect(tool.id, "toolu-1");
       expect(tool.tool, "Read");
-      expect(tool.state?.status, PluginToolStatus.completed);
-      expect(tool.state?.output, "file contents");
+      expect(tool.state.status, PluginToolStatus.completed);
+      expect(tool.state.output, "file contents");
       expect(
         assistant.parts,
         everyElement(
