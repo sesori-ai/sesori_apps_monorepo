@@ -10,17 +10,22 @@ import "package:test/test.dart";
 void main() {
   const config = PluginConfig(values: {DeepSeekPluginDescriptor.binOption: DeepSeekBinary.defaultBinary});
 
-  test("descriptor declares explicit/PATH operation without managed install", () {
+  test("descriptor declares managed installation when no explicit path is configured", () {
     const descriptor = DeepSeekPluginDescriptor();
     expect([descriptor.id, descriptor.displayName], ["deepseek", "DeepSeek"]);
     expect(descriptor.projectOwnership, PluginProjectOwnership.bridgeDerived);
     expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
     expect(descriptor.supportsPromptAttachments, isTrue);
     expect(descriptor.options.map((option) => option.name), [DeepSeekPluginDescriptor.binOption]);
-    expect(descriptor.managementCapabilities(config: config), isNot(contains(PluginControlCapability.install)));
+    expect(descriptor.managementCapabilities(config: config), contains(PluginControlCapability.install));
   });
 
   test("ensureRuntime accepts a supported explicit adapter", () async {
+    const explicitConfig = PluginConfig(values: {DeepSeekPluginDescriptor.binOption: "/custom/deepseek"});
+    expect(
+      const DeepSeekPluginDescriptor().managementCapabilities(config: explicitConfig),
+      isNot(contains(PluginControlCapability.install)),
+    );
     final processes = _ProcessService(
       probes: [
         _ProbeProcess(
@@ -37,13 +42,13 @@ void main() {
         .ensureRuntime(
           host: _PluginHost(
             processes: processes,
-            config: const PluginConfig(values: {DeepSeekPluginDescriptor.binOption: "/custom/deepseek"}),
+            config: explicitConfig,
             provisionedRuntimePath: null,
           ),
         )
         .toList();
 
-    expect(events, [isA<ProvisionReady>().having((event) => event.binaryPath, "binaryPath", "/custom/deepseek")]);
+    expect(events.last, isA<ProvisionReady>().having((event) => event.binaryPath, "binaryPath", "/custom/deepseek"));
     expect(processes.spawnedArguments, [
       const ["--version"],
     ]);
@@ -83,7 +88,7 @@ void main() {
     ]);
   });
 
-  test("setup distinguishes missing and outdated adapters", () async {
+  test("setup distinguishes missing, outdated, and unknown adapters", () async {
     final missing = _ProcessService(spawnError: const ProcessException("deepseek", [], "not found", 2));
     expect(
       await const DeepSeekPluginDescriptor().inspectSetup(
@@ -93,17 +98,6 @@ void main() {
         stateDirectory: "/state",
       ),
       isA<PluginSetupRuntimeMissing>(),
-    );
-
-    final denied = _ProcessService(spawnError: const ProcessException("deepseek", [], "permission denied", 13));
-    expect(
-      await const DeepSeekPluginDescriptor().inspectSetup(
-        config: config,
-        processes: denied,
-        environment: const {},
-        stateDirectory: "/state",
-      ),
-      isA<PluginSetupUnknown>(),
     );
 
     final outdated = _ProcessService(
@@ -118,13 +112,66 @@ void main() {
     );
     expect(
       await const DeepSeekPluginDescriptor().inspectSetup(
-        config: config,
+        config: const PluginConfig(values: {DeepSeekPluginDescriptor.binOption: "/custom/deepseek"}),
         processes: outdated,
         environment: const {},
         stateDirectory: "/state",
       ),
       isA<PluginSetupUnavailable>(),
     );
+
+    final unknown = _ProcessService(
+      probes: [
+        _ProbeProcess(
+          pid: 1,
+          stdoutBytes: utf8.encode("unrecognized\n"),
+          stderrBytes: const [],
+          exitCodeValue: 0,
+        ),
+      ],
+    );
+    expect(
+      await const DeepSeekPluginDescriptor().inspectSetup(
+        config: const PluginConfig(values: {DeepSeekPluginDescriptor.binOption: "/custom/deepseek"}),
+        processes: unknown,
+        environment: const {},
+        stateDirectory: "/state",
+      ),
+      isA<PluginSetupUnknown>(),
+    );
+  });
+
+  test("ensureRuntime falls back from an outdated PATH adapter to the exact managed release", () async {
+    final processes = _ProcessService(
+      probes: [
+        _ProbeProcess(
+          pid: 1,
+          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.0.9 deepseek-harness/0.1.1-rc.2 acp/1\n"),
+          stderrBytes: const [],
+          exitCodeValue: 0,
+        ),
+        _ProbeProcess(
+          pid: 2,
+          stdoutBytes: utf8.encode(
+            "sesori-deepseek-acp/${DeepSeekPluginDescriptor.targetVersion} deepseek-harness/0.1.1-rc.2 acp/1\n",
+          ),
+          stderrBytes: const [],
+          exitCodeValue: 0,
+        ),
+      ],
+    );
+
+    final events = await const DeepSeekPluginDescriptor()
+        .ensureRuntime(
+          host: _PluginHost(processes: processes, config: config, provisionedRuntimePath: null),
+        )
+        .toList();
+
+    expect(
+      (events.last as ProvisionReady).binaryPath,
+      contains("/state/deepseek/${DeepSeekPluginDescriptor.targetVersion}/sesori-deepseek-acp"),
+    );
+    expect(processes.spawnedExecutables.first, DeepSeekBinary.defaultBinary);
   });
 
   test("production composition exposes options and rename then recovers after a crash", () async {

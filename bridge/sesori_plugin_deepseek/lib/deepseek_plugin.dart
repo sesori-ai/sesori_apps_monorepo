@@ -4,3 +4,4 @@ export "src/deepseek_binary.dart";
 export "src/deepseek_identity.dart";
 export "src/deepseek_plugin_impl.dart";
 export "src/runtime/deepseek_plugin_descriptor.dart";
+export "src/runtime/deepseek_runtime_manifest.dart";

@@ -43,6 +43,9 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
   _PiTurn? active;
   Future<void>? idleReap;
   PluginSessionStatus status = const PluginSessionStatus.idle();
+
+  /// The current resident whose frames may outlive a bridge-admitted prompt.
+  int? residentGeneration;
   bool agentRunning = false;
   int generation = 0;
   int idleGeneration = 0;
@@ -61,7 +64,8 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
     return result;
   }
 
-  bool get hasWork => active != null || inFlight.isNotEmpty || queue.isNotEmpty;
+  bool get hasAdmittedWork => active != null || inFlight.isNotEmpty || queue.isNotEmpty;
+  bool get hasWork => agentRunning || hasAdmittedWork;
 
   bool isAdmitted({required String promptId}) =>
       turns.any(
@@ -450,6 +454,7 @@ final class PiSessionService({
       if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) {
         throw PiTurnCancelledException(sessionId: sessionId);
       }
+      state.residentGeneration = connection.generation;
       turn.connection = connection;
       await _processes.applySelection(
         sessionId: sessionId,
@@ -571,7 +576,13 @@ final class PiSessionService({
 
   void _handleFrame(PiSessionProcessFrame processFrame) {
     final state = _sessions[processFrame.sessionId];
-    if (state == null || !state.hasWork) return;
+    if (state == null) return;
+    final residentGeneration = state.residentGeneration;
+    if (residentGeneration != null && residentGeneration != processFrame.generation) return;
+    if (residentGeneration == null) {
+      if (!state.hasAdmittedWork) return;
+      state.residentGeneration = processFrame.generation;
+    }
     state.active?.connection ??= PiSessionConnection(
       sessionId: processFrame.sessionId,
       generation: processFrame.generation,
@@ -580,9 +591,9 @@ final class PiSessionService({
       for (final turn in state.turns)
         if (turn.connection?.generation == processFrame.generation) turn,
     ];
-    if (generationTurns.isEmpty) return;
     switch (processFrame.frame) {
       case PiEventFrame(:final event):
+        final wasAgentRunning = state.agentRunning;
         if (event is PiAgentStartEvent) {
           state.agentRunning = true;
           for (final turn in generationTurns) {
@@ -591,6 +602,10 @@ final class PiSessionService({
               ..agentStarted = true
               ..agentSettled = false
               ..settlementObservedBeforeAcceptance = false;
+          }
+          final belongsToPrompt = generationTurns.any((turn) => turn.promptDispatched);
+          if (!wasAgentRunning && !belongsToPrompt) {
+            _beginAgentInitiatedTurn(sessionId: processFrame.sessionId, state: state);
           }
         } else if (event is PiAgentSettledEvent) {
           state.agentRunning = false;
@@ -629,8 +644,10 @@ final class PiSessionService({
         }
         if (statusChanged) _emit(const BridgeSseProjectUpdated());
         if (event is PiAgentSettledEvent) {
+          var finishedPromptTurn = false;
           for (final turn in List<_PiTurn>.of(generationTurns)) {
             if (turn.promptDispatched && turn.responseSucceeded) {
+              finishedPromptTurn = true;
               _finish(
                 sessionId: processFrame.sessionId,
                 state: state,
@@ -639,6 +656,9 @@ final class PiSessionService({
                 failure: null,
               );
             }
+          }
+          if (!finishedPromptTurn && wasAgentRunning && !state.hasWork) {
+            _finishAgentInitiatedTurn(sessionId: processFrame.sessionId, state: state);
           }
         }
       case PiExtensionUiFrame(:final request):
@@ -664,6 +684,33 @@ final class PiSessionService({
     }
   }
 
+  void _beginAgentInitiatedTurn({required String sessionId, required _PiSessionTurnState state}) {
+    state.idleGeneration++;
+    state.status = const PluginSessionStatus.busy();
+    _emit(
+      BridgeSseSessionStatus(
+        sessionID: sessionId,
+        status: const shared.SessionStatus.busy().toJson(),
+      ),
+    );
+    _emit(const BridgeSseProjectUpdated());
+    _syncWorkState();
+  }
+
+  void _finishAgentInitiatedTurn({required String sessionId, required _PiSessionTurnState state}) {
+    state.status = const PluginSessionStatus.idle();
+    _emit(
+      BridgeSseSessionStatus(
+        sessionID: sessionId,
+        status: const shared.SessionStatus.idle().toJson(),
+      ),
+    );
+    _emit(BridgeSseSessionIdle(sessionID: sessionId));
+    _emit(const BridgeSseProjectUpdated());
+    _syncWorkState();
+    _scheduleIdleReap(sessionId: sessionId, state: state);
+  }
+
   _PiTurn? _turnForPrompt({required _PiSessionTurnState state, required String promptId}) {
     for (final turn in state.turns) {
       if (turn.promptId == promptId) return turn;
@@ -685,14 +732,36 @@ final class PiSessionService({
   void _handleExit(PiSessionProcessExit exit) {
     _extensionUi.cancelForOwner(sessionId: exit.sessionId, processGeneration: exit.generation);
     final state = _sessions[exit.sessionId];
-    if (state == null) return;
+    if (state == null || state.residentGeneration != exit.generation) return;
+    state.residentGeneration = null;
     final affected = [
       for (final turn in state.turns)
         if (turn.connection?.generation == exit.generation) turn,
     ];
-    if (affected.isEmpty) return;
+    final agentInitiatedTurnFailed = affected.isEmpty && state.agentRunning;
+    if (affected.isEmpty && !agentInitiatedTurnFailed) return;
+    final failure = PiRpcProcessExitException(exitCode: exit.exitCode);
     _clearCompaction(sessionId: exit.sessionId);
     state.agentRunning = false;
+    if (agentInitiatedTurnFailed) {
+      Log.w(
+        "[pi] resident process exited during an extension-initiated turn for session id=${exit.sessionId}",
+        failure,
+      );
+      state.status = const PluginSessionStatus.idle();
+      _emit(
+        BridgeSseSessionStatus(
+          sessionID: exit.sessionId,
+          status: const shared.SessionStatus.idle().toJson(),
+        ),
+      );
+      _emit(BridgeSseSessionError(sessionID: exit.sessionId));
+      _emit(BridgeSseSessionIdle(sessionID: exit.sessionId));
+      _emit(const BridgeSseProjectUpdated());
+      _syncWorkState();
+      _scheduleIdleReap(sessionId: exit.sessionId, state: state);
+      return;
+    }
     final hasUncancelled = affected.any(
       (turn) => turn is! _PiQueuedPromptTurn || turn.queueState != _PiQueueState.cancelled,
     );
@@ -705,7 +774,6 @@ final class PiSessionService({
         ),
       );
     }
-    final failure = PiRpcProcessExitException(exitCode: exit.exitCode);
     if (hasUncancelled) {
       Log.w("[pi] resident process exited during active turns for session id=${exit.sessionId}", failure);
     }
@@ -728,6 +796,7 @@ final class PiSessionService({
     required Object failure,
   }) {
     _clearCompaction(sessionId: sessionId);
+    if (state.residentGeneration == processGeneration) state.residentGeneration = null;
     state.agentRunning = false;
     final affected = [
       for (final turn in state.turns)
@@ -865,6 +934,7 @@ final class PiSessionService({
     }
     state
       ..active = null
+      ..residentGeneration = null
       ..agentRunning = false
       ..inFlight.clear()
       ..queue.clear()
@@ -991,6 +1061,7 @@ final class PiSessionService({
         return;
       }
       _extensionUi.cancelForOwner(sessionId: sessionId, processGeneration: null);
+      state.residentGeneration = null;
       final teardown = _processes.teardown(sessionId: sessionId);
       state.idleReap = teardown;
       unawaited(_activeIdleReaps.track(operation: teardown));
