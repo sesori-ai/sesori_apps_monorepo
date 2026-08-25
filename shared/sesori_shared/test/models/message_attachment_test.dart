@@ -3,7 +3,7 @@ import "package:test/test.dart";
 
 void main() {
   group("message attachment compatibility", () {
-    test("older message and tool payloads decode with no attachments", () {
+    test("older message and tool payloads decode with omitted optional data", () {
       final part = MessagePart.fromJson(const {
         "id": "part-1",
         "sessionID": "session-1",
@@ -13,7 +13,10 @@ void main() {
       });
       final state = ToolState.fromJson(const {"status": "completed"});
 
-      expect(part.attachment, isNull);
+      expect(
+        part,
+        equals(const MessagePart.text(id: "part-1", sessionID: "session-1", messageID: "message-1", text: "hello")),
+      );
       expect(state.attachments, isEmpty);
     });
 
@@ -34,7 +37,8 @@ void main() {
         ],
       });
 
-      expect(part.attachment, isNull);
+      expect(part, isA<MessagePartFile>());
+      expect((part as MessagePartFile).attachment, isNull);
       expect(
         state.attachments,
         equals([const MessageAttachment.metadata(mime: "image/png", filename: "valid.png")]),
@@ -49,6 +53,59 @@ void main() {
 
       expect(attachment, isA<MessageAttachmentUnknown>());
       expect(attachment.safeRemoteUri, isNull);
+    });
+  });
+
+  group("message part compatibility", () {
+    const common = {"id": "part-1", "sessionID": "session-1", "messageID": "message-1"};
+    const variants = <String, MessagePart>{
+      "text": MessagePart.text(id: "part-1", sessionID: "session-1", messageID: "message-1", text: null),
+      "reasoning": MessagePart.reasoning(id: "part-1", sessionID: "session-1", messageID: "message-1", text: null),
+      "tool": MessagePart.tool(id: "part-1", sessionID: "session-1", messageID: "message-1", tool: null, state: null),
+      "subtask": MessagePart.subtask(
+        id: "part-1",
+        sessionID: "session-1",
+        messageID: "message-1",
+        prompt: null,
+        description: null,
+        agent: null,
+      ),
+      "step-start": MessagePart.stepStart(id: "part-1", sessionID: "session-1", messageID: "message-1"),
+      "step-finish": MessagePart.stepFinish(id: "part-1", sessionID: "session-1", messageID: "message-1"),
+      "file": MessagePart.file(id: "part-1", sessionID: "session-1", messageID: "message-1", attachment: null),
+      "snapshot": MessagePart.snapshot(id: "part-1", sessionID: "session-1", messageID: "message-1"),
+      "patch": MessagePart.patch(id: "part-1", sessionID: "session-1", messageID: "message-1"),
+      "agent": MessagePart.agent(id: "part-1", sessionID: "session-1", messageID: "message-1", agentName: null),
+      "retry": MessagePart.retry(
+        id: "part-1",
+        sessionID: "session-1",
+        messageID: "message-1",
+        attempt: null,
+        retryError: null,
+      ),
+      "compaction": MessagePart.compaction(id: "part-1", sessionID: "session-1", messageID: "message-1"),
+    };
+
+    for (final MapEntry(key: type, value: expected) in variants.entries) {
+      test("decodes a legacy $type payload with omitted variant fields", () {
+        final json = {...common, "type": type};
+
+        expect(MessagePart.fromJson(json), expected);
+        expect(expected.toJson(), json);
+      });
+    }
+
+    test("decodes through the enclosing SSE wire event", () {
+      final event = SesoriSseEvent.fromJson(const {
+        "type": "message.part.updated",
+        "part": {...common, "type": "text", "text": "hello"},
+      });
+
+      expect(event, isA<SesoriMessagePartUpdated>());
+      expect(
+        (event as SesoriMessagePartUpdated).part,
+        equals(const MessagePart.text(id: "part-1", sessionID: "session-1", messageID: "message-1", text: "hello")),
+      );
     });
   });
 

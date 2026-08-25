@@ -185,7 +185,7 @@ void main() {
       expect(result, isA<SesoriMessagePartUpdated>());
       final event = result! as SesoriMessagePartUpdated;
       expect(
-        event.part.attachment,
+        (event.part as MessagePartFile).attachment,
         equals(const MessageAttachment.metadata(mime: "text/plain", filename: "notes.txt")),
       );
     });
@@ -275,8 +275,9 @@ void main() {
 
       expect(result, isA<SesoriMessagePartUpdated>());
       final event = result! as SesoriMessagePartUpdated;
-      expect(event.part.state?.output?.length, lessThanOrEqualTo(500));
-      expect(event.part.state?.output?.length, equals(500));
+      final state = (event.part as MessagePartTool).state;
+      expect(state?.output?.length, lessThanOrEqualTo(500));
+      expect(state?.output?.length, equals(500));
     });
 
     test("passes through text message parts", () async {
@@ -288,8 +289,8 @@ void main() {
 
       expect(result, isA<SesoriMessagePartUpdated>());
       final event = result! as SesoriMessagePartUpdated;
-      expect(event.part.type, equals(MessagePartType.text));
-      expect(event.part.text, equals("hello"));
+      expect(event.part, isA<MessagePartText>());
+      expect((event.part as MessagePartText).text, equals("hello"));
     });
 
     test("keeps short tool output unchanged", () async {
@@ -313,7 +314,7 @@ void main() {
 
       expect(result, isA<SesoriMessagePartUpdated>());
       final event = result! as SesoriMessagePartUpdated;
-      expect(event.part.state?.output, equals("short"));
+      expect((event.part as MessagePartTool).state?.output, equals("short"));
     });
 
     test("map() drops BridgeSseProjectUpdated (the orchestrator builds the summary)", () {

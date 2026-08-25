@@ -8,7 +8,7 @@ import "../../../core/widgets/copy_icon_button.dart";
 import "../../../l10n/app_localizations.dart";
 import "attachment_collection_widget.dart";
 
-class const ToolPartWidget({super.key, required final MessagePart part}) extends StatelessWidget {
+class const ToolPartWidget({super.key, required final MessagePartTool part}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

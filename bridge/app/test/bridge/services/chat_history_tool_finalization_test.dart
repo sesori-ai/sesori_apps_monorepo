@@ -9,7 +9,10 @@ void main() {
   group("open tool part finalization", () {
     test("rewrites stored pending and running tool parts to error", () async {
       final history = createTestChatHistory();
-      await history.service.captureMessage(sessionId: "ses_a", message: _message(id: "m1"));
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+      );
       await history.service.capturePart(
         sessionId: "ses_a",
         part: _toolPart(id: "t1", messageId: "m1", status: ToolStatus.running),
@@ -27,16 +30,19 @@ void main() {
 
       expect(finalized, hasLength(2));
       final stored = await _storedParts(history: history, sessionId: "ses_a");
-      expect(stored["t1"]!.state!.status, ToolStatus.error);
-      expect(stored["t1"]!.state!.error, "The turn ended before this tool reported a result.");
-      expect(stored["t2"]!.state!.status, ToolStatus.error);
-      expect(stored["t3"]!.state!.status, ToolStatus.completed);
-      expect(stored["t3"]!.state!.output, "done", reason: "terminal parts stay untouched");
+      expect(_stateOf(stored["t1"]!).status, ToolStatus.error);
+      expect(_stateOf(stored["t1"]!).error, "The turn ended before this tool reported a result.");
+      expect(_stateOf(stored["t2"]!).status, ToolStatus.error);
+      expect(_stateOf(stored["t3"]!).status, ToolStatus.completed);
+      expect(_stateOf(stored["t3"]!).output, "done", reason: "terminal parts stay untouched");
     });
 
     test("keeps title and output of a finalized part", () async {
       final history = createTestChatHistory();
-      await history.service.captureMessage(sessionId: "ses_a", message: _message(id: "m1"));
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+      );
       await history.service.capturePart(
         sessionId: "ses_a",
         part: _toolPart(id: "t1", messageId: "m1", status: ToolStatus.running, title: "Edit", output: "partial"),
@@ -45,13 +51,16 @@ void main() {
       await history.service.finalizeOpenToolParts(sessionId: "ses_a");
 
       final stored = await _storedParts(history: history, sessionId: "ses_a");
-      expect(stored["t1"]!.state!.title, "Edit");
-      expect(stored["t1"]!.state!.output, "partial");
+      expect(_stateOf(stored["t1"]!).title, "Edit");
+      expect(_stateOf(stored["t1"]!).output, "partial");
     });
 
     test("returns both delivery shapes for each finalized part", () async {
       final history = createTestChatHistory();
-      await history.service.captureMessage(sessionId: "ses_a", message: _message(id: "m1"));
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+      );
       await history.service.capturePart(
         sessionId: "ses_a",
         part: _toolPart(id: "t1", messageId: "m1", status: ToolStatus.running),
@@ -60,14 +69,17 @@ void main() {
       final finalized = await history.service.finalizeOpenToolParts(sessionId: "ses_a");
 
       final shapes = finalized.single;
-      expect(shapes.inlinePart.state!.status, ToolStatus.error);
-      expect(shapes.storedReferencePart.state!.status, ToolStatus.error);
+      expect(_stateOf(shapes.inlinePart).status, ToolStatus.error);
+      expect(_stateOf(shapes.storedReferencePart).status, ToolStatus.error);
       expect(shapes.inlinePart.id, "t1");
     });
 
     test("ignores non-tool parts and sessions with nothing open", () async {
       final history = createTestChatHistory();
-      await history.service.captureMessage(sessionId: "ses_a", message: _message(id: "m1"));
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+      );
       await history.service.capturePart(
         sessionId: "ses_a",
         part: _textPart(id: "p1", messageId: "m1", text: "running"),
@@ -75,12 +87,15 @@ void main() {
 
       expect(await history.service.finalizeOpenToolParts(sessionId: "ses_a"), isEmpty);
       final stored = await _storedParts(history: history, sessionId: "ses_a");
-      expect(stored["p1"]!.text, "running");
+      expect((stored["p1"]! as MessagePartText).text, "running");
     });
 
     test("does not advance the session's freshness marks", () async {
       final history = createTestChatHistory();
-      await history.service.captureMessage(sessionId: "ses_a", message: _message(id: "m1"));
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+      );
       await history.service.capturePart(
         sessionId: "ses_a",
         part: _toolPart(id: "t1", messageId: "m1", status: ToolStatus.running),
@@ -109,7 +124,7 @@ void main() {
 
       final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
 
-      expect(served.single.parts.single.state!.status, ToolStatus.error);
+      expect(_stateOf(served.single.parts.single).status, ToolStatus.error);
     });
 
     test("a backfill read leaves open tool parts alone while the session is busy", () async {
@@ -126,7 +141,7 @@ void main() {
 
       final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
 
-      expect(served.single.parts.single.state!.status, ToolStatus.running);
+      expect(_stateOf(served.single.parts.single).status, ToolStatus.running);
     });
 
     test("a fresh store still finalizes open tool parts left by an abrupt death", () async {
@@ -136,7 +151,10 @@ void main() {
       final repository = _FakeSessionRepository(transcript: const [], status: const SessionStatus.idle());
       final history = createTestChatHistory(sessionRepository: repository);
       await history.service.backfillSession(sessionId: "ses_a");
-      await history.service.captureMessage(sessionId: "ses_a", message: _message(id: "m1"));
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+      );
       await history.service.capturePart(
         sessionId: "ses_a",
         part: _toolPart(id: "t1", messageId: "m1", status: ToolStatus.running),
@@ -144,14 +162,17 @@ void main() {
 
       final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
 
-      expect(served.single.parts.single.state!.status, ToolStatus.error);
+      expect(_stateOf(served.single.parts.single).status, ToolStatus.error);
     });
 
     test("a fresh store with a busy session keeps its running tool", () async {
       final repository = _FakeSessionRepository(transcript: const [], status: const SessionStatus.busy());
       final history = createTestChatHistory(sessionRepository: repository);
       await history.service.backfillSession(sessionId: "ses_a");
-      await history.service.captureMessage(sessionId: "ses_a", message: _message(id: "m1"));
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+      );
       await history.service.capturePart(
         sessionId: "ses_a",
         part: _toolPart(id: "t1", messageId: "m1", status: ToolStatus.running),
@@ -159,14 +180,17 @@ void main() {
 
       final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
 
-      expect(served.single.parts.single.state!.status, ToolStatus.running);
+      expect(_stateOf(served.single.parts.single).status, ToolStatus.running);
     });
 
     test("a fresh store without open tool parts is served without a status read", () async {
       final repository = _FakeSessionRepository(transcript: const [], status: null);
       final history = createTestChatHistory(sessionRepository: repository);
       await history.service.backfillSession(sessionId: "ses_a");
-      await history.service.captureMessage(sessionId: "ses_a", message: _message(id: "m1"));
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+      );
       await history.service.capturePart(
         sessionId: "ses_a",
         part: _toolPart(id: "t1", messageId: "m1", status: ToolStatus.completed, output: "done"),
@@ -174,7 +198,7 @@ void main() {
 
       final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
 
-      expect(served.single.parts.single.state!.status, ToolStatus.completed);
+      expect(_stateOf(served.single.parts.single).status, ToolStatus.completed);
       expect(repository.statusReads, isZero, reason: "a page with no open tool needs no status query");
     });
 
@@ -192,7 +216,7 @@ void main() {
 
       final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
 
-      expect(served.single.parts.single.state!.status, ToolStatus.error);
+      expect(_stateOf(served.single.parts.single).status, ToolStatus.error);
     });
   });
 }
@@ -225,39 +249,22 @@ MessagePart _toolPart({
   required ToolStatus status,
   String? title,
   String? output,
-}) => MessagePart(
+}) => MessagePart.tool(
   id: id,
   sessionID: "ses_a",
   messageID: messageId,
-  type: MessagePartType.tool,
-  text: null,
   tool: "Edit",
   state: ToolState(status: status, title: title, output: output, error: null),
-  prompt: null,
-  description: null,
-  agent: null,
-  agentName: null,
-  attempt: null,
-  retryError: null,
-  attachment: null,
 );
 
-MessagePart _textPart({required String id, required String messageId, required String text}) => MessagePart(
+MessagePart _textPart({required String id, required String messageId, required String text}) => MessagePart.text(
   id: id,
   sessionID: "ses_a",
   messageID: messageId,
-  type: MessagePartType.text,
   text: text,
-  tool: null,
-  state: null,
-  prompt: null,
-  description: null,
-  agent: null,
-  agentName: null,
-  attempt: null,
-  retryError: null,
-  attachment: null,
 );
+
+ToolState _stateOf(MessagePart part) => (part as MessagePartTool).state!;
 
 class _FakeSessionRepository({
   required final List<MessageWithParts> transcript,

@@ -10,7 +10,7 @@ import "../../../core/routing/current_project_name.dart";
 class const SubtaskPartWidget({
   super.key,
   required final String? projectId,
-  required final MessagePart part,
+  required final MessagePartSubtask part,
   required final List<Session> children,
   required final Map<String, SessionStatus> childStatuses,
 }) extends StatelessWidget {

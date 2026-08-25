@@ -4,28 +4,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
-  group("PluginMessagePartTypeMapping.toShared()", () {
-    test("maps patch to MessagePartType.patch", () {
-      expect(PluginMessagePartType.patch.toShared(), equals(MessagePartType.patch));
-    });
-
-    test("maps agent to MessagePartType.agent", () {
-      expect(PluginMessagePartType.agent.toShared(), equals(MessagePartType.agent));
-    });
-
-    test("maps retry to MessagePartType.retry", () {
-      expect(PluginMessagePartType.retry.toShared(), equals(MessagePartType.retry));
-    });
-
-    test("maps compaction to MessagePartType.compaction", () {
-      expect(PluginMessagePartType.compaction.toShared(), equals(MessagePartType.compaction));
-    });
-
-    test("throws StateError for unknown", () {
-      expect(() => PluginMessagePartType.unknown.toShared(), throwsStateError);
-    });
-  });
-
   group("PluginMessagePartMapping.toShared()", () {
     test("passes through agentName", () {
       const part = PluginMessagePart.agent(
@@ -37,7 +15,8 @@ void main() {
 
       final shared = part.toShared(sessionId: "stable-session");
 
-      expect(shared.agentName, equals("my-agent"));
+      expect(shared, isA<MessagePartAgent>());
+      expect((shared as MessagePartAgent).agentName, equals("my-agent"));
       expect(shared.sessionID, equals("stable-session"));
     });
 
@@ -52,7 +31,8 @@ void main() {
 
       final shared = part.toShared(sessionId: "stable-session");
 
-      expect(shared.attempt, equals(3));
+      expect(shared, isA<MessagePartRetry>());
+      expect((shared as MessagePartRetry).attempt, equals(3));
     });
 
     test("passes through retryError", () {
@@ -66,17 +46,23 @@ void main() {
 
       final shared = part.toShared(sessionId: "stable-session");
 
-      expect(shared.retryError, equals("connection timeout"));
+      expect(shared, isA<MessagePartRetry>());
+      expect((shared as MessagePartRetry).retryError, equals("connection timeout"));
     });
 
-    test("passes through null values for new fields", () {
+    test("maps text without unrelated variant fields", () {
       const part = PluginMessagePart.text(id: "p1", sessionID: "s1", messageID: "m1", text: "hello");
 
       final shared = part.toShared(sessionId: "stable-session");
 
-      expect(shared.agentName, isNull);
-      expect(shared.attempt, isNull);
-      expect(shared.retryError, isNull);
+      expect(shared, isA<MessagePartText>());
+      expect(shared.toJson(), {
+        "id": "p1",
+        "sessionID": "stable-session",
+        "messageID": "m1",
+        "text": "hello",
+        "type": "text",
+      });
     });
 
     test("maps normalized remote attachment data", () {
@@ -92,7 +78,7 @@ void main() {
       );
 
       expect(
-        part.toShared(sessionId: "s1").attachment,
+        (part.toShared(sessionId: "s1") as MessagePartFile).attachment,
         equals(
           const MessageAttachment.remoteUrl(
             mime: "application/pdf",
@@ -116,7 +102,7 @@ void main() {
       );
 
       expect(
-        part.toShared(sessionId: "s1").attachment,
+        (part.toShared(sessionId: "s1") as MessagePartFile).attachment,
         equals(const MessageAttachment.metadata(mime: "text/plain", filename: "secret.txt")),
       );
     });
@@ -133,7 +119,7 @@ void main() {
       );
 
       expect(
-        part.toShared(sessionId: "s1").attachment,
+        (part.toShared(sessionId: "s1") as MessagePartFile).attachment,
         equals(const MessageAttachment.metadata(mime: "text/plain", filename: "secret.txt")),
       );
     });

@@ -192,21 +192,11 @@ void main() {
         );
         harness.completionListener.handleSseEvent(
           const SesoriSseEvent.messagePartUpdated(
-            part: MessagePart(
+            part: MessagePart.text(
               id: "part-1",
               sessionID: "child",
               messageID: "msg-1",
-              type: MessagePartType.text,
               text: "Finished the child work and rolled the result up to the parent.",
-              tool: null,
-              state: null,
-              prompt: null,
-              description: null,
-              agent: null,
-              agentName: null,
-              attempt: null,
-              retryError: null,
-              attachment: null,
             ),
           ),
         );
@@ -314,21 +304,11 @@ void main() {
         );
         harness.completionListener.handleSseEvent(
           const SesoriSseEvent.messagePartUpdated(
-            part: MessagePart(
+            part: MessagePart.text(
               id: "part-1",
               sessionID: "child",
               messageID: "msg-1",
-              type: MessagePartType.text,
               text: "Summary-seeded child completion should still notify as the root session.",
-              tool: null,
-              state: null,
-              prompt: null,
-              description: null,
-              agent: null,
-              agentName: null,
-              attempt: null,
-              retryError: null,
-              attachment: null,
             ),
           ),
         );

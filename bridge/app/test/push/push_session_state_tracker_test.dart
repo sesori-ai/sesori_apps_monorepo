@@ -108,21 +108,11 @@ void main() {
 
       tracker.handleEvent(
         const SesoriSseEvent.messagePartUpdated(
-          part: MessagePart(
+          part: MessagePart.text(
             id: "part-1",
             sessionID: "session-a",
             messageID: "m-1",
-            type: MessagePartType.text,
             text: "assistant text",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
@@ -147,41 +137,21 @@ void main() {
       );
       tracker.handleEvent(
         const SesoriSseEvent.messagePartUpdated(
-          part: MessagePart(
+          part: MessagePart.text(
             id: "part-1",
             sessionID: "session-a",
             messageID: "assistant-msg",
-            type: MessagePartType.text,
             text: "first",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
       tracker.handleEvent(
         const SesoriSseEvent.messagePartUpdated(
-          part: MessagePart(
+          part: MessagePart.text(
             id: "part-2",
             sessionID: "session-a",
             messageID: "assistant-msg",
-            type: MessagePartType.text,
             text: "latest",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
@@ -463,21 +433,11 @@ void main() {
       );
       tracker.handleEvent(
         const SesoriSseEvent.messagePartUpdated(
-          part: MessagePart(
+          part: MessagePart.text(
             id: "p-1",
             sessionID: "session-a",
             messageID: "m-1",
-            type: MessagePartType.text,
             text: "hello",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
@@ -554,21 +514,11 @@ void main() {
         )
         ..handleEvent(
           const SesoriSseEvent.messagePartUpdated(
-            part: MessagePart(
+            part: MessagePart.text(
               id: "p-1",
               sessionID: "root",
               messageID: "m-1",
-              type: MessagePartType.text,
               text: "latest",
-              tool: null,
-              state: null,
-              prompt: null,
-              description: null,
-              agent: null,
-              agentName: null,
-              attempt: null,
-              retryError: null,
-              attachment: null,
             ),
           ),
         );
@@ -692,41 +642,21 @@ void main() {
 
       tracker.handleEvent(
         const SesoriSseEvent.messagePartUpdated(
-          part: MessagePart(
+          part: MessagePart.text(
             id: "root-part",
             sessionID: "root",
             messageID: "root-msg",
-            type: MessagePartType.text,
             text: "removed",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
       tracker.handleEvent(
         const SesoriSseEvent.messagePartUpdated(
-          part: MessagePart(
+          part: MessagePart.text(
             id: "other-part",
             sessionID: "other",
             messageID: "other-msg",
-            type: MessagePartType.text,
             text: "survived delete",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
@@ -753,21 +683,12 @@ void main() {
         )
         ..handleEvent(
           const SesoriSseEvent.messagePartUpdated(
-            part: MessagePart(
+            part: MessagePart.tool(
               id: "p-1",
               sessionID: "session-a",
               messageID: "m-1",
-              type: MessagePartType.tool,
-              text: "should be ignored",
               tool: null,
               state: null,
-              prompt: null,
-              description: null,
-              agent: null,
-              agentName: null,
-              attempt: null,
-              retryError: null,
-              attachment: null,
             ),
           ),
         );
@@ -792,21 +713,11 @@ void main() {
         )
         ..handleEvent(
           const SesoriSseEvent.messagePartUpdated(
-            part: MessagePart(
+            part: MessagePart.text(
               id: "p-1",
               sessionID: "session-a",
               messageID: "m-1",
-              type: MessagePartType.text,
               text: "should be ignored",
-              tool: null,
-              state: null,
-              prompt: null,
-              description: null,
-              agent: null,
-              agentName: null,
-              attempt: null,
-              retryError: null,
-              attachment: null,
             ),
           ),
         );
@@ -891,7 +802,13 @@ void main() {
             ProjectActivitySummary(
               id: "project-a",
               activeSessions: [
-                ActiveSession(id: "root", mainAgentRunning: true, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(
+                  id: "root",
+                  mainAgentRunning: true,
+                  childSessionIds: ["child"],
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
               ],
             ),
           ],
@@ -920,7 +837,13 @@ void main() {
             ProjectActivitySummary(
               id: "project-a",
               activeSessions: [
-                ActiveSession(id: "other-root", mainAgentRunning: true, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(
+                  id: "other-root",
+                  mainAgentRunning: true,
+                  childSessionIds: ["child"],
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
               ],
             ),
           ],
@@ -1020,8 +943,20 @@ void main() {
             ProjectActivitySummary(
               id: "project-a",
               activeSessions: [
-                ActiveSession(id: "root", mainAgentRunning: true, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
-                ActiveSession(id: "child", mainAgentRunning: true, childSessionIds: ["grandchild"], lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(
+                  id: "root",
+                  mainAgentRunning: true,
+                  childSessionIds: ["child"],
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
+                ActiveSession(
+                  id: "child",
+                  mainAgentRunning: true,
+                  childSessionIds: ["grandchild"],
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
               ],
             ),
           ],
@@ -1099,21 +1034,11 @@ void main() {
       );
       tracker.handleEvent(
         const SesoriSseEvent.messagePartUpdated(
-          part: MessagePart(
+          part: MessagePart.text(
             id: "part-1",
             sessionID: "child",
             messageID: "assistant-msg",
-            type: MessagePartType.text,
             text: "latest child reply",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
@@ -1197,41 +1122,21 @@ void main() {
 
       tracker.handleEvent(
         const SesoriSseEvent.messagePartUpdated(
-          part: MessagePart(
+          part: MessagePart.text(
             id: "pruned-part",
             sessionID: "child-a",
             messageID: "pruned-msg",
-            type: MessagePartType.text,
             text: "should stay pruned",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
       tracker.handleEvent(
         const SesoriSseEvent.messagePartUpdated(
-          part: MessagePart(
+          part: MessagePart.text(
             id: "survivor-part",
             sessionID: "root-b",
             messageID: "survivor-msg",
-            type: MessagePartType.text,
             text: "survivor text",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
@@ -1320,21 +1225,11 @@ void main() {
       );
       tracker.handleEvent(
         const SesoriSseEvent.messagePartUpdated(
-          part: MessagePart(
+          part: MessagePart.text(
             id: "late-part",
             sessionID: "child",
             messageID: "late-msg",
-            type: MessagePartType.text,
             text: "rebuilt text",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
@@ -1370,21 +1265,11 @@ void main() {
       tracker.pruneMessageRoleMetadata();
       tracker.handleEvent(
         const SesoriSseEvent.messagePartUpdated(
-          part: MessagePart(
+          part: MessagePart.text(
             id: "expired-part",
             sessionID: "expired-session",
             messageID: "expired-msg",
-            type: MessagePartType.text,
             text: "ignored",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
@@ -1414,21 +1299,11 @@ void main() {
 
       tracker.handleEvent(
         const SesoriSseEvent.messagePartUpdated(
-          part: MessagePart(
+          part: MessagePart.text(
             id: "oldest-part",
             sessionID: "session-0",
             messageID: "msg-0",
-            type: MessagePartType.text,
             text: "should stay pruned",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
@@ -1436,21 +1311,11 @@ void main() {
 
       tracker.handleEvent(
         const SesoriSseEvent.messagePartUpdated(
-          part: MessagePart(
+          part: MessagePart.text(
             id: "newest-part",
             sessionID: "session-10000",
             messageID: "msg-10000",
-            type: MessagePartType.text,
             text: "latest kept role",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
@@ -1477,21 +1342,11 @@ void main() {
       clock.advance(const Duration(minutes: 29));
       tracker.handleEvent(
         const SesoriSseEvent.messagePartUpdated(
-          part: MessagePart(
+          part: MessagePart.text(
             id: "stream-part-1",
             sessionID: "stream-session",
             messageID: "stream-msg",
-            type: MessagePartType.text,
             text: "still streaming",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
@@ -1500,21 +1355,11 @@ void main() {
       tracker.pruneMessageRoleMetadata();
       tracker.handleEvent(
         const SesoriSseEvent.messagePartUpdated(
-          part: MessagePart(
+          part: MessagePart.text(
             id: "stream-part-2",
             sessionID: "stream-session",
             messageID: "stream-msg",
-            type: MessagePartType.text,
             text: "fresh after prune",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
@@ -1572,7 +1417,13 @@ void main() {
             ProjectActivitySummary(
               id: "project-a",
               activeSessions: [
-                ActiveSession(id: "root-a", mainAgentRunning: false, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(
+                  id: "root-a",
+                  mainAgentRunning: false,
+                  childSessionIds: ["child"],
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
               ],
             ),
           ],
@@ -1608,7 +1459,13 @@ void main() {
             ProjectActivitySummary(
               id: "project-a",
               activeSessions: [
-                ActiveSession(id: "repaired-root", mainAgentRunning: false, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(
+                  id: "repaired-root",
+                  mainAgentRunning: false,
+                  childSessionIds: ["child"],
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
               ],
             ),
           ],
@@ -1628,7 +1485,13 @@ void main() {
             ProjectActivitySummary(
               id: "project-a",
               activeSessions: [
-                ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(
+                  id: "root",
+                  mainAgentRunning: false,
+                  childSessionIds: ["child"],
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
               ],
             ),
           ],
@@ -1649,7 +1512,13 @@ void main() {
           ProjectActivitySummary(
             id: "project-a",
             activeSessions: [
-              ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(
+                id: "root",
+                mainAgentRunning: false,
+                childSessionIds: ["child"],
+                lastUserActivityAt: null,
+                updatedAt: null,
+              ),
             ],
           ),
         ],

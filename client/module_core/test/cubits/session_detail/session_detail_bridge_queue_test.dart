@@ -24,21 +24,11 @@ const _sessionId = "session-1";
 /// The text part that makes [messageId] renderable — production user
 /// envelopes are always followed by one.
 SesoriMessagePartUpdated _textPartFor({required String messageId, required String text}) => SesoriMessagePartUpdated(
-  part: MessagePart(
+  part: MessagePart.text(
     id: "$messageId-text",
     sessionID: _sessionId,
     messageID: messageId,
-    type: MessagePartType.text,
     text: text,
-    tool: null,
-    state: null,
-    prompt: null,
-    description: null,
-    agent: null,
-    agentName: null,
-    attempt: null,
-    retryError: null,
-    attachment: null,
   ),
 );
 
@@ -597,7 +587,7 @@ void main() {
       // a renderable message, the bridge entry, or a staged copy.
       for (final emitted in emissions.whereType<SessionDetailLoaded>()) {
         final renderableMessage = emitted.messages.any(
-          (message) => message.info.id == "echo-1" && message.parts.any((part) => part.type == MessagePartType.text),
+          (message) => message.info.id == "echo-1" && message.parts.any((part) => part is MessagePartText),
         );
         final queued = emitted.bridgeQueuedPrompts.any((prompt) => prompt.id == "prm_1");
         expect(

@@ -74,13 +74,13 @@ void main() {
 
     expect(page.messages.single.parts.map((part) => part.id), const ["file", "remote", "tool"]);
     expect(
-      page.messages.single.parts[0].attachment,
+      (page.messages.single.parts[0] as MessagePartFile).attachment,
       isA<MessageAttachmentStoredImage>()
           .having((image) => image.bridgeId, "bridgeId", "br_test1234")
           .having((image) => image.byteLength, "byteLength", fileBytes.length),
     );
-    expect(page.messages.single.parts[1].attachment, isA<MessageAttachmentRemoteUrl>());
-    final toolAttachments = page.messages.single.parts[2].state!.attachments;
+    expect((page.messages.single.parts[1] as MessagePartFile).attachment, isA<MessageAttachmentRemoteUrl>());
+    final toolAttachments = (page.messages.single.parts[2] as MessagePartTool).state!.attachments;
     expect(toolAttachments[0], isA<MessageAttachmentMetadata>());
     expect(
       toolAttachments[1],
@@ -136,8 +136,8 @@ void main() {
       attachmentProjection: const InlineMessageAttachmentProjection(),
     );
 
-    expect(page.messages.single.parts[0].attachment, isA<MessageAttachmentInlineImage>());
-    final toolAttachments = page.messages.single.parts[1].state!.attachments;
+    expect((page.messages.single.parts[0] as MessagePartFile).attachment, isA<MessageAttachmentInlineImage>());
+    final toolAttachments = (page.messages.single.parts[1] as MessagePartTool).state!.attachments;
     expect(
       toolAttachments[0],
       isA<MessageAttachmentMetadata>().having((metadata) => metadata.filename, "filename", "second.png"),
@@ -183,7 +183,7 @@ void main() {
       attachmentProjection: const StoredReferenceMessageAttachmentProjection(bridgeId: "br_test1234"),
     );
     expect(newest.messages.single.info.id, "m2");
-    expect(newest.messages.single.parts.single.attachment, isA<MessageAttachmentMetadata>());
+    expect((newest.messages.single.parts.single as MessagePartFile).attachment, isA<MessageAttachmentMetadata>());
 
     final older = await history.repository.getSessionMessages(
       sessionId: "ses_a",
@@ -194,7 +194,7 @@ void main() {
     );
     expect(older.messages.single.info.id, "m1");
     expect(
-      older.messages.single.parts.single.attachment,
+      (older.messages.single.parts.single as MessagePartFile).attachment,
       isA<MessageAttachmentStoredImage>().having((image) => image.byteLength, "byteLength", bytes.length),
     );
   });
@@ -226,7 +226,7 @@ void main() {
     );
 
     expect(
-      page!.messages.single.parts.single.attachment,
+      (page!.messages.single.parts.single as MessagePartFile).attachment,
       isA<MessageAttachmentStoredImage>()
           .having((image) => image.bridgeId, "bridgeId", "br_test1234")
           .having((image) => image.byteLength, "byteLength", bytes.length),
@@ -335,21 +335,8 @@ MessagePart _part({
   required String messageId,
   MessageAttachment? attachment,
   ToolState? state,
-}) => MessagePart(
-  id: id,
-  sessionID: "ses_a",
-  messageID: messageId,
-  type: state == null ? MessagePartType.file : MessagePartType.tool,
-  text: null,
-  tool: state == null ? null : "tool",
-  state: state,
-  prompt: null,
-  description: null,
-  agent: null,
-  agentName: null,
-  attempt: null,
-  retryError: null,
-  attachment: attachment,
-);
+}) => state == null
+    ? MessagePart.file(id: id, sessionID: "ses_a", messageID: messageId, attachment: attachment)
+    : MessagePart.tool(id: id, sessionID: "ses_a", messageID: messageId, tool: "tool", state: state);
 
 class const _BridgeIdProvider(@override final String? bridgeId) implements BridgeIdProvider;

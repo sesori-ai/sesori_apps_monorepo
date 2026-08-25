@@ -6,56 +6,218 @@ part of 'message_part.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_MessagePart _$MessagePartFromJson(Map json) => _MessagePart(
+MessagePartText _$MessagePartTextFromJson(Map json) => MessagePartText(
   id: json['id'] as String,
   sessionID: json['sessionID'] as String,
   messageID: json['messageID'] as String,
-  type: $enumDecode(_$MessagePartTypeEnumMap, json['type']),
   text: json['text'] as String?,
-  tool: json['tool'] as String?,
-  state: json['state'] == null
-      ? null
-      : ToolState.fromJson(Map<String, dynamic>.from(json['state'] as Map)),
-  prompt: json['prompt'] as String?,
-  description: json['description'] as String?,
-  agent: json['agent'] as String?,
-  agentName: json['agentName'] as String?,
-  attempt: (json['attempt'] as num?)?.toInt(),
-  retryError: json['retryError'] as String?,
-  attachment: _messageAttachmentFromJson(json['attachment']),
+  $type: json['type'] as String?,
 );
 
-Map<String, dynamic> _$MessagePartToJson(_MessagePart instance) =>
+Map<String, dynamic> _$MessagePartTextToJson(MessagePartText instance) =>
     <String, dynamic>{
       'id': instance.id,
       'sessionID': instance.sessionID,
       'messageID': instance.messageID,
-      'type': _$MessagePartTypeEnumMap[instance.type]!,
       'text': ?instance.text,
+      'type': instance.$type,
+    };
+
+MessagePartReasoning _$MessagePartReasoningFromJson(Map json) =>
+    MessagePartReasoning(
+      id: json['id'] as String,
+      sessionID: json['sessionID'] as String,
+      messageID: json['messageID'] as String,
+      text: json['text'] as String?,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$MessagePartReasoningToJson(
+  MessagePartReasoning instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'messageID': instance.messageID,
+  'text': ?instance.text,
+  'type': instance.$type,
+};
+
+MessagePartTool _$MessagePartToolFromJson(Map json) => MessagePartTool(
+  id: json['id'] as String,
+  sessionID: json['sessionID'] as String,
+  messageID: json['messageID'] as String,
+  tool: json['tool'] as String?,
+  state: json['state'] == null
+      ? null
+      : ToolState.fromJson(Map<String, dynamic>.from(json['state'] as Map)),
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$MessagePartToolToJson(MessagePartTool instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'sessionID': instance.sessionID,
+      'messageID': instance.messageID,
       'tool': ?instance.tool,
       'state': ?instance.state?.toJson(),
+      'type': instance.$type,
+    };
+
+MessagePartSubtask _$MessagePartSubtaskFromJson(Map json) => MessagePartSubtask(
+  id: json['id'] as String,
+  sessionID: json['sessionID'] as String,
+  messageID: json['messageID'] as String,
+  prompt: json['prompt'] as String?,
+  description: json['description'] as String?,
+  agent: json['agent'] as String?,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$MessagePartSubtaskToJson(MessagePartSubtask instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'sessionID': instance.sessionID,
+      'messageID': instance.messageID,
       'prompt': ?instance.prompt,
       'description': ?instance.description,
       'agent': ?instance.agent,
-      'agentName': ?instance.agentName,
-      'attempt': ?instance.attempt,
-      'retryError': ?instance.retryError,
-      'attachment': ?instance.attachment?.toJson(),
+      'type': instance.$type,
     };
 
-const _$MessagePartTypeEnumMap = {
-  MessagePartType.text: 'text',
-  MessagePartType.reasoning: 'reasoning',
-  MessagePartType.tool: 'tool',
-  MessagePartType.subtask: 'subtask',
-  MessagePartType.stepStart: 'step-start',
-  MessagePartType.stepFinish: 'step-finish',
-  MessagePartType.file: 'file',
-  MessagePartType.snapshot: 'snapshot',
-  MessagePartType.patch: 'patch',
-  MessagePartType.agent: 'agent',
-  MessagePartType.retry: 'retry',
-  MessagePartType.compaction: 'compaction',
+MessagePartStepStart _$MessagePartStepStartFromJson(Map json) =>
+    MessagePartStepStart(
+      id: json['id'] as String,
+      sessionID: json['sessionID'] as String,
+      messageID: json['messageID'] as String,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$MessagePartStepStartToJson(
+  MessagePartStepStart instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'messageID': instance.messageID,
+  'type': instance.$type,
+};
+
+MessagePartStepFinish _$MessagePartStepFinishFromJson(Map json) =>
+    MessagePartStepFinish(
+      id: json['id'] as String,
+      sessionID: json['sessionID'] as String,
+      messageID: json['messageID'] as String,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$MessagePartStepFinishToJson(
+  MessagePartStepFinish instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'messageID': instance.messageID,
+  'type': instance.$type,
+};
+
+MessagePartFile _$MessagePartFileFromJson(Map json) => MessagePartFile(
+  id: json['id'] as String,
+  sessionID: json['sessionID'] as String,
+  messageID: json['messageID'] as String,
+  attachment: _messageAttachmentFromJson(json['attachment']),
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$MessagePartFileToJson(MessagePartFile instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'sessionID': instance.sessionID,
+      'messageID': instance.messageID,
+      'attachment': ?instance.attachment?.toJson(),
+      'type': instance.$type,
+    };
+
+MessagePartSnapshot _$MessagePartSnapshotFromJson(Map json) =>
+    MessagePartSnapshot(
+      id: json['id'] as String,
+      sessionID: json['sessionID'] as String,
+      messageID: json['messageID'] as String,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$MessagePartSnapshotToJson(
+  MessagePartSnapshot instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'messageID': instance.messageID,
+  'type': instance.$type,
+};
+
+MessagePartPatch _$MessagePartPatchFromJson(Map json) => MessagePartPatch(
+  id: json['id'] as String,
+  sessionID: json['sessionID'] as String,
+  messageID: json['messageID'] as String,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$MessagePartPatchToJson(MessagePartPatch instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'sessionID': instance.sessionID,
+      'messageID': instance.messageID,
+      'type': instance.$type,
+    };
+
+MessagePartAgent _$MessagePartAgentFromJson(Map json) => MessagePartAgent(
+  id: json['id'] as String,
+  sessionID: json['sessionID'] as String,
+  messageID: json['messageID'] as String,
+  agentName: json['agentName'] as String?,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$MessagePartAgentToJson(MessagePartAgent instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'sessionID': instance.sessionID,
+      'messageID': instance.messageID,
+      'agentName': ?instance.agentName,
+      'type': instance.$type,
+    };
+
+MessagePartRetry _$MessagePartRetryFromJson(Map json) => MessagePartRetry(
+  id: json['id'] as String,
+  sessionID: json['sessionID'] as String,
+  messageID: json['messageID'] as String,
+  attempt: (json['attempt'] as num?)?.toInt(),
+  retryError: json['retryError'] as String?,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$MessagePartRetryToJson(MessagePartRetry instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'sessionID': instance.sessionID,
+      'messageID': instance.messageID,
+      'attempt': ?instance.attempt,
+      'retryError': ?instance.retryError,
+      'type': instance.$type,
+    };
+
+MessagePartCompaction _$MessagePartCompactionFromJson(Map json) =>
+    MessagePartCompaction(
+      id: json['id'] as String,
+      sessionID: json['sessionID'] as String,
+      messageID: json['messageID'] as String,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$MessagePartCompactionToJson(
+  MessagePartCompaction instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'sessionID': instance.sessionID,
+  'messageID': instance.messageID,
+  'type': instance.$type,
 };
 
 MessageAttachmentInlineImage _$MessageAttachmentInlineImageFromJson(Map json) =>

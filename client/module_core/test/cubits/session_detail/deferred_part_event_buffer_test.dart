@@ -5,21 +5,11 @@ import "package:test/test.dart";
 const _sessionId = "session-1";
 const _messageId = "message-1";
 
-MessagePart _textPart({required String id, required String text}) => MessagePart(
+MessagePart _textPart({required String id, required String text}) => MessagePart.text(
   id: id,
   sessionID: _sessionId,
   messageID: _messageId,
-  type: MessagePartType.text,
   text: text,
-  tool: null,
-  state: null,
-  prompt: null,
-  description: null,
-  agent: null,
-  agentName: null,
-  attempt: null,
-  retryError: null,
-  attachment: null,
 );
 
 void main() {
@@ -45,7 +35,8 @@ void main() {
       expect(
         events.map(
           (event) => switch (event) {
-            SesoriMessagePartUpdated(:final part) => (part.id, part.text),
+            SesoriMessagePartUpdated(part: MessagePartText(:final id, :final text)) => (id, text),
+            SesoriMessagePartUpdated() => throw StateError("Expected a text part"),
             SesoriMessagePartRemoved(:final partID) => (partID, null),
             _ => throw StateError("Unexpected deferred event: $event"),
           },

@@ -147,7 +147,10 @@ void main() {
         makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
       );
-      expect(inlineResponse.messages.single.parts.single.attachment, isA<MessageAttachmentInlineImage>());
+      expect(
+        (inlineResponse.messages.single.parts.single as MessagePartFile).attachment,
+        isA<MessageAttachmentInlineImage>(),
+      );
 
       final response = await handler.handle(
         makeRequest("POST", "/session/messages"),
@@ -160,7 +163,7 @@ void main() {
       );
 
       expect(
-        response.messages.single.parts.single.attachment,
+        (response.messages.single.parts.single as MessagePartFile).attachment,
         isA<MessageAttachmentStoredImage>().having((image) => image.bridgeId, "bridgeId", "br_test1234"),
       );
     });
