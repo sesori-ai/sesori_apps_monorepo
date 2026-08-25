@@ -1670,6 +1670,13 @@ owning suites.
 Any reduction to this matrix at retirement requires the owner's explicit
 acceptance recorded in this file.
 
+**Owner acceptance 2026-08-25:** Hermes setup/start/prompt/approval execution is
+accepted as blocked because its detected ACP `0.20.4` runtime requires provider
+credentials unavailable to this run. The client row is accepted with live narrow
+iOS simulator coverage plus the passing wide-layout and cancel/limit widget
+suites; live wide-phone, physical microphone, and haptic behavior are not
+claimed. These accepted gaps do not waive any other matrix row.
+
 ## Risks And Accepted Limits
 
 - Line references rot quickly in this repository; every step re-verifies and
