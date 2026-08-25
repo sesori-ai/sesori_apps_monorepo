@@ -676,5 +676,21 @@ duplicate-emission nicety.
   `dart analyze --fatal-infos lib test` clean on `client/module_core`; app 897
   tests passed, module_core 1,381 passed (9 new: 6 cubit, 3 widget). The popup
   test was confirmed to fail with the presenter call removed
+- **Step 6e review:** `architecture-implementation-review` **approved** with no
+  architectural findings. It confirmed `CatalogRescanOutcome` narrows the
+  service's eight states to the three a started scan can reach, so
+  `scanOutcome: running` is unrepresentable; that `scanOutcome` is carried
+  across a snapshot rebuild the way 6a's review required; that Freezed's
+  `copyWith(scanOutcome: null)` genuinely clears rather than no-ops, so the
+  popup cannot re-fire; and that `catalogScanCountsLine` belongs in
+  `core/widgets/` beside its two consumers, since it takes `AppLocalizations`
+  and could not move to module_core
+- **Step 6e claim leak:** the review traced one path where `_reportsScanOutcome`
+  survived its run — on a disconnect `PluginManagementService` emits `loading`
+  before `CatalogRescanService` emits `idle`, so the drop sat behind the
+  readiness check and never ran. It judged the leak unreachable today and did
+  not require a fix, but a regression test reproduced it directly: the claim
+  attached to the next run's outcome. Closed by dropping the claim before the
+  readiness check
 - **Step 6e PR:** pending
 - **Final disposition:** pending

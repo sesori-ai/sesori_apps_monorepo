@@ -213,7 +213,6 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with SingleTickerProv
     ),
   };
 
-
 }
 
 /// What a finished scan found, sessions first.

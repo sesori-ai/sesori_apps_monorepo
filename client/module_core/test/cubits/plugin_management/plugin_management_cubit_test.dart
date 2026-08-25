@@ -991,6 +991,31 @@ void main() {
       );
     });
 
+    // A disconnect reloads the snapshot and resets the scan, and the reload
+    // reaches this cubit first — so the claim has to be dropped whether or not
+    // the state is ready when the reset lands.
+    test("a disconnect drops the claim rather than carrying it to the next run", () async {
+      await ready();
+      await cubit.startCatalogScanFor(pluginId: "codex");
+
+      snapshots.add(const PluginManagementLoadResult.loading());
+      await _settle();
+      rescan.emit(const CatalogRescanState.idle());
+      await _settle();
+      snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+      await _settle();
+
+      rescan.emit(
+        const CatalogRescanState.succeeded(
+          harnessCount: 1,
+          counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 7),
+        ),
+      );
+      await _settle();
+
+      expect((cubit.state as PluginManagementReady).scanOutcome, isNull);
+    });
+
     test("an announced outcome is cleared so it is reported once", () async {
       await ready();
       await cubit.startCatalogScanFor(pluginId: "codex");

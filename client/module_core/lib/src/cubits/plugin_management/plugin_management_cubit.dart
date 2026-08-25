@@ -596,6 +596,11 @@ class PluginManagementCubit({
 
   void _onCatalogScan(CatalogRescanState scan) {
     if (isClosed) return;
+    // Dropped before the readiness check, not after: a disconnect resets the
+    // scan to idle and reloads the snapshot, and the reload reaches this cubit
+    // first. Reading the claim only while ready would let it survive the run it
+    // belongs to.
+    if (scan is CatalogRescanIdle) _reportsScanOutcome = false;
     final current = state;
     if (current is! PluginManagementReady) return;
     final scanning = _scanningPluginIds;
@@ -605,11 +610,11 @@ class PluginManagementCubit({
     // restore the refusal once the scan succeeded.
     final rejections = Map<String, CatalogRescanStartResult>.of(current.scanRejections)
       ..removeWhere((pluginId, _) => scanning.contains(pluginId));
-    final outcome = _reportsScanOutcome ? _outcomeOf(scan) : null;
     // A run that ends without a terminal state — cancelled, or recovered and
-    // settled quietly — has nothing to announce, so the claim is dropped
-    // rather than left to attach itself to the next run.
-    if (outcome != null || scan is CatalogRescanIdle) _reportsScanOutcome = false;
+    // settled quietly — has nothing to announce, which the idle drop above
+    // covers. Announcing one spends the claim the same way.
+    final outcome = _reportsScanOutcome ? _outcomeOf(scan) : null;
+    if (outcome != null) _reportsScanOutcome = false;
     if (outcome == null &&
         const SetEquality<String>().equals(current.scanningPluginIds, scanning) &&
         rejections.length == current.scanRejections.length) {
