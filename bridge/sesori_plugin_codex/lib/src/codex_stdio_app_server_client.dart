@@ -24,6 +24,7 @@ class CodexStdioAppServerClient({
     stderrPolicy: StderrPolicy.discard,
     sanitizeForLog: (_) => "<redacted>",
     logTag: "codex][stdio",
+    reapTimeout: _shutdownTimeout,
   );
   final StreamController<CodexServerNotification> _notifications = StreamController.broadcast();
   final StreamController<CodexServerRequest> _serverRequests = StreamController.broadcast();
@@ -149,8 +150,7 @@ final class _CodexProcessHandle({required final SpawnedProcess process, required
   @override
   Stream<String> get stdoutLines => process.stdout.transform(utf8.decoder).transform(const LineSplitter());
   @override
-  Stream<String> get stderrLines =>
-      process.stderr.transform(const Utf8Decoder(allowMalformed: true)).transform(const LineSplitter());
+  Stream<String> get stderrLines => process.stderr.transform(const Utf8Decoder(allowMalformed: true));
   @override
   Future<int> get done => process.exitCode;
   @override

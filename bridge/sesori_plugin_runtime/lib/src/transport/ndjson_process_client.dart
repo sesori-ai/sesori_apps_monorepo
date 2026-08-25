@@ -40,6 +40,7 @@ final class NdjsonProcessClient({
   required final StderrPolicy _stderrPolicy,
   required final String Function(String) _sanitizeForLog,
   required final String _logTag,
+  required final Duration _reapTimeout,
 }) {
   // JSON correlation IDs are intentionally opaque protocol boundary values.
   final Map<Object, Completer<JsonObject>> _pending = {}; // ignore: no_slop_linter/prefer_specific_type
@@ -329,7 +330,10 @@ final class NdjsonProcessClient({
     }
   }
 
-  Future<void> _reap({required NdjsonProcessHandle process}) => _kill(process: process, force: true);
+  Future<void> _reap({required NdjsonProcessHandle process}) async {
+    await _kill(process: process, force: true);
+    await _waitForExit(process: process, timeout: _reapTimeout);
+  }
 
   Future<void> _cancel({required StreamSubscription<String>? subscription, required String streamName}) async {
     try {

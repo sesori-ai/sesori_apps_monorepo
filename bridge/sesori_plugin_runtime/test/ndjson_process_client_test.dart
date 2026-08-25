@@ -98,12 +98,18 @@ void main() {
   });
 
   test("superseded attach reaps late process", () async {
-    final client = _client();
+    final client = _client(reapTimeout: const Duration(seconds: 1));
     final token = client.beginAttach();
     await client.reset(reason: StateError("reset"), gracefulTimeout: Duration.zero);
-    final late = _FakeProcess();
-    await expectLater(client.attach(token: token, process: late), throwsStateError);
+    final late = _FakeProcess(autoExitOnForce: false);
+    final attach = client.attach(token: token, process: late);
+    var completed = false;
+    attach.whenComplete(() => completed = true).ignore();
+    await _pump();
     expect(late.actions, ["force"]);
+    expect(completed, isFalse);
+    late.completeExit(0);
+    await expectLater(attach, throwsStateError);
     await client.dispose(reason: StateError("done"), gracefulTimeout: Duration.zero);
   });
 
@@ -163,6 +169,7 @@ void main() {
 NdjsonProcessClient _client({
   MalformedFramePolicy malformedFramePolicy = MalformedFramePolicy.discard,
   NonObjectFramePolicy nonObjectFramePolicy = NonObjectFramePolicy.discard,
+  Duration reapTimeout = Duration.zero,
 }) => NdjsonProcessClient(
   responseCorrelationId: (frame) => frame["id"],
   exitError: (code) => StateError("exited $code"),
@@ -172,6 +179,7 @@ NdjsonProcessClient _client({
   stderrPolicy: StderrPolicy.discard,
   sanitizeForLog: (_) => "<redacted>",
   logTag: "test",
+  reapTimeout: reapTimeout,
 );
 
 final class _Fixture({
@@ -201,6 +209,7 @@ final class _FakeProcess({
   final Object? closeError, // ignore: no_slop_linter/prefer_specific_type
   final Object? gracefulKillError, // ignore: no_slop_linter/prefer_specific_type
   final bool autoExitOnClose = true,
+  final bool autoExitOnForce = true,
 }) implements NdjsonProcessHandle {
   final StreamController<String> _stdout = StreamController.broadcast(onCancel: () {});
   final StreamController<String> _stderr = StreamController.broadcast(onCancel: () {});
@@ -229,7 +238,7 @@ final class _FakeProcess({
   Future<void> kill({required bool force}) async {
     actions.add(force ? "force" : "graceful");
     if (!force && gracefulKillError != null) throw gracefulKillError!;
-    if (force) completeExit(0);
+    if (force && autoExitOnForce) completeExit(0);
   }
 }
 

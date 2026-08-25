@@ -36,4 +36,10 @@
 - After Step 28 merged and Step 29 synced with the updated `main`, full runtime
   (166), ACP (263), and Codex (380) suites passed again; bridge-wide
   `make analyze` also passed.
+- PR review fixes bound superseded-attach reaping to the caller-configured
+  shutdown budget and drain discarded Codex stderr as decoded chunks instead
+  of buffering for a newline. The runtime reap test now proves cancellation
+  waits for the force-signalled child to exit.
+- After the PR review fixes, analyzers and full suites passed for runtime (166),
+  ACP (263), and Codex (380).
 - `git diff --check`: passed.
