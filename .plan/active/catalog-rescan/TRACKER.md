@@ -692,5 +692,24 @@ duplicate-emission nicety.
   not require a fix, but a regression test reproduced it directly: the claim
   attached to the next run's outcome. Closed by dropping the claim before the
   readiness check
-- **Step 6e PR:** pending
+- **Step 6e review comments:** three bot findings, all valid, fixed in
+  `2674825bf9`. Two were the same seam — the single `_reportsScanOutcome` flag.
+  A second card being refused cleared the only claim while the first harness was
+  still running, so that run ended in the silence this step exists to remove;
+  and a definite `CatalogImportMutationFailure` settles the operation *before*
+  `start()` returns, so membership could not tell a refusal from a run that had
+  already finished and been announced, producing both a finished-scan
+  announcement and a could-not-start line for one attempt. Replaced with
+  `Set<String> _scanClaims`: a refusal removes one harness, an announcement
+  spends the set. Both tests confirmed to fail against the old behaviour
+- **Step 6e accessibility gap:** the popup is silent to a screen reader — the
+  only `Semantics` in `prego_popup_alerts_notifications.dart` is its close
+  button — which undercut the step, since a screen-reader user is who this
+  surface is for. The outcome is now also sent through
+  `SemanticsService.sendAnnouncement`. Declined adding a live region to the
+  shared popup component: that fixes every popup in the app and is a
+  design-system change with its own call sites, not part of this step. Worth
+  doing separately
+- **Step 6e PR:** [#1118](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1118)
+  open
 - **Final disposition:** pending
