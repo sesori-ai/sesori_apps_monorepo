@@ -167,8 +167,11 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
   }
 
   bool replyPermission({required String requestId, required PluginPermissionReply reply}) {
-    final entry = _pending.remove(requestId);
+    // Peek before removing: a question id routed here must stay pending so the
+    // agent still gets an answer instead of blocking on a destroyed entry.
+    final entry = _pending[requestId];
     if (entry is! _PendingPermissionEntry<TPayload>) return false;
+    _pending.remove(requestId);
     _resolvePermission(payload: entry.payload, reply: reply);
     final snapshot = entry.snapshot;
     _emit(
@@ -183,8 +186,9 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
   }
 
   bool replyQuestion({required String requestId, required List<List<String>> answers}) {
-    final entry = _pending.remove(requestId);
+    final entry = _pending[requestId];
     if (entry is! _PendingQuestionEntry<TPayload>) return false;
+    _pending.remove(requestId);
     final outcome = _resolveQuestion(payload: entry.payload, answers: answers);
     final snapshot = entry.snapshot;
     _emit(
@@ -205,8 +209,9 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
   }
 
   bool rejectQuestion({required String requestId}) {
-    final entry = _pending.remove(requestId);
+    final entry = _pending[requestId];
     if (entry is! _PendingQuestionEntry<TPayload>) return false;
+    _pending.remove(requestId);
     _rejectQuestion(payload: entry.payload);
     final snapshot = entry.snapshot;
     _emit(

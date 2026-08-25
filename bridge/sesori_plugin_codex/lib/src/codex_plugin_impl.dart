@@ -253,7 +253,11 @@ class CodexPlugin._({
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
     _approvalRegistry = null;
-    unawaited(registry?.dispose());
+    // Teardown emits a clearing event per pending prompt, and every approval
+    // emit re-syncs work state. Those land in a later microtask, so re-assert
+    // the disconnect's `unknown` afterwards instead of letting the sync — which
+    // now sees an empty registry — settle on a bogus `idle`.
+    unawaited(registry?.dispose().whenComplete(() => _workState.set(PluginWorkState.unknown)));
     _sessionStatuses.clear();
     _activeTurnByThread.clear();
     for (final sessionId in activeSessionIds) {

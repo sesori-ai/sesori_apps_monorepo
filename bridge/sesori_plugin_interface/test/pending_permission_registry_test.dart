@@ -97,6 +97,23 @@ void main() {
     expect(subject.hasAnyPendingInput, isFalse);
   });
 
+  test("a kind-mismatched reply leaves the entry pending and answerable", () {
+    final events = <BridgeSseEvent>[];
+    final subject = registry(events: events);
+    final permissionId = subject.addPermission(payload: "permission", sessionId: "s1");
+    final questionId = subject.addQuestion(payload: "question", sessionId: "s1");
+    events.clear();
+
+    expect(subject.replyQuestion(requestId: permissionId, answers: const []), isFalse);
+    expect(subject.rejectQuestion(requestId: permissionId), isFalse);
+    expect(subject.replyPermission(requestId: questionId, reply: PluginPermissionReply.once), isFalse);
+    expect(events, isEmpty);
+
+    expect(subject.replyPermission(requestId: permissionId, reply: PluginPermissionReply.once), isTrue);
+    expect(subject.rejectQuestion(requestId: questionId), isTrue);
+    expect(subject.hasAnyPendingInput, isFalse);
+  });
+
   test("session cancellation logs one backend failure and settles every entry", () async {
     final events = <BridgeSseEvent>[];
     final cancelled = <String>[];

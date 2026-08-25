@@ -362,6 +362,24 @@ void main() {
       );
       await busyAgain.timeout(const Duration(seconds: 2));
 
+      // Leave a prompt outstanding so teardown emits its clearing event, whose
+      // work-state sync must not overwrite the disconnect's `unknown`.
+      final secondAsk = plugin.events.where((event) => event is BridgeSsePermissionAsked).first;
+      socket.add(
+        jsonEncode({
+          "jsonrpc": "2.0",
+          "id": 100,
+          "method": "item/commandExecution/requestApproval",
+          "params": {
+            "threadId": "t-running",
+            "turnId": "turn-2",
+            "itemId": "item-2",
+            "command": "ls -la",
+          },
+        }),
+      );
+      await secondAsk.timeout(const Duration(seconds: 2));
+
       final disconnected = plugin.events
           .where((event) => event is BridgeSseSessionIdle)
           .cast<BridgeSseSessionIdle>()
@@ -377,6 +395,8 @@ void main() {
         await plugin.getPendingPermissions(sessionId: "t-running"),
         isEmpty,
       );
+      await pumpEventQueue();
+      expect(plugin.currentWorkState, PluginWorkState.unknown);
     });
 
     test("dispose closes event buffer without error", () async {
