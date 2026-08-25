@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:cupertino_ui/cupertino_ui.dart" show CupertinoSliverRefreshControl, RefreshIndicatorMode;
 import "package:flutter/scheduler.dart";
 import "package:material_ui/material_ui.dart";
@@ -80,10 +82,33 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
   /// only rescan once however far it travels.
   bool _deepFired = false;
 
+  /// Releases the control from the ordinary refresh when the second stage
+  /// fires. `null` whenever no refresh is running.
+  Completer<void>? _released;
+
+  /// Runs the ordinary refresh, but stops waiting for it the moment the second
+  /// stage fires.
+  ///
+  /// The control keeps the pull open for exactly as long as this future runs,
+  /// so returning early is what retracts the list.
+  Future<void> _runRefresh() async {
+    final released = Completer<void>();
+    _released = released;
+    final refresh = widget._onRefresh();
+    // The refresh outlives this wait when the second stage releases it, so a
+    // failure of its own must not surface as an unhandled error in the zone.
+    unawaited(refresh.catchError((Object _, StackTrace _) {}));
+    try {
+      await Future.any([refresh, released.future]);
+    } finally {
+      if (identical(_released, released)) _released = null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return CupertinoSliverRefreshControl(
-      onRefresh: widget._onRefresh,
+      onRefresh: _runRefresh,
       builder: (context, refreshState, pulledExtent, triggerDistance, indicatorExtent) {
         widget._onPulledExtentChanged?.call(
           refreshState == RefreshIndicatorMode.inactive ? 0 : pulledExtent,
@@ -98,6 +123,12 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
         }
         if (deepRefresh != null && !_deepFired && _maxPulledExtent >= deepThreshold) {
           _deepFired = true;
+          // Stop holding the pull open. The ordinary refresh keeps running, but
+          // it reaches the same backend the second stage just put to work, so
+          // waiting for it can hold the list open for as long as the whole
+          // scan — with nothing in the held space, since the host's own
+          // progress surface is what reports the run from here.
+          if (_released case final released? when !released.isCompleted) released.complete();
           // After this frame, because the refresh control calls its builder
           // from inside the sliver's layout and the callback is user code.
           SchedulerBinding.instance.addPostFrameCallback(

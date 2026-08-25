@@ -285,6 +285,62 @@ void main() {
       await tester.pumpAndSettle();
     });
 
+    // The ordinary refresh reaches the same backend the second stage just put
+    // to work, so waiting for it holds the list open for as long as the whole
+    // scan — with nothing in the held space to explain why.
+    testWidgets("a fired pull stops holding the list open for the ordinary refresh", (tester) async {
+      final completer = Completer<void>();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          home: Scaffold(
+            body: CustomScrollView(
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              slivers: [
+                PregoSliverRefreshControl(
+                  onRefresh: () => completer.future,
+                  decorate: null,
+                  onPulledExtentChanged: null,
+                  deepRefresh: PregoDeepRefresh(
+                    onDeepRefresh: () => deepRefreshes++,
+                    pullCaption: "Keep pulling to scan all harnesses",
+                  ),
+                ),
+                SliverList.list(
+                  children: [for (var i = 0; i < 20; i++) SizedBox(height: 80, child: Text("row $i"))],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      final restingTop = tester.getTopLeft(find.text("row 0")).dy;
+
+      final gesture = await tester.startGesture(const Offset(200, 100));
+      for (var step = 0; step < 12; step++) {
+        await gesture.moveBy(const Offset(0, 40));
+        await tester.pump();
+        await tester.pump();
+      }
+      expect(deepRefreshes, 1);
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(
+        completer.isCompleted,
+        isFalse,
+        reason: "the ordinary refresh is still running, which is the whole point",
+      );
+      expect(
+        tester.getTopLeft(find.text("row 0")).dy,
+        restingTop,
+        reason: "the list must not stay pushed down for the length of the scan",
+      );
+
+      completer.complete();
+      await tester.pumpAndSettle();
+    });
+
     testWidgets("a long caption truncates rather than overflowing", (tester) async {
       await tester.pumpWidget(
         MaterialApp(

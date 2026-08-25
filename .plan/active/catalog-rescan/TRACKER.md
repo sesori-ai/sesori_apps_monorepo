@@ -656,4 +656,11 @@ duplicate-emission nicety.
   through two stateless session hosts to restore a success confirmation for a
   shallow pull taken during someone else's scan, where a progress row is already
   on screen
+- **Step 6f origin:** owner report from a running build — after release the
+  list stayed pushed down until the scan finished. 6d made the held area empty
+  but left the extent: `CupertinoSliverRefreshControl` holds the pull open for
+  exactly as long as `onRefresh` runs, and that refresh reaches the same bridge
+  the scan just put to work, so it resolved only when the scan did. The control
+  now stops waiting the moment the second stage fires; the refresh still runs.
+  Test confirmed the list was held 60px down without the fix and 0 with it
 - **Final disposition:** pending
