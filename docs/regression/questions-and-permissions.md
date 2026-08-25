@@ -105,6 +105,12 @@ different combination than the previous recorded run.
   after reconnect.
 - One failed backend resolution prevents another pending prompt from clearing,
   or a Cursor notification-mapping failure breaks later approval routing.
+- Clearing prompts during a transport drop leaves the plugin reporting idle
+  instead of unknown work state, so a safe stop proceeds where it should be
+  refused.
+- A reply routed with the wrong request kind (a question id sent as a
+  permission, or the reverse) discards the still-pending prompt instead of
+  being rejected, leaving the turn blocked with no clearable prompt.
 - A manually routed reply/rejection fails to advance the existing activity
   marker, or an auto-approved permission reply advances it.
 - Reading pending state starts an intentionally stopped backend.

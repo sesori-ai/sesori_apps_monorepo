@@ -303,9 +303,9 @@ abstract class AcpPlugin({
 
   /// The single handler for agent-originated notifications: replay suppression,
   /// then mapping through [eventMapper] into the event buffer. Also the forward
-  /// target for fire-and-forget extension *requests* reclassified by the
-  /// approval registry (see [AcpApprovalRegistry.fireAndForgetExtensionMethods]),
-  /// so both wire shapes share one mapping path.
+  /// target for fire-and-forget extension *requests* acknowledged and
+  /// re-injected by an approval registry's `handleExtensionRequest` override
+  /// (see `CursorApprovalRegistry`), so both wire shapes share one mapping path.
   void handleAgentNotification(AcpNotification notification) {
     if (notification.method == AcpMethods.sessionUpdate) {
       final sid = notification.params["sessionId"];

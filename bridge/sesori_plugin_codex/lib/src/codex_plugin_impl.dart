@@ -445,8 +445,9 @@ class CodexPlugin._({
   /// elicitations) through the [ApprovalRegistry] so they surface as
   /// bridge permission/question events.
   void _attachApprovalRegistry(CodexAppServerClient client) {
-    final registry = ApprovalRegistry(
-      emit: _emitApprovalEvent,
+    late final ApprovalRegistry registry;
+    registry = ApprovalRegistry(
+      emit: (event) => _emitApprovalEvent(registry: registry, event: event),
       respond: (id, result) => client.respondToServerRequest(id: id, result: result),
       respondError: (id, code, message) => client.respondToServerRequestWithError(
         id: id,
@@ -458,8 +459,8 @@ class CodexPlugin._({
     registry.attach(stream: client.serverRequests);
   }
 
-  void _emitApprovalEvent(BridgeSseEvent event) {
-    _syncWorkState();
+  void _emitApprovalEvent({required ApprovalRegistry registry, required BridgeSseEvent event}) {
+    if (identical(_approvalRegistry, registry)) _syncWorkState();
     _eventBuffer.add(event);
     _eventBuffer.add(const BridgeSseProjectUpdated());
   }
