@@ -26,7 +26,7 @@ five open PRs). Steps sharing a package stay serialized: 4 after 3 (both
   re-scope after they merge; the active `session-refresh-reconnects` plan owns
   session-detail refresh coordination, so Step 31 touches only pure derivation.
 
-## Open Decisions (defaults apply until the owner overrides)
+## Decisions
 
 - [x] **D1** minimum supported public peer — **decided `≥ v1.4.0`** by the
   owner on 2026-08-22 (first recorded in PR #1017 on 2026-08-21); Step 42
@@ -35,9 +35,11 @@ five open PRs). Steps sharing a package stay serialized: 4 after 3 (both
 - [x] **D2** flatten `bridge/app/lib/src/bridge/*` into `src/*` — **approved**
   by the owner on 2026-08-22; Step 7 performs the move
 - [x] **D3** `flutter_chat_ui` replacement — plain reversed list reached widget-test parity in Step 41
-- [ ] **D4** `cryptography_flutter` — default remove as unused (never enabled)
-- [ ] **D5** Material→Prego dialog breadth — default only what the footer and
-  confirm-sheet consolidation naturally covers
+- [x] **D4** `cryptography_flutter` — removed as unused in Step 6; the separate
+  `cryptography` test dependency moved to `dev_dependencies`
+- [x] **D5** Material→Prego dialog breadth — Step 38 applied the default scope:
+  only matching footer, rename, and confirmation-sheet chrome was consolidated;
+  distinct Material and dynamic sheets remained local
 - [x] **D6** `no_slop_linter` in bridge — default applied: enabled in the three
   small packages, with deferred-package counts recorded in Step 43 evidence
 

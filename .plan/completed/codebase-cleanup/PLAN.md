@@ -3,13 +3,14 @@
 ## Status
 
 - **Plan slug:** `codebase-cleanup`
-- **Status:** Active — Step 1/45 raises this plan; no implementation has started
+- **Status:** Completed — all 45 implementation and verification steps executed
 - **Plan date:** 2026-08-22
+- **Retired:** 2026-08-25
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `origin/main` at `084b30276`
-- **Current branch:** `codebase-cleanup-plan`
-- **Delivery:** 45 numbered PRs; Steps 44 and 45 are the regression-doc
-  reconciliation and retirement steps required for durable planned work
+- **Delivery:** 45 numbered PRs completed; Steps 44 and 45 performed the
+  regression-document reconciliation and retirement required for durable
+  planned work
 
 This plan and `TRACKER.md` are the authority for the series. The code and the
 released product remain authoritative where this document becomes stale: every
