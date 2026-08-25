@@ -5,18 +5,18 @@ import "../../../core/extensions/build_context_x.dart";
 
 class const RetryPartWidget({
   super.key,
-  required final int? attempt,
-  required final String? retryError,
+  required final int attempt,
+  required final String retryError,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
     final label = StringBuffer(loc.sessionDetailRetryLabel);
-    if (attempt != null) {
+    if (attempt > 0) {
       label.write(" #$attempt");
     }
-    if (retryError != null) {
+    if (retryError.isNotEmpty) {
       label.write(": $retryError");
     }
 

@@ -8,6 +8,8 @@ import "../process/signal_result.dart";
 /// Backed by the bridge's platform-aware process layer: identity capture
 /// uses the POSIX `ps` start-time marker where available, with documented
 /// Windows fallbacks (no start marker, image-name-only command lines).
+enum ProcessSpawnOutcome() { succeeded, failed }
+
 abstract class HostProcessService() {
   /// Spawns a child process and captures its identity.
   ///

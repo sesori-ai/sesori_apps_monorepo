@@ -1059,22 +1059,27 @@ class AcpEventMapper({
     required String? text,
     required PluginMessageAttachment? attachment,
   }) {
-    return PluginMessagePart(
-      id: partId,
-      sessionID: sessionId,
-      messageID: messageId,
-      type: type,
-      text: text,
-      tool: null,
-      state: null,
-      prompt: null,
-      description: null,
-      agent: null,
-      agentName: null,
-      attempt: null,
-      retryError: null,
-      attachment: attachment,
-    );
+    return switch (type) {
+      PluginMessagePartType.text => PluginMessagePart.text(
+        id: partId,
+        sessionID: sessionId,
+        messageID: messageId,
+        text: text!,
+      ),
+      PluginMessagePartType.reasoning => PluginMessagePart.reasoning(
+        id: partId,
+        sessionID: sessionId,
+        messageID: messageId,
+        text: text!,
+      ),
+      PluginMessagePartType.file => PluginMessagePart.file(
+        id: partId,
+        sessionID: sessionId,
+        messageID: messageId,
+        attachment: attachment!,
+      ),
+      _ => throw StateError("ACP content part cannot use $type"),
+    };
   }
 
   PluginMessagePart _toolPart({
@@ -1084,21 +1089,12 @@ class AcpEventMapper({
     required String tool,
     required PluginToolState state,
   }) {
-    return PluginMessagePart(
+    return PluginMessagePart.tool(
       id: partId,
       sessionID: sessionId,
       messageID: messageId,
-      type: PluginMessagePartType.tool,
-      text: null,
       tool: tool,
       state: state,
-      prompt: null,
-      description: null,
-      agent: null,
-      agentName: null,
-      attempt: null,
-      retryError: null,
-      attachment: null,
     );
   }
 

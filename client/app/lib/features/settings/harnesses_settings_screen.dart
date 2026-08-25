@@ -29,6 +29,7 @@ class const HarnessesSettingsScreen({
       create: (_) => PluginManagementCubit(
         service: getIt<PluginManagementService>(),
         urlLauncher: getIt<UrlLauncher>(),
+        catalogRescanService: getIt<CatalogRescanService>(),
       ),
       child: _HarnessesSettingsBody(presentation: presentation),
     );
@@ -276,6 +277,8 @@ class const _ReadyView({required final PluginManagementReady state}) extends Sta
                         action: state.action,
                         authentication: state.authentication,
                         install: state.installs[response.plugins[index].setup.id],
+                        scanning: state.scanningPluginIds.contains(response.plugins[index].setup.id),
+                        scanRejection: state.scanRejections[response.plugins[index].setup.id],
                       ),
                       if (index != response.plugins.length - 1) const SizedBox(height: PregoSpacing.md),
                     ],
@@ -320,6 +323,12 @@ class const _HarnessControlCard({
     required final PluginAuthenticationPresentationState authentication,
     /// This harness' in-flight managed runtime install, when one is running.
   required final PluginInstallProgress? install,
+    /// Whether a catalog scan covering this harness is running, started here
+  /// or from a list's pull.
+  required final bool scanning,
+    /// Why this harness' last targeted scan was turned down, if it was. Never
+  /// carries an accepted start.
+  required final CatalogRescanStartResult? scanRejection,
   }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -344,6 +353,16 @@ class const _HarnessControlCard({
         capabilities.contains(PluginManagementCapability.install) &&
         (plugin.setup.state == PluginSetupState.runtimeMissing || plugin.setup.state == PluginSetupState.unavailable);
     final showRestart = showOperational && supportsLifecycle;
+    final showScan = plugin.runtimeState.isRoutable;
+    // A rejection replaces the row's description until the user starts another
+    // scan, so the answer to "why did nothing happen" stays on the card that
+    // was tapped. The bridge's own error text is never among these.
+    final scanRejectionText = switch (scanRejection) {
+      null || CatalogRescanStartAccepted() => null,
+      CatalogRescanStartNotImportable() => loc.harnessManagementScanNotReady,
+      CatalogRescanStartUnsupported() => loc.harnessManagementScanUnsupported,
+      CatalogRescanStartFailed() => loc.harnessManagementScanFailed,
+    };
     final showTimeout = showOperational && supportsIdleTimeout;
     final showClearTimeout = showTimeout && plugin.hasIdleTimeoutOverride;
     final supportsAuthentication = capabilities.contains(PluginManagementCapability.authentication);
@@ -506,6 +525,21 @@ class const _HarnessControlCard({
               icon: TablerRegular.rotate_clockwise,
               title: Text(loc.harnessManagementRestart),
               onTap: blocked ? null : () => context.read<PluginManagementCubit>().restart(pluginId: pluginId),
+            ),
+          // The keyboard-and-pointer twin of the lists' deep pull, which is
+          // invisible to a screen reader and awkward with a mouse. Offered only
+          // for a routable harness: `isEnabled` is also true for blocked and
+          // failed, which the bridge answers with a 503.
+          if (showScan)
+            PregoGroupedRow(
+              key: Key("harness_management_scan_$pluginId"),
+              icon: TablerRegular.refresh_dot,
+              title: Text(loc.harnessManagementScan),
+              subtitle: Text(scanRejectionText ?? loc.harnessManagementScanDescription),
+              trailing: scanning ? PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary) : null,
+              onTap: blocked || scanning
+                  ? null
+                  : () => context.read<PluginManagementCubit>().startCatalogScanFor(pluginId: pluginId),
             ),
           if (showTimeout)
             PregoGroupedRow(

@@ -151,21 +151,11 @@ Message _message({required String id}) => Message.user(
 MessageWithParts _messageWithParts({required String id}) => MessageWithParts(
   info: _message(id: id),
   parts: [
-    MessagePart(
+    MessagePart.text(
       id: "$id-p1",
       sessionID: "ses_a",
       messageID: id,
-      type: MessagePartType.text,
       text: "text of $id",
-      tool: null,
-      state: null,
-      prompt: null,
-      description: null,
-      agent: null,
-      agentName: null,
-      attempt: null,
-      retryError: null,
-      attachment: null,
     ),
   ],
 );

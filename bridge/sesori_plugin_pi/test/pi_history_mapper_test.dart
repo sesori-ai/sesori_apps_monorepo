@@ -206,9 +206,9 @@ void main() {
       expect(messages.last.info.time, isNull);
       final compact = messages.last.parts.single;
       expect(compact.tool, "compact");
-      expect(compact.state?.status, PluginToolStatus.completed);
-      expect(compact.state?.title, "Context compacted");
-      expect(compact.state?.output, isNull);
+      expect(compact.state.status, PluginToolStatus.completed);
+      expect(compact.state.title, "Context compacted");
+      expect(compact.state.output, isNull);
       expect(messages.toString(), isNot(contains(privateSummary)));
     });
 
@@ -272,12 +272,12 @@ void main() {
       final completed = messages.first.parts.singleWhere((part) => part.id == "completed");
       final unfinished = messages.first.parts.singleWhere((part) => part.id == "unfinished");
       final aborted = messages.last.parts.single;
-      expect(completed.state?.status, PluginToolStatus.completed);
-      expect(completed.state?.output, "result");
-      expect(unfinished.state?.status, PluginToolStatus.error);
-      expect(unfinished.state?.error, "Pi tool call did not complete.");
-      expect(aborted.state?.status, PluginToolStatus.error);
-      expect(aborted.state?.error, "Pi tool call did not complete.");
+      expect(completed.state.status, PluginToolStatus.completed);
+      expect(completed.state.output, "result");
+      expect(unfinished.state.status, PluginToolStatus.error);
+      expect(unfinished.state.error, "Pi tool call did not complete.");
+      expect(aborted.state.status, PluginToolStatus.error);
+      expect(aborted.state.error, "Pi tool call did not complete.");
       expect(messages.toString(), isNot(contains(privateError)));
       expect(messages.toString(), isNot(contains("private reasoning")));
       expect(warnings, contains(privateError));
@@ -386,8 +386,8 @@ void main() {
       final tools = messages.last.parts.where((part) => part.type == PluginMessagePartType.tool);
       expect(tools, hasLength(2));
       for (final tool in tools) {
-        expect(tool.state?.attachments, hasLength(2));
-        expect(tool.state?.attachments, everyElement(isA<PluginMessageAttachmentInlineImage>()));
+        expect(tool.state.attachments, hasLength(2));
+        expect(tool.state.attachments, everyElement(isA<PluginMessageAttachmentInlineImage>()));
       }
     });
 
@@ -489,8 +489,8 @@ void main() {
       expect(messages.single.info.id, "pi:session:bashExecution:8:1");
       final part = messages.single.parts.single;
       expect(part.tool, "bash");
-      expect(part.state?.output?.runes.length, maxToolOutputLength);
-      expect(part.state?.title?.runes.length, maxToolOutputLength);
+      expect(part.state.output?.runes.length, maxToolOutputLength);
+      expect(part.state.title?.runes.length, maxToolOutputLength);
       expect(messages.toString(), isNot(contains(privatePath)));
     });
 
@@ -510,7 +510,7 @@ void main() {
         leafId: "silent",
       );
 
-      expect(messages.single.parts.single.state?.output, isNull);
+      expect(messages.single.parts.single.state.output, isNull);
     });
 
     test("bounds combined tool-result text while preserving later attachments", () {
@@ -542,7 +542,7 @@ void main() {
         leafId: "result",
       );
 
-      final state = messages.single.parts.single.state!;
+      final state = messages.single.parts.single.state;
       expect(state.output?.runes.length, maxToolOutputLength);
       expect(state.attachments, hasLength(1));
     });
@@ -704,13 +704,13 @@ PiAssistantMessageDto _assistantText(String text, {required int timestamp}) {
 List<String> _texts(List<PluginMessageWithParts> messages) => [
   for (final message in messages)
     for (final part in message.parts)
-      if (part.type == PluginMessagePartType.text) part.text!,
+      if (part.type == PluginMessagePartType.text) part.text,
 ];
 
 List<String> _reasoning(List<PluginMessageWithParts> messages) => [
   for (final message in messages)
     for (final part in message.parts)
-      if (part.type == PluginMessagePartType.reasoning) part.text!,
+      if (part.type == PluginMessagePartType.reasoning) part.text,
 ];
 
 Future<String> _captureWarnings(Future<void> Function() action) async {

@@ -1584,21 +1584,11 @@ void main() {
         PluginMessageWithParts(
           info: PluginMessageUser(promptId: null, id: "message-1", sessionID: "backend-s1", agent: null, time: null),
           parts: [
-            PluginMessagePart(
+            PluginMessagePart.text(
               id: "part-1",
               sessionID: "backend-s1",
               messageID: "message-1",
-              type: PluginMessagePartType.text,
               text: "hello",
-              tool: null,
-              state: null,
-              prompt: null,
-              description: null,
-              agent: null,
-              agentName: null,
-              attempt: null,
-              retryError: null,
-              attachment: null,
             ),
           ],
         ),

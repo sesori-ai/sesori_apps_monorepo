@@ -447,7 +447,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(parts.first.text, "visible prompt");
       expect(parts.first.text, isNot(contains("SYSTEM CONTEXT")));
       expect(parts.last.type, PluginMessagePartType.file);
-      final image = parts.last.attachment! as PluginMessageAttachmentInlineImage;
+      final image = parts.last.attachment as PluginMessageAttachmentInlineImage;
       expect(image.mime, "image/png");
       expect(image.base64, "AA==");
     });
@@ -758,13 +758,13 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
       final startedPart = (started[1] as BridgeSseMessagePartUpdated).part;
       expect(startedPart.tool, "compact");
-      expect(startedPart.state?.title, "Compacting context");
-      expect(startedPart.state?.status, PluginToolStatus.running);
+      expect(startedPart.state.title, "Compacting context");
+      expect(startedPart.state.status, PluginToolStatus.running);
 
       expect(completed, hasLength(3));
       final completedPart = (completed[1] as BridgeSseMessagePartUpdated).part;
-      expect(completedPart.state?.title, "Context compacted");
-      expect(completedPart.state?.status, PluginToolStatus.completed);
+      expect(completedPart.state.title, "Context compacted");
+      expect(completedPart.state.status, PluginToolStatus.completed);
       expect(
         completed.whereType<BridgeSseSessionCompacted>().single.sessionID,
         "t-1",
@@ -942,9 +942,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(part.type, PluginMessagePartType.tool);
       expect(part.id, "i-cmd-tool");
       expect(part.tool, "shell");
-      expect(part.state?.status, PluginToolStatus.completed);
-      expect(part.state?.title, "ls -la");
-      expect(part.state?.output, contains("foo.dart"));
+      expect(part.state.status, PluginToolStatus.completed);
+      expect(part.state.title, "ls -la");
+      expect(part.state.output, contains("foo.dart"));
     });
 
     test("commandExecution treats a non-zero exit code as an error", () {
@@ -968,9 +968,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
 
       final part = (events[1] as BridgeSseMessagePartUpdated).part;
-      expect(part.state?.title, "/usr/bin/false");
-      expect(part.state?.status, PluginToolStatus.error);
-      expect(part.state?.error, "");
+      expect(part.state.title, "/usr/bin/false");
+      expect(part.state.status, PluginToolStatus.error);
+      expect(part.state.error, "");
     });
 
     test("raw rollout output enriches and cannot be downgraded by a later item", () {
@@ -1025,7 +1025,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
 
       expect(
-        (running[1] as BridgeSseMessagePartUpdated).part.state?.title,
+        (running[1] as BridgeSseMessagePartUpdated).part.state.title,
         "/usr/bin/false",
       );
       expect(
@@ -1034,11 +1034,11 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
       final rawPart = (completed[1] as BridgeSseMessagePartUpdated).part;
       final latePart = (lateItem[1] as BridgeSseMessagePartUpdated).part;
-      expect(rawPart.state?.status, PluginToolStatus.error);
-      expect(rawPart.state?.output, contains("Chunk ID: failed"));
-      expect(latePart.state?.status, rawPart.state?.status);
-      expect(latePart.state?.output, rawPart.state?.output);
-      expect(latePart.state?.error, rawPart.state?.error);
+      expect(rawPart.state.status, PluginToolStatus.error);
+      expect(rawPart.state.output, contains("Chunk ID: failed"));
+      expect(latePart.state.status, rawPart.state.status);
+      expect(latePart.state.output, rawPart.state.output);
+      expect(latePart.state.error, rawPart.state.error);
       rolloutLifecycle.clearRolloutTurn(threadId: "t-raw");
     });
 
@@ -1103,9 +1103,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
 
       final part = (events[1] as BridgeSseMessagePartUpdated).part;
-      expect(part.state?.status, PluginToolStatus.completed);
-      expect(part.state?.output, contains("early output"));
-      expect(part.state?.output, contains("late output"));
+      expect(part.state.status, PluginToolStatus.completed);
+      expect(part.state.output, contains("early output"));
+      expect(part.state.output, contains("late output"));
       rolloutLifecycle.clearRolloutTurn(threadId: "t-long");
     });
 
@@ -1154,8 +1154,8 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
 
       final part = (events[1] as BridgeSseMessagePartUpdated).part;
       expect(part.messageID, "call-aborted");
-      expect(part.state?.status, PluginToolStatus.error);
-      expect(part.state?.output, contains("early output"));
+      expect(part.state.status, PluginToolStatus.error);
+      expect(part.state.output, contains("early output"));
       rolloutLifecycle.clearRolloutTurn(threadId: "t-aborted");
     });
 
@@ -1191,7 +1191,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
       final part = (events[1] as BridgeSseMessagePartUpdated).part;
       expect(part.messageID, "call-app-server");
-      expect(part.state?.status, PluginToolStatus.completed);
+      expect(part.state.status, PluginToolStatus.completed);
       rolloutLifecycle.clearRolloutTurn(threadId: "t-app-server");
     });
 
@@ -1241,9 +1241,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
 
       final part = (events[1] as BridgeSseMessagePartUpdated).part;
-      expect(part.state?.status, PluginToolStatus.error);
-      expect(part.state?.output, "opaque executor output");
-      expect(part.state?.error, "opaque executor output");
+      expect(part.state.status, PluginToolStatus.error);
+      expect(part.state.output, "opaque executor output");
+      expect(part.state.error, "opaque executor output");
       rolloutLifecycle.clearRolloutTurn(threadId: "t-structured");
     });
 
@@ -1307,7 +1307,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
 
       final part = (events[1] as BridgeSseMessagePartUpdated).part;
-      expect(part.state?.status, PluginToolStatus.completed);
+      expect(part.state.status, PluginToolStatus.completed);
       expect(
         shared.Message.fromJson((events[0] as BridgeSseMessageUpdated).info).time,
         const shared.MessageTime(created: 1779293200000, completed: 1779293201000),
@@ -1364,7 +1364,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         line: line,
       );
 
-      final title = (events[1] as BridgeSseMessagePartUpdated).part.state?.title;
+      final title = (events[1] as BridgeSseMessagePartUpdated).part.state.title;
       expect(title, "$prefix😀");
       expect(title?.runes, hasLength(120));
       rolloutLifecycle.clearRolloutTurn(threadId: "t-unicode");
@@ -1409,8 +1409,8 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(rolloutPart.id, appServerPart.id);
       expect(rolloutPart.messageID, appServerPart.messageID);
       expect(rolloutPart.tool, appServerPart.tool);
-      expect(rolloutPart.state?.status, appServerPart.state?.status);
-      expect(rolloutPart.state?.attachments, appServerPart.state?.attachments);
+      expect(rolloutPart.state.status, appServerPart.state.status);
+      expect(rolloutPart.state.attachments, appServerPart.state.attachments);
 
       final idless = CodexRolloutLineDto.fromJson({
         "type": "response_item",
@@ -1451,8 +1451,8 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final part = (events[1] as BridgeSseMessagePartUpdated).part;
       expect(part.messageID, "image-durable");
       expect(part.tool, "image_generation");
-      expect(part.state?.status, PluginToolStatus.completed);
-      final attachment = part.state!.attachments.single as PluginMessageAttachmentInlineImage;
+      expect(part.state.status, PluginToolStatus.completed);
+      final attachment = part.state.attachments.single as PluginMessageAttachmentInlineImage;
       expect(attachment.base64, "AA==");
       expect(attachment.filename, "final.png");
 
@@ -1473,7 +1473,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ),
       );
       final laterPart = (laterAppServerEvents[1] as BridgeSseMessagePartUpdated).part;
-      final laterAttachment = laterPart.state!.attachments.single as PluginMessageAttachmentInlineImage;
+      final laterAttachment = laterPart.state.attachments.single as PluginMessageAttachmentInlineImage;
       expect(laterAttachment.filename, "final.png");
     });
 
@@ -1530,9 +1530,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final rolloutPart = (rolloutEvents[1] as BridgeSseMessagePartUpdated).part;
       final appServerPart = (appServerEvents[1] as BridgeSseMessagePartUpdated).part;
       expect(appServerPart.id, rolloutPart.id);
-      expect(appServerPart.state?.output, "persisted output");
-      expect(appServerPart.state?.attachments, rolloutPart.state?.attachments);
-      expect(appServerPart.state?.attachments.single, isA<PluginMessageAttachmentInlineImage>());
+      expect(appServerPart.state.output, "persisted output");
+      expect(appServerPart.state.attachments, rolloutPart.state.attachments);
+      expect(appServerPart.state.attachments.single, isA<PluginMessageAttachmentInlineImage>());
       rolloutLifecycle.clearRolloutTurn(threadId: "t-canonical-image");
     });
 
@@ -1552,9 +1552,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ),
       );
       final part = (events[1] as BridgeSseMessagePartUpdated).part;
-      expect(part.state?.status, PluginToolStatus.running);
+      expect(part.state.status, PluginToolStatus.running);
       // Output is withheld until completion.
-      expect(part.state?.output, isNull);
+      expect(part.state.output, isNull);
     });
 
     test("fileChange → edit tool part titled with the touched paths", () {
@@ -1581,8 +1581,8 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final part = (events[1] as BridgeSseMessagePartUpdated).part;
       expect(part.type, PluginMessagePartType.tool);
       expect(part.tool, "edit");
-      expect(part.state?.title, "lib/main.dart");
-      expect(part.state?.output, contains("+b"));
+      expect(part.state.title, "lib/main.dart");
+      expect(part.state.output, contains("+b"));
     });
 
     test("imageGeneration upserts one stable tool part across its lifecycle", () {
@@ -1620,20 +1620,20 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(runningPart.id, "i-image-tool");
       expect(runningPart.messageID, "i-image");
       expect(runningPart.tool, "image_generation");
-      expect(runningPart.state?.status, PluginToolStatus.running);
-      expect(runningPart.state?.title, isNull);
-      expect(runningPart.state?.attachments, isEmpty);
+      expect(runningPart.state.status, PluginToolStatus.running);
+      expect(runningPart.state.title, isNull);
+      expect(runningPart.state.attachments, isEmpty);
       expect(completedPart.id, runningPart.id);
-      expect(completedPart.state?.status, PluginToolStatus.completed);
-      final image = completedPart.state!.attachments.single as PluginMessageAttachmentInlineImage;
+      expect(completedPart.state.status, PluginToolStatus.completed);
+      final image = completedPart.state.attachments.single as PluginMessageAttachmentInlineImage;
       expect(image.mime, "image/png");
       expect(image.base64, "AA==");
       expect(image.filename, "output.png");
       expect(completedPart.toString(), isNot(contains("private prompt")));
       expect(completedPart.toString(), isNot(contains("/private/")));
       expect(failedPart.id, runningPart.id);
-      expect(failedPart.state?.status, PluginToolStatus.error);
-      expect(failedPart.state?.attachments, isEmpty);
+      expect(failedPart.state.status, PluginToolStatus.error);
+      expect(failedPart.state.attachments, isEmpty);
     });
 
     test("mcpToolCall (failed) → error tool part", () {
@@ -1667,12 +1667,12 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final part = (events[1] as BridgeSseMessagePartUpdated).part;
       expect(part.type, PluginMessagePartType.tool);
       expect(part.tool, "click");
-      expect(part.state?.status, PluginToolStatus.error);
-      expect(part.state?.title, "playwright/click");
-      expect(part.state?.output, "before after");
-      expect(part.state?.error, "element not found");
-      expect(part.state?.attachments, hasLength(4));
-      expect(part.state?.attachments, everyElement(isA<PluginMessageAttachmentInlineImage>()));
+      expect(part.state.status, PluginToolStatus.error);
+      expect(part.state.title, "playwright/click");
+      expect(part.state.output, "before after");
+      expect(part.state.error, "element not found");
+      expect(part.state.attachments, hasLength(4));
+      expect(part.state.attachments, everyElement(isA<PluginMessageAttachmentInlineImage>()));
     });
 
     test("dynamicToolCall streams a running tool and its completed output", () {
@@ -1705,10 +1705,10 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(runningPart.type, PluginMessagePartType.tool);
       expect(runningPart.id, "i-wait-tool");
       expect(runningPart.tool, "wait");
-      expect(runningPart.state?.status, PluginToolStatus.running);
-      expect(runningPart.state?.title, contains("cell_id: 166"));
-      expect(runningPart.state?.title, contains("yield_time_ms: 10000"));
-      expect(runningPart.state?.output, isNull);
+      expect(runningPart.state.status, PluginToolStatus.running);
+      expect(runningPart.state.title, contains("cell_id: 166"));
+      expect(runningPart.state.title, contains("yield_time_ms: 10000"));
+      expect(runningPart.state.output, isNull);
 
       final completed = mapper.map(
         const CodexServerNotification(
@@ -1742,11 +1742,11 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(completed, hasLength(2));
       final completedPart = (completed[1] as BridgeSseMessagePartUpdated).part;
       expect(completedPart.id, runningPart.id);
-      expect(completedPart.state?.status, PluginToolStatus.completed);
-      expect(completedPart.state?.output, "wait completed");
-      expect(completedPart.state?.attachments, hasLength(2));
-      expect(completedPart.state?.attachments[0], isA<PluginMessageAttachmentInlineImage>());
-      final remote = completedPart.state!.attachments[1] as PluginMessageAttachmentMetadata;
+      expect(completedPart.state.status, PluginToolStatus.completed);
+      expect(completedPart.state.output, "wait completed");
+      expect(completedPart.state.attachments, hasLength(2));
+      expect(completedPart.state.attachments[0], isA<PluginMessageAttachmentInlineImage>());
+      final remote = completedPart.state.attachments[1] as PluginMessageAttachmentMetadata;
       expect(remote.mime, "application/octet-stream");
       expect(remote.filename, "remote.png");
     });
@@ -1792,7 +1792,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
 
         final part = (events[1] as BridgeSseMessagePartUpdated).part;
         expect(part.tool, "tool");
-        expect(part.state?.status, expectedStatus);
+        expect(part.state.status, expectedStatus);
       }
     });
 

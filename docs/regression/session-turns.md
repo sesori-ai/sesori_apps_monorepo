@@ -82,6 +82,10 @@ defaults and queued client sends coherent.
   retryable while cancellation settles. If a successful run omits an echo, Pi
   maps each stored payload through the same user-message path before clearing
   the queue. Process exit settles dispatched work before queued work reconnects.
+  A resident Pi extension may initiate a turn after the bridge queue becomes
+  idle. Its visible custom message, assistant/tool output, and busy-to-idle
+  lifecycle still reach clients, and its activity restarts the resident idle
+  window instead of being discarded or reaped mid-turn.
 - Pi slash commands are accepted by their correlated response or a matching
   extension dialog and remain in the request's sending state until then rather
   than exposing a cancellable bridge-queue entry. Commands reject while that

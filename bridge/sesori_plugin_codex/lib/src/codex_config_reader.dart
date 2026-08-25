@@ -2,6 +2,7 @@ import "dart:io";
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 /// Top-level defaults read from `~/.codex/config.toml`.
 ///
@@ -52,9 +53,8 @@ class CodexConfigReader({Map<String, String>? environment}) {
     final List<String> rawLines;
     try {
       rawLines = file.readAsLinesSync();
-    } catch (_) {
-      // Permission/IO error reading the config: this is only a fallback
-      // source, so degrade to no defaults rather than failing the caller.
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] failed to read fallback config defaults from ${file.path}", error, stackTrace);
       return const CodexConfigDefaults.empty();
     }
 

@@ -388,9 +388,9 @@ void main() {
       }),
     );
 
-    expect((first.single as BridgeSseMessagePartUpdated).part.state?.output, "a");
-    expect((second.single as BridgeSseMessagePartUpdated).part.state?.output, "abc");
-    expect(completed.whereType<BridgeSseMessagePartUpdated>().single.part.state?.output, "done");
+    expect((first.single as BridgeSseMessagePartUpdated).part.state.output, "a");
+    expect((second.single as BridgeSseMessagePartUpdated).part.state.output, "abc");
+    expect(completed.whereType<BridgeSseMessagePartUpdated>().single.part.state.output, "done");
     expect(completed.whereType<BridgeSseSessionDiff>(), hasLength(1));
     expect(duplicate, isEmpty);
   });
@@ -498,9 +498,9 @@ void main() {
       }),
     );
 
-    expect(pending.whereType<BridgeSseMessagePartUpdated>().single.part.state?.status, PluginToolStatus.pending);
-    expect(failed.whereType<BridgeSseMessagePartUpdated>().single.part.state?.status, PluginToolStatus.error);
-    expect(failed.whereType<BridgeSseMessagePartUpdated>().single.part.state?.error, "Pi tool call did not complete.");
+    expect(pending.whereType<BridgeSseMessagePartUpdated>().single.part.state.status, PluginToolStatus.pending);
+    expect(failed.whereType<BridgeSseMessagePartUpdated>().single.part.state.status, PluginToolStatus.error);
+    expect(failed.whereType<BridgeSseMessagePartUpdated>().single.part.state.error, "Pi tool call did not complete.");
     expect(failed.whereType<BridgeSseSessionDiff>(), hasLength(1));
   });
 
@@ -542,8 +542,8 @@ void main() {
     expect(events.whereType<BridgeSseMessageUpdated>().single.info["id"] as String, contains(":bashExecution:5:1"));
     final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
     expect(part.tool, "bash");
-    expect(part.state?.title, "pwd");
-    expect(part.state?.output, "/project\n");
+    expect(part.state.title, "pwd");
+    expect(part.state.output, "/project\n");
   });
 
   test("visible custom final maps to the replay-equivalent text message", () {
@@ -622,14 +622,14 @@ void main() {
     final runningMessage = compacting.whereType<BridgeSseMessageUpdated>().single;
     expect(runningMessage.info["id"], "pi:session:compaction:compaction:1");
     final runningPart = compacting.whereType<BridgeSseMessagePartUpdated>().single.part;
-    expect(runningPart.state?.status, PluginToolStatus.running);
-    expect(runningPart.state?.title, "Compacting context");
+    expect(runningPart.state.status, PluginToolStatus.running);
+    expect(runningPart.state.title, "Compacting context");
     expect(compacted.whereType<BridgeSseSessionCompacted>(), hasLength(1));
     expect(compacted.whereType<BridgeSseMessageUpdated>().single.info["id"], runningMessage.info["id"]);
     final completedPart = compacted.whereType<BridgeSseMessagePartUpdated>().single.part;
     expect(completedPart.id, runningPart.id);
-    expect(completedPart.state?.status, PluginToolStatus.completed);
-    expect(completedPart.state?.title, "Context compacted");
+    expect(completedPart.state.status, PluginToolStatus.completed);
+    expect(completedPart.state.title, "Context compacted");
     expect(settled.whereType<BridgeSseSessionIdle>(), hasLength(1));
   });
 
@@ -672,7 +672,7 @@ void main() {
       compacting.whereType<BridgeSseMessageUpdated>().single.info["id"],
     );
     expect(
-      compacted.whereType<BridgeSseMessagePartUpdated>().single.part.state?.status,
+      compacted.whereType<BridgeSseMessagePartUpdated>().single.part.state.status,
       PluginToolStatus.completed,
     );
   });

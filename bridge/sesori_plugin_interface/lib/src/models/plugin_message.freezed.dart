@@ -175,7 +175,7 @@ $PluginMessageCopyWith<$Res> get info {
 /// @nodoc
 mixin _$PluginMessagePart {
 
- String get id; String get sessionID; String get messageID; PluginMessagePartType get type; String? get text; String? get tool; PluginToolState? get state; String? get prompt; String? get description; String? get agent; String? get agentName; int? get attempt; String? get retryError; PluginMessageAttachment? get attachment;
+ String get id; String get sessionID; String get messageID;
 /// Create a copy of PluginMessagePart
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -188,16 +188,16 @@ $PluginMessagePartCopyWith<PluginMessagePart> get copyWith => _$PluginMessagePar
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.agentName, agentName) || other.agentName == agentName)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError)&&(identical(other.attachment, attachment) || other.attachment == attachment));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,state,prompt,description,agent,agentName,attempt,retryError,attachment);
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
 
 @override
 String toString() {
-  return 'PluginMessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, state: $state, prompt: $prompt, description: $description, agent: $agent, agentName: $agentName, attempt: $attempt, retryError: $retryError, attachment: $attachment)';
+  return 'PluginMessagePart(id: $id, sessionID: $sessionID, messageID: $messageID)';
 }
 
 
@@ -208,11 +208,11 @@ abstract mixin class $PluginMessagePartCopyWith<$Res>  {
   factory $PluginMessagePartCopyWith(PluginMessagePart value, $Res Function(PluginMessagePart) _then) = _$PluginMessagePartCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID, String messageID, PluginMessagePartType type, String? text, String? tool, PluginToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError, PluginMessageAttachment? attachment
+ String id, String sessionID, String messageID
 });
 
 
-$PluginToolStateCopyWith<$Res>? get state;$PluginMessageAttachmentCopyWith<$Res>? get attachment;
+
 
 }
 /// @nodoc
@@ -225,50 +225,15 @@ class _$PluginMessagePartCopyWithImpl<$Res>
 
 /// Create a copy of PluginMessagePart
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? agentName = freezed,Object? attempt = freezed,Object? retryError = freezed,Object? attachment = freezed,}) {
-  return _then(PluginMessagePart(
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,}) {
+  return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
-as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as PluginMessagePartType,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
-as String?,tool: freezed == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
-as String?,state: freezed == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
-as PluginToolState?,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
-as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
-as String?,agentName: freezed == agentName ? _self.agentName : agentName // ignore: cast_nullable_to_non_nullable
-as String?,attempt: freezed == attempt ? _self.attempt : attempt // ignore: cast_nullable_to_non_nullable
-as int?,retryError: freezed == retryError ? _self.retryError : retryError // ignore: cast_nullable_to_non_nullable
-as String?,attachment: freezed == attachment ? _self.attachment : attachment // ignore: cast_nullable_to_non_nullable
-as PluginMessageAttachment?,
+as String,
   ));
 }
-/// Create a copy of PluginMessagePart
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$PluginToolStateCopyWith<$Res>? get state {
-    if (_self.state == null) {
-    return null;
-  }
 
-  return $PluginToolStateCopyWith<$Res>(_self.state!, (value) {
-    return _then(_self.copyWith(state: value));
-  });
-}/// Create a copy of PluginMessagePart
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$PluginMessageAttachmentCopyWith<$Res>? get attachment {
-    if (_self.attachment == null) {
-    return null;
-  }
-
-  return $PluginMessageAttachmentCopyWith<$Res>(_self.attachment!, (value) {
-    return _then(_self.copyWith(attachment: value));
-  });
-}
 }
 
 
@@ -276,92 +241,236 @@ $PluginMessageAttachmentCopyWith<$Res>? get attachment {
 /// @nodoc
 @JsonSerializable(createFactory: false)
 
-class _PluginMessagePart implements PluginMessagePart {
-  const _PluginMessagePart({required this.id, required this.sessionID, required this.messageID, required this.type, required this.text, required this.tool, required this.state, required this.prompt, required this.description, required this.agent, required this.agentName, required this.attempt, required this.retryError, required this.attachment});
+class PluginMessagePartText extends PluginMessagePart {
+  const PluginMessagePartText({required this.id, required this.sessionID, required this.messageID, @JsonKey(includeToJson: true) required this.text,  String? $type}): $type = $type ?? 'text',super._();
   
 
 @override final  String id;
 @override final  String sessionID;
 @override final  String messageID;
-@override final  PluginMessagePartType type;
-@override final  String? text;
-@override final  String? tool;
-@override final  PluginToolState? state;
-@override final  String? prompt;
-@override final  String? description;
-@override final  String? agent;
-@override final  String? agentName;
-@override final  int? attempt;
-@override final  String? retryError;
-@override final  PluginMessageAttachment? attachment;
+@JsonKey(includeToJson: true) final  String text;
+
+@JsonKey(name: 'type')
+final String $type;
+
 
 /// Create a copy of PluginMessagePart
 /// with the given fields replaced by the non-null parameter values.
 @override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-_$PluginMessagePartCopyWith<_PluginMessagePart> get copyWith => __$PluginMessagePartCopyWithImpl<_PluginMessagePart>(this, _$identity);
+$PluginMessagePartTextCopyWith<PluginMessagePartText> get copyWith => _$PluginMessagePartTextCopyWithImpl<PluginMessagePartText>(this, _$identity);
 
 @override
 Map<String, dynamic> toJson() {
-  return _$PluginMessagePartToJson(this, );
+  return _$PluginMessagePartTextToJson(this, );
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.agentName, agentName) || other.agentName == agentName)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError)&&(identical(other.attachment, attachment) || other.attachment == attachment));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartText&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,state,prompt,description,agent,agentName,attempt,retryError,attachment);
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,text);
 
 @override
 String toString() {
-  return 'PluginMessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, state: $state, prompt: $prompt, description: $description, agent: $agent, agentName: $agentName, attempt: $attempt, retryError: $retryError, attachment: $attachment)';
+  return 'PluginMessagePart.text(id: $id, sessionID: $sessionID, messageID: $messageID, text: $text)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class _$PluginMessagePartCopyWith<$Res> implements $PluginMessagePartCopyWith<$Res> {
-  factory _$PluginMessagePartCopyWith(_PluginMessagePart value, $Res Function(_PluginMessagePart) _then) = __$PluginMessagePartCopyWithImpl;
+abstract mixin class $PluginMessagePartTextCopyWith<$Res> implements $PluginMessagePartCopyWith<$Res> {
+  factory $PluginMessagePartTextCopyWith(PluginMessagePartText value, $Res Function(PluginMessagePartText) _then) = _$PluginMessagePartTextCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID, PluginMessagePartType type, String? text, String? tool, PluginToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError, PluginMessageAttachment? attachment
+ String id, String sessionID, String messageID,@JsonKey(includeToJson: true) String text
 });
 
 
-@override $PluginToolStateCopyWith<$Res>? get state;@override $PluginMessageAttachmentCopyWith<$Res>? get attachment;
+
 
 }
 /// @nodoc
-class __$PluginMessagePartCopyWithImpl<$Res>
-    implements _$PluginMessagePartCopyWith<$Res> {
-  __$PluginMessagePartCopyWithImpl(this._self, this._then);
+class _$PluginMessagePartTextCopyWithImpl<$Res>
+    implements $PluginMessagePartTextCopyWith<$Res> {
+  _$PluginMessagePartTextCopyWithImpl(this._self, this._then);
 
-  final _PluginMessagePart _self;
-  final $Res Function(_PluginMessagePart) _then;
+  final PluginMessagePartText _self;
+  final $Res Function(PluginMessagePartText) _then;
 
 /// Create a copy of PluginMessagePart
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? agentName = freezed,Object? attempt = freezed,Object? retryError = freezed,Object? attachment = freezed,}) {
-  return _then(_PluginMessagePart(
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? text = null,}) {
+  return _then(PluginMessagePartText(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
-as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as PluginMessagePartType,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
-as String?,tool: freezed == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
-as String?,state: freezed == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
-as PluginToolState?,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
-as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
-as String?,agentName: freezed == agentName ? _self.agentName : agentName // ignore: cast_nullable_to_non_nullable
-as String?,attempt: freezed == attempt ? _self.attempt : attempt // ignore: cast_nullable_to_non_nullable
-as int?,retryError: freezed == retryError ? _self.retryError : retryError // ignore: cast_nullable_to_non_nullable
-as String?,attachment: freezed == attachment ? _self.attachment : attachment // ignore: cast_nullable_to_non_nullable
-as PluginMessageAttachment?,
+as String,text: null == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginMessagePartReasoning extends PluginMessagePart {
+  const PluginMessagePartReasoning({required this.id, required this.sessionID, required this.messageID, @JsonKey(includeToJson: true) required this.text,  String? $type}): $type = $type ?? 'reasoning',super._();
+  
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+@JsonKey(includeToJson: true) final  String text;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginMessagePartReasoningCopyWith<PluginMessagePartReasoning> get copyWith => _$PluginMessagePartReasoningCopyWithImpl<PluginMessagePartReasoning>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginMessagePartReasoningToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartReasoning&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.text, text) || other.text == text));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,text);
+
+@override
+String toString() {
+  return 'PluginMessagePart.reasoning(id: $id, sessionID: $sessionID, messageID: $messageID, text: $text)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginMessagePartReasoningCopyWith<$Res> implements $PluginMessagePartCopyWith<$Res> {
+  factory $PluginMessagePartReasoningCopyWith(PluginMessagePartReasoning value, $Res Function(PluginMessagePartReasoning) _then) = _$PluginMessagePartReasoningCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID,@JsonKey(includeToJson: true) String text
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginMessagePartReasoningCopyWithImpl<$Res>
+    implements $PluginMessagePartReasoningCopyWith<$Res> {
+  _$PluginMessagePartReasoningCopyWithImpl(this._self, this._then);
+
+  final PluginMessagePartReasoning _self;
+  final $Res Function(PluginMessagePartReasoning) _then;
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? text = null,}) {
+  return _then(PluginMessagePartReasoning(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,text: null == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginMessagePartTool extends PluginMessagePart {
+  const PluginMessagePartTool({required this.id, required this.sessionID, required this.messageID, @JsonKey(includeToJson: true) required this.tool, @JsonKey(includeToJson: true) required this.state,  String? $type}): $type = $type ?? 'tool',super._();
+  
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+@JsonKey(includeToJson: true) final  String? tool;
+@JsonKey(includeToJson: true) final  PluginToolState state;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginMessagePartToolCopyWith<PluginMessagePartTool> get copyWith => _$PluginMessagePartToolCopyWithImpl<PluginMessagePartTool>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginMessagePartToolToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartTool&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,tool,state);
+
+@override
+String toString() {
+  return 'PluginMessagePart.tool(id: $id, sessionID: $sessionID, messageID: $messageID, tool: $tool, state: $state)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginMessagePartToolCopyWith<$Res> implements $PluginMessagePartCopyWith<$Res> {
+  factory $PluginMessagePartToolCopyWith(PluginMessagePartTool value, $Res Function(PluginMessagePartTool) _then) = _$PluginMessagePartToolCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID,@JsonKey(includeToJson: true) String? tool,@JsonKey(includeToJson: true) PluginToolState state
+});
+
+
+$PluginToolStateCopyWith<$Res> get state;
+
+}
+/// @nodoc
+class _$PluginMessagePartToolCopyWithImpl<$Res>
+    implements $PluginMessagePartToolCopyWith<$Res> {
+  _$PluginMessagePartToolCopyWithImpl(this._self, this._then);
+
+  final PluginMessagePartTool _self;
+  final $Res Function(PluginMessagePartTool) _then;
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? tool = freezed,Object? state = null,}) {
+  return _then(PluginMessagePartTool(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,tool: freezed == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
+as String?,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
+as PluginToolState,
   ));
 }
 
@@ -369,27 +478,805 @@ as PluginMessageAttachment?,
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$PluginToolStateCopyWith<$Res>? get state {
-    if (_self.state == null) {
-    return null;
-  }
-
-  return $PluginToolStateCopyWith<$Res>(_self.state!, (value) {
+$PluginToolStateCopyWith<$Res> get state {
+  
+  return $PluginToolStateCopyWith<$Res>(_self.state, (value) {
     return _then(_self.copyWith(state: value));
   });
-}/// Create a copy of PluginMessagePart
+}
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginMessagePartSubtask extends PluginMessagePart {
+  const PluginMessagePartSubtask({required this.id, required this.sessionID, required this.messageID, required this.prompt, required this.description, required this.agent,  String? $type}): $type = $type ?? 'subtask',super._();
+  
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+ final  String prompt;
+ final  String description;
+ final  String agent;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginMessagePartSubtaskCopyWith<PluginMessagePartSubtask> get copyWith => _$PluginMessagePartSubtaskCopyWithImpl<PluginMessagePartSubtask>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginMessagePartSubtaskToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartSubtask&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,prompt,description,agent);
+
+@override
+String toString() {
+  return 'PluginMessagePart.subtask(id: $id, sessionID: $sessionID, messageID: $messageID, prompt: $prompt, description: $description, agent: $agent)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginMessagePartSubtaskCopyWith<$Res> implements $PluginMessagePartCopyWith<$Res> {
+  factory $PluginMessagePartSubtaskCopyWith(PluginMessagePartSubtask value, $Res Function(PluginMessagePartSubtask) _then) = _$PluginMessagePartSubtaskCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID, String prompt, String description, String agent
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginMessagePartSubtaskCopyWithImpl<$Res>
+    implements $PluginMessagePartSubtaskCopyWith<$Res> {
+  _$PluginMessagePartSubtaskCopyWithImpl(this._self, this._then);
+
+  final PluginMessagePartSubtask _self;
+  final $Res Function(PluginMessagePartSubtask) _then;
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? prompt = null,Object? description = null,Object? agent = null,}) {
+  return _then(PluginMessagePartSubtask(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,prompt: null == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
+as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String,agent: null == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginMessagePartStepStart extends PluginMessagePart {
+  const PluginMessagePartStepStart({required this.id, required this.sessionID, required this.messageID,  String? $type}): $type = $type ?? 'step-start',super._();
+  
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginMessagePartStepStartCopyWith<PluginMessagePartStepStart> get copyWith => _$PluginMessagePartStepStartCopyWithImpl<PluginMessagePartStepStart>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginMessagePartStepStartToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartStepStart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+
+@override
+String toString() {
+  return 'PluginMessagePart.stepStart(id: $id, sessionID: $sessionID, messageID: $messageID)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginMessagePartStepStartCopyWith<$Res> implements $PluginMessagePartCopyWith<$Res> {
+  factory $PluginMessagePartStepStartCopyWith(PluginMessagePartStepStart value, $Res Function(PluginMessagePartStepStart) _then) = _$PluginMessagePartStepStartCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginMessagePartStepStartCopyWithImpl<$Res>
+    implements $PluginMessagePartStepStartCopyWith<$Res> {
+  _$PluginMessagePartStepStartCopyWithImpl(this._self, this._then);
+
+  final PluginMessagePartStepStart _self;
+  final $Res Function(PluginMessagePartStepStart) _then;
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,}) {
+  return _then(PluginMessagePartStepStart(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginMessagePartStepFinish extends PluginMessagePart {
+  const PluginMessagePartStepFinish({required this.id, required this.sessionID, required this.messageID,  String? $type}): $type = $type ?? 'step-finish',super._();
+  
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginMessagePartStepFinishCopyWith<PluginMessagePartStepFinish> get copyWith => _$PluginMessagePartStepFinishCopyWithImpl<PluginMessagePartStepFinish>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginMessagePartStepFinishToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartStepFinish&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+
+@override
+String toString() {
+  return 'PluginMessagePart.stepFinish(id: $id, sessionID: $sessionID, messageID: $messageID)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginMessagePartStepFinishCopyWith<$Res> implements $PluginMessagePartCopyWith<$Res> {
+  factory $PluginMessagePartStepFinishCopyWith(PluginMessagePartStepFinish value, $Res Function(PluginMessagePartStepFinish) _then) = _$PluginMessagePartStepFinishCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginMessagePartStepFinishCopyWithImpl<$Res>
+    implements $PluginMessagePartStepFinishCopyWith<$Res> {
+  _$PluginMessagePartStepFinishCopyWithImpl(this._self, this._then);
+
+  final PluginMessagePartStepFinish _self;
+  final $Res Function(PluginMessagePartStepFinish) _then;
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,}) {
+  return _then(PluginMessagePartStepFinish(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginMessagePartFile extends PluginMessagePart {
+  const PluginMessagePartFile({required this.id, required this.sessionID, required this.messageID, @JsonKey(includeToJson: true) required this.attachment,  String? $type}): $type = $type ?? 'file',super._();
+  
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+@JsonKey(includeToJson: true) final  PluginMessageAttachment attachment;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginMessagePartFileCopyWith<PluginMessagePartFile> get copyWith => _$PluginMessagePartFileCopyWithImpl<PluginMessagePartFile>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginMessagePartFileToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartFile&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.attachment, attachment) || other.attachment == attachment));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,attachment);
+
+@override
+String toString() {
+  return 'PluginMessagePart.file(id: $id, sessionID: $sessionID, messageID: $messageID, attachment: $attachment)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginMessagePartFileCopyWith<$Res> implements $PluginMessagePartCopyWith<$Res> {
+  factory $PluginMessagePartFileCopyWith(PluginMessagePartFile value, $Res Function(PluginMessagePartFile) _then) = _$PluginMessagePartFileCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID,@JsonKey(includeToJson: true) PluginMessageAttachment attachment
+});
+
+
+$PluginMessageAttachmentCopyWith<$Res> get attachment;
+
+}
+/// @nodoc
+class _$PluginMessagePartFileCopyWithImpl<$Res>
+    implements $PluginMessagePartFileCopyWith<$Res> {
+  _$PluginMessagePartFileCopyWithImpl(this._self, this._then);
+
+  final PluginMessagePartFile _self;
+  final $Res Function(PluginMessagePartFile) _then;
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? attachment = null,}) {
+  return _then(PluginMessagePartFile(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,attachment: null == attachment ? _self.attachment : attachment // ignore: cast_nullable_to_non_nullable
+as PluginMessageAttachment,
+  ));
+}
+
+/// Create a copy of PluginMessagePart
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$PluginMessageAttachmentCopyWith<$Res>? get attachment {
-    if (_self.attachment == null) {
-    return null;
-  }
-
-  return $PluginMessageAttachmentCopyWith<$Res>(_self.attachment!, (value) {
+$PluginMessageAttachmentCopyWith<$Res> get attachment {
+  
+  return $PluginMessageAttachmentCopyWith<$Res>(_self.attachment, (value) {
     return _then(_self.copyWith(attachment: value));
   });
 }
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginMessagePartSnapshot extends PluginMessagePart {
+  const PluginMessagePartSnapshot({required this.id, required this.sessionID, required this.messageID,  String? $type}): $type = $type ?? 'snapshot',super._();
+  
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginMessagePartSnapshotCopyWith<PluginMessagePartSnapshot> get copyWith => _$PluginMessagePartSnapshotCopyWithImpl<PluginMessagePartSnapshot>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginMessagePartSnapshotToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartSnapshot&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+
+@override
+String toString() {
+  return 'PluginMessagePart.snapshot(id: $id, sessionID: $sessionID, messageID: $messageID)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginMessagePartSnapshotCopyWith<$Res> implements $PluginMessagePartCopyWith<$Res> {
+  factory $PluginMessagePartSnapshotCopyWith(PluginMessagePartSnapshot value, $Res Function(PluginMessagePartSnapshot) _then) = _$PluginMessagePartSnapshotCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginMessagePartSnapshotCopyWithImpl<$Res>
+    implements $PluginMessagePartSnapshotCopyWith<$Res> {
+  _$PluginMessagePartSnapshotCopyWithImpl(this._self, this._then);
+
+  final PluginMessagePartSnapshot _self;
+  final $Res Function(PluginMessagePartSnapshot) _then;
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,}) {
+  return _then(PluginMessagePartSnapshot(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginMessagePartPatch extends PluginMessagePart {
+  const PluginMessagePartPatch({required this.id, required this.sessionID, required this.messageID,  String? $type}): $type = $type ?? 'patch',super._();
+  
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginMessagePartPatchCopyWith<PluginMessagePartPatch> get copyWith => _$PluginMessagePartPatchCopyWithImpl<PluginMessagePartPatch>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginMessagePartPatchToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartPatch&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+
+@override
+String toString() {
+  return 'PluginMessagePart.patch(id: $id, sessionID: $sessionID, messageID: $messageID)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginMessagePartPatchCopyWith<$Res> implements $PluginMessagePartCopyWith<$Res> {
+  factory $PluginMessagePartPatchCopyWith(PluginMessagePartPatch value, $Res Function(PluginMessagePartPatch) _then) = _$PluginMessagePartPatchCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginMessagePartPatchCopyWithImpl<$Res>
+    implements $PluginMessagePartPatchCopyWith<$Res> {
+  _$PluginMessagePartPatchCopyWithImpl(this._self, this._then);
+
+  final PluginMessagePartPatch _self;
+  final $Res Function(PluginMessagePartPatch) _then;
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,}) {
+  return _then(PluginMessagePartPatch(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginMessagePartAgent extends PluginMessagePart {
+  const PluginMessagePartAgent({required this.id, required this.sessionID, required this.messageID, @JsonKey(includeToJson: true) required this.agentName,  String? $type}): $type = $type ?? 'agent',super._();
+  
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+@JsonKey(includeToJson: true) final  String agentName;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginMessagePartAgentCopyWith<PluginMessagePartAgent> get copyWith => _$PluginMessagePartAgentCopyWithImpl<PluginMessagePartAgent>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginMessagePartAgentToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartAgent&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.agentName, agentName) || other.agentName == agentName));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,agentName);
+
+@override
+String toString() {
+  return 'PluginMessagePart.agent(id: $id, sessionID: $sessionID, messageID: $messageID, agentName: $agentName)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginMessagePartAgentCopyWith<$Res> implements $PluginMessagePartCopyWith<$Res> {
+  factory $PluginMessagePartAgentCopyWith(PluginMessagePartAgent value, $Res Function(PluginMessagePartAgent) _then) = _$PluginMessagePartAgentCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID,@JsonKey(includeToJson: true) String agentName
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginMessagePartAgentCopyWithImpl<$Res>
+    implements $PluginMessagePartAgentCopyWith<$Res> {
+  _$PluginMessagePartAgentCopyWithImpl(this._self, this._then);
+
+  final PluginMessagePartAgent _self;
+  final $Res Function(PluginMessagePartAgent) _then;
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? agentName = null,}) {
+  return _then(PluginMessagePartAgent(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,agentName: null == agentName ? _self.agentName : agentName // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginMessagePartRetry extends PluginMessagePart {
+  const PluginMessagePartRetry({required this.id, required this.sessionID, required this.messageID, @JsonKey(includeToJson: true) required this.attempt, @JsonKey(includeToJson: true) required this.retryError,  String? $type}): $type = $type ?? 'retry',super._();
+  
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+@JsonKey(includeToJson: true) final  int attempt;
+@JsonKey(includeToJson: true) final  String retryError;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginMessagePartRetryCopyWith<PluginMessagePartRetry> get copyWith => _$PluginMessagePartRetryCopyWithImpl<PluginMessagePartRetry>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginMessagePartRetryToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartRetry&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,attempt,retryError);
+
+@override
+String toString() {
+  return 'PluginMessagePart.retry(id: $id, sessionID: $sessionID, messageID: $messageID, attempt: $attempt, retryError: $retryError)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginMessagePartRetryCopyWith<$Res> implements $PluginMessagePartCopyWith<$Res> {
+  factory $PluginMessagePartRetryCopyWith(PluginMessagePartRetry value, $Res Function(PluginMessagePartRetry) _then) = _$PluginMessagePartRetryCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID,@JsonKey(includeToJson: true) int attempt,@JsonKey(includeToJson: true) String retryError
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginMessagePartRetryCopyWithImpl<$Res>
+    implements $PluginMessagePartRetryCopyWith<$Res> {
+  _$PluginMessagePartRetryCopyWithImpl(this._self, this._then);
+
+  final PluginMessagePartRetry _self;
+  final $Res Function(PluginMessagePartRetry) _then;
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? attempt = null,Object? retryError = null,}) {
+  return _then(PluginMessagePartRetry(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,attempt: null == attempt ? _self.attempt : attempt // ignore: cast_nullable_to_non_nullable
+as int,retryError: null == retryError ? _self.retryError : retryError // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginMessagePartCompaction extends PluginMessagePart {
+  const PluginMessagePartCompaction({required this.id, required this.sessionID, required this.messageID,  String? $type}): $type = $type ?? 'compaction',super._();
+  
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginMessagePartCompactionCopyWith<PluginMessagePartCompaction> get copyWith => _$PluginMessagePartCompactionCopyWithImpl<PluginMessagePartCompaction>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginMessagePartCompactionToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartCompaction&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+
+@override
+String toString() {
+  return 'PluginMessagePart.compaction(id: $id, sessionID: $sessionID, messageID: $messageID)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginMessagePartCompactionCopyWith<$Res> implements $PluginMessagePartCopyWith<$Res> {
+  factory $PluginMessagePartCompactionCopyWith(PluginMessagePartCompaction value, $Res Function(PluginMessagePartCompaction) _then) = _$PluginMessagePartCompactionCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginMessagePartCompactionCopyWithImpl<$Res>
+    implements $PluginMessagePartCompactionCopyWith<$Res> {
+  _$PluginMessagePartCompactionCopyWithImpl(this._self, this._then);
+
+  final PluginMessagePartCompaction _self;
+  final $Res Function(PluginMessagePartCompaction) _then;
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,}) {
+  return _then(PluginMessagePartCompaction(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginMessagePartUnknown extends PluginMessagePart {
+  const PluginMessagePartUnknown({required this.id, required this.sessionID, required this.messageID,  String? $type}): $type = $type ?? 'unknown',super._();
+  
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginMessagePartUnknownCopyWith<PluginMessagePartUnknown> get copyWith => _$PluginMessagePartUnknownCopyWithImpl<PluginMessagePartUnknown>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginMessagePartUnknownToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartUnknown&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+
+@override
+String toString() {
+  return 'PluginMessagePart.unknown(id: $id, sessionID: $sessionID, messageID: $messageID)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginMessagePartUnknownCopyWith<$Res> implements $PluginMessagePartCopyWith<$Res> {
+  factory $PluginMessagePartUnknownCopyWith(PluginMessagePartUnknown value, $Res Function(PluginMessagePartUnknown) _then) = _$PluginMessagePartUnknownCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginMessagePartUnknownCopyWithImpl<$Res>
+    implements $PluginMessagePartUnknownCopyWith<$Res> {
+  _$PluginMessagePartUnknownCopyWithImpl(this._self, this._then);
+
+  final PluginMessagePartUnknown _self;
+  final $Res Function(PluginMessagePartUnknown) _then;
+
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,}) {
+  return _then(PluginMessagePartUnknown(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
 }
 
 /// @nodoc

@@ -233,12 +233,14 @@ class BridgeEventMapper({
   /// runes, or the original part if no truncation is needed.
   /// Uses rune-based truncation to avoid splitting UTF-16 surrogate pairs.
   PluginMessagePart _truncateToolOutput(PluginMessagePart part) {
-    final output = part.state?.output;
-    if (output == null || output.length <= maxToolOutputLength) return part;
-    return part.copyWith(
-      state: part.state!.copyWith(
-        output: String.fromCharCodes(output.runes.take(maxToolOutputLength)),
-      ),
-    );
+    if (part case PluginMessagePartTool(:final state)) {
+      final output = state.output;
+      if (output != null && output.length > maxToolOutputLength) {
+        return part.copyWith(
+          state: state.copyWith(output: String.fromCharCodes(output.runes.take(maxToolOutputLength))),
+        );
+      }
+    }
+    return part;
   }
 }

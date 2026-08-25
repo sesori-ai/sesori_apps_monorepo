@@ -76,7 +76,7 @@ final class _TrackedTool({
   );
   bool diffEmitted = false;
 
-  bool get isTerminal => state.status == PluginToolStatus.completed || state.status == PluginToolStatus.error;
+  bool get isTerminal => state.status.isTerminal;
   bool get isEdit => name.toLowerCase() == "edit" || name.toLowerCase() == "write";
 
   PiTrackedTool snapshot({required bool sessionDiffRequired}) => PiTrackedTool(

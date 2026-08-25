@@ -1002,20 +1002,34 @@ reviewer of one PR can see what belongs to it.
   reconnect, or staleness refresh.
 - The aggregate rescan row widget in `client/app/lib/core/widgets/`, beside the
   shell's other cross-feature widgets, with its seven presentations. It renders
-  the state it is given, owns no timer, and renders no bridge-supplied text.
+  the state it is given, owns no timer, and renders no bridge-supplied text. It
+  is a mapping onto the design system's `PregoInlineAlertsNotifications` rather
+  than a bespoke card, so the tinted treatment, the spinner, and the action
+  button come from the component the connection banner already uses. Both the
+  live row's cancel and the terminal rows' dismiss are that component's labelled
+  secondary action rather than its close button, which is an unlabelled icon and
+  so is not reachable by name from a screen reader.
 - Project list, full-screen session list, and split-view pane: supply
   `deepRefresh` from the cubit's `startCatalogScan()`, and render the row as the
-  sliver at index 0 in place of the soft-refresh indicator while a rescan is
-  running.
-- Settings to Harnesses: the per-harness `Rescan` action in
-  `_HarnessControlCard`, calling `startCatalogScanFor(pluginId)`, enabled only for a
-  harness whose `runtimeState.isRoutable` is true and disabled while that
-  harness is itself a member of the live operation; a targeted start joins that
-  operation rather than replacing it, so no cross-harness disabling is needed.
-  The typed `CatalogRescanStartResult` is held
-  per plugin id by `PluginManagementCubit` and rendered on that card, so a
-  targeted `503`, `404`, or unsupported-bridge answer lands on the harness the
-  user selected instead of the shared row.
+  content sliver at index 0. The row is mounted unconditionally and takes no
+  space at all while idle, so a host needs no visibility condition of its own.
+  Delivered without the planned suppression of the soft-refresh indicator: on
+  both lists `isRefreshing` is raised only by the stale-reconnect path, never by
+  a pull or by the scan's own post-settle refresh, so the two surfaces overlap
+  only when a reconnect happens to land mid-scan, and the damage is one
+  redundant progress bar.
+- Settings to Harnesses: the per-harness scan action in `_HarnessControlCard`,
+  calling `startCatalogScanFor(pluginId)`, offered only for a harness whose
+  `runtimeState.isRoutable` is true and not offered again while that harness is
+  itself a member of the live operation; a targeted start joins that operation
+  rather than replacing it, so no cross-harness disabling is needed. The typed
+  `CatalogRescanStartResult` is held per plugin id by `PluginManagementCubit`
+  and rendered on that card in place of its description, so a targeted `503`,
+  `404`, or unsupported-bridge answer lands on the harness the user selected
+  instead of the shared row. A rejection is cleared by the next attempt on that
+  harness or by leaving the screen, which rebuilds the cubit; no dismiss action
+  is offered, because a stale line on a card the user has walked away from is
+  not worth its own control.
 - New `app_en.arb` resources for both captions, the seven row states, the delta
   and totals wordings, the `No new sessions` case, the partly-failed wording, the
   bounded failure line naming the bridge log, and the Settings action with its
@@ -1043,8 +1057,10 @@ reviewer of one PR can see what belongs to it.
   and its terminal states, the post-success list refresh, failure rows
   persisting until dismissal, cancellation, new-item reporting with its
   older-bridge fallback, and the recovery read discarding terminal statuses.
-- `docs/regression/plugin-setup-and-lifecycle.md`: record the per-harness
-  `Rescan` action, its `isRoutable` enablement rule, and its targeted rejection.
+- `docs/regression/plugin-setup-and-lifecycle.md`: already reconciled in step
+  6c, which recorded the per-harness scan action, its `isRoutable` rule, its
+  targeted rejection, and its L3/L4 coverage. Step 7 only re-checks it against
+  the shipped behaviour.
 - Record the required plugin, platform, compatibility, recovery, freshness, and
   setup-state matrix in both.
 

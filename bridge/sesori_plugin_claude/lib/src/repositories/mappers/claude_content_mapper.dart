@@ -82,7 +82,11 @@ final class const ClaudeContentMapper() {
   Object? visibleUserContent({required Object? content}) {
     if (content is String) {
       final text = _stripBridgeContext(content);
-      return text == null || text.isEmpty ? const <Object?>[] : [{"type": "text", "text": text}];
+      return text == null || text.isEmpty
+          ? const <Object?>[]
+          : [
+              {"type": "text", "text": text},
+            ];
     }
     if (content is! List) return content;
     final visible = <Object?>[];
@@ -260,25 +264,22 @@ final class const ClaudeContentMapper() {
   }) {
     final fallbackId = "$messageId-block-$index";
     return switch (block) {
-      ClaudeMappedTextContentBlock(:final text) => _part(
+      ClaudeMappedTextContentBlock(:final text) => PluginMessagePart.text(
         id: fallbackId,
-        sessionId: sessionId,
-        messageId: messageId,
-        type: PluginMessagePartType.text,
+        sessionID: sessionId,
+        messageID: messageId,
         text: text,
       ),
-      ClaudeMappedThinkingContentBlock(:final thinking) => _part(
+      ClaudeMappedThinkingContentBlock(:final thinking) => PluginMessagePart.reasoning(
         id: fallbackId,
-        sessionId: sessionId,
-        messageId: messageId,
-        type: PluginMessagePartType.reasoning,
+        sessionID: sessionId,
+        messageID: messageId,
         text: thinking,
       ),
-      ClaudeMappedToolUseContentBlock(:final id, :final name) => _part(
+      ClaudeMappedToolUseContentBlock(:final id, :final name) => PluginMessagePart.tool(
         id: id,
-        sessionId: sessionId,
-        messageId: messageId,
-        type: PluginMessagePartType.tool,
+        sessionID: sessionId,
+        messageID: messageId,
         tool: name,
         state: const PluginToolState(
           status: PluginToolStatus.pending,
@@ -288,60 +289,33 @@ final class const ClaudeContentMapper() {
           attachments: [],
         ),
       ),
-      ClaudeMappedToolResultContentBlock(:final toolUseId, :final output, :final isError, :final attachments) => _part(
-        id: toolUseId,
-        sessionId: sessionId,
-        messageId: messageId,
-        type: PluginMessagePartType.tool,
-        state: PluginToolState(
-          status: isError ? PluginToolStatus.error : PluginToolStatus.completed,
-          title: null,
-          output: isError ? null : output,
-          error: isError ? output : null,
-          attachments: attachments,
+      ClaudeMappedToolResultContentBlock(:final toolUseId, :final output, :final isError, :final attachments) =>
+        PluginMessagePart.tool(
+          id: toolUseId,
+          sessionID: sessionId,
+          messageID: messageId,
+          tool: null,
+          state: PluginToolState(
+            status: isError ? PluginToolStatus.error : PluginToolStatus.completed,
+            title: null,
+            output: isError ? null : output,
+            error: isError ? output : null,
+            attachments: attachments,
+          ),
         ),
-      ),
-      ClaudeMappedImageContentBlock(:final attachment) => _part(
+      ClaudeMappedImageContentBlock(:final attachment) => PluginMessagePart.file(
         id: fallbackId,
-        sessionId: sessionId,
-        messageId: messageId,
-        type: PluginMessagePartType.file,
+        sessionID: sessionId,
+        messageID: messageId,
         attachment: attachment,
       ),
-      ClaudeMappedUnsupportedContentBlock() || ClaudeMappedUnknownContentBlock() => _part(
+      ClaudeMappedUnsupportedContentBlock() || ClaudeMappedUnknownContentBlock() => PluginMessagePart.unknown(
         id: fallbackId,
-        sessionId: sessionId,
-        messageId: messageId,
-        type: PluginMessagePartType.unknown,
+        sessionID: sessionId,
+        messageID: messageId,
       ),
     };
   }
-
-  PluginMessagePart _part({
-    required String id,
-    required String sessionId,
-    required String messageId,
-    required PluginMessagePartType type,
-    String? text,
-    String? tool,
-    PluginToolState? state,
-    PluginMessageAttachment? attachment,
-  }) => PluginMessagePart(
-    id: id,
-    sessionID: sessionId,
-    messageID: messageId,
-    type: type,
-    text: text,
-    tool: tool,
-    state: state,
-    prompt: null,
-    description: null,
-    agent: null,
-    agentName: null,
-    attempt: null,
-    retryError: null,
-    attachment: attachment,
-  );
 
   String? _boundedToolOutput(String value) {
     if (value.isEmpty) return null;

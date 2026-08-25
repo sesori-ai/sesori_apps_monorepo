@@ -49,6 +49,10 @@ class const _StubManifest() implements RuntimeManifest {
   String downloadUrlFor({required RuntimeAsset asset}) => "https://example.test/${asset.assetName}";
 
   @override
+  String githubReleaseAssetUrl({required String repository, required String tag, required RuntimeAsset asset}) =>
+      "https://github.com/$repository/releases/download/$tag/${asset.assetName}";
+
+  @override
   String managedBinaryPath({required String stateDirectory}) {
     return p.join(stateDirectory, runtimeId, bundledVersion.toString(), binaryFileName);
   }

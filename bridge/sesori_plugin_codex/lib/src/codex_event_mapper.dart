@@ -575,12 +575,10 @@ class CodexEventMapper({
         info: _assistantMessage(itemId: itemId, threadId: threadId, time: time).toJson(),
       ),
       BridgeSseMessagePartUpdated(
-        part: PluginMessagePart(
+part: PluginMessagePart.tool(
           id: "$itemId-tool",
           sessionID: threadId,
           messageID: itemId,
-          type: PluginMessagePartType.tool,
-          text: "",
           tool: tool,
           state: PluginToolState(
             status: status,
@@ -589,13 +587,6 @@ class CodexEventMapper({
             error: error ?? (status == PluginToolStatus.error ? output : null),
             attachments: attachments,
           ),
-          prompt: null,
-          description: null,
-          agent: null,
-          agentName: null,
-          attempt: null,
-          retryError: null,
-          attachment: null,
         ),
       ),
     ];
@@ -836,22 +827,27 @@ class CodexEventMapper({
     required PluginMessageAttachment? attachment,
   }) {
     return BridgeSseMessagePartUpdated(
-      part: PluginMessagePart(
-        id: partId,
-        sessionID: threadId,
-        messageID: itemId,
-        type: partType,
-        text: text,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
-        attachment: attachment,
-      ),
+      part: switch (partType) {
+        PluginMessagePartType.text => PluginMessagePart.text(
+          id: partId,
+          sessionID: threadId,
+          messageID: itemId,
+          text: text!,
+        ),
+        PluginMessagePartType.reasoning => PluginMessagePart.reasoning(
+          id: partId,
+          sessionID: threadId,
+          messageID: itemId,
+          text: text!,
+        ),
+        PluginMessagePartType.file => PluginMessagePart.file(
+          id: partId,
+          sessionID: threadId,
+          messageID: itemId,
+          attachment: attachment!,
+        ),
+        _ => throw StateError("Codex message part cannot use $partType"),
+      },
     );
   }
 
