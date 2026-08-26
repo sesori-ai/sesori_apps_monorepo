@@ -785,4 +785,30 @@ duplicate-emission nicety.
   publication", named a long-gone working branch, and promised "eight PRs"; its
   step table stopped at 6c. Corrected as part of step 8's plan-and-tracker
   agreement check, ahead of the matrix run that step still needs
+## Step 8 Matrix Disposition
+
+Automated verification on merged `main` (`f656176f51`): `client/module_prego`
+236 passed, `client/module_core` 1,390 passed, `client/app` 904 passed, and the
+bridge catalog-import suites (repository, service, routing, console listener) 36
+passed. `flutter analyze` and `dart analyze --fatal-infos` clean throughout.
+
+Each row of the plan's required matrix against that coverage:
+
+| Row | Disposition |
+|---|---|
+| Boundary — automated delta counting | **Passed.** `catalog_import_repository_test.dart` covers a first import reporting every row as new, a re-import reporting nothing new, and a re-import counting only rows the catalog did not hold |
+| Plugin — native and bridge-derived new-item counts | **Passed.** Both ownership branches are exercised directly: `native re-import counts only the rows the catalog did not already hold` and `derived import counts new rows across its own ownership branch` |
+| Plugin — two harnesses for the aggregate terminal states | **Passed.** `catalog_rescan_service_test.dart` drives a two-member fan-out into `reports a mixed outcome when one harness fails` and `reports total failure when every harness fails` |
+| Compatibility — a bridge that omits `newItems` | **Passed.** `falls back to summed totals when any harness omits its delta` |
+| Compatibility — a bridge with no `/plugin/import` | **Passed.** `reports an unsupported bridge when every harness answers 404` and `reports an unsupported bridge from an unsupported snapshot, issuing no request` |
+| Recovery — reconnect against retained terminal statuses | **Passed.** `a reconnect discards terminal statuses instead of announcing a stale success` |
+| Recovery — disconnect mid-scan | **Passed.** `a disconnect clears an active rescan without claiming a catalog change` |
+| Setup state — a setup-blocked harness on Settings | **Passed.** `harnesses_settings_screen_test.dart` asserts no scan action is offered for the setup-blocked fixture |
+| Freshness — a scan that genuinely imports a new session | **Owner run required.** End to end by definition, and the actual subject of #961: nothing below a real bridge and a real harness proves a missing session becomes visible without a second refresh |
+| Platform — one mobile platform plus the wide split-view pane | **Owner run required.** The pane drives its pull through a different scroll owner, and rendering is what these two rows claim |
+
+The eight automated rows are recorded as passed on evidence, not as an accepted
+reduction: each names the test that discharges it. The two remaining rows are
+the ones no test can stand in for, and are outstanding.
+
 - **Final disposition:** pending
