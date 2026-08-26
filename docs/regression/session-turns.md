@@ -185,12 +185,15 @@ defaults and queued client sends coherent.
   dispatch, using the link its backend exposes — Claude's queue entry, ACP's
   accepted send, Pi's dispatcher, Codex's client-supplied identifier, and
   OpenCode's server-reserved ordered message identifier that the bridge reuses
-  for the real dispatch. OpenCode applies the same correlation to prompts,
-  slash commands, and manual compaction. Compaction renders only the user-entered
-  command arguments; bridge-authored guidance remains backend-only. A message
-  authored in the backend's own UI carries no prompt id and renders as an
-  ordinary transcript message. A harness that publishes no user echo at all
-  leaves the client's own copy to be settled by the next snapshot instead.
+  for the real dispatch. Claude compares image echoes by their semantic source
+  fields, including an image echo that omits the usual replay marker, so
+  backend-added metadata cannot strand the queued row. OpenCode applies the same
+  correlation to prompts, slash commands, and manual compaction.
+  Compaction renders only the user-entered command arguments; bridge-authored
+  guidance remains backend-only. A message authored in the backend's own UI
+  carries no prompt id and renders as an ordinary transcript message. A harness
+  that publishes no user echo at all leaves the client's own copy to be settled
+  by the next snapshot instead.
 - Queued and sending text render as the newest rows inside the scrollable
   transcript, never as controls pinned above the composer. They use the same
   brand bubble and Markdown rendering as settled user text; a compact status

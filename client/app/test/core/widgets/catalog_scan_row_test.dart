@@ -3,6 +3,7 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/widgets/catalog_scan_row.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 void main() {
@@ -14,29 +15,67 @@ void main() {
     dismissCount = 0;
   });
 
-  Future<void> pumpRow(WidgetTester tester, CatalogRescanState scan) {
-    return tester.pumpWidget(
+  /// Pumps the row and runs its reveal to completion, so the card is at full
+  /// height and hittable. A live row spins forever, so this never settles.
+  Future<void> pumpRow(
+    WidgetTester tester,
+    CatalogRescanState scan, {
+    bool reducedMotion = false,
+  }) async {
+    await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
-          body: CatalogScanRow(
-            scan: scan,
-            onCancel: () => cancelCount++,
-            onDismiss: () => dismissCount++,
+          body: Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(disableAnimations: reducedMotion),
+              child: CatalogScanRow(
+                scan: scan,
+                onCancel: () => cancelCount++,
+                onDismiss: () => dismissCount++,
+              ),
+            ),
           ),
         ),
       ),
     );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
   }
 
   group("CatalogScanRow", () {
-    testWidgets("renders nothing at all while idle", (tester) async {
+    testWidgets("takes no space at all while idle", (tester) async {
       await pumpRow(tester, const CatalogRescanState.idle());
 
-      expect(find.byType(PregoInlineAlertsNotifications), findsNothing);
-      expect(tester.getSize(find.byType(CatalogScanRow)).height, 0);
+      final loc = await AppLocalizations.delegate.load(const Locale("en"));
+      expect(find.text(loc.catalogScanRunningTitle), findsNothing);
+      expect(tester.getSize(find.byType(CatalogScanRow, skipOffstage: false)).height, 0);
+    });
+
+    // The detail line is rendered even before a harness reports, so the row
+    // does not shove the list down a second time when the first event lands.
+    testWidgets("keeps the same height from starting through running", (tester) async {
+      Future<double> heightFor(CatalogRescanState scan) async {
+        await pumpRow(tester, scan);
+        return tester.getSize(find.byType(CatalogScanRow)).height;
+      }
+
+      final starting = await heightFor(const CatalogRescanState.starting(pluginIds: {"codex"}));
+      final running = await heightFor(
+        const CatalogRescanState.running(activePluginName: "Codex", sessionsSeen: 148, pluginIds: {"codex"}),
+      );
+      final done = await heightFor(
+        const CatalogRescanState.succeeded(
+          harnessCount: 1,
+          counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 3),
+        ),
+      );
+
+      expect(starting, greaterThan(0));
+      expect(running, starting);
+      expect(done, starting);
     });
 
     testWidgets("reports the scan before any harness has reported progress", (tester) async {
@@ -190,6 +229,77 @@ void main() {
           const CatalogRescanState.running(activePluginName: "Codex", sessionsSeen: 9, pluginIds: {"codex"}),
         ),
         isFalse,
+      );
+    });
+
+    // SizeTransition only changes layout, so a retained card would keep its
+    // labels and its live action button reachable by keyboard at zero height.
+    testWidgets("unmounts the card once it has folded away", (tester) async {
+      await pumpRow(tester, const CatalogRescanState.failed(harnessCount: 1));
+      final loc = await AppLocalizations.delegate.load(const Locale("en"));
+      expect(find.text(loc.catalogScanDismiss, skipOffstage: false), findsOneWidget);
+
+      await pumpRow(tester, const CatalogRescanState.idle());
+
+      expect(
+        find.text(loc.catalogScanDismiss, skipOffstage: false),
+        findsNothing,
+        reason: "an invisible action must not stay in the tree",
+      );
+      expect(find.byType(PregoButtonsSolid, skipOffstage: false), findsNothing);
+    });
+
+    testWidgets("arrives without a transition when the OS asks for reduced motion", (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(disableAnimations: true),
+                child: CatalogScanRow(
+                  scan: const CatalogRescanState.idle(),
+                  onCancel: () => cancelCount++,
+                  onDismiss: () => dismissCount++,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      // Rebuilt in place and pumped exactly one frame — far short of the 260ms
+      // transition, so any height at all means it never ran.
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(disableAnimations: true),
+                child: CatalogScanRow(
+                  scan: const CatalogRescanState.starting(pluginIds: {"codex"}),
+                  onCancel: () => cancelCount++,
+                  onDismiss: () => dismissCount++,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+      final afterOneFrame = tester.getSize(find.byType(CatalogScanRow, skipOffstage: false)).height;
+      await tester.pump(const Duration(milliseconds: 400));
+      final settled = tester.getSize(find.byType(CatalogScanRow, skipOffstage: false)).height;
+
+      expect(settled, greaterThan(0));
+      expect(
+        afterOneFrame,
+        settled,
+        reason: "reduced motion means the row is simply there, not part-way through arriving",
       );
     });
 

@@ -1747,10 +1747,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catalogScanPullCaption => 'Keep pulling to scan all harnesses';
 
   @override
-  String get catalogScanDeepCaption => 'Scanning for new sessions';
+  String get catalogScanRunningTitle => 'Scanning all harnesses';
 
   @override
-  String get catalogScanRunningTitle => 'Scanning all harnesses';
+  String get catalogScanStartingDetail => 'Starting…';
 
   @override
   String catalogScanRunningDetail(String harness, int sessions) {
@@ -1846,6 +1846,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get catalogScanNoHarnessDetail => 'Check your harnesses in Settings';
+
+  @override
+  String harnessManagementScanFinished(String result) {
+    return 'Scan complete — $result';
+  }
+
+  @override
+  String harnessManagementScanPartlyFailed(int failed, int total) {
+    return '$failed of $total harnesses could not be scanned';
+  }
+
+  @override
+  String get harnessManagementScanFinishedFailed => 'Scan failed. Check the bridge log for details';
 
   @override
   String get harnessManagementScan => 'Scan for sessions';

@@ -21,7 +21,10 @@ content the transcript renders live and after reload.
   settlement. A failed current-route launch restores those attachments together
   with text/voice/command intent before the composer remounts; failure after route
   exit never restores them. Reconnect and options refresh cannot erase a pending
-  one-shot restoration.
+  one-shot restoration. While that local submission is sending or awaiting the
+  bridge queue, its transcript row previews its staged images; a bridge-owned
+  queued row exposes only its attachment count so image bytes are not rebroadcast
+  to other surfaces.
 - Maximum-size staged input is encoded with bounded event-loop yields through
   attachment base64, request JSON, and relay-envelope JSON/UTF-8. Encoding
   preserves exact bytes without copying attachment buffers through an isolate.

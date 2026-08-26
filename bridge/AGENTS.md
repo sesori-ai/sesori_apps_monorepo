@@ -32,9 +32,9 @@ Dependencies flow in one direction:
 
 1. `sesori_plugin_interface` — no internal deps; defines the contract (also the home of foundational primitives like `Log`, `Console`, `HostProcessService`)
 2. `sesori_bridge_foundation` — depends on interface; **bridge-wide** Layer-0 primitives shared by the main app AND plugins (`SemanticVersion`, `PlatformTarget`, `ChecksumValidator`, `BinaryDownloadClient`, format-keyed `ArchiveExtractor`, `CommandExecutor`/`HostProcessCommandExecutor`). NOT plugin-only.
-3. `sesori_plugin_runtime` — depends on interface; **plugin-only** managed-runtime supervision (`ManagedProcessService`, `ManagedRuntimeMonitor`, ownership/restart/intent). Used by plugins to supervise their backend process; the main app does not depend on it.
+3. `sesori_plugin_runtime` — depends on interface; **plugin-only** managed-runtime supervision and backend-neutral NDJSON subprocess transport (`ManagedProcessService`, `ManagedRuntimeMonitor`, `NdjsonProcessClient`, ownership/restart/intent). Used by plugins to supervise or communicate with backend processes; the main app does not depend on it.
 4. `sesori_plugin_opencode` and `sesori_plugin_codex` — depend on interface + foundation + runtime + `sesori_shared`
-5. `sesori_plugin_acp` — ACP protocol plugin base; depends on interface + foundation + `sesori_shared`
+5. `sesori_plugin_acp` — ACP protocol plugin base; depends on interface + foundation + runtime + `sesori_shared`
 6. `sesori_plugin_cursor` — Cursor descriptor/adapter; depends on interface + foundation + runtime + ACP + `sesori_shared`
 7. `sesori_plugin_omp` — Oh My Pi adapter; depends on interface + foundation + runtime + ACP
 8. `sesori_plugin_claude` — Claude Code adapter; depends on interface + foundation + `sesori_shared`

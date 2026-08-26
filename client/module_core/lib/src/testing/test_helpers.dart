@@ -548,6 +548,7 @@ void registerCoreFallbackValues() {
   registerFallbackValue(FakeUri());
   registerFallbackValue(StackTrace.empty);
   registerFallbackValue(const ProductAnalyticsEvent.analyticsSchemaReady());
+  registerFallbackValue(AccountStatus.existing);
   registerFallbackValue(SessionOptionsRequestMode.dynamic);
   registerFallbackValue(ProjectViewClaim());
   registerFallbackValue(ProjectViewPaneClaim());
@@ -826,12 +827,12 @@ class FakeAuthSession({required AuthState initialState}) implements AuthSession 
   Future<bool> restoreLocalSession() async => false;
 
   @override
-  Future<AuthUser> loginWithEmail({required String email, required String password}) async {
+  Future<AuthLoginResult> loginWithEmail({required String email, required String password}) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<AuthUser> loginWithApple({required String idToken, required String nonce}) async {
+  Future<AuthLoginResult> loginWithApple({required String idToken, required String nonce}) async {
     throw UnimplementedError();
   }
 }
@@ -872,9 +873,17 @@ class FakeCatalogRescanService() implements CatalogRescanService {
   @override
   Future<void> startAll() async => _startAlls.add(null);
 
+  void Function()? _beforeStartAnswers;
+
+  /// Sets a hook that runs inside [start] before it answers, so a test can
+  /// drive the state the real service would already have published by then: a
+  /// definite rejection settles the operation before the call returns.
+  void stubBeforeStartAnswers(void Function() hook) => _beforeStartAnswers = hook;
+
   @override
   Future<CatalogRescanStartResult> start({required String pluginId}) async {
     startedPluginIds.add(pluginId);
+    _beforeStartAnswers?.call();
     return _startResult;
   }
 

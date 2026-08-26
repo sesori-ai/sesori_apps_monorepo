@@ -13,6 +13,7 @@ import "auth_config.dart";
 import "interfaces/auth_session.dart";
 import "interfaces/auth_token_provider.dart";
 import "interfaces/oauth_flow_provider.dart";
+import "models/auth_login_result.dart";
 import "models/auth_state.dart";
 import "platform/oauth_device_descriptor_provider.dart";
 import "storage/oauth_storage_service.dart";
@@ -113,7 +114,7 @@ class AuthManager(
   }
 
   @override
-  Future<AuthUser> pollForResult() async {
+  Future<AuthLoginResult> pollForResult() async {
     final sessionToken = _oAuthSessionToken ?? (await _oAuthStorage.getOAuthSession()).sessionToken;
     final expiresAt = (await _oAuthStorage.getOAuthSession()).expiresAt;
 
@@ -161,6 +162,7 @@ class AuthManager(
             :final accessToken,
             :final refreshToken,
             :final user,
+            :final accountStatus,
           ):
             await _persistOAuthCompletion(
               accessToken: accessToken,
@@ -168,7 +170,7 @@ class AuthManager(
               user: user,
             );
             _ackOAuthCompletion(sessionToken: sessionToken);
-            return user;
+            return AuthLoginResult(user: user, accountStatus: accountStatus);
           case AuthSessionStatusResponseDenied():
             await _oAuthStorage.clearOAuthSession();
             throw StateError("OAuth authorization was denied");
@@ -299,7 +301,7 @@ class AuthManager(
   }
 
   @override
-  Future<AuthUser> resumeOAuthFlow() async {
+  Future<AuthLoginResult> resumeOAuthFlow() async {
     final session = await _oAuthStorage.getOAuthSession();
     if (session.sessionToken == null) {
       throw StateError("No OAuth flow is active");
@@ -403,7 +405,7 @@ class AuthManager(
   }
 
   @override
-  Future<AuthUser> loginWithEmail({required String email, required String password}) async {
+  Future<AuthLoginResult> loginWithEmail({required String email, required String password}) async {
     final uri = Uri.parse("$authBaseUrl/auth/email");
     final response = await _post(
       uri,
@@ -416,9 +418,9 @@ class AuthManager(
     _ensureSuccess(response, context: "Email/password login failed");
 
     final decodedBody = jsonDecodeMap(response.body);
-    final AuthResponse authResponse;
+    final AuthLoginResponse authResponse;
     try {
-      authResponse = AuthResponse.fromJson(decodedBody);
+      authResponse = AuthLoginResponse.fromJson(decodedBody);
     } on Object catch (e) {
       throw Exception("Failed to parse auth response: ${e.toString()}");
     }
@@ -438,11 +440,11 @@ class AuthManager(
     ]);
 
     _authState.add(AuthState.authenticated(user: authResponse.user));
-    return authResponse.user;
+    return AuthLoginResult(user: authResponse.user, accountStatus: authResponse.accountStatus);
   }
 
   @override
-  Future<AuthUser> loginWithApple({required String idToken, required String nonce}) async {
+  Future<AuthLoginResult> loginWithApple({required String idToken, required String nonce}) async {
     final uri = Uri.parse("$authBaseUrl/auth/apple/native");
     final response = await _post(
       uri,
@@ -452,9 +454,9 @@ class AuthManager(
     _ensureSuccess(response, context: "Apple Sign-In failed");
 
     final decodedBody = jsonDecodeMap(response.body);
-    final AuthResponse authResponse;
+    final AuthLoginResponse authResponse;
     try {
-      authResponse = AuthResponse.fromJson(decodedBody);
+      authResponse = AuthLoginResponse.fromJson(decodedBody);
     } on Object catch (e) {
       throw Exception("Failed to parse auth response: ${e.toString()}");
     }
@@ -474,7 +476,7 @@ class AuthManager(
     ]);
 
     _authState.add(AuthState.authenticated(user: authResponse.user));
-    return authResponse.user;
+    return AuthLoginResult(user: authResponse.user, accountStatus: authResponse.accountStatus);
   }
 
   @override

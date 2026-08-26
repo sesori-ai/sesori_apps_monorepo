@@ -1,5 +1,6 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "account_status.dart";
 import "auth_user.dart";
 
 part "session_status_response.freezed.dart";
@@ -15,6 +16,7 @@ sealed class AuthSessionStatusResponse with _$AuthSessionStatusResponse {
     required String accessToken,
     required String refreshToken,
     required AuthUser user,
+    @JsonKey(unknownEnumValue: AccountStatus.unknown) required AccountStatus accountStatus,
   }) = AuthSessionStatusResponseComplete;
 
   @FreezedUnionValue("denied")
