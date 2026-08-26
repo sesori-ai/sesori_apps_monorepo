@@ -5,9 +5,9 @@
 - **Plan slug:** `catalog-rescan`
 - **Implementation base:** `main` at
   `7b1ebe9bc629d05b5d104e76cd5dbaa1514d65a2`
-- **Series state:** Steps 1/8 to 6f/8 merged; Step 7/8 open
+- **Series state:** Steps 1/8 to 6f/8 merged; Steps 6g/8 and 7/8 open
 - **Current step:** reconcile the regression docs
-- **Next action:** land 7, then run the recorded matrix and retire the plan in step 8
+- **Next action:** land 6g and 7, then run the recorded matrix and retire the plan in step 8
 - **Origin issue:** [#961](https://github.com/sesori-ai/sesori_apps_monorepo/issues/961)
 - **External overlap:** [#1008](https://github.com/sesori-ai/sesori_apps_monorepo/issues/1008)
   owns Codex live updates; do not address it here
@@ -144,6 +144,7 @@
 | [x] | 6d/8 | `⚙️ [catalog-rescan] Quieten the scan row and its pull [step 6d/8]` | 400-700 | [PR #1114](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1114) merged |
 | [x] | 6e/8 | `🌿 [catalog-rescan] Report a Settings scan's outcome [step 6e/8]` | 350-600 | [PR #1118](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1118) merged |
 | [x] | 6f/8 | `🌿 [catalog-rescan] Run the ordinary refresh on release [step 6f/8]` | 250-450 | [PR #1119](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1119) merged |
+| [ ] | 6g/8 | `🌿 [catalog-rescan] Collapse a fired pull in one movement [step 6g/8]` | 60-140 | [PR #1123](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1123) open |
 | [ ] | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 | Open |
 | [ ] | 8/8 | `🌱 [catalog-rescan] Verify and retire the catalog rescan plan [step 8/8]` | 60-140 | Not started |
 
@@ -767,4 +768,21 @@ duplicate-emission nicety.
   that is how these documents already express coverage. Every dimension in the
   plan's table maps to an entry; the setup-blocked harness lives in
   `plugin-setup-and-lifecycle.md`, where 6c put it
+- **Step 6g origin:** owner report — releasing a fired pull parked the list an
+  indicator's height below the top before collapsing. The control reserves that
+  height when it arms its task and returns it when the task is done, and 6f made
+  the task finish on release, so the reserve survived just long enough for the
+  spring to settle onto it. A fired pull has nothing to wait for, so its task now
+  finishes when the second stage fires. Measured: 23 frames resting at the
+  indicator height before, at most 4 after
+- **Step 6g fast path:** review caught that the first fix only worked for a
+  gradual pull. On a single-frame crossing the stage fires before the control has
+  invoked the refresh, so the release found nothing to release. The collapse test
+  now runs at both pull speeds — the gradual one passed against the unfixed fast
+  path, which is why it missed it. Second time on this control that a
+  single-frame crossing slipped past tests built from 40px increments
+- **Step 8 preparation:** the plan's status header still said "Step 1/8 plan
+  publication", named a long-gone working branch, and promised "eight PRs"; its
+  step table stopped at 6c. Corrected as part of step 8's plan-and-tracker
+  agreement check, ahead of the matrix run that step still needs
 - **Final disposition:** pending
