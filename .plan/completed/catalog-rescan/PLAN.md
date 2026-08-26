@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `catalog-rescan`
-- **Status:** Active - steps 1/8 to 6g/8 delivered; step 7/8 in review, step 8/8 outstanding
+- **Status:** Completed 2026-08-26 - every step merged and every matrix row passed
 - **Plan date:** 2026-08-23
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main` at
