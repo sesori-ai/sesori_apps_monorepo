@@ -142,7 +142,8 @@
 | [x] | 6b/8 | `⚙️ [catalog-rescan] Show the catalog scan in the lists [step 6b/8]` | 500-800 | [PR #1103](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1103) merged |
 | [x] | 6c/8 | `🌿 [catalog-rescan] Scan one harness from Settings [step 6c/8]` | 350-600 | [PR #1113](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1113) merged |
 | [x] | 6d/8 | `⚙️ [catalog-rescan] Quieten the scan row and its pull [step 6d/8]` | 400-700 | [PR #1114](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1114) merged |
-| [ ] | 6e/8 | `🌿 [catalog-rescan] Report a Settings scan's outcome [step 6e/8]` | 350-600 | Open |
+| [x] | 6e/8 | `🌿 [catalog-rescan] Report a Settings scan's outcome [step 6e/8]` | 350-600 | [PR #1118](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1118) merged |
+| [x] | 6f/8 | `🌿 [catalog-rescan] Run the ordinary refresh on release [step 6f/8]` | 250-450 | [PR #1119](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1119) merged |
 | [ ] | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 | Open |
 | [ ] | 8/8 | `🌱 [catalog-rescan] Verify and retire the catalog rescan plan [step 8/8]` | 60-140 | Not started |
 
@@ -464,7 +465,8 @@ duplicate-emission nicety.
   headless completion line **is** user-visible, so this step now records the
   totals-versus-delta contract and its absent-delta fallback in that document
   and in its L2 Routine entry. Step 7 builds on that rather than restating it
-- **Step 3 PR:** pending
+- **Step 3 PR:** [#1074](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1074)
+  merged
 - **Step 4 base:** `main` at `669fd0cd0`
 - **Step 4 changed lines:** 1,271 of delivered code against merge-base
   `669fd0cd045e5ea8a6740e4f944d0634b0d11939`, over the 700-1,050 target. The
@@ -658,6 +660,8 @@ duplicate-emission nicety.
   through two stateless session hosts to restore a success confirmation for a
   shallow pull taken during someone else's scan, where a progress row is already
   on screen
+- **Step 6d PR:** [#1114](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1114)
+  merged
 - **Step 6e origin:** owner question — does a Settings-started scan indicate
   success? It does not, and the gap is one this plan created. The aggregate row
   is hosted only by the three lists, and `_successVisibleFor` clears a success
@@ -712,7 +716,7 @@ duplicate-emission nicety.
   design-system change with its own call sites, not part of this step. Worth
   doing separately
 - **Step 6e PR:** [#1118](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1118)
-  open
+  merged
 - **Step 6f origin:** two owner reports from a running build, one root cause.
   The pull's own read reaches the same bridge the scan just put to work, so it
   resolves only when the scan does. That held the list open (below), and it also
@@ -749,6 +753,8 @@ duplicate-emission nicety.
   the scan just put to work, so it resolved only when the scan did. The control
   now stops waiting the moment the second stage fires; the refresh still runs.
   Test confirmed the list was held 60px down without the fix and 0 with it
+- **Step 6f PR:** [#1119](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1119)
+  merged
 - **Step 7 scope, as found:** smaller than the plan describes.
   `plugin-setup-and-lifecycle.md` was reconciled in 6c, PR #1106 had already
   recorded the post-commit refresh contract, and 6f corrected the pull contract.
