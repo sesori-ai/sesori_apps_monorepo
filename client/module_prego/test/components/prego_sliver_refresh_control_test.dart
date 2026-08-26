@@ -65,13 +65,15 @@ void main() {
       expect(deepRefreshes, 0, reason: "the deep threshold was never reached");
     });
 
-    testWidgets("a pull past the deep threshold runs both", (tester) async {
+    // The second stage reaches the same backend and settles into a refresh of
+    // its own, so the ordinary one would only queue work behind it.
+    testWidgets("a pull past the deep threshold runs the second stage instead", (tester) async {
       await tester.pumpWidget(harness(withDeepRefresh: true));
 
       await pullBy(tester, _deepTrigger + 80);
 
-      expect(softRefreshes, 1);
       expect(deepRefreshes, 1);
+      expect(softRefreshes, 0, reason: "the scan supersedes the ordinary refresh");
     });
 
     testWidgets("a pull abandoned before the trigger runs neither", (tester) async {
@@ -394,53 +396,6 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    // The released refresh has nothing downstream left to observe it, and this
-    // package has no logger of its own.
-    testWidgets("a released refresh reports its own failure", (tester) async {
-      final completer = Completer<void>();
-      final reported = <Object>[];
-      final previous = FlutterError.onError;
-      FlutterError.onError = (details) => reported.add(details.exception);
-      addTearDown(() => FlutterError.onError = previous);
-
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(extensions: [PregoDesignSystem.light]),
-          home: Scaffold(
-            body: CustomScrollView(
-              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-              slivers: [
-                PregoSliverRefreshControl(
-                  onRefresh: () => completer.future,
-                  decorate: null,
-                  onPulledExtentChanged: null,
-                  deepRefresh: PregoDeepRefresh(
-                    onDeepRefresh: () => deepRefreshes++,
-                    pullCaption: "Keep pulling to find new sessions",
-                  ),
-                ),
-                SliverList.list(
-                  children: [for (var i = 0; i < 20; i++) SizedBox(height: 80, child: Text("row $i"))],
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-
-      final gesture = await tester.startGesture(const Offset(200, 100));
-      await gesture.moveBy(const Offset(0, 900));
-      await tester.pump();
-      await tester.pump();
-      await gesture.up();
-      await tester.pumpAndSettle();
-
-      completer.completeError(StateError("refresh blew up"), StackTrace.current);
-      await tester.pumpAndSettle();
-
-      expect(reported, hasLength(1));
-      expect(reported.single, isA<StateError>());
-    });
 
     testWidgets("a long caption truncates rather than overflowing", (tester) async {
       await tester.pumpWidget(
@@ -504,10 +459,11 @@ void main() {
 
       await pullBy(tester, _deepTrigger + 80);
       expect(deepRefreshes, 1);
+      expect(softRefreshes, 0);
 
       await pullBy(tester, _softTrigger + 40);
 
-      expect(softRefreshes, 2);
+      expect(softRefreshes, 1, reason: "the next pull is an ordinary one and runs");
       expect(deepRefreshes, 1, reason: "the arming must reset after each release");
     });
   });

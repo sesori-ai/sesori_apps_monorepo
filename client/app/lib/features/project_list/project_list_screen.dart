@@ -360,20 +360,8 @@ class _ProjectListBodyState() extends State<_ProjectListBody> {
   Future<void> _refreshProjects(BuildContext context) async {
     final loc = context.loc;
     final cubit = context.read<ProjectListCubit>();
-    // Read before the refresh, compared after: the question is whether *this*
-    // gesture also started a scan, and only the gesture can answer it. Asking
-    // the presented scan instead was wrong twice over — it has already finished
-    // by the time this read returns, and it clears itself on a timer a slow
-    // read outlives.
-    final scansBefore = cubit.catalogScanStarts;
     final success = await cubit.refreshProjects();
     if (!context.mounted) return;
-    // One pull, one report — but only for a confirmation. The scan this same
-    // pull started reports itself in the row above the list, so a "Projects
-    // updated" toast beside it announces the smaller half of one action. A
-    // *failure* is never suppressed: the row reports the scan, not this read,
-    // and a pull that silently did nothing is worse than one toast too many.
-    if (success && cubit.catalogScanStarts != scansBefore) return;
     PregoPopupAlertPresenter.of(context).show(
       title: success ? loc.projectListRefreshSuccess : loc.projectListRefreshFailed,
       variant: success ? PregoPopupAlertsNotificationsVariant.success : PregoPopupAlertsNotificationsVariant.error,

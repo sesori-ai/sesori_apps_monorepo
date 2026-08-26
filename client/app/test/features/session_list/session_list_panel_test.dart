@@ -29,9 +29,6 @@ void main() {
     when(() => cubit.state).thenReturn(
       const SessionListState.loaded(sessions: [], baseBranch: null, repoSlug: null),
     );
-    // Read either side of a pull's own refresh, to tell a gesture that also
-    // started a catalog scan from one that did not.
-    when(() => cubit.catalogScanStarts).thenReturn(0);
   });
 
   // Renders the real panel at a fixed width; the header sits inside the panel's
@@ -125,15 +122,22 @@ void main() {
     final content = find.byKey(const Key("session-empty-terminal"));
     final initialContentTop = tester.getTopLeft(content).dy;
 
+    // The refresh is dispatched on release, not at the trigger, so the drag
+    // arms it and letting go is what starts it. Hold still before letting go:
+    // the control waits for the overscroll to spring back to the extent it
+    // holds itself, which a fling delays well past this window.
     final gesture = await tester.startGesture(tester.getCenter(content));
-    for (var step = 0; step < 30 && !refreshStarted; step++) {
+    for (var step = 0; step < 30; step++) {
       await gesture.moveBy(const Offset(0, 10));
       await tester.pump();
     }
-    expect(refreshStarted, isTrue);
+    await gesture.moveBy(Offset.zero);
+    await tester.pump(const Duration(milliseconds: 200));
     await gesture.up();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    for (var frame = 0; frame < 60 && !refreshStarted; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(refreshStarted, isTrue);
 
     expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
     expect(find.byType(RefreshProgressIndicator), findsNothing);

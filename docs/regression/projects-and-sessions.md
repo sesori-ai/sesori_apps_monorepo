@@ -54,13 +54,18 @@ child sessions with titles, activity, statuses, and unseen state.
   reserved. Android button navigation and other platforms retain the full row
   as a swipe target.
 - Pull-to-refresh provides visible drag and in-flight feedback in both the
-  full-screen lists and the wide split-view session pane. On every platform,
-  releasing an ordinary pull while its refresh is pending keeps the pane content
-  displaced and its Cupertino indicator visible. A pull that crossed the deeper
-  catalog-scan threshold is the exception: it stops holding the content the
-  moment that stage fires, and shows neither indicator nor caption afterwards,
-  because the scan row is what reports the run from then on. Its ordinary
-  refresh still runs, and still reports a failure.
+  full-screen lists and the wide split-view session pane. The refresh itself is
+  dispatched when the pull is let go, not when it crosses the trigger, so the
+  gesture has already chosen its stage by the time anything runs. On every
+  platform, releasing an ordinary pull while its refresh is pending keeps the
+  pane content displaced and its Cupertino indicator visible, and reports the
+  outcome when it settles.
+- A pull that crossed the deeper catalog-scan threshold runs no ordinary refresh
+  at all: the scan reaches the same backend and settles into a list refresh of
+  its own. It stops holding the content the moment that stage fires and shows
+  neither indicator nor caption afterwards, because the scan row is the only
+  report from then on. A pull that finds no harness to scan therefore reports
+  that and leaves the list as it was.
 - A session created in a dedicated worktree receives a system prompt identifying
   that worktree, its initial branch, and base branch. The prompt requires all
   work to remain in that worktree, while permitting use of the initial branch,

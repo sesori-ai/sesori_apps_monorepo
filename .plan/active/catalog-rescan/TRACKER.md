@@ -56,6 +56,7 @@
 |---|---|---|
 | Refresh model | Two-stage pull: soft unchanged, deep fires past `1.8 x triggerDistance` | A rescan boots every enabled harness backend, so it must be deliberate. Raised from 1.6 in 6d: too easy to reach by accident |
 | Deep-pull commit | On crossing the threshold, not on release | `CupertinoSliverRefreshControl` fires `onRefresh` on crossing and never on release, so release semantics were unbuildable. Owner decision 2026-08-24 |
+| Ordinary refresh dispatch | On release, and never at all for a pull that fired the second stage | Owner decision 2026-08-25. Dispatching at the trigger raced the pull: the read could land before the user committed, so nothing downstream could tell a plain refresh from the opening half of a scan. Four separate findings traced to that one race |
 | Gesture owner | One `module_prego` `PregoSliverRefreshControl` | Three hosts, only two of which use `PregoGlassScaffold`; the pane must not re-implement thresholds in `client/app` |
 | Row weight | Tinted card, distinct from the surrounding tiles | Reads as status rather than content, so it is never mistaken for an openable row |
 | Row component | Bespoke tinted card, not `PregoInlineAlertsNotifications` | 6b reused the inline alert to avoid building one; it paints `colors.fgPrimary`, so the row was a near-black slab over a light list. An alert interrupts, this reports |
@@ -720,7 +721,18 @@ duplicate-emission nicety.
   pull confirmed itself on top of the row reporting the same run. The guard now
   asks whether the row is showing anything at all. Failures are still never
   suppressed
-- **Step 6f seam fix:** three rounds of findings landed on the same seam — the
+- **Step 6f root fix:** the owner chose to stop dispatching the ordinary
+  refresh at the trigger and run it on release instead, where the gesture has
+  already chosen its stage — and to skip it entirely for a pull that fired the
+  second stage, since the scan reaches the same backend and settles into a list
+  refresh of its own. That deleted the whole class at once: the race, the held
+  pull, the double report, and the orphaned future that the earlier release
+  mechanism created. The scan-start counter, both host guards and the
+  `FlutterError.reportError` handler all came out with it
+- **Step 6f residue:** a deep pull that finds no harness to scan now leaves the
+  list unrefreshed, because it runs no ordinary refresh and the scan never
+  opens. The row says what happened, and a shallow pull refreshes
+- **Step 6f superseded:** three rounds of findings landed on the same seam — the
   toast guard reading presentation state at completion rather than identifying
   the gesture. The row-based guard failed in both directions: it missed a deep
   pull whose read outlived the row's own four-second clear, and it suppressed an
