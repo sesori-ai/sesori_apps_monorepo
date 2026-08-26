@@ -56,8 +56,9 @@ child sessions with titles, activity, statuses, and unseen state.
   announces how the run ended, once, and only for a run it started itself.
 - A finished scan says what it found, sessions first, and clears itself shortly
   after. Everything else waits to be dismissed: some harnesses failing, all of
-  them failing, a bridge too old to import at all, and no harness available to
-  read. A diagnostic the user did not get to read is worse than a row that
+  them failing, a bridge the app cannot start a scan on — either because it has
+  no import route at all or because it cannot tell the app which harnesses it
+  has — and no harness available to read. A diagnostic the user did not get to read is worse than a row that
   outstays its welcome. Losing or regaining the connection clears any row,
   waiting or not, as does the connected bridge turning out to be a different
   machine — none of those rows describes a run this bridge is still party to.
@@ -210,12 +211,15 @@ leave the surface that started one. Restore harness eligibility afterwards.
   has no active system back gesture stops accepting row actions.
 - A wide session pane starts an ordinary refresh without showing or holding its
   pull indicator until the operation completes.
+- A pull that started a scan comes to rest an indicator's height below the top
+  before collapsing, rather than settling to the top in one movement.
 - A scan offered for a harness the bridge will not import from, a pull
   confirming itself beside the row reporting the same run, two rows for one
   scan, or a row whose height changes as harnesses report.
-- A successful scan that never clears, a failure that clears itself, a row
-  reporting totals as though they were new, or a delta claimed while a harness
-  in the run omitted one.
+- A successful scan that never clears, a failure that clears itself while the
+  connection and the bridge behind it both hold steady, a row reporting totals
+  as though they were new, or a delta claimed while a harness in the run
+  omitted one.
 - A reconnect announcing a scan that already finished, a recovered run claiming
   a summary it never saw, or a cancelled scan leaving its row behind.
 - A bridge with no import route reported as a failure rather than as one that
