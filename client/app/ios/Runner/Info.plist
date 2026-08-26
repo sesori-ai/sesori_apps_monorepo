@@ -90,6 +90,8 @@
 		</array>
 		<key>NSMicrophoneUsageDescription</key>
 		<string>Microphone access is needed for voice-to-text transcription</string>
+		<key>NSLocalNetworkUsageDescription</key>
+		<string>Sesori uses your local network to show an Android emulator streamed from your Mac</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>Photos access is needed to save images from coding sessions</string>
 		<key>NSPhotoLibraryUsageDescription</key>

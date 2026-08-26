@@ -71,6 +71,7 @@ _DeviceCanvasStreamStartRequest _$DeviceCanvasStreamStartRequestFromJson(
   sessionId: json['sessionId'] as String,
   deviceKey: json['deviceKey'] as String,
   expectedClaimRevision: (json['expectedClaimRevision'] as num).toInt(),
+  operationId: json['operationId'] as String,
   control: json['control'] as bool,
   offer: DeviceCanvasRtcDescription.fromJson(
     Map<String, dynamic>.from(json['offer'] as Map),
@@ -93,6 +94,7 @@ Map<String, dynamic> _$DeviceCanvasStreamStartRequestToJson(
   'sessionId': instance.sessionId,
   'deviceKey': instance.deviceKey,
   'expectedClaimRevision': instance.expectedClaimRevision,
+  'operationId': instance.operationId,
   'control': instance.control,
   'offer': instance.offer.toJson(),
   'iceCandidates': instance.iceCandidates.map((e) => e.toJson()).toList(),
@@ -156,6 +158,7 @@ _DeviceCanvasStreamStatusRequest _$DeviceCanvasStreamStatusRequestFromJson(
   sessionId: json['sessionId'] as String,
   deviceKey: json['deviceKey'] as String,
   expectedClaimRevision: (json['expectedClaimRevision'] as num).toInt(),
+  operationId: json['operationId'] as String,
 );
 
 Map<String, dynamic> _$DeviceCanvasStreamStatusRequestToJson(
@@ -165,6 +168,7 @@ Map<String, dynamic> _$DeviceCanvasStreamStatusRequestToJson(
   'sessionId': instance.sessionId,
   'deviceKey': instance.deviceKey,
   'expectedClaimRevision': instance.expectedClaimRevision,
+  'operationId': instance.operationId,
 };
 
 _DeviceCanvasStreamStatusResponse _$DeviceCanvasStreamStatusResponseFromJson(
@@ -196,6 +200,7 @@ _DeviceCanvasStreamStatusResponse _$DeviceCanvasStreamStatusResponseFromJson(
       : DeviceCanvasTurnConfiguration.fromJson(
           Map<String, dynamic>.from(json['turn'] as Map),
         ),
+  offerFingerprint: json['offerFingerprint'] as String?,
 );
 
 Map<String, dynamic> _$DeviceCanvasStreamStatusResponseToJson(
@@ -207,6 +212,7 @@ Map<String, dynamic> _$DeviceCanvasStreamStatusResponseToJson(
   'answer': ?instance.answer?.toJson(),
   'iceCandidates': instance.iceCandidates.map((e) => e.toJson()).toList(),
   'turn': ?instance.turn?.toJson(),
+  'offerFingerprint': ?instance.offerFingerprint,
 };
 
 const _$DeviceCanvasStreamStatusOutcomeEnumMap = {

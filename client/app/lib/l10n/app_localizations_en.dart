@@ -908,6 +908,57 @@ class AppLocalizationsEn extends AppLocalizations {
       'The request may have completed, but its result could not be confirmed. Status was refreshed.';
 
   @override
+  String get deviceCanvasVideoOpen => 'Watch';
+
+  @override
+  String deviceCanvasVideoOpenDevice(String deviceName) {
+    return 'Watch $deviceName';
+  }
+
+  @override
+  String get deviceCanvasVideoClose => 'Close preview';
+
+  @override
+  String get deviceCanvasVideoLanPreview => 'LAN video preview';
+
+  @override
+  String get deviceCanvasVideoConnecting => 'Connecting to Device Canvas...';
+
+  @override
+  String get deviceCanvasVideoLive => 'Live';
+
+  @override
+  String get deviceCanvasVideoStopped => 'The video preview stopped. Close it and start a new preview.';
+
+  @override
+  String get deviceCanvasVideoLanHelp => 'Video only. Keep this phone and the Sesori bridge on the same local network.';
+
+  @override
+  String get deviceCanvasVideoUnavailable => 'This device is no longer available.';
+
+  @override
+  String get deviceCanvasVideoUnauthorized => 'This device is no longer assigned to this session.';
+
+  @override
+  String get deviceCanvasVideoUnsupported => 'This bridge or device does not support video preview.';
+
+  @override
+  String get deviceCanvasVideoConflict => 'Another controller is already watching this device.';
+
+  @override
+  String get deviceCanvasVideoConnectionFailed =>
+      'The local video connection failed. Check that both devices are on the same network.';
+
+  @override
+  String get deviceCanvasVideoSignalingFailed => 'Device Canvas could not start the video preview.';
+
+  @override
+  String get deviceCanvasVideoLanOnly => 'This preview is limited to local-network connections.';
+
+  @override
+  String get deviceCanvasVideoExpired => 'The video preview lease expired. Close it and start a new preview.';
+
+  @override
   String get sessionDetailPromptHint => 'Ask anything...';
 
   @override

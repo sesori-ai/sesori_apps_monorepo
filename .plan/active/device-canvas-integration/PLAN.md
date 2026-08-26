@@ -3,8 +3,9 @@
 ## Status
 
 - **Plan slug:** `device-canvas-integration`
-- **Status:** Active - Steps 1-7 implemented and verified; Step 8 spike executed
-  with a Phase 2 entry-gate NO-GO
+- **Status:** Active - Steps 1-9 implemented; an approved default-off pre-Step-12
+  LAN video validation viewport is implemented; the Phase 2 entry gate remains
+  NO-GO pending physical-LAN and remaining release evidence
 - **Plan date:** 2026-08-18
 - **Primary repository:** `sesori-ai/sesori_apps_monorepo`
 - **Companion repository:** `daniil-shumko/device-canvas`
@@ -748,6 +749,50 @@ the integrated source and authorization unknowns, but it does not open the Phase
 2 product gate: input, external TURN, latency/resource distributions, reconnect
 coverage, complete dependency acceptance, and iOS containment remain open.
 
+### Default-off LAN viewport validation exception
+
+On 2026-08-26 an explicitly approved validation exception added the smallest
+Sesori viewport needed to exercise Step 9's Android video path before formal
+Steps 10-12. The exception is compiled behind
+`DEVICE_CANVAS_LAN_VIDEO=true`; it is off by default and does not change the
+delivery order or Phase 2 **NO-GO** decision.
+
+The exception is deliberately narrower than Step 12:
+
+- video receive only, with `control: false`, no DataChannel, input, microphone,
+  camera, media persistence, analytics, automatic retry, or reconnect;
+- one peer/cubit owner inside the owning session's Device Canvas sheet, with
+  explicit close, background close, claim-revision fencing, relay-loss close,
+  lease expiry, and renderer/peer disposal;
+- direct host candidates only. The client retains RFC1918, IPv4 link-local,
+  IPv6 ULA/link-local, and mDNS host candidates while removing relay,
+  server-reflexive, and globally routed candidates from both SDP and explicit
+  candidate lists. Candidate foundation, component, transport, priority,
+  address, port, type, extension, mDNS, and IPv6-zone syntax is validated before
+  native WebRTC sees it. A non-null TURN response fails closed and releases the
+  lease;
+- uncertain-start status is adopted only when the bridge echoes the originating
+  offer fingerprint. Each start also carries a bounded random operation ID, and
+  status can wait for or inspect only the matching operation and lease. Status
+  reads retry at most three times, mismatched or legacy uncorrelated active leases
+  are never applied or stopped, and exact late successful starts are released.
+  Bridge start processing is bounded to 15 seconds, and a timeout or late
+  completion cannot promote a lease;
+- a durable claim reassignment publishes its committed identity before claim
+  projection reads, so the prior revision's lease closes even when projection is
+  delayed;
+- the viewport remains connecting until the native renderer reports its first
+  displayed frame. A transient WebRTC disconnect closes the preview rather than
+  reconnecting because reconnect is outside this validation slice. Client-side
+  expiry sends the exact idempotent stop request, and native signaling exceptions
+  are logged only by sanitized runtime category.
+
+The local-address filter is a topology constraint, not the security boundary: a
+VPN can expose private routes. Current claim authorization, encrypted routed
+signaling, exact offer correlation, DTLS fingerprint validation, and SRTP remain
+authoritative. Physical same-LAN testing is still required; successful unit
+tests or app builds alone do not complete this exception's validation.
+
 The component-level decisions are:
 
 - **GO, Android architecture candidate:** retain the existing scrcpy compressed
@@ -794,7 +839,10 @@ signing, and deliberate private-ABI failure tests on every claimed toolchain.
   `CHANGE_NETWORK_STATE`, and `MODIFY_AUDIO_SETTINGS`; omitting
   `ACCESS_NETWORK_STATE` caused the native network monitor to abort. The plugin
   also emits a forward-compatibility warning because it still applies the Kotlin
-  Gradle plugin instead of Built-in Kotlin.
+  Gradle plugin instead of Built-in Kotlin. The Dart feature flag gates UI
+  reachability, not pub dependency resolution or native plugin registration, so
+  disabled production builds still contain the SDK and platform declarations;
+  complete dependency acceptance remains a release gate.
 - The Device Canvas candidate is `stasel/WebRTC 151.0.0` (WebRTC BSD-3 license).
   Its release XCFramework is 42.6 MiB compressed, 95.7 MiB unpacked, and its
   universal macOS binary is 27.1 MiB. The actively maintained LiveKit build was
@@ -908,6 +956,9 @@ they are attainable on every claimed release target.
   but remote presentation and analytics use bounded privacy-safe categories.
 - A remote stream begins only from an explicit authenticated user action in the
   owning session. An agent claim alone cannot start screen sharing.
+- The default-off LAN validation viewport strips non-local ICE candidates, but
+  authorization and DTLS-SRTP remain the security boundary; private VPN routes
+  are not treated as proof of physical-LAN adjacency.
 
 ## Analytics Assessment
 
@@ -968,6 +1019,11 @@ protocol, or a relay-server video tunnel, stop and revise this plan first.
 | 10/12 | Infrastructure | `[device-canvas-integration] provision encrypted media relay [step 10/12]` | Provision STUN/TURN, short-lived credential issuance, observability, abuse limits, and remote-network verification without media decryption. |
 | 11/12 | Device Canvas | `[device-canvas-integration] stream and control Android emulators [step 11/12]` | Add the evidence-selected Android WebRTC source, DataChannel input, revocation, orientation, local rendering preservation, and tests. |
 | 12/12 | Sesori | `🚧 [device-canvas-integration] feat(client): control claimed simulators remotely [step 12/12]` | Add the Flutter viewport, lifecycle/input/accessibility behavior, cumulative Phase 2 matrix, regression docs, compatibility evidence, and plan retirement. |
+
+The default-off LAN video-only viewport described above is an approved
+validation exception ahead of this table. It does not mark Step 12 complete:
+the formal step still owns input, TURN/arbitrary-network behavior, reconnect,
+release evidence, and the cumulative matrix.
 
 Every Sesori production step requires the owning package's focused tests and
 strict analysis. Generated files are changed only through their source and

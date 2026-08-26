@@ -27,8 +27,10 @@ class DeviceCanvasStreamService({
   required final DeviceCanvasStreamGateway _gateway,
   required final ServerClock _clock,
   Duration leaseDuration = const Duration(minutes: 10),
+  Duration startOperationTimeout = const Duration(seconds: 15),
 }) {
   final Duration _leaseDuration = leaseDuration;
+  final Duration _startOperationTimeout = startOperationTimeout;
   final Random _random = Random.secure();
   final CompositeSubscription _subscriptions = CompositeSubscription();
   final StreamController<DeviceCanvasStreamChange> _changes = StreamController<DeviceCanvasStreamChange>.broadcast(
@@ -37,10 +39,12 @@ class DeviceCanvasStreamService({
   final Map<int, Object> _connectionIncarnations = <int, Object>{};
   final Map<String, _DeviceCanvasStreamLease> _leasesByDeviceKey = <String, _DeviceCanvasStreamLease>{};
   final Map<String, _DeviceCanvasStreamLease> _leasesById = <String, _DeviceCanvasStreamLease>{};
+  final Set<_DeviceCanvasStreamStartOperation> _startOperations = <_DeviceCanvasStreamStartOperation>{};
   bool _accepting = true;
   bool _disposed = false;
 
   this {
+    _claimService.committedClaims.listen(_handleCommittedClaim).addTo(_subscriptions);
     _claimService.changes.listen(_handleClaimChange).addTo(_subscriptions);
     _integrationState.connectionChanges.listen(_handleConnectionChange).addTo(_subscriptions);
     _integrationState.presenceChanges.listen(_handlePresenceChange).addTo(_subscriptions);
@@ -80,6 +84,37 @@ class DeviceCanvasStreamService({
   Future<DeviceCanvasStreamStartResponse> start({
     required DeviceCanvasStreamClient client,
     required DeviceCanvasStreamStartRequest request,
+  }) {
+    final operation = _DeviceCanvasStreamStartOperation(
+      bridgeId: request.expectedBridgeId,
+      sessionId: request.sessionId,
+      deviceKey: request.deviceKey,
+      claimRevision: request.expectedClaimRevision,
+      operationId: request.operationId,
+      connectionId: client.connectionId,
+      connectionIncarnation: client.connectionIncarnation,
+    );
+    _startOperations.add(operation);
+    return _start(client: client, request: request, operation: operation)
+        .timeout(
+          _startOperationTimeout,
+          onTimeout: () {
+            _cancelStartOperation(operation);
+            return _startWithoutPayload(DeviceCanvasStreamStartOutcome.unavailable);
+          },
+        )
+        .whenComplete(() {
+          final lease = operation.lease;
+          if (lease != null && lease.answer == null) _cancelStartOperation(operation);
+          _startOperations.remove(operation);
+          if (!operation.settled.isCompleted) operation.settled.complete();
+        });
+  }
+
+  Future<DeviceCanvasStreamStartResponse> _start({
+    required DeviceCanvasStreamClient client,
+    required DeviceCanvasStreamStartRequest request,
+    required _DeviceCanvasStreamStartOperation operation,
   }) async {
     final authorization = await _authorize(
       client: client,
@@ -89,6 +124,7 @@ class DeviceCanvasStreamService({
       expectedClaimRevision: request.expectedClaimRevision,
       control: request.control,
     );
+    if (operation.cancelled) return _startWithoutPayload(DeviceCanvasStreamStartOutcome.unavailable);
     switch (authorization) {
       case _DeviceCanvasStreamUnauthorized():
         return _startWithoutPayload(DeviceCanvasStreamStartOutcome.unauthorized);
@@ -97,8 +133,18 @@ class DeviceCanvasStreamService({
       case _DeviceCanvasStreamUnsupported():
         return _startWithoutPayload(DeviceCanvasStreamStartOutcome.unsupported);
       case _DeviceCanvasStreamAuthorized(:final bridgeId):
-        if (_leasesByDeviceKey.containsKey(request.deviceKey)) {
-          return _startWithoutPayload(DeviceCanvasStreamStartOutcome.controllerConflict);
+        final existingLease = _leasesByDeviceKey[request.deviceKey];
+        if (existingLease != null) {
+          if (_matchesLeaseIdentity(
+            lease: existingLease,
+            bridgeId: bridgeId,
+            sessionId: request.sessionId,
+            deviceKey: request.deviceKey,
+            claimRevision: request.expectedClaimRevision,
+          )) {
+            return _startWithoutPayload(DeviceCanvasStreamStartOutcome.controllerConflict);
+          }
+          _removeLease(lease: existingLease, reason: DeviceCanvasStreamRevokeReason.claimChanged, notifyCanvas: true);
         }
 
         final expiresAt = _clock.now().add(_leaseDuration).millisecondsSinceEpoch;
@@ -108,11 +154,14 @@ class DeviceCanvasStreamService({
           sessionId: request.sessionId,
           deviceKey: request.deviceKey,
           claimRevision: request.expectedClaimRevision,
+          operationId: request.operationId,
           connectionId: client.connectionId,
           connectionIncarnation: client.connectionIncarnation,
           expiresAt: expiresAt,
           control: request.control,
+          offerFingerprint: request.offer.fingerprint,
         );
+        operation.lease = lease;
         _leasesByDeviceKey[lease.deviceKey] = lease;
         _leasesById[lease.leaseId] = lease;
         lease.expiryTimer = Timer(_leaseDuration, () {
@@ -131,6 +180,7 @@ class DeviceCanvasStreamService({
           iceCandidates: request.iceCandidates,
           turn: null,
         );
+        if (operation.cancelled) return _startAfterRevocation(lease);
         if (!_isCurrentLease(lease)) return _startAfterRevocation(lease);
 
         final currentAuthorization = await _authorize(
@@ -141,6 +191,7 @@ class DeviceCanvasStreamService({
           expectedClaimRevision: request.expectedClaimRevision,
           control: request.control,
         );
+        if (operation.cancelled) return _startAfterRevocation(lease);
         if (!_isCurrentLease(lease)) return _startAfterRevocation(lease);
         if (currentAuthorization is! _DeviceCanvasStreamAuthorized) {
           _removeLease(
@@ -191,7 +242,7 @@ class DeviceCanvasStreamService({
     required DeviceCanvasStreamClient client,
     required DeviceCanvasStreamStatusRequest request,
   }) async {
-    final authorization = await _authorize(
+    var authorization = await _authorize(
       client: client,
       expectedBridgeId: request.expectedBridgeId,
       sessionId: request.sessionId,
@@ -199,28 +250,56 @@ class DeviceCanvasStreamService({
       expectedClaimRevision: request.expectedClaimRevision,
       control: false,
     );
-    switch (authorization) {
-      case _DeviceCanvasStreamUnauthorized():
-        return _statusWithoutPayload(DeviceCanvasStreamStatusOutcome.unauthorized);
-      case _DeviceCanvasStreamUnavailable() || _DeviceCanvasStreamUnsupported():
-        return _statusWithoutPayload(DeviceCanvasStreamStatusOutcome.unavailable);
-      case _DeviceCanvasStreamAuthorized():
-        final lease = _leasesByDeviceKey[request.deviceKey];
-        if (lease == null || lease.answer == null) {
-          return _statusWithoutPayload(DeviceCanvasStreamStatusOutcome.inactive);
-        }
-        if (!_isLeaseClient(lease: lease, client: client)) {
-          return _statusWithoutPayload(DeviceCanvasStreamStatusOutcome.controllerConflict);
-        }
-        return DeviceCanvasStreamStatusResponse(
-          outcome: DeviceCanvasStreamStatusOutcome.active,
-          leaseId: lease.leaseId,
-          expiresAt: lease.expiresAt,
-          answer: lease.answer,
-          iceCandidates: lease.iceCandidates,
-          turn: null,
+    var authorizationFailure = _statusAuthorizationFailure(authorization);
+    if (authorizationFailure != null) return authorizationFailure;
+
+    var lease = _leasesByDeviceKey[request.deviceKey];
+    if (lease == null || lease.answer == null) {
+      final operation = _matchingStartOperation(client: client, request: request);
+      if (operation != null) {
+        await operation.settled.future;
+        authorization = await _authorize(
+          client: client,
+          expectedBridgeId: request.expectedBridgeId,
+          sessionId: request.sessionId,
+          deviceKey: request.deviceKey,
+          expectedClaimRevision: request.expectedClaimRevision,
+          control: false,
         );
+        authorizationFailure = _statusAuthorizationFailure(authorization);
+        if (authorizationFailure != null) return authorizationFailure;
+        lease = _leasesByDeviceKey[request.deviceKey];
+      }
     }
+    if (lease == null) return _statusWithoutPayload(DeviceCanvasStreamStatusOutcome.inactive);
+    if (!_matchesLeaseIdentity(
+      lease: lease,
+      bridgeId: request.expectedBridgeId,
+      sessionId: request.sessionId,
+      deviceKey: request.deviceKey,
+      claimRevision: request.expectedClaimRevision,
+    )) {
+      _removeLease(lease: lease, reason: DeviceCanvasStreamRevokeReason.claimChanged, notifyCanvas: true);
+      return _statusWithoutPayload(DeviceCanvasStreamStatusOutcome.inactive);
+    }
+    if (!_isLeaseClient(lease: lease, client: client)) {
+      return _statusWithoutPayload(DeviceCanvasStreamStatusOutcome.controllerConflict);
+    }
+    if (lease.operationId != request.operationId) {
+      return _statusWithoutPayload(DeviceCanvasStreamStatusOutcome.controllerConflict);
+    }
+    if (lease.answer == null) {
+      return _statusWithoutPayload(DeviceCanvasStreamStatusOutcome.inactive);
+    }
+    return DeviceCanvasStreamStatusResponse(
+      outcome: DeviceCanvasStreamStatusOutcome.active,
+      leaseId: lease.leaseId,
+      expiresAt: lease.expiresAt,
+      answer: lease.answer,
+      iceCandidates: lease.iceCandidates,
+      turn: null,
+      offerFingerprint: lease.offerFingerprint,
+    );
   }
 
   Future<DeviceCanvasStreamStopResponse> stop({
@@ -242,7 +321,19 @@ class DeviceCanvasStreamService({
     if (lease == null) {
       return const DeviceCanvasStreamStopResponse(outcome: DeviceCanvasStreamStopOutcome.alreadyStopped);
     }
-    if (lease.deviceKey != request.deviceKey || !_isLeaseClient(lease: lease, client: client)) {
+    if (!_matchesLeaseIdentity(
+      lease: lease,
+      bridgeId: request.expectedBridgeId,
+      sessionId: request.sessionId,
+      deviceKey: request.deviceKey,
+      claimRevision: request.expectedClaimRevision,
+    )) {
+      if (lease.deviceKey == request.deviceKey) {
+        _removeLease(lease: lease, reason: DeviceCanvasStreamRevokeReason.claimChanged, notifyCanvas: true);
+      }
+      return const DeviceCanvasStreamStopResponse(outcome: DeviceCanvasStreamStopOutcome.unauthorized);
+    }
+    if (!_isLeaseClient(lease: lease, client: client)) {
       return const DeviceCanvasStreamStopResponse(outcome: DeviceCanvasStreamStopOutcome.unauthorized);
     }
     _removeLease(lease: lease, reason: DeviceCanvasStreamRevokeReason.stopped, notifyCanvas: true);
@@ -322,6 +413,61 @@ class DeviceCanvasStreamService({
 
   bool _isCurrentLease(_DeviceCanvasStreamLease lease) =>
       identical(_leasesById[lease.leaseId], lease) && identical(_leasesByDeviceKey[lease.deviceKey], lease);
+
+  bool _matchesLeaseIdentity({
+    required _DeviceCanvasStreamLease lease,
+    required String bridgeId,
+    required String sessionId,
+    required String deviceKey,
+    required int claimRevision,
+  }) =>
+      lease.bridgeId == bridgeId &&
+      lease.sessionId == sessionId &&
+      lease.deviceKey == deviceKey &&
+      lease.claimRevision == claimRevision;
+
+  _DeviceCanvasStreamStartOperation? _matchingStartOperation({
+    required DeviceCanvasStreamClient client,
+    required DeviceCanvasStreamStatusRequest request,
+  }) {
+    for (final operation in _startOperations) {
+      if (!operation.cancelled &&
+          operation.bridgeId == request.expectedBridgeId &&
+          operation.sessionId == request.sessionId &&
+          operation.deviceKey == request.deviceKey &&
+          operation.claimRevision == request.expectedClaimRevision &&
+          operation.operationId == request.operationId &&
+          operation.connectionId == client.connectionId &&
+          identical(operation.connectionIncarnation, client.connectionIncarnation)) {
+        return operation;
+      }
+    }
+    return null;
+  }
+
+  void _cancelStartOperation(_DeviceCanvasStreamStartOperation operation) {
+    if (operation.cancelled) return;
+    operation.cancelled = true;
+    final lease = operation.lease;
+    if (lease != null) {
+      _removeLease(lease: lease, reason: DeviceCanvasStreamRevokeReason.startFailed, notifyCanvas: true);
+    }
+  }
+
+  void _handleCommittedClaim(DeviceCanvasClaim claim) {
+    final lease = _leasesByDeviceKey[claim.deviceKey];
+    if (lease == null ||
+        _matchesLeaseIdentity(
+          lease: lease,
+          bridgeId: claim.bridgeId,
+          sessionId: claim.sessionId,
+          deviceKey: claim.deviceKey,
+          claimRevision: claim.claimRevision,
+        )) {
+      return;
+    }
+    _removeLease(lease: lease, reason: DeviceCanvasStreamRevokeReason.claimChanged, notifyCanvas: true);
+  }
 
   void _handleClaimChange(DeviceCanvasClaimChange change) {
     switch (change) {
@@ -436,7 +582,17 @@ class DeviceCanvasStreamService({
         answer: null,
         iceCandidates: const <DeviceCanvasIceCandidate>[],
         turn: null,
+        offerFingerprint: null,
       );
+
+  static DeviceCanvasStreamStatusResponse? _statusAuthorizationFailure(
+    _DeviceCanvasStreamAuthorization authorization,
+  ) => switch (authorization) {
+    _DeviceCanvasStreamUnauthorized() => _statusWithoutPayload(DeviceCanvasStreamStatusOutcome.unauthorized),
+    _DeviceCanvasStreamUnavailable() ||
+    _DeviceCanvasStreamUnsupported() => _statusWithoutPayload(DeviceCanvasStreamStatusOutcome.unavailable),
+    _DeviceCanvasStreamAuthorized() => null,
+  };
 }
 
 sealed class const _DeviceCanvasStreamAuthorization();
@@ -456,13 +612,29 @@ class _DeviceCanvasStreamLease({
   required final String sessionId,
   required final String deviceKey,
   required final int claimRevision,
+  required final String operationId,
   required final int connectionId,
   required final Object connectionIncarnation,
   required final int expiresAt,
   required final bool control,
+  required final String offerFingerprint,
 }) {
   Timer? expiryTimer;
   DeviceCanvasRtcDescription? answer;
   List<DeviceCanvasIceCandidate> iceCandidates = const <DeviceCanvasIceCandidate>[];
   DeviceCanvasStreamRevokeReason? revocationReason;
+}
+
+class _DeviceCanvasStreamStartOperation({
+  required final String bridgeId,
+  required final String sessionId,
+  required final String deviceKey,
+  required final int claimRevision,
+  required final String operationId,
+  required final int connectionId,
+  required final Object connectionIncarnation,
+}) {
+  final Completer<void> settled = Completer<void>();
+  _DeviceCanvasStreamLease? lease;
+  bool cancelled = false;
 }

@@ -156,6 +156,7 @@ void main() {
       sessionId: "session-1",
       deviceKey: "device-1",
       expectedClaimRevision: 7,
+      operationId: "operation-1",
     );
     when(
       () => client.postWithTimeout<DeviceCanvasStreamStatusResponse>(
@@ -172,6 +173,7 @@ void main() {
           expiresAt: null,
           answer: null,
           turn: null,
+          offerFingerprint: null,
         ),
       ),
     );
@@ -237,6 +239,7 @@ DeviceCanvasStreamStartRequest _startRequest() => const DeviceCanvasStreamStartR
   sessionId: "session-1",
   deviceKey: "device-1",
   expectedClaimRevision: 7,
+  operationId: "operation-1",
   control: true,
   offer: DeviceCanvasRtcDescription(
     type: DeviceCanvasRtcDescriptionType.offer,

@@ -10,9 +10,13 @@ class DeviceCanvasClaimService({
   final StreamController<DeviceCanvasClaimChange> _changes = StreamController<DeviceCanvasClaimChange>.broadcast(
     sync: true,
   );
+  final StreamController<DeviceCanvasClaim> _committedClaims = StreamController<DeviceCanvasClaim>.broadcast(
+    sync: true,
+  );
   bool _disposed = false;
 
   Stream<DeviceCanvasClaimChange> get changes => _changes.stream;
+  Stream<DeviceCanvasClaim> get committedClaims => _committedClaims.stream;
 
   Future<List<DeviceCanvasClaimProjection>> snapshot({required String bridgeId}) {
     return _repository.getClaimProjectionsForBridge(bridgeId: bridgeId);
@@ -79,6 +83,7 @@ class DeviceCanvasClaimService({
       case DeviceCanvasClaimed(:final claim):
       case DeviceCanvasClaimAlreadyOwned(:final claim):
       case DeviceCanvasClaimReassigned(:final claim):
+        _emitCommitted(claim);
         await _emitUpdated(claim);
       case DeviceCanvasClaimConflict():
       case DeviceCanvasClaimSessionUnavailable():
@@ -106,6 +111,7 @@ class DeviceCanvasClaimService({
       case DeviceCanvasClaimed(:final claim):
       case DeviceCanvasClaimAlreadyOwned(:final claim):
       case DeviceCanvasClaimReassigned(:final claim):
+        _emitCommitted(claim);
         await _emitUpdated(claim);
       case DeviceCanvasClaimConflict():
       case DeviceCanvasClaimSessionUnavailable():
@@ -152,7 +158,11 @@ class DeviceCanvasClaimService({
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    await _changes.close();
+    await Future.wait([_changes.close(), _committedClaims.close()]);
+  }
+
+  void _emitCommitted(DeviceCanvasClaim claim) {
+    if (!_committedClaims.isClosed) _committedClaims.add(claim);
   }
 
   Future<void> _emitUpdated(DeviceCanvasClaim claim) async {

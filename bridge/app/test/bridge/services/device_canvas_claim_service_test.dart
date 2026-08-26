@@ -32,6 +32,7 @@ void main() {
     });
 
     tearDown(() async {
+      await service.dispose();
       await integrationState.dispose();
       await db.close();
     });
@@ -88,14 +89,24 @@ void main() {
         sessionId: "session-1",
       );
       now = 1001;
+      final committedFuture = service.committedClaims.first;
+      var reassignmentCompleted = false;
 
-      final result = await service.reassign(
-        bridgeId: "bridge-a",
-        deviceKey: "ios:booted",
-        sessionId: "session-2",
-        expectedOwnerSessionId: "session-1",
-        expectedClaimRevision: 1,
-      );
+      final resultFuture = service
+          .reassign(
+            bridgeId: "bridge-a",
+            deviceKey: "ios:booted",
+            sessionId: "session-2",
+            expectedOwnerSessionId: "session-1",
+            expectedClaimRevision: 1,
+          )
+          .whenComplete(() => reassignmentCompleted = true);
+      final committed = await committedFuture;
+
+      expect(committed.sessionId, "session-2");
+      expect(committed.claimRevision, 2);
+      expect(reassignmentCompleted, isFalse);
+      final result = await resultFuture;
 
       expect(result, isA<DeviceCanvasClaimReassigned>());
       final reassigned = (result as DeviceCanvasClaimReassigned).claim;

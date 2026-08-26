@@ -7,6 +7,7 @@ part "device_canvas_client.g.dart";
 
 const int maxDeviceCanvasClientIdentifierLength = 2048;
 const int maxDeviceCanvasClientDeviceKeyLength = 512;
+const int maxDeviceCanvasStreamOperationIdLength = 128;
 const int maxDeviceCanvasStreamLeaseIdLength = 128;
 const int maxDeviceCanvasRtcSdpBytes = 262144;
 const int maxDeviceCanvasRtcFingerprintLength = 256;
@@ -187,6 +188,7 @@ sealed class const DeviceCanvasStreamStartRequest._() with _$DeviceCanvasStreamS
     required String sessionId,
     required String deviceKey,
     required int expectedClaimRevision,
+    required String operationId,
     required bool control,
     required DeviceCanvasRtcDescription offer,
     @Default(<DeviceCanvasIceCandidate>[]) List<DeviceCanvasIceCandidate> iceCandidates,
@@ -201,6 +203,7 @@ sealed class const DeviceCanvasStreamStartRequest._() with _$DeviceCanvasStreamS
         deviceKey: deviceKey,
         expectedClaimRevision: expectedClaimRevision,
       ) &&
+      _isValidDeviceCanvasStreamOperationId(operationId) &&
       offer.type == DeviceCanvasRtcDescriptionType.offer &&
       offer.isValid &&
       iceCandidates.length <= maxDeviceCanvasIceCandidates &&
@@ -238,6 +241,7 @@ sealed class const DeviceCanvasStreamStartResponse._() with _$DeviceCanvasStream
       answer: answer,
       iceCandidates: iceCandidates,
       turn: turn,
+      offerFingerprint: null,
     ),
     DeviceCanvasStreamStartOutcome.unknown => false,
   };
@@ -250,16 +254,19 @@ sealed class const DeviceCanvasStreamStatusRequest._() with _$DeviceCanvasStream
     required String sessionId,
     required String deviceKey,
     required int expectedClaimRevision,
+    required String operationId,
   }) = _DeviceCanvasStreamStatusRequest;
 
   factory fromJson(Map<String, dynamic> json) => _$DeviceCanvasStreamStatusRequestFromJson(json);
 
-  bool get isValid => _isValidDeviceCanvasStreamIdentity(
-    expectedBridgeId: expectedBridgeId,
-    sessionId: sessionId,
-    deviceKey: deviceKey,
-    expectedClaimRevision: expectedClaimRevision,
-  );
+  bool get isValid =>
+      _isValidDeviceCanvasStreamIdentity(
+        expectedBridgeId: expectedBridgeId,
+        sessionId: sessionId,
+        deviceKey: deviceKey,
+        expectedClaimRevision: expectedClaimRevision,
+      ) &&
+      _isValidDeviceCanvasStreamOperationId(operationId);
 }
 
 @Freezed(fromJson: true, toJson: true, toStringOverride: false)
@@ -272,6 +279,7 @@ sealed class const DeviceCanvasStreamStatusResponse._() with _$DeviceCanvasStrea
     required DeviceCanvasRtcDescription? answer,
     @Default(<DeviceCanvasIceCandidate>[]) List<DeviceCanvasIceCandidate> iceCandidates,
     required DeviceCanvasTurnConfiguration? turn,
+    required String? offerFingerprint,
   }) = _DeviceCanvasStreamStatusResponse;
 
   factory fromJson(Map<String, dynamic> json) => _$DeviceCanvasStreamStatusResponseFromJson(json);
@@ -283,7 +291,8 @@ sealed class const DeviceCanvasStreamStatusResponse._() with _$DeviceCanvasStrea
       answer: answer,
       iceCandidates: iceCandidates,
       turn: turn,
-    ),
+    ) &&
+        _isValidOptionalDeviceCanvasFingerprint(offerFingerprint),
     DeviceCanvasStreamStatusOutcome.inactive ||
     DeviceCanvasStreamStatusOutcome.controllerConflict ||
     DeviceCanvasStreamStatusOutcome.unavailable ||
@@ -293,6 +302,7 @@ sealed class const DeviceCanvasStreamStatusResponse._() with _$DeviceCanvasStrea
       answer: answer,
       iceCandidates: iceCandidates,
       turn: turn,
+      offerFingerprint: offerFingerprint,
     ),
     DeviceCanvasStreamStatusOutcome.unknown => false,
   };
@@ -371,8 +381,27 @@ bool _hasNoDeviceCanvasStreamPayload({
   required DeviceCanvasRtcDescription? answer,
   required List<DeviceCanvasIceCandidate> iceCandidates,
   required DeviceCanvasTurnConfiguration? turn,
+  required String? offerFingerprint,
 }) =>
-    leaseId == null && expiresAt == null && answer == null && iceCandidates.isEmpty && turn == null;
+    leaseId == null &&
+    expiresAt == null &&
+    answer == null &&
+    iceCandidates.isEmpty &&
+    turn == null &&
+    offerFingerprint == null;
+
+bool _isValidDeviceCanvasFingerprint(String fingerprint) =>
+    fingerprint.isNotEmpty &&
+    fingerprint.length <= maxDeviceCanvasRtcFingerprintLength &&
+    RegExp(r"^sha-256 (?:[0-9A-Fa-f]{2}:){31}[0-9A-Fa-f]{2}$").hasMatch(fingerprint);
+
+bool _isValidOptionalDeviceCanvasFingerprint(String? fingerprint) =>
+    fingerprint == null || _isValidDeviceCanvasFingerprint(fingerprint);
+
+bool _isValidDeviceCanvasStreamOperationId(String operationId) =>
+    operationId.isNotEmpty &&
+    operationId.length <= maxDeviceCanvasStreamOperationIdLength &&
+    RegExp(r"^[A-Za-z0-9_-]+$").hasMatch(operationId);
 
 @Freezed(fromJson: true, toJson: true)
 sealed class const DeviceCanvasSessionStatusRequest._() with _$DeviceCanvasSessionStatusRequest {

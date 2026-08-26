@@ -882,6 +882,9 @@ class _SnapshotControlledClaimService({
   Stream<DeviceCanvasClaimChange> get changes => changeStream ?? delegate.changes;
 
   @override
+  Stream<DeviceCanvasClaim> get committedClaims => delegate.committedClaims;
+
+  @override
   Future<List<DeviceCanvasClaimProjection>> snapshot({required String bridgeId}) => snapshotFuture;
 
   @override
@@ -986,6 +989,9 @@ class _CancelFailingClaimService({required final DeviceCanvasClaimService delega
 
   @override
   Stream<DeviceCanvasClaimChange> get changes => _controller.stream;
+
+  @override
+  Stream<DeviceCanvasClaim> get committedClaims => delegate.committedClaims;
 
   @override
   Future<List<DeviceCanvasClaimProjection>> snapshot({required String bridgeId}) =>

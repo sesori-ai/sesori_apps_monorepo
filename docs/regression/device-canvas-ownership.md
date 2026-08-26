@@ -44,6 +44,31 @@ list, claim, and release tools.
   configured managed runtime is healthy. Device Canvas disconnection
   hard-disables operations with a typed unavailable result; bridge shutdown
   stops intake, drains accepted work, and removes the rendezvous file.
+- The Sesori mobile client exposes a Device Canvas `Watch` action only when built
+  with `DEVICE_CANVAS_LAN_VIDEO=true`, the current session owns a present Android
+  device with `remoteVideo`, and the bridge is connected. The default build has
+  no reachable viewport action.
+- The gated viewport sends a receive-only offer with `control: false`, starts no
+  DataChannel and requests no camera or microphone. It owns one ephemeral peer
+  and closes on explicit exit, modal disposal, backgrounding, relay loss,
+  ownership/capability change, peer failure, timeout, or lease expiry. Every
+  local expiry sends the exact idempotent stop request so phone/bridge clock skew
+  cannot strand a sender or controller slot.
+- Direct validation signaling retains only private/link-local/ULA/mDNS host
+  candidates and strips globally routed, server-reflexive, and relay candidates.
+  Candidate foundation, component, transport, priority, address, port, type,
+  extension, mDNS, and IPv6-zone syntax is validated before native WebRTC, and
+  IPv6 classification uses parsed address bytes rather than textual prefixes.
+  Any TURN-bearing response fails closed. Each start has a bounded random
+  operation ID; status is accepted only for that operation and when its echoed
+  offer fingerprint matches the current peer. Start processing is bounded to 15
+  seconds; a timeout or late completion cannot promote the lease. `Live` is
+  announced only after the renderer reports its first frame. Native signaling
+  failures expose only sanitized runtime categories in diagnostics.
+- A durable claim reassignment publishes the committed owner identity before
+  projection reads. The stream service immediately closes any lease whose exact
+  bridge, session, device, or claim revision no longer matches, including while
+  claim projection is delayed.
 
 ## Regression Levels
 
@@ -86,6 +111,20 @@ Step 9 adds locally testable Android video-only streaming, ephemeral stream
 leases, and bounded signaling. It does not make a Phase 2 product-release claim.
 The gate remains **NO-GO** for input, external TURN, end-to-end latency/resource
 distributions, reconnect coverage, complete dependency acceptance, and iOS.
+
+The default-off Sesori LAN viewport is an approved cross-device validation seam,
+not Step 12 completion. Build it with
+`--dart-define=DEVICE_CANVAS_LAN_VIDEO=true`, open the owning session's Device
+Canvas details, and choose `Watch` on its assigned Android device. The phone and
+bridge host must share a reachable private/link-local route. Close the preview
+before changing claims; also verify that app backgrounding and claim revision
+changes close it automatically. Private VPN routes can satisfy the address
+filter, so the filter is not an authorization or physical-adjacency proof.
+
+The Flutter WebRTC SDK and its generated native registrations remain present in
+the app artifact even when the UI flag is off. The flag is rollout reachability,
+not dependency exclusion; transitive notices, platform policy, maintenance, and
+binary-size acceptance remain open release gates.
 
 - Android keeps scrcpy H.264 for the existing local display and uses
   VideoToolbox decode to `CVPixelBuffer` before WebRTC re-encode. The selected
@@ -187,11 +226,12 @@ claims, sessions, plugin eligibility, and local processes after the run.
 - User-installed OpenCode plugins execute inside the same trusted backend
   process. Capability isolation protects other bridge backends and model shell
   commands; it is not a sandbox against a malicious in-process OpenCode plugin.
-- Remote video and control are not yet product behavior. Step 8 records
-  component-level transport feasibility but leaves the Phase 2 entry gate
-  closed. External-network TURN, claim-bound active peer revocation, shared
-  production-source wiring, and capture/input-to-visible distributions remain
-  unresolved gate work.
+- Remote video and control are not yet product behavior. The default-off LAN
+  video viewport and shared Android production source support cross-device
+  validation, while the Phase 2 entry gate remains closed. External TURN,
+  DataChannel input, reconnect/recovery, cumulative latency/resource and Sesori
+  responsiveness distributions, full dependency acceptance, and the formal
+  Step 12 release matrix remain unresolved.
 - iOS transport depends on private SimulatorKit and DTUHID APIs, not a public
   simulator control contract. Compatibility is limited to the recorded matrix
   until a separately planned implementation expands it.

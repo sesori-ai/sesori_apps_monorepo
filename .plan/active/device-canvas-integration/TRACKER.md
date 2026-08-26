@@ -5,11 +5,14 @@
 - **Plan slug:** `device-canvas-integration`
 - **Implementation base:** `upstream/main` at `5c50f38a`
 - **Current branch:** `device-canvas-integration-step-1`
-- **Series state:** Steps 1-9 implemented and verified for local Android
-  video-only testing; the Phase 2 product entry gate remains NO-GO
-- **Current step:** cross-device Step 9 validation and remaining Phase 2 evidence
-- **Next action:** test the authorized Android stream on another device, then
-  measure end-to-end latency and validate representative external TURN
+- **Series state:** Steps 1-9 implemented; an explicitly approved, default-off
+  pre-Step-12 LAN video viewport is implemented for local Android validation;
+  the Phase 2 product entry gate remains NO-GO
+- **Current step:** physical cross-device validation of the gated LAN viewport
+  and remaining Phase 2 evidence
+- **Next action:** run the flagged Sesori client on a physical phone on the same
+  LAN, verify first-frame/close/background/revocation behavior, then continue the
+  formal TURN, input, latency, resource, and reconnect work
 
 ## Locked Decisions
 
@@ -39,6 +42,9 @@
 - [x] TURN is required before an arbitrary-network product claim.
 - [x] Android ships first from scrcpy; iOS remains capability-gated.
 - [x] One remote interactive controller per device in the first release.
+- [x] The pre-Step-12 validation viewport is compile-time gated by
+  `DEVICE_CANVAS_LAN_VIDEO=true`, video-only, direct-local-host-candidate-only,
+  and not a Phase 2 product claim.
 
 ## Complexity Guardrails
 
@@ -75,7 +81,7 @@
 | [x] | 9/12 - Authorize/signaling streams | Both | Implemented for local Android video-only testing; Phase 2 remains NO-GO |
 | [ ] | 10/12 - Provision TURN | Infrastructure | Blocked on the Step 9 credential contract and external TURN matrix |
 | [ ] | 11/12 - Stream/control Android | Device Canvas | Video source/peer implemented ahead of the step; control and release gates remain blocked on Step 10 |
-| [ ] | 12/12 - Add Sesori viewport/verify | Sesori | Blocked on Steps 9-11 |
+| [ ] | 12/12 - Add Sesori viewport/verify | Sesori | Formal control/release step remains blocked on Steps 10-11; approved default-off LAN video-only validation slice implemented ahead of sequence |
 
 ## Step 1 Checklist
 
@@ -173,6 +179,18 @@
 - **Step 5 review:** independent bridge and client re-reviews on 2026-08-25 found
   no remaining correctness, security, privacy, or test findings after the final
   transaction-race and reconciliation fixes
+- **LAN viewport review:** architecture re-review on 2026-08-26 approved the
+  default-off validation exception. Follow-up adversarial findings were applied:
+  local host-candidate filtering, offer-fingerprint status correlation, bounded
+  uncertain-start reconciliation, availability-specific failures, first-frame
+  readiness, and non-reentrant peer cleanup. A subsequent adversarial pass found
+  and drove fixes for durable-reassignment projection races, pending-start
+  synchronization, late promotion after timeout, and prefix-based IPv6
+  classification. Final review then drove opaque start-operation correlation,
+  complete candidate grammar validation, signaling-error redaction, exact stop
+  on client-side expiry, and removal of ownership identifiers from widget keys.
+  Independent architecture and adversarial re-reviews then returned `APPROVE`
+  with no remaining actionable correctness or security findings.
 
 ## Verification Record
 
@@ -378,6 +396,51 @@
   the component probes did not cover the integrated source, authorization,
   revocation, latency, and iOS containment boundaries. This tracker now records
   the resulting NO-GO rather than advancing to Step 9.
+
+### Step 9 signaling and default-off LAN viewport validation slice
+
+- The bridge and Device Canvas production path now authorizes revision-fenced,
+  video-only leases and serves the shared Android scrcpy source without enabling
+  remote input. The Sesori viewport is compile-time gated, receive-only, and
+  strips non-local host, server-reflexive, and relay candidates before applying
+  signaling.
+- Offer-fingerprint status correlation prevents an uncertain start from adopting
+  or stopping another operation. A bounded random operation ID also binds each
+  start, status wait, and lease, so overlapping same-claim starts cannot observe
+  or revoke one another. Bridge start processing is bounded to 15 seconds, and
+  late completions cannot promote a timed-out lease. A synchronous durable-claim
+  signal revokes a superseded revision before a delayed claim projection can
+  expose it. The viewport remains connecting until the renderer reports its first
+  frame and closes on explicit exit, modal disposal, app backgrounding, relay
+  loss, authorization change, timeout, expiry, or peer failure. Client-side
+  expiry sends an exact idempotent stop request.
+- Candidate classification validates complete ICE grammar and parses IPv6 bytes
+  rather than accepting textual prefixes. Focused coverage includes RFC1918,
+  IPv4 link-local, IPv6 ULA/link-local and zones, IPv4-mapped private IPv6, mDNS,
+  global and mapped-global addresses, hostnames, malformed ports/foundations/
+  transports/extensions, relay, and server-reflexive candidates. Native
+  signaling errors are logged only by sanitized runtime category, and widget
+  diagnostics contain no durable ownership identifiers.
+- Focused adapter and real modal-owner widget coverage passed, including fresh
+  claim-revision forwarding, release of the original lease, swipe/back dismissal,
+  peer disposal, and cleanup before the parent session cubit closes.
+- Complete verification passed after the adversarial hardening: shared ended at
+  370 tests, bridge at 2,809 tests with two expected host-platform skips, client
+  module-core at 1,453 tests, and the Flutter app at 886 tests. Fatal analysis
+  passed in every touched package, and `git diff --check` passed.
+- A broader shared-workspace analysis also reached the untouched
+  `no_slop_linter` package, which is not currently compatible with the resolved
+  analyzer AST API. Its errors are outside this slice; direct strict analysis of
+  the changed `sesori_shared` package passed.
+- Rebuilt after final hardening, `make build-host` in `bridge/app` produced
+  `dist/bridge-macos-arm64`. A flagged Android debug build produced
+  `build/app/outputs/flutter-apk/app-debug.apk`, and a flagged no-codesign iOS
+  device build produced `build/ios/iphoneos/Runner.app`.
+- Final independent architecture and adversarial re-reviews returned `APPROVE`.
+- These automated and build results do not complete cross-device validation. A
+  physical phone and bridge host on the same reachable LAN must still verify
+  first frame, explicit and modal close, background close, relay loss, and claim
+  revocation before this validation slice is considered complete.
 
 ## Open Product Confirmations
 

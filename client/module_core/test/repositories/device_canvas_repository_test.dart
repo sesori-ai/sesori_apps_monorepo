@@ -280,6 +280,7 @@ const _startRequest = DeviceCanvasStreamStartRequest(
   sessionId: "session-1",
   deviceKey: "device-1",
   expectedClaimRevision: 7,
+  operationId: "operation-1",
   control: true,
   offer: DeviceCanvasRtcDescription(
     type: DeviceCanvasRtcDescriptionType.offer,
@@ -293,6 +294,7 @@ const _statusRequest = DeviceCanvasStreamStatusRequest(
   sessionId: "session-1",
   deviceKey: "device-1",
   expectedClaimRevision: 7,
+  operationId: "operation-1",
 );
 
 const _stopRequest = DeviceCanvasStreamStopRequest(
@@ -317,6 +319,7 @@ const _streamStatusResponse = DeviceCanvasStreamStatusResponse(
   expiresAt: null,
   answer: null,
   turn: null,
+  offerFingerprint: null,
 );
 
 final _uncertainErrors = <ApiError>[

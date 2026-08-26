@@ -1741,6 +1741,102 @@ abstract class AppLocalizations {
   /// **'The request may have completed, but its result could not be confirmed. Status was refreshed.'**
   String get deviceCanvasMutationUncertain;
 
+  /// No description provided for @deviceCanvasVideoOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch'**
+  String get deviceCanvasVideoOpen;
+
+  /// Accessibility label for opening the LAN-only Device Canvas video preview.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch {deviceName}'**
+  String deviceCanvasVideoOpenDevice(String deviceName);
+
+  /// No description provided for @deviceCanvasVideoClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close preview'**
+  String get deviceCanvasVideoClose;
+
+  /// No description provided for @deviceCanvasVideoLanPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'LAN video preview'**
+  String get deviceCanvasVideoLanPreview;
+
+  /// No description provided for @deviceCanvasVideoConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting to Device Canvas...'**
+  String get deviceCanvasVideoConnecting;
+
+  /// No description provided for @deviceCanvasVideoLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Live'**
+  String get deviceCanvasVideoLive;
+
+  /// No description provided for @deviceCanvasVideoStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'The video preview stopped. Close it and start a new preview.'**
+  String get deviceCanvasVideoStopped;
+
+  /// No description provided for @deviceCanvasVideoLanHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Video only. Keep this phone and the Sesori bridge on the same local network.'**
+  String get deviceCanvasVideoLanHelp;
+
+  /// No description provided for @deviceCanvasVideoUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This device is no longer available.'**
+  String get deviceCanvasVideoUnavailable;
+
+  /// No description provided for @deviceCanvasVideoUnauthorized.
+  ///
+  /// In en, this message translates to:
+  /// **'This device is no longer assigned to this session.'**
+  String get deviceCanvasVideoUnauthorized;
+
+  /// No description provided for @deviceCanvasVideoUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This bridge or device does not support video preview.'**
+  String get deviceCanvasVideoUnsupported;
+
+  /// No description provided for @deviceCanvasVideoConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Another controller is already watching this device.'**
+  String get deviceCanvasVideoConflict;
+
+  /// No description provided for @deviceCanvasVideoConnectionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The local video connection failed. Check that both devices are on the same network.'**
+  String get deviceCanvasVideoConnectionFailed;
+
+  /// No description provided for @deviceCanvasVideoSignalingFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Device Canvas could not start the video preview.'**
+  String get deviceCanvasVideoSignalingFailed;
+
+  /// No description provided for @deviceCanvasVideoLanOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'This preview is limited to local-network connections.'**
+  String get deviceCanvasVideoLanOnly;
+
+  /// No description provided for @deviceCanvasVideoExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'The video preview lease expired. Close it and start a new preview.'**
+  String get deviceCanvasVideoExpired;
+
   /// No description provided for @sessionDetailPromptHint.
   ///
   /// In en, this message translates to:

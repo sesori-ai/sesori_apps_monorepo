@@ -380,6 +380,9 @@ class _NoopDeviceCanvasClaimService() implements DeviceCanvasClaimService {
   Stream<DeviceCanvasClaimChange> get changes => const Stream.empty();
 
   @override
+  Stream<DeviceCanvasClaim> get committedClaims => const Stream.empty();
+
+  @override
   Future<DeviceCanvasClaimProjectionPage> clientSnapshot({
     required String bridgeId,
     required String sessionId,

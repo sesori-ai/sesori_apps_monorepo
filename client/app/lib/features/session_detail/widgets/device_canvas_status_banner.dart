@@ -8,11 +8,13 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
+import "device_canvas_video_viewport.dart";
 
 class const DeviceCanvasStatusBanner({
   super.key,
   required final DeviceCanvasSessionState state,
   required final bool readOnly,
+  final bool videoPreviewEnabled = deviceCanvasLanVideoPreviewEnabled,
 })
     extends StatelessWidget {
   @override
@@ -40,7 +42,11 @@ class const DeviceCanvasStatusBanner({
       DeviceCanvasSessionHidden() => "",
     };
     final onTap = switch (state) {
-      DeviceCanvasSessionReady() => () => _showDeviceCanvasSheet(context: context, readOnly: readOnly),
+      DeviceCanvasSessionReady() => () => _showDeviceCanvasSheet(
+        context: context,
+        readOnly: readOnly,
+        videoPreviewEnabled: videoPreviewEnabled,
+      ),
       DeviceCanvasSessionFailure() => () => unawaited(context.read<SessionDetailCubit>().refreshDeviceCanvas()),
       DeviceCanvasSessionHidden() || DeviceCanvasSessionLoading() || DeviceCanvasSessionDisconnected() => null,
     };
@@ -111,7 +117,11 @@ class const DeviceCanvasStatusBanner({
   }
 }
 
-void _showDeviceCanvasSheet({required BuildContext context, required bool readOnly}) {
+void _showDeviceCanvasSheet({
+  required BuildContext context,
+  required bool readOnly,
+  required bool videoPreviewEnabled,
+}) {
   final cubit = context.read<SessionDetailCubit>();
   showModalBottomSheet<void>(
     context: context,
@@ -120,12 +130,22 @@ void _showDeviceCanvasSheet({required BuildContext context, required bool readOn
     showDragHandle: true,
     builder: (_) => BlocProvider.value(
       value: cubit,
-      child: _DeviceCanvasSheet(readOnly: readOnly),
+      child: _DeviceCanvasSheet(readOnly: readOnly, videoPreviewEnabled: videoPreviewEnabled),
     ),
   );
 }
 
-class const _DeviceCanvasSheet({required final bool readOnly}) extends StatelessWidget {
+class const _DeviceCanvasSheet({
+  required final bool readOnly,
+  required final bool videoPreviewEnabled,
+}) extends StatefulWidget {
+  @override
+  State<_DeviceCanvasSheet> createState() => _DeviceCanvasSheetState();
+}
+
+class _DeviceCanvasSheetState() extends State<_DeviceCanvasSheet> {
+  _DeviceCanvasVideoSelection? _videoSelection;
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<SessionDetailCubit, SessionDetailState>(
@@ -146,11 +166,35 @@ class const _DeviceCanvasSheet({required final bool readOnly}) extends Stateless
           SessionDetailLoaded(:final deviceCanvas) => deviceCanvas,
           SessionDetailLoading() || SessionDetailFailed() => const DeviceCanvasSessionHidden(),
         };
+        final selection = _videoSelection;
+        if (selection != null) {
+          return DeviceCanvasVideoViewportOwner(
+            initialStatus: selection.status,
+            initialDevice: selection.device,
+            authorizationState: deviceCanvas,
+            deviceName: selection.deviceName,
+            onClose: () {
+              if (!mounted) return;
+              setState(() => _videoSelection = null);
+            },
+          );
+        }
         return switch (deviceCanvas) {
           DeviceCanvasSessionReady(:final status, :final mutation) => _DeviceCanvasInventory(
             status: status,
             mutation: mutation,
-            readOnly: readOnly,
+            readOnly: widget.readOnly,
+            onWatch: widget.videoPreviewEnabled
+                ? ({required device, required deviceName}) {
+                    setState(
+                      () => _videoSelection = _DeviceCanvasVideoSelection(
+                        status: status,
+                        device: device,
+                        deviceName: deviceName,
+                      ),
+                    );
+                  }
+                : null,
           ),
           DeviceCanvasSessionLoading() => Center(
             child: Semantics(
@@ -173,6 +217,7 @@ class const _DeviceCanvasInventory({
   required final DeviceCanvasSessionStatusResponse status,
   required final DeviceCanvasSessionMutationState mutation,
   required final bool readOnly,
+  required final void Function({required DeviceCanvasDeviceStatus device, required String deviceName})? onWatch,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -214,6 +259,7 @@ class const _DeviceCanvasInventory({
                 status: status,
                 mutation: mutation,
                 readOnly: readOnly,
+                onWatch: onWatch,
               ),
           if (status.inventoryTruncated) ...[
             const SizedBox(height: 8),
@@ -233,6 +279,7 @@ class const _DeviceCanvasDeviceRow({
   required final DeviceCanvasSessionStatusResponse status,
   required final DeviceCanvasSessionMutationState mutation,
   required final bool readOnly,
+  required final void Function({required DeviceCanvasDeviceStatus device, required String deviceName})? onWatch,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -279,6 +326,18 @@ class const _DeviceCanvasDeviceRow({
       _DeviceCanvasAction.release => context.loc.deviceCanvasReleaseDevice(title),
       null => null,
     };
+    VoidCallback? watch;
+    final watchCallback = onWatch;
+    if (!readOnly &&
+        watchCallback != null &&
+        status.connection == DeviceCanvasClientConnectionStatus.connected &&
+        descriptor?.platform == DeviceCanvasClientPlatform.android &&
+        (descriptor?.capabilities.remoteVideo ?? false) &&
+        claimedHere &&
+        (claim?.revision ?? 0) > 0 &&
+        mutation is! DeviceCanvasSessionMutationInProgress) {
+      watch = () => watchCallback(device: device, deviceName: title);
+    }
 
     return Container(
       margin: const EdgeInsetsDirectional.only(top: 8),
@@ -318,25 +377,41 @@ class const _DeviceCanvasDeviceRow({
                 ),
               ),
             )
-          else if (action != null)
-            Semantics(
-              container: true,
-              button: true,
-              enabled: onAction != null,
-              label: actionLabel,
-              onTap: onAction,
-              child: ExcludeSemantics(
-                child: TextButton(
-                  onPressed: onAction,
-                  child: Text(
-                    switch (action) {
-                      _DeviceCanvasAction.claim => context.loc.deviceCanvasClaim,
-                      _DeviceCanvasAction.reassign => context.loc.deviceCanvasReassign,
-                      _DeviceCanvasAction.release => context.loc.deviceCanvasRelease,
-                    },
+          else if (watch != null || action != null)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (watch != null)
+                  Semantics(
+                    container: true,
+                    button: true,
+                    label: context.loc.deviceCanvasVideoOpenDevice(title),
+                    onTap: watch,
+                    child: ExcludeSemantics(
+                      child: TextButton(onPressed: watch, child: Text(context.loc.deviceCanvasVideoOpen)),
+                    ),
                   ),
-                ),
-              ),
+                if (action != null)
+                  Semantics(
+                    container: true,
+                    button: true,
+                    enabled: onAction != null,
+                    label: actionLabel,
+                    onTap: onAction,
+                    child: ExcludeSemantics(
+                      child: TextButton(
+                        onPressed: onAction,
+                        child: Text(
+                          switch (action) {
+                            _DeviceCanvasAction.claim => context.loc.deviceCanvasClaim,
+                            _DeviceCanvasAction.reassign => context.loc.deviceCanvasReassign,
+                            _DeviceCanvasAction.release => context.loc.deviceCanvasRelease,
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
         ],
       ),
@@ -427,3 +502,9 @@ class const _DeviceCanvasMessage({required final String message}) extends Statel
 }
 
 enum _DeviceCanvasAction() { claim, reassign, release }
+
+final class const _DeviceCanvasVideoSelection({
+  required final DeviceCanvasSessionStatusResponse status,
+  required final DeviceCanvasDeviceStatus device,
+  required final String deviceName,
+});

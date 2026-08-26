@@ -162,6 +162,7 @@ void main() {
       sessionId: "session-1",
       deviceKey: "android:emulator-1",
       expectedClaimRevision: 4,
+      operationId: "operation-1",
       control: true,
       offer: _description(type: DeviceCanvasRtcDescriptionType.offer),
       iceCandidates: List.filled(maxDeviceCanvasIceCandidates, candidate),
@@ -169,8 +170,19 @@ void main() {
 
     expect(request.isValid, isTrue);
     expect(request.copyWith(expectedClaimRevision: 0).isValid, isFalse);
+    expect(request.copyWith(operationId: "not an opaque id").isValid, isFalse);
     expect(request.copyWith(offer: _description(type: DeviceCanvasRtcDescriptionType.answer)).isValid, isFalse);
     expect(request.copyWith(iceCandidates: [...request.iceCandidates, candidate]).isValid, isFalse);
+
+    final status = DeviceCanvasStreamStatusRequest(
+      expectedBridgeId: request.expectedBridgeId,
+      sessionId: request.sessionId,
+      deviceKey: request.deviceKey,
+      expectedClaimRevision: request.expectedClaimRevision,
+      operationId: request.operationId,
+    );
+    expect(status.isValid, isTrue);
+    expect(status.copyWith(operationId: "").isValid, isFalse);
   });
 
   test("flattened stream responses require complete active payloads and empty inactive payloads", () {
@@ -197,8 +209,42 @@ void main() {
         expiresAt: null,
         answer: null,
         turn: null,
+        offerFingerprint: null,
       ).isValid,
       isTrue,
+    );
+    expect(
+      DeviceCanvasStreamStatusResponse(
+        outcome: DeviceCanvasStreamStatusOutcome.active,
+        leaseId: "lease-1",
+        expiresAt: 1000,
+        answer: answer,
+        turn: null,
+        offerFingerprint: _otherFingerprint,
+      ).isValid,
+      isTrue,
+    );
+    expect(
+      DeviceCanvasStreamStatusResponse(
+        outcome: DeviceCanvasStreamStatusOutcome.active,
+        leaseId: "lease-1",
+        expiresAt: 1000,
+        answer: answer,
+        turn: null,
+        offerFingerprint: "sha-256 invalid",
+      ).isValid,
+      isFalse,
+    );
+    expect(
+      const DeviceCanvasStreamStatusResponse(
+        outcome: DeviceCanvasStreamStatusOutcome.inactive,
+        leaseId: null,
+        expiresAt: null,
+        answer: null,
+        turn: null,
+        offerFingerprint: _fingerprint,
+      ).isValid,
+      isFalse,
     );
     expect(
       DeviceCanvasStreamStartResponse.fromJson(const {"outcome": "future"}).outcome,

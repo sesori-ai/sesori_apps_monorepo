@@ -282,6 +282,7 @@ void main() {
                 sessionId: _canvasSessionId,
                 deviceKey: _canvasDeviceKey,
                 expectedClaimRevision: claimRevision,
+                operationId: "tampered-operation",
                 control: true,
                 offer: _canvasOffer.copyWith(fingerprint: _canvasAnswerFingerprint),
                 iceCandidates: const [_canvasOfferCandidate],
@@ -312,6 +313,7 @@ void main() {
                 sessionId: _canvasSessionId,
                 deviceKey: _canvasDeviceKey,
                 expectedClaimRevision: claimRevision,
+                operationId: "operation-1",
                 control: true,
                 offer: _canvasOffer,
                 iceCandidates: const [_canvasOfferCandidate],
@@ -387,6 +389,7 @@ void main() {
                 sessionId: _canvasSessionId,
                 deviceKey: _canvasDeviceKey,
                 expectedClaimRevision: claimRevision,
+                operationId: "operation-1",
               );
               await harness.sendEncrypted(
                 connId: 71,

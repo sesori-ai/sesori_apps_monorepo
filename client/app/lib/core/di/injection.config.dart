@@ -66,6 +66,8 @@ import 'package:sesori_mobile/core/platform/flutter_oauth_device_descriptor_prov
 import 'package:sesori_mobile/core/platform/flutter_secure_storage_adapter.dart'
     as _i816;
 import 'package:sesori_mobile/core/platform/flutter_url_launcher.dart' as _i10;
+import 'package:sesori_mobile/core/platform/flutter_webrtc_client.dart'
+    as _i522;
 import 'package:sesori_mobile/core/platform/gal_client.dart' as _i227;
 import 'package:sesori_mobile/core/platform/go_router_route_dispatcher.dart'
     as _i610;
@@ -112,6 +114,9 @@ extension GetItInjectableX on _i174.GetIt {
       () => registerModule.secureStorage,
     );
     gh.lazySingleton<_i223.FileSaveClient>(() => _i223.FileSaveClient());
+    gh.lazySingleton<_i522.FlutterWebRtcClient>(
+      () => const _i522.FlutterWebRtcClient(),
+    );
     gh.lazySingleton<_i227.GalClient>(() => _i227.GalClient());
     gh.lazySingleton<_i748.PasteboardClient>(() => _i748.PasteboardClient());
     gh.lazySingleton<_i1019.SharePlusClient>(() => _i1019.SharePlusClient());
