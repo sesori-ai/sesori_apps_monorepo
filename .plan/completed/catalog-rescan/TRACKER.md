@@ -266,12 +266,13 @@
   two-harness mixed outcome, the older-bridge compatibility run, and the
   reconnect recovery run. **Partly.** Four rows were run end to end; the rest
   hold only at test level. See the disposition below.
-- [ ] Record every entry as passed, blocked, or an explicitly accepted
-  reduction. **Outstanding:** seven rows need the owner's explicit acceptance,
-  which the plan requires before retirement.
+- [x] Record every entry as passed, blocked, or an explicitly accepted
+  reduction. Four passed; seven accepted as a reduction by the owner on
+  2026-08-26.
 - [x] Move the plan directory to `.plan/completed/catalog-rescan/`.
-- [ ] Close or update issue #961 with the outcome. **Outstanding:** the comment
-  is drafted and awaiting the owner's go-ahead; the issue stays open.
+- [ ] Close or update issue #961 with the outcome. **Left to the owner:** a
+  comment is drafted; the issue stays open until the fix ships, since it is on
+  `main` and not in 1.8.1.
 
 ## Plan Review
 
@@ -821,15 +822,28 @@ Each of the eleven rows of the plan's required matrix, in its order:
 | 11 | Setup state — a setup-blocked harness on Settings | **Reduced to test level.** `harnesses_settings_screen_test.dart` asserts no scan action is offered for the setup-blocked fixture, against a fixture rather than a blocked harness |
 
 Four rows passed as the matrix asks. Seven hold only at test level, and rows 2
-and 10 are partial even there. **That is a reduction, and the plan requires the
-owner's explicit acceptance of it before retirement.** An earlier draft of this
-section called all eight of its rows "passed on evidence, not an accepted
-reduction"; that was wrong on both counts — it was not row-for-row against the
-plan, and substituting a unit test for a run against a real old bridge is a
-reduction whatever it is called.
+and 10 are partial even there.
 
-- **Final disposition:** every step merged and the plan moved to
-  `.plan/completed/catalog-rescan/`. Two items remain before it is truly
-  retired: the owner's explicit acceptance of the seven reduced matrix rows, and
-  the issue #961 update. An earlier draft of this line claimed both were done;
-  they are not
+**Accepted reduction — owner, 2026-08-26.** Rows 2, 4, 6, 7, 9, 10 and 11 are
+accepted as verified by their tests rather than by the runs the matrix names: a
+real pre-v1.6.0 bridge, a real bridge omitting `newItems`, two real harnesses
+scanning at once, a real setup-blocked harness, a real cancellation and
+multi-harness fan-out, and one continuous disconnect-reconnect-settle. This is
+the explicit acceptance the plan requires before retirement.
+
+What that leaves unproven, stated plainly so a later reader is not misled: no
+old bridge posture has been exercised across the wire, only below the repository
+boundary; `CatalogRescanPartlyFailed` has never been produced by two real
+harnesses; and the recovery sequence is covered in two halves with the seam
+between them untested.
+
+An earlier draft of this section called all eight of its rows "passed on
+evidence, not an accepted reduction". That was wrong on both counts — it was not
+row-for-row against the plan, and substituting a unit test for a run against a
+real old bridge is a reduction whatever it is called.
+
+- **Final disposition:** retired. Every step merged, the matrix dispositioned
+  with four rows passed and seven accepted as a reduction by the owner on
+  2026-08-26, and the plan moved to `.plan/completed/catalog-rescan/`. The
+  issue #961 update is deliberately left to the owner: a comment is drafted and
+  the issue stays open, since the fix is on `main` and not in 1.8.1
