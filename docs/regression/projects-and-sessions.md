@@ -62,9 +62,11 @@ child sessions with titles, activity, statuses, and unseen state.
   outcome when it settles.
 - A pull that crossed the deeper catalog-scan threshold runs no ordinary refresh
   at all: the scan reaches the same backend and settles into a list refresh of
-  its own. It stops holding the content the moment that stage fires and shows
-  neither indicator nor caption afterwards, because the scan row is the only
-  report from then on. A pull that finds no harness to scan therefore reports
+  its own. It stops holding the content the moment that stage fires — including
+  the height the control reserves for its indicator, so releasing springs the
+  list to the top in one movement rather than parking it an indicator below and
+  collapsing a moment later — and shows neither indicator nor caption
+  afterwards, because the scan row is the only report from then on. A pull that finds no harness to scan therefore reports
   that and leaves the list as it was.
 - A session created in a dedicated worktree receives a system prompt identifying
   that worktree, its initial branch, and base branch. The prompt requires all
