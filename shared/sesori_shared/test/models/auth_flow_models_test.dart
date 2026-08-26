@@ -139,6 +139,7 @@ void main() {
           providerUserId: "12345",
           providerUsername: "octocat",
         ),
+        accountStatus: AccountStatus.created,
       );
 
       final json = original.toJson();
@@ -157,8 +158,52 @@ void main() {
             "providerUserId": "12345",
             "providerUsername": "octocat",
           },
+          "accountStatus": "created",
         }),
       );
+    });
+
+    test("maps a newer account status to unknown", () {
+      final response = AuthSessionStatusResponse.fromJson({
+        "status": "complete",
+        "accessToken": "access-token",
+        "refreshToken": "refresh-token",
+        "user": {
+          "id": "user-1",
+          "provider": "github",
+          "providerUserId": "12345",
+          "providerUsername": "octocat",
+        },
+        "accountStatus": "future_status",
+      });
+
+      expect(
+        response,
+        isA<AuthSessionStatusResponseComplete>().having(
+          (complete) => complete.accountStatus,
+          "accountStatus",
+          AccountStatus.unknown,
+        ),
+      );
+    });
+  });
+
+  group("AuthLoginResponse", () {
+    test("parses account creation status separately from refresh responses", () {
+      final response = AuthLoginResponse.fromJson({
+        "accessToken": "access-token",
+        "refreshToken": "refresh-token",
+        "user": {
+          "id": "user-1",
+          "provider": "apple",
+          "providerUserId": "apple-1",
+          "providerUsername": null,
+        },
+        "accountStatus": "existing",
+      });
+
+      expect(response.accountStatus, AccountStatus.existing);
+      expect(response.user.provider, AuthProvider.apple);
     });
   });
 }

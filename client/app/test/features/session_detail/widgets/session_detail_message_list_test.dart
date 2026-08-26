@@ -252,7 +252,7 @@ void main() {
         initialMessages: const [],
         initialStreamingText: const {},
         initialBridgeQueuedPrompts: const [
-          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 0, createdAt: 100),
+          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 1, createdAt: 100),
           QueuedSessionPrompt(id: "prm_2", text: "src", command: "review", attachmentCount: 0, createdAt: 200),
         ],
       ),
@@ -260,6 +260,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("steer it"), findsOneWidget);
+    expect(find.text("1 image"), findsOneWidget);
     expect(find.text("/review src"), findsOneWidget);
     expect(find.text("Cancel"), findsNWidgets(2));
 

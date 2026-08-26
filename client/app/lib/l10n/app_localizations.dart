@@ -3391,6 +3391,24 @@ abstract class AppLocalizations {
   /// **'Check your harnesses in Settings'**
   String get catalogScanNoHarnessDetail;
 
+  /// Popup shown on Settings to Harnesses when a scan started there finishes. The placeholder is the same result wording the lists' scan row uses, so one scan reads the same everywhere.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan complete — {result}'**
+  String harnessManagementScanFinished(String result);
+
+  /// Popup shown on Settings to Harnesses when a scan started there finished with some harnesses failing. Both counts are at least one, so the total is always plural.
+  ///
+  /// In en, this message translates to:
+  /// **'{failed} of {total} harnesses could not be scanned'**
+  String harnessManagementScanPartlyFailed(int failed, int total);
+
+  /// Popup shown on Settings to Harnesses when a scan started there failed outright. Names the bridge log because this outcome comes from the bridge's own progress events, unlike a request that never reached it.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan failed. Check the bridge log for details'**
+  String get harnessManagementScanFinishedFailed;
+
   /// Settings action on a harness card that re-imports that one harness's catalog, the pointer-and-keyboard equivalent of the lists' deep pull.
   ///
   /// In en, this message translates to:

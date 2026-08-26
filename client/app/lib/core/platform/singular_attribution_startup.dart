@@ -1,3 +1,4 @@
+import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:singular_flutter_sdk/singular_config.dart";
 
@@ -5,14 +6,22 @@ import "singular/singular_static_adapter.dart";
 
 /// Starts Singular's install/session attribution without coupling it to
 /// account-linked Sesori product analytics.
-class const SingularAttributionStartup({required final SingularStaticAdapter _singular}) {
+@lazySingleton
+class SingularAttributionStartup({required final SingularStaticAdapter _singular}) {
+  bool _isStarted = false;
+  SingularConfig? _deferredStartConfig;
+
   void start({
     required bool isSupportedPlatform,
-    required bool isEligibleBuild,
+    required AnalyticsRuntimeDisabledReason? ineligibilityReason,
     required String sdkKey,
     required String sdkSecret,
   }) {
-    if (!isSupportedPlatform || !isEligibleBuild) return;
+    if (!isSupportedPlatform ||
+        ineligibilityReason != null &&
+            ineligibilityReason != AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated) {
+      return;
+    }
 
     final config = SingularConfig(sdkKey, sdkSecret)
       // Preserve Sesori's existing no-advertising-identifier boundary. Singular
@@ -24,11 +33,30 @@ class const SingularAttributionStartup({required final SingularStaticAdapter _si
       ..skAdNetworkEnabled = true
       ..enableLogging = false;
 
+    if (ineligibilityReason == AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated) {
+      _deferredStartConfig = config;
+      logi("Singular attribution deferred until interactive authentication");
+      return;
+    }
+
     try {
       _singular.start(config: config);
+      _isStarted = true;
       logi("Singular attribution started");
     } on Object catch (error, stackTrace) {
       logw("Failed to start Singular attribution", error, stackTrace);
     }
+  }
+
+  bool activateAfterInteractiveAuthentication() {
+    if (_isStarted) return true;
+    final deferredStartConfig = _deferredStartConfig;
+    if (deferredStartConfig == null) return false;
+
+    _singular.start(config: deferredStartConfig);
+    _isStarted = true;
+    _deferredStartConfig = null;
+    logi("Singular attribution started after interactive authentication");
+    return true;
   }
 }

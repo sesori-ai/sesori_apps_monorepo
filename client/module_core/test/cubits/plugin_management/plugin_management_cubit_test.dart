@@ -107,6 +107,7 @@ void main() {
         installs: {},
         scanningPluginIds: {},
         scanRejections: {},
+        scanOutcome: null,
       ),
     );
   });
@@ -901,6 +902,181 @@ void main() {
       final state = cubit.state as PluginManagementReady;
       expect(state.scanRejections, isEmpty);
       expect(state.scanningPluginIds, {"codex"});
+    });
+
+    // This screen hosts no progress row, so a scan it started has to be
+    // announced here or the user never learns what it found.
+    test("keeps the outcome of a scan this screen started", () async {
+      await ready();
+      await cubit.startCatalogScanFor(pluginId: "codex");
+
+      rescan.emit(
+        const CatalogRescanState.succeeded(
+          harnessCount: 1,
+          counts: CatalogRescanCounts.delta(newProjects: 2, newSessions: 5),
+        ),
+      );
+      await _settle();
+
+      expect(
+        (cubit.state as PluginManagementReady).scanOutcome,
+        isA<CatalogRescanOutcomeSucceeded>().having(
+          (o) => o.counts,
+          "counts",
+          isA<CatalogRescanDelta>().having((c) => c.newSessions, "newSessions", 5),
+        ),
+      );
+    });
+
+    // The row above that list already reported it; announcing it again here
+    // would report one run in two places.
+    test("stays quiet about a scan this screen did not start", () async {
+      await ready();
+
+      rescan.emit(
+        const CatalogRescanState.succeeded(
+          harnessCount: 1,
+          counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 1),
+        ),
+      );
+      await _settle();
+
+      expect((cubit.state as PluginManagementReady).scanOutcome, isNull);
+    });
+
+    test("carries a failure through as its own outcome", () async {
+      await ready();
+      await cubit.startCatalogScanFor(pluginId: "codex");
+
+      rescan.emit(const CatalogRescanState.partlyFailed(succeededCount: 2, failedCount: 1));
+      await _settle();
+
+      expect(
+        (cubit.state as PluginManagementReady).scanOutcome,
+        isA<CatalogRescanOutcomePartlyFailed>().having((o) => o.failedCount, "failedCount", 1),
+      );
+    });
+
+    // A refused start is already on the card; a toast would say it twice.
+    test("a start the bridge refused produces no outcome", () async {
+      await ready();
+      rescan.stubStartResult(const CatalogRescanStartResult.notImportable());
+      await cubit.startCatalogScanFor(pluginId: "codex");
+
+      rescan.emit(const CatalogRescanState.failed(harnessCount: 1));
+      await _settle();
+
+      expect((cubit.state as PluginManagementReady).scanOutcome, isNull);
+    });
+
+    test("a run that ends without a terminal state announces nothing", () async {
+      await ready();
+      await cubit.startCatalogScanFor(pluginId: "codex");
+
+      // Cancelled from a list: the operation closes straight to idle.
+      rescan.emit(const CatalogRescanState.idle());
+      await _settle();
+      rescan.emit(
+        const CatalogRescanState.succeeded(
+          harnessCount: 1,
+          counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 9),
+        ),
+      );
+      await _settle();
+
+      expect(
+        (cubit.state as PluginManagementReady).scanOutcome,
+        isNull,
+        reason: "a dropped claim must not attach itself to the next run",
+      );
+    });
+
+    // A disconnect reloads the snapshot and resets the scan, and the reload
+    // reaches this cubit first — so the claim has to be dropped whether or not
+    // the state is ready when the reset lands.
+    test("a disconnect drops the claim rather than carrying it to the next run", () async {
+      await ready();
+      await cubit.startCatalogScanFor(pluginId: "codex");
+
+      snapshots.add(const PluginManagementLoadResult.loading());
+      await _settle();
+      rescan.emit(const CatalogRescanState.idle());
+      await _settle();
+      snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+      await _settle();
+
+      rescan.emit(
+        const CatalogRescanState.succeeded(
+          harnessCount: 1,
+          counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 7),
+        ),
+      );
+      await _settle();
+
+      expect((cubit.state as PluginManagementReady).scanOutcome, isNull);
+    });
+
+    // A definite rejection settles the operation before start() returns, so the
+    // harness has left the live set by then — exactly as it would have if the
+    // run had simply finished. Only the claim can tell those apart.
+    test("a run that already announced its end adds no refusal to the card", () async {
+      await ready();
+      rescan
+        ..stubStartResult(
+          CatalogRescanStartResult.failed(cause: ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null)),
+        )
+        ..stubBeforeStartAnswers(() => rescan.emit(const CatalogRescanState.failed(harnessCount: 1)));
+
+      await cubit.startCatalogScanFor(pluginId: "codex");
+      await _settle();
+
+      final state = cubit.state as PluginManagementReady;
+      expect(state.scanOutcome, isA<CatalogRescanOutcomeFailed>());
+      expect(
+        state.scanRejections,
+        isEmpty,
+        reason: "one attempt must not be reported as both a finished scan and a refused start",
+      );
+    });
+
+    // Cards for harnesses outside the live operation stay enabled, so a second
+    // one can be started and refused while the first is still running.
+    test("a second harness being refused leaves the first one's claim alone", () async {
+      await ready();
+      await cubit.startCatalogScanFor(pluginId: "codex");
+      rescan.emit(const CatalogRescanState.starting(pluginIds: {"codex"}));
+      await _settle();
+
+      rescan.stubStartResult(const CatalogRescanStartResult.notImportable());
+      await cubit.startCatalogScanFor(pluginId: "claude");
+      await _settle();
+
+      rescan.emit(
+        const CatalogRescanState.succeeded(
+          harnessCount: 1,
+          counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 4),
+        ),
+      );
+      await _settle();
+
+      final state = cubit.state as PluginManagementReady;
+      expect(state.scanRejections, {"claude": isA<CatalogRescanStartNotImportable>()});
+      expect(
+        state.scanOutcome,
+        isA<CatalogRescanOutcomeSucceeded>(),
+        reason: "the run codex started still ends with an announcement",
+      );
+    });
+
+    test("an announced outcome is cleared so it is reported once", () async {
+      await ready();
+      await cubit.startCatalogScanFor(pluginId: "codex");
+      rescan.emit(const CatalogRescanState.failed(harnessCount: 1));
+      await _settle();
+
+      cubit.dismissCatalogScanOutcome();
+
+      expect((cubit.state as PluginManagementReady).scanOutcome, isNull);
     });
 
     // The screen rebuilds this cubit per visit and every snapshot rebuilds the

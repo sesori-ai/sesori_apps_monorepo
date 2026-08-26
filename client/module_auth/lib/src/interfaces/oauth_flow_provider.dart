@@ -1,5 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../models/auth_login_result.dart";
+
 /// Drives the OAuth authorization flow through the auth-server session flow.
 ///
 /// The auth server owns provider redirects and PKCE. Callers open the returned
@@ -11,13 +13,13 @@ abstract interface class OAuthFlowProvider() {
   Future<AuthInitResponse> startOAuthFlow({required OAuthProvider provider});
 
   /// Polls the auth server until the pending OAuth session reaches a terminal result.
-  Future<AuthUser> pollForResult();
+  Future<AuthLoginResult> pollForResult();
 
   /// Resumes polling for an OAuth session that was previously started.
   ///
   /// Use this when the app was backgrounded and returned to the foreground
   /// while an OAuth flow is still active on the auth server.
-  Future<AuthUser> resumeOAuthFlow();
+  Future<AuthLoginResult> resumeOAuthFlow();
 
   /// Whether there is an active OAuth session that can be resumed.
   Future<bool> hasActiveOAuthSession();

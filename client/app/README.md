@@ -54,8 +54,9 @@ flutter run
 ## Singular mobile attribution
 
 The Android/iOS app includes Singular's basic install/session attribution integration. It starts in eligible release
-builds using the required compile-time credentials. Debug/profile builds, unsupported platforms, and Android Play
-pre-launch crawls inside the existing build window remain disabled.
+builds using the required compile-time credentials. Debug/profile builds and unsupported platforms remain disabled.
+An unauthenticated Android launch inside the Play pre-launch window defers startup; successful interactive
+authentication starts Singular before reporting its conversion events, while crawlers that never authenticate stay off.
 
 Keep credentials outside Git. Create a local JSON file such as:
 
@@ -75,9 +76,11 @@ binary.
 The iOS dependency bundles Singular's vendor privacy manifest. Review the binary and update Apple/Google store
 declarations before distributing it; runtime flags do not alter that manifest.
 
-The initial integration does not set a custom user ID or send custom Singular events. Advertising identifiers and
-partner data sharing are limited in SDK configuration, and Android removes both advertising-ID permissions.
-Distributed builds must satisfy the privacy/store disclosure checklist in
+The integration does not set a custom user ID or send custom Singular events. After interactive authentication it
+sends Singular's parameter-free standard login event, plus the standard complete-registration event only when the
+auth server reports that the operation created the account. Session restore and token refresh send neither event.
+Advertising identifiers and partner data sharing are limited in SDK configuration, and Android removes both
+advertising-ID permissions. Distributed builds must satisfy the privacy/store disclosure checklist in
 [`docs/PRODUCT_ANALYTICS_DISCLOSURE.md`](docs/PRODUCT_ANALYTICS_DISCLOSURE.md).
 
 ## Testing

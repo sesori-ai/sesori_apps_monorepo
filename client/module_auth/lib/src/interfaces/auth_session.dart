@@ -1,5 +1,7 @@
 import "package:rxdart/streams.dart";
 import "package:sesori_shared/sesori_shared.dart";
+
+import "../models/auth_login_result.dart";
 import "../models/auth_state.dart";
 
 /// Reactive view of the current authentication session.
@@ -48,11 +50,11 @@ abstract interface class AuthSession() {
 
   /// Authenticates using email and password.
   /// Throws [Exception] on authentication failure (including 401).
-  Future<AuthUser> loginWithEmail({required String email, required String password});
+  Future<AuthLoginResult> loginWithEmail({required String email, required String password});
 
   /// Authenticates using a native Apple Sign-In credential.
   /// Throws [StateError] on authentication failure (including non-2xx responses).
-  Future<AuthUser> loginWithApple({required String idToken, required String nonce});
+  Future<AuthLoginResult> loginWithApple({required String idToken, required String nonce});
 
   /// Clears local tokens and emits unauthenticated.
   /// Does NOT call the auth server — other devices remain authenticated.

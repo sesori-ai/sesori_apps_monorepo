@@ -26,6 +26,16 @@ class PluginManagementCubit({
   }
 
   final CompositeSubscription _subscriptions = CompositeSubscription();
+
+  /// Harnesses this screen has started a scan for and not yet heard back about.
+  ///
+  /// A set rather than a flag, because more than one card can be started before
+  /// the first finishes: a second harness being refused must not cancel the
+  /// first harness's claim on the outcome. Only a run this screen began is
+  /// announced here — a scan a list's pull started is already reported by the
+  /// row above that list, and announcing it again on an unrelated screen would
+  /// report one run in two places.
+  final Set<String> _scanClaims = {};
   int _actionGeneration = 0;
   int _authenticationGeneration = 0;
 
@@ -205,16 +215,34 @@ class PluginManagementCubit({
     // Drop any earlier rejection first, so a retry does not read as though it
     // had already failed again before the answer arrives.
     _setScanRejection(pluginId: pluginId, result: null);
+    // Claimed before dispatch, not after: the run can reach a terminal state
+    // while this request is still awaiting its own response.
+    _scanClaims.add(pluginId);
     final result = await _catalogRescanService.start(pluginId: pluginId);
     if (isClosed) return;
-    _setScanRejection(
-      pluginId: pluginId,
-      // A harness still in the live operation has no refusal to report. An
-      // uncertain start keeps it a member precisely because the request may
-      // have landed, so the card would otherwise pair a spinner with a line
-      // telling the user to try again. That run belongs to the aggregate row.
-      result: result is CatalogRescanStartAccepted || _scanningPluginIds.contains(pluginId) ? null : result,
-    );
+    // A harness still in the live operation has no refusal to report. An
+    // uncertain start keeps it a member precisely because the request may have
+    // landed, so the card would otherwise pair a spinner with a line telling
+    // the user to try again. That run belongs to the aggregate row.
+    if (result is CatalogRescanStartAccepted || _scanningPluginIds.contains(pluginId)) {
+      _setScanRejection(pluginId: pluginId, result: null);
+      return;
+    }
+    // Membership alone cannot tell a refusal from a run that already finished:
+    // a definite rejection settles the operation before this call returns, so
+    // the harness has left the live set either way. The claim can, because an
+    // announced outcome spends it. Without this, a bridge that answers with an
+    // error produces both a finished-scan announcement and a could-not-start
+    // line on the card for one attempt.
+    if (!_scanClaims.remove(pluginId)) return;
+    _setScanRejection(pluginId: pluginId, result: result);
+  }
+
+  /// Clears an outcome the screen has now reported, so it is announced once.
+  void dismissCatalogScanOutcome() {
+    final current = state;
+    if (isClosed || current is! PluginManagementReady || current.scanOutcome == null) return;
+    emit(current.copyWith(scanOutcome: null));
   }
 
   void _setScanRejection({required String pluginId, required CatalogRescanStartResult? result}) {
@@ -497,6 +525,12 @@ class PluginManagementCubit({
               PluginManagementUnsupported() ||
               PluginManagementFailure() => const {},
             },
+            scanOutcome: switch (state) {
+              PluginManagementReady(:final scanOutcome) => scanOutcome,
+              PluginManagementLoading() ||
+              PluginManagementUnsupported() ||
+              PluginManagementFailure() => null,
+            },
           ),
         );
       case PluginManagementLoadResultUnsupported():
@@ -569,6 +603,11 @@ class PluginManagementCubit({
 
   void _onCatalogScan(CatalogRescanState scan) {
     if (isClosed) return;
+    // Dropped before the readiness check, not after: a disconnect resets the
+    // scan to idle and reloads the snapshot, and the reload reaches this cubit
+    // first. Reading the claims only while ready would let them survive the run
+    // they belong to.
+    if (scan is CatalogRescanIdle) _scanClaims.clear();
     final current = state;
     if (current is! PluginManagementReady) return;
     final scanning = _scanningPluginIds;
@@ -578,12 +617,43 @@ class PluginManagementCubit({
     // restore the refusal once the scan succeeded.
     final rejections = Map<String, CatalogRescanStartResult>.of(current.scanRejections)
       ..removeWhere((pluginId, _) => scanning.contains(pluginId));
-    if (const SetEquality<String>().equals(current.scanningPluginIds, scanning) &&
+    // A run that ends without a terminal state — cancelled, or recovered and
+    // settled quietly — has nothing to announce, which the idle clear above
+    // covers. Announcing one spends every claim in it: the operation is one
+    // run however many cards started members of it, and it ends once.
+    final outcome = _scanClaims.isEmpty ? null : _outcomeOf(scan);
+    if (outcome != null) _scanClaims.clear();
+    if (outcome == null &&
+        const SetEquality<String>().equals(current.scanningPluginIds, scanning) &&
         rejections.length == current.scanRejections.length) {
       return;
     }
-    emit(current.copyWith(scanningPluginIds: scanning, scanRejections: rejections));
+    emit(
+      current.copyWith(
+        scanningPluginIds: scanning,
+        scanRejections: rejections,
+        scanOutcome: outcome ?? current.scanOutcome,
+      ),
+    );
   }
+
+  /// The three ways a scan that actually started can end.
+  ///
+  /// Everything else is either still running or an answer the harness card
+  /// already owns, so it produces nothing to announce.
+  CatalogRescanOutcome? _outcomeOf(CatalogRescanState scan) => switch (scan) {
+    CatalogRescanSucceeded(:final counts) => CatalogRescanOutcome.succeeded(counts: counts),
+    CatalogRescanPartlyFailed(:final succeededCount, :final failedCount) => CatalogRescanOutcome.partlyFailed(
+      succeededCount: succeededCount,
+      failedCount: failedCount,
+    ),
+    CatalogRescanFailed() => const CatalogRescanOutcome.failed(),
+    CatalogRescanIdle() ||
+    CatalogRescanStarting() ||
+    CatalogRescanRunning() ||
+    CatalogRescanUnsupported() ||
+    CatalogRescanNoHarness() => null,
+  };
 
   void _onInstallProgress({required Map<String, PluginInstallProgress> installs}) {
     if (isClosed) return;
