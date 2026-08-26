@@ -1,4 +1,5 @@
 import "package:injectable/injectable.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/device_canvas_repository.dart";
 import "../repositories/models/device_canvas_result.dart";
@@ -39,5 +40,17 @@ class DeviceCanvasService({required final DeviceCanvasRepository _repository}) {
       deviceKey: deviceKey,
       expectedClaimRevision: expectedClaimRevision,
     );
+  }
+
+  Future<DeviceCanvasStreamStartResult> startStream({required DeviceCanvasStreamStartRequest request}) {
+    return _repository.startStream(request: request);
+  }
+
+  Future<DeviceCanvasStreamStatusResult> statusStream({required DeviceCanvasStreamStatusRequest request}) {
+    return _repository.statusStream(request: request);
+  }
+
+  Future<DeviceCanvasStreamStopResult> stopStream({required DeviceCanvasStreamStopRequest request}) {
+    return _repository.stopStream(request: request);
   }
 }

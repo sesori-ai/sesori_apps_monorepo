@@ -6,6 +6,261 @@ part of 'device_canvas_client.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+_DeviceCanvasRtcDescription _$DeviceCanvasRtcDescriptionFromJson(Map json) =>
+    _DeviceCanvasRtcDescription(
+      type: $enumDecode(
+        _$DeviceCanvasRtcDescriptionTypeEnumMap,
+        json['type'],
+        unknownValue: DeviceCanvasRtcDescriptionType.unknown,
+      ),
+      sdp: json['sdp'] as String,
+      fingerprint: json['fingerprint'] as String,
+    );
+
+Map<String, dynamic> _$DeviceCanvasRtcDescriptionToJson(
+  _DeviceCanvasRtcDescription instance,
+) => <String, dynamic>{
+  'type': _$DeviceCanvasRtcDescriptionTypeEnumMap[instance.type]!,
+  'sdp': instance.sdp,
+  'fingerprint': instance.fingerprint,
+};
+
+const _$DeviceCanvasRtcDescriptionTypeEnumMap = {
+  DeviceCanvasRtcDescriptionType.offer: 'offer',
+  DeviceCanvasRtcDescriptionType.answer: 'answer',
+  DeviceCanvasRtcDescriptionType.unknown: 'unknown',
+};
+
+_DeviceCanvasIceCandidate _$DeviceCanvasIceCandidateFromJson(Map json) =>
+    _DeviceCanvasIceCandidate(
+      candidate: json['candidate'] as String,
+      sdpMid: json['sdpMid'] as String,
+      sdpMLineIndex: (json['sdpMLineIndex'] as num).toInt(),
+    );
+
+Map<String, dynamic> _$DeviceCanvasIceCandidateToJson(
+  _DeviceCanvasIceCandidate instance,
+) => <String, dynamic>{
+  'candidate': instance.candidate,
+  'sdpMid': instance.sdpMid,
+  'sdpMLineIndex': instance.sdpMLineIndex,
+};
+
+_DeviceCanvasTurnConfiguration _$DeviceCanvasTurnConfigurationFromJson(
+  Map json,
+) => _DeviceCanvasTurnConfiguration(
+  urls: (json['urls'] as List<dynamic>).map((e) => e as String).toList(),
+  username: json['username'] as String,
+  credential: json['credential'] as String,
+  expiresAt: (json['expiresAt'] as num).toInt(),
+);
+
+Map<String, dynamic> _$DeviceCanvasTurnConfigurationToJson(
+  _DeviceCanvasTurnConfiguration instance,
+) => <String, dynamic>{
+  'urls': instance.urls,
+  'username': instance.username,
+  'credential': instance.credential,
+  'expiresAt': instance.expiresAt,
+};
+
+_DeviceCanvasStreamStartRequest _$DeviceCanvasStreamStartRequestFromJson(
+  Map json,
+) => _DeviceCanvasStreamStartRequest(
+  expectedBridgeId: json['expectedBridgeId'] as String,
+  sessionId: json['sessionId'] as String,
+  deviceKey: json['deviceKey'] as String,
+  expectedClaimRevision: (json['expectedClaimRevision'] as num).toInt(),
+  control: json['control'] as bool,
+  offer: DeviceCanvasRtcDescription.fromJson(
+    Map<String, dynamic>.from(json['offer'] as Map),
+  ),
+  iceCandidates:
+      (json['iceCandidates'] as List<dynamic>?)
+          ?.map(
+            (e) => DeviceCanvasIceCandidate.fromJson(
+              Map<String, dynamic>.from(e as Map),
+            ),
+          )
+          .toList() ??
+      const <DeviceCanvasIceCandidate>[],
+);
+
+Map<String, dynamic> _$DeviceCanvasStreamStartRequestToJson(
+  _DeviceCanvasStreamStartRequest instance,
+) => <String, dynamic>{
+  'expectedBridgeId': instance.expectedBridgeId,
+  'sessionId': instance.sessionId,
+  'deviceKey': instance.deviceKey,
+  'expectedClaimRevision': instance.expectedClaimRevision,
+  'control': instance.control,
+  'offer': instance.offer.toJson(),
+  'iceCandidates': instance.iceCandidates.map((e) => e.toJson()).toList(),
+};
+
+_DeviceCanvasStreamStartResponse _$DeviceCanvasStreamStartResponseFromJson(
+  Map json,
+) => _DeviceCanvasStreamStartResponse(
+  outcome: $enumDecode(
+    _$DeviceCanvasStreamStartOutcomeEnumMap,
+    json['outcome'],
+    unknownValue: DeviceCanvasStreamStartOutcome.unknown,
+  ),
+  leaseId: json['leaseId'] as String?,
+  expiresAt: (json['expiresAt'] as num?)?.toInt(),
+  answer: json['answer'] == null
+      ? null
+      : DeviceCanvasRtcDescription.fromJson(
+          Map<String, dynamic>.from(json['answer'] as Map),
+        ),
+  iceCandidates:
+      (json['iceCandidates'] as List<dynamic>?)
+          ?.map(
+            (e) => DeviceCanvasIceCandidate.fromJson(
+              Map<String, dynamic>.from(e as Map),
+            ),
+          )
+          .toList() ??
+      const <DeviceCanvasIceCandidate>[],
+  turn: json['turn'] == null
+      ? null
+      : DeviceCanvasTurnConfiguration.fromJson(
+          Map<String, dynamic>.from(json['turn'] as Map),
+        ),
+);
+
+Map<String, dynamic> _$DeviceCanvasStreamStartResponseToJson(
+  _DeviceCanvasStreamStartResponse instance,
+) => <String, dynamic>{
+  'outcome': _$DeviceCanvasStreamStartOutcomeEnumMap[instance.outcome]!,
+  'leaseId': ?instance.leaseId,
+  'expiresAt': ?instance.expiresAt,
+  'answer': ?instance.answer?.toJson(),
+  'iceCandidates': instance.iceCandidates.map((e) => e.toJson()).toList(),
+  'turn': ?instance.turn?.toJson(),
+};
+
+const _$DeviceCanvasStreamStartOutcomeEnumMap = {
+  DeviceCanvasStreamStartOutcome.started: 'started',
+  DeviceCanvasStreamStartOutcome.controllerConflict: 'controllerConflict',
+  DeviceCanvasStreamStartOutcome.unavailable: 'unavailable',
+  DeviceCanvasStreamStartOutcome.unauthorized: 'unauthorized',
+  DeviceCanvasStreamStartOutcome.unsupported: 'unsupported',
+  DeviceCanvasStreamStartOutcome.unknown: 'unknown',
+};
+
+_DeviceCanvasStreamStatusRequest _$DeviceCanvasStreamStatusRequestFromJson(
+  Map json,
+) => _DeviceCanvasStreamStatusRequest(
+  expectedBridgeId: json['expectedBridgeId'] as String,
+  sessionId: json['sessionId'] as String,
+  deviceKey: json['deviceKey'] as String,
+  expectedClaimRevision: (json['expectedClaimRevision'] as num).toInt(),
+);
+
+Map<String, dynamic> _$DeviceCanvasStreamStatusRequestToJson(
+  _DeviceCanvasStreamStatusRequest instance,
+) => <String, dynamic>{
+  'expectedBridgeId': instance.expectedBridgeId,
+  'sessionId': instance.sessionId,
+  'deviceKey': instance.deviceKey,
+  'expectedClaimRevision': instance.expectedClaimRevision,
+};
+
+_DeviceCanvasStreamStatusResponse _$DeviceCanvasStreamStatusResponseFromJson(
+  Map json,
+) => _DeviceCanvasStreamStatusResponse(
+  outcome: $enumDecode(
+    _$DeviceCanvasStreamStatusOutcomeEnumMap,
+    json['outcome'],
+    unknownValue: DeviceCanvasStreamStatusOutcome.unknown,
+  ),
+  leaseId: json['leaseId'] as String?,
+  expiresAt: (json['expiresAt'] as num?)?.toInt(),
+  answer: json['answer'] == null
+      ? null
+      : DeviceCanvasRtcDescription.fromJson(
+          Map<String, dynamic>.from(json['answer'] as Map),
+        ),
+  iceCandidates:
+      (json['iceCandidates'] as List<dynamic>?)
+          ?.map(
+            (e) => DeviceCanvasIceCandidate.fromJson(
+              Map<String, dynamic>.from(e as Map),
+            ),
+          )
+          .toList() ??
+      const <DeviceCanvasIceCandidate>[],
+  turn: json['turn'] == null
+      ? null
+      : DeviceCanvasTurnConfiguration.fromJson(
+          Map<String, dynamic>.from(json['turn'] as Map),
+        ),
+);
+
+Map<String, dynamic> _$DeviceCanvasStreamStatusResponseToJson(
+  _DeviceCanvasStreamStatusResponse instance,
+) => <String, dynamic>{
+  'outcome': _$DeviceCanvasStreamStatusOutcomeEnumMap[instance.outcome]!,
+  'leaseId': ?instance.leaseId,
+  'expiresAt': ?instance.expiresAt,
+  'answer': ?instance.answer?.toJson(),
+  'iceCandidates': instance.iceCandidates.map((e) => e.toJson()).toList(),
+  'turn': ?instance.turn?.toJson(),
+};
+
+const _$DeviceCanvasStreamStatusOutcomeEnumMap = {
+  DeviceCanvasStreamStatusOutcome.active: 'active',
+  DeviceCanvasStreamStatusOutcome.inactive: 'inactive',
+  DeviceCanvasStreamStatusOutcome.controllerConflict: 'controllerConflict',
+  DeviceCanvasStreamStatusOutcome.unavailable: 'unavailable',
+  DeviceCanvasStreamStatusOutcome.unauthorized: 'unauthorized',
+  DeviceCanvasStreamStatusOutcome.unknown: 'unknown',
+};
+
+_DeviceCanvasStreamStopRequest _$DeviceCanvasStreamStopRequestFromJson(
+  Map json,
+) => _DeviceCanvasStreamStopRequest(
+  expectedBridgeId: json['expectedBridgeId'] as String,
+  sessionId: json['sessionId'] as String,
+  deviceKey: json['deviceKey'] as String,
+  expectedClaimRevision: (json['expectedClaimRevision'] as num).toInt(),
+  leaseId: json['leaseId'] as String,
+);
+
+Map<String, dynamic> _$DeviceCanvasStreamStopRequestToJson(
+  _DeviceCanvasStreamStopRequest instance,
+) => <String, dynamic>{
+  'expectedBridgeId': instance.expectedBridgeId,
+  'sessionId': instance.sessionId,
+  'deviceKey': instance.deviceKey,
+  'expectedClaimRevision': instance.expectedClaimRevision,
+  'leaseId': instance.leaseId,
+};
+
+_DeviceCanvasStreamStopResponse _$DeviceCanvasStreamStopResponseFromJson(
+  Map json,
+) => _DeviceCanvasStreamStopResponse(
+  outcome: $enumDecode(
+    _$DeviceCanvasStreamStopOutcomeEnumMap,
+    json['outcome'],
+    unknownValue: DeviceCanvasStreamStopOutcome.unknown,
+  ),
+);
+
+Map<String, dynamic> _$DeviceCanvasStreamStopResponseToJson(
+  _DeviceCanvasStreamStopResponse instance,
+) => <String, dynamic>{
+  'outcome': _$DeviceCanvasStreamStopOutcomeEnumMap[instance.outcome]!,
+};
+
+const _$DeviceCanvasStreamStopOutcomeEnumMap = {
+  DeviceCanvasStreamStopOutcome.stopped: 'stopped',
+  DeviceCanvasStreamStopOutcome.alreadyStopped: 'alreadyStopped',
+  DeviceCanvasStreamStopOutcome.unauthorized: 'unauthorized',
+  DeviceCanvasStreamStopOutcome.unknown: 'unknown',
+};
+
 _DeviceCanvasSessionStatusRequest _$DeviceCanvasSessionStatusRequestFromJson(
   Map json,
 ) => _DeviceCanvasSessionStatusRequest(sessionId: json['sessionId'] as String);

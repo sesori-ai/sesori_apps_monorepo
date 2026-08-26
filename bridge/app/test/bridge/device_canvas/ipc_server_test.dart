@@ -8,8 +8,10 @@ import "package:sesori_bridge/src/bridge/device_canvas/ipc_server.dart";
 import "package:sesori_bridge/src/bridge/device_canvas/protocol.dart";
 import "package:sesori_bridge/src/bridge/device_canvas/protocol_codec.dart";
 import "package:sesori_bridge/src/bridge/device_canvas/rendezvous_repository.dart";
+import "package:sesori_bridge/src/bridge/device_canvas/stream_gateway.dart";
 import "package:sesori_bridge/src/repositories/device_canvas_claim_repository.dart";
 import "package:sesori_bridge/src/services/device_canvas_claim_service.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
@@ -20,6 +22,7 @@ void main() {
     late AppDatabase db;
     late state.DeviceCanvasIntegrationState integrationState;
     late DeviceCanvasClaimService claimService;
+    late DeviceCanvasStreamGateway streamGateway;
     late DeviceCanvasIpcServer server;
 
     setUp(() async {
@@ -34,6 +37,7 @@ void main() {
         ),
         integrationState: integrationState,
       );
+      streamGateway = DeviceCanvasStreamGateway();
       await _insertSession(db: db, sessionId: "session-1", title: "Demo Session");
       server = DeviceCanvasIpcServer(
         rendezvousRepository: DeviceCanvasRendezvousRepository(dataDirectory: tempDir.path),
@@ -41,6 +45,7 @@ void main() {
         processGeneration: "pid:generation",
         claimService: claimService,
         integrationState: integrationState,
+        streamGateway: streamGateway,
         heartbeatTimeout: const Duration(milliseconds: 250),
       );
       await server.start();
@@ -48,6 +53,7 @@ void main() {
 
     tearDown(() async {
       await server.dispose();
+      await streamGateway.dispose();
       await claimService.dispose();
       await integrationState.dispose();
       await db.close();
@@ -69,6 +75,169 @@ void main() {
         WebSocket.connect("ws://127.0.0.1:${server.port}"),
         throwsA(isA<WebSocketException>()),
       );
+    });
+
+    test("fails a stream start immediately when no Canvas peer is accepted", () async {
+      final result = await _startStream(streamGateway).timeout(const Duration(seconds: 1));
+
+      expect(result, isA<DeviceCanvasStreamStartUnavailable>());
+    });
+
+    test("forwards a stream start and correlates the valid answer", () async {
+      final socket = await _connectAccepted(server);
+      addTearDown(socket.socket.close);
+
+      final resultFuture = _startStream(streamGateway);
+      final command = await _nextJson(socket.messages);
+      expect(command, containsPair("type", "streamStart"));
+      expect(command, containsPair("leaseId", "lease-1"));
+      expect(command, containsPair("bridgeId", "bridge-a"));
+      expect(command, containsPair("claimRevision", 4));
+      expect(command["offer"], containsPair("type", "offer"));
+
+      socket.socket.add(
+        jsonEncode({
+          "type": "streamStarted",
+          "requestId": command["requestId"],
+          "leaseId": command["leaseId"],
+          "answer": _rtcDescriptionJson(type: "answer"),
+          "iceCandidates": [_iceCandidateJson()],
+        }),
+      );
+
+      final result = await resultFuture;
+      expect(
+        result,
+        isA<DeviceCanvasStreamStartSucceeded>()
+            .having((value) => value.answer.type, "answer.type", DeviceCanvasRtcDescriptionType.answer)
+            .having((value) => value.iceCandidates, "iceCandidates", hasLength(1)),
+      );
+    });
+
+    test("mismatched stream answer correlation fails closed without resolving the lease", () async {
+      final socket = await _connectAccepted(server);
+      addTearDown(socket.socket.close);
+      final resultFuture = _startStream(streamGateway);
+      final command = await _nextJson(socket.messages);
+
+      socket.socket.add(
+        jsonEncode({
+          "type": "streamStarted",
+          "requestId": command["requestId"],
+          "leaseId": "another-lease",
+          "answer": _rtcDescriptionJson(type: "answer"),
+          "iceCandidates": <Object?>[],
+        }),
+      );
+
+      expect(await socket.messages.moveNext().timeout(const Duration(seconds: 5)), isFalse);
+      expect(await resultFuture, isA<DeviceCanvasStreamStartUnavailable>());
+    });
+
+    test("ignores an exact late start response without disconnecting the Canvas peer", () async {
+      final socket = await _connectAccepted(server);
+      addTearDown(socket.socket.close);
+      final firstResult = _startStream(streamGateway);
+      final firstCommand = await _nextJson(socket.messages);
+
+      expect(streamGateway.cancelPendingStart(leaseId: "lease-1"), isTrue);
+      expect(await firstResult, isA<DeviceCanvasStreamStartUnavailable>());
+      socket.socket.add(
+        jsonEncode({
+          "type": "streamStarted",
+          "requestId": firstCommand["requestId"],
+          "leaseId": firstCommand["leaseId"],
+          "answer": _rtcDescriptionJson(type: "answer"),
+          "iceCandidates": <Object?>[],
+        }),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      final secondResult = _startStream(streamGateway, leaseId: "lease-2");
+      final secondCommand = await _nextJson(socket.messages);
+      socket.socket.add(
+        jsonEncode({
+          "type": "streamStarted",
+          "requestId": secondCommand["requestId"],
+          "leaseId": secondCommand["leaseId"],
+          "answer": _rtcDescriptionJson(type: "answer"),
+          "iceCandidates": <Object?>[],
+        }),
+      );
+
+      expect(await secondResult, isA<DeviceCanvasStreamStartSucceeded>());
+    });
+
+    test("disconnect fails a forwarded stream start immediately", () async {
+      final socket = await _connectAccepted(server);
+      final resultFuture = _startStream(streamGateway);
+      await _nextJson(socket.messages);
+
+      await socket.socket.close();
+
+      expect(
+        await resultFuture.timeout(const Duration(seconds: 1)),
+        isA<DeviceCanvasStreamStartUnavailable>(),
+      );
+    });
+
+    test("replacement peer ignores the prior peer's exact late response", () async {
+      final first = await _connectAccepted(server);
+      addTearDown(first.socket.close);
+      final firstResult = _startStream(streamGateway);
+      final firstCommand = await _nextJson(first.messages);
+
+      final second = await _connectAccepted(server);
+      addTearDown(second.socket.close);
+      expect(await firstResult, isA<DeviceCanvasStreamStartUnavailable>());
+      second.socket.add(
+        jsonEncode({
+          "type": "streamStarted",
+          "requestId": firstCommand["requestId"],
+          "leaseId": firstCommand["leaseId"],
+          "answer": _rtcDescriptionJson(type: "answer"),
+          "iceCandidates": <Object?>[],
+        }),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      final secondResult = _startStream(streamGateway, leaseId: "lease-2");
+      final secondCommand = await _nextJson(second.messages);
+      second.socket.add(
+        jsonEncode({
+          "type": "streamStarted",
+          "requestId": secondCommand["requestId"],
+          "leaseId": secondCommand["leaseId"],
+          "answer": _rtcDescriptionJson(type: "answer"),
+          "iceCandidates": <Object?>[],
+        }),
+      );
+
+      expect(await secondResult, isA<DeviceCanvasStreamStartSucceeded>());
+    });
+
+    test("forwards stream revocation without creating a pending response", () async {
+      final socket = await _connectAccepted(server);
+      addTearDown(socket.socket.close);
+
+      streamGateway.revoke(leaseId: "lease-1", reason: DeviceCanvasStreamRevokeReason.claimChanged);
+
+      final command = await _nextJson(socket.messages);
+      expect(command, containsPair("type", "streamRevoke"));
+      expect(command, containsPair("leaseId", "lease-1"));
+      expect(command, containsPair("reason", "claimChanged"));
+    });
+
+    test("delivers typed stream closed events", () async {
+      final socket = await _connectAccepted(server);
+      addTearDown(socket.socket.close);
+      final eventFuture = streamGateway.closedEvents.first;
+
+      socket.socket.add(jsonEncode({"type": "streamClosed", "leaseId": "lease-1", "reason": "failed"}));
+
+      final event = await eventFuture;
+      expect(event.leaseId, "lease-1");
+      expect(event.reason, DeviceCanvasStreamCloseReason.failed);
     });
 
     test("accepts hello and publishes bounded claim snapshot and changes", () async {
@@ -246,6 +415,7 @@ void main() {
         processGeneration: "pid:generation",
         claimService: controlledClaimService,
         integrationState: integrationState,
+        streamGateway: streamGateway,
         heartbeatTimeout: const Duration(milliseconds: 250),
       );
       await server.start();
@@ -281,6 +451,7 @@ void main() {
         processGeneration: "pid:generation",
         claimService: controlledClaimService,
         integrationState: integrationState,
+        streamGateway: streamGateway,
         heartbeatTimeout: const Duration(seconds: 5),
       );
       await server.start();
@@ -318,6 +489,7 @@ void main() {
         processGeneration: "pid:generation",
         claimService: controlledClaimService,
         integrationState: integrationState,
+        streamGateway: streamGateway,
         heartbeatTimeout: const Duration(milliseconds: 250),
       );
       await server.start();
@@ -359,6 +531,7 @@ void main() {
         processGeneration: "pid:generation",
         claimService: failingClaimService,
         integrationState: integrationState,
+        streamGateway: streamGateway,
         heartbeatTimeout: const Duration(milliseconds: 250),
       );
       await server.start();
@@ -383,6 +556,7 @@ void main() {
         processGeneration: "pid:generation",
         claimService: claimService,
         integrationState: integrationState,
+        streamGateway: streamGateway,
         heartbeatTimeout: const Duration(milliseconds: 250),
       );
 
@@ -427,6 +601,7 @@ void main() {
         processGeneration: "pid:generation",
         claimService: cancelFailingClaimService,
         integrationState: integrationState,
+        streamGateway: streamGateway,
         heartbeatTimeout: const Duration(milliseconds: 250),
       );
       await server.start();
@@ -519,6 +694,33 @@ Future<Map<String, dynamic>> _nextJson(StreamIterator<String> messages) async {
   return jsonDecode(messages.current) as Map<String, dynamic>;
 }
 
+Future<({WebSocket socket, StreamIterator<String> messages})> _connectAccepted(DeviceCanvasIpcServer server) async {
+  final socket = await _connect(server);
+  final messages = StreamIterator<String>(socket.cast<String>());
+  socket.add(jsonEncode(_helloJson("canvas-stream")));
+  await _nextJson(messages);
+  await _nextJson(messages);
+  return (socket: socket, messages: messages);
+}
+
+Future<DeviceCanvasStreamStartResult> _startStream(
+  DeviceCanvasStreamGateway gateway, {
+  String leaseId = "lease-1",
+}) {
+  return gateway.start(
+    leaseId: leaseId,
+    bridgeId: "bridge-a",
+    sessionId: "session-1",
+    deviceKey: "ios:booted",
+    claimRevision: 4,
+    expiresAt: 2000,
+    control: true,
+    offer: _rtcDescription(DeviceCanvasRtcDescriptionType.offer),
+    iceCandidates: const [],
+    turn: null,
+  );
+}
+
 void _makeDeviceAvailable(state.DeviceCanvasIntegrationState integrationState) {
   integrationState.connect(canvasInstanceId: "claim-setup", protocolVersion: deviceCanvasIpcProtocolVersion);
   integrationState.replaceInventory(const [
@@ -578,6 +780,27 @@ Map<String, Object?> _descriptorJson(String deviceKey) {
     "capabilities": _capabilitiesJson(),
   };
 }
+
+const String _fingerprint =
+    "sha-256 AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA";
+
+DeviceCanvasRtcDescription _rtcDescription(DeviceCanvasRtcDescriptionType type) => DeviceCanvasRtcDescription(
+  type: type,
+  sdp: "v=0\r\na=fingerprint:$_fingerprint\r\n",
+  fingerprint: _fingerprint,
+);
+
+Map<String, Object?> _rtcDescriptionJson({required String type}) => <String, Object?>{
+  "type": type,
+  "sdp": "v=0\r\na=fingerprint:$_fingerprint\r\n",
+  "fingerprint": _fingerprint,
+};
+
+Map<String, Object?> _iceCandidateJson() => <String, Object?>{
+  "candidate": "candidate:1 1 udp 1 127.0.0.1 9 typ host",
+  "sdpMid": "0",
+  "sdpMLineIndex": 0,
+};
 
 Future<void> _insertSession({required AppDatabase db, required String sessionId, required String title}) async {
   await db.projectsDao.insertProjectsIfMissing(projectIds: ["/Users/dev/My App"]);
@@ -660,6 +883,11 @@ class _SnapshotControlledClaimService({
 
   @override
   Future<List<DeviceCanvasClaimProjection>> snapshot({required String bridgeId}) => snapshotFuture;
+
+  @override
+  Future<DeviceCanvasClaim?> getClaim({required String bridgeId, required String deviceKey}) {
+    return delegate.getClaim(bridgeId: bridgeId, deviceKey: deviceKey);
+  }
 
   @override
   Future<DeviceCanvasClaimProjectionPage> clientSnapshot({
@@ -762,6 +990,11 @@ class _CancelFailingClaimService({required final DeviceCanvasClaimService delega
   @override
   Future<List<DeviceCanvasClaimProjection>> snapshot({required String bridgeId}) =>
       delegate.snapshot(bridgeId: bridgeId);
+
+  @override
+  Future<DeviceCanvasClaim?> getClaim({required String bridgeId, required String deviceKey}) {
+    return delegate.getClaim(bridgeId: bridgeId, deviceKey: deviceKey);
+  }
 
   @override
   Future<DeviceCanvasClaimProjectionPage> clientSnapshot({

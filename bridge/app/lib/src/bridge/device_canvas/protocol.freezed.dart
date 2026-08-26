@@ -505,6 +505,18 @@ DeviceCanvasInboundMessage _$DeviceCanvasInboundMessageFromJson(
           return DeviceCanvasHeartbeat.fromJson(
             json
           );
+                case 'streamStarted':
+          return DeviceCanvasStreamStartedMessage.fromJson(
+            json
+          );
+                case 'streamStartFailed':
+          return DeviceCanvasStreamStartFailedMessage.fromJson(
+            json
+          );
+                case 'streamClosed':
+          return DeviceCanvasStreamClosedMessage.fromJson(
+            json
+          );
         
           default:
             throw CheckedFromJsonException(
@@ -535,10 +547,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => runtimeType.hashCode;
 
-@override
-String toString() {
-  return 'DeviceCanvasInboundMessage()';
-}
 
 
 }
@@ -585,10 +593,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => Object.hash(runtimeType,protocolVersion,canvasInstanceId,capabilities);
 
-@override
-String toString() {
-  return 'DeviceCanvasInboundMessage.hello(protocolVersion: $protocolVersion, canvasInstanceId: $canvasInstanceId, capabilities: $capabilities)';
-}
 
 
 }
@@ -675,10 +679,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_devices));
 
-@override
-String toString() {
-  return 'DeviceCanvasInboundMessage.inventorySnapshot(devices: $devices)';
-}
 
 
 }
@@ -749,10 +749,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => Object.hash(runtimeType,canvasInstanceId,observedAt);
 
-@override
-String toString() {
-  return 'DeviceCanvasInboundMessage.heartbeat(canvasInstanceId: $canvasInstanceId, observedAt: $observedAt)';
-}
 
 
 }
@@ -784,6 +780,240 @@ class _$DeviceCanvasHeartbeatCopyWithImpl<$Res>
 canvasInstanceId: null == canvasInstanceId ? _self.canvasInstanceId : canvasInstanceId // ignore: cast_nullable_to_non_nullable
 as String,observedAt: null == observedAt ? _self.observedAt : observedAt // ignore: cast_nullable_to_non_nullable
 as int,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class DeviceCanvasStreamStartedMessage implements DeviceCanvasInboundMessage {
+  const DeviceCanvasStreamStartedMessage({required this.requestId, required this.leaseId, required this.answer, required  List<DeviceCanvasIceCandidate> iceCandidates,  String? $type}): _iceCandidates = iceCandidates,$type = $type ?? 'streamStarted';
+  factory DeviceCanvasStreamStartedMessage.fromJson(Map<String, dynamic> json) => _$DeviceCanvasStreamStartedMessageFromJson(json);
+
+ final  String requestId;
+ final  String leaseId;
+ final  DeviceCanvasRtcDescription answer;
+ final  List<DeviceCanvasIceCandidate> _iceCandidates;
+ List<DeviceCanvasIceCandidate> get iceCandidates {
+  if (_iceCandidates is EqualUnmodifiableListView) return _iceCandidates;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_iceCandidates);
+}
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of DeviceCanvasInboundMessage
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$DeviceCanvasStreamStartedMessageCopyWith<DeviceCanvasStreamStartedMessage> get copyWith => _$DeviceCanvasStreamStartedMessageCopyWithImpl<DeviceCanvasStreamStartedMessage>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$DeviceCanvasStreamStartedMessageToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeviceCanvasStreamStartedMessage&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.leaseId, leaseId) || other.leaseId == leaseId)&&(identical(other.answer, answer) || other.answer == answer)&&const DeepCollectionEquality().equals(other._iceCandidates, _iceCandidates));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,requestId,leaseId,answer,const DeepCollectionEquality().hash(_iceCandidates));
+
+
+
+}
+
+/// @nodoc
+abstract mixin class $DeviceCanvasStreamStartedMessageCopyWith<$Res> implements $DeviceCanvasInboundMessageCopyWith<$Res> {
+  factory $DeviceCanvasStreamStartedMessageCopyWith(DeviceCanvasStreamStartedMessage value, $Res Function(DeviceCanvasStreamStartedMessage) _then) = _$DeviceCanvasStreamStartedMessageCopyWithImpl;
+@useResult
+$Res call({
+ String requestId, String leaseId, DeviceCanvasRtcDescription answer, List<DeviceCanvasIceCandidate> iceCandidates
+});
+
+
+$DeviceCanvasRtcDescriptionCopyWith<$Res> get answer;
+
+}
+/// @nodoc
+class _$DeviceCanvasStreamStartedMessageCopyWithImpl<$Res>
+    implements $DeviceCanvasStreamStartedMessageCopyWith<$Res> {
+  _$DeviceCanvasStreamStartedMessageCopyWithImpl(this._self, this._then);
+
+  final DeviceCanvasStreamStartedMessage _self;
+  final $Res Function(DeviceCanvasStreamStartedMessage) _then;
+
+/// Create a copy of DeviceCanvasInboundMessage
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? requestId = null,Object? leaseId = null,Object? answer = null,Object? iceCandidates = null,}) {
+  return _then(DeviceCanvasStreamStartedMessage(
+requestId: null == requestId ? _self.requestId : requestId // ignore: cast_nullable_to_non_nullable
+as String,leaseId: null == leaseId ? _self.leaseId : leaseId // ignore: cast_nullable_to_non_nullable
+as String,answer: null == answer ? _self.answer : answer // ignore: cast_nullable_to_non_nullable
+as DeviceCanvasRtcDescription,iceCandidates: null == iceCandidates ? _self._iceCandidates : iceCandidates // ignore: cast_nullable_to_non_nullable
+as List<DeviceCanvasIceCandidate>,
+  ));
+}
+
+/// Create a copy of DeviceCanvasInboundMessage
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$DeviceCanvasRtcDescriptionCopyWith<$Res> get answer {
+  
+  return $DeviceCanvasRtcDescriptionCopyWith<$Res>(_self.answer, (value) {
+    return _then(_self.copyWith(answer: value));
+  });
+}
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class DeviceCanvasStreamStartFailedMessage implements DeviceCanvasInboundMessage {
+  const DeviceCanvasStreamStartFailedMessage({required this.requestId, required this.leaseId, @JsonKey(unknownEnumValue: DeviceCanvasStreamStartFailureReason.unknown) required this.reason,  String? $type}): $type = $type ?? 'streamStartFailed';
+  factory DeviceCanvasStreamStartFailedMessage.fromJson(Map<String, dynamic> json) => _$DeviceCanvasStreamStartFailedMessageFromJson(json);
+
+ final  String requestId;
+ final  String leaseId;
+@JsonKey(unknownEnumValue: DeviceCanvasStreamStartFailureReason.unknown) final  DeviceCanvasStreamStartFailureReason reason;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of DeviceCanvasInboundMessage
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$DeviceCanvasStreamStartFailedMessageCopyWith<DeviceCanvasStreamStartFailedMessage> get copyWith => _$DeviceCanvasStreamStartFailedMessageCopyWithImpl<DeviceCanvasStreamStartFailedMessage>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$DeviceCanvasStreamStartFailedMessageToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeviceCanvasStreamStartFailedMessage&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.leaseId, leaseId) || other.leaseId == leaseId)&&(identical(other.reason, reason) || other.reason == reason));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,requestId,leaseId,reason);
+
+
+
+}
+
+/// @nodoc
+abstract mixin class $DeviceCanvasStreamStartFailedMessageCopyWith<$Res> implements $DeviceCanvasInboundMessageCopyWith<$Res> {
+  factory $DeviceCanvasStreamStartFailedMessageCopyWith(DeviceCanvasStreamStartFailedMessage value, $Res Function(DeviceCanvasStreamStartFailedMessage) _then) = _$DeviceCanvasStreamStartFailedMessageCopyWithImpl;
+@useResult
+$Res call({
+ String requestId, String leaseId,@JsonKey(unknownEnumValue: DeviceCanvasStreamStartFailureReason.unknown) DeviceCanvasStreamStartFailureReason reason
+});
+
+
+
+
+}
+/// @nodoc
+class _$DeviceCanvasStreamStartFailedMessageCopyWithImpl<$Res>
+    implements $DeviceCanvasStreamStartFailedMessageCopyWith<$Res> {
+  _$DeviceCanvasStreamStartFailedMessageCopyWithImpl(this._self, this._then);
+
+  final DeviceCanvasStreamStartFailedMessage _self;
+  final $Res Function(DeviceCanvasStreamStartFailedMessage) _then;
+
+/// Create a copy of DeviceCanvasInboundMessage
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? requestId = null,Object? leaseId = null,Object? reason = null,}) {
+  return _then(DeviceCanvasStreamStartFailedMessage(
+requestId: null == requestId ? _self.requestId : requestId // ignore: cast_nullable_to_non_nullable
+as String,leaseId: null == leaseId ? _self.leaseId : leaseId // ignore: cast_nullable_to_non_nullable
+as String,reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as DeviceCanvasStreamStartFailureReason,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class DeviceCanvasStreamClosedMessage implements DeviceCanvasInboundMessage {
+  const DeviceCanvasStreamClosedMessage({required this.leaseId, @JsonKey(unknownEnumValue: DeviceCanvasStreamCloseReason.unknown) required this.reason,  String? $type}): $type = $type ?? 'streamClosed';
+  factory DeviceCanvasStreamClosedMessage.fromJson(Map<String, dynamic> json) => _$DeviceCanvasStreamClosedMessageFromJson(json);
+
+ final  String leaseId;
+@JsonKey(unknownEnumValue: DeviceCanvasStreamCloseReason.unknown) final  DeviceCanvasStreamCloseReason reason;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of DeviceCanvasInboundMessage
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$DeviceCanvasStreamClosedMessageCopyWith<DeviceCanvasStreamClosedMessage> get copyWith => _$DeviceCanvasStreamClosedMessageCopyWithImpl<DeviceCanvasStreamClosedMessage>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$DeviceCanvasStreamClosedMessageToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeviceCanvasStreamClosedMessage&&(identical(other.leaseId, leaseId) || other.leaseId == leaseId)&&(identical(other.reason, reason) || other.reason == reason));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,leaseId,reason);
+
+
+
+}
+
+/// @nodoc
+abstract mixin class $DeviceCanvasStreamClosedMessageCopyWith<$Res> implements $DeviceCanvasInboundMessageCopyWith<$Res> {
+  factory $DeviceCanvasStreamClosedMessageCopyWith(DeviceCanvasStreamClosedMessage value, $Res Function(DeviceCanvasStreamClosedMessage) _then) = _$DeviceCanvasStreamClosedMessageCopyWithImpl;
+@useResult
+$Res call({
+ String leaseId,@JsonKey(unknownEnumValue: DeviceCanvasStreamCloseReason.unknown) DeviceCanvasStreamCloseReason reason
+});
+
+
+
+
+}
+/// @nodoc
+class _$DeviceCanvasStreamClosedMessageCopyWithImpl<$Res>
+    implements $DeviceCanvasStreamClosedMessageCopyWith<$Res> {
+  _$DeviceCanvasStreamClosedMessageCopyWithImpl(this._self, this._then);
+
+  final DeviceCanvasStreamClosedMessage _self;
+  final $Res Function(DeviceCanvasStreamClosedMessage) _then;
+
+/// Create a copy of DeviceCanvasInboundMessage
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? leaseId = null,Object? reason = null,}) {
+  return _then(DeviceCanvasStreamClosedMessage(
+leaseId: null == leaseId ? _self.leaseId : leaseId // ignore: cast_nullable_to_non_nullable
+as String,reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as DeviceCanvasStreamCloseReason,
   ));
 }
 
@@ -960,6 +1190,14 @@ DeviceCanvasOutboundMessage _$DeviceCanvasOutboundMessageFromJson(
           return DeviceCanvasCompatibilityStatus.fromJson(
             json
           );
+                case 'streamStart':
+          return DeviceCanvasStreamStartMessage.fromJson(
+            json
+          );
+                case 'streamRevoke':
+          return DeviceCanvasStreamRevokeMessage.fromJson(
+            json
+          );
         
           default:
             throw CheckedFromJsonException(
@@ -990,10 +1228,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => runtimeType.hashCode;
 
-@override
-String toString() {
-  return 'DeviceCanvasOutboundMessage()';
-}
 
 
 }
@@ -1039,10 +1273,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => Object.hash(runtimeType,protocolVersion,bridgeId);
 
-@override
-String toString() {
-  return 'DeviceCanvasOutboundMessage.helloAccepted(protocolVersion: $protocolVersion, bridgeId: $bridgeId)';
-}
 
 
 }
@@ -1119,10 +1349,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_claims));
 
-@override
-String toString() {
-  return 'DeviceCanvasOutboundMessage.claimsSnapshot(claims: $claims)';
-}
 
 
 }
@@ -1192,10 +1418,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => Object.hash(runtimeType,claim);
 
-@override
-String toString() {
-  return 'DeviceCanvasOutboundMessage.claimUpdated(claim: $claim)';
-}
 
 
 }
@@ -1276,10 +1498,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => Object.hash(runtimeType,bridgeId,deviceKey,revision);
 
-@override
-String toString() {
-  return 'DeviceCanvasOutboundMessage.claimRemoved(bridgeId: $bridgeId, deviceKey: $deviceKey, revision: $revision)';
-}
 
 
 }
@@ -1353,10 +1571,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => Object.hash(runtimeType,supported,protocolVersion,reason);
 
-@override
-String toString() {
-  return 'DeviceCanvasOutboundMessage.compatibilityStatus(supported: $supported, protocolVersion: $protocolVersion, reason: $reason)';
-}
 
 
 }
@@ -1389,6 +1603,193 @@ supported: null == supported ? _self.supported : supported // ignore: cast_nulla
 as bool,protocolVersion: null == protocolVersion ? _self.protocolVersion : protocolVersion // ignore: cast_nullable_to_non_nullable
 as int,reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
 as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class DeviceCanvasStreamStartMessage implements DeviceCanvasOutboundMessage {
+  const DeviceCanvasStreamStartMessage({required this.requestId, required this.leaseId, required this.bridgeId, required this.sessionId, required this.deviceKey, required this.claimRevision, required this.expiresAt, required this.control, required this.offer, required  List<DeviceCanvasIceCandidate> iceCandidates, required this.turn,  String? $type}): _iceCandidates = iceCandidates,$type = $type ?? 'streamStart';
+  factory DeviceCanvasStreamStartMessage.fromJson(Map<String, dynamic> json) => _$DeviceCanvasStreamStartMessageFromJson(json);
+
+ final  String requestId;
+ final  String leaseId;
+ final  String bridgeId;
+ final  String sessionId;
+ final  String deviceKey;
+ final  int claimRevision;
+ final  int expiresAt;
+ final  bool control;
+ final  DeviceCanvasRtcDescription offer;
+ final  List<DeviceCanvasIceCandidate> _iceCandidates;
+ List<DeviceCanvasIceCandidate> get iceCandidates {
+  if (_iceCandidates is EqualUnmodifiableListView) return _iceCandidates;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_iceCandidates);
+}
+
+ final  DeviceCanvasTurnConfiguration? turn;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of DeviceCanvasOutboundMessage
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$DeviceCanvasStreamStartMessageCopyWith<DeviceCanvasStreamStartMessage> get copyWith => _$DeviceCanvasStreamStartMessageCopyWithImpl<DeviceCanvasStreamStartMessage>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$DeviceCanvasStreamStartMessageToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeviceCanvasStreamStartMessage&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.leaseId, leaseId) || other.leaseId == leaseId)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.deviceKey, deviceKey) || other.deviceKey == deviceKey)&&(identical(other.claimRevision, claimRevision) || other.claimRevision == claimRevision)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.control, control) || other.control == control)&&(identical(other.offer, offer) || other.offer == offer)&&const DeepCollectionEquality().equals(other._iceCandidates, _iceCandidates)&&(identical(other.turn, turn) || other.turn == turn));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,requestId,leaseId,bridgeId,sessionId,deviceKey,claimRevision,expiresAt,control,offer,const DeepCollectionEquality().hash(_iceCandidates),turn);
+
+
+
+}
+
+/// @nodoc
+abstract mixin class $DeviceCanvasStreamStartMessageCopyWith<$Res> implements $DeviceCanvasOutboundMessageCopyWith<$Res> {
+  factory $DeviceCanvasStreamStartMessageCopyWith(DeviceCanvasStreamStartMessage value, $Res Function(DeviceCanvasStreamStartMessage) _then) = _$DeviceCanvasStreamStartMessageCopyWithImpl;
+@useResult
+$Res call({
+ String requestId, String leaseId, String bridgeId, String sessionId, String deviceKey, int claimRevision, int expiresAt, bool control, DeviceCanvasRtcDescription offer, List<DeviceCanvasIceCandidate> iceCandidates, DeviceCanvasTurnConfiguration? turn
+});
+
+
+$DeviceCanvasRtcDescriptionCopyWith<$Res> get offer;$DeviceCanvasTurnConfigurationCopyWith<$Res>? get turn;
+
+}
+/// @nodoc
+class _$DeviceCanvasStreamStartMessageCopyWithImpl<$Res>
+    implements $DeviceCanvasStreamStartMessageCopyWith<$Res> {
+  _$DeviceCanvasStreamStartMessageCopyWithImpl(this._self, this._then);
+
+  final DeviceCanvasStreamStartMessage _self;
+  final $Res Function(DeviceCanvasStreamStartMessage) _then;
+
+/// Create a copy of DeviceCanvasOutboundMessage
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? requestId = null,Object? leaseId = null,Object? bridgeId = null,Object? sessionId = null,Object? deviceKey = null,Object? claimRevision = null,Object? expiresAt = null,Object? control = null,Object? offer = null,Object? iceCandidates = null,Object? turn = freezed,}) {
+  return _then(DeviceCanvasStreamStartMessage(
+requestId: null == requestId ? _self.requestId : requestId // ignore: cast_nullable_to_non_nullable
+as String,leaseId: null == leaseId ? _self.leaseId : leaseId // ignore: cast_nullable_to_non_nullable
+as String,bridgeId: null == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String,sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,deviceKey: null == deviceKey ? _self.deviceKey : deviceKey // ignore: cast_nullable_to_non_nullable
+as String,claimRevision: null == claimRevision ? _self.claimRevision : claimRevision // ignore: cast_nullable_to_non_nullable
+as int,expiresAt: null == expiresAt ? _self.expiresAt : expiresAt // ignore: cast_nullable_to_non_nullable
+as int,control: null == control ? _self.control : control // ignore: cast_nullable_to_non_nullable
+as bool,offer: null == offer ? _self.offer : offer // ignore: cast_nullable_to_non_nullable
+as DeviceCanvasRtcDescription,iceCandidates: null == iceCandidates ? _self._iceCandidates : iceCandidates // ignore: cast_nullable_to_non_nullable
+as List<DeviceCanvasIceCandidate>,turn: freezed == turn ? _self.turn : turn // ignore: cast_nullable_to_non_nullable
+as DeviceCanvasTurnConfiguration?,
+  ));
+}
+
+/// Create a copy of DeviceCanvasOutboundMessage
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$DeviceCanvasRtcDescriptionCopyWith<$Res> get offer {
+  
+  return $DeviceCanvasRtcDescriptionCopyWith<$Res>(_self.offer, (value) {
+    return _then(_self.copyWith(offer: value));
+  });
+}/// Create a copy of DeviceCanvasOutboundMessage
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$DeviceCanvasTurnConfigurationCopyWith<$Res>? get turn {
+    if (_self.turn == null) {
+    return null;
+  }
+
+  return $DeviceCanvasTurnConfigurationCopyWith<$Res>(_self.turn!, (value) {
+    return _then(_self.copyWith(turn: value));
+  });
+}
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class DeviceCanvasStreamRevokeMessage implements DeviceCanvasOutboundMessage {
+  const DeviceCanvasStreamRevokeMessage({required this.leaseId, required this.reason,  String? $type}): $type = $type ?? 'streamRevoke';
+  factory DeviceCanvasStreamRevokeMessage.fromJson(Map<String, dynamic> json) => _$DeviceCanvasStreamRevokeMessageFromJson(json);
+
+ final  String leaseId;
+ final  DeviceCanvasStreamRevokeReason reason;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of DeviceCanvasOutboundMessage
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$DeviceCanvasStreamRevokeMessageCopyWith<DeviceCanvasStreamRevokeMessage> get copyWith => _$DeviceCanvasStreamRevokeMessageCopyWithImpl<DeviceCanvasStreamRevokeMessage>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$DeviceCanvasStreamRevokeMessageToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeviceCanvasStreamRevokeMessage&&(identical(other.leaseId, leaseId) || other.leaseId == leaseId)&&(identical(other.reason, reason) || other.reason == reason));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,leaseId,reason);
+
+
+
+}
+
+/// @nodoc
+abstract mixin class $DeviceCanvasStreamRevokeMessageCopyWith<$Res> implements $DeviceCanvasOutboundMessageCopyWith<$Res> {
+  factory $DeviceCanvasStreamRevokeMessageCopyWith(DeviceCanvasStreamRevokeMessage value, $Res Function(DeviceCanvasStreamRevokeMessage) _then) = _$DeviceCanvasStreamRevokeMessageCopyWithImpl;
+@useResult
+$Res call({
+ String leaseId, DeviceCanvasStreamRevokeReason reason
+});
+
+
+
+
+}
+/// @nodoc
+class _$DeviceCanvasStreamRevokeMessageCopyWithImpl<$Res>
+    implements $DeviceCanvasStreamRevokeMessageCopyWith<$Res> {
+  _$DeviceCanvasStreamRevokeMessageCopyWithImpl(this._self, this._then);
+
+  final DeviceCanvasStreamRevokeMessage _self;
+  final $Res Function(DeviceCanvasStreamRevokeMessage) _then;
+
+/// Create a copy of DeviceCanvasOutboundMessage
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? leaseId = null,Object? reason = null,}) {
+  return _then(DeviceCanvasStreamRevokeMessage(
+leaseId: null == leaseId ? _self.leaseId : leaseId // ignore: cast_nullable_to_non_nullable
+as String,reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as DeviceCanvasStreamRevokeReason,
   ));
 }
 

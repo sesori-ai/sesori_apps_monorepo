@@ -1,6 +1,11 @@
 import "dart:convert";
 
-import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
+import "package:sesori_shared/sesori_shared.dart"
+    show
+        DeviceCanvasRtcDescriptionType,
+        jsonDecodeMap,
+        maxDeviceCanvasIceCandidates,
+        maxDeviceCanvasStreamLeaseIdLength;
 
 import "protocol.dart";
 
@@ -9,6 +14,7 @@ const int maxDeviceCanvasInventoryDevices = 64;
 const int maxDeviceCanvasIpcIdentifierLength = 512;
 const int maxDeviceCanvasIpcDisplayLength = 512;
 const int maxDeviceCanvasDimension = 32768;
+const int maxDeviceCanvasStreamRequestIdLength = 128;
 
 class const DeviceCanvasProtocolCodec() {
   DeviceCanvasInboundMessage decodeInbound(String frame) {
@@ -57,6 +63,41 @@ class const DeviceCanvasProtocolCodec() {
           throw const FormatException("invalid canvasInstanceId");
         }
         if (observedAt <= 0) throw const FormatException("observedAt must be positive");
+      case DeviceCanvasStreamStartedMessage(
+        :final requestId,
+        :final leaseId,
+        :final answer,
+        :final iceCandidates,
+      ):
+        _validateStreamCorrelation(requestId: requestId, leaseId: leaseId);
+        if (answer.type != DeviceCanvasRtcDescriptionType.answer || !answer.isValid) {
+          throw const FormatException("invalid Device Canvas stream answer");
+        }
+        if (iceCandidates.length > maxDeviceCanvasIceCandidates ||
+            iceCandidates.any((candidate) => !candidate.isValid)) {
+          throw const FormatException("invalid Device Canvas ICE candidates");
+        }
+      case DeviceCanvasStreamStartFailedMessage(:final requestId, :final leaseId, :final reason):
+        _validateStreamCorrelation(requestId: requestId, leaseId: leaseId);
+        if (reason == DeviceCanvasStreamStartFailureReason.unknown) {
+          throw const FormatException("unknown Device Canvas stream start failure reason");
+        }
+      case DeviceCanvasStreamClosedMessage(:final leaseId, :final reason):
+        if (!_isBoundedString(leaseId, maxDeviceCanvasStreamLeaseIdLength)) {
+          throw const FormatException("invalid leaseId");
+        }
+        if (reason == DeviceCanvasStreamCloseReason.unknown) {
+          throw const FormatException("unknown Device Canvas stream close reason");
+        }
+    }
+  }
+
+  void _validateStreamCorrelation({required String requestId, required String leaseId}) {
+    if (!_isBoundedString(requestId, maxDeviceCanvasStreamRequestIdLength)) {
+      throw const FormatException("invalid requestId");
+    }
+    if (!_isBoundedString(leaseId, maxDeviceCanvasStreamLeaseIdLength)) {
+      throw const FormatException("invalid leaseId");
     }
   }
 

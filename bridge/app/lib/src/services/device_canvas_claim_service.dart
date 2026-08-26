@@ -18,6 +18,10 @@ class DeviceCanvasClaimService({
     return _repository.getClaimProjectionsForBridge(bridgeId: bridgeId);
   }
 
+  Future<DeviceCanvasClaim?> getClaim({required String bridgeId, required String deviceKey}) {
+    return _repository.getClaim(bridgeId: bridgeId, deviceKey: deviceKey);
+  }
+
   Future<DeviceCanvasClaimProjectionPage> clientSnapshot({
     required String bridgeId,
     required String sessionId,

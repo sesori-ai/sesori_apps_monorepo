@@ -5,6 +5,15 @@ import "package:sesori_shared/sesori_shared.dart";
 import "http_method.dart";
 import "models/restart_bridge_response.dart";
 
+sealed class const RoutedRequestContext();
+
+final class const LocalRoutedRequestContext() extends RoutedRequestContext;
+
+final class const RelayRoutedRequestContext({
+  required final int connectionId,
+  required final Object connectionIncarnation,
+}) extends RoutedRequestContext;
+
 class const PendingRoutedRequest({
   required final RouteIdentity routeIdentity,
   required final Future<RoutedRequestOutcome> completion,

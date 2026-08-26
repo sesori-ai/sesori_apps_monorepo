@@ -24,12 +24,15 @@ class RoutedRequestDispatcher({required final RequestRouter _router}) {
   bool _accepting = true;
   Future<void>? _drainFuture;
 
-  RoutedRequestDispatchResult dispatch({required RelayRequest request}) {
+  RoutedRequestDispatchResult dispatch({
+    required RelayRequest request,
+    RoutedRequestContext context = const LocalRoutedRequestContext(),
+  }) {
     if (!_accepting) {
       return RoutedRequestShutdownRejected(requestId: request.id);
     }
 
-    final pendingRequest = _router.route(request: request);
+    final pendingRequest = _router.route(request: request, context: context);
     late final Future<RoutedRequestOutcome> trackedCompletion;
     trackedCompletion = pendingRequest.completion.whenComplete(() {
       _inFlightRoutes.remove(trackedCompletion);

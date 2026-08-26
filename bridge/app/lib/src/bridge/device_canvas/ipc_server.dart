@@ -11,6 +11,7 @@ import "integration_state.dart";
 import "protocol.dart";
 import "protocol_codec.dart";
 import "rendezvous_repository.dart";
+import "stream_gateway.dart";
 
 class DeviceCanvasIpcServer({
   required DeviceCanvasRendezvousRepository rendezvousRepository,
@@ -18,6 +19,7 @@ class DeviceCanvasIpcServer({
   required String processGeneration,
   required DeviceCanvasClaimService claimService,
   required DeviceCanvasIntegrationState integrationState,
+  required DeviceCanvasStreamGateway streamGateway,
   Duration heartbeatTimeout = const Duration(seconds: 15),
 }) {
   final DeviceCanvasRendezvousRepository _rendezvousRepository = rendezvousRepository;
@@ -25,6 +27,7 @@ class DeviceCanvasIpcServer({
   final String _processGeneration = processGeneration;
   final DeviceCanvasClaimService _claimService = claimService;
   final DeviceCanvasIntegrationState _integrationState = integrationState;
+  final DeviceCanvasStreamGateway _streamGateway = streamGateway;
   final Duration _heartbeatTimeout = heartbeatTimeout;
   final DeviceCanvasProtocolCodec _codec = const DeviceCanvasProtocolCodec();
   final String _secret = _generateSecret();
@@ -32,6 +35,7 @@ class DeviceCanvasIpcServer({
   HttpServer? _server;
   StreamSubscription<HttpRequest>? _serverSubscription;
   StreamSubscription<DeviceCanvasClaimChange>? _claimSubscription;
+  StreamSubscription<DeviceCanvasOutboundMessage>? _streamCommandSubscription;
   _DeviceCanvasPeer? _peer;
   int _peerRequestSequence = 0;
   int _latestInstalledPeerSequence = 0;
@@ -46,6 +50,7 @@ class DeviceCanvasIpcServer({
     _started = true;
 
     try {
+      _streamCommandSubscription = _streamGateway.commands.listen(_publishStreamCommand);
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       _server = server;
       _serverSubscription = server.listen(
@@ -89,6 +94,9 @@ class DeviceCanvasIpcServer({
 
     await step(() => _claimSubscription?.cancel());
     _claimSubscription = null;
+    await step(() => _streamCommandSubscription?.cancel());
+    _streamCommandSubscription = null;
+    _streamGateway.disconnect();
     await step(() => _serverSubscription?.cancel());
     _serverSubscription = null;
     final peer = _peer;
@@ -108,6 +116,7 @@ class DeviceCanvasIpcServer({
   Future<void> _cleanupFailedStart() async {
     _started = false;
     _integrationState.disconnect();
+    _streamGateway.disconnect();
     final peer = _peer;
     _peer = null;
     await _runCleanupStep(
@@ -115,6 +124,8 @@ class DeviceCanvasIpcServer({
     );
     await _runCleanupStep(() => _claimSubscription?.cancel());
     _claimSubscription = null;
+    await _runCleanupStep(() => _streamCommandSubscription?.cancel());
+    _streamCommandSubscription = null;
     await _runCleanupStep(() => _serverSubscription?.cancel());
     _serverSubscription = null;
     final server = _server;
@@ -176,6 +187,7 @@ class DeviceCanvasIpcServer({
     _latestInstalledPeerSequence = requestSequence;
     _peer = peer;
     _integrationState.disconnect();
+    _streamGateway.disconnect();
     peer.subscription = socket.listen(
       (data) => _handleFrame(peer: peer, data: data),
       onError: (Object error, StackTrace stackTrace) {
@@ -239,6 +251,44 @@ class DeviceCanvasIpcServer({
           return;
         }
         peer.armHeartbeat();
+      case DeviceCanvasStreamStartedMessage(
+        :final requestId,
+        :final leaseId,
+        :final answer,
+        :final iceCandidates,
+      ):
+        if (!peer.helloAccepted ||
+            !_streamGateway.resolveStarted(
+              requestId: requestId,
+              leaseId: leaseId,
+              answer: answer,
+              iceCandidates: iceCandidates,
+            )) {
+          _startPeerOperation(
+            peer: peer,
+            context: "rejecting an uncorrelated Device Canvas stream start response",
+            operation: () => _closeFailedPeer(peer: peer, reason: "uncorrelated stream start response"),
+          );
+        }
+      case DeviceCanvasStreamStartFailedMessage(:final requestId, :final leaseId, :final reason):
+        if (!peer.helloAccepted ||
+            !_streamGateway.resolveStartFailed(requestId: requestId, leaseId: leaseId, reason: reason)) {
+          _startPeerOperation(
+            peer: peer,
+            context: "rejecting an uncorrelated Device Canvas stream start failure",
+            operation: () => _closeFailedPeer(peer: peer, reason: "uncorrelated stream start failure"),
+          );
+        }
+      case DeviceCanvasStreamClosedMessage(:final leaseId, :final reason):
+        if (!peer.helloAccepted) {
+          _startPeerOperation(
+            peer: peer,
+            context: "rejecting Device Canvas stream closure before hello",
+            operation: () => _closeFailedPeer(peer: peer, reason: "stream closure before hello"),
+          );
+          return;
+        }
+        _streamGateway.handleClosed(leaseId: leaseId, reason: reason);
     }
   }
 
@@ -262,6 +312,7 @@ class DeviceCanvasIpcServer({
       if (identical(peer, _peer)) {
         _peer = null;
         _integrationState.disconnect();
+        _streamGateway.disconnect();
       }
       try {
         await peer.dispose(
@@ -300,7 +351,7 @@ class DeviceCanvasIpcServer({
     }
 
     _integrationState.connect(canvasInstanceId: message.canvasInstanceId, protocolVersion: message.protocolVersion);
-    peer.acceptHello(canvasInstanceId: message.canvasInstanceId);
+    peer.acceptHello(canvasInstanceId: message.canvasInstanceId, remoteVideo: message.capabilities.remoteVideo);
     peer.armHeartbeat();
     if (!_send(
       peer,
@@ -348,6 +399,15 @@ class DeviceCanvasIpcServer({
     _sendClaimChange(peer: peer, change: change);
   }
 
+  void _publishStreamCommand(DeviceCanvasOutboundMessage command) {
+    final peer = _peer;
+    if (peer != null && peer.helloAccepted && peer.remoteVideo && _send(peer, command)) return;
+
+    if (command case DeviceCanvasStreamStartMessage(:final requestId, :final leaseId)) {
+      _streamGateway.failPendingStart(requestId: requestId, leaseId: leaseId);
+    }
+  }
+
   void _flushPendingClaimChanges(_DeviceCanvasPeer peer) {
     for (final change in peer.pendingClaimChanges.values) {
       _sendClaimChange(peer: peer, change: change);
@@ -378,6 +438,7 @@ class DeviceCanvasIpcServer({
     if (!identical(peer, _peer)) return;
     _peer = null;
     _integrationState.disconnect();
+    _streamGateway.disconnect();
     await peer.dispose(closeCode: WebSocketStatus.goingAway, reason: "Device Canvas heartbeat timed out");
   }
 
@@ -385,6 +446,7 @@ class DeviceCanvasIpcServer({
     if (!identical(peer, _peer)) return;
     _peer = null;
     _integrationState.disconnect();
+    _streamGateway.disconnect();
     peer.cancelHeartbeat();
   }
 
@@ -392,6 +454,7 @@ class DeviceCanvasIpcServer({
     if (identical(peer, _peer)) {
       _peer = null;
       _integrationState.disconnect();
+      _streamGateway.disconnect();
     }
     await peer.dispose(closeCode: WebSocketStatus.unsupportedData, reason: reason);
   }
@@ -440,12 +503,14 @@ class _DeviceCanvasPeer({
   StreamSubscription<dynamic>? subscription;
   Timer? heartbeatTimer;
   bool helloAccepted = false;
+  bool remoteVideo = false;
   bool claimSnapshotSent = false;
   String? canvasInstanceId;
   final Map<String, DeviceCanvasClaimChange> pendingClaimChanges = <String, DeviceCanvasClaimChange>{};
 
-  void acceptHello({required String canvasInstanceId}) {
+  void acceptHello({required String canvasInstanceId, required bool remoteVideo}) {
     this.canvasInstanceId = canvasInstanceId;
+    this.remoteVideo = remoteVideo;
     helloAccepted = true;
   }
 

@@ -5,11 +5,11 @@
 - **Plan slug:** `device-canvas-integration`
 - **Implementation base:** `upstream/main` at `5c50f38a`
 - **Current branch:** `device-canvas-integration-step-1`
-- **Series state:** Steps 1-7 implemented and verified; Step 8 spike completed
-  with a Phase 2 entry-gate NO-GO; Step 9 is blocked
-- **Current step:** close the integrated Phase 2 evidence gaps
-- **Next action:** prove one real scrcpy source through local rendering and
-  WebRTC, then measure authorized signaling, revocation, and end-to-end latency
+- **Series state:** Steps 1-9 implemented and verified for local Android
+  video-only testing; the Phase 2 product entry gate remains NO-GO
+- **Current step:** cross-device Step 9 validation and remaining Phase 2 evidence
+- **Next action:** test the authorized Android stream on another device, then
+  measure end-to-end latency and validate representative external TURN
 
 ## Locked Decisions
 
@@ -72,9 +72,9 @@
 | [x] | 6/12 - Add OpenCode tools | Sesori | Implemented; strict analysis, full suites, production build, security review, and real-agent verification passed |
 | [x] | 7/12 - Verify Phase 1 | Both | Automated and user-confirmed ownership, compatibility, restart, conflict, and deep-link matrix passed |
 | [x] | 8/12 - Prove media feasibility | Both | Spikes completed; component architecture is feasible, but the integrated Phase 2 entry gate is NO-GO |
-| [ ] | 9/12 - Authorize/signaling streams | Sesori | Blocked until the Phase 2 entry-gate gaps close |
+| [x] | 9/12 - Authorize/signaling streams | Both | Implemented for local Android video-only testing; Phase 2 remains NO-GO |
 | [ ] | 10/12 - Provision TURN | Infrastructure | Blocked on the Step 9 credential contract and external TURN matrix |
-| [ ] | 11/12 - Stream/control Android | Device Canvas | Blocked on Steps 9-10 |
+| [ ] | 11/12 - Stream/control Android | Device Canvas | Video source/peer implemented ahead of the step; control and release gates remain blocked on Step 10 |
 | [ ] | 12/12 - Add Sesori viewport/verify | Sesori | Blocked on Steps 9-11 |
 
 ## Step 1 Checklist
@@ -119,14 +119,14 @@
 
 - [x] Android source shape plus copy versus VideoToolbox decode/re-encode evidence
   recorded.
-- [ ] One real scrcpy source feeds both local rendering and WebRTC without
+- [x] One real scrcpy source feeds both local rendering and WebRTC without
   lifecycle regressions.
 - [ ] Swift and Flutter WebRTC dependencies pass the complete platform, license,
   transitive-notice, maintenance, binary-size, and required-API review.
 - [x] Existing encrypted relay framing and generic bridge routing carry
   representative offer/answer fixtures without adding a media-specific relay
   message.
-- [ ] One authorized signaling route compares the advertised DTLS fingerprint,
+- [x] One authorized signaling route compares the advertised DTLS fingerprint,
   rejects tampering, and joins client, bridge, claim revision, and Device Canvas.
 - [x] Direct host ICE and local coturn relay paths measured with synthetic video.
 - [ ] Representative LAN and externally operated TURN paths measured.

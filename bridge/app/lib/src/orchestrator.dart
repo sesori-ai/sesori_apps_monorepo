@@ -25,6 +25,7 @@ import "auth/access_token_provider.dart";
 import "auth/bridge_registration_service.dart";
 import "auth/token_refresher.dart";
 import "bridge/device_canvas/integration_state.dart";
+import "bridge/device_canvas/stream_gateway.dart";
 import "control/control_status_notifier.dart";
 import "foundation/filesystem_permission_validator.dart";
 import "foundation/key_exchange.dart";
@@ -118,6 +119,9 @@ import "routing/post_agents_handler.dart";
 import "routing/post_device_canvas_claim_handler.dart";
 import "routing/post_device_canvas_release_handler.dart";
 import "routing/post_device_canvas_status_handler.dart";
+import "routing/post_device_canvas_stream_start_handler.dart";
+import "routing/post_device_canvas_stream_status_handler.dart";
+import "routing/post_device_canvas_stream_stop_handler.dart";
 import "routing/post_plugin_lifecycle_command_handler.dart";
 import "routing/post_session_options_handler.dart";
 import "routing/reject_question_handler.dart";
@@ -143,6 +147,7 @@ import "services/deleted_session_storage_cleanup_service.dart";
 import "services/device_canvas_agent_tool_service.dart";
 import "services/device_canvas_claim_service.dart";
 import "services/device_canvas_client_service.dart";
+import "services/device_canvas_stream_service.dart";
 import "services/pending_interaction_service.dart";
 import "services/permission_auto_approval_service.dart";
 import "services/plugin_lifecycle_service.dart";
@@ -184,6 +189,8 @@ typedef OrchestratorComposition = ({
   DeviceCanvasAgentToolService deviceCanvasAgentToolService,
   DeviceCanvasClaimService deviceCanvasClaimService,
   DeviceCanvasIntegrationState deviceCanvasIntegrationState,
+  DeviceCanvasStreamGateway deviceCanvasStreamGateway,
+  DeviceCanvasStreamService deviceCanvasStreamService,
   SessionUnseenService sessionUnseenService,
   SessionViewTracker sessionViewTracker,
   ProjectViewTracker projectViewTracker,
@@ -240,6 +247,14 @@ class Orchestrator({
         now: () => DateTime.now().millisecondsSinceEpoch,
       ),
       integrationState: deviceCanvasIntegrationState,
+    );
+    final deviceCanvasStreamGateway = DeviceCanvasStreamGateway();
+    final deviceCanvasStreamService = DeviceCanvasStreamService(
+      bridgeIdProvider: _bridgeRegistrationService,
+      claimService: deviceCanvasClaimService,
+      integrationState: deviceCanvasIntegrationState,
+      gateway: deviceCanvasStreamGateway,
+      clock: _clock,
     );
     final deviceCanvasClientService = DeviceCanvasClientService(
       bridgeIdProvider: _bridgeRegistrationService,
@@ -586,6 +601,9 @@ class Orchestrator({
         PostDeviceCanvasStatusHandler(service: deviceCanvasClientService),
         PostDeviceCanvasClaimHandler(service: deviceCanvasClientService),
         PostDeviceCanvasReleaseHandler(service: deviceCanvasClientService),
+        PostDeviceCanvasStreamStartHandler(service: deviceCanvasStreamService),
+        PostDeviceCanvasStreamStatusHandler(service: deviceCanvasStreamService),
+        PostDeviceCanvasStreamStopHandler(service: deviceCanvasStreamService),
         GetChildSessionsHandler(sessionRepository: sessionRepository),
         GetSessionHandler(
           sessionRepository: sessionRepository,
@@ -673,6 +691,7 @@ class Orchestrator({
       sessionRepository: sessionRepository,
       deviceCanvasClaimService: deviceCanvasClaimService,
       deviceCanvasIntegrationState: deviceCanvasIntegrationState,
+      deviceCanvasStreamService: deviceCanvasStreamService,
       prSyncService: prSyncService,
       viewedProjectPrRefreshListener: viewedProjectPrRefreshListener,
       sessionUnseenService: sessionUnseenService,
@@ -705,6 +724,8 @@ class Orchestrator({
       deviceCanvasAgentToolService: deviceCanvasAgentToolService,
       deviceCanvasClaimService: deviceCanvasClaimService,
       deviceCanvasIntegrationState: deviceCanvasIntegrationState,
+      deviceCanvasStreamGateway: deviceCanvasStreamGateway,
+      deviceCanvasStreamService: deviceCanvasStreamService,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
       projectViewTracker: projectViewTracker,
@@ -776,6 +797,7 @@ class OrchestratorSession._({
     required final SessionRepository _sessionRepository,
     required final DeviceCanvasClaimService _deviceCanvasClaimService,
     required final DeviceCanvasIntegrationState _deviceCanvasIntegrationState,
+    required final DeviceCanvasStreamService _deviceCanvasStreamService,
     required final PrSyncService _prSyncService,
     required final ViewedProjectPrRefreshListener _viewedProjectPrRefreshListener,
     required final SessionUnseenService _sessionUnseenService,
@@ -881,6 +903,9 @@ class OrchestratorSession._({
         .listen((_) => _enqueueWireEvent(const SesoriSseEvent.deviceCanvasChanged()))
         .addTo(_subscriptions);
     _deviceCanvasIntegrationState.presenceChanges
+        .listen((_) => _enqueueWireEvent(const SesoriSseEvent.deviceCanvasChanged()))
+        .addTo(_subscriptions);
+    _deviceCanvasStreamService.changes
         .listen((_) => _enqueueWireEvent(const SesoriSseEvent.deviceCanvasChanged()))
         .addTo(_subscriptions);
   }
@@ -1088,6 +1113,7 @@ class OrchestratorSession._({
 
   Future<void> _teardown() async {
     _routedRequestDispatcher.beginShutdown();
+    _deviceCanvasStreamService.beginShutdown();
     _sessionCreationService.beginShutdown();
     _prSyncService.beginShutdown();
     final teardownSw = Stopwatch()..start();
@@ -1221,6 +1247,7 @@ class OrchestratorSession._({
 
       Log.w("Relay connection lost. Reconnecting...");
       _sseManager.orphanAll();
+      _deviceCanvasStreamService.clearConnections();
       activePhoneIncarnations.clear();
       // Every phone connection died with the relay link; drop their view
       // declarations so no session stays "watched" by a ghost connection.
@@ -1986,6 +2013,7 @@ class OrchestratorSession._({
               Log.v("phone_connected connID=$connID");
             case "phone_disconnected":
               Log.v("phone_disconnected connID=$connID");
+              _deviceCanvasStreamService.releaseConnection(connectionId: connID);
               activePhoneIncarnations.remove(connID);
               _sseManager.unsubscribe(connID);
               _sessionViewTracker.releaseConnection(connID: connID);
@@ -2158,7 +2186,12 @@ class OrchestratorSession._({
     required int connID,
     required Map<int, Object> activePhoneIncarnations,
   }) {
-    activePhoneIncarnations[connID] = Object();
+    final connectionIncarnation = Object();
+    activePhoneIncarnations[connID] = connectionIncarnation;
+    _deviceCanvasStreamService.registerConnection(
+      connectionId: connID,
+      connectionIncarnation: connectionIncarnation,
+    );
     if (!_firstPhoneConnectedCompleter.isCompleted) {
       _firstPhoneConnectedCompleter.complete();
     }
@@ -2187,7 +2220,13 @@ class OrchestratorSession._({
     switch (msg) {
       case final RelayRequest req:
         Log.v("RelayRequest: ${req.method} ${req.path}");
-        final dispatch = _routedRequestDispatcher.dispatch(request: req);
+        final dispatch = _routedRequestDispatcher.dispatch(
+          request: req,
+          context: RelayRoutedRequestContext(
+            connectionId: connID,
+            connectionIncarnation: phoneIncarnation,
+          ),
+        );
         switch (dispatch) {
           case final RoutedRequestShutdownRejected rejected:
             _trackRelayCompletion(

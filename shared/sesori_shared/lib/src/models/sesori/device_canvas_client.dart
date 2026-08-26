@@ -1,3 +1,5 @@
+import "dart:convert";
+
 import "package:freezed_annotation/freezed_annotation.dart";
 
 part "device_canvas_client.freezed.dart";
@@ -5,6 +7,16 @@ part "device_canvas_client.g.dart";
 
 const int maxDeviceCanvasClientIdentifierLength = 2048;
 const int maxDeviceCanvasClientDeviceKeyLength = 512;
+const int maxDeviceCanvasStreamLeaseIdLength = 128;
+const int maxDeviceCanvasRtcSdpBytes = 262144;
+const int maxDeviceCanvasRtcFingerprintLength = 256;
+const int maxDeviceCanvasIceCandidates = 64;
+const int maxDeviceCanvasIceCandidateLength = 2048;
+const int maxDeviceCanvasIceCandidateSdpMidLength = 128;
+const int maxDeviceCanvasTurnUrls = 8;
+const int maxDeviceCanvasTurnUrlLength = 2048;
+const int maxDeviceCanvasTurnUsernameLength = 512;
+const int maxDeviceCanvasTurnCredentialLength = 512;
 
 enum DeviceCanvasClientConnectionStatus() {
   @JsonValue("disconnected")
@@ -53,6 +65,314 @@ enum DeviceCanvasMutationOutcome() {
   @JsonValue("unknown")
   unknown,
 }
+
+enum DeviceCanvasRtcDescriptionType() {
+  @JsonValue("offer")
+  offer,
+  @JsonValue("answer")
+  answer,
+  @JsonValue("unknown")
+  unknown,
+}
+
+enum DeviceCanvasStreamStartOutcome() {
+  @JsonValue("started")
+  started,
+  @JsonValue("controllerConflict")
+  controllerConflict,
+  @JsonValue("unavailable")
+  unavailable,
+  @JsonValue("unauthorized")
+  unauthorized,
+  @JsonValue("unsupported")
+  unsupported,
+  @JsonValue("unknown")
+  unknown,
+}
+
+enum DeviceCanvasStreamStatusOutcome() {
+  @JsonValue("active")
+  active,
+  @JsonValue("inactive")
+  inactive,
+  @JsonValue("controllerConflict")
+  controllerConflict,
+  @JsonValue("unavailable")
+  unavailable,
+  @JsonValue("unauthorized")
+  unauthorized,
+  @JsonValue("unknown")
+  unknown,
+}
+
+enum DeviceCanvasStreamStopOutcome() {
+  @JsonValue("stopped")
+  stopped,
+  @JsonValue("alreadyStopped")
+  alreadyStopped,
+  @JsonValue("unauthorized")
+  unauthorized,
+  @JsonValue("unknown")
+  unknown,
+}
+
+@Freezed(fromJson: true, toJson: true, toStringOverride: false)
+sealed class const DeviceCanvasRtcDescription._() with _$DeviceCanvasRtcDescription {
+  const factory({
+    @JsonKey(unknownEnumValue: DeviceCanvasRtcDescriptionType.unknown)
+    required DeviceCanvasRtcDescriptionType type,
+    required String sdp,
+    required String fingerprint,
+  }) = _DeviceCanvasRtcDescription;
+
+  factory fromJson(Map<String, dynamic> json) => _$DeviceCanvasRtcDescriptionFromJson(json);
+
+  bool get isValid {
+    if (type == DeviceCanvasRtcDescriptionType.unknown ||
+        utf8.encode(sdp).length > maxDeviceCanvasRtcSdpBytes ||
+        fingerprint.isEmpty ||
+        fingerprint.length > maxDeviceCanvasRtcFingerprintLength ||
+        !RegExp(r"^sha-256 (?:[0-9A-Fa-f]{2}:){31}[0-9A-Fa-f]{2}$").hasMatch(fingerprint)) {
+      return false;
+    }
+    final fingerprintLines = sdp.split(RegExp(r"\r?\n")).where((line) => line.startsWith("a=fingerprint:"));
+    return fingerprintLines.length == 1 && fingerprintLines.single == "a=fingerprint:$fingerprint";
+  }
+}
+
+@Freezed(fromJson: true, toJson: true, toStringOverride: false)
+sealed class const DeviceCanvasIceCandidate._() with _$DeviceCanvasIceCandidate {
+  const factory({
+    required String candidate,
+    required String sdpMid,
+    required int sdpMLineIndex,
+  }) = _DeviceCanvasIceCandidate;
+
+  factory fromJson(Map<String, dynamic> json) => _$DeviceCanvasIceCandidateFromJson(json);
+
+  bool get isValid =>
+      candidate.isNotEmpty &&
+      candidate.length <= maxDeviceCanvasIceCandidateLength &&
+      sdpMid.isNotEmpty &&
+      sdpMid.length <= maxDeviceCanvasIceCandidateSdpMidLength &&
+      sdpMLineIndex >= 0;
+}
+
+@Freezed(fromJson: true, toJson: true, toStringOverride: false)
+sealed class const DeviceCanvasTurnConfiguration._() with _$DeviceCanvasTurnConfiguration {
+  const factory({
+    required List<String> urls,
+    required String username,
+    required String credential,
+    required int expiresAt,
+  }) = _DeviceCanvasTurnConfiguration;
+
+  factory fromJson(Map<String, dynamic> json) => _$DeviceCanvasTurnConfigurationFromJson(json);
+
+  bool get isValid =>
+      urls.isNotEmpty &&
+      urls.length <= maxDeviceCanvasTurnUrls &&
+      urls.every((url) => url.isNotEmpty && url.length <= maxDeviceCanvasTurnUrlLength) &&
+      username.isNotEmpty &&
+      username.length <= maxDeviceCanvasTurnUsernameLength &&
+      credential.isNotEmpty &&
+      credential.length <= maxDeviceCanvasTurnCredentialLength &&
+      expiresAt > 0;
+}
+
+@Freezed(fromJson: true, toJson: true, toStringOverride: false)
+sealed class const DeviceCanvasStreamStartRequest._() with _$DeviceCanvasStreamStartRequest {
+  const factory({
+    required String expectedBridgeId,
+    required String sessionId,
+    required String deviceKey,
+    required int expectedClaimRevision,
+    required bool control,
+    required DeviceCanvasRtcDescription offer,
+    @Default(<DeviceCanvasIceCandidate>[]) List<DeviceCanvasIceCandidate> iceCandidates,
+  }) = _DeviceCanvasStreamStartRequest;
+
+  factory fromJson(Map<String, dynamic> json) => _$DeviceCanvasStreamStartRequestFromJson(json);
+
+  bool get isValid =>
+      _isValidDeviceCanvasStreamIdentity(
+        expectedBridgeId: expectedBridgeId,
+        sessionId: sessionId,
+        deviceKey: deviceKey,
+        expectedClaimRevision: expectedClaimRevision,
+      ) &&
+      offer.type == DeviceCanvasRtcDescriptionType.offer &&
+      offer.isValid &&
+      iceCandidates.length <= maxDeviceCanvasIceCandidates &&
+      iceCandidates.every((candidate) => candidate.isValid);
+}
+
+@Freezed(fromJson: true, toJson: true, toStringOverride: false)
+sealed class const DeviceCanvasStreamStartResponse._() with _$DeviceCanvasStreamStartResponse {
+  const factory({
+    @JsonKey(unknownEnumValue: DeviceCanvasStreamStartOutcome.unknown)
+    required DeviceCanvasStreamStartOutcome outcome,
+    required String? leaseId,
+    required int? expiresAt,
+    required DeviceCanvasRtcDescription? answer,
+    @Default(<DeviceCanvasIceCandidate>[]) List<DeviceCanvasIceCandidate> iceCandidates,
+    required DeviceCanvasTurnConfiguration? turn,
+  }) = _DeviceCanvasStreamStartResponse;
+
+  factory fromJson(Map<String, dynamic> json) => _$DeviceCanvasStreamStartResponseFromJson(json);
+
+  bool get isValid => switch (outcome) {
+    DeviceCanvasStreamStartOutcome.started => _isValidDeviceCanvasStreamPayload(
+      leaseId: leaseId,
+      expiresAt: expiresAt,
+      answer: answer,
+      iceCandidates: iceCandidates,
+      turn: turn,
+    ),
+    DeviceCanvasStreamStartOutcome.controllerConflict ||
+    DeviceCanvasStreamStartOutcome.unavailable ||
+    DeviceCanvasStreamStartOutcome.unauthorized ||
+    DeviceCanvasStreamStartOutcome.unsupported => _hasNoDeviceCanvasStreamPayload(
+      leaseId: leaseId,
+      expiresAt: expiresAt,
+      answer: answer,
+      iceCandidates: iceCandidates,
+      turn: turn,
+    ),
+    DeviceCanvasStreamStartOutcome.unknown => false,
+  };
+}
+
+@Freezed(fromJson: true, toJson: true, toStringOverride: false)
+sealed class const DeviceCanvasStreamStatusRequest._() with _$DeviceCanvasStreamStatusRequest {
+  const factory({
+    required String expectedBridgeId,
+    required String sessionId,
+    required String deviceKey,
+    required int expectedClaimRevision,
+  }) = _DeviceCanvasStreamStatusRequest;
+
+  factory fromJson(Map<String, dynamic> json) => _$DeviceCanvasStreamStatusRequestFromJson(json);
+
+  bool get isValid => _isValidDeviceCanvasStreamIdentity(
+    expectedBridgeId: expectedBridgeId,
+    sessionId: sessionId,
+    deviceKey: deviceKey,
+    expectedClaimRevision: expectedClaimRevision,
+  );
+}
+
+@Freezed(fromJson: true, toJson: true, toStringOverride: false)
+sealed class const DeviceCanvasStreamStatusResponse._() with _$DeviceCanvasStreamStatusResponse {
+  const factory({
+    @JsonKey(unknownEnumValue: DeviceCanvasStreamStatusOutcome.unknown)
+    required DeviceCanvasStreamStatusOutcome outcome,
+    required String? leaseId,
+    required int? expiresAt,
+    required DeviceCanvasRtcDescription? answer,
+    @Default(<DeviceCanvasIceCandidate>[]) List<DeviceCanvasIceCandidate> iceCandidates,
+    required DeviceCanvasTurnConfiguration? turn,
+  }) = _DeviceCanvasStreamStatusResponse;
+
+  factory fromJson(Map<String, dynamic> json) => _$DeviceCanvasStreamStatusResponseFromJson(json);
+
+  bool get isValid => switch (outcome) {
+    DeviceCanvasStreamStatusOutcome.active => _isValidDeviceCanvasStreamPayload(
+      leaseId: leaseId,
+      expiresAt: expiresAt,
+      answer: answer,
+      iceCandidates: iceCandidates,
+      turn: turn,
+    ),
+    DeviceCanvasStreamStatusOutcome.inactive ||
+    DeviceCanvasStreamStatusOutcome.controllerConflict ||
+    DeviceCanvasStreamStatusOutcome.unavailable ||
+    DeviceCanvasStreamStatusOutcome.unauthorized => _hasNoDeviceCanvasStreamPayload(
+      leaseId: leaseId,
+      expiresAt: expiresAt,
+      answer: answer,
+      iceCandidates: iceCandidates,
+      turn: turn,
+    ),
+    DeviceCanvasStreamStatusOutcome.unknown => false,
+  };
+}
+
+@Freezed(fromJson: true, toJson: true, toStringOverride: false)
+sealed class const DeviceCanvasStreamStopRequest._() with _$DeviceCanvasStreamStopRequest {
+  const factory({
+    required String expectedBridgeId,
+    required String sessionId,
+    required String deviceKey,
+    required int expectedClaimRevision,
+    required String leaseId,
+  }) = _DeviceCanvasStreamStopRequest;
+
+  factory fromJson(Map<String, dynamic> json) => _$DeviceCanvasStreamStopRequestFromJson(json);
+
+  bool get isValid =>
+      _isValidDeviceCanvasStreamIdentity(
+        expectedBridgeId: expectedBridgeId,
+        sessionId: sessionId,
+        deviceKey: deviceKey,
+        expectedClaimRevision: expectedClaimRevision,
+      ) &&
+      leaseId.isNotEmpty &&
+      leaseId.length <= maxDeviceCanvasStreamLeaseIdLength;
+}
+
+@Freezed(fromJson: true, toJson: true)
+sealed class const DeviceCanvasStreamStopResponse._() with _$DeviceCanvasStreamStopResponse {
+  const factory({
+    @JsonKey(unknownEnumValue: DeviceCanvasStreamStopOutcome.unknown) required DeviceCanvasStreamStopOutcome outcome,
+  }) = _DeviceCanvasStreamStopResponse;
+
+  factory fromJson(Map<String, dynamic> json) => _$DeviceCanvasStreamStopResponseFromJson(json);
+
+  bool get isValid => outcome != DeviceCanvasStreamStopOutcome.unknown;
+}
+
+bool _isValidDeviceCanvasStreamIdentity({
+  required String expectedBridgeId,
+  required String sessionId,
+  required String deviceKey,
+  required int expectedClaimRevision,
+}) =>
+    expectedBridgeId.isNotEmpty &&
+    expectedBridgeId.length <= maxDeviceCanvasClientIdentifierLength &&
+    sessionId.isNotEmpty &&
+    sessionId.length <= maxDeviceCanvasClientIdentifierLength &&
+    deviceKey.isNotEmpty &&
+    deviceKey.length <= maxDeviceCanvasClientDeviceKeyLength &&
+    expectedClaimRevision > 0;
+
+bool _isValidDeviceCanvasStreamPayload({
+  required String? leaseId,
+  required int? expiresAt,
+  required DeviceCanvasRtcDescription? answer,
+  required List<DeviceCanvasIceCandidate> iceCandidates,
+  required DeviceCanvasTurnConfiguration? turn,
+}) =>
+    leaseId != null &&
+    leaseId.isNotEmpty &&
+    leaseId.length <= maxDeviceCanvasStreamLeaseIdLength &&
+    expiresAt != null &&
+    expiresAt > 0 &&
+    answer != null &&
+    answer.type == DeviceCanvasRtcDescriptionType.answer &&
+    answer.isValid &&
+    iceCandidates.length <= maxDeviceCanvasIceCandidates &&
+    iceCandidates.every((candidate) => candidate.isValid) &&
+    (turn?.isValid ?? true);
+
+bool _hasNoDeviceCanvasStreamPayload({
+  required String? leaseId,
+  required int? expiresAt,
+  required DeviceCanvasRtcDescription? answer,
+  required List<DeviceCanvasIceCandidate> iceCandidates,
+  required DeviceCanvasTurnConfiguration? turn,
+}) =>
+    leaseId == null && expiresAt == null && answer == null && iceCandidates.isEmpty && turn == null;
 
 @Freezed(fromJson: true, toJson: true)
 sealed class const DeviceCanvasSessionStatusRequest._() with _$DeviceCanvasSessionStatusRequest {

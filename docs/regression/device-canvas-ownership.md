@@ -82,16 +82,15 @@ Recorded on 2026-08-25 on the release-target macOS host:
 
 ## Phase 2 Transport Gate
 
-Step 8 records an evidence gate only. Remote video, input, stream leases,
-signaling routes, and a client viewport are not shipped behavior yet. The
-time-boxed spikes completed with a **NO-GO** for Phase 2 implementation: the
-individual components support the proposed architecture, but the integrated
-source, authorization, revocation, and latency boundaries are not yet proven.
+Step 9 adds locally testable Android video-only streaming, ephemeral stream
+leases, and bounded signaling. It does not make a Phase 2 product-release claim.
+The gate remains **NO-GO** for input, external TURN, end-to-end latency/resource
+distributions, reconnect coverage, complete dependency acceptance, and iOS.
 
 - Android keeps scrcpy H.264 for the existing local display and uses
   VideoToolbox decode to `CVPixelBuffer` before WebRTC re-encode. The selected
-  public WebRTC ObjC API has no stable encoded-H.264 injection seam. This is a
-  candidate architecture until one real scrcpy source feeds both consumers.
+  public WebRTC ObjC API has no stable encoded-H.264 injection seam. The
+  production local-test path now feeds both consumers from one scrcpy source.
 - SDP, fingerprints, ICE candidates, TURN fields, lease identity, and claim
   revision remain bounded JSON inside existing encrypted routed requests. Media
   uses DTLS-SRTP and ordered input uses the WebRTC DataChannel; neither belongs
@@ -133,26 +132,24 @@ Recorded on 2026-08-25 on the release-target macOS host:
   DataChannel. An Android-emulator-NAT run selected relay/relay, acknowledged 128
   ordered inputs at 47.0 ms p95, and rejected input after a local test boolean
   changed. It did not exercise external TURN or claim-bound revocation.
-- The client focused test decrypts its emitted frame to prove exact serialized
-  plaintext for a representative offer request, ignores a wrong-ID response, and
-  correlates a synthetic answer. An independent bridge test exercises framing
-  primitives around a test-only generic route, captures the parsed fixture,
-  rejects an internally mismatched fingerprint, and returns a representative
-  answer/TURN response. This is not parser-valid WebRTC signaling or production
-  transport integration; no connected authorized Sesori route or independent
-  fingerprint trust comparison is proven.
+- A connected test joins encrypted relay framing, exact connection incarnation,
+  claim revision, authenticated local IPC, parser-valid SDP, fingerprint tamper
+  rejection, answer correlation, claim-release revocation, and post-release
+  denial. Signaling DTO diagnostics are redacted and signaling is not persisted.
+- The production Device Canvas path delivered 295 remote frames at `534x1200`
+  from the same live source that retained a `716x1600` local two-plane buffer.
+  Revocation stopped remote delivery while local presentation remained intact.
 - Under Xcode 26.6 and Xcode 27 beta 5, raw iOS frame callbacks measured 59.97/s
   and 59.93/s. Public screenshots averaged 444 ms and 367 ms respectively and
   are not an interactive capture path. Runtime screenshots confirmed DTUHID
   touch and single-key-to-text effects under both toolchains. Xcode 27 beta 5's
   recorded build identifier is `27A5237l`.
 
-The gate remains closed until release-target evidence joins the real Android
-source to local and remote rendering, exercises an authorized signaling route,
-binds revocation to real claim lifecycle events, passes representative LAN and
-external TURN paths, and records every required latency/resource distribution.
-Complete dependency acceptance, including transitive notices, supported-platform
-policy, maintenance, and version pinning, is also required.
+The gate remains closed until release-target evidence covers DataChannel input,
+representative LAN and external TURN paths, restart/network-loss recovery, and
+every required latency/resource distribution. Complete dependency acceptance,
+including transitive notices, supported-platform policy, maintenance, and
+version pinning, is also required.
 
 ## Exploration Guidance
 

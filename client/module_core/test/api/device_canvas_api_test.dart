@@ -110,6 +110,116 @@ void main() {
       "expectedClaimRevision": 7,
     });
   });
+
+  test("POST stream start uses the bounded timeout and typed request body", () async {
+    final request = _startRequest();
+    when(
+      () => client.postWithTimeout<DeviceCanvasStreamStartResponse>(
+        "/device-canvas/stream/start",
+        body: any(named: "body"),
+        fromJson: any(named: "fromJson"),
+        timeout: const Duration(seconds: 20),
+      ),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        const DeviceCanvasStreamStartResponse(
+          outcome: DeviceCanvasStreamStartOutcome.unavailable,
+          leaseId: null,
+          expiresAt: null,
+          answer: null,
+          turn: null,
+        ),
+      ),
+    );
+
+    await api.startStream(request: request);
+
+    final parser =
+        verify(
+              () => client.postWithTimeout<DeviceCanvasStreamStartResponse>(
+                "/device-canvas/stream/start",
+                body: request.toJson(),
+                fromJson: captureAny(named: "fromJson"),
+                timeout: const Duration(seconds: 20),
+              ),
+            ).captured.single
+            as DeviceCanvasStreamStartResponse Function(Map<String, dynamic>);
+    expect(
+      () => parser(const <String, dynamic>{"outcome": "started"}),
+      throwsFormatException,
+    );
+  });
+
+  test("POST stream status uses the bounded timeout and typed request body", () async {
+    const request = DeviceCanvasStreamStatusRequest(
+      expectedBridgeId: "bridge-1",
+      sessionId: "session-1",
+      deviceKey: "device-1",
+      expectedClaimRevision: 7,
+    );
+    when(
+      () => client.postWithTimeout<DeviceCanvasStreamStatusResponse>(
+        "/device-canvas/stream/status",
+        body: any(named: "body"),
+        fromJson: any(named: "fromJson"),
+        timeout: const Duration(seconds: 20),
+      ),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        const DeviceCanvasStreamStatusResponse(
+          outcome: DeviceCanvasStreamStatusOutcome.inactive,
+          leaseId: null,
+          expiresAt: null,
+          answer: null,
+          turn: null,
+        ),
+      ),
+    );
+
+    await api.statusStream(request: request);
+
+    verify(
+      () => client.postWithTimeout<DeviceCanvasStreamStatusResponse>(
+        "/device-canvas/stream/status",
+        body: request.toJson(),
+        fromJson: any(named: "fromJson"),
+        timeout: const Duration(seconds: 20),
+      ),
+    ).called(1);
+  });
+
+  test("POST stream stop uses the bounded timeout and typed request body", () async {
+    const request = DeviceCanvasStreamStopRequest(
+      expectedBridgeId: "bridge-1",
+      sessionId: "session-1",
+      deviceKey: "device-1",
+      expectedClaimRevision: 7,
+      leaseId: "lease-1",
+    );
+    when(
+      () => client.postWithTimeout<DeviceCanvasStreamStopResponse>(
+        "/device-canvas/stream/stop",
+        body: any(named: "body"),
+        fromJson: any(named: "fromJson"),
+        timeout: const Duration(seconds: 20),
+      ),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        const DeviceCanvasStreamStopResponse(outcome: DeviceCanvasStreamStopOutcome.stopped),
+      ),
+    );
+
+    await api.stopStream(request: request);
+
+    verify(
+      () => client.postWithTimeout<DeviceCanvasStreamStopResponse>(
+        "/device-canvas/stream/stop",
+        body: request.toJson(),
+        fromJson: any(named: "fromJson"),
+        timeout: const Duration(seconds: 20),
+      ),
+    ).called(1);
+  });
 }
 
 DeviceCanvasSessionStatusResponse _status() => const DeviceCanvasSessionStatusResponse(
@@ -117,4 +227,20 @@ DeviceCanvasSessionStatusResponse _status() => const DeviceCanvasSessionStatusRe
   sessionId: "session-1",
   sessionAvailable: true,
   projectId: "project-1",
+);
+
+const _fingerprint =
+    "sha-256 00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:10:21:32:43:54:65:76:87:98:A9:BA:CB:DC:ED:FE:0F";
+
+DeviceCanvasStreamStartRequest _startRequest() => const DeviceCanvasStreamStartRequest(
+  expectedBridgeId: "bridge-1",
+  sessionId: "session-1",
+  deviceKey: "device-1",
+  expectedClaimRevision: 7,
+  control: true,
+  offer: DeviceCanvasRtcDescription(
+    type: DeviceCanvasRtcDescriptionType.offer,
+    sdp: "v=0\na=fingerprint:$_fingerprint\n",
+    fingerprint: _fingerprint,
+  ),
 );

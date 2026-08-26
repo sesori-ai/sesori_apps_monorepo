@@ -6,13 +6,17 @@ import "dart:typed_data";
 import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/bridge/device_canvas/protocol.dart";
+import "package:sesori_bridge/src/bridge/device_canvas/rendezvous_repository.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_bridge/src/models/bridge_config.dart";
 import "package:sesori_bridge/src/orchestrator.dart";
+import "package:sesori_bridge/src/repositories/device_canvas_claim_repository.dart";
 import "package:sesori_bridge/src/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/server/services/bridge_restart_service.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
@@ -250,7 +254,266 @@ void main() {
         if (!routeGate.isCompleted) routeGate.complete();
       }
     });
+
+    test("connected Canvas stream signaling follows the encrypted claim lifecycle end to end", () async {
+      final stderrBuffer = BufferingStdout();
+      final previousLogLevel = Log.level;
+      try {
+        Log.level = LogLevel.verbose;
+        await IOOverrides.runZoned(
+          () async {
+            _ConcurrencyHarness? harness;
+            try {
+              harness = await _ConcurrencyHarness.start();
+              await harness.insertSession(sessionId: _canvasSessionId);
+              final canvas = await harness.startCanvas();
+
+              final claimAttempt = await harness.composition.deviceCanvasClaimService.claim(
+                bridgeId: _canvasBridgeId,
+                deviceKey: _canvasDeviceKey,
+                sessionId: _canvasSessionId,
+              );
+              expect(claimAttempt, isA<DeviceCanvasClaimed>());
+              final claimRevision = (claimAttempt as DeviceCanvasClaimed).claim.claimRevision;
+              final phone = await harness.activatePhone(connId: 71);
+
+              final tamperedRequest = DeviceCanvasStreamStartRequest(
+                expectedBridgeId: _canvasBridgeId,
+                sessionId: _canvasSessionId,
+                deviceKey: _canvasDeviceKey,
+                expectedClaimRevision: claimRevision,
+                control: true,
+                offer: _canvasOffer.copyWith(fingerprint: _canvasAnswerFingerprint),
+                iceCandidates: const [_canvasOfferCandidate],
+              );
+              expect(tamperedRequest.isValid, isFalse);
+              await harness.sendEncrypted(
+                connId: 71,
+                encryptor: phone,
+                message: RelayMessage.request(
+                  id: "tampered-stream-start",
+                  method: "POST",
+                  path: "/device-canvas/stream/start",
+                  headers: const {},
+                  body: jsonEncode(tamperedRequest.toJson()),
+                ),
+              );
+              final tamperedResponse = await harness.nextResponse(
+                connId: 71,
+                encryptor: phone,
+                requestId: "tampered-stream-start",
+              );
+              expect(tamperedResponse.id, "tampered-stream-start");
+              expect(tamperedResponse.status, HttpStatus.badRequest);
+              await canvas.expectNoMessage<DeviceCanvasStreamStartMessage>(const Duration(milliseconds: 100));
+
+              final startRequest = DeviceCanvasStreamStartRequest(
+                expectedBridgeId: _canvasBridgeId,
+                sessionId: _canvasSessionId,
+                deviceKey: _canvasDeviceKey,
+                expectedClaimRevision: claimRevision,
+                control: true,
+                offer: _canvasOffer,
+                iceCandidates: const [_canvasOfferCandidate],
+              );
+              expect(startRequest.isValid, isTrue);
+              expect(utf8.encode(startRequest.offer.sdp), hasLength(lessThanOrEqualTo(maxDeviceCanvasRtcSdpBytes)));
+              final relayStart = RelayMessage.request(
+                id: "valid-stream-start",
+                method: "POST",
+                path: "/device-canvas/stream/start",
+                headers: const {},
+                body: jsonEncode(startRequest.toJson()),
+              );
+              expect(relayStart, isA<RelayRequest>(), reason: "signaling must use the generic request variant");
+              await harness.sendEncrypted(connId: 71, encryptor: phone, message: relayStart);
+
+              final streamStart = await canvas.nextMessage<DeviceCanvasStreamStartMessage>();
+              expect(streamStart.bridgeId, _canvasBridgeId);
+              expect(streamStart.sessionId, _canvasSessionId);
+              expect(streamStart.deviceKey, _canvasDeviceKey);
+              expect(streamStart.claimRevision, claimRevision);
+              expect(streamStart.control, isTrue);
+              expect(streamStart.offer, _canvasOffer);
+              expect(streamStart.offer.fingerprint, _canvasOfferFingerprint);
+              expect(streamStart.iceCandidates, const [_canvasOfferCandidate]);
+              expect(streamStart.toJson().keys, isNot(contains("media")));
+
+              canvas.send(
+                DeviceCanvasInboundMessage.streamStarted(
+                  requestId: streamStart.requestId,
+                  leaseId: streamStart.leaseId,
+                  answer: _canvasAnswer,
+                  iceCandidates: const [_canvasAnswerCandidate],
+                ),
+              );
+
+              final relayResponse = await harness.nextResponse(
+                connId: 71,
+                encryptor: phone,
+                requestId: "valid-stream-start",
+              );
+              expect(relayResponse.id, "valid-stream-start");
+              expect(relayResponse.status, HttpStatus.ok);
+              final started = DeviceCanvasStreamStartResponse.fromJson(jsonDecodeMap(relayResponse.body!));
+              expect(started.isValid, isTrue);
+              expect(started.outcome, DeviceCanvasStreamStartOutcome.started);
+              expect(started.leaseId, streamStart.leaseId);
+              expect(started.answer, _canvasAnswer);
+              expect(started.answer?.fingerprint, _canvasAnswerFingerprint);
+              expect(started.iceCandidates, const [_canvasAnswerCandidate]);
+
+              await _expectDatabaseDoesNotContain(harness.database, _canvasOffer.sdp);
+              await _expectDatabaseDoesNotContain(harness.database, _canvasAnswer.sdp);
+              expect(
+                await harness.database.deviceCanvasClaimDao.getClaimsForBridge(bridgeId: _canvasBridgeId),
+                hasLength(1),
+              );
+
+              final release = await harness.composition.deviceCanvasClaimService.release(
+                bridgeId: _canvasBridgeId,
+                deviceKey: _canvasDeviceKey,
+                sessionId: _canvasSessionId,
+                expectedClaimRevision: claimRevision,
+              );
+              expect(release, isA<DeviceCanvasReleased>());
+              final revoke = await canvas.nextMessage<DeviceCanvasStreamRevokeMessage>(
+                where: (message) => message.leaseId == streamStart.leaseId,
+              );
+              expect(revoke.reason, DeviceCanvasStreamRevokeReason.claimChanged);
+
+              final statusRequest = DeviceCanvasStreamStatusRequest(
+                expectedBridgeId: _canvasBridgeId,
+                sessionId: _canvasSessionId,
+                deviceKey: _canvasDeviceKey,
+                expectedClaimRevision: claimRevision,
+              );
+              await harness.sendEncrypted(
+                connId: 71,
+                encryptor: phone,
+                message: RelayMessage.request(
+                  id: "status-after-release",
+                  method: "POST",
+                  path: "/device-canvas/stream/status",
+                  headers: const {},
+                  body: jsonEncode(statusRequest.toJson()),
+                ),
+              );
+              final statusRelayResponse = await harness.nextResponse(
+                connId: 71,
+                encryptor: phone,
+                requestId: "status-after-release",
+              );
+              expect(statusRelayResponse.id, "status-after-release");
+              expect(statusRelayResponse.status, HttpStatus.ok);
+              final status = DeviceCanvasStreamStatusResponse.fromJson(jsonDecodeMap(statusRelayResponse.body!));
+              expect(status.isValid, isTrue);
+              expect(status.outcome, DeviceCanvasStreamStatusOutcome.unauthorized);
+              expect(
+                await harness.database.deviceCanvasClaimDao.getClaimsForBridge(bridgeId: _canvasBridgeId),
+                isEmpty,
+              );
+            } finally {
+              await harness?.close();
+            }
+          },
+          stderr: () => stderrBuffer,
+        );
+        expect(stderrBuffer.text, isNot(contains(_canvasOffer.sdp)), reason: "offer SDP must not be logged");
+        expect(stderrBuffer.text, isNot(contains(_canvasAnswer.sdp)), reason: "answer SDP must not be logged");
+      } finally {
+        Log.level = previousLogLevel;
+      }
+    });
   });
+}
+
+const String _canvasBridgeId = "br_test1234";
+const String _canvasSessionId = "connected-canvas-session";
+const String _canvasDeviceKey = "android:emulator-5554";
+const String _canvasOfferFingerprint =
+    "sha-256 AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA";
+const String _canvasAnswerFingerprint =
+    "sha-256 BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB:BB";
+const DeviceCanvasRtcDescription _canvasOffer = DeviceCanvasRtcDescription(
+  type: DeviceCanvasRtcDescriptionType.offer,
+  sdp:
+      "v=0\r\n"
+      "o=- 1 1 IN IP4 127.0.0.1\r\n"
+      "s=-\r\n"
+      "t=0 0\r\n"
+      "m=video 9 UDP/TLS/RTP/SAVPF 96\r\n"
+      "c=IN IP4 0.0.0.0\r\n"
+      "a=ice-ufrag:offerufrag\r\n"
+      "a=ice-pwd:offerpassword123456789012\r\n"
+      "a=fingerprint:$_canvasOfferFingerprint\r\n"
+      "a=setup:actpass\r\n"
+      "a=mid:0\r\n"
+      "a=rtcp-mux\r\n"
+      "a=recvonly\r\n"
+      "a=rtpmap:96 H264/90000\r\n",
+  fingerprint: _canvasOfferFingerprint,
+);
+const DeviceCanvasRtcDescription _canvasAnswer = DeviceCanvasRtcDescription(
+  type: DeviceCanvasRtcDescriptionType.answer,
+  sdp:
+      "v=0\r\n"
+      "o=- 2 2 IN IP4 127.0.0.1\r\n"
+      "s=-\r\n"
+      "t=0 0\r\n"
+      "m=video 9 UDP/TLS/RTP/SAVPF 96\r\n"
+      "c=IN IP4 0.0.0.0\r\n"
+      "a=ice-ufrag:answerufrag\r\n"
+      "a=ice-pwd:answerpassword1234567890\r\n"
+      "a=fingerprint:$_canvasAnswerFingerprint\r\n"
+      "a=setup:active\r\n"
+      "a=mid:0\r\n"
+      "a=rtcp-mux\r\n"
+      "a=sendonly\r\n"
+      "a=rtpmap:96 H264/90000\r\n",
+  fingerprint: _canvasAnswerFingerprint,
+);
+const DeviceCanvasIceCandidate _canvasOfferCandidate = DeviceCanvasIceCandidate(
+  candidate: "candidate:1 1 udp 2122260223 127.0.0.1 50000 typ host",
+  sdpMid: "0",
+  sdpMLineIndex: 0,
+);
+const DeviceCanvasIceCandidate _canvasAnswerCandidate = DeviceCanvasIceCandidate(
+  candidate: "candidate:2 1 udp 2122260223 127.0.0.1 50001 typ host",
+  sdpMid: "0",
+  sdpMLineIndex: 0,
+);
+const DeviceCanvasDescriptor _canvasAndroidDescriptor = DeviceCanvasDescriptor(
+  deviceKey: _canvasDeviceKey,
+  platform: DeviceCanvasPlatform.android,
+  displayName: "Pixel 9",
+  runtimeDescription: "Android 16",
+  modelDescription: "Android SDK emulator",
+  dimensions: DeviceCanvasDimensions(width: 412, height: 915),
+  orientation: DeviceCanvasOrientation.portrait,
+  capabilities: DeviceCanvasCapabilities(
+    localView: true,
+    remoteVideo: true,
+    remoteControl: true,
+    input: true,
+  ),
+);
+
+Future<void> _expectDatabaseDoesNotContain(AppDatabase database, String sensitiveValue) async {
+  final tables = await database
+      .customSelect(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+      )
+      .get();
+  for (final table in tables) {
+    final tableName = table.read<String>("name");
+    final rows = await database.customSelect('SELECT * FROM "$tableName"').get();
+    expect(
+      rows.expand((row) => row.data.values).whereType<String>().join("\n"),
+      isNot(contains(sensitiveValue)),
+      reason: "stream signaling must not be persisted in $tableName",
+    );
+  }
 }
 
 class _ConcurrencyHarness._({
@@ -267,6 +530,9 @@ class _ConcurrencyHarness._({
   required var WebSocket _socket,
   required var StreamIterator<dynamic> _messages,
 }) {
+  Directory? _deviceCanvasDataDirectory;
+  _CanvasPeer? _canvasPeer;
+
   static Future<_ConcurrencyHarness> start() async {
     final relayServer = await TestRelayServer.start();
     final database = createTestDatabase();
@@ -352,6 +618,49 @@ class _ConcurrencyHarness._({
       agent: null,
       agentModel: null,
     );
+  }
+
+  Future<_CanvasPeer> startCanvas() async {
+    final dataDirectory = await Directory.systemTemp.createTemp("connected-device-canvas-test-");
+    _deviceCanvasDataDirectory = dataDirectory;
+    await runtime.startDeviceCanvasIpcServer(
+      dataDirectory: dataDirectory.path,
+      bridgeId: _canvasBridgeId,
+      processGeneration: "test-process-generation",
+      bridgeRegistrations: const Stream<String>.empty(),
+    );
+    final rendezvous = await DeviceCanvasRendezvousRepository(dataDirectory: dataDirectory.path).read();
+    if (rendezvous == null) throw StateError("Device Canvas IPC rendezvous was not written");
+    expect(rendezvous.bridgeId, _canvasBridgeId);
+    expect(rendezvous.protocolVersion, deviceCanvasIpcProtocolVersion);
+    final socket = await WebSocket.connect(
+      "ws://127.0.0.1:${rendezvous.port}",
+      headers: {HttpHeaders.authorizationHeader: "Bearer ${rendezvous.bearerSecret}"},
+    );
+    final peer = _CanvasPeer(socket);
+    _canvasPeer = peer;
+    peer.send(
+      const DeviceCanvasInboundMessage.hello(
+        protocolVersion: deviceCanvasIpcProtocolVersion,
+        canvasInstanceId: "connected-test-canvas",
+        capabilities: DeviceCanvasCapabilities(
+          localView: true,
+          remoteVideo: true,
+          remoteControl: true,
+          input: true,
+        ),
+      ),
+    );
+    final accepted = await peer.nextMessage<DeviceCanvasHelloAccepted>();
+    expect(accepted.bridgeId, _canvasBridgeId);
+    await peer.nextMessage<DeviceCanvasClaimsSnapshot>();
+
+    final inventoryPublished = composition.deviceCanvasIntegrationState.presenceChanges.firstWhere(
+      (snapshot) => snapshot.devicesByKey.containsKey(_canvasDeviceKey),
+    );
+    peer.send(const DeviceCanvasInboundMessage.inventorySnapshot(devices: [_canvasAndroidDescriptor]));
+    await inventoryPublished.timeout(const Duration(seconds: 5));
+    return peer;
   }
 
   Future<SessionEncryptor> activatePhone({required int connId}) async {
@@ -448,14 +757,67 @@ class _ConcurrencyHarness._({
   }
 
   Future<void> close() async {
-    await composition.session.cancel();
-    await runFuture.timeout(const Duration(seconds: 10));
-    await _messages.cancel();
-    await runtime.close();
-    await lifecycleService.dispose();
-    httpClient.close();
-    await plugin.closeEvents();
-    await relayServer.close();
+    try {
+      await _canvasPeer?.close();
+      _canvasPeer = null;
+      await composition.session.cancel();
+      await runFuture.timeout(const Duration(seconds: 10));
+      await _messages.cancel();
+      await runtime.close();
+      await lifecycleService.dispose();
+      httpClient.close();
+      await plugin.closeEvents();
+      await relayServer.close();
+    } finally {
+      final dataDirectory = _deviceCanvasDataDirectory;
+      _deviceCanvasDataDirectory = null;
+      if (dataDirectory != null && dataDirectory.existsSync()) {
+        dataDirectory.deleteSync(recursive: true);
+      }
+    }
+  }
+}
+
+class _CanvasPeer(final WebSocket _socket) {
+  this {
+    _subscription = _socket.listen((data) {
+      if (data is! String) return;
+      _messages.add(DeviceCanvasOutboundMessage.fromJson(jsonDecodeMap(data)));
+      _arrivals.add(null);
+    });
+  }
+
+  final List<DeviceCanvasOutboundMessage> _messages = <DeviceCanvasOutboundMessage>[];
+  final StreamController<void> _arrivals = StreamController<void>.broadcast();
+  late final StreamSubscription<dynamic> _subscription;
+
+  void send(DeviceCanvasInboundMessage message) {
+    _socket.add(jsonEncode(message.toJson()));
+  }
+
+  Future<T> nextMessage<T extends DeviceCanvasOutboundMessage>({bool Function(T message)? where}) async {
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    while (true) {
+      while (_messages.isNotEmpty) {
+        final message = _messages.removeAt(0);
+        if (message is T && (where == null || where(message))) return message;
+      }
+      final remaining = deadline.difference(DateTime.now());
+      if (remaining <= Duration.zero) throw TimeoutException("No matching Device Canvas IPC message for $T");
+      await _arrivals.stream.first.timeout(remaining);
+    }
+  }
+
+  Future<void> expectNoMessage<T extends DeviceCanvasOutboundMessage>(Duration duration) async {
+    await Future<void>.delayed(duration);
+    final unexpected = _messages.whereType<T>().toList(growable: false);
+    expect(unexpected, isEmpty, reason: "unexpected Device Canvas IPC message of type $T");
+  }
+
+  Future<void> close() async {
+    await _socket.close();
+    await _subscription.cancel();
+    await _arrivals.close();
   }
 }
 

@@ -9,6 +9,7 @@ import "../api/database/database.dart";
 import "../api/database/history/chat_history_database.dart";
 import "../bridge/device_canvas/ipc_server.dart";
 import "../bridge/device_canvas/rendezvous_repository.dart";
+import "../bridge/device_canvas/stream_gateway.dart";
 import "../debug_server.dart";
 import "../foundation/bandwidth_tracker.dart";
 import "../listeners/plugin_catalog_hydration_listener.dart";
@@ -26,6 +27,7 @@ class BridgeRuntime({
 }) {
   final BridgeRestartDispatcher _restartDispatcher = _composition.restartDispatcher;
   final RoutedRequestDispatcher _routedRequestDispatcher = _composition.routedRequestDispatcher;
+  final DeviceCanvasStreamGateway _deviceCanvasStreamGateway = _composition.deviceCanvasStreamGateway;
   DeviceCanvasIpcServer? _deviceCanvasIpcServer;
   StreamSubscription<String>? _bridgeRegistrationSubscription;
   Future<void> _deviceCanvasIpcRotation = Future<void>.value();
@@ -82,6 +84,7 @@ class BridgeRuntime({
       processGeneration: processGeneration,
       claimService: _composition.deviceCanvasClaimService,
       integrationState: _composition.deviceCanvasIntegrationState,
+      streamGateway: _deviceCanvasStreamGateway,
     );
     await server.start();
     return server;
@@ -150,6 +153,8 @@ class BridgeRuntime({
     await step(() => _deviceCanvasIpcRotation);
     await step(() => _deviceCanvasIpcServer?.dispose() ?? Future<void>.value());
     _deviceCanvasIpcServer = null;
+    await step(_composition.deviceCanvasStreamService.dispose);
+    await step(_deviceCanvasStreamGateway.dispose);
     await step(_composition.deviceCanvasIntegrationState.dispose);
     await step(_composition.deviceCanvasClaimService.dispose);
     await step(_composition.sessionUnseenService.dispose);

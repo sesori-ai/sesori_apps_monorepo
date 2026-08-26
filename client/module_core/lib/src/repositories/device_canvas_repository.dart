@@ -54,6 +54,32 @@ class DeviceCanvasRepository({required final DeviceCanvasApi _api}) {
     );
   }
 
+  Future<DeviceCanvasStreamStartResult> startStream({required DeviceCanvasStreamStartRequest request}) async {
+    return switch (await _api.startStream(request: request)) {
+      SuccessResponse(:final data) => DeviceCanvasStreamStartSupported(response: data),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => const DeviceCanvasStreamStartUnsupported(),
+      ErrorResponse(:final error) when _isUncertainStreamWriteError(error) => const DeviceCanvasStreamStartUncertain(),
+      ErrorResponse(:final error) => DeviceCanvasStreamStartFailure(error: error),
+    };
+  }
+
+  Future<DeviceCanvasStreamStatusResult> statusStream({required DeviceCanvasStreamStatusRequest request}) async {
+    return switch (await _api.statusStream(request: request)) {
+      SuccessResponse(:final data) => DeviceCanvasStreamStatusSupported(response: data),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => const DeviceCanvasStreamStatusUnsupported(),
+      ErrorResponse(:final error) => DeviceCanvasStreamStatusFailure(error: error),
+    };
+  }
+
+  Future<DeviceCanvasStreamStopResult> stopStream({required DeviceCanvasStreamStopRequest request}) async {
+    return switch (await _api.stopStream(request: request)) {
+      SuccessResponse(:final data) => DeviceCanvasStreamStopSupported(response: data),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => const DeviceCanvasStreamStopUnsupported(),
+      ErrorResponse(:final error) when _isUncertainStreamWriteError(error) => const DeviceCanvasStreamStopUncertain(),
+      ErrorResponse(:final error) => DeviceCanvasStreamStopFailure(error: error),
+    };
+  }
+
   DeviceCanvasMutationResult _mapMutation(ApiResponse<DeviceCanvasMutationResponse> response) {
     return switch (response) {
       SuccessResponse(:final data) => DeviceCanvasMutationCommitted(response: data),
@@ -69,6 +95,16 @@ class DeviceCanvasRepository({required final DeviceCanvasApi _api}) {
       ) =>
         const DeviceCanvasMutationUncertain(),
       ErrorResponse(:final error) => DeviceCanvasMutationFailure(error: error),
+    };
+  }
+
+  bool _isUncertainStreamWriteError(ApiError error) {
+    return switch (error) {
+      NonSuccessCodeError(:final errorCode) => errorCode >= 500 && errorCode < 600,
+      JsonParsingError() || EmptyResponseError() => true,
+      DartHttpClientError(:final innerError) =>
+        innerError is TimeoutException || innerError is RelayResponseLostException,
+      GenericError() || NotAuthenticatedError() => false,
     };
   }
 }

@@ -741,11 +741,12 @@ iOS receives its own matrix only after its feasibility gate passes.
 
 ## Phase 2 Entry-Gate Decision
 
-Step 8's time-boxed spikes completed on 2026-08-25. The resulting Phase 2 entry
-gate is **NO-GO**: the component probes support the proposed architecture, but
-they do not yet prove the integrated production source, authorization, and
-latency boundaries required before Steps 9-12. Step 8 ships no stream, signaling
-route, lease, or viewport.
+Step 8's time-boxed spikes completed on 2026-08-25 with a **NO-GO**. On
+2026-08-26, Step 9 implemented the bounded authorization/signaling boundary and
+an Android video-only production peer for local cross-device testing. This closes
+the integrated source and authorization unknowns, but it does not open the Phase
+2 product gate: input, external TURN, latency/resource distributions, reconnect
+coverage, complete dependency acceptance, and iOS containment remain open.
 
 The component-level decisions are:
 
@@ -755,22 +756,24 @@ The component-level decisions are:
 - **GO, WebRTC protocol candidate:** the selected native and Flutter libraries
   can negotiate H.264, DTLS-SRTP, relay candidates, and a reliable ordered
   DataChannel in disposable peers.
-- **PARTIAL, existing signaling seam:** real relay framing and generic bridge
-  routing can carry representative offer/answer JSON, but no single authorized
-  production or test-only Sesori route yet joins the client, relay, bridge,
-  claim revision, and Device Canvas peer.
+- **GO, authorization/signaling boundary:** encrypted routed requests, exact
+  relay-connection incarnation, claim revision, expiring in-memory leases, and
+  authenticated local IPC now carry bounded offer/answer/ICE signaling. Exact
+  fingerprint tampering fails before peer setup and signaling is not persisted or
+  emitted through media-specific relay messages.
 - **PARTIAL, iOS private seams:** raw SimulatorKit surfaces and DTUHID touch plus
   one USB keyboard usage work under both tested toolchains. General text input,
   interaction latency, long-run and restart/rotation stability, drag/multitouch,
   coordinate mapping, keyboard-up/modifier behavior, production-signing
   constraints, and fail-closed behavior on ABI drift remain unproven.
 
-The gate remains closed until one executable matrix proves all of:
+The first two items are now closed by Step 9. The gate remains closed until one
+executable matrix proves all of:
 
-1. one real scrcpy source feeding both the existing local renderer and the
-   WebRTC track through the selected shared lifecycle;
-2. authenticated fingerprint comparison and tamper rejection through a bounded
-   authorized Sesori signaling route;
+1. **Closed:** one real scrcpy source feeds both the existing local renderer and
+   the WebRTC track through the selected shared lifecycle;
+2. **Closed:** authenticated fingerprint comparison and tamper rejection pass
+   through a bounded authorized Sesori signaling route;
 3. claim-revision/release/archive-driven input rejection and peer closure;
 4. capture-to-display, input-to-visible, reconnect/revocation, resource, and
    Sesori request/SSE latency distributions on release-target clients;
@@ -835,19 +838,17 @@ signing, and deliberate private-ABI failure tests on every claimed toolchain.
   remote-description application because the non-trickle harness deliberately
   settled both relay candidates; input p95 was 47.0 ms. The client peaked at
   268 MiB PSS and 379 MiB RSS during startup/streaming.
-- The client focused test decrypts `RelayClient`'s emitted frame to prove exact
-  serialized plaintext for a representative offer fixture, ignores a wrong-ID
-  response, and correlates a synthetic answer response. The independent bridge
-  test exercises framing primitives around generic routing, validates that the
-  fixture contains exactly one fingerprint line matching its declared value,
-  rejects a mismatch, and returns a representative answer/TURN response through
-  a test-only handler. These tests prove reusable seams, not parser-valid WebRTC
-  signaling, production receive/send integration, one connected client-to-bridge
-  route, or an independently authenticated DTLS fingerprint.
-- The transport revocation probe flips a local native-peer boolean after 128
-  inputs and proves later DataChannel input is rejected. Existing claim tests
-  separately prove stale revisions are rejected. No test joins a real claim
-  revision/release/archive event to input rejection and active peer closure.
+- A connected bridge test now joins encrypted relay framing, exact connection
+  incarnation, persisted claim revision, authenticated loopback IPC, parser-valid
+  SDP, fingerprint tamper rejection, correlated answer delivery, claim-release
+  revocation, and post-release denial. Exact late responses are bounded and
+  ignored without disconnecting an unrelated current Canvas peer.
+- The production Device Canvas path reuses the live scrcpy Annex-B source for the
+  local renderer and VideoToolbox decode into a pinned WebRTC 151 peer. A real
+  emulator smoke delivered 295 remote frames at `534x1200` while preserving the
+  `716x1600` local two-plane buffer, then stopped remote delivery on revocation.
+  Decoder input and native work in flight are bounded; discontinuities reset to a
+  requested keyframe. Remote control and DataChannel input remain disabled.
 - Local coturn proves the relay protocol and emulator-NAT topology. Arbitrary-
   network reliability, short-lived credential issuance, and external TURN
   operations remain Step 10 release gates.

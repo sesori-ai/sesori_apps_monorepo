@@ -157,6 +157,111 @@ void main() {
       );
     });
   });
+
+  group("stream start", () {
+    test("returns supported responses", () async {
+      when(
+        () => api.startStream(request: _startRequest),
+      ).thenAnswer((_) async => ApiResponse.success(_startResponse));
+
+      final result = await repository.startStream(request: _startRequest);
+
+      expect(result, isA<DeviceCanvasStreamStartSupported>());
+      expect((result as DeviceCanvasStreamStartSupported).response, _startResponse);
+    });
+
+    test("maps a missing route to unsupported", () async {
+      when(
+        () => api.startStream(request: _startRequest),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)));
+
+      expect(await repository.startStream(request: _startRequest), isA<DeviceCanvasStreamStartUnsupported>());
+    });
+
+    for (final error in _uncertainErrors) {
+      test("treats ${error.runtimeType} as uncertain", () async {
+        when(() => api.startStream(request: _startRequest)).thenAnswer((_) async => ApiResponse.error(error));
+
+        expect(await repository.startStream(request: _startRequest), isA<DeviceCanvasStreamStartUncertain>());
+      });
+    }
+
+    test("preserves definite failures", () async {
+      when(
+        () => api.startStream(request: _startRequest),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+
+      expect(await repository.startStream(request: _startRequest), isA<DeviceCanvasStreamStartFailure>());
+    });
+  });
+
+  group("stream status", () {
+    test("returns supported responses", () async {
+      when(
+        () => api.statusStream(request: _statusRequest),
+      ).thenAnswer((_) async => ApiResponse.success(_streamStatusResponse));
+
+      expect(await repository.statusStream(request: _statusRequest), isA<DeviceCanvasStreamStatusSupported>());
+    });
+
+    test("maps a missing route to unsupported", () async {
+      when(
+        () => api.statusStream(request: _statusRequest),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)));
+
+      expect(await repository.statusStream(request: _statusRequest), isA<DeviceCanvasStreamStatusUnsupported>());
+    });
+
+    for (final error in _uncertainErrors) {
+      test("maps ${error.runtimeType} to a definite read failure", () async {
+        when(() => api.statusStream(request: _statusRequest)).thenAnswer((_) async => ApiResponse.error(error));
+
+        expect(await repository.statusStream(request: _statusRequest), isA<DeviceCanvasStreamStatusFailure>());
+      });
+    }
+  });
+
+  group("stream stop", () {
+    test("returns supported responses", () async {
+      when(
+        () => api.stopStream(request: _stopRequest),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const DeviceCanvasStreamStopResponse(outcome: DeviceCanvasStreamStopOutcome.stopped),
+        ),
+      );
+
+      expect(await repository.stopStream(request: _stopRequest), isA<DeviceCanvasStreamStopSupported>());
+    });
+
+    test("maps a missing route to unsupported", () async {
+      when(
+        () => api.stopStream(request: _stopRequest),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)));
+
+      expect(await repository.stopStream(request: _stopRequest), isA<DeviceCanvasStreamStopUnsupported>());
+    });
+
+    test("maps a lost relay response to uncertain", () async {
+      when(
+        () => api.stopStream(request: _stopRequest),
+      ).thenAnswer(
+        (_) async => ApiResponse.error(
+          ApiError.dartHttpClient(const RelayResponseLostException(message: "relay disconnected")),
+        ),
+      );
+
+      expect(await repository.stopStream(request: _stopRequest), isA<DeviceCanvasStreamStopUncertain>());
+    });
+
+    test("preserves definite failures", () async {
+      when(
+        () => api.stopStream(request: _stopRequest),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+
+      expect(await repository.stopStream(request: _stopRequest), isA<DeviceCanvasStreamStopFailure>());
+    });
+  });
 }
 
 DeviceCanvasSessionStatusResponse _status() => const DeviceCanvasSessionStatusResponse(
@@ -166,3 +271,60 @@ DeviceCanvasSessionStatusResponse _status() => const DeviceCanvasSessionStatusRe
   projectId: "project-1",
   connection: DeviceCanvasClientConnectionStatus.connected,
 );
+
+const _fingerprint =
+    "sha-256 00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:10:21:32:43:54:65:76:87:98:A9:BA:CB:DC:ED:FE:0F";
+
+const _startRequest = DeviceCanvasStreamStartRequest(
+  expectedBridgeId: "bridge-1",
+  sessionId: "session-1",
+  deviceKey: "device-1",
+  expectedClaimRevision: 7,
+  control: true,
+  offer: DeviceCanvasRtcDescription(
+    type: DeviceCanvasRtcDescriptionType.offer,
+    sdp: "v=0\na=fingerprint:$_fingerprint\n",
+    fingerprint: _fingerprint,
+  ),
+);
+
+const _statusRequest = DeviceCanvasStreamStatusRequest(
+  expectedBridgeId: "bridge-1",
+  sessionId: "session-1",
+  deviceKey: "device-1",
+  expectedClaimRevision: 7,
+);
+
+const _stopRequest = DeviceCanvasStreamStopRequest(
+  expectedBridgeId: "bridge-1",
+  sessionId: "session-1",
+  deviceKey: "device-1",
+  expectedClaimRevision: 7,
+  leaseId: "lease-1",
+);
+
+const _startResponse = DeviceCanvasStreamStartResponse(
+  outcome: DeviceCanvasStreamStartOutcome.unavailable,
+  leaseId: null,
+  expiresAt: null,
+  answer: null,
+  turn: null,
+);
+
+const _streamStatusResponse = DeviceCanvasStreamStatusResponse(
+  outcome: DeviceCanvasStreamStatusOutcome.inactive,
+  leaseId: null,
+  expiresAt: null,
+  answer: null,
+  turn: null,
+);
+
+final _uncertainErrors = <ApiError>[
+  ApiError.emptyResponse(),
+  ApiError.jsonParsing("invalid"),
+  ApiError.dartHttpClient(TimeoutException("timed out")),
+  ApiError.dartHttpClient(const RelayResponseLostException(message: "relay disconnected")),
+  ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null),
+  ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null),
+  ApiError.nonSuccessCode(errorCode: 599, rawErrorString: null),
+];

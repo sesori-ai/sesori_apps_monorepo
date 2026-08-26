@@ -1,9 +1,10 @@
 import "package:freezed_annotation/freezed_annotation.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 part "protocol.freezed.dart";
 part "protocol.g.dart";
 
-const int deviceCanvasIpcProtocolVersion = 2;
+const int deviceCanvasIpcProtocolVersion = 3;
 
 @JsonEnum()
 enum DeviceCanvasPlatform() {
@@ -19,6 +20,48 @@ enum DeviceCanvasOrientation() {
   portrait,
   @JsonValue("landscape")
   landscape,
+}
+
+@JsonEnum()
+enum DeviceCanvasStreamStartFailureReason() {
+  @JsonValue("unsupported")
+  unsupported,
+  @JsonValue("invalidOffer")
+  invalidOffer,
+  @JsonValue("peerSetupFailed")
+  peerSetupFailed,
+  @JsonValue("unknown")
+  unknown,
+}
+
+@JsonEnum()
+enum DeviceCanvasStreamCloseReason() {
+  @JsonValue("stopped")
+  stopped,
+  @JsonValue("failed")
+  failed,
+  @JsonValue("unknown")
+  unknown,
+}
+
+@JsonEnum()
+enum DeviceCanvasStreamRevokeReason() {
+  @JsonValue("stopped")
+  stopped,
+  @JsonValue("expired")
+  expired,
+  @JsonValue("claimChanged")
+  claimChanged,
+  @JsonValue("clientDisconnected")
+  clientDisconnected,
+  @JsonValue("canvasDisconnected")
+  canvasDisconnected,
+  @JsonValue("deviceUnavailable")
+  deviceUnavailable,
+  @JsonValue("bridgeShutdown")
+  bridgeShutdown,
+  @JsonValue("startFailed")
+  startFailed,
 }
 
 @freezed
@@ -65,7 +108,7 @@ sealed class const DeviceCanvasDescriptor._() with _$DeviceCanvasDescriptor {
       (dimensions?.isValid ?? true);
 }
 
-@Freezed(unionKey: "type", fromJson: true, toJson: true)
+@Freezed(unionKey: "type", fromJson: true, toJson: true, toStringOverride: false)
 sealed class DeviceCanvasInboundMessage with _$DeviceCanvasInboundMessage {
   @FreezedUnionValue("hello")
   const factory hello({
@@ -85,6 +128,28 @@ sealed class DeviceCanvasInboundMessage with _$DeviceCanvasInboundMessage {
     required int observedAt,
   }) = DeviceCanvasHeartbeat;
 
+  @FreezedUnionValue("streamStarted")
+  const factory streamStarted({
+    required String requestId,
+    required String leaseId,
+    required DeviceCanvasRtcDescription answer,
+    required List<DeviceCanvasIceCandidate> iceCandidates,
+  }) = DeviceCanvasStreamStartedMessage;
+
+  @FreezedUnionValue("streamStartFailed")
+  const factory streamStartFailed({
+    required String requestId,
+    required String leaseId,
+    @JsonKey(unknownEnumValue: DeviceCanvasStreamStartFailureReason.unknown)
+    required DeviceCanvasStreamStartFailureReason reason,
+  }) = DeviceCanvasStreamStartFailedMessage;
+
+  @FreezedUnionValue("streamClosed")
+  const factory streamClosed({
+    required String leaseId,
+    @JsonKey(unknownEnumValue: DeviceCanvasStreamCloseReason.unknown) required DeviceCanvasStreamCloseReason reason,
+  }) = DeviceCanvasStreamClosedMessage;
+
   factory fromJson(Map<String, dynamic> json) => _$DeviceCanvasInboundMessageFromJson(json);
 }
 
@@ -101,7 +166,7 @@ sealed class const DeviceCanvasClaimProjectionDto._() with _$DeviceCanvasClaimPr
   factory fromJson(Map<String, dynamic> json) => _$DeviceCanvasClaimProjectionDtoFromJson(json);
 }
 
-@Freezed(unionKey: "type", fromJson: true, toJson: true)
+@Freezed(unionKey: "type", fromJson: true, toJson: true, toStringOverride: false)
 sealed class DeviceCanvasOutboundMessage with _$DeviceCanvasOutboundMessage {
   @FreezedUnionValue("helloAccepted")
   const factory helloAccepted({required int protocolVersion, required String bridgeId}) =
@@ -128,6 +193,25 @@ sealed class DeviceCanvasOutboundMessage with _$DeviceCanvasOutboundMessage {
     required int protocolVersion,
     required String reason,
   }) = DeviceCanvasCompatibilityStatus;
+
+  @FreezedUnionValue("streamStart")
+  const factory streamStart({
+    required String requestId,
+    required String leaseId,
+    required String bridgeId,
+    required String sessionId,
+    required String deviceKey,
+    required int claimRevision,
+    required int expiresAt,
+    required bool control,
+    required DeviceCanvasRtcDescription offer,
+    required List<DeviceCanvasIceCandidate> iceCandidates,
+    required DeviceCanvasTurnConfiguration? turn,
+  }) = DeviceCanvasStreamStartMessage;
+
+  @FreezedUnionValue("streamRevoke")
+  const factory streamRevoke({required String leaseId, required DeviceCanvasStreamRevokeReason reason}) =
+      DeviceCanvasStreamRevokeMessage;
 
   factory fromJson(Map<String, dynamic> json) => _$DeviceCanvasOutboundMessageFromJson(json);
 }

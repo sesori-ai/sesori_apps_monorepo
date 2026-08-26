@@ -129,6 +129,89 @@ Map<String, dynamic> _$DeviceCanvasHeartbeatToJson(
   'type': instance.$type,
 };
 
+DeviceCanvasStreamStartedMessage _$DeviceCanvasStreamStartedMessageFromJson(
+  Map json,
+) => DeviceCanvasStreamStartedMessage(
+  requestId: json['requestId'] as String,
+  leaseId: json['leaseId'] as String,
+  answer: DeviceCanvasRtcDescription.fromJson(
+    Map<String, dynamic>.from(json['answer'] as Map),
+  ),
+  iceCandidates: (json['iceCandidates'] as List<dynamic>)
+      .map(
+        (e) => DeviceCanvasIceCandidate.fromJson(
+          Map<String, dynamic>.from(e as Map),
+        ),
+      )
+      .toList(),
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$DeviceCanvasStreamStartedMessageToJson(
+  DeviceCanvasStreamStartedMessage instance,
+) => <String, dynamic>{
+  'requestId': instance.requestId,
+  'leaseId': instance.leaseId,
+  'answer': instance.answer.toJson(),
+  'iceCandidates': instance.iceCandidates.map((e) => e.toJson()).toList(),
+  'type': instance.$type,
+};
+
+DeviceCanvasStreamStartFailedMessage
+_$DeviceCanvasStreamStartFailedMessageFromJson(Map json) =>
+    DeviceCanvasStreamStartFailedMessage(
+      requestId: json['requestId'] as String,
+      leaseId: json['leaseId'] as String,
+      reason: $enumDecode(
+        _$DeviceCanvasStreamStartFailureReasonEnumMap,
+        json['reason'],
+        unknownValue: DeviceCanvasStreamStartFailureReason.unknown,
+      ),
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$DeviceCanvasStreamStartFailedMessageToJson(
+  DeviceCanvasStreamStartFailedMessage instance,
+) => <String, dynamic>{
+  'requestId': instance.requestId,
+  'leaseId': instance.leaseId,
+  'reason': _$DeviceCanvasStreamStartFailureReasonEnumMap[instance.reason]!,
+  'type': instance.$type,
+};
+
+const _$DeviceCanvasStreamStartFailureReasonEnumMap = {
+  DeviceCanvasStreamStartFailureReason.unsupported: 'unsupported',
+  DeviceCanvasStreamStartFailureReason.invalidOffer: 'invalidOffer',
+  DeviceCanvasStreamStartFailureReason.peerSetupFailed: 'peerSetupFailed',
+  DeviceCanvasStreamStartFailureReason.unknown: 'unknown',
+};
+
+DeviceCanvasStreamClosedMessage _$DeviceCanvasStreamClosedMessageFromJson(
+  Map json,
+) => DeviceCanvasStreamClosedMessage(
+  leaseId: json['leaseId'] as String,
+  reason: $enumDecode(
+    _$DeviceCanvasStreamCloseReasonEnumMap,
+    json['reason'],
+    unknownValue: DeviceCanvasStreamCloseReason.unknown,
+  ),
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$DeviceCanvasStreamClosedMessageToJson(
+  DeviceCanvasStreamClosedMessage instance,
+) => <String, dynamic>{
+  'leaseId': instance.leaseId,
+  'reason': _$DeviceCanvasStreamCloseReasonEnumMap[instance.reason]!,
+  'type': instance.$type,
+};
+
+const _$DeviceCanvasStreamCloseReasonEnumMap = {
+  DeviceCanvasStreamCloseReason.stopped: 'stopped',
+  DeviceCanvasStreamCloseReason.failed: 'failed',
+  DeviceCanvasStreamCloseReason.unknown: 'unknown',
+};
+
 _DeviceCanvasClaimProjectionDto _$DeviceCanvasClaimProjectionDtoFromJson(
   Map json,
 ) => _DeviceCanvasClaimProjectionDto(
@@ -233,4 +316,77 @@ Map<String, dynamic> _$DeviceCanvasCompatibilityStatusToJson(
   'protocolVersion': instance.protocolVersion,
   'reason': instance.reason,
   'type': instance.$type,
+};
+
+DeviceCanvasStreamStartMessage _$DeviceCanvasStreamStartMessageFromJson(
+  Map json,
+) => DeviceCanvasStreamStartMessage(
+  requestId: json['requestId'] as String,
+  leaseId: json['leaseId'] as String,
+  bridgeId: json['bridgeId'] as String,
+  sessionId: json['sessionId'] as String,
+  deviceKey: json['deviceKey'] as String,
+  claimRevision: (json['claimRevision'] as num).toInt(),
+  expiresAt: (json['expiresAt'] as num).toInt(),
+  control: json['control'] as bool,
+  offer: DeviceCanvasRtcDescription.fromJson(
+    Map<String, dynamic>.from(json['offer'] as Map),
+  ),
+  iceCandidates: (json['iceCandidates'] as List<dynamic>)
+      .map(
+        (e) => DeviceCanvasIceCandidate.fromJson(
+          Map<String, dynamic>.from(e as Map),
+        ),
+      )
+      .toList(),
+  turn: json['turn'] == null
+      ? null
+      : DeviceCanvasTurnConfiguration.fromJson(
+          Map<String, dynamic>.from(json['turn'] as Map),
+        ),
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$DeviceCanvasStreamStartMessageToJson(
+  DeviceCanvasStreamStartMessage instance,
+) => <String, dynamic>{
+  'requestId': instance.requestId,
+  'leaseId': instance.leaseId,
+  'bridgeId': instance.bridgeId,
+  'sessionId': instance.sessionId,
+  'deviceKey': instance.deviceKey,
+  'claimRevision': instance.claimRevision,
+  'expiresAt': instance.expiresAt,
+  'control': instance.control,
+  'offer': instance.offer.toJson(),
+  'iceCandidates': instance.iceCandidates.map((e) => e.toJson()).toList(),
+  'turn': ?instance.turn?.toJson(),
+  'type': instance.$type,
+};
+
+DeviceCanvasStreamRevokeMessage _$DeviceCanvasStreamRevokeMessageFromJson(
+  Map json,
+) => DeviceCanvasStreamRevokeMessage(
+  leaseId: json['leaseId'] as String,
+  reason: $enumDecode(_$DeviceCanvasStreamRevokeReasonEnumMap, json['reason']),
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$DeviceCanvasStreamRevokeMessageToJson(
+  DeviceCanvasStreamRevokeMessage instance,
+) => <String, dynamic>{
+  'leaseId': instance.leaseId,
+  'reason': _$DeviceCanvasStreamRevokeReasonEnumMap[instance.reason]!,
+  'type': instance.$type,
+};
+
+const _$DeviceCanvasStreamRevokeReasonEnumMap = {
+  DeviceCanvasStreamRevokeReason.stopped: 'stopped',
+  DeviceCanvasStreamRevokeReason.expired: 'expired',
+  DeviceCanvasStreamRevokeReason.claimChanged: 'claimChanged',
+  DeviceCanvasStreamRevokeReason.clientDisconnected: 'clientDisconnected',
+  DeviceCanvasStreamRevokeReason.canvasDisconnected: 'canvasDisconnected',
+  DeviceCanvasStreamRevokeReason.deviceUnavailable: 'deviceUnavailable',
+  DeviceCanvasStreamRevokeReason.bridgeShutdown: 'bridgeShutdown',
+  DeviceCanvasStreamRevokeReason.startFailed: 'startFailed',
 };

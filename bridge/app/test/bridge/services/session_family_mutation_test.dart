@@ -324,6 +324,9 @@ class _Fixture() {
 
 class _NoopDeviceCanvasClaimService() implements DeviceCanvasClaimService {
   @override
+  Future<DeviceCanvasClaim?> getClaim({required String bridgeId, required String deviceKey}) async => null;
+
+  @override
   Future<DeviceCanvasClaimAttempt> claim({
     required String bridgeId,
     required String deviceKey,
