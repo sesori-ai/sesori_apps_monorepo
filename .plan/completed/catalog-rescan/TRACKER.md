@@ -262,13 +262,16 @@
 
 ## Step 8 Checklist
 
-- [ ] Run the recorded L3 matrix including both ownership branches, the
+- [x] Run the recorded L3 matrix including both ownership branches, the
   two-harness mixed outcome, the older-bridge compatibility run, and the
-  reconnect recovery run.
+  reconnect recovery run. **Partly.** Four rows were run end to end; the rest
+  hold only at test level. See the disposition below.
 - [ ] Record every entry as passed, blocked, or an explicitly accepted
-  reduction.
-- [ ] Move the plan directory to `.plan/completed/catalog-rescan/`.
-- [ ] Close or update issue #961 with the outcome.
+  reduction. **Outstanding:** seven rows need the owner's explicit acceptance,
+  which the plan requires before retirement.
+- [x] Move the plan directory to `.plan/completed/catalog-rescan/`.
+- [ ] Close or update issue #961 with the outcome. **Outstanding:** the comment
+  is drafted and awaiting the owner's go-ahead; the issue stays open.
 
 ## Plan Review
 
@@ -775,6 +778,15 @@ duplicate-emission nicety.
   spring to settle onto it. A fired pull has nothing to wait for, so its task now
   finishes when the second stage fires. Measured: 23 frames resting at the
   indicator height before, at most 4 after
+- **Step 6g base:** `main` at `a04ce873b4`
+- **Step 6g changed lines:** 94 of delivered code against a 60-140 estimate
+- **Step 6g verification:** `flutter analyze` clean on `client/module_prego` and
+  `client/app`; module_prego 236 tests passed (1 new, run at both pull speeds),
+  app 904 passed. The new test was confirmed to fail against the unfixed control
+  at both speeds, recording 23 frames resting at the indicator height
+- **Step 6g review:** one `chatgpt-codex-connector` finding, valid and applied —
+  the first fix worked only for a gradual pull. No architecture review: the
+  change is a single call moved earlier within one existing widget
 - **Step 6g fast path:** review caught that the first fix only worked for a
   gradual pull. On a single-frame crossing the stage fires before the control has
   invoked the refresh, so the release found nothing to release. The collapse test
@@ -792,26 +804,32 @@ Automated verification on merged `main` (`f656176f51`): `client/module_prego`
 bridge catalog-import suites (repository, service, routing, console listener) 36
 passed. `flutter analyze` and `dart analyze --fatal-infos` clean throughout.
 
-Each row of the plan's required matrix against that coverage:
+Each of the eleven rows of the plan's required matrix, in its order:
 
-| Row | Disposition |
-|---|---|
-| Boundary — automated delta counting | **Passed.** `catalog_import_repository_test.dart` covers a first import reporting every row as new, a re-import reporting nothing new, and a re-import counting only rows the catalog did not hold |
-| Plugin — native and bridge-derived new-item counts | **Passed.** Both ownership branches are exercised directly: `native re-import counts only the rows the catalog did not already hold` and `derived import counts new rows across its own ownership branch` |
-| Plugin — two harnesses for the aggregate terminal states | **Passed.** `catalog_rescan_service_test.dart` drives a two-member fan-out into `reports a mixed outcome when one harness fails` and `reports total failure when every harness fails` |
-| Compatibility — a bridge that omits `newItems` | **Passed.** `falls back to summed totals when any harness omits its delta` |
-| Compatibility — a bridge with no `/plugin/import` | **Passed.** `reports an unsupported bridge when every harness answers 404` and `reports an unsupported bridge from an unsupported snapshot, issuing no request` |
-| Recovery — reconnect against retained terminal statuses | **Passed.** `a reconnect discards terminal statuses instead of announcing a stale success` |
-| Recovery — disconnect mid-scan | **Passed.** `a disconnect clears an active rescan without claiming a catalog change` |
-| Setup state — a setup-blocked harness on Settings | **Passed.** `harnesses_settings_screen_test.dart` asserts no scan action is offered for the setup-blocked fixture |
-| Freshness — a scan that genuinely imports a new session | **Passed**, owner run 2026-08-26: the sessions appear without a second refresh |
-| Platform — one mobile platform plus the wide split-view pane | **Passed**, owner run 2026-08-26: both the full-screen list and the split-view pane |
+| # | Row | Disposition |
+|---|---|---|
+| 1 | Boundary — client end to end, plus automated delta counting | **Passed.** Owner run 2026-08-26 for the end-to-end half; `catalog_import_repository_test.dart` covers a first import reporting every row as new, a re-import reporting nothing new, and a re-import counting only rows the catalog did not hold |
+| 2 | Plugin — representative for the gesture, row, cancel, and fan-out | **Partly passed.** The owner's run covers the gesture and the row. Cancel and a multi-harness fan-out were not reported as run; both hold at test level only (`cancel fans out one request per member, including while starting`, `starts idle and fans out one request per routable harness`) |
+| 3 | Plugin — native and bridge-derived new-item counts | **Passed.** Both ownership branches are exercised directly: `native re-import counts only the rows the catalog did not already hold` and `derived import counts new rows across its own ownership branch`. Row 1's own reason grants automated coverage for counting |
+| 4 | Plugin — two harnesses for the aggregate terminal states | **Reduced to test level.** `reports a mixed outcome when one harness fails` drives a two-member fan-out through fakes, not two real harnesses |
+| 5 | Platform — one mobile platform plus the wide split-view pane | **Passed.** Owner run 2026-08-26, both surfaces |
+| 6 | Compatibility — a bridge that omits `newItems` | **Reduced to test level.** `falls back to summed totals when any harness omits its delta` constructs the completion in process; no old peer's wire payload is decoded |
+| 7 | Recovery — reconnect against retained terminal statuses | **Reduced to test level.** `a reconnect discards terminal statuses instead of announcing a stale success` |
+| 8 | Freshness — a scan that genuinely imports a new session | **Passed.** Owner run 2026-08-26: the sessions appear without a second refresh |
+| 9 | Compatibility — a bridge older than `v1.6.0` with no `/plugin/import` | **Reduced to test level.** The tests inject `CatalogImportMutationResult.notFound()` below the repository boundary; no real missing-route response is mapped |
+| 10 | Recovery — disconnect mid-scan, reconnect, and settle | **Reduced, and only in halves.** `a disconnect clears an active rescan without claiming a catalog change` covers the disconnect; `a reconnect adopts an in-flight import from the status read` covers the reconnect. No test runs the sequence end to end |
+| 11 | Setup state — a setup-blocked harness on Settings | **Reduced to test level.** `harnesses_settings_screen_test.dart` asserts no scan action is offered for the setup-blocked fixture, against a fixture rather than a blocked harness |
 
-The eight automated rows are recorded as passed on evidence, not as an accepted
-reduction: each names the test that discharges it. The two rows no test can
-stand in for were run by the owner and passed. **The matrix carries no reduction
-and no blocked entry.**
+Four rows passed as the matrix asks. Seven hold only at test level, and rows 2
+and 10 are partial even there. **That is a reduction, and the plan requires the
+owner's explicit acceptance of it before retirement.** An earlier draft of this
+section called all eight of its rows "passed on evidence, not an accepted
+reduction"; that was wrong on both counts — it was not row-for-row against the
+plan, and substituting a unit test for a run against a real old bridge is a
+reduction whatever it is called.
 
-- **Final disposition:** delivered. Every step merged, every matrix row passed,
-  and the origin issue updated with the outcome. The plan moves to
-  `.plan/completed/catalog-rescan/`
+- **Final disposition:** every step merged and the plan moved to
+  `.plan/completed/catalog-rescan/`. Two items remain before it is truly
+  retired: the owner's explicit acceptance of the seven reduced matrix rows, and
+  the issue #961 update. An earlier draft of this line claimed both were done;
+  they are not

@@ -799,9 +799,11 @@ before the plan is retired.
 Step 5 is `⚙️` rather than `🌿` because it extracts a new shared component and
 moves the split-view pane onto it, rather than adding a parameter to one widget.
 
-Step 6 is delivered as three sub-steps rather than one PR, split by layer and
-surface so none exceeds the size cap. The denominator stays 8: these are one
-step's worth of scope, not three new steps.
+Step 6 was planned as three sub-steps rather than one PR, split by layer and
+surface so none exceeds the size cap, and delivered as seven. 6a-6c are those
+three planned splits; 6d-6g are follow-ups answering owner feedback from running
+builds, each scoped to one report. The denominator stays 8 throughout: this is
+one step's worth of scope however many PRs carried it.
 
 - **6a** is `module_core` only — the two list cubits gain the scan state, the
   intent methods, and the refresh on leaving a live operation. Nothing renders,
