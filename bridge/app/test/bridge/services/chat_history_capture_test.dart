@@ -401,6 +401,9 @@ void main() {
       );
       final history = createTestChatHistory(sessionRepository: repository);
       await history.service.backfillSession(sessionId: "ses_a");
+      // Write times are what separate a live capture from the import it follows,
+      // and this whole setup runs inside one millisecond otherwise.
+      await Future<void>.delayed(const Duration(milliseconds: 2));
       await history.service.captureMessage(
         sessionId: "ses_a",
         message: _messageAt(id: "retained", createdAt: 200),
@@ -424,6 +427,29 @@ void main() {
       expect(
         (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
         const ["before", "retained", "retained-error", "after"],
+      );
+    });
+
+    // Editing a message in the backend's own client rolls the session back and
+    // deletes what followed. A bridge that was not watching never sees the
+    // removal events, so the re-import's gap is the only evidence it gets.
+    test("drops a message an earlier transcript contained and this one omits", () async {
+      final transcript = [
+        _messageWithPartsAt(id: "kept", createdAt: 100),
+        _messageWithPartsAt(id: "reverted", createdAt: 200),
+      ];
+      final repository = _FakeSessionRepository(transcript: transcript);
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      transcript
+        ..removeWhere((message) => message.info.id == "reverted")
+        ..add(_messageWithPartsAt(id: "replacement", createdAt: 300));
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["kept", "replacement"],
       );
     });
 

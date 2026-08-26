@@ -350,14 +350,25 @@ class ChatHistoryRepository({
   /// Replaces the session's transcript with [messages], numbering them in
   /// transcript order.
   ///
-  /// Rows the transcript does not contain are retained. Their recorded message
-  /// time determines where they rejoin the imported transcript while their
-  /// relative order stays stable. Thus an older backend-only row cannot jump to
-  /// the newest edge on re-import, while a genuinely newer live row stays there.
+  /// Rows the transcript does not contain are retained only when they were
+  /// written after [lastImportedAt], the moment the previous import finished.
+  /// Those are the rows that import could not have covered: a live capture
+  /// since, or one the backend never reports at all. An older row was in an
+  /// earlier transcript and is not in this one, so the backend removed it —
+  /// an edited message rolls its session back, and a bridge that was not
+  /// watching that backend sees the removal only as this gap. Keeping it would
+  /// restore messages the user deleted elsewhere. A session with no completed
+  /// import has no such line to draw, so everything stored is kept.
+  ///
+  /// Retained rows rejoin the imported transcript at their recorded message
+  /// time while their relative order stays stable. Thus an older backend-only
+  /// row cannot jump to the newest edge on re-import, while a genuinely newer
+  /// live row stays there.
   Future<void> replaceSessionMessages({
     required String sessionId,
     required AttachmentStorageScope storageScope,
     required List<MessageWithParts> messages,
+    required int? lastImportedAt,
     required int watermark,
     required int backendActivityAt,
     required int syncedAt,
@@ -366,7 +377,7 @@ class ChatHistoryRepository({
     final storedRows = await _chatHistoryDao.getMessages(sessionId: sessionId);
     final retained = [
       for (final row in storedRows)
-        if (!importedIds.contains(row.messageId)) row,
+        if (!importedIds.contains(row.messageId) && (lastImportedAt == null || row.updatedAt > lastImportedAt)) row,
     ];
 
     final importedMessageRows = <HistoryMessagesTableData>[];

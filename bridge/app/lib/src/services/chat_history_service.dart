@@ -625,6 +625,7 @@ class ChatHistoryService({
           sessionId: sessionId,
           storageScope: storageScope,
           messages: messages,
+          lastImportedAt: observedBefore?.syncedAt,
           watermark: backendActivityAt,
           backendActivityAt: backendActivityAt,
           syncedAt: DateTime.now().millisecondsSinceEpoch,
