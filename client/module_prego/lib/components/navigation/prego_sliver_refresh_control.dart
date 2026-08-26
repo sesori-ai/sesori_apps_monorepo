@@ -100,6 +100,11 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
   /// makes the question answerable — by then the gesture has either fired the
   /// second stage or it never will.
   Future<void> _runRefresh() async {
+    // Already fired before this even started. One fast move can cross both
+    // thresholds in a single frame, and the control only *schedules* this from
+    // its builder, so the release the second stage asked for found nothing to
+    // release. Finishing here is what hands the reserve back on that path too.
+    if (_deepFired) return;
     final letGo = Completer<void>();
     _letGo = letGo;
     try {
