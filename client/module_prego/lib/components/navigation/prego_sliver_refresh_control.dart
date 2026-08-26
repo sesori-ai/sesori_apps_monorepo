@@ -5,9 +5,9 @@ import "package:material_ui/material_ui.dart";
 import "../../module_prego.dart";
 
 /// How much further than the normal trigger a pull must travel to arm the
-/// second stage. Far enough that an ordinary refresh never reaches it, close
-/// enough to be discoverable once the caption appears.
-const double _deepPullFactor = 1.6;
+/// second stage. Far enough that an ordinary refresh never reaches it by
+/// accident, close enough to be discoverable once the caption appears.
+const double _deepPullFactor = 1.8;
 
 /// A second stage for a pull-to-refresh, opted into with its captions.
 ///
@@ -23,13 +23,10 @@ class const PregoDeepRefresh({
   required final void Function() onDeepRefresh,
 
   /// Shown once the pull passes the ordinary trigger, inviting the user to
-  /// keep going.
+  /// keep going. It is the only thing this control says: once the threshold is
+  /// crossed the control empties itself and the host's own progress surface
+  /// takes over reporting.
   required final String pullCaption,
-
-  /// Shown once [onDeepRefresh] has fired, so the caption reports what has
-  /// already started rather than what releasing would do. It gives way to the
-  /// host's own progress surface as the pull retracts.
-  required final String deepCaption,
 });
 
 /// The pull-to-refresh control every Prego surface uses.
@@ -109,6 +106,15 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
           );
         }
 
+        // Once the second stage has fired the control has nothing left to say:
+        // the host's own progress surface is already on screen reporting the
+        // run, so a spinner and a caption beside it would report the same thing
+        // twice. Emptying it also stops the pulled area from reading as
+        // something still waiting to happen.
+        if (_deepFired) {
+          return widget._decorate?.call(context, const SizedBox.shrink()) ?? const SizedBox.shrink();
+        }
+
         final indicator = CupertinoSliverRefreshControl.buildRefreshIndicator(
           context,
           refreshState,
@@ -116,20 +122,15 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
           triggerDistance,
           indicatorExtent,
         );
-        // Both phases follow the *live* extent, because the extent is what
+        // The caption follows the *live* extent, because the extent is what
         // decides whether there is room. Once the finger lifts the control
         // collapses to a held indicator extent far shorter than the trigger,
         // and a caption pinned inside it would sit on top of the spinner.
-        // Retracting loses nothing: the host's progress surface takes over as
-        // the pull collapses, which is where the rest of the run is reported.
-        final caption = deepRefresh == null || pulledExtent <= triggerDistance
-            ? null
-            : _deepFired
-            ? deepRefresh.deepCaption
-            : deepRefresh.pullCaption;
-        final content = caption == null
-            ? indicator
-            : _CaptionedIndicator(indicator: indicator, caption: caption, fired: _deepFired);
+        final invite = deepRefresh != null && pulledExtent > triggerDistance;
+        final content = _CaptionedIndicator(
+          indicator: indicator,
+          caption: invite ? deepRefresh.pullCaption : null,
+        );
         return widget._decorate?.call(context, content) ?? content;
       },
     );
@@ -138,7 +139,7 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
 
 }
 
-/// The stock indicator with the stage-two caption beneath it.
+/// The stock indicator with the stage-two invitation beneath it.
 ///
 /// Both sit inside the extent the refresh control already reserved, so the
 /// caption never paints over the first row of the list below. The control
@@ -146,22 +147,24 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
 /// trigger distance whenever a caption is shown, so there is always room.
 class const _CaptionedIndicator({
   required final Widget indicator,
-  required final String caption,
-  required final bool fired,
+  required final String? _caption,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    final caption = _caption;
     return Stack(
       alignment: Alignment.center,
       children: [
         indicator,
         Positioned(
           bottom: prego.spacing.md,
-          // Cross-faded and keyed on the phase, so passing the threshold reads
-          // as one label becoming another rather than a flicker.
+          // Faded in and out against an empty box rather than switched between
+          // captions, so the invitation arrives as the pull reaches the trigger
+          // instead of appearing fully formed. Backing off below the trigger
+          // fades it away again.
           child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 160),
+            duration: const Duration(milliseconds: 180),
             switchInCurve: Curves.easeOut,
             switchOutCurve: Curves.easeIn,
             transitionBuilder: (child, animation) => FadeTransition(
@@ -171,13 +174,9 @@ class const _CaptionedIndicator({
                 child: child,
               ),
             ),
-            child: _CaptionLabel(
-              // The phase, not the text: a host changing wording mid-pull must
-              // not look like the stage changed.
-              key: ValueKey(fired),
-              caption: caption,
-              fired: fired,
-            ),
+            child: caption == null
+                ? const SizedBox.shrink()
+                : _CaptionLabel(key: const ValueKey("invite"), caption: caption),
           ),
         ),
       ],
@@ -185,38 +184,26 @@ class const _CaptionedIndicator({
   }
 }
 
-/// One phase of the caption.
-///
-/// The invitation is quiet and text-only. Once the second stage has fired the
-/// label takes the brand colour and gains its icon, so the moment of commitment
-/// is visible at a glance rather than needing the wording to be read.
+/// The quiet, text-only invitation to keep pulling.
 class const _CaptionLabel({
   super.key,
   required final String caption,
-  required final bool fired,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final color = fired ? prego.colors.textBrandSecondary : prego.colors.textTertiary;
+    // Flexible so the ellipsis can actually engage: a Row measures a plain
+    // Text against the space it asks for, so at large accessibility text
+    // scales an unconstrained label overflows instead of truncating.
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (fired) ...[
-          Icon(TablerRegular.rotate_clockwise, size: prego.spacing.lg, color: color),
-          SizedBox(width: prego.spacing.sm),
-        ],
-        // Flexible so the ellipsis can actually engage: a Row measures a plain
-        // Text against the space it asks for, so at large accessibility text
-        // scales an unconstrained label overflows instead of truncating.
         Flexible(
           child: Text(
             caption,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: fired
-                ? prego.textTheme.textXs.medium.copyWith(color: color)
-                : prego.textTheme.textXs.regular.copyWith(color: color),
+            style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
           ),
         ),
       ],

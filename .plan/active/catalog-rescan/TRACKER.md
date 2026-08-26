@@ -5,9 +5,9 @@
 - **Plan slug:** `catalog-rescan`
 - **Implementation base:** `main` at
   `7b1ebe9bc629d05b5d104e76cd5dbaa1514d65a2`
-- **Series state:** Steps 1/8 to 6b/8 merged; Step 6c/8 open
-- **Current step:** scan one harness from Settings
-- **Next action:** land 6c, then reconcile the regression docs in step 7
+- **Series state:** Steps 1/8 to 6d/8 merged; Step 6e/8 open
+- **Current step:** report a Settings-started scan's outcome
+- **Next action:** land 6e, then reconcile projects-and-sessions.md in step 7
 - **Origin issue:** [#961](https://github.com/sesori-ai/sesori_apps_monorepo/issues/961)
 - **External overlap:** [#1008](https://github.com/sesori-ai/sesori_apps_monorepo/issues/1008)
   owns Codex live updates; do not address it here
@@ -54,10 +54,13 @@
 
 | Decision | Chosen | Rationale |
 |---|---|---|
-| Refresh model | Two-stage pull: soft unchanged, deep fires past `1.6 x triggerDistance` | A rescan boots every enabled harness backend, so it must be deliberate |
+| Refresh model | Two-stage pull: soft unchanged, deep fires past `1.8 x triggerDistance` | A rescan boots every enabled harness backend, so it must be deliberate. Raised from 1.6 in 6d: too easy to reach by accident |
 | Deep-pull commit | On crossing the threshold, not on release | `CupertinoSliverRefreshControl` fires `onRefresh` on crossing and never on release, so release semantics were unbuildable. Owner decision 2026-08-24 |
 | Gesture owner | One `module_prego` `PregoSliverRefreshControl` | Three hosts, only two of which use `PregoGlassScaffold`; the pane must not re-implement thresholds in `client/app` |
 | Row weight | Tinted card, distinct from the surrounding tiles | Reads as status rather than content, so it is never mistaken for an openable row |
+| Row component | Bespoke tinted card, not `PregoInlineAlertsNotifications` | 6b reused the inline alert to avoid building one; it paints `colors.fgPrimary`, so the row was a near-black slab over a light list. An alert interrupts, this reports |
+| Post-fire pull | The control renders nothing at all once the threshold is crossed | The row is already on screen reporting the run, so the spinner and caption narrated it twice |
+| Row height | Fixed across every state; the detail line is always rendered | The detail arrives one event after the row, and a line appearing under it moved the list a second time |
 | Running detail | The harness and its live session count | A "2 of 3" line goes still during a long single-harness scan, which is when reassurance matters most |
 | Copy | "Scan" led, sessions first, projects only in the result | Owner decision 2026-08-24: "rescan" named the mechanism, not the outcome |
 | Progress presentation | One aggregate row | Fixed height; the top of the list never reflows as harnesses finish at different times |
@@ -136,7 +139,9 @@
 | [x] | 5/8 | `⚙️ [catalog-rescan] Add a second stage to pull-to-refresh [step 5/8]` | 350-600 | [PR #1093](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1093) merged |
 | [x] | 6a/8 | `⚙️ [catalog-rescan] Route scan state through the list cubits [step 6a/8]` | 450-750 | Merged |
 | [x] | 6b/8 | `⚙️ [catalog-rescan] Show the catalog scan in the lists [step 6b/8]` | 500-800 | [PR #1103](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1103) merged |
-| [ ] | 6c/8 | `🌿 [catalog-rescan] Scan one harness from Settings [step 6c/8]` | 350-600 | Open |
+| [x] | 6c/8 | `🌿 [catalog-rescan] Scan one harness from Settings [step 6c/8]` | 350-600 | [PR #1113](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1113) merged |
+| [x] | 6d/8 | `⚙️ [catalog-rescan] Quieten the scan row and its pull [step 6d/8]` | 400-700 | [PR #1114](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1114) merged |
+| [ ] | 6e/8 | `🌿 [catalog-rescan] Report a Settings scan's outcome [step 6e/8]` | 350-600 | Open |
 | [ ] | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 | Not started |
 | [ ] | 8/8 | `🌱 [catalog-rescan] Verify and retire the catalog rescan plan [step 8/8]` | 60-140 | Not started |
 
@@ -608,4 +613,103 @@ duplicate-emission nicety.
   `settled` to `catalogChanged` and already updating part of
   `docs/regression/projects-and-sessions.md`. Step 7's scope is therefore
   smaller than the plan text describes and must be re-derived from the file
+- **Step 6c declined finding:** a third bot round asked for a connection-epoch
+  fence on `startCatalogScanFor`, so a POST pending across a disconnect could
+  not overwrite a later retry's rejection. Declined: it needs a disconnect,
+  reconnect and retry inside one pending request, and the worst outcome is one
+  stale line until the next tap or until Settings is left. Same call the plan
+  already recorded for the recovery read
+- **Step 6d base:** `main` at `2c3ef6d` (merged forward to pick up 6c)
+- **Step 6d origin:** owner feedback from a running build, eight points. Not a
+  planned step — the feature worked and looked wrong
+- **Step 6d component reversal:** 6b chose `PregoInlineAlertsNotifications` to
+  avoid a bespoke card. Wrong component: it paints `colors.fgPrimary`, the
+  contrast-inverted foreground, so the row was a near-black slab over a light
+  list. Replaced with a tinted card in each state's own colour family. The
+  instinct to reuse was right; the component is an interrupt surface and this is
+  ambient status
+- **Step 6d animation root cause:** starting an `AnimationController` from
+  `build` races its own frame, which inside a `SliverToBoxAdapter` leaves the
+  row pinned at zero height. This is also why 6b's `AnimatedSize` attempt never
+  grew and was removed as unworkable. Driven from `didUpdateWidget` now, and the
+  tests pump the extra frame a controller needs before its first tick carries
+  elapsed time
+- **Step 6d residues:** the overscroll still holds its extent while the finger
+  is down, which is scroll physics rather than something the control can cancel
+  mid-gesture; the area it holds is simply empty. The toast suppression reads
+  the scan state at report time rather than threading a flag through the
+  gesture, so a fetch that resolved before the pull crossed 1.8x would still
+  raise one toast
+- **Step 6d review comments:** three bot findings. Two were defects the polish
+  itself introduced and are fixed in `7a75b73be1`: `SizeTransition` only changes
+  layout, so the retained card kept its labels and its live action button
+  mounted at zero height where a keyboard could still reach them; and the reveal
+  ignored the OS reduced-motion preference that the router transitions, the
+  message list, the image viewer and `PregoActivityIndicator` all honour through
+  `context.isReducedMotion`. Both regression tests were confirmed to fail
+  without their fix — the reduced-motion one only after being rewritten, because
+  the first version asserted `greaterThan(0)` and `easeOutCubic` is already at
+  ~17% one frame in
+- **Step 6d toast narrowing:** the third finding was half right and the half it
+  got right was a regression: suppressing the refresh toast whenever a scan was
+  live also hid *failed* pulls. Now only a success is suppressed. Declined
+  tying suppression to the gesture that fired, which needs a flag threaded
+  through two stateless session hosts to restore a success confirmation for a
+  shallow pull taken during someone else's scan, where a progress row is already
+  on screen
+- **Step 6e origin:** owner question — does a Settings-started scan indicate
+  success? It does not, and the gap is one this plan created. The aggregate row
+  is hosted only by the three lists, and `_successVisibleFor` clears a success
+  after four seconds, so the outcome of a Settings-started scan was published
+  where its user could never reach it. Only start-time rejections showed there;
+  a scan that started fine and then failed was equally silent
+- **Step 6e approach:** owner chose a popup on completion over hosting the
+  aggregate row on Settings or reporting inline on the card
+- **Step 6e ownership:** the cubit claims the run at dispatch, before the start
+  request resolves, because the run can reach a terminal state while that
+  request is still awaiting its own response. A start the bridge refuses drops
+  the claim, since the card already reports it; so does a run that ends without
+  a terminal state, so a dropped claim cannot attach itself to the next run
+- **Step 6e wording reuse:** `catalogScanCountsLine` was lifted out of
+  `CatalogScanRow` so the row and the popup cannot describe one scan two ways
+- **Step 6e verification:** `flutter analyze lib test` clean on `client/app`;
+  `dart analyze --fatal-infos lib test` clean on `client/module_core`; app 897
+  tests passed, module_core 1,381 passed (9 new: 6 cubit, 3 widget). The popup
+  test was confirmed to fail with the presenter call removed
+- **Step 6e review:** `architecture-implementation-review` **approved** with no
+  architectural findings. It confirmed `CatalogRescanOutcome` narrows the
+  service's eight states to the three a started scan can reach, so
+  `scanOutcome: running` is unrepresentable; that `scanOutcome` is carried
+  across a snapshot rebuild the way 6a's review required; that Freezed's
+  `copyWith(scanOutcome: null)` genuinely clears rather than no-ops, so the
+  popup cannot re-fire; and that `catalogScanCountsLine` belongs in
+  `core/widgets/` beside its two consumers, since it takes `AppLocalizations`
+  and could not move to module_core
+- **Step 6e claim leak:** the review traced one path where `_reportsScanOutcome`
+  survived its run — on a disconnect `PluginManagementService` emits `loading`
+  before `CatalogRescanService` emits `idle`, so the drop sat behind the
+  readiness check and never ran. It judged the leak unreachable today and did
+  not require a fix, but a regression test reproduced it directly: the claim
+  attached to the next run's outcome. Closed by dropping the claim before the
+  readiness check
+- **Step 6e review comments:** three bot findings, all valid, fixed in
+  `2674825bf9`. Two were the same seam — the single `_reportsScanOutcome` flag.
+  A second card being refused cleared the only claim while the first harness was
+  still running, so that run ended in the silence this step exists to remove;
+  and a definite `CatalogImportMutationFailure` settles the operation *before*
+  `start()` returns, so membership could not tell a refusal from a run that had
+  already finished and been announced, producing both a finished-scan
+  announcement and a could-not-start line for one attempt. Replaced with
+  `Set<String> _scanClaims`: a refusal removes one harness, an announcement
+  spends the set. Both tests confirmed to fail against the old behaviour
+- **Step 6e accessibility gap:** the popup is silent to a screen reader — the
+  only `Semantics` in `prego_popup_alerts_notifications.dart` is its close
+  button — which undercut the step, since a screen-reader user is who this
+  surface is for. The outcome is now also sent through
+  `SemanticsService.sendAnnouncement`. Declined adding a live region to the
+  shared popup component: that fixes every popup in the app and is a
+  design-system change with its own call sites, not part of this step. Worth
+  doing separately
+- **Step 6e PR:** [#1118](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1118)
+  open
 - **Final disposition:** pending

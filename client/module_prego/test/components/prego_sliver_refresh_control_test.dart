@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:cupertino_ui/cupertino_ui.dart" show CupertinoActivityIndicator;
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
@@ -8,7 +9,7 @@ import "package:theme_prego/module_prego.dart";
 /// the deep stage arms at 160. Drags keep a margin on their side of each
 /// threshold, since a drag loses some distance to touch slop.
 const double _softTrigger = 100;
-const double _deepTrigger = _softTrigger * 1.6;
+const double _deepTrigger = _softTrigger * 1.8;
 
 void main() {
   group("PregoSliverRefreshControl", () {
@@ -35,7 +36,6 @@ void main() {
                     ? PregoDeepRefresh(
                         onDeepRefresh: () => deepRefreshes++,
                         pullCaption: "Keep pulling to scan all harnesses",
-                        deepCaption: "Scanning for new sessions",
                       )
                     : null,
               ),
@@ -99,45 +99,38 @@ void main() {
       expect(deepRefreshes, 0);
     });
 
-    testWidgets("captions appear only past the ordinary trigger and switch at the deep one", (
+    testWidgets("the invitation appears past the ordinary trigger and is gone once fired", (
       tester,
     ) async {
       await tester.pumpWidget(harness(withDeepRefresh: true));
       final gesture = await tester.startGesture(const Offset(200, 100));
 
-      // Bouncing physics damps overscroll, so the captions are driven by a
-      // gradual pull and asserted on their order rather than on a distance.
-      final order = <String>[];
-      void record() {
-        if (find.text("Keep pulling to scan all harnesses").evaluate().isNotEmpty) order.add("pull");
-        if (find.text("Scanning for new sessions").evaluate().isNotEmpty) order.add("deep");
-      }
+      // Bouncing physics damps overscroll, so the caption is driven by a
+      // gradual pull and asserted on its order rather than on a distance.
+      var invited = false;
 
       await gesture.moveBy(const Offset(0, 20));
       await tester.pump();
       expect(find.text("Keep pulling to scan all harnesses"), findsNothing);
-      expect(find.text("Scanning for new sessions"), findsNothing);
 
       for (var step = 0; step < 16; step++) {
         await gesture.moveBy(const Offset(0, 40));
         await tester.pump();
-        record();
+        if (find.text("Keep pulling to scan all harnesses").evaluate().isNotEmpty) invited = true;
       }
+      await tester.pump(const Duration(milliseconds: 300));
 
-      expect(order, contains("pull"), reason: "a pull past the trigger must invite the second stage");
-      expect(order, contains("deep"), reason: "and report once the rescan has fired");
-      expect(
-        order.indexOf("pull"),
-        lessThan(order.indexOf("deep")),
-        reason: "the invitation comes before the rescan",
-      );
-      expect(order.last, "deep");
+      expect(invited, isTrue, reason: "a pull past the trigger must invite the second stage");
+      expect(deepRefreshes, 1);
+      // Crossing the threshold hands reporting to the host's own row, so the
+      // control says nothing more rather than narrating the same run twice.
+      expect(find.text("Keep pulling to scan all harnesses"), findsNothing);
 
       await gesture.up();
       await tester.pumpAndSettle();
     });
 
-    testWidgets("the fired caption is visually distinct from the invitation", (tester) async {
+    testWidgets("the control empties itself once the second stage has fired", (tester) async {
       await tester.pumpWidget(harness(withDeepRefresh: true));
       final gesture = await tester.startGesture(const Offset(200, 100));
 
@@ -147,16 +140,17 @@ void main() {
         await tester.pump();
       }
       expect(find.text("Keep pulling to scan all harnesses"), findsOneWidget);
-      expect(find.byIcon(TablerRegular.rotate_clockwise), findsNothing);
+      expect(find.byType(CupertinoActivityIndicator), findsWidgets);
 
-      // Past the deep threshold: the label gains its icon.
-      for (var step = 0; step < 6; step++) {
+      // Past the deep threshold: caption and spinner both go, because the
+      // host's progress row is what reports the run from here.
+      for (var step = 0; step < 8; step++) {
         await gesture.moveBy(const Offset(0, 40));
         await tester.pump();
       }
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text("Scanning for new sessions"), findsOneWidget);
-      expect(find.byIcon(TablerRegular.rotate_clockwise), findsOneWidget);
+      expect(find.text("Keep pulling to scan all harnesses"), findsNothing);
+      expect(find.byType(CupertinoActivityIndicator), findsNothing);
 
       await gesture.up();
       await tester.pumpAndSettle();
@@ -181,7 +175,6 @@ void main() {
                   deepRefresh: PregoDeepRefresh(
                     onDeepRefresh: () => deepRefreshes++,
                     pullCaption: "Keep pulling to scan all harnesses",
-                    deepCaption: "Scanning for new sessions",
                   ),
                 ),
                 SliverList.list(
@@ -202,6 +195,9 @@ void main() {
 
       await gesture.up();
       await tester.pump();
+      // Two frames: the first settles the extent, which is what tells the
+      // caption to leave; the second runs its fade-out to completion.
+      await tester.pump(const Duration(milliseconds: 500));
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(
@@ -255,7 +251,6 @@ void main() {
                   deepRefresh: PregoDeepRefresh(
                     onDeepRefresh: () => deepRefreshes++,
                     pullCaption: "Keep pulling to scan all harnesses",
-                    deepCaption: "Scanning for new sessions",
                   ),
                 ),
                 SliverList.list(
@@ -273,17 +268,17 @@ void main() {
         await tester.pump();
       }
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text("Scanning for new sessions"), findsOneWidget);
       expect(deepRefreshes, 1);
+      expect(find.text("Keep pulling to scan all harnesses"), findsNothing);
 
       await gesture.up();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(
-        find.text("Scanning for new sessions"),
+        find.text("Keep pulling to scan all harnesses"),
         findsNothing,
-        reason: "the held extent cannot hold a caption without covering the spinner",
+        reason: "a fired pull leaves nothing behind for the held extent to show",
       );
 
       completer.complete();
@@ -309,7 +304,6 @@ void main() {
                     deepRefresh: PregoDeepRefresh(
                       onDeepRefresh: () => deepRefreshes++,
                       pullCaption: "Keep pulling to scan every harness for sessions you have not seen",
-                      deepCaption: "Scanning for new sessions",
                     ),
                   ),
                   SliverList.list(

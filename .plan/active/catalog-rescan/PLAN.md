@@ -986,6 +986,13 @@ reviewer of one PR can see what belongs to it.
 - **6c** owns `PluginManagementCubit`'s subscription and
   `startCatalogScanFor(pluginId)`, the Settings action, its enablement and
   rejection, and its resources.
+- **6d** is owner feedback from a running build: the row's weight and its
+  transitions, the pull's threshold and captions, and one report per pull.
+- **6e** is how a Settings-started scan reports the way it ended. Not in the
+  original plan, and the gap it closes was created by the plan itself: the
+  aggregate row is hosted only by the three lists, and a success clears itself
+  after four seconds, so a scan started from Settings had its outcome published
+  where the user could never see it.
 
 ### Scope
 

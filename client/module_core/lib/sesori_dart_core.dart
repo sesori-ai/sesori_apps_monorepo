@@ -8,6 +8,7 @@ export "package:sesori_auth/sesori_auth.dart"
         AuthAuthenticating,
         AuthFailed,
         AuthInitial,
+        AuthLoginResult,
         AuthSession,
         AuthState,
         AuthTokenProvider,
@@ -28,10 +29,11 @@ export "package:sesori_auth/sesori_auth.dart"
 export "package:sesori_auth/sesori_auth.dart" show ApiResponse, ErrorResponse, SuccessResponse;
 export "package:sesori_auth/sesori_auth.dart" show HttpApiClient;
 export "package:sesori_auth/sesori_auth.dart" show HttpMethod, SafeApiClient;
-export "package:sesori_shared/sesori_shared.dart" show AuthProvider;
+export "package:sesori_shared/sesori_shared.dart" show AccountStatus, AuthProvider;
 
 // API
 export "src/api/analytics_api.dart";
+export "src/api/attribution_api.dart";
 export "src/api/bridge_settings_api.dart";
 export "src/api/client/relay_http_client.dart";
 export "src/api/filesystem_api.dart";
@@ -100,11 +102,13 @@ export "src/errors/remote_failure_reason.dart";
 export "src/foundation/models/composer/composer_attachment.dart";
 export "src/foundation/models/composer/composer_draft.dart";
 export "src/foundation/models/product_analytics/analytics_runtime_capability.dart";
+export "src/foundation/models/product_analytics/attribution_event.dart";
 export "src/foundation/models/product_analytics/installation_analytics_event.dart";
 export "src/foundation/models/product_analytics/product_analytics_event.dart";
 export "src/foundation/models/product_analytics/product_analytics_preference.dart";
 export "src/foundation/platform/analytics_client.dart";
 export "src/foundation/platform/attachment_thumbnail_storage.dart";
+export "src/foundation/platform/attribution_client.dart";
 export "src/foundation/platform/image_clipboard.dart";
 export "src/foundation/platform/image_saver.dart";
 export "src/foundation/platform/image_sharer.dart";
@@ -121,6 +125,7 @@ export "src/platform/route_source.dart";
 export "src/platform/url_launcher.dart";
 export "src/repositories/analytics_repository.dart";
 export "src/repositories/appearance_store.dart";
+export "src/repositories/attribution_repository.dart";
 export "src/repositories/bridge_settings_repository.dart";
 export "src/repositories/chat_input_mode_store.dart";
 export "src/repositories/composer_draft_repository.dart";

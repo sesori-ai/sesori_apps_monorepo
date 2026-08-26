@@ -86,9 +86,14 @@ void main() {
     return await AppLocalizations.delegate.load(const Locale("en"));
   }
 
-  /// Publishes [scan] and lets the list rebuild around it.
+  /// Publishes [scan] and runs the row's reveal to completion.
+  ///
+  /// Three frames, not two: the first rebuilds the list around the new state,
+  /// the second is the reveal's first tick — which only establishes its start
+  /// time — and the third carries it to the end.
   Future<void> emitScan(WidgetTester tester, CatalogRescanState scan) async {
     rescanService.emit(scan);
+    await tester.pump();
     await tester.pump();
     await tester.pump(_rowSettled);
   }
@@ -119,7 +124,9 @@ void main() {
     // is why the row that reports it has to offer its own cancel.
     await pullFurtherUntil(tester, gesture, () => rescanService.startAllCalls > 0);
     expect(rescanService.startAllCalls, 1);
-    expect(find.text(loc.catalogScanDeepCaption), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 300));
+    // The control hands reporting to the scan row and says nothing more.
+    expect(find.text(loc.catalogScanPullCaption), findsNothing);
 
     // Still one scan however much further the same pull travels.
     await pullFurtherUntil(tester, gesture, () => false);
@@ -131,7 +138,7 @@ void main() {
 
   testWidgets("reports a running scan above the list without displacing it", (tester) async {
     final loc = await pumpLoadedList(tester);
-    expect(find.byType(PregoInlineAlertsNotifications), findsNothing);
+    expect(find.text(loc.catalogScanRunningTitle), findsNothing);
 
     await emitScan(
       tester,
@@ -146,11 +153,12 @@ void main() {
   testWidgets("clears the row once the scan is dismissed", (tester) async {
     await pumpLoadedList(tester);
 
+    final loc = await AppLocalizations.delegate.load(const Locale("en"));
     await emitScan(tester, const CatalogRescanState.starting(pluginIds: {"codex"}));
-    expect(find.byType(PregoInlineAlertsNotifications), findsOneWidget);
+    expect(find.text(loc.catalogScanRunningTitle), findsOneWidget);
 
     await emitScan(tester, const CatalogRescanState.idle());
-    expect(find.byType(PregoInlineAlertsNotifications), findsNothing);
+    expect(find.text(loc.catalogScanRunningTitle), findsNothing);
     expect(find.text("My Project"), findsOneWidget);
   });
 

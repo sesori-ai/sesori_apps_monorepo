@@ -124,12 +124,13 @@ String toString() {
 @JsonSerializable()
 
 class AuthSessionStatusResponseComplete implements AuthSessionStatusResponse {
-  const AuthSessionStatusResponseComplete({required this.accessToken, required this.refreshToken, required this.user,  String? $type}): $type = $type ?? 'complete';
+  const AuthSessionStatusResponseComplete({required this.accessToken, required this.refreshToken, required this.user, @JsonKey(unknownEnumValue: AccountStatus.unknown) required this.accountStatus,  String? $type}): $type = $type ?? 'complete';
   factory AuthSessionStatusResponseComplete.fromJson(Map<String, dynamic> json) => _$AuthSessionStatusResponseCompleteFromJson(json);
 
  final  String accessToken;
  final  String refreshToken;
  final  AuthUser user;
+@JsonKey(unknownEnumValue: AccountStatus.unknown) final  AccountStatus accountStatus;
 
 @JsonKey(name: 'status')
 final String $type;
@@ -148,16 +149,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthSessionStatusResponseComplete&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken)&&(identical(other.user, user) || other.user == user));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthSessionStatusResponseComplete&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken)&&(identical(other.user, user) || other.user == user)&&(identical(other.accountStatus, accountStatus) || other.accountStatus == accountStatus));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,accessToken,refreshToken,user);
+int get hashCode => Object.hash(runtimeType,accessToken,refreshToken,user,accountStatus);
 
 @override
 String toString() {
-  return 'AuthSessionStatusResponse.complete(accessToken: $accessToken, refreshToken: $refreshToken, user: $user)';
+  return 'AuthSessionStatusResponse.complete(accessToken: $accessToken, refreshToken: $refreshToken, user: $user, accountStatus: $accountStatus)';
 }
 
 
@@ -168,7 +169,7 @@ abstract mixin class $AuthSessionStatusResponseCompleteCopyWith<$Res> implements
   factory $AuthSessionStatusResponseCompleteCopyWith(AuthSessionStatusResponseComplete value, $Res Function(AuthSessionStatusResponseComplete) _then) = _$AuthSessionStatusResponseCompleteCopyWithImpl;
 @useResult
 $Res call({
- String accessToken, String refreshToken, AuthUser user
+ String accessToken, String refreshToken, AuthUser user,@JsonKey(unknownEnumValue: AccountStatus.unknown) AccountStatus accountStatus
 });
 
 
@@ -185,12 +186,13 @@ class _$AuthSessionStatusResponseCompleteCopyWithImpl<$Res>
 
 /// Create a copy of AuthSessionStatusResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? accessToken = null,Object? refreshToken = null,Object? user = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? accessToken = null,Object? refreshToken = null,Object? user = null,Object? accountStatus = null,}) {
   return _then(AuthSessionStatusResponseComplete(
 accessToken: null == accessToken ? _self.accessToken : accessToken // ignore: cast_nullable_to_non_nullable
 as String,refreshToken: null == refreshToken ? _self.refreshToken : refreshToken // ignore: cast_nullable_to_non_nullable
 as String,user: null == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
-as AuthUser,
+as AuthUser,accountStatus: null == accountStatus ? _self.accountStatus : accountStatus // ignore: cast_nullable_to_non_nullable
+as AccountStatus,
   ));
 }
 
