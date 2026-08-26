@@ -5,9 +5,9 @@
 - **Plan slug:** `catalog-rescan`
 - **Implementation base:** `main` at
   `7b1ebe9bc629d05b5d104e76cd5dbaa1514d65a2`
-- **Series state:** Steps 1/8 to 6e/8 merged; Step 6f/8 open
-- **Current step:** release the pull and stop it reporting twice
-- **Next action:** land 6f, then reconcile projects-and-sessions.md in step 7
+- **Series state:** Steps 1/8 to 6f/8 merged; Step 7/8 open
+- **Current step:** reconcile the regression docs
+- **Next action:** land 7, then run the recorded matrix and retire the plan in step 8
 - **Origin issue:** [#961](https://github.com/sesori-ai/sesori_apps_monorepo/issues/961)
 - **External overlap:** [#1008](https://github.com/sesori-ai/sesori_apps_monorepo/issues/1008)
   owns Codex live updates; do not address it here
@@ -143,7 +143,7 @@
 | [x] | 6c/8 | `🌿 [catalog-rescan] Scan one harness from Settings [step 6c/8]` | 350-600 | [PR #1113](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1113) merged |
 | [x] | 6d/8 | `⚙️ [catalog-rescan] Quieten the scan row and its pull [step 6d/8]` | 400-700 | [PR #1114](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1114) merged |
 | [ ] | 6e/8 | `🌿 [catalog-rescan] Report a Settings scan's outcome [step 6e/8]` | 350-600 | Open |
-| [ ] | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 | Not started |
+| [ ] | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 | Open |
 | [ ] | 8/8 | `🌱 [catalog-rescan] Verify and retire the catalog rescan plan [step 8/8]` | 60-140 | Not started |
 
 ## Step 1 Checklist
@@ -749,4 +749,16 @@ duplicate-emission nicety.
   the scan just put to work, so it resolved only when the scan did. The control
   now stops waiting the moment the second stage fires; the refresh still runs.
   Test confirmed the list was held 60px down without the fix and 0 with it
+- **Step 7 scope, as found:** smaller than the plan describes.
+  `plugin-setup-and-lifecycle.md` was reconciled in 6c, PR #1106 had already
+  recorded the post-commit refresh contract, and 6f corrected the pull contract.
+  What was left in `projects-and-sessions.md` was the scan as a user-facing
+  capability: how it is started, the one aggregate row and its lifetime, what a
+  result claims, and what a recovered or unseen run may not claim
+- **Step 7 matrix placement:** the plan's required plugin, platform,
+  compatibility, recovery, freshness and setup-state dimensions are recorded as
+  L2/L3/L4 entries and exploration guidance rather than a separate table, since
+  that is how these documents already express coverage. Every dimension in the
+  plan's table maps to an entry; the setup-blocked harness lives in
+  `plugin-setup-and-lifecycle.md`, where 6c put it
 - **Final disposition:** pending

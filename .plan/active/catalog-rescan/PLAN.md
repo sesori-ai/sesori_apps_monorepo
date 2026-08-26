@@ -1069,7 +1069,9 @@ reviewer of one PR can see what belongs to it.
   targeted rejection, and its L3/L4 coverage. Step 7 only re-checks it against
   the shipped behaviour.
 - Record the required plugin, platform, compatibility, recovery, freshness, and
-  setup-state matrix in both.
+  setup-state matrix in both. Recorded as regression-level entries and
+  exploration guidance rather than as a separate table, because that is how
+  these documents already express what a level must cover.
 
 ### Verification
 

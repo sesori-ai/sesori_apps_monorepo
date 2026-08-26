@@ -35,6 +35,33 @@ child sessions with titles, activity, statuses, and unseen state.
   "nothing new" after an import that added everything. A headless completion
   line therefore states the delta, or `Nothing new.`, or the totals alone when
   the producer omits the delta.
+- A user can start an import from the app. The three list surfaces — the
+  project list, the full-screen session list, and the wide split-view pane —
+  offer it as a second, deeper stage of their pull, which invites itself with a
+  caption once the ordinary trigger is passed and commits at the deeper one
+  while the finger is still down. It covers every harness the bridge reports as
+  routable, which is not the same as enabled: a blocked or failed harness is
+  refused by the bridge and is left out. The harness settings surface offers the
+  same import for one named harness.
+- One scan is one row above the list, however many harnesses take part. It names
+  the harness being read and how many sessions it has seen so far, offers to
+  cancel while it runs, and is the only report of that run: the pull that
+  started it raises no confirmation of its own. The row keeps one height from
+  the moment it appears, and scrolls with the list rather than pinning.
+- A finished scan says what it found, sessions first, and clears itself shortly
+  after. Everything else waits to be dismissed: some harnesses failing, all of
+  them failing, a bridge too old to import at all, and no harness available to
+  read. A diagnostic the user did not get to read is worse than a row that
+  outstays its welcome.
+- What a scan reports is what was new, not what was published. When any harness
+  in the run omits its delta the whole row falls back to naming published
+  totals instead, because a delta missing one harness's contribution would
+  understate the result while still reading as authoritative. A clause counting
+  nothing is dropped rather than joined.
+- A scan that the client did not start, or did not see the whole of, settles
+  without claiming a summary. Reconnecting seeds only from imports still in
+  flight: the bridge retains terminal statuses indefinitely, so reading them
+  back would announce a stale success on every connect.
 - Every observed `CatalogImportCompleted` that publishes at least one project
   or session invalidates mounted project and session lists only after the
   bridge's atomic catalog transaction completed. An automatic hydration marker
@@ -123,9 +150,9 @@ child sessions with titles, activity, statuses, and unseen state.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: project list and one project's session list return committed data with plugin attribution. |
-| L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. A first import reports every published row as new, a re-import of an unchanged catalog reports the same totals with a zero delta, and a completion whose delta is absent reports its totals without claiming nothing changed. Focused client coverage holds pre-commit list reads through a completion, ignores a zero-count hydration completion, proves the post-commit snapshot wins and a second completion gets a trailing snapshot, retains a failed snapshot for the next refresh, proves an interrupted full-screen load and pull surface the winning failure while retaining session PR-data waiting, and covers a completion after immediate cancellation. |
-| L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; one representative plugin proves two running roots and two projects with running roots reorder after committed user-side activity, inactive session/project order is unchanged, a live patch reorders without another status event or project summary, and omitted ordering facts use updated-time fallbacks. Focused ACP protocol and client ordering tests prove the exact awaiting-only state is not promoted because normal production root prompts remain running while awaiting input. Lists and unseen badges render; project and session row swipes stay inert from the iOS back edge and both Android gesture-navigation edges while remaining active at unreserved edges and under Android button navigation. |
-| L4 Extended | Relay integration, every supporting production plugin: bridge and plugin restart preserve identity and overrides; a moved backend-native project keeps them while a moved bridge-derived project is discovered as new without mutating the old catalog; a cancelled or failed import leaves the prior catalog intact; reads during import stay consistent; an unavailable plugin is reported while others keep listing. |
+| L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. A first import reports every published row as new, a re-import of an unchanged catalog reports the same totals with a zero delta, and a completion whose delta is absent reports its totals without claiming nothing changed. Focused client coverage holds pre-commit list reads through a completion, ignores a zero-count hydration completion, proves the post-commit snapshot wins and a second completion gets a trailing snapshot, retains a failed snapshot for the next refresh, proves an interrupted full-screen load and pull surface the winning failure while retaining session PR-data waiting, and covers a completion after immediate cancellation. Focused client coverage also proves the deeper pull starts one scan however far it travels, that a pull which fired it runs no ordinary refresh and raises no confirmation while an ordinary pull still does, that the row keeps one height from starting through running to its result, and that a scan started from harness settings is announced there while one started elsewhere is not. |
+| L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; one representative plugin proves two running roots and two projects with running roots reorder after committed user-side activity, inactive session/project order is unchanged, a live patch reorders without another status event or project summary, and omitted ordering facts use updated-time fallbacks. Focused ACP protocol and client ordering tests prove the exact awaiting-only state is not promoted because normal production root prompts remain running while awaiting input. Lists and unseen badges render; project and session row swipes stay inert from the iOS back edge and both Android gesture-navigation edges while remaining active at unreserved edges and under Android button navigation. A catalog scan started by the deeper pull renders its row through starting, running, and its result on one mobile platform and in the wide split-view pane, which drives its pull through a different scroll owner; two enabled harnesses at once, so a partial failure is reachable at all; one native-ownership and one bridge-derived harness, which count new projects differently; and one run that genuinely imports a new session, visible in the list without a second manual refresh. |
+| L4 Extended | Relay integration, every supporting production plugin: bridge and plugin restart preserve identity and overrides; a moved backend-native project keeps them while a moved bridge-derived project is discovered as new without mutating the old catalog; a cancelled or failed import leaves the prior catalog intact; reads during import stay consistent; an unavailable plugin is reported while others keep listing. Scanning against older and interrupted peers: a bridge that omits its new-item delta falls back to totals rather than reporting nothing new; a supported bridge with no import route at all reports that it cannot scan; a bridge holding terminal import statuses is reconnected to without announcing a stale success; a disconnect mid-scan reconnects and settles without claiming a summary; and a bridge whose harnesses are all blocked reports that there is nothing to scan. |
 | L5 Full | Client end to end, every supporting production plugin: multiple clients observe consistent listings and unseen transitions; large catalogs and paged listings behave; unattributed payloads resolve to the historical identity. |
 
 ## Exploration Guidance
@@ -140,6 +167,12 @@ after a marker has been established.
 For list-row swipes, alternate iOS, Android gesture navigation, Android button
 navigation, and a non-mobile platform; begin drags inside and just outside each
 10% edge buffer.
+For catalog scanning, vary the number of enabled harnesses, whether any is
+blocked or failed, and which surface starts the run — each of the three lists
+and the harness settings card. Vary a first import against a re-import of an
+unchanged catalog, and a bridge that reports its delta against one that omits
+it. Interrupt runs: cancel mid-scan, disconnect mid-scan and reconnect, and
+leave the surface that started one. Restore harness eligibility afterwards.
 
 ## Failure Signals
 
@@ -167,8 +200,18 @@ navigation, and a non-mobile platform; begin drags inside and just outside each
 - Hiding destroys sessions, or a cancelled import destroys the committed catalog.
 - A project or session row animates under a system back gesture, or an edge that
   has no active system back gesture stops accepting row actions.
-- A wide session pane starts a refresh without showing or holding its pull
-  indicator until the operation completes.
+- A wide session pane starts an ordinary refresh without showing or holding its
+  pull indicator until the operation completes.
+- A scan offered for a harness the bridge will not import from, a pull
+  confirming itself beside the row reporting the same run, two rows for one
+  scan, or a row whose height changes as harnesses report.
+- A successful scan that never clears, a failure that clears itself, a row
+  reporting totals as though they were new, or a delta claimed while a harness
+  in the run omitted one.
+- A reconnect announcing a scan that already finished, a recovered run claiming
+  a summary it never saw, or a cancelled scan leaving its row behind.
+- A bridge with no import route reported as a failure rather than as one that
+  cannot scan, or a pull that finds no harness reporting nothing at all.
 - A generated title/branch update fails to reach list/detail, changes unseen,
   moves the worktree, or rewrites the backend's creation-time system context.
 
@@ -198,6 +241,9 @@ navigation, and a non-mobile platform; begin drags inside and just outside each
   `bridge/app/lib/src/services/catalog_import_service.dart`, and catalog and
   session handlers in `bridge/app/lib/src/routing/`
 - Contract: `bridge/sesori_plugin_interface/lib/src/bridge_plugin.dart`
+- Client-triggered scanning: `client/module_core/lib/src/services/catalog_rescan_service.dart`,
+  `client/app/lib/core/widgets/catalog_scan_row.dart`,
+  `client/module_prego/lib/components/navigation/prego_sliver_refresh_control.dart`
 - Pi metadata catalog: `bridge/sesori_plugin_pi/lib/src/api/pi_session_storage_api.dart`,
   `bridge/sesori_plugin_pi/lib/src/repositories/pi_session_catalog_repository.dart`
 - Tests: `bridge/app/test/bridge/routing/catalog_read_handlers_test.dart`,
@@ -210,6 +256,9 @@ navigation, and a non-mobile platform; begin drags inside and just outside each
   `client/module_core/test/cubits/project_list/project_list_cubit_test.dart`,
   `client/module_core/test/cubits/session_list/session_list_cubit_test.dart`,
   `client/module_prego/test/interactions/prego_swipe_actions_test.dart`,
+  `client/module_prego/test/components/prego_sliver_refresh_control_test.dart`,
+  `client/app/test/core/widgets/catalog_scan_row_test.dart`,
+  `client/app/test/features/project_list/project_list_catalog_scan_test.dart`,
   `client/app/test/features/session_list/session_list_panel_test.dart`
 - Client row swipe behavior:
   `client/module_prego/lib/interactions/prego_swipe_actions.dart`
