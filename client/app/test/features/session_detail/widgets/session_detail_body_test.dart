@@ -429,6 +429,8 @@ void main() {
     expect(gradient.colors[0], surface.withValues(alpha: 0.98));
     expect(gradient.colors[1], surface.withValues(alpha: 0.88));
     expect(gradient.colors[2], surface.withValues(alpha: 0));
+    expect(gradient.begin, Alignment.bottomCenter);
+    expect(gradient.end, Alignment.topCenter);
   });
 
   testWidgets("an empty newest page keeps older transcript paging reachable", (tester) async {
