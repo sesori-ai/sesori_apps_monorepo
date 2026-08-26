@@ -5,9 +5,9 @@
 - **Plan slug:** `catalog-rescan`
 - **Implementation base:** `main` at
   `7b1ebe9bc629d05b5d104e76cd5dbaa1514d65a2`
-- **Series state:** Steps 1/8 to 6f/8 merged; Steps 6g/8 and 7/8 open
-- **Current step:** reconcile the regression docs
-- **Next action:** land 6g and 7, then run the recorded matrix and retire the plan in step 8
+- **Series state:** Steps 1/8 to 7/8 merged; Step 8/8 outstanding
+- **Current step:** verify and retire
+- **Next action:** run the recorded L3 matrix, or record an accepted reduction, then retire
 - **Origin issue:** [#961](https://github.com/sesori-ai/sesori_apps_monorepo/issues/961)
 - **External overlap:** [#1008](https://github.com/sesori-ai/sesori_apps_monorepo/issues/1008)
   owns Codex live updates; do not address it here
@@ -144,9 +144,9 @@
 | [x] | 6d/8 | `⚙️ [catalog-rescan] Quieten the scan row and its pull [step 6d/8]` | 400-700 | [PR #1114](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1114) merged |
 | [x] | 6e/8 | `🌿 [catalog-rescan] Report a Settings scan's outcome [step 6e/8]` | 350-600 | [PR #1118](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1118) merged |
 | [x] | 6f/8 | `🌿 [catalog-rescan] Run the ordinary refresh on release [step 6f/8]` | 250-450 | [PR #1119](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1119) merged |
-| [ ] | 6g/8 | `🌿 [catalog-rescan] Collapse a fired pull in one movement [step 6g/8]` | 60-140 | [PR #1123](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1123) open |
-| [ ] | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 | Open |
-| [ ] | 8/8 | `🌱 [catalog-rescan] Verify and retire the catalog rescan plan [step 8/8]` | 60-140 | Not started |
+| [x] | 6g/8 | `🌿 [catalog-rescan] Collapse a fired pull in one movement [step 6g/8]` | 60-140 | [PR #1123](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1123) merged |
+| [x] | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 | [PR #1122](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1122) merged |
+| [ ] | 8/8 | `🌱 [catalog-rescan] Verify and retire the catalog rescan plan [step 8/8]` | 60-140 | Open |
 
 ## Step 1 Checklist
 
