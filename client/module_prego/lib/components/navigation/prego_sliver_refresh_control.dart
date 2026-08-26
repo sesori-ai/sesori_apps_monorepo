@@ -85,8 +85,9 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
   /// only rescan once however far it travels.
   bool _deepFired = false;
 
-  /// Completes when the pull that armed the current refresh has been let go.
-  /// `null` whenever no refresh is pending.
+  /// Completes once the pending refresh may proceed: when the pull is let go,
+  /// or as soon as the second stage fires, whichever comes first. `null`
+  /// whenever no refresh is pending.
   Completer<void>? _letGo;
 
   /// Runs the ordinary refresh, once the gesture has chosen its stage.
@@ -114,7 +115,7 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
     }
   }
 
-  /// Marks the pull let go, so a pending refresh can run.
+  /// Releases a pending refresh from waiting on the gesture.
   void _markLetGo() {
     if (_letGo case final letGo? when !letGo.isCompleted) letGo.complete();
   }
@@ -143,6 +144,15 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
         }
         if (deepRefresh != null && !_deepFired && _maxPulledExtent >= deepThreshold) {
           _deepFired = true;
+          // Finish the pending refresh now rather than on release. The
+          // underlying control reserves an indicator's height from the moment
+          // it arms its task, and only gives it back once that task is done —
+          // so waiting for the release leaves the list sitting one indicator
+          // below the top, then dropping. Finishing here means the reserve is
+          // already gone by the time the finger lifts, and the list springs
+          // straight to the top. There is nothing left to wait for anyway: a
+          // fired pull runs no ordinary refresh.
+          _markLetGo();
           // After this frame, because the refresh control calls its builder
           // from inside the sliver's layout and the callback is user code.
           SchedulerBinding.instance.addPostFrameCallback(

@@ -11,6 +11,10 @@ import "package:theme_prego/module_prego.dart";
 const double _softTrigger = 100;
 const double _deepTrigger = _softTrigger * 1.8;
 
+/// The height the underlying control reserves for its indicator while a
+/// refresh is pending, and the height a fired pull must not come to rest at.
+const double _indicatorExtent = 60;
+
 void main() {
   group("PregoSliverRefreshControl", () {
     late int softRefreshes;
@@ -396,6 +400,71 @@ void main() {
       await tester.pumpAndSettle();
     });
 
+
+    // The control reserves an indicator's height from the moment it arms its
+    // task and gives it back only when that task is done. A fired pull has
+    // nothing to wait for, so the reserve has to go while the finger is still
+    // down — otherwise the list lands one indicator below the top on release
+    // and drops to the top a moment later.
+    testWidgets("a fired pull gives back the reserved indicator height before release", (tester) async {
+      final completer = Completer<void>();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          home: Scaffold(
+            body: CustomScrollView(
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              slivers: [
+                PregoSliverRefreshControl(
+                  onRefresh: () => completer.future,
+                  decorate: null,
+                  onPulledExtentChanged: null,
+                  deepRefresh: PregoDeepRefresh(
+                    onDeepRefresh: () => deepRefreshes++,
+                    pullCaption: "Keep pulling to find new sessions",
+                  ),
+                ),
+                SliverList.list(
+                  children: [for (var i = 0; i < 20; i++) SizedBox(height: 80, child: Text("row $i"))],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      final restingTop = tester.getTopLeft(find.text("row 0")).dy;
+
+      final gesture = await tester.startGesture(const Offset(200, 100));
+      for (var step = 0; step < 12 && deepRefreshes == 0; step++) {
+        await gesture.moveBy(const Offset(0, 40));
+        await tester.pump();
+        await tester.pump();
+      }
+      expect(deepRefreshes, 1);
+
+      await gesture.moveBy(Offset.zero);
+      await tester.pump();
+      await gesture.up();
+      final offsets = <double>[];
+      for (var frame = 0; frame < 60; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        offsets.add(tester.getTopLeft(find.text("row 0")).dy - restingTop);
+      }
+
+      // One spring, not two. Holding the reserve until release parks the list
+      // an indicator's height below the top for a good fifteen frames before a
+      // second collapse takes it the rest of the way.
+      final restingAtIndicatorHeight = offsets.where((offset) => (offset - _indicatorExtent).abs() <= 5).length;
+      expect(
+        restingAtIndicatorHeight,
+        lessThanOrEqualTo(4),
+        reason: "the list must pass through the indicator height, not sit at it",
+      );
+      expect(offsets.last, 0, reason: "and reach the top within the same settle");
+
+      completer.complete();
+      await tester.pumpAndSettle();
+    });
 
     testWidgets("a long caption truncates rather than overflowing", (tester) async {
       await tester.pumpWidget(
