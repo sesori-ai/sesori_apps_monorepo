@@ -482,11 +482,14 @@ plugin steps added the generated consumer DTOs and narrow ACP hooks; consumer
 tests pass every fixture. Cross-repository conformance and all six
 matching-native package jobs passed before publication. Runtime and Dart
 protocol-changing PRs must update and run that corpus in source/consumer order.
-Step 16 repeated the complete product boundary with the exact managed artifacts
-pinned by the bridge. Exact-tag runtime and Dart suites, the six matching-native
-package jobs, archive inspection, a live managed install, source bridge
-lifecycle/crash/restart/history/deletion checks, current iOS client E2E, and the
-public `v1.8.1` client/bridge compatibility pair all passed. The live provider
-catalog started from the unmodified published adapter; with no local `~/.dsh`
-credential profile, its model request followed the documented bounded setup
-failure path while preserving the accepted message and bridge health.
+Step 16 passed exact-tag runtime and Dart suites, the six matching-native package
+jobs, archive inspection, a live managed install, source bridge
+lifecycle/crash/restart/history/deletion checks, the current iOS management and
+session-creation path, and the public `v1.8.1` client/bridge compatibility pair.
+The live provider catalog started from the unmodified published adapter; with no
+local `~/.dsh` credential profile, its model request followed the documented
+bounded setup-failure path while preserving the accepted message and bridge
+health. Successful model output, questions, permissions, images, and tools still
+require authenticated client -> relay -> bridge -> plugin evidence before plan
+retirement; deterministic adapter fixtures support but do not replace that
+product-boundary run.
