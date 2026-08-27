@@ -196,6 +196,31 @@ void main() {
     expect(parameters, isNot(contains("user_key")));
     verifyNoMoreInteractions(analytics);
   });
+
+  test("logs recommended authentication outcomes with method only", () async {
+    await client.logInstallationEvent(
+      event: const InstallationAnalyticsEvent.accountCreated(
+        method: AnalyticsLoginProvider.google,
+      ),
+    );
+    await client.logInstallationEvent(
+      event: const InstallationAnalyticsEvent.accountLogin(
+        method: AnalyticsLoginProvider.email,
+      ),
+    );
+
+    verifyInOrder([
+      () => analytics.logEvent(
+        name: "sign_up",
+        parameters: {"method": "google", "schema_version": 1},
+      ),
+      () => analytics.logEvent(
+        name: "login",
+        parameters: {"method": "email", "schema_version": 1},
+      ),
+    ]);
+    verifyNoMoreInteractions(analytics);
+  });
 }
 
 ProductAnalyticsEnvelope _productEnvelope({required ProductAnalyticsEvent event}) {

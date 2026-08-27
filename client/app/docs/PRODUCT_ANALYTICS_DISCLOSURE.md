@@ -25,25 +25,33 @@ The control does not stop:
 
 - Firebase automatic installation-level events or Firebase's pseudonymous
   installation/device and approximate-location processing;
+- Firebase's release-only account-less sign-in attempt funnel and recommended
+  `sign_up`/`login` outcomes, carrying only a pinned sign-in provider, bounded
+  failure kind, or pinned authentication method;
 - Singular's release-only install/session attribution, SDK-generated device
   identifier, and parameter-free standard authentication conversion events;
   this integration limits advertising identifiers and partner data sharing and
   sets no Sesori user identity;
-- the bounded account-less sign-in funnel, which carries only a pinned sign-in
-  provider and bounded failure kind;
 - account and bridge records required to operate Sesori;
 - behavior from an older app version; or
 - a remote supported installation until it next establishes authentication or
   explicitly refreshes its preference.
 
-The account-less sign-in funnel has no account key or attempt identifier and
-cannot be reliably filtered for internal/test release traffic. It is diagnostic
-only and must not be represented as an account conversion metric. Separately,
-Singular receives `sng_login` after every successful interactive authentication
-and `sng_complete_registration` immediately before it only when the auth server
-reports that the operation created the account. Those standard events carry no
-provider, account identifier, or other event attributes and are not sent for
-session restore, token refresh, failure, cancellation, or a displaced attempt.
+The Firebase account-less authentication catalog has no account key or attempt
+identifier and cannot be reliably filtered for internal/test release traffic.
+The attempt funnel is diagnostic only. Firebase receives `sign_up` only when
+the auth server reports that the operation created the account, and receives
+`login` only for a confirmed existing account; a forward-unknown status produces
+neither recommended event. Both carry only the pinned `method`. GA4 may use
+`sign_up` as an acquisition key event, but it is not the canonical account
+registration metric; recurring `login` remains a normal event.
+
+Separately, Singular receives `sng_login` after every successful interactive
+authentication and `sng_complete_registration` immediately before it only when
+the auth server reports that the operation created the account. Those standard
+events carry no provider, account identifier, or other event attributes. Neither
+Firebase nor Singular authentication outcomes are sent for session restore,
+token refresh, failure, cancellation, or a displaced attempt.
 
 ## Singular attribution release gate
 
@@ -88,6 +96,9 @@ requires a separate privacy and product decision.
       control rather than an account-wide or Firebase-wide kill switch.
 - [ ] Review Singular's bundled privacy manifest and update store declarations
       before distributing a binary that contains the SDK.
+- [ ] Confirm Firebase receives mutually exclusive `sign_up`/`login` outcomes,
+      GA4 marks only `sign_up` as a key event, and neither is used as the
+      canonical account-registration count.
 - [ ] Confirm Singular retention/deletion settings and record product/privacy
       counsel approval before a production release.
 - [ ] Record product/privacy counsel approval and the first approved app version

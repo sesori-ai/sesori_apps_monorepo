@@ -19,6 +19,8 @@ enum AnalyticsLoginFailureKind({required final String wireValue}) {
 sealed class const InstallationAnalyticsEvent() {
   const factory loginAttemptStarted({required AnalyticsLoginProvider provider}) = LoginAttemptStartedEvent;
   const factory loginAttemptCompleted({required AnalyticsLoginProvider provider}) = LoginAttemptCompletedEvent;
+  const factory accountCreated({required AnalyticsLoginProvider method}) = AccountCreatedEvent;
+  const factory accountLogin({required AnalyticsLoginProvider method}) = AccountLoginEvent;
   const factory loginAttemptFailed({
     required AnalyticsLoginProvider provider,
     required AnalyticsLoginFailureKind failureKind,
@@ -58,6 +60,23 @@ final class const LoginAttemptCompletedEvent({required final AnalyticsLoginProvi
 
   @override
   Map<String, String> get parameters => {"provider": provider.wireValue};
+}
+
+final class const AccountCreatedEvent({required final AnalyticsLoginProvider method})
+    extends InstallationAnalyticsEvent {
+  @override
+  String get wireName => "sign_up";
+
+  @override
+  Map<String, String> get parameters => {"method": method.wireValue};
+}
+
+final class const AccountLoginEvent({required final AnalyticsLoginProvider method}) extends InstallationAnalyticsEvent {
+  @override
+  String get wireName => "login";
+
+  @override
+  Map<String, String> get parameters => {"method": method.wireValue};
 }
 
 final class const LoginAttemptFailedEvent({

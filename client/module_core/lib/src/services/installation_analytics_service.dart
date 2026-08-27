@@ -30,12 +30,19 @@ class InstallationAnalyticsService({
     required AuthProvider provider,
     required AccountStatus accountStatus,
   }) async {
+    final analyticsProvider = _analyticsProvider(provider: provider);
+    final accountOutcomeEvent = switch (accountStatus) {
+      AccountStatus.created => InstallationAnalyticsEvent.accountCreated(method: analyticsProvider),
+      AccountStatus.existing => InstallationAnalyticsEvent.accountLogin(method: analyticsProvider),
+      AccountStatus.unknown => null,
+    };
     final results = await Future.wait([
       _log(
         event: InstallationAnalyticsEvent.loginAttemptCompleted(
-          provider: _analyticsProvider(provider: provider),
+          provider: analyticsProvider,
         ),
       ),
+      if (accountOutcomeEvent != null) _log(event: accountOutcomeEvent),
       _logAttribution(accountStatus: accountStatus),
     ]);
 
