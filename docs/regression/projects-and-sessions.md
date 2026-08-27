@@ -114,6 +114,9 @@ child sessions with titles, activity, statuses, and unseen state.
 - Session listings are project-scoped and pageable and carry plugin attribution,
   times, worktree and branch facts, prompt defaults, and unseen state that
   advances on activity and clears on view or mark-as-read.
+- Session activity stays relative for 30 days. Older rows use a compact numeric
+  date whose field order and separators follow the user's full device locale;
+  dates from the current year omit the year, while earlier years remain explicit.
 - A listed session's `session.updated` reports the newest instant the bridge
   knows: the backend's own updated time, or the live user-message marker when
   that is newer. A plugin that reports an updated time only at import or rename
@@ -205,8 +208,9 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - A running root or project stays alphabetically ordered, a stale marker masks
   newer committed activity, a null marker fails to use updated time,
   awaiting-only is promoted, or inactive session/project or child order changes.
-- A session prompted minutes ago reports a days-old updated time, or sorts to
-  the top of its list while still displaying that stale time.
+- A session prompted minutes ago reports a days-old updated time, sorts to the
+  top of its list while still displaying that stale time, or an older row uses
+  generic US month/day order despite a different device locale.
 - Unseen never clears, clears without viewing, or an unavailable plugin is idle.
 - Hiding destroys sessions, or a cancelled import destroys the committed catalog.
 - A project or session row animates under a system back gesture, or an edge that
@@ -271,6 +275,7 @@ leave the surface that started one. Restore harness eligibility afterwards.
   `client/module_core/test/cubits/session_list/session_list_cubit_test.dart`,
   `client/module_prego/test/interactions/prego_swipe_actions_test.dart`,
   `client/module_prego/test/components/prego_sliver_refresh_control_test.dart`,
+  `client/app/test/core/extensions/build_context_x_test.dart`,
   `client/app/test/core/widgets/catalog_scan_row_test.dart`,
   `client/app/test/features/project_list/project_list_catalog_scan_test.dart`,
   `client/app/test/features/session_list/session_list_panel_test.dart`
