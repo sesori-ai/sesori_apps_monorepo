@@ -42,9 +42,10 @@ directly from the client to the transcription endpoint.
   inference, and skips local scanning once the project already has 50 terms.
 - Git inference streams at most 50,000 tracked path names and never inspects ignored/untracked root metadata. A Git
   operational failure aborts inference rather than falling back to root enumeration; definite non-Git enumeration is
-  also streamed and bounded. README/package-manifest reads are capped, and credential assignments, prefixed/secret-
-  shaped spans, ignored vendor/build/generated paths, hashes, and generic terms are excluded before ranking. At most
-  enough terms to reach 50 are uploaded; source contents and paths never leave the bridge.
+  also streamed and bounded. README/package-manifest reads are capped, and quoted/unquoted credential assignments,
+  authorization/Bearer values, prefixed/secret-shaped spans, ignored vendor/build/generated paths, hashes, and generic
+  terms are excluded before ranking. At most enough terms to reach 50 are uploaded; source contents and paths never
+  leave the bridge.
 - The preference defaults to voice-first, persists, and falls back to voice-first on a corrupt or unknown stored
   value.
 
