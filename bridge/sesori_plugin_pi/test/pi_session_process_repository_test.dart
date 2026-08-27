@@ -472,6 +472,7 @@ PiSessionProcessRepository _repository({
   PiMessageIdentityTracker? identityTracker,
   Duration startupExitTimeout = const Duration(seconds: 5),
   Duration historyRpcTimeout = const Duration(minutes: 2),
+  Duration abortRpcTimeout = const Duration(seconds: 1),
 }) {
   final storage = storageApi ?? _ProcessStorage();
   return PiSessionProcessRepository(
@@ -484,6 +485,7 @@ PiSessionProcessRepository _repository({
     identityTracker: identityTracker ?? PiMessageIdentityTracker(pluginId: "pi"),
     startupExitTimeout: startupExitTimeout,
     historyRpcTimeout: historyRpcTimeout,
+    abortRpcTimeout: abortRpcTimeout,
     promptRpcTimeout: const Duration(minutes: 30),
   );
 }

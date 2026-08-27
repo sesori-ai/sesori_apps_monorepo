@@ -65,6 +65,10 @@ final class PiPlugin._({
       identityTracker: identities,
       startupExitTimeout: startupExitTimeout,
       historyRpcTimeout: historyRpcTimeout,
+      // Pi's abort response waits for full agent idleness, which can include
+      // an already queued steering continuation. Bound that acknowledgement
+      // tightly so Stop can force process replacement instead of stalling.
+      abortRpcTimeout: const Duration(seconds: 1),
       // Pi can run model-backed automatic compaction before acknowledging a
       // prompt, so prompt preflight needs the same generous bound as a turn.
       promptRpcTimeout: const Duration(minutes: 30),
