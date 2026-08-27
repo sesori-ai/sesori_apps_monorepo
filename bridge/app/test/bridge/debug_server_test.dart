@@ -74,6 +74,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     accessTokenProvider: FakeAccessTokenProvider(),
     tokenRefresher: FakeTokenRefresher(),
     bridgeRegistrationService: createFakeBridgeRegistrationService(),
+    projectGlossarySecretStorage: const FakeProjectGlossarySecretStorage(),
     failureReporter: failureReporter,
     restartService: effectiveRestartService,
     filesystemAccessOk: true,

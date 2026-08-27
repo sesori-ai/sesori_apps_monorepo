@@ -337,6 +337,7 @@ class _LiveAttachmentHarness({
       accessTokenProvider: FakeAccessTokenProvider(),
       tokenRefresher: FakeTokenRefresher(token: "token"),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
+      projectGlossarySecretStorage: const FakeProjectGlossarySecretStorage(),
       failureReporter: failureReporter,
       restartService: buildTestRestartService(),
       filesystemAccessOk: true,

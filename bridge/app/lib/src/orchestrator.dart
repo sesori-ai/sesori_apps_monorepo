@@ -21,6 +21,7 @@ import "api/filesystem_api.dart";
 import "api/gh_cli_api.dart";
 import "api/git_cli_api.dart";
 import "api/git_tracked_files_api.dart";
+import "api/project_glossary_secret_storage.dart";
 import "api/sesori_server_api.dart";
 import "auth/access_token_provider.dart";
 import "auth/bridge_registration_service.dart";
@@ -143,6 +144,7 @@ import "services/permission_auto_approval_service.dart";
 import "services/plugin_lifecycle_service.dart";
 import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
+import "services/project_glossary_key_calculator.dart";
 import "services/project_glossary_service.dart";
 import "services/project_glossary_term_calculator.dart";
 import "services/project_initialization_service.dart";
@@ -201,6 +203,7 @@ class Orchestrator({
     required final AccessTokenProvider _accessTokenProvider,
     required final TokenRefresher _tokenRefresher,
     required final BridgeRegistrationService _bridgeRegistrationService,
+    required final ProjectGlossarySecretStorage _projectGlossarySecretStorage,
     required final FailureReporter _failureReporter,
     required final BridgeRestartService _restartService,
     required final bool _filesystemAccessOk,
@@ -384,7 +387,9 @@ class Orchestrator({
       tokenRefresher: _tokenRefresher,
     );
     final projectGlossaryService = ProjectGlossaryService(
-      keyMaterialProvider: _bridgeRegistrationService,
+      bridgeIdProvider: _bridgeRegistrationService,
+      secretStorage: _projectGlossarySecretStorage,
+      keyCalculator: const ProjectGlossaryKeyCalculator(),
       projectRepository: projectRepository,
       glossaryRepository: ProjectGlossaryRepository(
         gitCliApi: gitCliApi,

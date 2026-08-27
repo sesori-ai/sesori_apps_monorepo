@@ -34,6 +34,7 @@ import "../api/bridge_settings_api.dart";
 import "../api/control_secret_api.dart";
 import "../api/database/database.dart";
 import "../api/database/history/chat_history_database.dart";
+import "../api/project_glossary_secret_storage.dart";
 import "../api/sesori_server_api.dart";
 import "../auth/access_token_provider.dart";
 import "../auth/auth_api.dart";
@@ -833,6 +834,10 @@ class const BridgeRuntimeRunner._() {
         accessTokenProvider: accessTokenProvider,
         tokenRefresher: tokenRefresher,
         bridgeRegistrationService: bridgeRegistrationService,
+        projectGlossarySecretStorage: FileProjectGlossarySecretStorage(
+          dataDirectory: options.dataDirectory,
+          writeRestrictedFile: writeRestrictedFile,
+        ),
         failureReporter: failureReporter,
         restartService: restartService,
         filesystemAccessOk: filesystemAccessOk,

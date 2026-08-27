@@ -211,7 +211,7 @@ class FakeProjectGlossaryService({
   final List<String> scheduledProjectIds = [];
 
   @override
-  String? schedule({required String projectId}) {
+  Future<String?> schedule({required String projectId}) async {
     scheduledProjectIds.add(projectId);
     return projectKey;
   }

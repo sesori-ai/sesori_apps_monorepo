@@ -78,6 +78,7 @@ void main() {
       accessTokenProvider: FakeAccessTokenProvider(),
       tokenRefresher: FakeTokenRefresher(),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
+      projectGlossarySecretStorage: const FakeProjectGlossarySecretStorage(),
       failureReporter: failureReporter,
       restartService: restartService,
       filesystemAccessOk: true,

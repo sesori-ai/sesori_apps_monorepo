@@ -1,6 +1,7 @@
 import "dart:convert";
 import "dart:io" show FileSystemEntityType;
 
+import "package:http/http.dart" as http;
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryWordsRequest;
@@ -12,6 +13,11 @@ import "../api/sesori_server_api.dart";
 import "../foundation/abortable_request.dart";
 import "mappers/git_remote_identity_parser.dart";
 import "models/project_glossary_source.dart";
+
+class ProjectGlossaryRepositoryAbortedException({
+  required final Object innerError,
+  required final StackTrace innerStackTrace,
+}) implements Exception;
 
 /// Loads bounded local glossary evidence and persists selected words through
 /// the authenticated Sesori server API.
@@ -66,11 +72,15 @@ class ProjectGlossaryRepository({
     required String projectKey,
     required AbortSignal abortSignal,
   }) async {
-    final response = await _serverApi.getProjectGlossary(
-      projectKey: projectKey,
-      abortSignal: abortSignal,
-    );
-    return response.words;
+    try {
+      final response = await _serverApi.getProjectGlossary(
+        projectKey: projectKey,
+        abortSignal: abortSignal,
+      );
+      return response.words;
+    } on http.RequestAbortedException catch (error, stackTrace) {
+      throw ProjectGlossaryRepositoryAbortedException(innerError: error, innerStackTrace: stackTrace);
+    }
   }
 
   Future<List<String>> addWords({
@@ -78,20 +88,29 @@ class ProjectGlossaryRepository({
     required List<String> words,
     required AbortSignal abortSignal,
   }) async {
-    final response = await _serverApi.addProjectGlossaryWords(
-      request: ProjectGlossaryWordsRequest(projectKey: projectKey, words: words),
-      abortSignal: abortSignal,
-    );
-    return response.added;
+    try {
+      final response = await _serverApi.addProjectGlossaryWords(
+        request: ProjectGlossaryWordsRequest(projectKey: projectKey, words: words),
+        abortSignal: abortSignal,
+      );
+      return response.added;
+    } on http.RequestAbortedException catch (error, stackTrace) {
+      throw ProjectGlossaryRepositoryAbortedException(innerError: error, innerStackTrace: stackTrace);
+    }
   }
 
   Future<ProjectGlossarySource> loadSource({required String projectPath}) async {
-    final rootEntryNames = _filesystemApi.listEntryNames(projectPath);
     final isGitProject = await _gitCliApi.isInsideGitWorkTree(projectPath: projectPath);
     final repositoryName = isGitProject ? await _readRepositoryName(projectPath: projectPath) : null;
+    final rootEntryNames = isGitProject
+        ? const <String>[]
+        : await _filesystemApi.listEntryNamesBounded(
+            path: projectPath,
+            maximumEntries: _maximumTrackedPaths,
+          );
     final sourcePaths = isGitProject
         ? await _gitTrackedFilesApi.listTrackedFiles(projectPath: projectPath, maximumPaths: _maximumTrackedPaths)
-        : rootEntryNames.take(_maximumTrackedPaths);
+        : rootEntryNames;
     final trackedPaths = sourcePaths.where((path) => !_isExcludedPath(path)).toList(growable: false);
     final metadataPaths = <String>{
       for (final path in trackedPaths)

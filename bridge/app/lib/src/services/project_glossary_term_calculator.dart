@@ -15,6 +15,10 @@ class const ProjectGlossaryTermCalculator() {
   static final RegExp _metadataSecretSpanPattern = RegExp(
     "[A-Za-z0-9][A-Za-z0-9_./+=#-]{15,}",
   );
+  static final RegExp _credentialAssignmentPattern = RegExp(
+    r"(?:password|passwd|pwd|secret|api[_-]?key|token|credential)\s*[:=]\s*[^\s,;]+",
+    caseSensitive: false,
+  );
   static final RegExp _hexTokenPattern = RegExp(r"^[A-Fa-f0-9]{12,}$");
   static final RegExp _allCapsPattern = RegExp(r"^[A-Z]{2,}$");
   static final RegExp _hasUpperPattern = RegExp("[A-Z]");
@@ -105,7 +109,7 @@ when with web widget widgets will windows window workspace www
 
     for (final document in source.metadataDocuments) {
       final documentTerms = <String>{};
-      final filteredDocument = document.replaceAllMapped(
+      final filteredDocument = document.replaceAll(_credentialAssignmentPattern, " ").replaceAllMapped(
         _metadataSecretSpanPattern,
         (match) => _looksCredentialShaped(match.group(0)!) ? " " : match.group(0)!,
       );
@@ -140,7 +144,7 @@ when with web widget widgets will windows window workspace www
     Set<String>? distinctTerms,
   }) {
     final trimmed = value.trim();
-    if (trimmed.isEmpty) return;
+    if (trimmed.isEmpty || _credentialAssignmentPattern.hasMatch(trimmed)) return;
 
     if (includeCompound && !trimmed.contains("_")) {
       _recordTerm(
@@ -213,9 +217,7 @@ when with web widget widgets will windows window workspace www
     final compact = value.replaceAll(_credentialNonAlphaNumericPattern, "");
     final folded = compact.toLowerCase();
     if (compact.length >= 16 && _credentialPrefixes.any(folded.startsWith)) return true;
-    if (compact.length < 20 || !_hasLetterPattern.hasMatch(compact) || !_hasDigitPattern.hasMatch(compact)) {
-      return false;
-    }
+    if (compact.length < 20 || !_hasLetterPattern.hasMatch(compact)) return false;
 
     final upperCount = _hasUpperPattern.allMatches(compact).length;
     final lowerCount = _hasLowerPattern.allMatches(compact).length;
@@ -224,6 +226,7 @@ when with web widget widgets will windows window workspace www
     if (distinctCharacters < 10) return false;
 
     return (_credentialDelimiterPattern.hasMatch(value) && upperCount >= 6 && lowerCount >= 6 && digitCount >= 1) ||
+        (digitCount == 0 && upperCount >= 6 && lowerCount >= 6 && distinctCharacters >= 12) ||
         (upperCount >= 6 && lowerCount >= 6 && digitCount >= 3) ||
         (upperCount == 0 && lowerCount >= 12 && digitCount >= 6) ||
         (lowerCount == 0 && upperCount >= 12 && digitCount >= 2);

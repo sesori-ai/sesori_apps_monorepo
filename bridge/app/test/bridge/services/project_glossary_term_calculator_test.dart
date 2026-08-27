@@ -36,9 +36,10 @@ void main() {
       source: ProjectGlossarySource(
         projectName: "AcmeCompiler",
         repositoryName: null,
-        trackedPaths: const [],
+        trackedPaths: const ["config/password=SuperSecretProductionPassword.txt"],
         metadataDocuments: const [
           "AcmeCompiler uses AKIAIOSFODNN7EXAMPLE, q7Vn2Lp9Rk4Tz8Mw6Hx3, and $secretAccessKey for examples.",
+          "password=SuperSecretProductionPassword token=aBcDeFgHiJkLmNoPqRsTuVwXyZ",
           "AcmeCompiler appears again without exposing credentials.",
         ],
       ),
@@ -50,6 +51,8 @@ void main() {
     expect(terms, isNot(contains("wJalrXUtnFEMI")));
     expect(terms, isNot(contains("K7MDENG")));
     expect(terms, isNot(contains("bPxRfiCYEXAMPLEKEY")));
+    expect(terms, isNot(contains("SuperSecretProductionPassword")));
+    expect(terms, isNot(contains("aBcDeFgHiJkLmNoPqRsTuVwXyZ")));
   });
 
   test("requires repeated metadata evidence for ordinary lowercase prose", () {

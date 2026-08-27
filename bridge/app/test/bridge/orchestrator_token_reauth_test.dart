@@ -341,6 +341,7 @@ class _ReauthHarness._({
       accessTokenProvider: authority,
       tokenRefresher: authority,
       bridgeRegistrationService: registrationService,
+      projectGlossarySecretStorage: const FakeProjectGlossarySecretStorage(),
       failureReporter: FakeFailureReporter(),
       restartService: buildTestRestartService(),
       filesystemAccessOk: true,

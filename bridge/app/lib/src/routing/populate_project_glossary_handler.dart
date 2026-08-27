@@ -13,12 +13,12 @@ class PopulateProjectGlossaryHandler({required final ProjectGlossaryService _pro
   Future<PopulateProjectVoiceGlossaryResponse> handle(
     RelayRequest request, {
     required ProjectIdRequest body,
-  }) {
+  }) async {
     final projectId = requireNonEmpty(request: request, value: body.projectId, label: "project id");
-    final projectKey = _projectGlossaryService.schedule(projectId: projectId);
+    final projectKey = await _projectGlossaryService.schedule(projectId: projectId);
     if (projectKey == null) {
       throw buildErrorResponse(request, 503, "project voice glossary is unavailable");
     }
-    return Future.value(PopulateProjectVoiceGlossaryResponse(projectKey: projectKey));
+    return PopulateProjectVoiceGlossaryResponse(projectKey: projectKey);
   }
 }

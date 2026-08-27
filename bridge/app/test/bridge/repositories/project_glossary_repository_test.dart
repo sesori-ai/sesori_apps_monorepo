@@ -1,10 +1,13 @@
 import "dart:io" show FileSystemEntityType;
 
+import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/api/git_tracked_files_api.dart";
+import "package:sesori_bridge/src/api/models/project_glossary_response.dart";
 import "package:sesori_bridge/src/api/sesori_server_api.dart";
+import "package:sesori_bridge/src/foundation/abortable_request.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/repositories/project_glossary_repository.dart";
 import "package:test/test.dart";
@@ -26,7 +29,6 @@ void main() {
       gitCliApi: _SourceGitCliApi(),
       gitTrackedFilesApi: gitTrackedFilesApi,
       filesystemApi: const _SourceFilesystemApi(
-        rootEntries: ["README.md", "pubspec.yaml"],
         files: {
           "/project/README.md": "# Acme Quasar",
           "/project/pubspec.yaml": "name: acme_quasar",
@@ -53,12 +55,32 @@ void main() {
     expect(gitTrackedFilesApi.requestedMaximumPaths, 50000);
   });
 
+  test("translates HTTP aborts at the repository boundary", () async {
+    final abort = http.RequestAbortedException(Uri.parse("https://auth.example.test/voice/glossary"));
+    final repository = ProjectGlossaryRepository(
+      gitCliApi: _SourceGitCliApi(),
+      gitTrackedFilesApi: _SourceGitTrackedFilesApi(trackedPaths: const []),
+      filesystemApi: const _SourceFilesystemApi(files: {}),
+      serverApi: _AbortingSesoriServerApi(abort),
+    );
+
+    await expectLater(
+      repository.getWords(projectKey: "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", abortSignal: AbortSignal()),
+      throwsA(
+        isA<ProjectGlossaryRepositoryAbortedException>().having(
+          (error) => error.innerError,
+          "innerError",
+          same(abort),
+        ),
+      ),
+    );
+  });
+
   test("does not scan untracked or ignored root metadata in a Git project", () async {
     final repository = ProjectGlossaryRepository(
       gitCliApi: _SourceGitCliApi(),
       gitTrackedFilesApi: _SourceGitTrackedFilesApi(trackedPaths: const ["lib/App.dart"]),
       filesystemApi: const _SourceFilesystemApi(
-        rootEntries: ["README.md", "package.json"],
         files: {
           "/project/README.md": "private local vocabulary",
           "/project/package.json": "private-local-package",
@@ -77,6 +99,17 @@ void main() {
     expect(source.trackedPaths, ["lib/App.dart"]);
     expect(source.metadataDocuments, isEmpty);
   });
+}
+
+class _AbortingSesoriServerApi(final Object failure) implements SesoriServerApi {
+  @override
+  Future<ProjectGlossaryWordsResponse> getProjectGlossary({
+    required String projectKey,
+    required AbortSignal abortSignal,
+  }) => Future<ProjectGlossaryWordsResponse>.error(failure);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _SourceGitCliApi() extends GitCliApi {
@@ -105,11 +138,12 @@ class _SourceGitTrackedFilesApi({required final List<String> trackedPaths}) exte
 }
 
 class const _SourceFilesystemApi({
-  required final List<String> rootEntries,
   required final Map<String, String> files,
 }) extends FilesystemApi {
   @override
-  List<String> listEntryNames(String path) => rootEntries;
+  Future<List<String>> listEntryNamesBounded({required String path, required int maximumEntries}) {
+    throw StateError("Git projects must not enumerate root entries");
+  }
 
   @override
   FileSystemEntityType entityType(String path) =>

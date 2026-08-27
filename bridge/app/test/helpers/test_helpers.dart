@@ -2,8 +2,10 @@ import "dart:async";
 import "dart:collection";
 import "dart:io";
 import "dart:math";
+import "dart:typed_data";
 
 import "package:rxdart/rxdart.dart";
+import "package:sesori_bridge/src/api/project_glossary_secret_storage.dart";
 import "package:sesori_bridge/src/auth/access_token_provider.dart";
 import "package:sesori_bridge/src/auth/bridge_id_provider.dart";
 import "package:sesori_bridge/src/auth/bridge_id_storage.dart";
@@ -27,6 +29,11 @@ class FakeAccessTokenProvider([String token = "test-token"]) implements AccessTo
 class FakeBridgeIdProvider([var String? id]) implements BridgeIdProvider {
   @override
   String? get bridgeId => id;
+}
+
+class const FakeProjectGlossarySecretStorage() implements ProjectGlossarySecretStorage {
+  @override
+  Future<Uint8List> getOrCreate() async => Uint8List.fromList(List<int>.generate(32, (index) => index));
 }
 
 class FakeTokenRefresher({String token = "test-token", String? refreshedToken}) implements TokenRefresher {

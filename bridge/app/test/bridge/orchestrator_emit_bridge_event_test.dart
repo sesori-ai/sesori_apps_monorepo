@@ -1113,6 +1113,7 @@ class const _OrchestratorHarness({
       accessTokenProvider: FakeAccessTokenProvider(),
       tokenRefresher: FakeTokenRefresher(token: "token"),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
+      projectGlossarySecretStorage: const FakeProjectGlossarySecretStorage(),
       failureReporter: failureReporter,
       restartService: restartService,
       filesystemAccessOk: true,
