@@ -40,7 +40,9 @@ bridge, relay, and client boundaries that claim to support them.
 
 ## Execution Runbook
 
-1. Declare the exact protocol and claimed capabilities for every route. Keep
+1. Declare the exact protocol and claimed capabilities for every route. Validate
+   the endpoint, authentication, model, and native request shape separately so
+   an invalid probe is blocked setup rather than a provider failure. Keep
    credentials in the provider's private local store; never place them in a
    command, committed fixture, screenshot, transcript, or evidence file.
 2. Use a disposable prompt, image, tool, and session. Capture only bounded
@@ -56,8 +58,9 @@ bridge, relay, and client boundaries that claim to support them.
 6. Traverse the release-target client -> relay -> bridge -> plugin path. Verify
    rendering and settlement for the claimed rich capabilities rather than
    treating a debug route as client evidence.
-7. Restart the bridge and client, reopen the session, and compare durable
-   messages, timestamps, parts, tool states, and model attribution.
+7. Restart the bridge first and inspect its headless history replay. Then restart
+   the client, reopen the session, and compare durable messages, timestamps,
+   parts, tool states, and model attribution at each boundary.
 8. Delete disposable sessions through product APIs, restore auto-approval and
    other changed settings, remove only named proof files, and stop test-owned
    processes. Never recursively delete a provider, Harness, plugin, or user
@@ -67,11 +70,13 @@ bridge, relay, and client boundaries that claim to support them.
 
 | First divergent boundary | Likely owner |
 |---|---|
-| Raw provider request fails or returns a renamed/unadvertised tool | Provider, router, or selected model |
+| Raw probe has invalid endpoint, authentication, model, or request shape | Local probe setup or provider profile |
+| Valid raw provider request fails or returns a renamed/unadvertised tool | Provider, router, or selected model |
 | Raw provider passes but direct Harness fails | Harness provider adapter or local profile |
 | Direct Harness passes but bridge debug path fails | Backend plugin or runtime adapter |
 | Bridge path passes but relay/client path fails | Bridge routing, relay, shared contract, or client |
-| Live path passes but restart replay differs | Adapter persistence/history or bridge cache mapping |
+| Live path passes but headless bridge restart replay differs | Adapter persistence/history or bridge cache mapping |
+| Headless bridge replay passes but client cold-load replay differs | Client cache or merge behavior |
 
 Do not add a downstream alias, tool-name rewrite, retry, or compatibility shim
 until the first divergent boundary demonstrates that downstream code owns the
@@ -97,8 +102,11 @@ problem.
 - A model sees a filename or prompt text but not the attached image bytes.
 - A question seam exists but no real model-facing consumer can raise a question.
 - Rich content, timestamps, terminal state, or attribution changes after reopen.
-- Evidence or logs contain credentials, source, prompts, transcripts, paths,
-  raw provider output, account identifiers, or image bytes.
+- Committed or shared evidence contains credentials, source, prompts,
+  transcripts, paths, raw provider output, account identifiers, or image bytes.
+- Local diagnostics suppress useful errors, stack traces, paths, identifiers, or
+  operation context instead of selectively removing known credentials, prompts,
+  transcripts, or image payloads.
 
 ## Known Limitations
 
