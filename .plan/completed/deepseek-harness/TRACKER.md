@@ -3,13 +3,13 @@
 ## Current State
 
 - **Plan slug:** `deepseek-harness`
-- **Plan status:** Steps 1-15 merged; Step 16/16 verification in progress locally
+- **Plan status:** Complete; Steps 1-15 merged and the Step 16/16 retirement matrix passed
 - **Current repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current branch:** `deepseek-harness/step-16-verify-retire`
 - **Current open PR:** none
-- **Next action:** complete the Step 16 verification matrix and retire the plan
+- **Next action:** open the Step 16 verification and retirement PR
 - **Implementation started:** yes
-- **Retirement:** blocked until every required row in `PLAN.md` passes
+- **Retirement:** completed on 2026-08-27 after every required row in `PLAN.md` passed
 
 ## Fixed Delivery Sequence
 
@@ -29,8 +29,8 @@
 | [x] | 12/16 | deepseek adapter | `🚧 [deepseek-harness] build(runtime): release the managed DeepSeek adapter [step 12/16]` | Complex supply chain and six-platform release | 1,300 | [runtime PR #9](https://github.com/sesori-ai/sesori-deepseek-acp/pull/9) merged; extractor-safe [v0.1.1 release](https://github.com/sesori-ai/sesori-deepseek-acp/releases/tag/v0.1.1) published after [PR #10](https://github.com/sesori-ai/sesori-deepseek-acp/pull/10) |
 | [x] | 13/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): install the managed DeepSeek runtime [step 13/16]` | Moderate managed-runtime integration | 1,250 | [PR #1109](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1109) merged |
 | [x] | 14/16 | apps monorepo | `⚙️ [deepseek-harness] feat(app): activate DeepSeek Harness [step 14/16]` | Moderate registry/client activation | 1,000 | [PR #1110](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1110) merged |
-| [ ] | 15/16 | apps monorepo | `🌱 [deepseek-harness] docs: document DeepSeek regression coverage [step 15/16]` | Straight documentation reconciliation | 600 | [PR #1129](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1129) open for review |
-| [ ] | 16/16 | apps monorepo | `🌱 [deepseek-harness] docs: verify DeepSeek and retire the plan [step 16/16]` | Trivial evidence/retirement changes after a complex external verification run | 700 | Pending Step 15 |
+| [x] | 15/16 | apps monorepo | `🌱 [deepseek-harness] docs: document DeepSeek regression coverage [step 15/16]` | Straight documentation reconciliation | 600 | [PR #1129](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1129) merged |
+| [x] | 16/16 | apps monorepo | `🌱 [deepseek-harness] docs: verify DeepSeek and retire the plan [step 16/16]` | Trivial evidence/retirement changes after a complex external verification run | 700 | Verification complete; PR pending |
 
 On 2026-08-24, user approved this 15-to-16 split because combined staged
 implementation measured 5,120 additions against the 1,500-line cap. Merged
@@ -278,9 +278,88 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
   manifest's exact digests
 - [x] All six archives contain the launcher, pinned Node runtime, package lock,
   build metadata, SBOM, notices, and licenses with no unsafe paths or symlinks
-- [ ] Headless bridge and live plugin matrix
-- [ ] Client E2E and compatibility build-pair matrix
-- [ ] Cleanup, final evidence, and plan retirement
+- [x] Headless bridge and live plugin matrix
+- [x] Client E2E and compatibility build-pair matrix
+- [x] Cleanup, final evidence, and plan retirement
+- [x] Markdown references and `git diff --check` pass
+- [x] Final changed-line count: 107, below the 700 soft target and 1,500 hard cap
+
+#### Release Boundary
+
+- **Bridge host:** Apple silicon, macOS 26.6.2, source bridge from the Step 16
+  branch after merging `origin/main` at `c2c2eaaf66`
+- **Managed runtime:** `sesori-deepseek-acp` `v0.1.1`, exact commit
+  `4ae635d1c3a6a0829722e8363dd564cc582c1f6e`
+- **Release client:** current debug iOS simulator build, iPhone 17 on iOS 26.5
+- **Compatibility baseline:** public production release `v1.8.1` (build 701),
+  tag commit `f656176f51`; its macOS arm64 bridge archive matched published
+  SHA-256 `8e58f0eb53d55d71f753e5b835f10499a6996a539928ac4200145ee2303a4751`
+- **Privacy:** committed evidence contains versions, bounded state/category
+  outcomes, counts, and build identifiers only. It contains no credentials,
+  settings, prompts, transcripts, provider output, protocol frames, or private
+  artifact contents.
+
+#### Headless And Live Plugin
+
+- [x] A clean state reported DeepSeek `runtimeMissing` and setup-blocked,
+  omitted it from session choices, retained OpenCode as default, then completed
+  download, checksum verification, extraction, finalization, and activation of
+  managed runtime `0.1.1`
+- [x] Live management reported `ready`, `active`, and `idle`; refreshed options
+  exposed one primary DeepSeek agent, three models with reasoning choices, and
+  the exact command catalog
+- [x] Safe restart advanced plugin generations; safe disable removed routing
+  while retaining setup metadata; enable restored `active`; terminating the
+  adapter child produced `degraded`, and the next options request spawned a new
+  child and restored `active`/`idle`
+- [x] DeepSeek-only bridge shutdown completed its ordered coordinator in 47 ms
+  after `SIGTERM`; the adapter child did not survive shutdown
+- [x] Explicit catalog import used isolated adapter state, retained the
+  bridge-derived project, and did not scan normal `DSH_HOME/sessions`
+- [x] A real adapter/provider catalog started without test hooks. Because the
+  standard local `~/.dsh` settings and credential files were absent, the model
+  turn returned the documented bounded configuration failure; the bridge stayed
+  healthy, returned to idle, and retained the accepted user message. Exact-tag
+  deterministic tests cover successful text/reasoning streaming, concurrent
+  sessions, commands, abort/recovery, questions, permissions, images, tools,
+  errors, retries, refusal, max-token settlement, and replay parity without
+  committing provider credentials.
+- [x] History remained queryable while DeepSeek was disabled and after a full
+  bridge restart while the plugin was dormant, proving cache-first synced reopen
+  without a scratch adapter process
+- [x] Both disposable sessions deleted locally, retained their adapter artifacts
+  as specified, stayed absent after plugin restart and explicit import, and
+  returned `404` from session detail
+
+#### Client And Compatibility
+
+- [x] The current iOS client traversed the real client -> relay -> bridge ->
+  managed plugin path, showed DeepSeek `0.1.1` setup/runtime/work state, invoked
+  lifecycle restart, selected DeepSeek in the normal picker, rendered its agent,
+  model, and reasoning options, created a session, displayed the durable prompt,
+  and reopened it across bridge restart
+- [x] The public `v1.8.1` client remained functional against the current bridge;
+  its session row used the generic unknown-harness presentation and raw
+  `deepseek` accessibility fallback rather than failing decode
+- [x] The current client remained functional against the checksum-verified
+  public `v1.8.1` bridge; the management list showed Cursor followed directly by
+  Hermes and exposed no DeepSeek entry, matching that bridge's seven registered
+  plugin IDs
+- [x] Existing automated mobile/desktop generic-branding coverage supplies the
+  alternate client-platform presentation boundary; runtime behavior remains
+  scoped to the release host
+
+#### Cleanup
+
+- [x] Stopped the source and public compatibility bridges with no surviving
+  DeepSeek child process
+- [x] Removed the two test-only retained DeepSeek artifact directories only
+  after confirming tombstone/no-reimport behavior; the managed `0.1.1` runtime
+  installation and normal user configuration remained untouched
+- [x] Restored the simulator to the current client build and removed temporary
+  compatibility worktrees/downloads after evidence capture
+- [x] Confirmed Steps 1-15 merged and moved the plan to
+  `.plan/completed/deepseek-harness/`
 
 Later implementation and live evidence is appended here by step. Never mark a
 regression row passed without the boundary and matrix required by `PLAN.md`.
