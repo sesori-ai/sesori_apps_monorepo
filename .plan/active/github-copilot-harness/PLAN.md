@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `github-copilot-harness`
-- **Status:** active; Step 1/7 in review (#1154)
+- **Status:** active; Step 1/7 merged (#1154), Step 2/7 ready for review
 - **Plan date:** 2026-08-27
 - **Implementation base:** current `origin/main`
 - **Delivery:** seven PRs with the fixed titles below
