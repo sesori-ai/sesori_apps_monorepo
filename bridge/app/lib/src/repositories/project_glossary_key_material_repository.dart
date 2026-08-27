@@ -52,7 +52,14 @@ class ProjectGlossaryKeyMaterialRepository({
   Uint8List _decode(String encoded) {
     final paddingLength = (4 - encoded.length % 4) % 4;
     final padded = encoded.padRight(encoded.length + paddingLength, "=");
-    final bytes = base64Url.decode(padded);
+    final List<int> bytes;
+    try {
+      bytes = base64Url.decode(padded);
+    } on FormatException {
+      // FormatException otherwise retains the invalid source string, which is
+      // secret material and must never be forwarded to bridge diagnostics.
+      throw const FormatException("Project glossary secret is not valid base64");
+    }
     if (bytes.length != secretLength) {
       throw const FormatException("Project glossary secret has an invalid length");
     }

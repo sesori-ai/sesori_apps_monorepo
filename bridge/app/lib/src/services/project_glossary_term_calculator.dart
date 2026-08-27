@@ -24,6 +24,10 @@ class const ProjectGlossaryTermCalculator() {
     "[_-]?[A-Za-z0-9_./+=#-]{8,}",
     caseSensitive: false,
   );
+  static final RegExp _credentialLabeledSpanPattern = RegExp(
+    "(?:password|passwd|pwd|secret|api[_-]?key|token|credential)[_-]+[A-Za-z0-9_./+=#-]{8,}",
+    caseSensitive: false,
+  );
   static final RegExp _hexTokenPattern = RegExp(r"^[A-Fa-f0-9]{12,}$");
   static final RegExp _allCapsPattern = RegExp(r"^[A-Z]{2,}$");
   static final RegExp _hasUpperPattern = RegExp("[A-Z]");
@@ -182,6 +186,7 @@ when with web widget widgets will windows window workspace www
 
   String _filterCredentialSpans(String value) => value
       .replaceAll(_credentialAssignmentPattern, " ")
+      .replaceAll(_credentialLabeledSpanPattern, " ")
       .replaceAll(_credentialPrefixedSpanPattern, " ")
       .replaceAllMapped(
         _metadataSecretSpanPattern,
