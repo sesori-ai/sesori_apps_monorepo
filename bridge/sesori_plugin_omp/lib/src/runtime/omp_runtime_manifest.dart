@@ -101,5 +101,5 @@ class const OmpRuntimeManifest() extends RuntimeManifest {
 
   @override
   String downloadUrlFor({required RuntimeAsset asset}) =>
-      "https://github.com/can1357/oh-my-pi/releases/download/v${bundledVersion.raw}/${asset.assetName}";
+      githubReleaseAssetUrl(repository: "can1357/oh-my-pi", tag: "v${bundledVersion.raw}", asset: asset);
 }

@@ -70,7 +70,8 @@ idle suspension, the management snapshot, and lifecycle commands.
   snapshot changes only on real content change with a new token, and a terminal failure
   removes only that harness's routing and new-session choice.
 - Deliberate bridge shutdown enters each live harness's lifecycle shutdown before closing
-  its transport directly. Managed runtime monitors disarm before transport or process
+  its transport directly. Stdio transports close child stdin before graceful termination
+  and bounded force-kill. Managed runtime monitors disarm before transport or process
   teardown, so a clean owned-runtime exit is neither reported nor restarted as a crash.
 - Codex keeps its long-lived app-server connection active with a local in-memory RPC;
   idle keepalives never trigger remote model discovery, and stop when the plugin is disposed.
@@ -111,6 +112,25 @@ idle suspension, the management snapshot, and lifecycle commands.
   Its device-code sheet keeps anti-phishing guidance and the selectable/copyable one-time
   code visible, opens the external browser only on explicit intent, and separates sheet
   dismissal from cancellation. Terminal progress closes the sheet and refreshes setup.
+- Mobile offers a per-harness catalog scan on Settings to Harnesses, the pointer and
+  screen-reader equivalent of the lists' second-stage pull. It appears only for a harness
+  whose reported runtime state is routable, so a setup-blocked or failed harness the bridge
+  would reject is not offered a tappable no-op. The action reports work in place while any
+  scan covering that harness runs, whichever surface started it, and does not accept a
+  second start until it settles.
+- A scan the user aimed at one harness reports its own rejection on that harness's card,
+  unlike the all-harness fan-out, which silently skips a harness it cannot import from.
+  Not-importable, unsupported-bridge, and failed-request answers each read differently and
+  are cleared by the next attempt on that harness, whichever surface makes it. A start whose
+  outcome is unknown leaves the harness in the running scan rather than reporting a refusal
+  beside its own progress, so a card never pairs work in flight with a reason it failed. The
+  underlying request error is kept for the local log and never rendered.
+- A scan started from the harness settings surface announces how it ended there, because that
+  surface carries no progress row and the published result clears itself before the user could
+  reach a list to read it. What it found, a partial failure, and a total failure each read
+  differently. A scan started from a list is not announced again here, and neither is a start
+  the bridge refused outright, which the harness card already reports; a run that ends without
+  a terminal outcome announces nothing at all.
 
 ## Regression Levels
 
@@ -118,8 +138,8 @@ idle suspension, the management snapshot, and lifecycle commands.
 |---|---|
 | L1 Smoke | A started bridge inspects every registered harness and publishes coherent setup and management snapshots. A ready fixture has a selectable default; a fixture with no usable harness has zero selectable entries and no default without failing startup. Headless bridge; all registered harnesses listed. |
 | L2 Routine | Demand-driven start of a ready harness, clean lifecycle-owned bridge shutdown, Codex keepalive traffic remaining local and stopping on disposal, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Package automation covers DeepSeek explicit/PATH/managed selection, immutable six-platform archive metadata, readiness, extension refusal, crash/reconnect, and idempotent shutdown before registry activation. Headless bridge; representative managed harness for start and shutdown, every registered harness for listing and ordering. |
-| L3 Release | The management surface as rendered: per-harness selected runtime version when reported, setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, default badge, enable/disable, restart, and idle-timeout default plus override persisted across a bridge restart. Client end to end; every harness declaring the relevant capability must pass. |
-| L4 Extended | Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. |
+| L3 Release | The management surface as rendered: per-harness selected runtime version when reported, setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, default badge, enable/disable, restart, idle-timeout default plus override persisted across a bridge restart, and the per-harness catalog scan on a routable harness including its in-place progress and the announcement of what it found. Client end to end; every harness declaring the relevant capability must pass. |
+| L4 Extended | Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication with no catalog-scan action offered on them, a targeted scan rejected by the bridge reporting on its own card, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. |
 | L5 Full | Every registered production harness through inspect, enable, disable, restart, refresh, and idle behavior on a supported platform, plus forward-compatible presentation of an unknown harness or capability and the reported state of a session interrupted by a forced disable. Live plugin and client end to end as each entry requires. |
 
 ## Exploration Guidance
@@ -141,6 +161,12 @@ timeouts, and sessions afterwards.
   different from the executable selected by setup inspection and runtime resolution.
 - A control offered for an undeclared capability, a supported control missing, a busy
   harness accepting a safe command, or idle suspension on a resident or busy harness.
+- A catalog scan offered on a harness the bridge will not import from, a scan already
+  covering a harness still accepting another start from its card, a targeted rejection
+  landing on the wrong harness or on none, or a request error reaching the card as text.
+- A scan started from harness settings finishing with no announcement, one announced twice,
+  a scan started elsewhere announced there, or a refused start reported both on its card and
+  as a finished scan.
 - A missing authentication state from an older bridge decoding as anything but idle, a
   future state or conflict reason failing open, challenge data entering snapshots/SSE, or
   a failed progress payload without its required sanitized message.

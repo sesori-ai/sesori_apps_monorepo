@@ -176,21 +176,11 @@ MessageWithParts _message({
   return MessageWithParts(
     info: info,
     parts: [
-      MessagePart(
+      MessagePart.text(
         id: resolvedPartId,
         sessionID: "session-1",
         messageID: messageId,
-        type: MessagePartType.text,
         text: text,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
-        attachment: null,
       ),
     ],
   );
@@ -263,7 +253,7 @@ void main() {
         initialMessages: const [],
         initialStreamingText: const {},
         initialBridgeQueuedPrompts: const [
-          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 0, createdAt: 100),
+          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 1, createdAt: 100),
           QueuedSessionPrompt(id: "prm_2", text: "src", command: "review", attachmentCount: 0, createdAt: 200),
         ],
       ),
@@ -271,6 +261,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("steer it"), findsOneWidget);
+    expect(find.text("1 image"), findsOneWidget);
     expect(find.text("/review src"), findsOneWidget);
     expect(find.text("Cancel"), findsNWidgets(2));
 

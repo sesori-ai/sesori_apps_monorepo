@@ -6,6 +6,7 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
+import "../../core/widgets/catalog_scan_row.dart";
 import "../../core/widgets/connection_banner.dart";
 import "../../core/widgets/project_nav_subtitle.dart";
 import "session_list_content.dart";
@@ -26,6 +27,7 @@ class const SessionListScaffold({
     final state = context.watch<SessionListCubit>().state;
     final showArchived = state is SessionListLoaded && state.showArchived;
     final isRefreshing = state is SessionListLoaded && state.isRefreshing;
+    final catalogScan = state is SessionListLoaded ? state.catalogScan : const CatalogRescanState.idle();
 
     return PregoGlassScaffold(
       // The sessions route sits at the base of the nested pane navigator, so
@@ -62,8 +64,21 @@ class const SessionListScaffold({
       ),
       // Pull-to-refresh only makes sense once the list has loaded.
       onRefresh: state is SessionListLoaded ? () => refreshSessionList(context) : null,
+      deepRefresh: state is SessionListLoaded
+          ? CatalogScanRow.deepRefresh(
+              context: context,
+              onStart: () => context.read<SessionListCubit>().startCatalogScan(),
+            )
+          : null,
       slivers: [
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
+        SliverToBoxAdapter(
+          child: CatalogScanRow(
+            scan: catalogScan,
+            onCancel: () => context.read<SessionListCubit>().cancelCatalogScan(),
+            onDismiss: () => context.read<SessionListCubit>().dismissCatalogScan(),
+          ),
+        ),
         SessionListContent(
           projectName: projectName,
           selectedSessionId: selectedSessionId,

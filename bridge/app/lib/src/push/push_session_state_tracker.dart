@@ -496,7 +496,7 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
 
   void _updateLatestAssistantText({required MessagePart part}) {
     final messageRole = _messageRoles[part.messageID];
-    if (part.type != MessagePartType.text || messageRole == null) {
+    if (part is! MessagePartText || messageRole == null) {
       return;
     }
     final isAssistant = switch (messageRole.role) {
@@ -505,7 +505,7 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
     };
     if (!isAssistant) return;
 
-    _stateForSession(sessionId: part.sessionID).latestAssistantText = part.text ?? "";
+    _stateForSession(sessionId: part.sessionID).latestAssistantText = part.text;
   }
 
   void _upsertSession({required Session session, required DateTime touchedAt}) {

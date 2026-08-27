@@ -75,6 +75,12 @@ import 'package:sesori_mobile/core/platform/go_router_route_source.dart'
     as _i597;
 import 'package:sesori_mobile/core/platform/pasteboard_client.dart' as _i748;
 import 'package:sesori_mobile/core/platform/share_plus_client.dart' as _i1019;
+import 'package:sesori_mobile/core/platform/singular/singular_attribution_client.dart'
+    as _i681;
+import 'package:sesori_mobile/core/platform/singular/singular_static_adapter.dart'
+    as _i776;
+import 'package:sesori_mobile/core/platform/singular_attribution_startup.dart'
+    as _i853;
 import 'package:sesori_mobile/core/platform/temporary_directory_client.dart'
     as _i908;
 import 'package:sesori_mobile/core/routing/deep_link_service.dart' as _i902;
@@ -120,6 +126,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i227.GalClient>(() => _i227.GalClient());
     gh.lazySingleton<_i748.PasteboardClient>(() => _i748.PasteboardClient());
     gh.lazySingleton<_i1019.SharePlusClient>(() => _i1019.SharePlusClient());
+    gh.lazySingleton<_i776.SingularStaticAdapter>(
+      () => _i776.SingularStaticAdapter(),
+    );
     gh.lazySingleton<_i908.TemporaryDirectoryClient>(
       () => _i908.TemporaryDirectoryClient(),
     );
@@ -176,6 +185,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i178.FirebaseMessagingStaticAdapter>(
       () => firebaseRegisterModule.disabledFirebaseMessagingStaticAdapter,
       registerFor: {_firebaseDisabled},
+    );
+    gh.lazySingleton<_i853.SingularAttributionStartup>(
+      () => _i853.SingularAttributionStartup(
+        singular: gh<_i776.SingularStaticAdapter>(),
+      ),
     );
     gh.lazySingleton<_i948.AnalyticsClient>(
       () => _i901.NoOpAnalyticsClient(),
@@ -252,6 +266,12 @@ extension GetItInjectableX on _i174.GetIt {
         audioFormat: gh<_i430.AudioFormatConfig>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i948.AttributionClient>(
+      () => _i681.SingularAttributionClient(
+        startup: gh<_i853.SingularAttributionStartup>(),
+        singular: gh<_i776.SingularStaticAdapter>(),
+      ),
     );
     return this;
   }

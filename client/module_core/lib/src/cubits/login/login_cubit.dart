@@ -108,9 +108,9 @@ class LoginCubit({
       _isPolling = true;
       emit(const LoginState.polling());
       try {
-        await _oAuthFlowProvider.resumeOAuthFlow();
+        final result = await _oAuthFlowProvider.resumeOAuthFlow();
         if (!_ownsAttempt(attempt: attempt)) return;
-        _reportCompletedAttempt(attempt: attempt);
+        _reportCompletedAttempt(attempt: attempt, accountStatus: result.accountStatus);
         emit(const LoginState.success());
       } on TimeoutException catch (e, st) {
         loge("OAuth resumed but timed out", e, st);
@@ -191,6 +191,7 @@ class LoginCubit({
       emit(const LoginState.polling());
       _didActivePollEnterBackground = _isInBackground;
       _isPolling = true;
+      late final AuthLoginResult result;
       try {
         logd("Opening ${provider.label} auth URL in browser");
 
@@ -203,13 +204,13 @@ class LoginCubit({
           return false;
         }
 
-        await _oAuthFlowProvider.pollForResult();
+        result = await _oAuthFlowProvider.pollForResult();
       } finally {
         _isPolling = false;
       }
 
       if (!_ownsAttempt(attempt: attempt)) return false;
-      _reportCompletedAttempt(attempt: attempt);
+      _reportCompletedAttempt(attempt: attempt, accountStatus: result.accountStatus);
       emit(const LoginState.success());
       return true;
     } on TimeoutException catch (e, st) {
@@ -280,9 +281,9 @@ class LoginCubit({
     emit(const LoginState.authenticating());
 
     try {
-      await _authSession.loginWithApple(idToken: idToken, nonce: nonce);
+      final result = await _authSession.loginWithApple(idToken: idToken, nonce: nonce);
       if (!_ownsAttempt(attempt: loginAttempt)) return false;
-      _reportCompletedAttempt(attempt: loginAttempt);
+      _reportCompletedAttempt(attempt: loginAttempt, accountStatus: result.accountStatus);
       emit(const LoginState.success());
       return true;
     } catch (e, st) {
@@ -312,9 +313,9 @@ class LoginCubit({
     emit(const LoginState.authenticating());
 
     try {
-      await _authSession.loginWithEmail(email: email.trim(), password: password);
+      final result = await _authSession.loginWithEmail(email: email.trim(), password: password);
       if (!_ownsAttempt(attempt: attempt)) return false;
-      _reportCompletedAttempt(attempt: attempt);
+      _reportCompletedAttempt(attempt: attempt, accountStatus: result.accountStatus);
       emit(const LoginState.success());
       return true;
     } catch (e, st) {
@@ -352,12 +353,15 @@ class LoginCubit({
     return loginAttempt.analyticsOutcome == _LoginAnalyticsOutcome.open ? loginAttempt : null;
   }
 
-  void _reportCompletedAttempt({required _LoginAttempt attempt}) {
+  void _reportCompletedAttempt({required _LoginAttempt attempt, required AccountStatus accountStatus}) {
     if (!_ownsAttempt(attempt: attempt)) return;
     if (attempt.analyticsOutcome != _LoginAnalyticsOutcome.open) return;
     attempt.analyticsOutcome = _LoginAnalyticsOutcome.terminal;
     _report(
-      operation: _installationAnalyticsService.loginAttemptCompleted(provider: attempt.provider),
+      operation: _installationAnalyticsService.loginAttemptCompleted(
+        provider: attempt.provider,
+        accountStatus: accountStatus,
+      ),
       description: "login attempt completion",
     );
   }

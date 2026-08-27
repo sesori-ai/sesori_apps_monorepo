@@ -12,11 +12,74 @@ part of 'message_part.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
+MessagePart _$MessagePartFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['type']) {
+                  case 'text':
+          return MessagePartText.fromJson(
+            json
+          );
+                case 'reasoning':
+          return MessagePartReasoning.fromJson(
+            json
+          );
+                case 'tool':
+          return MessagePartTool.fromJson(
+            json
+          );
+                case 'subtask':
+          return MessagePartSubtask.fromJson(
+            json
+          );
+                case 'step-start':
+          return MessagePartStepStart.fromJson(
+            json
+          );
+                case 'step-finish':
+          return MessagePartStepFinish.fromJson(
+            json
+          );
+                case 'file':
+          return MessagePartFile.fromJson(
+            json
+          );
+                case 'snapshot':
+          return MessagePartSnapshot.fromJson(
+            json
+          );
+                case 'patch':
+          return MessagePartPatch.fromJson(
+            json
+          );
+                case 'agent':
+          return MessagePartAgent.fromJson(
+            json
+          );
+                case 'retry':
+          return MessagePartRetry.fromJson(
+            json
+          );
+                case 'compaction':
+          return MessagePartCompaction.fromJson(
+            json
+          );
+        
+          default:
+            throw CheckedFromJsonException(
+  json,
+  'type',
+  'MessagePart',
+  'Invalid union type "${json['type']}"!'
+);
+        }
+      
+}
 
 /// @nodoc
 mixin _$MessagePart {
 
- String get id; String get sessionID; String get messageID; MessagePartType get type; String? get text; String? get tool; ToolState? get state; String? get prompt; String? get description; String? get agent; String? get agentName; int? get attempt; String? get retryError;@JsonKey(fromJson: _messageAttachmentFromJson) MessageAttachment? get attachment;
+ String get id; String get sessionID; String get messageID;
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,16 +92,16 @@ $MessagePartCopyWith<MessagePart> get copyWith => _$MessagePartCopyWithImpl<Mess
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.agentName, agentName) || other.agentName == agentName)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError)&&(identical(other.attachment, attachment) || other.attachment == attachment));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,state,prompt,description,agent,agentName,attempt,retryError,attachment);
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
 
 @override
 String toString() {
-  return 'MessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, state: $state, prompt: $prompt, description: $description, agent: $agent, agentName: $agentName, attempt: $attempt, retryError: $retryError, attachment: $attachment)';
+  return 'MessagePart(id: $id, sessionID: $sessionID, messageID: $messageID)';
 }
 
 
@@ -49,11 +112,11 @@ abstract mixin class $MessagePartCopyWith<$Res>  {
   factory $MessagePartCopyWith(MessagePart value, $Res Function(MessagePart) _then) = _$MessagePartCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID, String messageID, MessagePartType type, String? text, String? tool, ToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError,@JsonKey(fromJson: _messageAttachmentFromJson) MessageAttachment? attachment
+ String id, String sessionID, String messageID
 });
 
 
-$ToolStateCopyWith<$Res>? get state;$MessageAttachmentCopyWith<$Res>? get attachment;
+
 
 }
 /// @nodoc
@@ -66,50 +129,15 @@ class _$MessagePartCopyWithImpl<$Res>
 
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? agentName = freezed,Object? attempt = freezed,Object? retryError = freezed,Object? attachment = freezed,}) {
-  return _then(MessagePart(
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,}) {
+  return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
-as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as MessagePartType,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
-as String?,tool: freezed == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
-as String?,state: freezed == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
-as ToolState?,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
-as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
-as String?,agentName: freezed == agentName ? _self.agentName : agentName // ignore: cast_nullable_to_non_nullable
-as String?,attempt: freezed == attempt ? _self.attempt : attempt // ignore: cast_nullable_to_non_nullable
-as int?,retryError: freezed == retryError ? _self.retryError : retryError // ignore: cast_nullable_to_non_nullable
-as String?,attachment: freezed == attachment ? _self.attachment : attachment // ignore: cast_nullable_to_non_nullable
-as MessageAttachment?,
+as String,
   ));
 }
-/// Create a copy of MessagePart
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$ToolStateCopyWith<$Res>? get state {
-    if (_self.state == null) {
-    return null;
-  }
 
-  return $ToolStateCopyWith<$Res>(_self.state!, (value) {
-    return _then(_self.copyWith(state: value));
-  });
-}/// Create a copy of MessagePart
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$MessageAttachmentCopyWith<$Res>? get attachment {
-    if (_self.attachment == null) {
-    return null;
-  }
-
-  return $MessageAttachmentCopyWith<$Res>(_self.attachment!, (value) {
-    return _then(_self.copyWith(attachment: value));
-  });
-}
 }
 
 
@@ -117,92 +145,236 @@ $MessageAttachmentCopyWith<$Res>? get attachment {
 /// @nodoc
 @JsonSerializable()
 
-class _MessagePart implements MessagePart {
-  const _MessagePart({required this.id, required this.sessionID, required this.messageID, required this.type, required this.text, required this.tool, required this.state, required this.prompt, required this.description, required this.agent, required this.agentName, required this.attempt, required this.retryError, @JsonKey(fromJson: _messageAttachmentFromJson) required this.attachment});
-  factory _MessagePart.fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);
+class MessagePartText extends MessagePart {
+  const MessagePartText({required this.id, required this.sessionID, required this.messageID, this.text = "",  String? $type}): $type = $type ?? 'text',super._();
+  factory MessagePartText.fromJson(Map<String, dynamic> json) => _$MessagePartTextFromJson(json);
 
 @override final  String id;
 @override final  String sessionID;
 @override final  String messageID;
-@override final  MessagePartType type;
-@override final  String? text;
-@override final  String? tool;
-@override final  ToolState? state;
-@override final  String? prompt;
-@override final  String? description;
-@override final  String? agent;
-@override final  String? agentName;
-@override final  int? attempt;
-@override final  String? retryError;
-@override@JsonKey(fromJson: _messageAttachmentFromJson) final  MessageAttachment? attachment;
+@JsonKey() final  String text;
+
+@JsonKey(name: 'type')
+final String $type;
+
 
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
 @override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-_$MessagePartCopyWith<_MessagePart> get copyWith => __$MessagePartCopyWithImpl<_MessagePart>(this, _$identity);
+$MessagePartTextCopyWith<MessagePartText> get copyWith => _$MessagePartTextCopyWithImpl<MessagePartText>(this, _$identity);
 
 @override
 Map<String, dynamic> toJson() {
-  return _$MessagePartToJson(this, );
+  return _$MessagePartTextToJson(this, );
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.type, type) || other.type == type)&&(identical(other.text, text) || other.text == text)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.agentName, agentName) || other.agentName == agentName)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError)&&(identical(other.attachment, attachment) || other.attachment == attachment));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartText&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,type,text,tool,state,prompt,description,agent,agentName,attempt,retryError,attachment);
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,text);
 
 @override
 String toString() {
-  return 'MessagePart(id: $id, sessionID: $sessionID, messageID: $messageID, type: $type, text: $text, tool: $tool, state: $state, prompt: $prompt, description: $description, agent: $agent, agentName: $agentName, attempt: $attempt, retryError: $retryError, attachment: $attachment)';
+  return 'MessagePart.text(id: $id, sessionID: $sessionID, messageID: $messageID, text: $text)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class _$MessagePartCopyWith<$Res> implements $MessagePartCopyWith<$Res> {
-  factory _$MessagePartCopyWith(_MessagePart value, $Res Function(_MessagePart) _then) = __$MessagePartCopyWithImpl;
+abstract mixin class $MessagePartTextCopyWith<$Res> implements $MessagePartCopyWith<$Res> {
+  factory $MessagePartTextCopyWith(MessagePartText value, $Res Function(MessagePartText) _then) = _$MessagePartTextCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID, MessagePartType type, String? text, String? tool, ToolState? state, String? prompt, String? description, String? agent, String? agentName, int? attempt, String? retryError,@JsonKey(fromJson: _messageAttachmentFromJson) MessageAttachment? attachment
+ String id, String sessionID, String messageID, String text
 });
 
 
-@override $ToolStateCopyWith<$Res>? get state;@override $MessageAttachmentCopyWith<$Res>? get attachment;
+
 
 }
 /// @nodoc
-class __$MessagePartCopyWithImpl<$Res>
-    implements _$MessagePartCopyWith<$Res> {
-  __$MessagePartCopyWithImpl(this._self, this._then);
+class _$MessagePartTextCopyWithImpl<$Res>
+    implements $MessagePartTextCopyWith<$Res> {
+  _$MessagePartTextCopyWithImpl(this._self, this._then);
 
-  final _MessagePart _self;
-  final $Res Function(_MessagePart) _then;
+  final MessagePartText _self;
+  final $Res Function(MessagePartText) _then;
 
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? type = null,Object? text = freezed,Object? tool = freezed,Object? state = freezed,Object? prompt = freezed,Object? description = freezed,Object? agent = freezed,Object? agentName = freezed,Object? attempt = freezed,Object? retryError = freezed,Object? attachment = freezed,}) {
-  return _then(_MessagePart(
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? text = null,}) {
+  return _then(MessagePartText(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
-as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as MessagePartType,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
-as String?,tool: freezed == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
-as String?,state: freezed == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
-as ToolState?,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
-as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as String?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
-as String?,agentName: freezed == agentName ? _self.agentName : agentName // ignore: cast_nullable_to_non_nullable
-as String?,attempt: freezed == attempt ? _self.attempt : attempt // ignore: cast_nullable_to_non_nullable
-as int?,retryError: freezed == retryError ? _self.retryError : retryError // ignore: cast_nullable_to_non_nullable
-as String?,attachment: freezed == attachment ? _self.attachment : attachment // ignore: cast_nullable_to_non_nullable
-as MessageAttachment?,
+as String,text: null == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class MessagePartReasoning extends MessagePart {
+  const MessagePartReasoning({required this.id, required this.sessionID, required this.messageID, this.text = "",  String? $type}): $type = $type ?? 'reasoning',super._();
+  factory MessagePartReasoning.fromJson(Map<String, dynamic> json) => _$MessagePartReasoningFromJson(json);
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+@JsonKey() final  String text;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessagePartReasoningCopyWith<MessagePartReasoning> get copyWith => _$MessagePartReasoningCopyWithImpl<MessagePartReasoning>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessagePartReasoningToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartReasoning&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.text, text) || other.text == text));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,text);
+
+@override
+String toString() {
+  return 'MessagePart.reasoning(id: $id, sessionID: $sessionID, messageID: $messageID, text: $text)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessagePartReasoningCopyWith<$Res> implements $MessagePartCopyWith<$Res> {
+  factory $MessagePartReasoningCopyWith(MessagePartReasoning value, $Res Function(MessagePartReasoning) _then) = _$MessagePartReasoningCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID, String text
+});
+
+
+
+
+}
+/// @nodoc
+class _$MessagePartReasoningCopyWithImpl<$Res>
+    implements $MessagePartReasoningCopyWith<$Res> {
+  _$MessagePartReasoningCopyWithImpl(this._self, this._then);
+
+  final MessagePartReasoning _self;
+  final $Res Function(MessagePartReasoning) _then;
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? text = null,}) {
+  return _then(MessagePartReasoning(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,text: null == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class MessagePartTool extends MessagePart {
+  const MessagePartTool({required this.id, required this.sessionID, required this.messageID, this.tool = "", this.state = const ToolState(status: ToolStatus.pending, title: null, output: null, error: null),  String? $type}): $type = $type ?? 'tool',super._();
+  factory MessagePartTool.fromJson(Map<String, dynamic> json) => _$MessagePartToolFromJson(json);
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+@JsonKey() final  String tool;
+@JsonKey() final  ToolState state;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessagePartToolCopyWith<MessagePartTool> get copyWith => _$MessagePartToolCopyWithImpl<MessagePartTool>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessagePartToolToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartTool&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,tool,state);
+
+@override
+String toString() {
+  return 'MessagePart.tool(id: $id, sessionID: $sessionID, messageID: $messageID, tool: $tool, state: $state)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessagePartToolCopyWith<$Res> implements $MessagePartCopyWith<$Res> {
+  factory $MessagePartToolCopyWith(MessagePartTool value, $Res Function(MessagePartTool) _then) = _$MessagePartToolCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID, String tool, ToolState state
+});
+
+
+$ToolStateCopyWith<$Res> get state;
+
+}
+/// @nodoc
+class _$MessagePartToolCopyWithImpl<$Res>
+    implements $MessagePartToolCopyWith<$Res> {
+  _$MessagePartToolCopyWithImpl(this._self, this._then);
+
+  final MessagePartTool _self;
+  final $Res Function(MessagePartTool) _then;
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? tool = null,Object? state = null,}) {
+  return _then(MessagePartTool(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,tool: null == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
+as String,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
+as ToolState,
   ));
 }
 
@@ -210,27 +382,728 @@ as MessageAttachment?,
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$ToolStateCopyWith<$Res>? get state {
-    if (_self.state == null) {
-    return null;
-  }
-
-  return $ToolStateCopyWith<$Res>(_self.state!, (value) {
+$ToolStateCopyWith<$Res> get state {
+  
+  return $ToolStateCopyWith<$Res>(_self.state, (value) {
     return _then(_self.copyWith(state: value));
   });
-}/// Create a copy of MessagePart
+}
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class MessagePartSubtask extends MessagePart {
+  const MessagePartSubtask({required this.id, required this.sessionID, required this.messageID, this.prompt = "", this.description = "", this.agent = "",  String? $type}): $type = $type ?? 'subtask',super._();
+  factory MessagePartSubtask.fromJson(Map<String, dynamic> json) => _$MessagePartSubtaskFromJson(json);
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+@JsonKey() final  String prompt;
+@JsonKey() final  String description;
+@JsonKey() final  String agent;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessagePartSubtaskCopyWith<MessagePartSubtask> get copyWith => _$MessagePartSubtaskCopyWithImpl<MessagePartSubtask>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessagePartSubtaskToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartSubtask&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,prompt,description,agent);
+
+@override
+String toString() {
+  return 'MessagePart.subtask(id: $id, sessionID: $sessionID, messageID: $messageID, prompt: $prompt, description: $description, agent: $agent)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessagePartSubtaskCopyWith<$Res> implements $MessagePartCopyWith<$Res> {
+  factory $MessagePartSubtaskCopyWith(MessagePartSubtask value, $Res Function(MessagePartSubtask) _then) = _$MessagePartSubtaskCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID, String prompt, String description, String agent
+});
+
+
+
+
+}
+/// @nodoc
+class _$MessagePartSubtaskCopyWithImpl<$Res>
+    implements $MessagePartSubtaskCopyWith<$Res> {
+  _$MessagePartSubtaskCopyWithImpl(this._self, this._then);
+
+  final MessagePartSubtask _self;
+  final $Res Function(MessagePartSubtask) _then;
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? prompt = null,Object? description = null,Object? agent = null,}) {
+  return _then(MessagePartSubtask(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,prompt: null == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
+as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String,agent: null == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class MessagePartStepStart extends MessagePart {
+  const MessagePartStepStart({required this.id, required this.sessionID, required this.messageID,  String? $type}): $type = $type ?? 'step-start',super._();
+  factory MessagePartStepStart.fromJson(Map<String, dynamic> json) => _$MessagePartStepStartFromJson(json);
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessagePartStepStartCopyWith<MessagePartStepStart> get copyWith => _$MessagePartStepStartCopyWithImpl<MessagePartStepStart>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessagePartStepStartToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartStepStart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+
+@override
+String toString() {
+  return 'MessagePart.stepStart(id: $id, sessionID: $sessionID, messageID: $messageID)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessagePartStepStartCopyWith<$Res> implements $MessagePartCopyWith<$Res> {
+  factory $MessagePartStepStartCopyWith(MessagePartStepStart value, $Res Function(MessagePartStepStart) _then) = _$MessagePartStepStartCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID
+});
+
+
+
+
+}
+/// @nodoc
+class _$MessagePartStepStartCopyWithImpl<$Res>
+    implements $MessagePartStepStartCopyWith<$Res> {
+  _$MessagePartStepStartCopyWithImpl(this._self, this._then);
+
+  final MessagePartStepStart _self;
+  final $Res Function(MessagePartStepStart) _then;
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,}) {
+  return _then(MessagePartStepStart(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class MessagePartStepFinish extends MessagePart {
+  const MessagePartStepFinish({required this.id, required this.sessionID, required this.messageID,  String? $type}): $type = $type ?? 'step-finish',super._();
+  factory MessagePartStepFinish.fromJson(Map<String, dynamic> json) => _$MessagePartStepFinishFromJson(json);
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessagePartStepFinishCopyWith<MessagePartStepFinish> get copyWith => _$MessagePartStepFinishCopyWithImpl<MessagePartStepFinish>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessagePartStepFinishToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartStepFinish&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+
+@override
+String toString() {
+  return 'MessagePart.stepFinish(id: $id, sessionID: $sessionID, messageID: $messageID)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessagePartStepFinishCopyWith<$Res> implements $MessagePartCopyWith<$Res> {
+  factory $MessagePartStepFinishCopyWith(MessagePartStepFinish value, $Res Function(MessagePartStepFinish) _then) = _$MessagePartStepFinishCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID
+});
+
+
+
+
+}
+/// @nodoc
+class _$MessagePartStepFinishCopyWithImpl<$Res>
+    implements $MessagePartStepFinishCopyWith<$Res> {
+  _$MessagePartStepFinishCopyWithImpl(this._self, this._then);
+
+  final MessagePartStepFinish _self;
+  final $Res Function(MessagePartStepFinish) _then;
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,}) {
+  return _then(MessagePartStepFinish(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class MessagePartFile extends MessagePart {
+  const MessagePartFile({required this.id, required this.sessionID, required this.messageID, @JsonKey(fromJson: _messageAttachmentFromJson) this.attachment = const MessageAttachment.unknown(),  String? $type}): $type = $type ?? 'file',super._();
+  factory MessagePartFile.fromJson(Map<String, dynamic> json) => _$MessagePartFileFromJson(json);
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+@JsonKey(fromJson: _messageAttachmentFromJson) final  MessageAttachment attachment;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessagePartFileCopyWith<MessagePartFile> get copyWith => _$MessagePartFileCopyWithImpl<MessagePartFile>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessagePartFileToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartFile&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.attachment, attachment) || other.attachment == attachment));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,attachment);
+
+@override
+String toString() {
+  return 'MessagePart.file(id: $id, sessionID: $sessionID, messageID: $messageID, attachment: $attachment)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessagePartFileCopyWith<$Res> implements $MessagePartCopyWith<$Res> {
+  factory $MessagePartFileCopyWith(MessagePartFile value, $Res Function(MessagePartFile) _then) = _$MessagePartFileCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID,@JsonKey(fromJson: _messageAttachmentFromJson) MessageAttachment attachment
+});
+
+
+$MessageAttachmentCopyWith<$Res> get attachment;
+
+}
+/// @nodoc
+class _$MessagePartFileCopyWithImpl<$Res>
+    implements $MessagePartFileCopyWith<$Res> {
+  _$MessagePartFileCopyWithImpl(this._self, this._then);
+
+  final MessagePartFile _self;
+  final $Res Function(MessagePartFile) _then;
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? attachment = null,}) {
+  return _then(MessagePartFile(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,attachment: null == attachment ? _self.attachment : attachment // ignore: cast_nullable_to_non_nullable
+as MessageAttachment,
+  ));
+}
+
+/// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$MessageAttachmentCopyWith<$Res>? get attachment {
-    if (_self.attachment == null) {
-    return null;
-  }
-
-  return $MessageAttachmentCopyWith<$Res>(_self.attachment!, (value) {
+$MessageAttachmentCopyWith<$Res> get attachment {
+  
+  return $MessageAttachmentCopyWith<$Res>(_self.attachment, (value) {
     return _then(_self.copyWith(attachment: value));
   });
 }
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class MessagePartSnapshot extends MessagePart {
+  const MessagePartSnapshot({required this.id, required this.sessionID, required this.messageID,  String? $type}): $type = $type ?? 'snapshot',super._();
+  factory MessagePartSnapshot.fromJson(Map<String, dynamic> json) => _$MessagePartSnapshotFromJson(json);
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessagePartSnapshotCopyWith<MessagePartSnapshot> get copyWith => _$MessagePartSnapshotCopyWithImpl<MessagePartSnapshot>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessagePartSnapshotToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartSnapshot&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+
+@override
+String toString() {
+  return 'MessagePart.snapshot(id: $id, sessionID: $sessionID, messageID: $messageID)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessagePartSnapshotCopyWith<$Res> implements $MessagePartCopyWith<$Res> {
+  factory $MessagePartSnapshotCopyWith(MessagePartSnapshot value, $Res Function(MessagePartSnapshot) _then) = _$MessagePartSnapshotCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID
+});
+
+
+
+
+}
+/// @nodoc
+class _$MessagePartSnapshotCopyWithImpl<$Res>
+    implements $MessagePartSnapshotCopyWith<$Res> {
+  _$MessagePartSnapshotCopyWithImpl(this._self, this._then);
+
+  final MessagePartSnapshot _self;
+  final $Res Function(MessagePartSnapshot) _then;
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,}) {
+  return _then(MessagePartSnapshot(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class MessagePartPatch extends MessagePart {
+  const MessagePartPatch({required this.id, required this.sessionID, required this.messageID,  String? $type}): $type = $type ?? 'patch',super._();
+  factory MessagePartPatch.fromJson(Map<String, dynamic> json) => _$MessagePartPatchFromJson(json);
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessagePartPatchCopyWith<MessagePartPatch> get copyWith => _$MessagePartPatchCopyWithImpl<MessagePartPatch>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessagePartPatchToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartPatch&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+
+@override
+String toString() {
+  return 'MessagePart.patch(id: $id, sessionID: $sessionID, messageID: $messageID)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessagePartPatchCopyWith<$Res> implements $MessagePartCopyWith<$Res> {
+  factory $MessagePartPatchCopyWith(MessagePartPatch value, $Res Function(MessagePartPatch) _then) = _$MessagePartPatchCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID
+});
+
+
+
+
+}
+/// @nodoc
+class _$MessagePartPatchCopyWithImpl<$Res>
+    implements $MessagePartPatchCopyWith<$Res> {
+  _$MessagePartPatchCopyWithImpl(this._self, this._then);
+
+  final MessagePartPatch _self;
+  final $Res Function(MessagePartPatch) _then;
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,}) {
+  return _then(MessagePartPatch(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class MessagePartAgent extends MessagePart {
+  const MessagePartAgent({required this.id, required this.sessionID, required this.messageID, this.agentName = "",  String? $type}): $type = $type ?? 'agent',super._();
+  factory MessagePartAgent.fromJson(Map<String, dynamic> json) => _$MessagePartAgentFromJson(json);
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+@JsonKey() final  String agentName;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessagePartAgentCopyWith<MessagePartAgent> get copyWith => _$MessagePartAgentCopyWithImpl<MessagePartAgent>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessagePartAgentToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartAgent&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.agentName, agentName) || other.agentName == agentName));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,agentName);
+
+@override
+String toString() {
+  return 'MessagePart.agent(id: $id, sessionID: $sessionID, messageID: $messageID, agentName: $agentName)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessagePartAgentCopyWith<$Res> implements $MessagePartCopyWith<$Res> {
+  factory $MessagePartAgentCopyWith(MessagePartAgent value, $Res Function(MessagePartAgent) _then) = _$MessagePartAgentCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID, String agentName
+});
+
+
+
+
+}
+/// @nodoc
+class _$MessagePartAgentCopyWithImpl<$Res>
+    implements $MessagePartAgentCopyWith<$Res> {
+  _$MessagePartAgentCopyWithImpl(this._self, this._then);
+
+  final MessagePartAgent _self;
+  final $Res Function(MessagePartAgent) _then;
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? agentName = null,}) {
+  return _then(MessagePartAgent(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,agentName: null == agentName ? _self.agentName : agentName // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class MessagePartRetry extends MessagePart {
+  const MessagePartRetry({required this.id, required this.sessionID, required this.messageID, this.attempt = 0, this.retryError = "",  String? $type}): $type = $type ?? 'retry',super._();
+  factory MessagePartRetry.fromJson(Map<String, dynamic> json) => _$MessagePartRetryFromJson(json);
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+@JsonKey() final  int attempt;
+@JsonKey() final  String retryError;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessagePartRetryCopyWith<MessagePartRetry> get copyWith => _$MessagePartRetryCopyWithImpl<MessagePartRetry>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessagePartRetryToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartRetry&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,attempt,retryError);
+
+@override
+String toString() {
+  return 'MessagePart.retry(id: $id, sessionID: $sessionID, messageID: $messageID, attempt: $attempt, retryError: $retryError)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessagePartRetryCopyWith<$Res> implements $MessagePartCopyWith<$Res> {
+  factory $MessagePartRetryCopyWith(MessagePartRetry value, $Res Function(MessagePartRetry) _then) = _$MessagePartRetryCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID, int attempt, String retryError
+});
+
+
+
+
+}
+/// @nodoc
+class _$MessagePartRetryCopyWithImpl<$Res>
+    implements $MessagePartRetryCopyWith<$Res> {
+  _$MessagePartRetryCopyWithImpl(this._self, this._then);
+
+  final MessagePartRetry _self;
+  final $Res Function(MessagePartRetry) _then;
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? attempt = null,Object? retryError = null,}) {
+  return _then(MessagePartRetry(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,attempt: null == attempt ? _self.attempt : attempt // ignore: cast_nullable_to_non_nullable
+as int,retryError: null == retryError ? _self.retryError : retryError // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class MessagePartCompaction extends MessagePart {
+  const MessagePartCompaction({required this.id, required this.sessionID, required this.messageID,  String? $type}): $type = $type ?? 'compaction',super._();
+  factory MessagePartCompaction.fromJson(Map<String, dynamic> json) => _$MessagePartCompactionFromJson(json);
+
+@override final  String id;
+@override final  String sessionID;
+@override final  String messageID;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessagePartCompactionCopyWith<MessagePartCompaction> get copyWith => _$MessagePartCompactionCopyWithImpl<MessagePartCompaction>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessagePartCompactionToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartCompaction&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+
+@override
+String toString() {
+  return 'MessagePart.compaction(id: $id, sessionID: $sessionID, messageID: $messageID)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessagePartCompactionCopyWith<$Res> implements $MessagePartCopyWith<$Res> {
+  factory $MessagePartCompactionCopyWith(MessagePartCompaction value, $Res Function(MessagePartCompaction) _then) = _$MessagePartCompactionCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String sessionID, String messageID
+});
+
+
+
+
+}
+/// @nodoc
+class _$MessagePartCompactionCopyWithImpl<$Res>
+    implements $MessagePartCompactionCopyWith<$Res> {
+  _$MessagePartCompactionCopyWithImpl(this._self, this._then);
+
+  final MessagePartCompaction _self;
+  final $Res Function(MessagePartCompaction) _then;
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,}) {
+  return _then(MessagePartCompaction(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
 }
 
 MessageAttachment _$MessageAttachmentFromJson(

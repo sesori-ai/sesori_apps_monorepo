@@ -20,6 +20,11 @@ AuthSessionStatusResponseComplete _$AuthSessionStatusResponseCompleteFromJson(
   accessToken: json['accessToken'] as String,
   refreshToken: json['refreshToken'] as String,
   user: AuthUser.fromJson(Map<String, dynamic>.from(json['user'] as Map)),
+  accountStatus: $enumDecode(
+    _$AccountStatusEnumMap,
+    json['accountStatus'],
+    unknownValue: AccountStatus.unknown,
+  ),
   $type: json['status'] as String?,
 );
 
@@ -29,7 +34,14 @@ Map<String, dynamic> _$AuthSessionStatusResponseCompleteToJson(
   'accessToken': instance.accessToken,
   'refreshToken': instance.refreshToken,
   'user': instance.user.toJson(),
+  'accountStatus': _$AccountStatusEnumMap[instance.accountStatus]!,
   'status': instance.$type,
+};
+
+const _$AccountStatusEnumMap = {
+  AccountStatus.created: 'created',
+  AccountStatus.existing: 'existing',
+  AccountStatus.unknown: 'unknown',
 };
 
 AuthSessionStatusResponseDenied _$AuthSessionStatusResponseDeniedFromJson(

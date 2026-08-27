@@ -35,8 +35,6 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
   /// The exact OpenCode version the managed runtime installs.
   static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: targetVersion);
 
-  static const String _releaseBaseUrl = "https://github.com/anomalyco/opencode/releases/download";
-
   /// Pinned per-platform assets for [bundledVersion]. darwin/windows ship `.zip`,
   /// linux ships `.tar.gz`; the non-baseline, non-musl CLI builds are used. The
   /// OpenCode archives contain the executable under its plain canonical name, so
@@ -125,7 +123,6 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
 
   /// The download URL for [asset] at [bundledVersion].
   @override
-  String downloadUrlFor({required RuntimeAsset asset}) {
-    return "$_releaseBaseUrl/v$bundledVersion/${asset.assetName}";
-  }
+  String downloadUrlFor({required RuntimeAsset asset}) =>
+      githubReleaseAssetUrl(repository: "anomalyco/opencode", tag: "v${bundledVersion.raw}", asset: asset);
 }

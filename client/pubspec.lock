@@ -1558,6 +1558,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.0"
+  singular_flutter_sdk:
+    dependency: transitive
+    description:
+      name: singular_flutter_sdk
+      sha256: e66dccc1346642d8f41a6b55e4e71675629fd291b0e6ff798fdcb369a3c583b6
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.9.0"
   sky_engine:
     dependency: transitive
     description: flutter

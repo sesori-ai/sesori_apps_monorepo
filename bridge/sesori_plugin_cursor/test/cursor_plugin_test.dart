@@ -210,7 +210,7 @@ void main() {
       await pump();
 
       expect(
-        events.whereType<BridgeSseMessagePartUpdated>().single.part.text,
+        (events.whereType<BridgeSseMessagePartUpdated>().single.part as PluginMessagePartText).text,
         "/compact focus on the current task",
       );
       final promptFrame = await waitForFrame("session/prompt");

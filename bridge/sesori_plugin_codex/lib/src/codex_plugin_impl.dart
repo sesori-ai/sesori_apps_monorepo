@@ -604,7 +604,8 @@ class CodexPlugin._({
   Future<bool> healthCheck() async {
     try {
       return await _ensureConnected();
-    } catch (_) {
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] health check failed", error, stackTrace);
       return false;
     }
   }
@@ -1169,8 +1170,8 @@ class CodexPlugin._({
     if (_activeTurnByThread.containsKey(sessionId)) {
       try {
         await abortSession(sessionId: sessionId);
-      } catch (_) {
-        // Continue with delete even if the abort raced.
+      } on Object catch (error, stackTrace) {
+        Log.w("[codex] failed to abort session $sessionId before deletion; continuing", error, stackTrace);
       }
     }
     _approvalRegistry?.cancelForSession(sessionId: sessionId);

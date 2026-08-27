@@ -6,11 +6,20 @@ extension SessionMessagePresentation on MessageWithParts {
   bool get hasRenderableUserContent {
     if (info is! MessageUser) return true;
     return parts.any(
-      (part) =>
-          (part.type == MessagePartType.text && (part.text?.isNotEmpty ?? false)) ||
-          (part.type == MessagePartType.file &&
-              part.attachment != null &&
-              part.attachment is! MessageAttachmentUnknown),
+      (part) => switch (part) {
+        MessagePartText(:final text) => text.isNotEmpty,
+        MessagePartFile(:final attachment) => attachment is! MessageAttachmentUnknown,
+        MessagePartReasoning() ||
+        MessagePartTool() ||
+        MessagePartSubtask() ||
+        MessagePartStepStart() ||
+        MessagePartStepFinish() ||
+        MessagePartSnapshot() ||
+        MessagePartPatch() ||
+        MessagePartAgent() ||
+        MessagePartRetry() ||
+        MessagePartCompaction() => false,
+      },
     );
   }
 }
@@ -42,7 +51,21 @@ extension SessionDetailResolvers on SessionDetailState {
     for (final m in self.messages) {
       if (m.info.id != messageId) continue;
       for (final p in m.parts) {
-        if (p.id == partId) return (text: p.text ?? "", isStreaming: false);
+        if (p.id != partId) continue;
+        final text = switch (p) {
+          MessagePartText(:final text) || MessagePartReasoning(:final text) => text,
+          MessagePartTool() ||
+          MessagePartSubtask() ||
+          MessagePartStepStart() ||
+          MessagePartStepFinish() ||
+          MessagePartFile() ||
+          MessagePartSnapshot() ||
+          MessagePartPatch() ||
+          MessagePartAgent() ||
+          MessagePartRetry() ||
+          MessagePartCompaction() => null,
+        };
+        return (text: text ?? "", isStreaming: false);
       }
     }
 

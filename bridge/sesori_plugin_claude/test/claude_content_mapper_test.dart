@@ -141,7 +141,7 @@ void main() {
       expect(parts[1].text, "reasoning");
       expect(parts[2].id, "toolu-1");
       expect(parts[2].tool, "Read");
-      expect(parts[2].state?.status, PluginToolStatus.pending);
+      expect(parts[2].state.status, PluginToolStatus.pending);
       expect(parts[3].attachment, isA<PluginMessageAttachmentInlineImage>());
       expect(parts, everyElement(predicate<PluginMessagePart>((part) => part.sessionID == "session-1")));
       expect(parts, everyElement(predicate<PluginMessagePart>((part) => part.messageID == "message-1")));
@@ -169,12 +169,12 @@ void main() {
           .single;
 
       expect(success.tool, isNull);
-      expect(success.state?.status, PluginToolStatus.completed);
-      expect(success.state?.output, "done");
-      expect(success.state?.error, isNull);
-      expect(failure.state?.status, PluginToolStatus.error);
-      expect(failure.state?.output, isNull);
-      expect(failure.state?.error, "boom");
+      expect(success.state.status, PluginToolStatus.completed);
+      expect(success.state.output, "done");
+      expect(success.state.error, isNull);
+      expect(failure.state.status, PluginToolStatus.error);
+      expect(failure.state.output, isNull);
+      expect(failure.state.error, "boom");
     });
 
     test("normalizes supported base64 images", () {

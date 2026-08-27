@@ -19,10 +19,14 @@ import "core/extensions/appearance_mode_x.dart";
 import "core/extensions/build_context_x.dart";
 import "core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "core/platform/firebase_analytics_startup.dart";
+import "core/platform/singular_attribution_startup.dart";
 import "core/routing/app_router.dart";
 import "core/routing/deep_link_service.dart";
 import "firebase_options.dart";
 import "l10n/app_localizations.dart";
+
+const _singularSdkKeyDefine = String.fromEnvironment("SESORI_SINGULAR_SDK_KEY");
+const _singularSdkSecretDefine = String.fromEnvironment("SESORI_SINGULAR_SDK_SECRET");
 
 @pragma("vm:entry-point")
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -81,6 +85,7 @@ void main() async {
         supportsCrashlytics: supportsFirebaseCrashlytics,
       );
     },
+    startSingularAttributionFn: _startSingularAttribution,
     initializeDeepLinks: () => getIt<DeepLinkService>().init(),
     startProductAnalyticsFn: () => getIt<ProductAnalyticsService>().start(),
     startAnalyticsRouteListenerFn: () => getIt<AnalyticsRouteListener>().start(),
@@ -100,6 +105,7 @@ void main() async {
 Future<void> bootstrapSesoriApp({
   required bool shouldInitializeFirebase,
   required Future<void> Function() configureDependenciesFn,
+  required Future<void> Function() startSingularAttributionFn,
   required void Function() initializeDeepLinks,
   required Future<void> Function() startProductAnalyticsFn,
   required Future<void> Function() startAnalyticsRouteListenerFn,
@@ -109,6 +115,11 @@ Future<void> bootstrapSesoriApp({
   required void Function(Widget app) runAppFn,
 }) async {
   await configureDependenciesFn();
+  try {
+    await startSingularAttributionFn();
+  } on Object catch (error, stackTrace) {
+    logw("Error bootstrapping Singular attribution", error, stackTrace);
+  }
   initializeDeepLinks();
   await startProductAnalyticsFn();
   await startAnalyticsRouteListenerFn();
@@ -164,12 +175,21 @@ Future<AnalyticsRuntimeCapability> _createAnalyticsRuntimeCapability({
           reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
         )
       : await FirebaseAnalyticsStartup(analytics: FirebaseAnalytics.instance).configure(
-          ineligibilityReason: await _analyticsIneligibilityReason(authSession: authSession),
+          ineligibilityReason: await _measurementIneligibilityReason(authSession: authSession),
         );
   if (capability case AnalyticsRuntimeDisabled(:final reason)) {
     logi("Firebase analytics runtime disabled (${reason.name})");
   }
   return capability;
+}
+
+Future<void> _startSingularAttribution() async {
+  getIt<SingularAttributionStartup>().start(
+    isSupportedPlatform: _supportsSingular,
+    ineligibilityReason: await _measurementIneligibilityReason(authSession: getIt<AuthSession>()),
+    sdkKey: _singularSdkKeyDefine,
+    sdkSecret: _singularSdkSecretDefine,
+  );
 }
 
 /// Unix seconds at which the release lanes compiled this binary. Builds made
@@ -197,7 +217,7 @@ bool isWithinBuildWindow({required int buildEpochSeconds, required DateTime now}
 /// after an upload; TestFlight runs nothing, so only Android is gated. Crawlers
 /// never sign in, so an unauthenticated launch inside the build window is
 /// treated as one. A signed-in device keeps reporting at any time.
-Future<AnalyticsRuntimeDisabledReason?> _analyticsIneligibilityReason({required AuthSession authSession}) async {
+Future<AnalyticsRuntimeDisabledReason?> _measurementIneligibilityReason({required AuthSession authSession}) async {
   if (!kReleaseMode) return AnalyticsRuntimeDisabledReason.debugOrProfile;
   if (defaultTargetPlatform == TargetPlatform.android &&
       isWithinBuildWindow(buildEpochSeconds: _buildEpochSeconds, now: DateTime.now()) &&
@@ -238,6 +258,15 @@ bool get _supportsFirebase {
     TargetPlatform.android => !kProfileMode,
     TargetPlatform.iOS || TargetPlatform.macOS => true,
     TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => false,
+  };
+}
+
+bool get _supportsSingular {
+  if (kIsWeb) return false;
+
+  return switch (defaultTargetPlatform) {
+    TargetPlatform.android || TargetPlatform.iOS => true,
+    TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.macOS || TargetPlatform.windows => false,
   };
 }
 

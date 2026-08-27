@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
+import "../../core/widgets/catalog_scan_row.dart";
 import "../../l10n/app_localizations.dart";
 import "session_list_content.dart";
 import "session_tile.dart";
@@ -17,10 +18,6 @@ class const SessionListPanel({
   required final SessionMenuEntriesBuilder sessionMenuEntries,
   required final VoidCallback onNewSession,
   final VoidCallback? onBack,
-    /// The optional second stage of this pane's pull-to-refresh. Introduced
-  /// here rather than with its consumer so the pane's own gesture is testable
-  /// before anything wires it up.
-  final PregoDeepRefresh? deepRefresh,
 }) extends StatelessWidget {
   /// Header width below which the labelled "New session" button collapses to an
   /// icon-only button so the title keeps a usable width.
@@ -128,6 +125,7 @@ class const SessionListPanel({
   Widget _buildScrollableContent(BuildContext context, {required SessionListState state}) {
     final isRefreshing = state is SessionListLoaded && state.isRefreshing;
     final canRefresh = state is SessionListLoaded;
+    final catalogScan = state is SessionListLoaded ? state.catalogScan : const CatalogRescanState.idle();
     return CustomScrollView(
       physics: canRefresh
           ? const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics())
@@ -136,11 +134,21 @@ class const SessionListPanel({
         if (canRefresh)
           PregoSliverRefreshControl(
             onRefresh: () => refreshSessionList(context),
-            deepRefresh: deepRefresh,
+            deepRefresh: CatalogScanRow.deepRefresh(
+              context: context,
+              onStart: () => context.read<SessionListCubit>().startCatalogScan(),
+            ),
             decorate: null,
             onPulledExtentChanged: null,
           ),
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
+        SliverToBoxAdapter(
+          child: CatalogScanRow(
+            scan: catalogScan,
+            onCancel: () => context.read<SessionListCubit>().cancelCatalogScan(),
+            onDismiss: () => context.read<SessionListCubit>().dismissCatalogScan(),
+          ),
+        ),
         SessionListContent(
           projectName: projectName,
           selectedSessionId: selectedSessionId,

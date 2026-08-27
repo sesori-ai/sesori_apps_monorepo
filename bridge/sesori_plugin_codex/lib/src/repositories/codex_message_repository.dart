@@ -319,21 +319,11 @@ class CodexMessageRepository({
             PluginMessageWithParts(
               info: assistantInfo(id: messageId, time: messageTime),
               parts: [
-                PluginMessagePart(
+PluginMessagePart.reasoning(
                   id: "$messageId-reasoning",
                   sessionID: sessionId,
                   messageID: messageId,
-                  type: PluginMessagePartType.reasoning,
                   text: reasoning,
-                  tool: null,
-                  state: null,
-                  prompt: null,
-                  description: null,
-                  agent: null,
-                  agentName: null,
-                  attempt: null,
-                  retryError: null,
-                  attachment: null,
                 ),
               ],
             ),
@@ -462,37 +452,17 @@ class CodexMessageRepository({
       info: info,
       parts: [
         if (text != null)
-          PluginMessagePart(
+          PluginMessagePart.text(
             id: "$messageId-text",
             sessionID: sessionId,
             messageID: messageId,
-            type: PluginMessagePartType.text,
             text: text,
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         for (var index = 0; index < attachments.length; index++)
-          PluginMessagePart(
+          PluginMessagePart.file(
             id: "$messageId-file-${index + 1}",
             sessionID: sessionId,
             messageID: messageId,
-            type: PluginMessagePartType.file,
-            text: null,
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
             attachment: attachments[index],
           ),
       ],
@@ -512,12 +482,10 @@ class CodexMessageRepository({
     return PluginMessageWithParts(
       info: info,
       parts: [
-        PluginMessagePart(
+        PluginMessagePart.tool(
           id: "$messageId-tool",
           sessionID: sessionId,
           messageID: messageId,
-          type: PluginMessagePartType.tool,
-          text: "",
           tool: tool,
           state: PluginToolState(
             status: status,
@@ -526,13 +494,6 @@ class CodexMessageRepository({
             error: status == PluginToolStatus.error ? output : null,
             attachments: attachments,
           ),
-          prompt: null,
-          description: null,
-          agent: null,
-          agentName: null,
-          attempt: null,
-          retryError: null,
-          attachment: null,
         ),
       ],
     );

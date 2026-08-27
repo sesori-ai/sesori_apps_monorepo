@@ -484,21 +484,11 @@ void main() {
             time: null,
           ),
           parts: [
-            MessagePart(
+            MessagePart.text(
               id: "markdown-user-text",
               sessionID: "session-1",
               messageID: "markdown-user",
-              type: MessagePartType.text,
               text: "Please **review** `main.dart`",
-              tool: null,
-              state: null,
-              prompt: null,
-              description: null,
-              agent: null,
-              agentName: null,
-              attempt: null,
-              retryError: null,
-              attachment: null,
             ),
           ],
         ),
@@ -529,21 +519,11 @@ void main() {
             time: null,
           ),
           parts: [
-            MessagePart(
+            MessagePart.text(
               id: "remote-image-user-text",
               sessionID: "session-1",
               messageID: "remote-image-user",
-              type: MessagePartType.text,
               text: "![diagram](https://example.com/diagram.png)",
-              tool: null,
-              state: null,
-              prompt: null,
-              description: null,
-              agent: null,
-              agentName: null,
-              attempt: null,
-              retryError: null,
-              attachment: null,
             ),
           ],
         ),
@@ -572,20 +552,10 @@ void main() {
             time: null,
           ),
           parts: [
-            MessagePart(
+            MessagePart.file(
               id: "unknown-file",
               sessionID: "session-1",
               messageID: "unknown-attachment-user",
-              type: MessagePartType.file,
-              text: null,
-              tool: null,
-              state: null,
-              prompt: null,
-              description: null,
-              agent: null,
-              agentName: null,
-              attempt: null,
-              retryError: null,
               attachment: MessageAttachment.unknown(),
             ),
           ],
@@ -2786,7 +2756,7 @@ void main() {
     );
   });
 
-  testWidgets("a queued attachment-only submission shows an image count instead of a blank bubble", (tester) async {
+  testWidgets("a queued attachment-only submission shows its thumbnail and image count", (tester) async {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       queuedMessages: [
         QueuedSessionSubmission.text(
@@ -2808,19 +2778,22 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("1 image"), findsOneWidget);
+    expect(find.descendant(of: find.byType(QueuedMessageBubble), matching: find.byType(Image)), findsOneWidget);
   });
 
   testWidgets("a queued submission renders inline with the transcript", (tester) async {
-    const submission = QueuedSessionSubmission.text(
+    final submission = QueuedSessionSubmission.text(
       promptId: "prompt-1",
       text: "Please **review** `main.dart`",
       inputMode: ComposerInputMode.typed,
-      attachments: [],
+      attachments: [
+        ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "reference.png"),
+      ],
       agent: "coder",
       agentModel: null,
     );
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
-      queuedMessages: const [submission],
+      queuedMessages: [submission],
     );
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
@@ -2849,6 +2822,7 @@ void main() {
     );
     expect(bubble.outlined, isTrue);
     expect(find.descendant(of: find.byType(QueuedMessageBubble), matching: find.byType(MarkdownBody)), findsOneWidget);
+    expect(find.descendant(of: find.byType(QueuedMessageBubble), matching: find.byType(Image)), findsOneWidget);
     expect(find.text("Queued"), findsOneWidget);
     expect(find.text("Cancel"), findsOneWidget);
     expect(tester.getSize(find.widgetWithText(TextButton, "Cancel")).height, 44);

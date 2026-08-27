@@ -3,18 +3,24 @@ import "dart:async";
 import "package:bloc_test/bloc_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
+import "package:sesori_auth/sesori_auth.dart" show AuthLoginResult;
 import "package:sesori_dart_core/src/cubits/login/login_cubit.dart";
 import "package:sesori_dart_core/src/cubits/login/login_state.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/services/installation_analytics_service.dart";
 import "package:sesori_dart_core/testing.dart";
-import "package:sesori_shared/sesori_shared.dart" show AuthInitResponse, AuthProvider;
+import "package:sesori_shared/sesori_shared.dart" show AccountStatus, AuthInitResponse, AuthProvider;
 import "package:test/test.dart";
 
 class StrictMockLifecycleSource() extends Mock implements LifecycleSource;
 
 class MockInstallationAnalyticsService() extends Mock implements InstallationAnalyticsService;
+
+AuthLoginResult testLoginResult() => AuthLoginResult(
+  user: testAuthUser(),
+  accountStatus: AccountStatus.existing,
+);
 
 void main() {
   setUpAll(() {
@@ -48,12 +54,15 @@ void main() {
           expiresIn: 300,
         ),
       );
-      when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async => testAuthUser());
+      when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async => testLoginResult());
       when(
         () => mockInstallationAnalyticsService.loginAttemptStarted(provider: any(named: "provider")),
       ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
       when(
-        () => mockInstallationAnalyticsService.loginAttemptCompleted(provider: any(named: "provider")),
+        () => mockInstallationAnalyticsService.loginAttemptCompleted(
+          provider: any(named: "provider"),
+          accountStatus: any(named: "accountStatus"),
+        ),
       ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
       when(
         () => mockInstallationAnalyticsService.loginAttemptFailed(
@@ -186,7 +195,12 @@ void main() {
             idToken: any(named: "idToken"),
             nonce: any(named: "nonce"),
           ),
-        ).thenAnswer((_) async => testAuthUser());
+        ).thenAnswer(
+          (_) async => AuthLoginResult(
+            user: testAuthUser(),
+            accountStatus: AccountStatus.created,
+          ),
+        );
 
         final attempt = cubit.beginAppleLoginAttempt();
         await cubit.loginWithApple(
@@ -199,6 +213,14 @@ void main() {
         isA<LoginAuthenticating>(),
         isA<LoginSuccess>(),
       ],
+      verify: (_) {
+        verify(
+          () => mockInstallationAnalyticsService.loginAttemptCompleted(
+            provider: AuthProvider.apple,
+            accountStatus: AccountStatus.created,
+          ),
+        ).called(1);
+      },
     );
 
     blocTest<LoginCubit, LoginState>(
@@ -234,7 +256,7 @@ void main() {
             idToken: any(named: "idToken"),
             nonce: any(named: "nonce"),
           ),
-        ).thenAnswer((_) async => testAuthUser());
+        ).thenAnswer((_) async => testLoginResult());
 
         final attempt = cubit.beginAppleLoginAttempt();
         await cubit.loginWithApple(

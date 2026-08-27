@@ -23,6 +23,8 @@ void main() {
 
     Future<void> configureDependencies() async => events.add("configureDependencies");
 
+    Future<void> startSingularAttribution() async => events.add("singularAttribution");
+
     void initializeDeepLinks() => events.add("deepLinks");
 
     Future<void> startProductAnalytics() async => events.add("productAnalytics");
@@ -51,6 +53,7 @@ void main() {
     await bootstrapSesoriApp(
       shouldInitializeFirebase: true,
       configureDependenciesFn: configureDependencies,
+      startSingularAttributionFn: startSingularAttribution,
       initializeDeepLinks: initializeDeepLinks,
       startProductAnalyticsFn: startProductAnalytics,
       startAnalyticsRouteListenerFn: startAnalyticsRouteListener,
@@ -64,6 +67,7 @@ void main() {
 
     expect(events, [
       "configureDependencies",
+      "singularAttribution",
       "deepLinks",
       "productAnalytics",
       "analyticsRoutes",
@@ -82,6 +86,7 @@ void main() {
       events,
       [
         "configureDependencies",
+        "singularAttribution",
         "deepLinks",
         "productAnalytics",
         "analyticsRoutes",
@@ -92,6 +97,35 @@ void main() {
         "notificationStartup.done",
       ],
     );
+  });
+
+  test("Singular startup failure does not block app bootstrap", () async {
+    final events = <String>[];
+
+    await bootstrapSesoriApp(
+      shouldInitializeFirebase: false,
+      configureDependenciesFn: () async => events.add("configureDependencies"),
+      startSingularAttributionFn: () async {
+        events.add("singularAttribution");
+        throw StateError("startup failed");
+      },
+      initializeDeepLinks: () => events.add("deepLinks"),
+      startProductAnalyticsFn: () async => events.add("productAnalytics"),
+      startAnalyticsRouteListenerFn: () async => events.add("analyticsRoutes"),
+      startNotificationStartupFn: () async => events.add("notificationStartup"),
+      readAppearanceFn: () async => AppearanceMode.system,
+      readChatInputModeFn: () async => ChatInputMode.textFirst,
+      runAppFn: (_) => events.add("runApp"),
+    );
+
+    expect(events, [
+      "configureDependencies",
+      "singularAttribution",
+      "deepLinks",
+      "productAnalytics",
+      "analyticsRoutes",
+      "runApp",
+    ]);
   });
 
   test("notification startup initializes adapters before starting dispatchers", () async {

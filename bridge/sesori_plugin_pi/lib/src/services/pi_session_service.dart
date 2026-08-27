@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:collection";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PendingOperations;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
@@ -148,7 +149,7 @@ final class PiSessionService({
   final Duration? Function() _resolveIdleTimeout = resolveIdleTimeout;
   final Map<String, _PiSessionTurnState> _sessions = {};
   final Map<String, String> _pendingNewDirectories = {};
-  final Set<Future<void>> _activeIdleReaps = {};
+  final PendingOperations _activeIdleReaps = PendingOperations();
   final StreamController<BridgeSseEvent> _events = StreamController.broadcast();
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.idle);
   late final StreamSubscription<PiSessionProcessFrame> _frameSubscription;
@@ -1063,12 +1064,11 @@ final class PiSessionService({
       state.residentGeneration = null;
       final teardown = _processes.teardown(sessionId: sessionId);
       state.idleReap = teardown;
-      _activeIdleReaps.add(teardown);
+      unawaited(_activeIdleReaps.track(operation: teardown));
       try {
         await teardown;
       } finally {
         if (identical(state.idleReap, teardown)) state.idleReap = null;
-        _activeIdleReaps.remove(teardown);
       }
       if (identical(_sessions[sessionId], state) && state.idleGeneration == generation) {
         _sessions.remove(sessionId);
@@ -1154,6 +1154,7 @@ final class PiSessionService({
     await _exitSubscription.cancel();
     await _extensionUi.dispose();
     await _processes.dispose(shutdownBudget: shutdownBudget);
+    await _activeIdleReaps.drain();
     _sessions.clear();
     _pendingNewDirectories.clear();
     await _events.close();

@@ -26,6 +26,8 @@ import 'package:sesori_desktop/core/platform/desktop_url_launcher.dart'
     as _i137;
 import 'package:sesori_desktop/core/platform/no_op_analytics_client.dart'
     as _i262;
+import 'package:sesori_desktop/core/platform/no_op_attribution_client.dart'
+    as _i91;
 
 extension GetItInjectableX on _i174.GetIt {
   // initializes the registration of main-scope dependencies inside of GetIt
@@ -50,6 +52,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.singleton<_i948.LifecycleSource>(() => _i670.DesktopLifecycleObserver());
     gh.lazySingleton<_i948.SecureStorage>(
       () => _i757.DesktopSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),
+    );
+    gh.lazySingleton<_i948.AttributionClient>(
+      () => _i91.NoOpAttributionClient(),
     );
     gh.lazySingleton<_i948.UrlLauncher>(() => _i137.DesktopUrlLauncher());
     gh.lazySingleton<_i948.AnalyticsClient>(() => _i262.NoOpAnalyticsClient());

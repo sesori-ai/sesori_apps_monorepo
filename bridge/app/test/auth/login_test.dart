@@ -30,6 +30,7 @@ void main() {
                 providerUserId: 'gh-1',
                 providerUsername: 'octocat',
               ),
+              accountStatus: AccountStatus.existing,
             ),
           ],
         );
@@ -108,6 +109,7 @@ void main() {
                 providerUserId: 'gh-1',
                 providerUsername: 'octocat',
               ),
+              accountStatus: AccountStatus.existing,
             ),
           ],
         );
@@ -151,6 +153,7 @@ void main() {
                 providerUserId: 'gh-1',
                 providerUsername: 'octocat',
               ),
+              accountStatus: AccountStatus.existing,
             ),
           ],
         );
@@ -200,6 +203,7 @@ void main() {
                 providerUserId: 'gh-1',
                 providerUsername: 'octocat',
               ),
+              accountStatus: AccountStatus.existing,
             ),
           ],
         );
@@ -249,6 +253,7 @@ void main() {
                 providerUserId: 'google-1',
                 providerUsername: null,
               ),
+              accountStatus: AccountStatus.existing,
             ),
           ],
         );

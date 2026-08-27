@@ -478,6 +478,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
               displayText: _bridgePromptDisplayText(prompt),
               isCommand: prompt.command != null,
               attachmentCount: prompt.attachmentCount,
+              localAttachments: const [],
               presentation: onCancel == null
                   ? const QueuedMessageBubblePresentation.pendingReadOnly()
                   : QueuedMessageBubblePresentation.pending(onCancel: () => onCancel(prompt.id)),
@@ -498,6 +499,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             displayText: submission.displayText,
             isCommand: submission.isCommand,
             attachmentCount: submission.attachments.length,
+            localAttachments: submission.attachments,
             presentation: transientSubmission.isSending
                 ? const QueuedMessageBubblePresentation.sending()
                 : transientSubmission.awaitingBridge || onCancelQueuedMessage == null

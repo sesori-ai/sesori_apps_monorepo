@@ -328,22 +328,21 @@ class AcpReplayCollector({
     PluginMessagePartType type,
     String text,
   ) {
-    return PluginMessagePart(
-      id: "${draft.id}-$suffix",
-      sessionID: sessionId,
-      messageID: draft.id,
-      type: type,
-      text: text,
-      tool: null,
-      state: null,
-      prompt: null,
-      description: null,
-      agent: null,
-      agentName: null,
-      attempt: null,
-      retryError: null,
-      attachment: null,
-    );
+    return switch (type) {
+      PluginMessagePartType.text => PluginMessagePart.text(
+        id: "${draft.id}-$suffix",
+        sessionID: sessionId,
+        messageID: draft.id,
+        text: text,
+      ),
+      PluginMessagePartType.reasoning => PluginMessagePart.reasoning(
+        id: "${draft.id}-$suffix",
+        sessionID: sessionId,
+        messageID: draft.id,
+        text: text,
+      ),
+      _ => throw StateError("ACP text part cannot use $type"),
+    };
   }
 
   PluginMessagePart _attachmentPart({
@@ -351,20 +350,10 @@ class AcpReplayCollector({
     required String suffix,
     required PluginMessageAttachment attachment,
   }) {
-    return PluginMessagePart(
+    return PluginMessagePart.file(
       id: "${draft.id}-$suffix",
       sessionID: sessionId,
       messageID: draft.id,
-      type: PluginMessagePartType.file,
-      text: null,
-      tool: null,
-      state: null,
-      prompt: null,
-      description: null,
-      agent: null,
-      agentName: null,
-      attempt: null,
-      retryError: null,
       attachment: attachment,
     );
   }
@@ -375,12 +364,10 @@ class AcpReplayCollector({
     required _ToolDraft tool,
   }) {
     final content = tool.contentTracker.snapshot;
-    return PluginMessagePart(
+    return PluginMessagePart.tool(
       id: "${draft.id}-tool-$toolId",
       sessionID: sessionId,
       messageID: draft.id,
-      type: PluginMessagePartType.tool,
-      text: null,
       tool: tool.tool,
       state: PluginToolState(
         status: tool.status,
@@ -389,13 +376,6 @@ class AcpReplayCollector({
         error: tool.status == PluginToolStatus.error ? content.output : null,
         attachments: content.attachments,
       ),
-      prompt: null,
-      description: null,
-      agent: null,
-      agentName: null,
-      attempt: null,
-      retryError: null,
-      attachment: null,
     );
   }
 

@@ -204,14 +204,14 @@ class CodexAppServerClient({
       // `cancel_subscriptions` lint can see the teardown; null it immediately
       // after so a re-entrant teardown is a harmless no-op.
       await _subscription?.cancel();
-    } catch (_) {
-      // best-effort cancel
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] failed to cancel app-server subscription during teardown", error, stackTrace);
     }
     _subscription = null;
     try {
       await channel?.sink.close();
-    } catch (_) {
-      // best-effort close
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] failed to close app-server channel during teardown", error, stackTrace);
     }
   }
 

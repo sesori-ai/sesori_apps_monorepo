@@ -19,7 +19,8 @@ const _actionDispatcher = SessionListActionDispatcher();
 /// refresh action lives here, next to the content.
 Future<void> refreshSessionList(BuildContext context) async {
   final loc = context.loc;
-  final success = await context.read<SessionListCubit>().refreshSessions(waitForPrData: true);
+  final cubit = context.read<SessionListCubit>();
+  final success = await cubit.refreshSessions(waitForPrData: true);
   if (!context.mounted) return;
 
   PregoPopupAlertPresenter.of(context).show(

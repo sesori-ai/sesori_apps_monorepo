@@ -5,6 +5,7 @@ import "package:http/http.dart" as http;
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/src/auth_config.dart";
 import "package:sesori_auth/src/auth_manager.dart";
+import "package:sesori_auth/src/models/auth_login_result.dart";
 import "package:sesori_auth/src/models/auth_state.dart";
 import "package:sesori_auth/src/platform/oauth_device_descriptor_provider.dart";
 import "package:sesori_auth/src/storage/oauth_storage_service.dart";
@@ -367,6 +368,7 @@ void main() {
           jsonEncode({
             "status": "complete",
             "accessToken": "oauth-access-token",
+            "accountStatus": "created",
             "refreshToken": "oauth-refresh-token",
             "user": {
               "id": user.id,
@@ -397,7 +399,8 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       await sub.cancel();
 
-      expect(exchangedUser, user);
+      expect(exchangedUser.user, user);
+      expect(exchangedUser.accountStatus, AccountStatus.created);
       expect(authManager.currentState, const AuthState.authenticated(user: user));
       expect(states.last, const AuthState.authenticated(user: user));
       verify(
@@ -465,6 +468,7 @@ void main() {
           jsonEncode({
             "status": "complete",
             "accessToken": "oauth-access-token",
+            "accountStatus": "created",
             "refreshToken": "oauth-refresh-token",
             "user": {
               "id": user.id,
@@ -493,7 +497,8 @@ void main() {
       await authManager.startOAuthFlow(provider: AuthProvider.google);
       final exchangedUser = await authManager.pollForResult();
 
-      expect(exchangedUser, user);
+      expect(exchangedUser.user, user);
+      expect(exchangedUser.accountStatus, AccountStatus.created);
       expect(authManager.currentState, const AuthState.authenticated(user: user));
       verify(mockOAuthStorage.clearOAuthSession).called(1);
     });
@@ -535,6 +540,7 @@ void main() {
           jsonEncode({
             "status": "complete",
             "accessToken": "oauth-access-token",
+            "accountStatus": "created",
             "refreshToken": "oauth-refresh-token",
             "user": {
               "id": user.id,
@@ -602,6 +608,7 @@ void main() {
           jsonEncode({
             "status": "complete",
             "accessToken": "oauth-access-token",
+            "accountStatus": "created",
             "refreshToken": "oauth-refresh-token",
             "user": {
               "id": user.id,
@@ -633,7 +640,8 @@ void main() {
       await authManager.startOAuthFlow(provider: AuthProvider.google);
       final exchangedUser = await authManager.pollForResult();
 
-      expect(exchangedUser, user);
+      expect(exchangedUser.user, user);
+      expect(exchangedUser.accountStatus, AccountStatus.created);
       expect(authManager.currentState, const AuthState.authenticated(user: user));
       verify(
         () => mockHttpClient.post(
@@ -1028,6 +1036,7 @@ void main() {
               "providerUserId": user.providerUserId,
               "providerUsername": user.providerUsername,
             },
+            "accountStatus": "created",
           }),
           200,
         ),
@@ -1053,7 +1062,8 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       await sub.cancel();
 
-      expect(result, isA<AuthUser>());
+      expect(result, isA<AuthLoginResult>());
+      expect(result.accountStatus, AccountStatus.created);
       expect(authManager.currentState, isA<AuthAuthenticated>());
       expect(states.last, isA<AuthAuthenticated>());
 
@@ -1114,6 +1124,7 @@ void main() {
               "providerUserId": user.providerUserId,
               "providerUsername": user.providerUsername,
             },
+            "accountStatus": "existing",
           }),
           200,
         ),
@@ -1133,7 +1144,8 @@ void main() {
         password: "correct-password",
       );
 
-      expect(result, isA<AuthUser>());
+      expect(result, isA<AuthLoginResult>());
+      expect(result.accountStatus, AccountStatus.existing);
       expect(authManager.currentState, isA<AuthAuthenticated>());
       verify(
         () => mockTokenStorage.saveTokens(

@@ -21,12 +21,6 @@ abstract class ClaudeProcessHandle() {
 /// [ClaudeStreamClient] so tests can substitute a fake process.
 typedef ClaudeProcessFactory = Future<ClaudeProcessHandle> Function(ClaudeLaunchSpec spec);
 
-sealed class const ClaudeProcessSpawnEvent();
-
-final class const ClaudeProcessSpawnSucceeded() extends ClaudeProcessSpawnEvent;
-
-final class const ClaudeProcessSpawnFailed() extends ClaudeProcessSpawnEvent;
-
 /// Routes Claude children through the bridge host and reports binary spawn
 /// outcomes separately from per-session process exits.
 final class HostClaudeProcessFactory({
@@ -34,9 +28,9 @@ final class HostClaudeProcessFactory({
   required Map<String, String> environment,
 }) {
   final Map<String, String> _environment = Map.unmodifiable(environment);
-  final StreamController<ClaudeProcessSpawnEvent> _events = StreamController.broadcast();
+  final StreamController<ProcessSpawnOutcome> _events = StreamController.broadcast();
 
-  Stream<ClaudeProcessSpawnEvent> get events => _events.stream;
+  Stream<ProcessSpawnOutcome> get events => _events.stream;
 
   Future<ClaudeProcessHandle> spawn(ClaudeLaunchSpec spec) async {
     try {
@@ -47,10 +41,10 @@ final class HostClaudeProcessFactory({
         workingDirectory: spec.workingDirectory,
         runInShell: io.Platform.isWindows,
       );
-      if (!_events.isClosed) _events.add(const ClaudeProcessSpawnSucceeded());
+      if (!_events.isClosed) _events.add(ProcessSpawnOutcome.succeeded);
       return _HostClaudeProcessHandle(process: process, processes: _processes);
     } on Object {
-      if (!_events.isClosed) _events.add(const ClaudeProcessSpawnFailed());
+      if (!_events.isClosed) _events.add(ProcessSpawnOutcome.failed);
       rethrow;
     }
   }

@@ -3,6 +3,7 @@ import "dart:convert";
 import "dart:io";
 import "dart:typed_data";
 
+import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
 import "package:sesori_bridge/src/listeners/chat_history_listener.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
@@ -35,7 +36,7 @@ void main() {
       final stored = await _storedMessages(history: history, sessionId: "ses_a");
       expect(stored, hasLength(1));
       expect(stored.single.info.id, "m1");
-      expect(stored.single.parts.map((part) => part.text), const ["one", "two"]);
+      expect(stored.single.parts.whereType<MessagePartText>().map((part) => part.text), const ["one", "two"]);
     });
 
     test("a part arriving before its message is kept and joined later", () async {
@@ -51,7 +52,48 @@ void main() {
       );
 
       final stored = await _storedMessages(history: history, sessionId: "ses_a");
-      expect(stored.single.parts.single.text, "early");
+      expect((stored.single.parts.single as MessagePartText).text, "early");
+    });
+
+    test("rehydrates a released flattened part from the database", () async {
+      final history = createTestChatHistory();
+      await history.repository.upsertMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+        updatedAt: 1,
+      );
+      await history.database
+          .into(history.database.historyPartsTable)
+          .insert(
+            HistoryPartsTableCompanion.insert(
+              sessionId: "ses_a",
+              messageId: "m1",
+              partId: "p1",
+              orderIndex: 0,
+              partJson: jsonEncode({
+                "id": "p1",
+                "sessionID": "ses_a",
+                "messageID": "m1",
+                "type": "subtask",
+                "prompt": "delegate this",
+              }),
+              updatedAt: 1,
+            ),
+          );
+
+      final part = (await _storedMessages(history: history, sessionId: "ses_a")).single.parts.single;
+
+      expect(
+        part,
+        const MessagePart.subtask(
+          id: "p1",
+          sessionID: "ses_a",
+          messageID: "m1",
+          prompt: "delegate this",
+          description: "",
+          agent: "",
+        ),
+      );
     });
 
     test("updating a part in place keeps its position", () async {
@@ -75,7 +117,10 @@ void main() {
       );
 
       final stored = await _storedMessages(history: history, sessionId: "ses_a");
-      expect(stored.single.parts.map((part) => part.text), const ["one (final)", "two"]);
+      expect(
+        stored.single.parts.whereType<MessagePartText>().map((part) => part.text),
+        const ["one (final)", "two"],
+      );
     });
 
     test("removals drop the message and its parts", () async {
@@ -199,21 +244,11 @@ void main() {
         pluginId: "opencode",
         generation: 1,
         event: const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
+          part: PluginMessagePart.text(
             id: "p1",
             sessionID: "ses_a",
             messageID: "m1",
-            type: PluginMessagePartType.text,
             text: "one",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
         allowDuringStop: false,
@@ -281,7 +316,7 @@ void main() {
 
       final served = (await _storedMessages(history: history, sessionId: "ses_a")).single.parts.single;
       expect(
-        served.attachment,
+        (served as MessagePartFile).attachment,
         isA<MessageAttachmentInlineImage>()
             .having((image) => image.base64, "base64", base64Encode(bytes))
             .having((image) => image.filename, "filename", "shot.png"),
@@ -316,7 +351,7 @@ void main() {
 
       final served = (await _storedMessages(history: history, sessionId: "ses_a")).single.parts.single;
       expect(
-        served.attachment,
+        (served as MessagePartFile).attachment,
         isA<MessageAttachmentMetadata>().having((data) => data.filename, "filename", "shot.png"),
       );
     });
@@ -366,6 +401,9 @@ void main() {
       );
       final history = createTestChatHistory(sessionRepository: repository);
       await history.service.backfillSession(sessionId: "ses_a");
+      // Write times are what separate a live capture from the import it follows,
+      // and this whole setup runs inside one millisecond otherwise.
+      await Future<void>.delayed(const Duration(milliseconds: 2));
       await history.service.captureMessage(
         sessionId: "ses_a",
         message: _messageAt(id: "retained", createdAt: 200),
@@ -389,6 +427,29 @@ void main() {
       expect(
         (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
         const ["before", "retained", "retained-error", "after"],
+      );
+    });
+
+    // Editing a message in the backend's own client rolls the session back and
+    // deletes what followed. A bridge that was not watching never sees the
+    // removal events, so the re-import's gap is the only evidence it gets.
+    test("drops a message an earlier transcript contained and this one omits", () async {
+      final transcript = [
+        _messageWithPartsAt(id: "kept", createdAt: 100),
+        _messageWithPartsAt(id: "reverted", createdAt: 200),
+      ];
+      final repository = _FakeSessionRepository(transcript: transcript);
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      transcript
+        ..removeWhere((message) => message.info.id == "reverted")
+        ..add(_messageWithPartsAt(id: "replacement", createdAt: 300));
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["kept", "replacement"],
       );
     });
 
@@ -573,22 +634,9 @@ MessagePart _part({
   required String messageId,
   required String text,
   MessageAttachment? attachment,
-}) => MessagePart(
-  id: id,
-  sessionID: "ses_a",
-  messageID: messageId,
-  type: MessagePartType.text,
-  text: text,
-  tool: null,
-  state: null,
-  prompt: null,
-  description: null,
-  agent: null,
-  agentName: null,
-  attempt: null,
-  retryError: null,
-  attachment: attachment,
-);
+}) => attachment == null
+    ? MessagePart.text(id: id, sessionID: "ses_a", messageID: messageId, text: text)
+    : MessagePart.file(id: id, sessionID: "ses_a", messageID: messageId, attachment: attachment);
 
 MessageWithParts _messageWithParts({required String id}) => _messageWithPartsAt(id: id, createdAt: 1);
 

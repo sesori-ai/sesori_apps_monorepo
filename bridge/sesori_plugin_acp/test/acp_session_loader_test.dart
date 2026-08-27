@@ -159,7 +159,7 @@ void main() {
           expect(initial.parts.every((part) => part.messageID == initial.info.id), isTrue);
           final attachment = initial.parts.where((part) => part.type == PluginMessagePartType.file).single.attachment;
           expect(attachment, isA<PluginMessageAttachmentInlineImage>());
-          expect((attachment! as PluginMessageAttachmentInlineImage).base64, "AA==");
+          expect((attachment as PluginMessageAttachmentInlineImage).base64, "AA==");
           expect(attachment.filename, isNull);
           expect(initial.parts.toString(), isNot(contains("/private/image.png")));
           expect(messages.last.info.id, "s1-h1-assistant");
@@ -218,8 +218,8 @@ void main() {
       final toolMessage = messages[1];
       expect(toolMessage.info, isA<PluginMessageAssistant>());
       final toolPart = toolMessage.parts.single;
-      expect(toolPart.state?.status, PluginToolStatus.completed);
-      expect(toolPart.state?.output, "README.md");
+      expect(toolPart.state.status, PluginToolStatus.completed);
+      expect(toolPart.state.output, "README.md");
       expect(messages.last.parts.single.text, "There is 1 file.");
     });
 
@@ -254,8 +254,8 @@ void main() {
           );
 
       final tool = collector.build().single.parts.single;
-      expect(tool.state?.output, "replayed output");
-      expect(tool.state?.attachments, isEmpty);
+      expect(tool.state.output, "replayed output");
+      expect(tool.state.attachments, isEmpty);
     });
 
     test("id-less text after a tool stays chronologically after the tool", () {
@@ -331,11 +331,11 @@ void main() {
 
       final toolPart = collector.build().single.parts.firstWhere((p) => p.type == PluginMessagePartType.tool);
       expect(
-        toolPart.state?.status,
+        toolPart.state.status,
         PluginToolStatus.completed,
         reason: "status-less update must not reset to pending",
       );
-      expect(toolPart.state?.output, "done (final)");
+      expect(toolPart.state.output, "done (final)");
     });
 
     test("a title-only tool_call_update merges onto an existing draft (matches live)", () {
@@ -367,7 +367,7 @@ void main() {
             );
       final toolPart = collector.build().single.parts.firstWhere((p) => p.type == PluginMessagePartType.tool);
       expect(toolPart.tool, "edit");
-      expect(toolPart.state?.title, "Edit main.dart");
+      expect(toolPart.state.title, "Edit main.dart");
     });
 
     test("a non-string tool title does not throw mid-replay", () {
@@ -390,7 +390,7 @@ void main() {
           );
       final toolPart = collector.build().single.parts.firstWhere((p) => p.type == PluginMessagePartType.tool);
       expect(toolPart.tool, "read");
-      expect(toolPart.state?.title, isNull);
+      expect(toolPart.state.title, isNull);
     });
 
     test("stamps replayed assistant messages with the loaded session model", () {
@@ -595,8 +595,17 @@ void main() {
         PluginMessagePartType.file,
         PluginMessagePartType.text,
       ]);
-      expect(message.parts.map((part) => part.text), ["before", null, "after"]);
-      final attachment = message.parts[1].attachment! as PluginMessageAttachmentInlineImage;
+      expect(
+        message.parts.map(
+          (part) => switch (part) {
+            PluginMessagePartText(:final text) => text,
+            PluginMessagePartFile() => null,
+            _ => throw StateError("Unexpected mixed assistant part: ${part.type.name}"),
+          },
+        ),
+        ["before", null, "after"],
+      );
+      final attachment = message.parts[1].attachment as PluginMessageAttachmentInlineImage;
       expect(attachment.base64, "AA==");
       expect(attachment.filename, "output.png");
     });
@@ -691,9 +700,9 @@ void main() {
         expect(message.parts.map((part) => part.id).toSet(), hasLength(message.parts.length));
         final tool = message.parts.singleWhere((part) => part.type == PluginMessagePartType.tool);
         expect(tool.tool, "read");
-        expect(tool.state?.status, PluginToolStatus.completed);
-        expect(tool.state?.title, "Read source.dart");
-        expect(tool.state?.output, "done");
+        expect(tool.state.status, PluginToolStatus.completed);
+        expect(tool.state.title, "Read source.dart");
+        expect(tool.state.output, "done");
       });
     }
 
@@ -970,7 +979,11 @@ List<PluginMessagePart> _materializedLiveParts({
       :final delta,
     )) {
       final prior = parts[partID]!;
-      parts[partID] = prior.copyWith(text: "${prior.text ?? ""}$delta");
+      parts[partID] = switch (prior) {
+        PluginMessagePartText(:final text) => prior.copyWith(text: "$text$delta"),
+        PluginMessagePartReasoning(:final text) => prior.copyWith(text: "$text$delta"),
+        _ => throw StateError("Cannot apply text delta to ${prior.type.name}"),
+      };
     }
   }
   return parts.values.toList(growable: false);

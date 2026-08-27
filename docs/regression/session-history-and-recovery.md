@@ -15,7 +15,11 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
 - Messages visible live but absent from the backend's replay remain visible
   after a stale re-read. They rejoin at their recorded creation time while
   preserving relative order, so a catalog re-import cannot move old rows to the
-  newest edge.
+  newest edge. A message a backend replay once contained is the opposite case:
+  its later absence is a removal, so a re-read drops it. That is how a session
+  rolled back outside Sesori — an edited message in the backend's own client,
+  with no removal events reaching this bridge — stops showing the messages it
+  replaced.
 - Live streamed messages and parts become queryable immediately after they
   finalize, with the same visibility filtering and tool-output bound a backend
   fetch returns. Reasoning finalizes when the stream advances to assistant or
@@ -37,6 +41,10 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
 - Binary and attachment payloads are never stored inline in database tables; they
   round-trip through spill storage and still render. A slow or stuck request
   never blocks unrelated requests, other plugins, key exchange, or reconnects.
+- Database rows and audit files written with the released flattened message-part
+  contract remain readable after the in-memory model becomes sealed variants,
+  including known part types whose variant-specific fields were omitted. Those
+  omissions become temporary non-null compatibility defaults when decoded.
 - A tool part stranded in `pending`/`running` after its turn ended is finalized
   to a terminal error, for every backend. The sweep runs when the session goes
   idle (finalized parts are also delivered live as part updates) and on a
@@ -86,7 +94,12 @@ image parts converge by their own rules.
   reattachment, or triggers repeated requests while one page is in flight.
 - A session advanced outside Sesori keeps serving the old transcript, or stored
   transcripts are marked complete after a gap without a full re-sync.
-- A stale re-read moves an older retained message to the newest edge.
+- A stale re-read moves an older retained message to the newest edge, or keeps
+  showing a message the backend removed — a rolled-back turn reappearing above
+  the edited one that replaced it.
+- A released database row or audit file is rejected because a known message-part
+  payload omitted variant-specific data, or a decoded known variant still carries
+  null variant data.
 - Pi falls back after an arbitrary RPC failure, shows an abandoned branch or
   summary payload, or exposes a private path, raw backend error, or hidden prompt
   prefix in mapped history.
@@ -110,6 +123,7 @@ image parts converge by their own rules.
 ## Sources
 
 Bridge chat-history service, repository, reconcile service, history listeners,
-SSE replay window, and routed request dispatch; Pi session process repository,
+SSE replay window, and routed request dispatch; database and audit compatibility
+tests under `bridge/app/test/bridge/services/`; Pi session process repository,
 storage API, and history mapper; shared pagination cursor; client detail load
 service and cubit.

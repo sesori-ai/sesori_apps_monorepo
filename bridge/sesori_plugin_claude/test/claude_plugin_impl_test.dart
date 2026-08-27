@@ -301,6 +301,48 @@ void main() {
       await subscription.cancel();
     });
 
+    test("stamps an unmarked decorated image echo and consumes its queued entry", () async {
+      await harness.createSession();
+      final first = harness.processes.single;
+      await waitForFrame(first, "user");
+      first.emit(_result());
+      await pump();
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      await harness.plugin.sendPrompt(
+        promptId: "prm_image",
+        sessionId: testSessionId,
+        parts: const [
+          PluginPromptPart.text(text: "inspect image"),
+          PluginPromptPart.fileData(mime: "image/JPEG", base64: "aA==", filename: "image.jpg"),
+        ],
+        variant: null,
+        agent: "Agent",
+        model: (providerID: "anthropic", modelID: "default"),
+      );
+      await _waitForUserText(first, "inspect image");
+      final written = first.written.lastWhere((frame) => frame["type"] == "user");
+
+      first.emit(_decoratedImageEcho(written: written, uuid: "echo-image"));
+      await pump();
+      await pump();
+
+      final user = events.whereType<BridgeSseMessageUpdated>().singleWhere(
+        (event) => event.info["id"] == "echo-image",
+      );
+      expect(user.info["promptId"], "prm_image");
+      expect(
+        events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.type),
+        containsAll([
+          PluginMessagePartType.text,
+          PluginMessagePartType.file,
+        ]),
+      );
+      expect(await harness.plugin.getQueuedPrompts(sessionId: testSessionId), isEmpty);
+      await subscription.cancel();
+    });
+
     test("queues a steering prompt, stamps its echo, and consumes the entry after the message", () async {
       await harness.createSession();
       final first = harness.processes.single;
@@ -925,6 +967,33 @@ Map<String, Object?> _replayOf(Map<String, Object?> written, {required String uu
   "isReplay": true,
   "timestamp": "2026-08-11T12:00:00.000Z",
 };
+
+Map<String, Object?> _decoratedImageEcho({required Map<String, Object?> written, required String uuid}) {
+  final message = (written["message"]! as Map).cast<String, Object?>();
+  final content = (message["content"]! as List).cast<Object?>();
+  final image = (content[1]! as Map).cast<String, Object?>();
+  final source = (image["source"]! as Map).cast<String, Object?>();
+  return {
+    ...written,
+    "uuid": uuid,
+    "message": {
+      ...message,
+      "content": [
+        content.first,
+        {
+          ...image,
+          "cache_control": {"type": "ephemeral"},
+          "source": {
+            ...source,
+            "media_type": "image/jpeg",
+            "data": "aA",
+            "cache_control": {"type": "ephemeral"},
+          },
+        },
+      ],
+    },
+  };
+}
 
 final class _ThrowingDeleteTranscriptApi() extends ClaudeTranscriptApi {
   this : super(environment: const {});

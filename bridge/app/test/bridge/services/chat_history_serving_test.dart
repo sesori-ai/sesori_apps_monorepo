@@ -216,21 +216,11 @@ Message _message({required String id}) => Message.user(
   time: const MessageTime(created: 1, completed: null),
 );
 
-MessagePart _part({required String id, required String messageId}) => MessagePart(
+MessagePart _part({required String id, required String messageId}) => MessagePart.text(
   id: id,
   sessionID: "ses_a",
   messageID: messageId,
-  type: MessagePartType.text,
   text: "text of $messageId",
-  tool: null,
-  state: null,
-  prompt: null,
-  description: null,
-  agent: null,
-  agentName: null,
-  attempt: null,
-  retryError: null,
-  attachment: null,
 );
 
 MessageWithParts _messageWithParts({required String id}) => MessageWithParts(
