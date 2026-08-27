@@ -95,4 +95,3 @@ export "src/protocol/control_provision_progress.dart";
 export "src/protocol/framing.dart";
 export "src/protocol/messages.dart";
 export "src/reporting/failure_reporter.dart";
-export "src/voice/project_glossary_key.dart";
