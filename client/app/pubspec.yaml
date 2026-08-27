@@ -94,6 +94,7 @@ dev_dependencies:
   cryptography: ^2.9.0
   flutter_test:
     sdk: flutter
+  widgetbook: 3.25.0
   no_slop_linter:
     path: "../../shared/no_slop_linter"
   freezed: 4.0.0-dev.3

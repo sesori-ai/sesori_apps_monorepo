@@ -186,12 +186,15 @@ after a marker has been established.
 For list-row swipes, alternate iOS, Android gesture navigation, Android button
 navigation, and a non-mobile platform; begin drags inside and just outside each
 10% edge buffer.
-For catalog scanning, vary the number of enabled harnesses, whether any is
-blocked or failed, and which surface starts the run — each of the three lists
-and the harness settings card. Vary a first import against a re-import of an
-unchanged catalog, and a bridge that reports its delta against one that omits
-it. Interrupt runs: cancel mid-scan, disconnect mid-scan and reconnect, and
-leave the surface that started one. Restore harness eligibility afterwards.
+For catalog scanning, use the mobile component playbook to compare every scan
+row state and meaningful count variant in light/dark themes, iPhone/Android
+viewports, and reduced motion. Then vary the number of enabled harnesses,
+whether any is blocked or failed, and which surface starts the run — each of
+the three lists and the harness settings card. Vary a first import against a
+re-import of an unchanged catalog, and a bridge that reports its delta against
+one that omits it. Interrupt runs: cancel mid-scan, disconnect mid-scan and
+reconnect, and leave the surface that started one. Restore harness eligibility
+afterwards.
 
 ## Failure Signals
 
@@ -266,6 +269,7 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - Contract: `bridge/sesori_plugin_interface/lib/src/bridge_plugin.dart`
 - Client-triggered scanning: `client/module_core/lib/src/services/catalog_rescan_service.dart`,
   `client/app/lib/core/widgets/catalog_scan_row.dart`,
+  `client/app/test/playbook/catalog_scan_row_playbook.dart`,
   `client/module_prego/lib/components/navigation/prego_sliver_refresh_control.dart`
 - Pi metadata catalog: `bridge/sesori_plugin_pi/lib/src/api/pi_session_storage_api.dart`,
   `bridge/sesori_plugin_pi/lib/src/repositories/pi_session_catalog_repository.dart`
