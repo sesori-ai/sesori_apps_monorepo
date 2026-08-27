@@ -6,17 +6,9 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "../copilot_binary.dart";
 import "../copilot_identity.dart";
 
-/// Version and path policy for GitHub Copilot CLI.
-///
-/// Managed release assets are added separately from lifecycle/setup support;
-/// until then [assetFor] intentionally returns null and installation is not
-/// advertised. Existing compatible PATH and explicit runtimes remain usable.
 class const CopilotRuntimeManifest() extends RuntimeManifest {
-  /// Copilot 1.0.78 added the ACP `session/close` capability used by Sesori's
-  /// standard session lifecycle.
   static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "1.0.78");
 
-  /// Stable release validated against this plugin's ACP surface.
   static const String targetVersion = "1.0.80";
 
   static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: targetVersion);

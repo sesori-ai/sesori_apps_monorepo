@@ -9,8 +9,6 @@ import "services/copilot_session_options_service.dart";
 
 /// GitHub Copilot CLI backend over standard ACP v1.
 ///
-/// Copilot uses the shared ACP transport, session persistence/replay, commands,
-/// config-option writes, and permissions without a private protocol dialect.
 /// It supports standard cancellation but does not currently forward its
 /// `ask_user` interaction over ACP, so form elicitation remains unadvertised.
 class CopilotPlugin._({

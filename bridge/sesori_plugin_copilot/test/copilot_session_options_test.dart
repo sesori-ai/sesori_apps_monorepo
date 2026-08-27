@@ -38,6 +38,7 @@ void main() {
   });
 
   test("applies model, mode, and reasoning through standard config writes", () async {
+    service.captureSessionConfig(_sessionResult(model: "claude-sonnet-4.5"), sessionId: "other", fromNewSession: true);
     service.captureSessionConfig(_sessionResult(), sessionId: "session", fromNewSession: true);
     final configRepository = _ConfigRepository(
       results: [
@@ -55,6 +56,7 @@ void main() {
       agent: "Plan",
     );
 
+    expect(service.providers.providers.single.models.first.variants, ["low", "high"]);
     expect(configRepository.writes, [
       (configId: "model", value: "claude-sonnet-4.5"),
       (configId: "mode", value: "plan"),

@@ -19,6 +19,7 @@ class CopilotSessionOptionsService({
   CopilotSessionConfigSnapshot? _snapshot;
   String? _defaultModelValue;
   String? _defaultModeValue;
+  final _reasoningByModel = <String, ({String? configId, List<CopilotCatalogOption> options})>{};
   Future<PluginSessionOptionsDiscoveryResult>? _inFlight;
   ({PluginOperationException error, StackTrace stack})? _lastDiscoveryFailure;
 
@@ -104,6 +105,7 @@ class CopilotSessionOptionsService({
   }) {
     final snapshot = CopilotCatalogRepository.mapSessionResult(result: result);
     _snapshot = snapshot;
+    _captureReasoning(snapshot);
     final modelValue = snapshot.currentModelValue;
     if (fromNewSession) {
       _defaultModelValue = modelValue;
@@ -146,10 +148,11 @@ class CopilotSessionOptionsService({
       throw PluginStaleOptionsException(operation, message: "GitHub Copilot no longer offers the selected mode");
     }
     final requestedVariant = variant?.id;
+    final reasoning = _reasoningByModel[requestedModel ?? snapshot?.currentModelValue];
     if (requestedVariant != null &&
         requestedVariant.isNotEmpty &&
-        (snapshot?.thoughtLevelConfigId == null ||
-            !(snapshot?.thoughtLevels.any((option) => option.value == requestedVariant) ?? false))) {
+        (reasoning?.configId == null ||
+            !(reasoning?.options.any((option) => option.value == requestedVariant) ?? false))) {
       throw PluginStaleOptionsException(
         operation,
         message: "GitHub Copilot no longer offers the selected reasoning level",
@@ -174,11 +177,12 @@ class CopilotSessionOptionsService({
     final requestedMode = agent == null
         ? null
         : _resolveOption(valueOrName: agent, options: snapshot?.modes ?? const []);
+    final reasoning = _reasoningByModel[model?.modelID ?? snapshot?.currentModelValue];
     final selections = [
       (configId: snapshot?.modelConfigId, value: model?.modelID, kind: CopilotConfigOptionKind.model),
       (configId: snapshot?.modeConfigId, value: requestedMode, kind: CopilotConfigOptionKind.mode),
       (
-        configId: snapshot?.thoughtLevelConfigId,
+        configId: reasoning?.configId,
         value: variant?.id,
         kind: CopilotConfigOptionKind.thoughtLevel,
       ),
@@ -207,6 +211,7 @@ class CopilotSessionOptionsService({
     _snapshot = null;
     _defaultModelValue = null;
     _defaultModeValue = null;
+    _reasoningByModel.clear();
     _configurationTracker.clear();
     _lastDiscoveryFailure = null;
   }
@@ -235,6 +240,7 @@ class CopilotSessionOptionsService({
       };
       if (applied != value) throw StateError("GitHub Copilot returned a different session option value");
       _snapshot = updated;
+      _captureReasoning(updated);
       final modelValue = updated.currentModelValue;
       if (modelValue != null) {
         _configurationTracker.setSessionOverride(
@@ -298,7 +304,6 @@ class CopilotSessionOptionsService({
   PluginProvidersResult _providers() {
     final models = _snapshot?.models ?? const [];
     if (models.isEmpty) return const PluginProvidersResult(providers: []);
-    final thoughtLevels = _snapshot?.thoughtLevels ?? const [];
     final defaultModel = models.any((model) => model.value == _defaultModelValue)
         ? _defaultModelValue
         : models.first.value;
@@ -313,9 +318,9 @@ class CopilotSessionOptionsService({
               PluginModel(
                 id: model.value,
                 name: model.name,
-                variants: model.value == _snapshot?.currentModelValue
-                    ? [for (final thoughtLevel in thoughtLevels) thoughtLevel.value]
-                    : const [],
+                variants: [
+                  for (final thoughtLevel in _reasoningByModel[model.value]?.options ?? const <CopilotCatalogOption>[]) thoughtLevel.value,
+                ],
                 family: null,
                 isAvailable: true,
                 releaseDate: null,
@@ -325,6 +330,12 @@ class CopilotSessionOptionsService({
         ),
       ],
     );
+  }
+
+  void _captureReasoning(CopilotSessionConfigSnapshot snapshot) {
+    final model = snapshot.currentModelValue;
+    if (model == null) return;
+    _reasoningByModel[model] = (configId: snapshot.thoughtLevelConfigId, options: snapshot.thoughtLevels);
   }
 
   Duration _remaining({required Stopwatch stopwatch}) {

@@ -4,7 +4,6 @@ import "package:acp_plugin/acp_plugin.dart";
 
 import "../copilot_binary.dart";
 
-/// Layer-1 ACP operations used by Copilot's isolated catalog-probe process.
 class CopilotCatalogProbeApi({required final AcpStdioClient _client}) {
   AcpInitializeResult? _initializeResult;
   bool _disposed = false;
