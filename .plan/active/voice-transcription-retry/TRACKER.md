@@ -6,9 +6,9 @@
 - **Apps base:** `origin/main` at `10e9c8c4bb`
 - **Auth base:** `origin/master` at `93b4323dca`
 - **Current branch:** `voice-retry-behavior`
-- **Series state:** Step 1/6 corrected and validated after architecture plan review
+- **Series state:** Step 1/6 PR [#1144](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1144) open
 - **Current step:** plan publication
-- **Next action:** commit, push, and open Step 1 PR
+- **Next action:** drive Step 1 PR to ready for human review
 - **External merge barrier:** realtime apps PR [#918](https://github.com/sesori-ai/sesori_apps_monorepo/pull/918), current head `b3083b7ad3`, must rebase onto merged Step 4 before it may merge
 
 ## Locked Product Decisions
@@ -57,7 +57,7 @@
 
 | Done | Step | Repository | Exact PR title | Target | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/6 | apps | `🌱 [voice-transcription-retry] Plan async voice transcription retries [step 1/6]` | 500-700 | Corrected and validated; publication pending |
+| [ ] | 1/6 | apps | `🌱 [voice-transcription-retry] Plan async voice transcription retries [step 1/6]` | 500-700 | [PR #1144](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1144) open |
 | [ ] | 2/6 | auth | `⚙️ [voice-transcription-retry] Mark async transcription failures retryable [step 2/6]` | 450-900 | Blocked on Step 1 merge |
 | [ ] | 3/6 | apps | `🚧 [voice-transcription-retry] Move voice lifecycle into client core [step 3/6]` | 1,050-1,500 | Blocked on Step 2 contract |
 | [ ] | 4/6 | apps | `⚙️ [voice-transcription-retry] Retain and retry async voice recordings [step 4/6]` | 650-1,150 | Blocked on Step 3 |
@@ -79,7 +79,7 @@
 - [x] Run `architecture-plan-review` through a sub-agent.
 - [x] Apply all four blocking findings directly; do not re-review routine corrections.
 - [x] Run final plan consistency validation and `git diff --check`.
-- [ ] Commit, push, open Step 1 PR, record URL/change count, and start PR monitor.
+- [x] Commit, push, open Step 1 PR, record URL/change count, and start PR monitor.
 
 ## Step 2 Checklist
 
@@ -153,7 +153,8 @@
 - **Step 1 architecture review:** initial draft rejected; all four findings applied as recorded above
 - **Step 1 documentation validation:** plan/tracker titles, six-step denominator, repositories, targets, async-only decision, #918 barrier, and review record agree; new-file whitespace check passed
 - **Step 1 changed lines:** 635 documentation-only additions (`PLAN.md` 473, `TRACKER.md` 162), within the 500-700 target
-- **Step 1 PR:** pending
+- **Step 1 commits:** `620cb5c6c` (plan publication) plus the tracker-only delivery record
+- **Step 1 PR:** [#1144](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1144), open and monitored
 - **Step 2 server verification:** pending
 - **Step 3 ownership migration:** pending
 - **Step 4 client retry verification:** pending
