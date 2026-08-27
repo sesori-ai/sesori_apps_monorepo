@@ -59,9 +59,10 @@ idle suspension, the management snapshot, and lifecycle commands.
   generic icon; surfaces without metadata retain the same generic icon and
   raw-id fallback rather than teaching shared widgets a backend name.
 - Harnesses start on demand unless eager; a transient one may suspend after a confirmed
-  idle window and a resident one never does, and idle timeouts survive restart.
-  Enable, disable, restart, and refresh are offered only where declared, with enable
-  persisting eligibility, re-inspecting setup, then starting when ready.
+  idle window and a resident one never does, and idle timeouts survive restart. With no
+  configured default or per-harness override, every harness uses the bridge's 45-minute
+  fallback. Enable, disable, restart, and refresh are offered only where declared, with
+  enable persisting eligibility, re-inspecting setup, then starting when ready.
 - A resident harness that keeps the idle-timeout capability (Claude Code or Pi) reports
   the configured timeout instead of zero and consumes it internally through the host.
   Each plugin reaps its idle per-session CLI/RPC child process after that window and
