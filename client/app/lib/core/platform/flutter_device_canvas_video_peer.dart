@@ -15,7 +15,7 @@ class FlutterDeviceCanvasVideoPeer({required FlutterWebRtcClient client}) implem
 
   RTCPeerConnection? _peerConnection;
   MediaStream? _remoteStream;
-  Completer<void>? _iceGatheringCompleter;
+  Completer<void>? _offerIceCompleter;
   Future<void>? _rendererInitialization;
   Future<void>? _closeFuture;
   bool _offerCreationStarted = false;
@@ -69,11 +69,11 @@ class FlutterDeviceCanvasVideoPeer({required FlutterWebRtcClient client}) implem
     if (offer.type != "offer" || offerSdp == null || offerSdp.isEmpty) {
       throw const FormatException("WebRTC did not create a valid video offer");
     }
-    final iceGatheringCompleter = Completer<void>();
-    _iceGatheringCompleter = iceGatheringCompleter;
+    final offerIceCompleter = Completer<void>();
+    _offerIceCompleter = offerIceCompleter;
     await peerConnection.setLocalDescription(offer);
     if (peerConnection.iceGatheringState != RTCIceGatheringState.RTCIceGatheringStateComplete) {
-      await iceGatheringCompleter.future.timeout(_iceGatheringTimeout);
+      await offerIceCompleter.future.timeout(_iceGatheringTimeout);
     }
     _ensureOpen();
 
@@ -158,8 +158,7 @@ class FlutterDeviceCanvasVideoPeer({required FlutterWebRtcClient client}) implem
     };
     peerConnection.onIceGatheringState = (state) {
       if (state == RTCIceGatheringState.RTCIceGatheringStateComplete) {
-        final completer = _iceGatheringCompleter;
-        if (completer != null && !completer.isCompleted) completer.complete();
+        _completeOfferIceWait();
       }
     };
     peerConnection.onIceCandidate = (candidate) {
@@ -175,6 +174,7 @@ class FlutterDeviceCanvasVideoPeer({required FlutterWebRtcClient client}) implem
       _localCandidates.add(
         DeviceCanvasIceCandidate(candidate: value, sdpMid: sdpMid, sdpMLineIndex: sdpMLineIndex),
       );
+      if (_relayOnly) _completeOfferIceWait();
     };
     peerConnection.onTrack = (event) {
       if (event.track.kind != "video") return;
@@ -357,6 +357,11 @@ class FlutterDeviceCanvasVideoPeer({required FlutterWebRtcClient client}) implem
 
   void _onFirstFrameRendered() => _emit(DeviceCanvasVideoPeerConnectionState.videoReady);
 
+  void _completeOfferIceWait() {
+    final completer = _offerIceCompleter;
+    if (completer != null && !completer.isCompleted) completer.complete();
+  }
+
   void _emit(DeviceCanvasVideoPeerConnectionState state) {
     if (!_closed && !_connectionStates.isClosed) _connectionStates.add(state);
   }
@@ -371,8 +376,7 @@ class FlutterDeviceCanvasVideoPeer({required FlutterWebRtcClient client}) implem
   Future<void> _close() async {
     if (_closed) return;
     _closed = true;
-    final gathering = _iceGatheringCompleter;
-    if (gathering != null && !gathering.isCompleted) gathering.complete();
+    _completeOfferIceWait();
 
     final peerConnection = _peerConnection;
     if (peerConnection != null) {

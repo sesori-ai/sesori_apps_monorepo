@@ -430,6 +430,22 @@ void main() {
     verifyNever(() => connection.setRemoteDescription(any()));
   });
 
+  test("relay offer proceeds after a valid candidate without waiting for gathering completion", () async {
+    connection.iceGatheringState = RTCIceGatheringState.RTCIceGatheringStateGathering;
+    when(connection.getLocalDescription).thenAnswer(
+      (_) async => RTCSessionDescription("v=0\r\na=fingerprint:$_fingerprint\r\n", "offer"),
+    );
+    when(() => connection.setLocalDescription(any())).thenAnswer((_) async {
+      connection.onIceCandidate!(RTCIceCandidate(_privateRelayCandidate, "0", 0));
+    });
+    peer = FlutterDeviceCanvasVideoPeer(client: client);
+
+    final offer = await peer!.createOffer(turn: _futureTurn());
+
+    expect(connection.iceGatheringState, RTCIceGatheringState.RTCIceGatheringStateGathering);
+    expect(offer.iceCandidates.map((candidate) => candidate.candidate), [_privateRelayCandidate]);
+  });
+
   test("relay offer keeps only strictly valid relay SDP and trickle candidates", () async {
     const relaySdp =
         "v=0\r\na=fingerprint:$_fingerprint\r\na=$_localCandidate\r\na=$_serverReflexiveCandidate\r\na=$_peerReflexiveCandidate\r\na=$_privateRelayCandidate\r\na=$_ipv6RelayCandidate\r\na=$_relayMissingRelatedPortCandidate\r\na=$_relayMalformedAddressCandidate\r\na=$_relayZonedIpv6Candidate\r\na=$_relayMalformedRelatedPortCandidate\r\na=$_relayMissingTcpTypeCandidate\r\na=$_relayMalformedPortCandidate\r\na=$_relayMalformedFoundationCandidate\r\na=$_relayUnsupportedTransportCandidate\r\na=$_relayDuplicateExtensionCandidate\r\n";
