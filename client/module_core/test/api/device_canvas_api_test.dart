@@ -150,6 +150,52 @@ void main() {
     );
   });
 
+  test("POST stream prepare uses the bounded timeout and typed request body", () async {
+    const request = DeviceCanvasStreamPrepareRequest(
+      expectedBridgeId: "bridge-1",
+      sessionId: "session-1",
+      deviceKey: "device-1",
+      expectedClaimRevision: 7,
+      operationId: "operation-1",
+      leaseId: "lease-1",
+      control: true,
+    );
+    when(
+      () => client.postWithTimeout<DeviceCanvasStreamPrepareResponse>(
+        "/device-canvas/stream/prepare",
+        body: any(named: "body"),
+        fromJson: any(named: "fromJson"),
+        timeout: const Duration(seconds: 20),
+      ),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        const DeviceCanvasStreamPrepareResponse(
+          outcome: DeviceCanvasStreamPrepareOutcome.unavailable,
+          leaseId: null,
+          expiresAt: null,
+          turn: null,
+        ),
+      ),
+    );
+
+    await api.prepareStream(request: request);
+
+    final parser =
+        verify(
+              () => client.postWithTimeout<DeviceCanvasStreamPrepareResponse>(
+                "/device-canvas/stream/prepare",
+                body: request.toJson(),
+                fromJson: captureAny(named: "fromJson"),
+                timeout: const Duration(seconds: 20),
+              ),
+            ).captured.single
+            as DeviceCanvasStreamPrepareResponse Function(Map<String, dynamic>);
+    expect(
+      () => parser(const <String, dynamic>{"outcome": "prepared"}),
+      throwsFormatException,
+    );
+  });
+
   test("POST stream status uses the bounded timeout and typed request body", () async {
     const request = DeviceCanvasStreamStatusRequest(
       expectedBridgeId: "bridge-1",
@@ -240,6 +286,7 @@ DeviceCanvasStreamStartRequest _startRequest() => const DeviceCanvasStreamStartR
   deviceKey: "device-1",
   expectedClaimRevision: 7,
   operationId: "operation-1",
+  leaseId: null,
   control: true,
   offer: DeviceCanvasRtcDescription(
     type: DeviceCanvasRtcDescriptionType.offer,

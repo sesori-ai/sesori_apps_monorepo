@@ -195,6 +195,43 @@ void main() {
     });
   });
 
+  group("stream prepare", () {
+    test("returns supported responses", () async {
+      when(
+        () => api.prepareStream(request: _prepareRequest),
+      ).thenAnswer((_) async => ApiResponse.success(_prepareResponse));
+
+      final result = await repository.prepareStream(request: _prepareRequest);
+
+      expect(result, isA<DeviceCanvasStreamPrepareSupported>());
+      expect((result as DeviceCanvasStreamPrepareSupported).response, _prepareResponse);
+    });
+
+    test("maps a missing route to unsupported", () async {
+      when(
+        () => api.prepareStream(request: _prepareRequest),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)));
+
+      expect(await repository.prepareStream(request: _prepareRequest), isA<DeviceCanvasStreamPrepareUnsupported>());
+    });
+
+    for (final error in _uncertainErrors) {
+      test("treats ${error.runtimeType} as uncertain", () async {
+        when(() => api.prepareStream(request: _prepareRequest)).thenAnswer((_) async => ApiResponse.error(error));
+
+        expect(await repository.prepareStream(request: _prepareRequest), isA<DeviceCanvasStreamPrepareUncertain>());
+      });
+    }
+
+    test("preserves definite failures", () async {
+      when(
+        () => api.prepareStream(request: _prepareRequest),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+
+      expect(await repository.prepareStream(request: _prepareRequest), isA<DeviceCanvasStreamPrepareFailure>());
+    });
+  });
+
   group("stream status", () {
     test("returns supported responses", () async {
       when(
@@ -281,12 +318,23 @@ const _startRequest = DeviceCanvasStreamStartRequest(
   deviceKey: "device-1",
   expectedClaimRevision: 7,
   operationId: "operation-1",
+  leaseId: null,
   control: true,
   offer: DeviceCanvasRtcDescription(
     type: DeviceCanvasRtcDescriptionType.offer,
     sdp: "v=0\na=fingerprint:$_fingerprint\n",
     fingerprint: _fingerprint,
   ),
+);
+
+const _prepareRequest = DeviceCanvasStreamPrepareRequest(
+  expectedBridgeId: "bridge-1",
+  sessionId: "session-1",
+  deviceKey: "device-1",
+  expectedClaimRevision: 7,
+  operationId: "operation-1",
+  leaseId: "lease-1",
+  control: true,
 );
 
 const _statusRequest = DeviceCanvasStreamStatusRequest(
@@ -310,6 +358,13 @@ const _startResponse = DeviceCanvasStreamStartResponse(
   leaseId: null,
   expiresAt: null,
   answer: null,
+  turn: null,
+);
+
+const _prepareResponse = DeviceCanvasStreamPrepareResponse(
+  outcome: DeviceCanvasStreamPrepareOutcome.unavailable,
+  leaseId: null,
+  expiresAt: null,
   turn: null,
 );
 

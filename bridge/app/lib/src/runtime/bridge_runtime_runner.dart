@@ -96,6 +96,7 @@ import "../services/catalog_import_service.dart";
 import "../services/control_channel_token_service.dart";
 import "../services/control_prompt_service.dart";
 import "../services/control_unregister_service.dart";
+import "../services/device_canvas_turn_credential_builder.dart";
 import "../services/plugin_lifecycle_service.dart";
 import "../sse/sse_manager.dart";
 import "../updater/api/checksum_manifest_api.dart";
@@ -133,6 +134,64 @@ import "plugin_generation_factory.dart";
 import "plugin_registry.dart";
 import "plugin_runtime.dart";
 import "runtime_provision_formatter.dart";
+
+@visibleForTesting
+DeviceCanvasTurnCredentialBuilder? buildDeviceCanvasLocalTurnCredentialBuilder({required BridgeCliOptions options}) {
+  if (options.deviceCanvasLocalTurnUrls.isEmpty) return null;
+  final secretFile = options.deviceCanvasLocalTurnSecretFile;
+  if (secretFile == null) throw StateError("Device Canvas local TURN options are incomplete");
+  return DeviceCanvasTurnCredentialBuilder(
+    urls: options.deviceCanvasLocalTurnUrls,
+    sharedSecret: readDeviceCanvasLocalTurnSecret(filePath: secretFile),
+  );
+}
+
+@visibleForTesting
+List<int> readDeviceCanvasLocalTurnSecret({required String filePath}) {
+  if (io.Platform.isWindows) {
+    throw const FormatException("Device Canvas local TURN requires POSIX file permissions");
+  }
+  if (io.FileSystemEntity.typeSync(filePath, followLinks: false) !=
+      io.FileSystemEntityType.file) {
+    throw const FormatException("Device Canvas local TURN secret must be a regular, non-symlink file");
+  }
+  final String resolvedPath;
+  try {
+    resolvedPath = io.File(filePath).resolveSymbolicLinksSync();
+  } on io.FileSystemException {
+    throw const FormatException("Device Canvas local TURN secret path cannot be resolved safely");
+  }
+  final file = io.File(resolvedPath);
+  final parentStat = file.parent.statSync();
+  if (parentStat.type != io.FileSystemEntityType.directory ||
+      parentStat.mode & 0x12 != 0) {
+    throw const FormatException(
+      "Device Canvas local TURN secret directory must not be writable by other users",
+    );
+  }
+  final stat = file.statSync();
+  if (stat.mode & 0x100 == 0 || stat.mode & 0x3f != 0) {
+    throw const FormatException("Device Canvas local TURN secret must be readable only by its owner");
+  }
+  if (stat.size < DeviceCanvasTurnCredentialBuilder.minimumSharedSecretBytes ||
+      stat.size > 1024) {
+    throw const FormatException("Device Canvas local TURN secret has an invalid size");
+  }
+  final secret = file.readAsBytesSync();
+  final afterRead = file.statSync();
+  if (secret.length != stat.size ||
+      afterRead.type != stat.type ||
+      afterRead.mode != stat.mode ||
+      afterRead.size != stat.size ||
+      afterRead.modified != stat.modified ||
+      afterRead.changed != stat.changed) {
+    throw const FormatException("Device Canvas local TURN secret changed while it was being read");
+  }
+  if (secret.any((byte) => byte < 33 || byte > 126)) {
+    throw const FormatException("Device Canvas local TURN secret must contain one printable ASCII token");
+  }
+  return List<int>.unmodifiable(secret);
+}
 
 /// The deliberate exit outcomes of a supervised bridge, each carrying the
 /// process exit [code] the desktop GUI supervisor keys its respawn policy on.
@@ -373,6 +432,7 @@ class const BridgeRuntimeRunner._() {
     );
 
     try {
+      final deviceCanvasTurnCredentialBuilder = buildDeviceCanvasLocalTurnCredentialBuilder(options: options);
       // Supervised mode (desktop GUI): bring up the loopback control channel
       // before anything else so the GUI sees the helper connect promptly. Every
       // step here is gated by `--control-url`; standalone startup is unchanged.
@@ -848,6 +908,7 @@ class const BridgeRuntimeRunner._() {
         failureReporter: failureReporter,
         restartService: restartService,
         filesystemAccessOk: filesystemAccessOk,
+        deviceCanvasTurnCredentialBuilder: deviceCanvasTurnCredentialBuilder,
         statusNotifier: controlStatusNotifier,
         reconnectBackoff: ReconnectBackoffPolicy.standard,
       ).create();

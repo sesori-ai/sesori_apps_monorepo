@@ -16,7 +16,7 @@ const int maxDeviceCanvasIceCandidateLength = 2048;
 const int maxDeviceCanvasIceCandidateSdpMidLength = 128;
 const int maxDeviceCanvasTurnUrls = 8;
 const int maxDeviceCanvasTurnUrlLength = 2048;
-const int maxDeviceCanvasTurnUsernameLength = 512;
+const int maxDeviceCanvasTurnUsernameByteCount = 508;
 const int maxDeviceCanvasTurnCredentialLength = 512;
 
 enum DeviceCanvasClientConnectionStatus() {
@@ -79,6 +79,21 @@ enum DeviceCanvasRtcDescriptionType() {
 enum DeviceCanvasStreamStartOutcome() {
   @JsonValue("started")
   started,
+  @JsonValue("controllerConflict")
+  controllerConflict,
+  @JsonValue("unavailable")
+  unavailable,
+  @JsonValue("unauthorized")
+  unauthorized,
+  @JsonValue("unsupported")
+  unsupported,
+  @JsonValue("unknown")
+  unknown,
+}
+
+enum DeviceCanvasStreamPrepareOutcome() {
+  @JsonValue("prepared")
+  prepared,
   @JsonValue("controllerConflict")
   controllerConflict,
   @JsonValue("unavailable")
@@ -170,15 +185,75 @@ sealed class const DeviceCanvasTurnConfiguration._() with _$DeviceCanvasTurnConf
 
   factory fromJson(Map<String, dynamic> json) => _$DeviceCanvasTurnConfigurationFromJson(json);
 
+  List<String>? get canonicalUrls {
+    if (urls.isEmpty || urls.length > maxDeviceCanvasTurnUrls) return null;
+    final canonical = <String>[];
+    for (final url in urls) {
+      final normalized = canonicalizeDeviceCanvasTurnUrl(url);
+      if (normalized == null || canonical.contains(normalized)) return null;
+      canonical.add(normalized);
+    }
+    return List<String>.unmodifiable(canonical);
+  }
+
   bool get isValid =>
-      urls.isNotEmpty &&
-      urls.length <= maxDeviceCanvasTurnUrls &&
-      urls.every((url) => url.isNotEmpty && url.length <= maxDeviceCanvasTurnUrlLength) &&
+      canonicalUrls != null &&
       username.isNotEmpty &&
-      username.length <= maxDeviceCanvasTurnUsernameLength &&
+      utf8.encode(username).length <= maxDeviceCanvasTurnUsernameByteCount &&
       credential.isNotEmpty &&
       credential.length <= maxDeviceCanvasTurnCredentialLength &&
       expiresAt > 0;
+}
+
+@Freezed(fromJson: true, toJson: true, toStringOverride: false)
+sealed class const DeviceCanvasStreamPrepareRequest._() with _$DeviceCanvasStreamPrepareRequest {
+  const factory({
+    required String expectedBridgeId,
+    required String sessionId,
+    required String deviceKey,
+    required int expectedClaimRevision,
+    required String operationId,
+    required String leaseId,
+    required bool control,
+  }) = _DeviceCanvasStreamPrepareRequest;
+
+  factory fromJson(Map<String, dynamic> json) => _$DeviceCanvasStreamPrepareRequestFromJson(json);
+
+  bool get isValid =>
+      _isValidDeviceCanvasStreamIdentity(
+        expectedBridgeId: expectedBridgeId,
+        sessionId: sessionId,
+        deviceKey: deviceKey,
+        expectedClaimRevision: expectedClaimRevision,
+      ) &&
+      _isValidDeviceCanvasStreamOperationId(operationId) &&
+      _isValidDeviceCanvasStreamLeaseId(leaseId);
+}
+
+@Freezed(fromJson: true, toJson: true, toStringOverride: false)
+sealed class const DeviceCanvasStreamPrepareResponse._() with _$DeviceCanvasStreamPrepareResponse {
+  const factory({
+    @JsonKey(unknownEnumValue: DeviceCanvasStreamPrepareOutcome.unknown)
+    required DeviceCanvasStreamPrepareOutcome outcome,
+    required String? leaseId,
+    required int? expiresAt,
+    required DeviceCanvasTurnConfiguration? turn,
+  }) = _DeviceCanvasStreamPrepareResponse;
+
+  factory fromJson(Map<String, dynamic> json) => _$DeviceCanvasStreamPrepareResponseFromJson(json);
+
+  bool get isValid => switch (outcome) {
+    DeviceCanvasStreamPrepareOutcome.prepared => _isValidDeviceCanvasStreamPreparePayload(
+      leaseId: leaseId,
+      expiresAt: expiresAt,
+      turn: turn,
+    ),
+    DeviceCanvasStreamPrepareOutcome.controllerConflict ||
+    DeviceCanvasStreamPrepareOutcome.unavailable ||
+    DeviceCanvasStreamPrepareOutcome.unauthorized ||
+    DeviceCanvasStreamPrepareOutcome.unsupported => leaseId == null && expiresAt == null && turn == null,
+    DeviceCanvasStreamPrepareOutcome.unknown => false,
+  };
 }
 
 @Freezed(fromJson: true, toJson: true, toStringOverride: false)
@@ -189,6 +264,7 @@ sealed class const DeviceCanvasStreamStartRequest._() with _$DeviceCanvasStreamS
     required String deviceKey,
     required int expectedClaimRevision,
     required String operationId,
+    required String? leaseId,
     required bool control,
     required DeviceCanvasRtcDescription offer,
     @Default(<DeviceCanvasIceCandidate>[]) List<DeviceCanvasIceCandidate> iceCandidates,
@@ -204,6 +280,7 @@ sealed class const DeviceCanvasStreamStartRequest._() with _$DeviceCanvasStreamS
         expectedClaimRevision: expectedClaimRevision,
       ) &&
       _isValidDeviceCanvasStreamOperationId(operationId) &&
+      _isValidOptionalDeviceCanvasStreamLeaseId(leaseId) &&
       offer.type == DeviceCanvasRtcDescriptionType.offer &&
       offer.isValid &&
       iceCandidates.length <= maxDeviceCanvasIceCandidates &&
@@ -402,6 +479,214 @@ bool _isValidDeviceCanvasStreamOperationId(String operationId) =>
     operationId.isNotEmpty &&
     operationId.length <= maxDeviceCanvasStreamOperationIdLength &&
     RegExp(r"^[A-Za-z0-9_-]+$").hasMatch(operationId);
+
+bool _isValidDeviceCanvasStreamLeaseId(String leaseId) =>
+    leaseId.isNotEmpty &&
+    leaseId.length <= maxDeviceCanvasStreamLeaseIdLength &&
+    RegExp(r"^[A-Za-z0-9_-]+$").hasMatch(leaseId);
+
+bool _isValidOptionalDeviceCanvasStreamLeaseId(String? leaseId) =>
+    leaseId == null || _isValidDeviceCanvasStreamLeaseId(leaseId);
+
+bool _isValidDeviceCanvasStreamPreparePayload({
+  required String? leaseId,
+  required int? expiresAt,
+  required DeviceCanvasTurnConfiguration? turn,
+}) =>
+    leaseId != null &&
+    _isValidDeviceCanvasStreamLeaseId(leaseId) &&
+    expiresAt != null &&
+    expiresAt > 0 &&
+    turn != null &&
+    turn.isValid &&
+    turn.expiresAt == expiresAt;
+
+String? canonicalizeDeviceCanvasTurnUrl(String value) {
+  if (value.isEmpty || value.length > maxDeviceCanvasTurnUrlLength || value.runes.any(_isWhitespaceOrControl)) {
+    return null;
+  }
+  final schemeEnd = value.indexOf(":");
+  if (schemeEnd <= 0) return null;
+  final scheme = value.substring(0, schemeEnd).toLowerCase();
+  if (scheme != "turn" && scheme != "turns") return null;
+
+  final remainder = value.substring(schemeEnd + 1);
+  final queryStart = remainder.indexOf("?");
+  if (queryStart >= 0 && remainder.indexOf("?", queryStart + 1) >= 0) return null;
+  final authority = queryStart < 0 ? remainder : remainder.substring(0, queryStart);
+  if (authority.isEmpty || authority.contains("/") || authority.contains("@") || authority.contains("#")) {
+    return null;
+  }
+  final defaultTransport = scheme == "turn" ? "udp" : "tcp";
+  final String transport;
+  if (queryStart < 0) {
+    transport = defaultTransport;
+  } else {
+    final query = remainder.substring(queryStart + 1).toLowerCase();
+    if (query != "transport=udp" && query != "transport=tcp") return null;
+    transport = query.substring("transport=".length);
+  }
+  if (scheme == "turns" && transport != "tcp") return null;
+
+  final normalizedAuthority = _canonicalizeDeviceCanvasTurnAuthority(authority);
+  if (normalizedAuthority == null) return null;
+  final port = normalizedAuthority.port ?? (scheme == "turn" ? 3478 : 5349);
+  return "$scheme:${normalizedAuthority.host}:$port?transport=$transport";
+}
+
+({String host, int? port})? _canonicalizeDeviceCanvasTurnAuthority(String authority) {
+  if (authority.startsWith("[")) {
+    final closingBracket = authority.indexOf("]");
+    if (closingBracket <= 1) return null;
+    final host = _canonicalizeDeviceCanvasIpv6(authority.substring(1, closingBracket));
+    if (host == null) return null;
+    final suffix = authority.substring(closingBracket + 1);
+    if (suffix.isEmpty) return (host: "[$host]", port: null);
+    if (!suffix.startsWith(":")) return null;
+    final port = _parseDeviceCanvasTurnPort(suffix.substring(1));
+    return port == null ? null : (host: "[$host]", port: port);
+  }
+  if (authority.contains("[") || authority.contains("]")) return null;
+
+  final portSeparator = authority.indexOf(":");
+  final hostValue = portSeparator < 0 ? authority : authority.substring(0, portSeparator);
+  final host = _canonicalizeDeviceCanvasTurnHost(hostValue);
+  if (host == null) return null;
+  if (portSeparator < 0) return (host: host, port: null);
+  final port = _parseDeviceCanvasTurnPort(authority.substring(portSeparator + 1));
+  return port == null ? null : (host: host, port: port);
+}
+
+String? _canonicalizeDeviceCanvasTurnHost(String value) {
+  if (value.isEmpty || value.codeUnits.length > 253) return null;
+  final ipv4 = _canonicalizeDeviceCanvasIpv4(value);
+  if (ipv4 != null) return ipv4;
+  if (_looksLikeAlternateNumericHost(value)) return null;
+
+  final host = value.endsWith(".") ? value.substring(0, value.length - 1) : value;
+  if (host.isEmpty) return null;
+  final labels = host.split(".");
+  for (final label in labels) {
+    if (label.isEmpty || label.length > 63) return null;
+    final units = label.codeUnits;
+    if (!_isAsciiAlphaNumeric(units.first) || !_isAsciiAlphaNumeric(units.last)) return null;
+    if (units.any((unit) => !_isAsciiAlphaNumeric(unit) && unit != 45)) return null;
+  }
+  return host.toLowerCase();
+}
+
+String? _canonicalizeDeviceCanvasIpv4(String value) {
+  final segments = value.split(".");
+  if (segments.length != 4) return null;
+  final canonical = <String>[];
+  for (final segment in segments) {
+    if (segment.isEmpty || segment.codeUnits.any((unit) => unit < 48 || unit > 57)) return null;
+    final parsed = int.tryParse(segment);
+    if (parsed == null || parsed > 255 || "$parsed" != segment) return null;
+    canonical.add("$parsed");
+  }
+  return canonical.join(".");
+}
+
+String? _canonicalizeDeviceCanvasIpv6(String value) {
+  if (value.isEmpty || value.contains(".")) return null;
+  final compression = value.indexOf("::");
+  if (compression >= 0 && value.indexOf("::", compression + 2) >= 0) return null;
+  final List<int> segments;
+  if (compression < 0) {
+    final parsed = _parseDeviceCanvasIpv6Segments(value);
+    if (parsed == null || parsed.length != 8) return null;
+    segments = parsed;
+  } else {
+    final left = _parseDeviceCanvasIpv6Segments(value.substring(0, compression), allowEmpty: true);
+    final right = _parseDeviceCanvasIpv6Segments(value.substring(compression + 2), allowEmpty: true);
+    if (left == null || right == null || left.length + right.length >= 8) return null;
+    segments = <int>[...left, ...List<int>.filled(8 - left.length - right.length, 0), ...right];
+  }
+  if (_isDeviceCanvasIpv4EmbeddedIpv6(segments)) return null;
+
+  var bestStart = -1;
+  var bestLength = 0;
+  for (var index = 0; index < segments.length;) {
+    if (segments[index] != 0) {
+      index += 1;
+      continue;
+    }
+    final start = index;
+    while (index < segments.length && segments[index] == 0) {
+      index += 1;
+    }
+    final length = index - start;
+    if (length >= 2 && length > bestLength) {
+      bestStart = start;
+      bestLength = length;
+    }
+  }
+  if (bestStart < 0) return segments.map((segment) => segment.toRadixString(16)).join(":");
+
+  final buffer = StringBuffer();
+  var index = 0;
+  while (index < segments.length) {
+    if (index == bestStart) {
+      buffer.write("::");
+      index += bestLength;
+      continue;
+    }
+    final rendered = buffer.toString();
+    if (rendered.isNotEmpty && !rendered.endsWith(":")) buffer.write(":");
+    buffer.write(segments[index].toRadixString(16));
+    index += 1;
+  }
+  return buffer.toString();
+}
+
+List<int>? _parseDeviceCanvasIpv6Segments(String value, {bool allowEmpty = false}) {
+  if (value.isEmpty) return allowEmpty ? <int>[] : null;
+  final parsed = <int>[];
+  for (final segment in value.split(":")) {
+    if (segment.isEmpty || segment.length > 4 || !RegExp(r"^[0-9A-Fa-f]+$").hasMatch(segment)) return null;
+    parsed.add(int.parse(segment, radix: 16));
+  }
+  return parsed;
+}
+
+bool _isDeviceCanvasIpv4EmbeddedIpv6(List<int> segments) {
+  final special = segments.take(7).every((segment) => segment == 0) && segments.last <= 1;
+  final compatible = segments.take(6).every((segment) => segment == 0) && !special;
+  final mapped = segments.take(5).every((segment) => segment == 0) && segments[5] == 0xffff;
+  final translatable =
+      segments.take(4).every((segment) => segment == 0) && segments[4] == 0xffff && segments[5] == 0;
+  return compatible || mapped || translatable;
+}
+
+bool _looksLikeAlternateNumericHost(String value) {
+  if (RegExp(r"^[0-9.]+$").hasMatch(value)) return true;
+  final labels = value.split(".");
+  return labels.isNotEmpty &&
+      labels.every(
+        (label) => RegExp(r"^[0-9]+$").hasMatch(label) || RegExp(r"^0[xX][0-9A-Fa-f]+$").hasMatch(label),
+      );
+}
+
+int? _parseDeviceCanvasTurnPort(String value) {
+  if (value.isEmpty || value.codeUnits.any((unit) => unit < 48 || unit > 57)) return null;
+  final port = int.tryParse(value);
+  return port != null && port >= 1 && port <= 65535 ? port : null;
+}
+
+bool _isAsciiAlphaNumeric(int unit) =>
+    (unit >= 48 && unit <= 57) || (unit >= 65 && unit <= 90) || (unit >= 97 && unit <= 122);
+
+bool _isWhitespaceOrControl(int rune) =>
+    rune <= 0x20 ||
+    (rune >= 0x7f && rune <= 0xa0) ||
+    rune == 0x1680 ||
+    (rune >= 0x2000 && rune <= 0x200a) ||
+    rune == 0x2028 ||
+    rune == 0x2029 ||
+    rune == 0x202f ||
+    rune == 0x205f ||
+    rune == 0x3000;
 
 @Freezed(fromJson: true, toJson: true)
 sealed class const DeviceCanvasSessionStatusRequest._() with _$DeviceCanvasSessionStatusRequest {

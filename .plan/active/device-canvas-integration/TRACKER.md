@@ -5,13 +5,13 @@
 - **Plan slug:** `device-canvas-integration`
 - **Implementation base:** `upstream/main` at `5c50f38a`
 - **Current branch:** `device-canvas-integration-step-1`
-- **Series state:** Steps 1-9 implemented; an explicitly approved, default-off
-  pre-Step-12 LAN video viewport is implemented for local Android validation;
-  the Phase 2 product entry gate remains NO-GO
-- **Current step:** remaining Phase 2 evidence after successful physical
-  cross-device validation of the gated LAN viewport
-- **Next action:** continue the formal TURN, input, latency, resource, reconnect,
-  dependency-acceptance, and iOS-containment work
+- **Series state:** Steps 1-9 implemented; explicitly approved, default-off direct
+  LAN and development local-coturn video seams are implemented for Android
+  validation; the Phase 2 product entry gate remains NO-GO
+- **Current step:** validate the local relay seam, then continue production Step
+  10 infrastructure and the remaining Phase 2 evidence
+- **Next action:** run physical relay-only local-coturn validation, then define the
+  authenticated production issuer/external TURN contract and network matrix
 
 ## Locked Decisions
 
@@ -42,8 +42,11 @@
 - [x] Android ships first from scrcpy; iOS remains capability-gated.
 - [x] One remote interactive controller per device in the first release.
 - [x] The pre-Step-12 validation viewport is compile-time gated by
-  `DEVICE_CANVAS_LAN_VIDEO=true`, video-only, direct-local-host-candidate-only,
-  and not a Phase 2 product claim.
+  `DEVICE_CANVAS_LAN_VIDEO=true`, video-only, direct-local-host-candidate-only by
+  default, and not a Phase 2 product claim.
+- [x] `DEVICE_CANVAS_LOCAL_TURN=true` additionally enables only a development
+  prepare/reservation path and relay-only peers; Bridge issuance is disabled
+  unless explicit local TURN URLs and an owner-only secret file are supplied.
 
 ## Complexity Guardrails
 
@@ -78,7 +81,7 @@
 | [x] | 7/12 - Verify Phase 1 | Both | Automated and user-confirmed ownership, compatibility, restart, conflict, and deep-link matrix passed |
 | [x] | 8/12 - Prove media feasibility | Both | Spikes completed; component architecture is feasible, but the integrated Phase 2 entry gate is NO-GO |
 | [x] | 9/12 - Authorize/signaling streams | Both | Implemented for local Android video-only testing; Phase 2 remains NO-GO |
-| [ ] | 10/12 - Provision TURN | Infrastructure | Blocked on the Step 9 credential contract and external TURN matrix |
+| [ ] | 10/12 - Provision TURN | Infrastructure | Provider-neutral prepare contract and development local-coturn issuer implemented; production backend issuance, external service, abuse/observability, and remote matrix remain open |
 | [ ] | 11/12 - Stream/control Android | Device Canvas | Video source/peer implemented ahead of the step; control and release gates remain blocked on Step 10 |
 | [ ] | 12/12 - Add Sesori viewport/verify | Sesori | Formal control/release step remains blocked on Steps 10-11; approved default-off LAN video-only validation slice implemented ahead of sequence |
 
@@ -134,6 +137,8 @@
 - [x] One authorized signaling route compares the advertised DTLS fingerprint,
   rejects tampering, and joins client, bridge, claim revision, and Device Canvas.
 - [x] Direct host ICE and local coturn relay paths measured with synthetic video.
+- [x] Production signaling/client/native peers support a default-off local-coturn
+  relay-only path with short-lived exact reservation credentials.
 - [ ] Representative LAN and externally operated TURN paths measured.
 - [x] Synthetic SRTP video and ordered DataChannel input proven.
 - [ ] Claim revision/release/archive drives input rejection and active peer
@@ -190,6 +195,12 @@
   on client-side expiry, and removal of ownership identifiers from widget keys.
   Independent architecture and adversarial re-reviews then returned `APPROVE`
   with no remaining actionable correctness or security findings.
+- **Local TURN review:** architecture plan review on 2026-08-27 rejected the
+  initial composition and in-flight lifecycle boundaries. The revised plan split
+  runtime secret loading from the pure HMAC builder, added a preparing state
+  before authorization, fixed the full client dependency path, and placed the
+  relay-only route and launcher at their owning layers; re-review returned
+  `APPROVE` before implementation.
 
 ## Verification Record
 
@@ -442,6 +453,49 @@
   updates. Explicit close, Back/swipe modal dismissal, app backgrounding,
   Device Canvas/source loss, and claim release/reassignment all closed the
   preview as expected without reconnecting or leaving a stale stream.
+
+### Step 10 development local TURN slice
+
+- Shared contracts now validate and canonicalize the same bounded TURN URL
+  subset accepted by Device Canvas, enforce the native 508-byte username limit,
+  and carry a prepare reservation plus optional prepared lease correlation into
+  start.
+- Bridge has an explicit preparing/prepared/starting/active in-memory lifecycle.
+  Exact retries share one result; stop, claim/connection/Canvas loss, timeout,
+  expiry, and shutdown remove reservations. A pure coturn REST builder emits
+  whole-second HMAC-SHA1 credentials bounded by the lease, and runtime composition
+  requires at least 32 secret bytes from a nonsymlink owner-only file whose parent
+  is not writable by other users. The hidden local flags accept only one
+  private/link-local IP endpoint, and explicit authorization slots cap unresolved
+  claim work per connection and process. The default runtime has no issuer and
+  returns unsupported.
+- The mobile relay mode prepares before peer creation, requires start/status to
+  echo the exact lease, expiry, and TURN object, and configures both Flutter and
+  Device Canvas with relay-only ICE. Strict candidate filtering retains only
+  parser-valid relay candidates in that mode; direct LAN behavior remains the
+  default under the existing feature gate.
+- Shared codegen was unchanged. Full `sesori_shared` (390 tests), every Bridge
+  module suite (the app ended at 2,836 tests with two expected host-platform
+  skips), module-core (1,497 tests), Flutter app (943 tests), desktop core (52
+  tests), and desktop shell (16 tests) passed with their required analyses.
+  `make build-host` produced
+  `bridge/app/dist/bridge-macos-arm64`; a feature-enabled iOS simulator build
+  produced `client/app/build/ios/iphonesimulator/Runner.app`; and
+  `git diff --check` passed.
+- Coturn 4.17.2 authenticated and relayed two messages/200 bytes with zero loss
+  over both UDP and TCP TURN transports on `192.168.0.39` under a 300-second
+  allocation limit, bandwidth/allocation quotas, and default-deny peer ACL that
+  permits only that LAN IP. HUP cleanup left no listener, temporary secret/config
+  directory, or coturn server log. Physical phone relay-only evidence remains
+  pending.
+- Independent architecture review returned `APPROVED`. Adversarial security
+  re-review found no remaining issue within the approved default-off trusted-LAN
+  scope. The final correctness finding drove authorization slots that remain
+  counted until the underlying claim lookup settles, with focused regression
+  coverage.
+- This does not complete Step 10. No production backend issuer or external TURN
+  deployment was added, and public NAT/cellular, TLS/SNI, firewall, abuse-limit,
+  observability, cost, and credential-service behavior remain unverified.
 
 ## Open Product Confirmations
 

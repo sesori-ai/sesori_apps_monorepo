@@ -25,14 +25,16 @@ class _FakeVideoPeer() implements DeviceCanvasVideoPeer {
   Object? applyAnswerError;
   int createOfferCalls = 0;
   int closeCalls = 0;
+  final List<DeviceCanvasTurnConfiguration?> turnConfigurations = [];
   final List<({DeviceCanvasRtcDescription answer, List<DeviceCanvasIceCandidate> iceCandidates})> answers = [];
 
   @override
   Stream<DeviceCanvasVideoPeerConnectionState> get connectionStateStream => _states.stream;
 
   @override
-  Future<DeviceCanvasVideoOffer> createOffer() async {
+  Future<DeviceCanvasVideoOffer> createOffer({required DeviceCanvasTurnConfiguration? turn}) async {
     createOfferCalls++;
+    turnConfigurations.add(turn);
     return offer;
   }
 
@@ -89,8 +91,20 @@ void main() {
         deviceKey: "device-1",
         expectedClaimRevision: 1,
         operationId: "operation-1",
+        leaseId: null,
         control: false,
         offer: _offerDescription,
+      ),
+    );
+    registerFallbackValue(
+      const DeviceCanvasStreamPrepareRequest(
+        expectedBridgeId: "bridge-1",
+        sessionId: "session-1",
+        deviceKey: "device-1",
+        expectedClaimRevision: 1,
+        operationId: "operation-1",
+        leaseId: "lease-1",
+        control: false,
       ),
     );
     registerFallbackValue(
@@ -142,8 +156,18 @@ void main() {
 
   DeviceCanvasVideoCubit createCubit({
     DeviceCanvasSessionState? authorization,
+    bool useLocalTurn = false,
     Duration connectionTimeout = const Duration(seconds: 15),
   }) {
+    if (useLocalTurn) {
+      when(() => service.prepareStream(request: any(named: "request"))).thenAnswer((invocation) async {
+        final request = invocation.namedArguments[#request] as DeviceCanvasStreamPrepareRequest;
+        final turn = _turn();
+        return DeviceCanvasStreamPrepareSupported(
+          response: _preparedResponse(leaseId: request.leaseId, turn: turn),
+        );
+      });
+    }
     return DeviceCanvasVideoCubit(
       service: service,
       peer: peer,
@@ -151,6 +175,7 @@ void main() {
       connectionService: connectionService,
       initialAuthorization: authorization ?? _authorization(),
       deviceKey: "device-1",
+      useLocalTurn: useLocalTurn,
       connectionTimeout: connectionTimeout,
     );
   }
@@ -172,9 +197,12 @@ void main() {
     expect(request.deviceKey, "device-1");
     expect(request.expectedClaimRevision, 1);
     expect(request.operationId, matches(RegExp(r"^[A-Za-z0-9_-]{32}$")));
+    expect(request.leaseId, isNull);
     expect(request.control, isFalse);
     expect(request.offer, _offerDescription);
+    expect(peer.turnConfigurations, [null]);
     expect(peer.answers.single.answer, _answerDescription);
+    verifyNever(() => service.prepareStream(request: any(named: "request")));
 
     peer.emit(DeviceCanvasVideoPeerConnectionState.videoReady);
     await _settle();
@@ -214,6 +242,189 @@ void main() {
     expect(peer.answers, isEmpty);
     expect(peer.closeCalls, 1);
     verify(() => service.stopStream(request: any(named: "request"))).called(1);
+  });
+
+  test("prepares relay before creating an offer and forwards exact correlation and TURN", () async {
+    final prepareResult = Completer<DeviceCanvasStreamPrepareResult>();
+    late DeviceCanvasStreamPrepareRequest prepareRequest;
+    late DeviceCanvasStreamStartRequest startRequest;
+    final turn = _turn();
+    cubit = createCubit(useLocalTurn: true);
+    when(() => service.prepareStream(request: any(named: "request"))).thenAnswer((invocation) {
+      prepareRequest = invocation.namedArguments[#request] as DeviceCanvasStreamPrepareRequest;
+      return prepareResult.future;
+    });
+    when(() => service.startStream(request: any(named: "request"))).thenAnswer((invocation) async {
+      startRequest = invocation.namedArguments[#request] as DeviceCanvasStreamStartRequest;
+      return DeviceCanvasStreamStartSupported(
+        response: _startedResponse(
+          leaseId: startRequest.leaseId,
+          expiresAt: turn.expiresAt,
+          turn: turn,
+        ),
+      );
+    });
+
+    final start = cubit!.start();
+    await _settle();
+
+    expect(peer.createOfferCalls, 0);
+    expect(prepareRequest.operationId, matches(RegExp(r"^[A-Za-z0-9_-]{32}$")));
+    expect(prepareRequest.leaseId, matches(RegExp(r"^[A-Za-z0-9_-]{32}$")));
+    expect(prepareRequest.control, isFalse);
+
+    prepareResult.complete(
+      DeviceCanvasStreamPrepareSupported(
+        response: _preparedResponse(leaseId: prepareRequest.leaseId, turn: turn),
+      ),
+    );
+    await start;
+
+    expect(peer.turnConfigurations.single, same(turn));
+    expect(startRequest.operationId, prepareRequest.operationId);
+    expect(startRequest.leaseId, prepareRequest.leaseId);
+    expect(startRequest.control, isFalse);
+  });
+
+  test("relay prepare rejection prevents peer creation and start", () async {
+    cubit = createCubit(useLocalTurn: true);
+    when(
+      () => service.prepareStream(request: any(named: "request")),
+    ).thenAnswer(
+      (_) async => const DeviceCanvasStreamPrepareSupported(
+        response: DeviceCanvasStreamPrepareResponse(
+          outcome: DeviceCanvasStreamPrepareOutcome.controllerConflict,
+          leaseId: null,
+          expiresAt: null,
+          turn: null,
+        ),
+      ),
+    );
+
+    await cubit!.start();
+
+    expect(cubit!.state, isA<DeviceCanvasVideoFailed>());
+    expect((cubit!.state as DeviceCanvasVideoFailed).reason, DeviceCanvasVideoFailureReason.controllerConflict);
+    expect(peer.createOfferCalls, 0);
+    verifyNever(() => service.startStream(request: any(named: "request")));
+    verifyNever(() => service.stopStream(request: any(named: "request")));
+  });
+
+  test("uncertain relay prepare stops the generated lease", () async {
+    cubit = createCubit(useLocalTurn: true);
+    when(
+      () => service.prepareStream(request: any(named: "request")),
+    ).thenAnswer((_) async => const DeviceCanvasStreamPrepareUncertain());
+
+    await cubit!.start();
+
+    final prepare =
+        verify(() => service.prepareStream(request: captureAny(named: "request"))).captured.single
+            as DeviceCanvasStreamPrepareRequest;
+    final stop =
+        verify(() => service.stopStream(request: captureAny(named: "request"))).captured.single
+            as DeviceCanvasStreamStopRequest;
+    expect(stop.leaseId, prepare.leaseId);
+    expect(peer.createOfferCalls, 0);
+    verifyNever(() => service.startStream(request: any(named: "request")));
+  });
+
+  test("stop overtakes delayed relay prepare and late success cannot create an offer", () async {
+    final prepareResult = Completer<DeviceCanvasStreamPrepareResult>();
+    late DeviceCanvasStreamPrepareRequest prepareRequest;
+    final turn = _turn();
+    cubit = createCubit(useLocalTurn: true);
+    when(() => service.prepareStream(request: any(named: "request"))).thenAnswer((invocation) {
+      prepareRequest = invocation.namedArguments[#request] as DeviceCanvasStreamPrepareRequest;
+      return prepareResult.future;
+    });
+    final start = cubit!.start();
+    await _settle();
+
+    await cubit!.stop();
+    prepareResult.complete(
+      DeviceCanvasStreamPrepareSupported(
+        response: _preparedResponse(leaseId: prepareRequest.leaseId, turn: turn),
+      ),
+    );
+    await start;
+
+    expect(cubit!.state, isA<DeviceCanvasVideoStopped>());
+    expect(peer.createOfferCalls, 0);
+    final stops = verify(() => service.stopStream(request: captureAny(named: "request"))).captured;
+    expect(stops, hasLength(2));
+    expect(stops.cast<DeviceCanvasStreamStopRequest>().map((request) => request.leaseId).toSet(), {
+      prepareRequest.leaseId,
+    });
+    verifyNever(() => service.startStream(request: any(named: "request")));
+  });
+
+  test("relay start TURN mismatch fails signaling and cleans the prepared lease", () async {
+    late DeviceCanvasStreamPrepareRequest prepareRequest;
+    final turn = _turn();
+    cubit = createCubit(useLocalTurn: true);
+    when(() => service.prepareStream(request: any(named: "request"))).thenAnswer((invocation) async {
+      prepareRequest = invocation.namedArguments[#request] as DeviceCanvasStreamPrepareRequest;
+      return DeviceCanvasStreamPrepareSupported(
+        response: _preparedResponse(leaseId: prepareRequest.leaseId, turn: turn),
+      );
+    });
+    when(() => service.startStream(request: any(named: "request"))).thenAnswer((invocation) async {
+      final request = invocation.namedArguments[#request] as DeviceCanvasStreamStartRequest;
+      return DeviceCanvasStreamStartSupported(
+        response: _startedResponse(
+          leaseId: request.leaseId,
+          expiresAt: turn.expiresAt,
+          turn: _turn(expiresAt: turn.expiresAt, username: "other-user"),
+        ),
+      );
+    });
+
+    await cubit!.start();
+
+    expect(cubit!.state, isA<DeviceCanvasVideoFailed>());
+    expect((cubit!.state as DeviceCanvasVideoFailed).reason, DeviceCanvasVideoFailureReason.signalingFailed);
+    expect(peer.answers, isEmpty);
+    final stop =
+        verify(() => service.stopStream(request: captureAny(named: "request"))).captured.single
+            as DeviceCanvasStreamStopRequest;
+    expect(stop.leaseId, prepareRequest.leaseId);
+  });
+
+  test("relay status TURN mismatch fails signaling and cleans the prepared lease", () async {
+    late DeviceCanvasStreamPrepareRequest prepareRequest;
+    final turn = _turn();
+    cubit = createCubit(useLocalTurn: true);
+    when(() => service.prepareStream(request: any(named: "request"))).thenAnswer((invocation) async {
+      prepareRequest = invocation.namedArguments[#request] as DeviceCanvasStreamPrepareRequest;
+      return DeviceCanvasStreamPrepareSupported(
+        response: _preparedResponse(leaseId: prepareRequest.leaseId, turn: turn),
+      );
+    });
+    when(
+      () => service.startStream(request: any(named: "request")),
+    ).thenAnswer((_) async => const DeviceCanvasStreamStartUncertain());
+    when(
+      () => service.statusStream(request: any(named: "request")),
+    ).thenAnswer(
+      (_) async => DeviceCanvasStreamStatusSupported(
+        response: _activeResponse(
+          leaseId: prepareRequest.leaseId,
+          expiresAt: turn.expiresAt,
+          turn: _turn(expiresAt: turn.expiresAt, username: "other-user"),
+        ),
+      ),
+    );
+
+    await cubit!.start();
+
+    expect(cubit!.state, isA<DeviceCanvasVideoFailed>());
+    expect((cubit!.state as DeviceCanvasVideoFailed).reason, DeviceCanvasVideoFailureReason.signalingFailed);
+    expect(peer.answers, isEmpty);
+    final stop =
+        verify(() => service.stopStream(request: captureAny(named: "request"))).captured.single
+            as DeviceCanvasStreamStopRequest;
+    expect(stop.leaseId, prepareRequest.leaseId);
   });
 
   test("redacts native signaling errors from diagnostics", () async {
@@ -555,13 +766,15 @@ Future<void> _settle() async {
 int _expiresIn(Duration duration) => DateTime.now().add(duration).millisecondsSinceEpoch;
 
 DeviceCanvasStreamStartResponse _startedResponse({
+  String? leaseId = "lease-1",
+  int? expiresAt,
   DeviceCanvasTurnConfiguration? turn,
   Duration expiresIn = const Duration(hours: 1),
 }) {
   return DeviceCanvasStreamStartResponse(
     outcome: DeviceCanvasStreamStartOutcome.started,
-    leaseId: "lease-1",
-    expiresAt: _expiresIn(expiresIn),
+    leaseId: leaseId,
+    expiresAt: expiresAt ?? _expiresIn(expiresIn),
     answer: _answerDescription,
     iceCandidates: const [],
     turn: turn,
@@ -570,16 +783,39 @@ DeviceCanvasStreamStartResponse _startedResponse({
 
 DeviceCanvasStreamStatusResponse _activeResponse({
   String? offerFingerprint = _fingerprint,
+  String? leaseId = "lease-1",
+  int? expiresAt,
   DeviceCanvasTurnConfiguration? turn,
 }) {
   return DeviceCanvasStreamStatusResponse(
     outcome: DeviceCanvasStreamStatusOutcome.active,
-    leaseId: "lease-1",
-    expiresAt: _expiresIn(const Duration(hours: 1)),
+    leaseId: leaseId,
+    expiresAt: expiresAt ?? _expiresIn(const Duration(hours: 1)),
     answer: _answerDescription,
     iceCandidates: const [],
     turn: turn,
     offerFingerprint: offerFingerprint,
+  );
+}
+
+DeviceCanvasStreamPrepareResponse _preparedResponse({
+  required String leaseId,
+  required DeviceCanvasTurnConfiguration turn,
+}) {
+  return DeviceCanvasStreamPrepareResponse(
+    outcome: DeviceCanvasStreamPrepareOutcome.prepared,
+    leaseId: leaseId,
+    expiresAt: turn.expiresAt,
+    turn: turn,
+  );
+}
+
+DeviceCanvasTurnConfiguration _turn({int? expiresAt, String username = "user"}) {
+  return DeviceCanvasTurnConfiguration(
+    urls: const ["turn:relay.example.com"],
+    username: username,
+    credential: "credential",
+    expiresAt: expiresAt ?? _expiresIn(const Duration(minutes: 5)),
   );
 }
 

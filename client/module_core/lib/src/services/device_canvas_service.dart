@@ -46,6 +46,10 @@ class DeviceCanvasService({required final DeviceCanvasRepository _repository}) {
     return _repository.startStream(request: request);
   }
 
+  Future<DeviceCanvasStreamPrepareResult> prepareStream({required DeviceCanvasStreamPrepareRequest request}) {
+    return _repository.prepareStream(request: request);
+  }
+
   Future<DeviceCanvasStreamStatusResult> statusStream({required DeviceCanvasStreamStatusRequest request}) {
     return _repository.statusStream(request: request);
   }

@@ -67,6 +67,17 @@ class DeviceCanvasApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  Future<ApiResponse<DeviceCanvasStreamPrepareResponse>> prepareStream({
+    required DeviceCanvasStreamPrepareRequest request,
+  }) {
+    return _client.postWithTimeout(
+      "/device-canvas/stream/prepare",
+      fromJson: _parseStreamPrepareResponse,
+      body: request.toJson(),
+      timeout: _streamRequestTimeout,
+    );
+  }
+
   Future<ApiResponse<DeviceCanvasStreamStatusResponse>> statusStream({
     required DeviceCanvasStreamStatusRequest request,
   }) {
@@ -93,6 +104,13 @@ class DeviceCanvasApi({required final RelayHttpApiClient _client}) {
   static DeviceCanvasStreamStartResponse _parseStreamStartResponse(Map<String, dynamic> json) {
     final response = DeviceCanvasStreamStartResponse.fromJson(json);
     if (!response.isValid) throw const FormatException("invalid Device Canvas stream start response");
+    return response;
+  }
+
+  // ignore: no_slop_linter/prefer_specific_type, JSON parsing callback requires dynamic payload
+  static DeviceCanvasStreamPrepareResponse _parseStreamPrepareResponse(Map<String, dynamic> json) {
+    final response = DeviceCanvasStreamPrepareResponse.fromJson(json);
+    if (!response.isValid) throw const FormatException("invalid Device Canvas stream prepare response");
     return response;
   }
 

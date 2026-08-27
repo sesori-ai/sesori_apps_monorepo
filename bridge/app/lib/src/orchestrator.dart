@@ -119,6 +119,7 @@ import "routing/post_agents_handler.dart";
 import "routing/post_device_canvas_claim_handler.dart";
 import "routing/post_device_canvas_release_handler.dart";
 import "routing/post_device_canvas_status_handler.dart";
+import "routing/post_device_canvas_stream_prepare_handler.dart";
 import "routing/post_device_canvas_stream_start_handler.dart";
 import "routing/post_device_canvas_stream_status_handler.dart";
 import "routing/post_device_canvas_stream_stop_handler.dart";
@@ -148,6 +149,7 @@ import "services/device_canvas_agent_tool_service.dart";
 import "services/device_canvas_claim_service.dart";
 import "services/device_canvas_client_service.dart";
 import "services/device_canvas_stream_service.dart";
+import "services/device_canvas_turn_credential_builder.dart";
 import "services/pending_interaction_service.dart";
 import "services/permission_auto_approval_service.dart";
 import "services/plugin_lifecycle_service.dart";
@@ -217,6 +219,7 @@ class Orchestrator({
     required final FailureReporter _failureReporter,
     required final BridgeRestartService _restartService,
     required final bool _filesystemAccessOk,
+    final DeviceCanvasTurnCredentialBuilder? _deviceCanvasTurnCredentialBuilder,
     // Supervised mode only: owns the status-class pushes to the desktop GUI.
     // Standalone has no control channel, so this is null there.
     required final ControlStatusNotifier? _statusNotifier,
@@ -255,6 +258,7 @@ class Orchestrator({
       integrationState: deviceCanvasIntegrationState,
       gateway: deviceCanvasStreamGateway,
       clock: _clock,
+      turnCredentialBuilder: _deviceCanvasTurnCredentialBuilder,
     );
     final deviceCanvasClientService = DeviceCanvasClientService(
       bridgeIdProvider: _bridgeRegistrationService,
@@ -601,6 +605,7 @@ class Orchestrator({
         PostDeviceCanvasStatusHandler(service: deviceCanvasClientService),
         PostDeviceCanvasClaimHandler(service: deviceCanvasClientService),
         PostDeviceCanvasReleaseHandler(service: deviceCanvasClientService),
+        PostDeviceCanvasStreamPrepareHandler(service: deviceCanvasStreamService),
         PostDeviceCanvasStreamStartHandler(service: deviceCanvasStreamService),
         PostDeviceCanvasStreamStatusHandler(service: deviceCanvasStreamService),
         PostDeviceCanvasStreamStopHandler(service: deviceCanvasStreamService),

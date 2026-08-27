@@ -140,7 +140,7 @@ void main() {
   test("ICE candidates and TURN configuration enforce collection and field bounds", () {
     const candidate = DeviceCanvasIceCandidate(candidate: "candidate:1", sdpMid: "0", sdpMLineIndex: 0);
     final turn = DeviceCanvasTurnConfiguration(
-      urls: List.filled(maxDeviceCanvasTurnUrls, "turn:relay.example.com"),
+      urls: List.generate(maxDeviceCanvasTurnUrls, (index) => "turn:relay-$index.example.com"),
       username: "user",
       credential: "secret",
       expiresAt: 1,
@@ -153,6 +153,117 @@ void main() {
     expect(turn.isValid, isTrue);
     expect(turn.copyWith(urls: [...turn.urls, "turn:extra.example.com"]).isValid, isFalse);
     expect(turn.copyWith(credential: "").isValid, isFalse);
+    expect(
+      turn.copyWith(username: "u" * maxDeviceCanvasTurnUsernameByteCount).isValid,
+      isTrue,
+    );
+    expect(
+      turn.copyWith(username: "u" * (maxDeviceCanvasTurnUsernameByteCount + 1)).isValid,
+      isFalse,
+    );
+    expect(turn.copyWith(username: "é" * 254).isValid, isTrue);
+    expect(turn.copyWith(username: "é" * 255).isValid, isFalse);
+  });
+
+  test("TURN URLs canonicalize the native-compatible DNS, IP, port, and transport subset", () {
+    const turn = DeviceCanvasTurnConfiguration(
+      urls: [
+        "TURN:TURN.EXAMPLE.TEST.:03478?TRANSPORT=UDP",
+        "turn:192.168.1.9?transport=tcp",
+        "turns:[2001:0DB8:0:0:0:0:0:1]",
+      ],
+      username: "user",
+      credential: "secret",
+      expiresAt: 1000,
+    );
+
+    expect(turn.isValid, isTrue);
+    expect(turn.canonicalUrls, const [
+      "turn:turn.example.test:3478?transport=udp",
+      "turn:192.168.1.9:3478?transport=tcp",
+      "turns:[2001:db8::1]:5349?transport=tcp",
+    ]);
+    expect(canonicalizeDeviceCanvasTurnUrl("turn:[::1]"), "turn:[::1]:3478?transport=udp");
+    expect(canonicalizeDeviceCanvasTurnUrl("turn:[::]"), "turn:[::]:3478?transport=udp");
+  });
+
+  test("TURN URLs reject malformed, duplicate, and alternate numeric endpoints", () {
+    const invalid = [
+      "https:turn.example.test",
+      "turn://turn.example.test",
+      "turn:user@turn.example.test",
+      "turn:turn.example.test/path",
+      "turn:turn.example.test?transport=ws",
+      "turns:turn.example.test?transport=udp",
+      "turn:turn.example.test:0",
+      "turn:127.000.0.1",
+      "turn:127.1",
+      "turn:0x7f000001",
+      "turn:[::ffff:192.168.1.9]",
+      "turn:[::ffff:c0a8:109]",
+      "turn:[::c0a8:109]",
+      "turn:[0:0:0:0:ffff:0:c0a8:109]",
+      "turn:turn example.test",
+    ];
+    for (final url in invalid) {
+      expect(canonicalizeDeviceCanvasTurnUrl(url), isNull, reason: url);
+    }
+
+    const duplicates = DeviceCanvasTurnConfiguration(
+      urls: [
+        "turn:TURN.EXAMPLE.TEST",
+        "turn:turn.example.test:03478?transport=udp",
+      ],
+      username: "user",
+      credential: "secret",
+      expiresAt: 1000,
+    );
+    expect(duplicates.isValid, isFalse);
+  });
+
+  test("stream prepare requires exact opaque correlation and a complete TURN payload", () {
+    const request = DeviceCanvasStreamPrepareRequest(
+      expectedBridgeId: "bridge-1",
+      sessionId: "session-1",
+      deviceKey: "android:emulator-1",
+      expectedClaimRevision: 4,
+      operationId: "operation-1",
+      leaseId: "lease_1",
+      control: false,
+    );
+    const turn = DeviceCanvasTurnConfiguration(
+      urls: ["turn:relay.example.com"],
+      username: "1000:operation-1",
+      credential: "secret",
+      expiresAt: 1000,
+    );
+    const prepared = DeviceCanvasStreamPrepareResponse(
+      outcome: DeviceCanvasStreamPrepareOutcome.prepared,
+      leaseId: "lease_1",
+      expiresAt: 1000,
+      turn: turn,
+    );
+
+    expect(request.isValid, isTrue);
+    expect(DeviceCanvasStreamPrepareRequest.fromJson(request.toJson()), request);
+    expect(request.copyWith(leaseId: "not an opaque id").isValid, isFalse);
+    expect(prepared.isValid, isTrue);
+    expect(DeviceCanvasStreamPrepareResponse.fromJson(prepared.toJson()), prepared);
+    expect(prepared.copyWith(expiresAt: 999).isValid, isFalse);
+    expect(prepared.copyWith(outcome: DeviceCanvasStreamPrepareOutcome.unavailable).isValid, isFalse);
+    expect(
+      const DeviceCanvasStreamPrepareResponse(
+        outcome: DeviceCanvasStreamPrepareOutcome.unsupported,
+        leaseId: null,
+        expiresAt: null,
+        turn: null,
+      ).isValid,
+      isTrue,
+    );
+    expect(
+      DeviceCanvasStreamPrepareResponse.fromJson(const {"outcome": "future"}).isValid,
+      isFalse,
+    );
   });
 
   test("stream start request validates identity, offer type, and candidate count", () {
@@ -163,6 +274,7 @@ void main() {
       deviceKey: "android:emulator-1",
       expectedClaimRevision: 4,
       operationId: "operation-1",
+      leaseId: null,
       control: true,
       offer: _description(type: DeviceCanvasRtcDescriptionType.offer),
       iceCandidates: List.filled(maxDeviceCanvasIceCandidates, candidate),
@@ -171,6 +283,8 @@ void main() {
     expect(request.isValid, isTrue);
     expect(request.copyWith(expectedClaimRevision: 0).isValid, isFalse);
     expect(request.copyWith(operationId: "not an opaque id").isValid, isFalse);
+    expect(request.copyWith(leaseId: "lease-1").isValid, isTrue);
+    expect(request.copyWith(leaseId: "not a lease").isValid, isFalse);
     expect(request.copyWith(offer: _description(type: DeviceCanvasRtcDescriptionType.answer)).isValid, isFalse);
     expect(request.copyWith(iceCandidates: [...request.iceCandidates, candidate]).isValid, isFalse);
 
@@ -277,7 +391,13 @@ void main() {
       iceCandidates: const [candidate],
       turn: turn,
     );
-    final diagnostics = [answer, candidate, turn, response].join("\n");
+    const prepare = DeviceCanvasStreamPrepareResponse(
+      outcome: DeviceCanvasStreamPrepareOutcome.prepared,
+      leaseId: "lease-private",
+      expiresAt: 4_000_000_000_000,
+      turn: turn,
+    );
+    final diagnostics = [answer, candidate, turn, prepare, response].join("\n");
 
     expect(diagnostics, isNot(contains(_fingerprint)));
     expect(diagnostics, isNot(contains("candidate:private-address")));

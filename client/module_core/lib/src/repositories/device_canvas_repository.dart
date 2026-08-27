@@ -63,6 +63,16 @@ class DeviceCanvasRepository({required final DeviceCanvasApi _api}) {
     };
   }
 
+  Future<DeviceCanvasStreamPrepareResult> prepareStream({required DeviceCanvasStreamPrepareRequest request}) async {
+    return switch (await _api.prepareStream(request: request)) {
+      SuccessResponse(:final data) => DeviceCanvasStreamPrepareSupported(response: data),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => const DeviceCanvasStreamPrepareUnsupported(),
+      ErrorResponse(:final error) when _isUncertainStreamWriteError(error) =>
+        const DeviceCanvasStreamPrepareUncertain(),
+      ErrorResponse(:final error) => DeviceCanvasStreamPrepareFailure(error: error),
+    };
+  }
+
   Future<DeviceCanvasStreamStatusResult> statusStream({required DeviceCanvasStreamStatusRequest request}) async {
     return switch (await _api.statusStream(request: request)) {
       SuccessResponse(:final data) => DeviceCanvasStreamStatusSupported(response: data),

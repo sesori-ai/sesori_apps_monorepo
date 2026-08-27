@@ -59,12 +59,26 @@ list, claim, and release tools.
   Candidate foundation, component, transport, priority, address, port, type,
   extension, mDNS, and IPv6-zone syntax is validated before native WebRTC, and
   IPv6 classification uses parsed address bytes rather than textual prefixes.
-  Any TURN-bearing response fails closed. Each start has a bounded random
-  operation ID; status is accepted only for that operation and when its echoed
-  offer fingerprint matches the current peer. Start processing is bounded to 15
-  seconds; a timeout or late completion cannot promote the lease. `Live` is
-  announced only after the renderer reports its first frame. Native signaling
-  failures expose only sanitized runtime categories in diagnostics.
+  In direct mode, any TURN-bearing response fails closed.
+- A second default-off development define, `DEVICE_CANVAS_LOCAL_TURN=true`,
+  changes only the gated video peer to relay-only ICE. Before creating an offer,
+  the client generates an operation and lease ID and calls the authenticated
+  prepare route. Bridge reserves that exact controller tuple, mints a short-lived
+  coturn REST credential from an owner-only secret file, holds the exact TURN DTO
+  in memory, and forwards it unchanged to Device Canvas only when start consumes
+  the reservation. Host and reflexive candidates are rejected in this mode.
+  The hidden issuer accepts one private/link-local IP endpoint, requires at least
+  32 secret bytes in a directory not writable by other users, and bounds pending
+  authorization work. Prepare/start races, timeout, disconnect, claim change,
+  stop, expiry, and shutdown remove the reservation; credentials, SDP,
+  candidates, and leases are never persisted or emitted through diagnostics,
+  rendezvous, or analytics.
+- Each start has a bounded random operation ID; status is accepted only for that
+  operation and when its echoed offer fingerprint matches the current peer.
+  Start and prepare processing are bounded to 15 seconds; a timeout or late
+  completion cannot promote the lease. `Live` is announced only after the
+  renderer reports its first frame. Native signaling failures expose only
+  sanitized runtime categories in diagnostics.
 - A durable claim reassignment publishes the committed owner identity before
   projection reads. The stream service immediately closes any lease whose exact
   bridge, session, device, or claim revision no longer matches, including while
@@ -121,6 +135,47 @@ before changing claims; also verify that app backgrounding and claim revision
 changes close it automatically. Private VPN routes can satisfy the address
 filter, so the filter is not an authorization or physical-adjacency proof.
 
+### Development local TURN runbook
+
+The local relay path is a development validation seam, not Step 10 production
+infrastructure. On the bridge host, choose its canonical private or link-local
+LAN IPv4 and run:
+
+```sh
+cd bridge/app
+dart run tool/device_canvas_local_turn.dart --lan-ip 192.168.1.10
+```
+
+The tool starts the installed `turnserver` with UDP/TCP port 3478 and UDP relay
+ports 49160-49200. It creates a random shared secret and coturn configuration in
+a mode-0700 temporary directory, marks both files mode 0600, keeps the secret off
+process arguments and output, disables coturn credential logging, and deletes the
+directory after bounded child shutdown. Coturn limits allocations to 300 seconds,
+caps per-user/total allocations and bandwidth, denies every IPv4 peer by default,
+and permits only the configured LAN IP so the two same-host relay allocations can
+reach each other. Allow the listener and relay ports only on the trusted LAN;
+this configuration intentionally has no TLS and must not be exposed as an
+Internet service.
+
+While the tool remains running, append the printed
+`--device-canvas-local-turn-url` and
+`--device-canvas-local-turn-secret-file` flags to a source-run Bridge. Build or
+run the mobile client with both defines:
+
+```sh
+--dart-define=DEVICE_CANVAS_LAN_VIDEO=true \
+--dart-define=DEVICE_CANVAS_LOCAL_TURN=true
+```
+
+The Bridge reads and validates the nonsymlink owner-only secret once at startup.
+The client must prepare before offer creation, both peers must gather only relay
+candidates, and the start/status response must echo the exact prepared lease,
+expiry, URLs, username, and credential. Repeat explicit close, modal dismissal,
+backgrounding, source loss, and claim release/reassignment. This proves the
+production signaling and media peers can traverse local coturn; it does not prove
+external NAT/cellular reachability, TLS/SNI, public firewall behavior, abuse
+limits, observability, or production backend credential issuance.
+
 The Flutter WebRTC SDK and its generated native registrations remain present in
 the app artifact even when the UI flag is off. The flag is rollout reachability,
 not dependency exclusion; transitive notices, platform policy, maintenance, and
@@ -171,6 +226,13 @@ Recorded on 2026-08-25 on the release-target macOS host:
   DataChannel. An Android-emulator-NAT run selected relay/relay, acknowledged 128
   ordered inputs at 47.0 ms p95, and rejected input after a local test boolean
   changed. It did not exercise external TURN or claim-bound revocation.
+- On 2026-08-27, coturn 4.17.2 started from the production development launcher
+  on `192.168.0.39`. `turnutils_uclient` authenticated with the generated REST
+  secret and sent two messages/200 bytes through both UDP and TCP TURN transports
+  with zero loss under the default-deny same-host peer ACL. HUP shutdown left no
+  listener, temporary secret/config directory, or coturn server log. This proves
+  the bounded local launcher and relay path, not physical phone integration or
+  external TURN behavior.
 - A connected test joins encrypted relay framing, exact connection incarnation,
   claim revision, authenticated local IPC, parser-valid SDP, fingerprint tamper
   rejection, answer correlation, claim-release revocation, and post-release
@@ -227,8 +289,9 @@ claims, sessions, plugin eligibility, and local processes after the run.
   process. Capability isolation protects other bridge backends and model shell
   commands; it is not a sandbox against a malicious in-process OpenCode plugin.
 - Remote video and control are not yet product behavior. The default-off LAN
-  video viewport and shared Android production source support cross-device
-  validation, while the Phase 2 entry gate remains closed. External TURN,
+  video viewport, development-only local coturn mode, and shared Android
+  production source support cross-device validation, while the Phase 2 entry
+  gate remains closed. External TURN,
   DataChannel input, reconnect/recovery, cumulative latency/resource and Sesori
   responsiveness distributions, full dependency acceptance, and the formal
   Step 12 release matrix remain unresolved.
@@ -241,11 +304,14 @@ claims, sessions, plugin eligibility, and local processes after the run.
 - `bridge/app/lib/src/services/device_canvas_claim_service.dart`
 - `bridge/app/lib/src/services/device_canvas_agent_tool_service.dart`
 - `bridge/app/lib/src/bridge/device_canvas/`
+- `bridge/app/lib/src/services/device_canvas_stream_service.dart`
+- `bridge/app/tool/device_canvas_local_turn.dart`
 - `bridge/sesori_plugin_opencode/lib/src/runtime/open_code_device_canvas_tools.dart`
 - `bridge/sesori_plugin_opencode/lib/src/runtime/open_code_runtime_policy.dart`
 - Focused tests under `bridge/app/test/bridge/device_canvas/`,
   `bridge/app/test/bridge/services/`, and
   `bridge/sesori_plugin_opencode/test/runtime/`
 - `client/module_core/test/capabilities/relay/relay_client_handshake_replay_test.dart`
+- `client/app/lib/core/platform/flutter_device_canvas_video_peer.dart`
 - `bridge/app/test/bridge/routing/routed_request_dispatcher_test.dart`
 - Active plan: `.plan/active/device-canvas-integration/`

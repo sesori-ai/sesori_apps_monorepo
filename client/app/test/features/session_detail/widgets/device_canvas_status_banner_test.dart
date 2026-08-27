@@ -62,7 +62,9 @@ class _FakeFlutterWebRtcClient({
   RTCVideoRenderer createVideoRenderer() => renderer;
 
   @override
-  Future<RTCPeerConnection> createDeviceCanvasPeerConnection() async => connection;
+  Future<RTCPeerConnection> createDeviceCanvasPeerConnection({
+    required DeviceCanvasTurnConfiguration? turn,
+  }) async => connection;
 }
 
 class _FakeConnectionService() extends Mock implements ConnectionService {
@@ -132,6 +134,7 @@ void main() {
         deviceKey: "device-1",
         expectedClaimRevision: 1,
         operationId: "operation-1",
+        leaseId: null,
         control: false,
         offer: _videoOffer,
       ),

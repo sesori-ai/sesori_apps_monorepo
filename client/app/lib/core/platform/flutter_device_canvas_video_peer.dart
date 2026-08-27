@@ -18,6 +18,8 @@ class FlutterDeviceCanvasVideoPeer({required FlutterWebRtcClient client}) implem
   Completer<void>? _iceGatheringCompleter;
   Future<void>? _rendererInitialization;
   Future<void>? _closeFuture;
+  bool _offerCreationStarted = false;
+  bool _relayOnly = false;
   bool _invalidCandidate = false;
   bool _closed = false;
 
@@ -33,15 +35,17 @@ class FlutterDeviceCanvasVideoPeer({required FlutterWebRtcClient client}) implem
   Stream<DeviceCanvasVideoPeerConnectionState> get connectionStateStream => _connectionStates.stream;
 
   @override
-  Future<DeviceCanvasVideoOffer> createOffer() async {
-    if (_peerConnection != null) throw StateError("Device Canvas video offer already created");
+  Future<DeviceCanvasVideoOffer> createOffer({required DeviceCanvasTurnConfiguration? turn}) async {
+    if (_offerCreationStarted) throw StateError("Device Canvas video offer already created");
     _ensureOpen();
+    _offerCreationStarted = true;
+    _relayOnly = turn != null;
     renderer.onFirstFrameRendered = _onFirstFrameRendered;
     _rendererInitialization ??= renderer.initialize();
     await _rendererInitialization;
     _ensureOpen();
 
-    final peerConnection = await _client.createDeviceCanvasPeerConnection();
+    final peerConnection = await _client.createDeviceCanvasPeerConnection(turn: turn);
     if (_closed) {
       await _disposePeerConnection(peerConnection);
       throw StateError("Device Canvas video peer is closed");
@@ -78,19 +82,23 @@ class FlutterDeviceCanvasVideoPeer({required FlutterWebRtcClient client}) implem
     if (localDescription?.type != "offer" || localSdp == null || localSdp.isEmpty) {
       throw const FormatException("WebRTC did not retain a valid local offer");
     }
-    final lanSdp = _retainLanHostCandidates(localSdp);
+    final filteredSdp = _retainAllowedCandidates(localSdp);
     if (_invalidCandidate ||
         _localCandidates.length > maxDeviceCanvasIceCandidates ||
         !_localCandidates.every((candidate) => candidate.isValid)) {
       throw const FormatException("WebRTC produced invalid ICE candidates");
     }
-    if (!_containsIceCandidate(lanSdp) && _localCandidates.isEmpty) {
-      throw const FormatException("WebRTC did not produce a local-network host candidate");
+    if (!_containsIceCandidate(filteredSdp) && _localCandidates.isEmpty) {
+      throw FormatException(
+        _relayOnly
+            ? "WebRTC did not produce a relay candidate"
+            : "WebRTC did not produce a local-network host candidate",
+      );
     }
-    final fingerprint = _extractFingerprint(lanSdp);
+    final fingerprint = _extractFingerprint(filteredSdp);
     final description = DeviceCanvasRtcDescription(
       type: DeviceCanvasRtcDescriptionType.offer,
-      sdp: lanSdp,
+      sdp: filteredSdp,
       fingerprint: fingerprint,
     );
     if (!description.isValid) throw const FormatException("WebRTC produced an invalid SDP fingerprint");
@@ -111,19 +119,23 @@ class FlutterDeviceCanvasVideoPeer({required FlutterWebRtcClient client}) implem
         !iceCandidates.every((candidate) => candidate.isValid)) {
       throw const FormatException("Device Canvas returned invalid WebRTC signaling");
     }
-    final lanSdp = _retainLanHostCandidates(answer.sdp);
-    final lanCandidates = iceCandidates.where((candidate) => _isLanHostCandidate(candidate.candidate)).toList();
-    if (!_containsIceCandidate(lanSdp) && lanCandidates.isEmpty) {
-      throw const FormatException("Device Canvas did not return a local-network host candidate");
+    final filteredSdp = _retainAllowedCandidates(answer.sdp);
+    final filteredCandidates = iceCandidates.where((candidate) => _isAllowedCandidate(candidate.candidate)).toList();
+    if (!_containsIceCandidate(filteredSdp) && filteredCandidates.isEmpty) {
+      throw FormatException(
+        _relayOnly
+            ? "Device Canvas did not return a relay candidate"
+            : "Device Canvas did not return a local-network host candidate",
+      );
     }
-    final lanAnswer = DeviceCanvasRtcDescription(
+    final filteredAnswer = DeviceCanvasRtcDescription(
       type: DeviceCanvasRtcDescriptionType.answer,
-      sdp: lanSdp,
+      sdp: filteredSdp,
       fingerprint: answer.fingerprint,
     );
-    if (!lanAnswer.isValid) throw const FormatException("Device Canvas returned an invalid filtered answer");
-    await peerConnection.setRemoteDescription(RTCSessionDescription(lanAnswer.sdp, "answer"));
-    for (final candidate in lanCandidates) {
+    if (!filteredAnswer.isValid) throw const FormatException("Device Canvas returned an invalid filtered answer");
+    await peerConnection.setRemoteDescription(RTCSessionDescription(filteredAnswer.sdp, "answer"));
+    for (final candidate in filteredCandidates) {
       await peerConnection.addCandidate(
         RTCIceCandidate(candidate.candidate, candidate.sdpMid, candidate.sdpMLineIndex),
       );
@@ -159,7 +171,7 @@ class FlutterDeviceCanvasVideoPeer({required FlutterWebRtcClient client}) implem
         _invalidCandidate = true;
         return;
       }
-      if (!_isLanHostCandidate(value)) return;
+      if (!_isAllowedCandidate(value)) return;
       _localCandidates.add(
         DeviceCanvasIceCandidate(candidate: value, sdpMid: sdpMid, sdpMLineIndex: sdpMLineIndex),
       );
@@ -192,11 +204,11 @@ class FlutterDeviceCanvasVideoPeer({required FlutterWebRtcClient client}) implem
     return lines.single.substring("a=fingerprint:".length);
   }
 
-  String _retainLanHostCandidates(String sdp) {
+  String _retainAllowedCandidates(String sdp) {
     final lineEnding = sdp.contains("\r\n") ? "\r\n" : "\n";
     return sdp
         .split(RegExp(r"\r?\n"))
-        .where((line) => !line.startsWith("a=candidate:") || _isLanHostCandidate(line.substring(2)))
+        .where((line) => !line.startsWith("a=candidate:") || _isAllowedCandidate(line.substring(2)))
         .join(lineEnding);
   }
 
@@ -204,7 +216,10 @@ class FlutterDeviceCanvasVideoPeer({required FlutterWebRtcClient client}) implem
     return sdp.split(RegExp(r"\r?\n")).any((line) => line.startsWith("a=candidate:"));
   }
 
-  bool _isLanHostCandidate(String candidate) {
+  bool _isAllowedCandidate(String candidate) =>
+      _relayOnly ? _isCandidate(candidate, type: "relay") : _isCandidate(candidate, type: "host");
+
+  bool _isCandidate(String candidate, {required String type}) {
     final fields = candidate.trim().split(RegExp(r"\s+"));
     if (fields.length < 8 || (fields.length - 8).isOdd) return false;
     if (!fields[0].startsWith("candidate:") ||
@@ -213,7 +228,7 @@ class FlutterDeviceCanvasVideoPeer({required FlutterWebRtcClient client}) implem
         !_isCandidateNumberInRange(fields[3], minimum: 1, maximum: 0xffffffff) ||
         !_isCandidateNumberInRange(fields[5], minimum: 1, maximum: 65535) ||
         fields[6].toLowerCase() != "typ" ||
-        fields[7].toLowerCase() != "host") {
+        fields[7].toLowerCase() != type) {
       return false;
     }
     final transport = fields[2].toLowerCase();
@@ -221,17 +236,19 @@ class FlutterDeviceCanvasVideoPeer({required FlutterWebRtcClient client}) implem
 
     final extensionNames = <String>{"typ"};
     String? tcpType;
+    String? relatedAddress;
+    String? relatedPort;
     for (var index = 8; index < fields.length; index += 2) {
       final name = fields[index].toLowerCase();
       final value = fields[index + 1].toLowerCase();
       if (!_candidateExtensionNamePattern.hasMatch(name) ||
-          !_candidateExtensionValuePattern.hasMatch(value) ||
           !extensionNames.add(name) ||
-          name == "raddr" ||
-          name == "rport") {
+          (name != "raddr" && !_candidateExtensionValuePattern.hasMatch(value))) {
         return false;
       }
       if (name == "tcptype") tcpType = value;
+      if (name == "raddr") relatedAddress = value;
+      if (name == "rport") relatedPort = value;
     }
     if (transport == "tcp") {
       if (tcpType != "active" && tcpType != "passive" && tcpType != "so") return false;
@@ -239,7 +256,21 @@ class FlutterDeviceCanvasVideoPeer({required FlutterWebRtcClient client}) implem
       return false;
     }
 
-    return _isLanCandidateAddress(fields[4].toLowerCase());
+    final address = fields[4].toLowerCase();
+    if (type == "host") {
+      if (relatedAddress != null || relatedPort != null) return false;
+      return _isLanCandidateAddress(address);
+    }
+    if ((relatedAddress == null) != (relatedPort == null)) return false;
+    if (relatedAddress != null) {
+      final port = relatedPort;
+      if (port == null ||
+          !_isCandidateIpAddress(relatedAddress) ||
+          !_isCandidateNumberInRange(port, minimum: 0, maximum: 65535)) {
+        return false;
+      }
+    }
+    return _isCandidateIpAddress(address);
   }
 
   bool _isCandidateNumberInRange(String value, {required int minimum, required int maximum}) {
@@ -274,23 +305,39 @@ class FlutterDeviceCanvasVideoPeer({required FlutterWebRtcClient client}) implem
   }
 
   bool _isLanIpv4Address(String address) {
-    final fields = address.split(".");
-    if (fields.length != 4) return false;
-    final octets = <int>[];
-    for (final field in fields) {
-      if (field.length > 3 || !_candidateNumberPattern.hasMatch(field) || (field.length > 1 && field.startsWith("0"))) {
-        return false;
-      }
-      final octet = int.parse(field);
-      if (octet > 255) return false;
-      octets.add(octet);
-    }
+    final octets = _parseCanonicalIpv4Address(address);
+    if (octets == null) return false;
     final first = octets[0];
     final second = octets[1];
     return first == 10 ||
         (first == 172 && second >= 16 && second <= 31) ||
         (first == 192 && second == 168) ||
         (first == 169 && second == 254);
+  }
+
+  List<int>? _parseCanonicalIpv4Address(String address) {
+    final fields = address.split(".");
+    if (fields.length != 4) return null;
+    final octets = <int>[];
+    for (final field in fields) {
+      if (field.length > 3 || !_candidateNumberPattern.hasMatch(field) || (field.length > 1 && field.startsWith("0"))) {
+        return null;
+      }
+      final octet = int.parse(field);
+      if (octet > 255) return null;
+      octets.add(octet);
+    }
+    return octets;
+  }
+
+  bool _isCandidateIpAddress(String address) {
+    if (_parseCanonicalIpv4Address(address) != null) return true;
+    if (!address.contains(":") || address.contains("%")) return false;
+    try {
+      return Uri.parseIPv6Address(address).length == 16;
+    } on FormatException {
+      return false;
+    }
   }
 
   bool _isLanIpv6Address(String address, {required bool hasZone}) {

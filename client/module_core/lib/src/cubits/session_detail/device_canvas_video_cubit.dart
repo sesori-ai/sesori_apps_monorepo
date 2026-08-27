@@ -29,6 +29,7 @@ class DeviceCanvasVideoCubit({
   required final ConnectionService _connectionService,
   required DeviceCanvasSessionState initialAuthorization,
   required final String _deviceKey,
+  final bool useLocalTurn = false,
   final Duration _connectionTimeout = const Duration(seconds: 15),
   final ClockProvider _clock = const ClockProvider(),
 }) extends Cubit<DeviceCanvasVideoState> {
@@ -42,6 +43,7 @@ class DeviceCanvasVideoCubit({
   String? _offerFingerprint;
   String? _operationId;
   String? _leaseId;
+  DeviceCanvasTurnConfiguration? _preparedTurn;
   int? _expiresAt;
   Timer? _connectionTimer;
   Timer? _expiryTimer;
@@ -81,7 +83,90 @@ class DeviceCanvasVideoCubit({
 
     final generation = ++_generation;
     try {
-      final offer = await _peer.createOffer();
+      final identity = _identity;
+      if (identity == null) throw StateError("Device Canvas video authorization was not established");
+      DeviceCanvasTurnConfiguration? turn;
+      if (useLocalTurn) {
+        final operationId = _generateOpaqueId();
+        final leaseId = _generateOpaqueId();
+        _operationId = operationId;
+        _leaseId = leaseId;
+        final prepareResult = await _service.prepareStream(
+          request: DeviceCanvasStreamPrepareRequest(
+            expectedBridgeId: identity.bridgeId,
+            sessionId: identity.sessionId,
+            deviceKey: identity.deviceKey,
+            expectedClaimRevision: identity.claimRevision,
+            operationId: operationId,
+            leaseId: leaseId,
+            control: false,
+          ),
+        );
+        if (!_isCurrent(generation)) {
+          if (prepareResult case DeviceCanvasStreamPrepareSupported(
+            response: DeviceCanvasStreamPrepareResponse(outcome: DeviceCanvasStreamPrepareOutcome.prepared),
+          )) {
+            await _stopLease(identity: identity, leaseId: leaseId);
+          }
+          return;
+        }
+        switch (prepareResult) {
+          case DeviceCanvasStreamPrepareSupported(:final response):
+            if (!response.isValid) {
+              await _terminate(
+                failure: DeviceCanvasVideoFailureReason.signalingFailed,
+                notifyBridge: true,
+              );
+              return;
+            }
+            switch (response.outcome) {
+              case DeviceCanvasStreamPrepareOutcome.prepared:
+                final preparedTurn = response.turn;
+                if (!response.isValid ||
+                    response.leaseId != leaseId ||
+                    preparedTurn == null ||
+                    !preparedTurn.isValid ||
+                    response.expiresAt != preparedTurn.expiresAt ||
+                    preparedTurn.expiresAt <= _clock().millisecondsSinceEpoch) {
+                  await _terminate(
+                    failure: DeviceCanvasVideoFailureReason.signalingFailed,
+                    notifyBridge: true,
+                  );
+                  return;
+                }
+                _preparedTurn = preparedTurn;
+                turn = preparedTurn;
+              case DeviceCanvasStreamPrepareOutcome.controllerConflict:
+                _leaseId = null;
+                await _terminate(
+                  failure: DeviceCanvasVideoFailureReason.controllerConflict,
+                  notifyBridge: false,
+                );
+                return;
+              case DeviceCanvasStreamPrepareOutcome.unavailable:
+                _leaseId = null;
+                await _terminate(failure: DeviceCanvasVideoFailureReason.unavailable, notifyBridge: false);
+                return;
+              case DeviceCanvasStreamPrepareOutcome.unauthorized:
+                _leaseId = null;
+                await _terminate(failure: DeviceCanvasVideoFailureReason.unauthorized, notifyBridge: false);
+                return;
+              case DeviceCanvasStreamPrepareOutcome.unsupported || DeviceCanvasStreamPrepareOutcome.unknown:
+                _leaseId = null;
+                await _terminate(failure: DeviceCanvasVideoFailureReason.unsupported, notifyBridge: false);
+                return;
+            }
+          case DeviceCanvasStreamPrepareUnsupported():
+            _leaseId = null;
+            await _terminate(failure: DeviceCanvasVideoFailureReason.unsupported, notifyBridge: false);
+            return;
+          case DeviceCanvasStreamPrepareUncertain() || DeviceCanvasStreamPrepareFailure():
+            await _terminate(failure: DeviceCanvasVideoFailureReason.signalingFailed, notifyBridge: true);
+            return;
+        }
+      }
+
+      final offer = await _peer.createOffer(turn: turn);
       if (!_isCurrent(generation)) return;
       if (offer.description.type != DeviceCanvasRtcDescriptionType.offer ||
           !offer.description.isValid ||
@@ -90,10 +175,9 @@ class DeviceCanvasVideoCubit({
         throw const FormatException("invalid Device Canvas WebRTC offer");
       }
       _offerFingerprint = offer.description.fingerprint;
-      final operationId = _generateOperationId();
+      final operationId = _operationId ?? _generateOpaqueId();
       _operationId = operationId;
-      final identity = _identity;
-      if (identity == null) throw StateError("Device Canvas video authorization was not established");
+      final expectedLeaseId = useLocalTurn ? _leaseId : null;
       final result = await _service.startStream(
         request: DeviceCanvasStreamStartRequest(
           expectedBridgeId: identity.bridgeId,
@@ -101,6 +185,7 @@ class DeviceCanvasVideoCubit({
           deviceKey: identity.deviceKey,
           expectedClaimRevision: identity.claimRevision,
           operationId: operationId,
+          leaseId: expectedLeaseId,
           control: false,
           offer: offer.description,
           iceCandidates: offer.iceCandidates,
@@ -112,6 +197,7 @@ class DeviceCanvasVideoCubit({
           identity: identity,
           operationId: operationId,
           offerFingerprint: offer.description.fingerprint,
+          expectedLeaseId: expectedLeaseId,
         );
         return;
       }
@@ -119,7 +205,7 @@ class DeviceCanvasVideoCubit({
     } on Object catch (error) {
       if (!_isCurrent(generation)) return;
       final errorType = error.runtimeType.toString();
-      loge("Failed to start Device Canvas LAN video ($errorType)");
+      loge("Failed to start Device Canvas ${useLocalTurn ? "relay" : "LAN"} video ($errorType)");
       await _terminate(failure: DeviceCanvasVideoFailureReason.signalingFailed, notifyBridge: _leaseId != null);
     }
   }
@@ -159,20 +245,20 @@ class DeviceCanvasVideoCubit({
               generation: generation,
             );
           case DeviceCanvasStreamStartOutcome.controllerConflict:
-            await _terminate(failure: DeviceCanvasVideoFailureReason.controllerConflict, notifyBridge: false);
+            await _terminate(failure: DeviceCanvasVideoFailureReason.controllerConflict, notifyBridge: useLocalTurn);
           case DeviceCanvasStreamStartOutcome.unavailable:
-            await _terminate(failure: DeviceCanvasVideoFailureReason.unavailable, notifyBridge: false);
+            await _terminate(failure: DeviceCanvasVideoFailureReason.unavailable, notifyBridge: useLocalTurn);
           case DeviceCanvasStreamStartOutcome.unauthorized:
-            await _terminate(failure: DeviceCanvasVideoFailureReason.unauthorized, notifyBridge: false);
+            await _terminate(failure: DeviceCanvasVideoFailureReason.unauthorized, notifyBridge: useLocalTurn);
           case DeviceCanvasStreamStartOutcome.unsupported || DeviceCanvasStreamStartOutcome.unknown:
-            await _terminate(failure: DeviceCanvasVideoFailureReason.unsupported, notifyBridge: false);
+            await _terminate(failure: DeviceCanvasVideoFailureReason.unsupported, notifyBridge: useLocalTurn);
         }
       case DeviceCanvasStreamStartUncertain():
         await _reconcileUncertainStart(generation: generation);
       case DeviceCanvasStreamStartUnsupported():
-        await _terminate(failure: DeviceCanvasVideoFailureReason.unsupported, notifyBridge: false);
+        await _terminate(failure: DeviceCanvasVideoFailureReason.unsupported, notifyBridge: useLocalTurn);
       case DeviceCanvasStreamStartFailure():
-        await _terminate(failure: DeviceCanvasVideoFailureReason.signalingFailed, notifyBridge: false);
+        await _terminate(failure: DeviceCanvasVideoFailureReason.signalingFailed, notifyBridge: useLocalTurn);
     }
   }
 
@@ -180,8 +266,9 @@ class DeviceCanvasVideoCubit({
     final identity = _identity;
     final offerFingerprint = _offerFingerprint;
     final operationId = _operationId;
+    final expectedLeaseId = useLocalTurn ? _leaseId : null;
     if (identity == null || offerFingerprint == null || operationId == null) {
-      await _terminate(failure: DeviceCanvasVideoFailureReason.signalingFailed, notifyBridge: false);
+      await _terminate(failure: DeviceCanvasVideoFailureReason.signalingFailed, notifyBridge: useLocalTurn);
       return;
     }
     DeviceCanvasStreamStatusResult? result;
@@ -200,6 +287,7 @@ class DeviceCanvasVideoCubit({
           result: current,
           identity: identity,
           offerFingerprint: offerFingerprint,
+          expectedLeaseId: expectedLeaseId,
         );
         return;
       }
@@ -219,22 +307,22 @@ class DeviceCanvasVideoCubit({
               generation: generation,
             );
           case DeviceCanvasStreamStatusOutcome.active:
-            await _terminate(failure: DeviceCanvasVideoFailureReason.signalingFailed, notifyBridge: false);
+            await _terminate(failure: DeviceCanvasVideoFailureReason.signalingFailed, notifyBridge: useLocalTurn);
           case DeviceCanvasStreamStatusOutcome.controllerConflict:
-            await _terminate(failure: DeviceCanvasVideoFailureReason.controllerConflict, notifyBridge: false);
+            await _terminate(failure: DeviceCanvasVideoFailureReason.controllerConflict, notifyBridge: useLocalTurn);
           case DeviceCanvasStreamStatusOutcome.unavailable || DeviceCanvasStreamStatusOutcome.inactive:
-            await _terminate(failure: DeviceCanvasVideoFailureReason.unavailable, notifyBridge: false);
+            await _terminate(failure: DeviceCanvasVideoFailureReason.unavailable, notifyBridge: useLocalTurn);
           case DeviceCanvasStreamStatusOutcome.unauthorized:
-            await _terminate(failure: DeviceCanvasVideoFailureReason.unauthorized, notifyBridge: false);
+            await _terminate(failure: DeviceCanvasVideoFailureReason.unauthorized, notifyBridge: useLocalTurn);
           case DeviceCanvasStreamStatusOutcome.unknown:
-            await _terminate(failure: DeviceCanvasVideoFailureReason.signalingFailed, notifyBridge: false);
+            await _terminate(failure: DeviceCanvasVideoFailureReason.signalingFailed, notifyBridge: useLocalTurn);
         }
       case DeviceCanvasStreamStatusUnsupported():
-        await _terminate(failure: DeviceCanvasVideoFailureReason.unsupported, notifyBridge: false);
+        await _terminate(failure: DeviceCanvasVideoFailureReason.unsupported, notifyBridge: useLocalTurn);
       case DeviceCanvasStreamStatusFailure():
-        await _terminate(failure: DeviceCanvasVideoFailureReason.signalingFailed, notifyBridge: false);
+        await _terminate(failure: DeviceCanvasVideoFailureReason.signalingFailed, notifyBridge: useLocalTurn);
       case null:
-        await _terminate(failure: DeviceCanvasVideoFailureReason.signalingFailed, notifyBridge: false);
+        await _terminate(failure: DeviceCanvasVideoFailureReason.signalingFailed, notifyBridge: useLocalTurn);
     }
   }
 
@@ -247,7 +335,11 @@ class DeviceCanvasVideoCubit({
     required int generation,
   }) async {
     if (leaseId == null || expiresAt == null || answer == null) {
-      await _terminate(failure: DeviceCanvasVideoFailureReason.signalingFailed, notifyBridge: false);
+      await _terminate(failure: DeviceCanvasVideoFailureReason.signalingFailed, notifyBridge: useLocalTurn);
+      return;
+    }
+    if (useLocalTurn && (leaseId != _leaseId || turn != _preparedTurn || expiresAt != _preparedTurn?.expiresAt)) {
+      await _terminate(failure: DeviceCanvasVideoFailureReason.signalingFailed, notifyBridge: true);
       return;
     }
     await _activate(
@@ -268,9 +360,9 @@ class DeviceCanvasVideoCubit({
     required DeviceCanvasTurnConfiguration? turn,
     required int generation,
   }) async {
-    _leaseId = leaseId;
+    if (!useLocalTurn) _leaseId = leaseId;
     _expiresAt = expiresAt;
-    if (turn != null) {
+    if (!useLocalTurn && turn != null) {
       await _terminate(failure: DeviceCanvasVideoFailureReason.lanOnly, notifyBridge: true);
       return;
     }
@@ -348,6 +440,7 @@ class DeviceCanvasVideoCubit({
     final identity = _identity;
     final leaseId = _leaseId;
     _leaseId = null;
+    _preparedTurn = null;
     _expiresAt = null;
     if (!isClosed) {
       emit(failure == null ? const DeviceCanvasVideoStopped() : DeviceCanvasVideoFailed(reason: failure));
@@ -402,6 +495,7 @@ class DeviceCanvasVideoCubit({
     required _DeviceCanvasVideoIdentity identity,
     required String operationId,
     required String offerFingerprint,
+    required String? expectedLeaseId,
   }) async {
     switch (result) {
       case DeviceCanvasStreamStartSupported(
@@ -410,8 +504,12 @@ class DeviceCanvasVideoCubit({
           leaseId: final leaseId?,
         ),
       ):
-        await _stopLease(identity: identity, leaseId: leaseId);
+        await _stopLease(identity: identity, leaseId: expectedLeaseId ?? leaseId);
       case DeviceCanvasStreamStartUncertain():
+        if (expectedLeaseId != null) {
+          await _stopLease(identity: identity, leaseId: expectedLeaseId);
+          return;
+        }
         try {
           for (var attempt = 0; attempt < _statusReconciliationAttempts; attempt++) {
             final status = await _service.statusStream(
@@ -430,6 +528,7 @@ class DeviceCanvasVideoCubit({
               result: status,
               identity: identity,
               offerFingerprint: offerFingerprint,
+              expectedLeaseId: null,
             );
             return;
           }
@@ -447,6 +546,7 @@ class DeviceCanvasVideoCubit({
     required DeviceCanvasStreamStatusResult result,
     required _DeviceCanvasVideoIdentity identity,
     required String offerFingerprint,
+    required String? expectedLeaseId,
   }) async {
     switch (result) {
       case DeviceCanvasStreamStatusSupported(
@@ -457,7 +557,9 @@ class DeviceCanvasVideoCubit({
             ),
           )
           when activeOfferFingerprint == offerFingerprint:
-        await _stopLease(identity: identity, leaseId: leaseId);
+        if (expectedLeaseId == null || leaseId == expectedLeaseId) {
+          await _stopLease(identity: identity, leaseId: expectedLeaseId ?? leaseId);
+        }
       case DeviceCanvasStreamStatusFailure(:final error):
         logw("Failed to reconcile an abandoned Device Canvas video lease", error);
       case DeviceCanvasStreamStatusSupported() || DeviceCanvasStreamStatusUnsupported():
@@ -512,7 +614,7 @@ class DeviceCanvasVideoCubit({
 
   bool _isCurrent(int generation) => !isClosed && _teardown == null && generation == _generation;
 
-  String _generateOperationId() =>
+  String _generateOpaqueId() =>
       base64Url.encode(List<int>.generate(24, (_) => _random.nextInt(256))).replaceAll("=", "");
 
   _DeviceCanvasVideoAuthorization _resolveAuthorization(DeviceCanvasSessionState state) {

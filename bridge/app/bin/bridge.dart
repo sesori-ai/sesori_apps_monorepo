@@ -124,6 +124,16 @@ class RunCommand() extends cli.Command<void> {
         allowed: ['verbose', 'debug', 'info', 'warning', 'error'],
         help: 'Minimum log level',
       )
+      ..addMultiOption(
+        'device-canvas-local-turn-url',
+        hide: true,
+        help: 'Development only: Device Canvas TURN URL. Repeatable.',
+      )
+      ..addOption(
+        'device-canvas-local-turn-secret-file',
+        hide: true,
+        help: 'Development only: owner-only coturn shared-secret file.',
+      )
       // Supervised mode: the desktop GUI passes the loopback control-channel
       // URL here. Hidden because it is an internal GUI↔helper contract, not a
       // user-facing flag. The per-spawn secret is delivered off-argv (stdin),

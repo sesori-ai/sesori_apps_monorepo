@@ -749,13 +749,15 @@ the integrated source and authorization unknowns, but it does not open the Phase
 2 product gate: input, external TURN, latency/resource distributions, reconnect
 coverage, complete dependency acceptance, and iOS containment remain open.
 
-### Default-off LAN viewport validation exception
+### Default-off viewport validation exceptions
 
 On 2026-08-26 an explicitly approved validation exception added the smallest
 Sesori viewport needed to exercise Step 9's Android video path before formal
 Steps 10-12. The exception is compiled behind
 `DEVICE_CANVAS_LAN_VIDEO=true`; it is off by default and does not change the
-delivery order or Phase 2 **NO-GO** decision.
+  delivery order or Phase 2 **NO-GO** decision. A second default-off define,
+  `DEVICE_CANVAS_LOCAL_TURN=true`, now permits the same video-only viewport to
+  validate local coturn without making external Step 10 claims.
 
 The exception is deliberately narrower than Step 12:
 
@@ -764,13 +766,26 @@ The exception is deliberately narrower than Step 12:
 - one peer/cubit owner inside the owning session's Device Canvas sheet, with
   explicit close, background close, claim-revision fencing, relay-loss close,
   lease expiry, and renderer/peer disposal;
-- direct host candidates only. The client retains RFC1918, IPv4 link-local,
+- direct host candidates by default. The client retains RFC1918, IPv4 link-local,
   IPv6 ULA/link-local, and mDNS host candidates while removing relay,
   server-reflexive, and globally routed candidates from both SDP and explicit
   candidate lists. Candidate foundation, component, transport, priority,
   address, port, type, extension, mDNS, and IPv6-zone syntax is validated before
-  native WebRTC sees it. A non-null TURN response fails closed and releases the
-  lease;
+  native WebRTC sees it. A non-null TURN response in direct mode fails closed and
+  releases the lease;
+- local relay mode prepares an exact client-generated lease before offer
+  creation. Bridge authorizes and reserves that tuple, issues a five-minute-or-
+  shorter coturn REST credential from explicit development-only configuration,
+  and forwards the exact in-memory TURN object when start consumes the
+  reservation. Flutter and Device Canvas both use relay-only ICE and reject host
+  or reflexive signaling. The issuer is null by default, secrets remain in an
+  owner-only nonsymlink file and Bridge memory, and no TURN/lease/signaling value
+  is persisted, logged, placed in rendezvous, or sent to analytics. The hidden
+  local issuer accepts one private/link-local IP endpoint and a secret of at
+  least 32 bytes, bounds authorization work per connection and process, and the
+  development coturn launcher limits allocations to five minutes with quotas,
+  bandwidth caps, and a default-deny peer policy that permits only its own LAN
+  relay address;
 - uncertain-start status is adopted only when the bridge echoes the originating
   offer fingerprint. Each start also carries a bounded random operation ID, and
   status can wait for or inspect only the matching operation and lease. Status
@@ -787,12 +802,16 @@ The exception is deliberately narrower than Step 12:
   expiry sends the exact idempotent stop request, and native signaling exceptions
   are logged only by sanitized runtime category.
 
-The local-address filter is a topology constraint, not the security boundary: a
-VPN can expose private routes. Current claim authorization, encrypted routed
-signaling, exact offer correlation, DTLS fingerprint validation, and SRTP remain
-authoritative. On 2026-08-27, physical same-LAN testing passed with a physical
-Sesori client and a local Android Studio emulator source; the exact evidence is
-recorded in `TRACKER.md`. This validation does not open the Phase 2 product gate.
+The local-address filter and local coturn endpoint are topology constraints, not
+the security boundary: a VPN can expose private routes. Current claim
+authorization, encrypted routed signaling, exact operation/lease/offer
+correlation, DTLS fingerprint validation, and SRTP remain authoritative. On
+2026-08-27, physical same-LAN direct testing passed with a physical Sesori client
+and a local Android Studio emulator source; the exact evidence is recorded in
+`TRACKER.md`. Local coturn can validate the production relay peers and signaling
+path, but not external NAT/cellular reachability, TLS/SNI, public firewall
+behavior, abuse/observability, or production backend issuance. Neither validation
+opens the Phase 2 product gate.
 
 The component-level decisions are:
 

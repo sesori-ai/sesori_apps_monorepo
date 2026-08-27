@@ -129,6 +129,102 @@ void main() {
     expect(options.importPluginIds, const ["opencode", "opencode"]);
   });
 
+  group("Device Canvas local TURN", () {
+    test("is disabled by default", () {
+      final options = _parseOptions(args: const []);
+
+      expect(options.deviceCanvasLocalTurnUrls, isEmpty);
+      expect(options.deviceCanvasLocalTurnSecretFile, isNull);
+    });
+
+    test("canonicalizes URLs and resolves the paired secret path", () {
+      final options = _parseOptions(
+        args: const [
+          "--device-canvas-local-turn-url",
+          "TURN:192.168.1.10:03478?TRANSPORT=UDP",
+          "--device-canvas-local-turn-url",
+          "turn:192.168.1.10?transport=tcp",
+          "--device-canvas-local-turn-secret-file",
+          "~/turn/secret",
+        ],
+      );
+
+      expect(options.deviceCanvasLocalTurnUrls, const [
+        "turn:192.168.1.10:3478?transport=udp",
+        "turn:192.168.1.10:3478?transport=tcp",
+      ]);
+      expect(options.deviceCanvasLocalTurnSecretFile, "/test/home/turn/secret");
+    });
+
+    test("requires URL and secret options together", () {
+      expect(
+        () => _parseOptions(args: const ["--device-canvas-local-turn-url", "turn:192.168.1.10"]),
+        throwsA(isA<ArgParserException>()),
+      );
+      expect(
+        () => _parseOptions(args: const ["--device-canvas-local-turn-secret-file", "/tmp/secret"]),
+        throwsA(isA<ArgParserException>()),
+      );
+    });
+
+    test("rejects malformed and semantically duplicate URLs", () {
+      for (final urls in const <List<String>>[
+        ["https:relay.example.test"],
+        ["turn:192.168.1.10", "TURN:192.168.1.10:03478?TRANSPORT=UDP"],
+      ]) {
+        expect(
+          () => _parseOptions(
+            args: [
+              for (final url in urls) ...["--device-canvas-local-turn-url", url],
+              "--device-canvas-local-turn-secret-file",
+              "/tmp/secret",
+            ],
+          ),
+          throwsA(isA<ArgParserException>()),
+        );
+      }
+    });
+
+    test("rejects nonlocal and mixed TURN endpoints", () {
+      for (final urls in const <List<String>>[
+        ["turn:relay.example.test"],
+        ["turn:8.8.8.8"],
+        ["turn:127.0.0.1"],
+        ["turns:192.168.1.10"],
+        ["turn:192.168.1.10?transport=udp", "turn:192.168.1.11?transport=tcp"],
+        ["turn:192.168.1.10:3478?transport=udp", "turn:192.168.1.10:3479?transport=tcp"],
+      ]) {
+        expect(
+          () => _parseOptions(
+            args: [
+              for (final url in urls) ...["--device-canvas-local-turn-url", url],
+              "--device-canvas-local-turn-secret-file",
+              "/tmp/secret",
+            ],
+          ),
+          throwsA(isA<ArgParserException>()),
+          reason: urls.toString(),
+        );
+      }
+    });
+
+    test("rejects more than the protocol URL limit", () {
+      expect(
+        () => _parseOptions(
+          args: [
+            for (var index = 0; index < 9; index++) ...[
+              "--device-canvas-local-turn-url",
+              "turn:192.168.1.10:3478?transport=udp",
+            ],
+            "--device-canvas-local-turn-secret-file",
+            "/tmp/secret",
+          ],
+        ),
+        throwsA(isA<ArgParserException>()),
+      );
+    });
+  });
+
   group("supervised mode (--control-url)", () {
     test("is standalone when --control-url is absent", () {
       final options = _parseOptions(args: const []);
@@ -185,6 +281,8 @@ BridgeCliOptions _parseOptions({required List<String> args}) {
       defaultsTo: "info",
       allowed: ["verbose", "debug", "info", "warning", "error"],
     )
+    ..addMultiOption("device-canvas-local-turn-url", hide: true)
+    ..addOption("device-canvas-local-turn-secret-file", hide: true)
     ..addOption("control-url", hide: true);
 
   final results = parser.parse(args);

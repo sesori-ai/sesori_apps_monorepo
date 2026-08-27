@@ -13,6 +13,7 @@ import "../../../core/platform/flutter_device_canvas_video_peer.dart";
 import "../../../core/platform/flutter_webrtc_client.dart";
 
 const bool deviceCanvasLanVideoPreviewEnabled = bool.fromEnvironment("DEVICE_CANVAS_LAN_VIDEO");
+const bool deviceCanvasLocalTurnEnabled = bool.fromEnvironment("DEVICE_CANVAS_LOCAL_TURN");
 
 class const DeviceCanvasVideoViewportOwner({
   super.key,
@@ -66,6 +67,7 @@ class _DeviceCanvasVideoViewportOwnerState() extends State<DeviceCanvasVideoView
             mutation: const DeviceCanvasSessionMutationIdle(),
           ),
           deviceKey: widget.initialDevice.deviceKey,
+          useLocalTurn: deviceCanvasLocalTurnEnabled,
         );
         _cubit = cubit;
         cubit.authorizationChanged(widget.authorizationState);

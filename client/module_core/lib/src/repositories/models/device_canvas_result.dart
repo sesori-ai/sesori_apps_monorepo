@@ -32,6 +32,18 @@ final class const DeviceCanvasStreamStartUncertain() extends DeviceCanvasStreamS
 
 final class const DeviceCanvasStreamStartFailure({required final ApiError error}) extends DeviceCanvasStreamStartResult;
 
+sealed class const DeviceCanvasStreamPrepareResult();
+
+final class const DeviceCanvasStreamPrepareSupported({required final DeviceCanvasStreamPrepareResponse response})
+    extends DeviceCanvasStreamPrepareResult;
+
+final class const DeviceCanvasStreamPrepareUnsupported() extends DeviceCanvasStreamPrepareResult;
+
+final class const DeviceCanvasStreamPrepareUncertain() extends DeviceCanvasStreamPrepareResult;
+
+final class const DeviceCanvasStreamPrepareFailure({required final ApiError error})
+    extends DeviceCanvasStreamPrepareResult;
+
 sealed class const DeviceCanvasStreamStatusResult();
 
 final class const DeviceCanvasStreamStatusSupported({required final DeviceCanvasStreamStatusResponse response})
