@@ -3,17 +3,17 @@
 ## Current State
 
 - **Plan:** `.plan/active/grok-harness/PLAN.md`
-- **Status:** Step 1/9 ready to publish
+- **Status:** Step 1/9 in PR
 - **Current branch:** `grok-code-harness-inquiry`
 - **Base:** `origin/main`
 - **Architecture plan review:** completed 2026-08-27; rejected one ownership issue, corrected below without re-review
-- **Open PR:** none
+- **Open PR:** #1152 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1152>
 - **Local successor:** not started
 
 ## Fixed Series
 
 1. `🌱 [grok-harness] docs: plan Grok Build harness support [step 1/9]`
-   - **State:** ready to publish.
+   - **State:** in PR #1152.
    - **Evidence:** plan/tracker drafted; architecture finding corrected; titles, paths, line width, and whitespace pass.
 2. `🌿 [grok-harness] feat(grok): scaffold the Grok plugin package [step 2/9]`
    - **State:** not started.
@@ -42,8 +42,8 @@
 - [x] Run architecture plan review through a sub-agent.
 - [x] Apply valid in-scope review findings and record the result.
 - [x] Validate Markdown paths/titles and `git diff --check`.
-- [ ] Commit, push, and open Step 1 PR.
-- [ ] Start the PR monitor.
+- [x] Commit, push, and open Step 1 PR (#1152).
+- [x] Start the PR monitor.
 - [ ] Create the Step 2 successor branch in this worktree and begin package scaffolding locally.
 
 ## Decisions And Evidence
