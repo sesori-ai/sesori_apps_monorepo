@@ -3,12 +3,13 @@
 ## Current State
 
 - **Plan:** `.plan/active/grok-harness/PLAN.md`
-- **Status:** Step 1/9 merged; Step 2/9 verified and ready for PR
+- **Status:** Step 1/9 merged; Step 2/9 in PR
 - **Current branch:** `grok-harness-step-2-scaffold`
 - **Base:** `origin/main`
 - **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
 - **Merged predecessor:** #1152 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1152>
-- **Current step:** `grok-harness-step-2-scaffold`; scaffold implemented, verified, and ready to publish
+- **Open PR:** #1156 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1156>
+- **Current step:** `grok-harness-step-2-scaffold`; scaffold implemented, verified, and under review
 
 ## Fixed Series
 
@@ -16,7 +17,7 @@
    - **State:** merged in #1152.
    - **Evidence:** architecture-approved plan; released-binary facts, titles, paths, and whitespace passed.
 2. `🌿 [grok-harness] feat(grok): scaffold the Grok plugin package [step 2/9]`
-   - **State:** verified locally and ready to open.
+   - **State:** in PR #1156.
    - **Evidence:** workspace package, launch spec, typed model-state DTOs, synthetic protocol fixtures, generated output,
      package tests/analyzer, LSP diagnostics, and the 1,500-line budget pass.
 3. `⚙️ [grok-harness] feat(grok): expose models and reasoning effort [step 3/9]`
@@ -61,7 +62,7 @@
 - [x] Run package tests, fatal-info analysis, and Dart LSP diagnostics.
 - [x] Run architecture implementation review for `origin/main...HEAD`; approved with no findings.
 - [x] Keep the measured change below the 1,500-line soft cap by leaving initialize/session envelope DTOs for Step 3.
-- [x] Commit the completed successor locally; do not push or open it before #1152 merges.
+- [x] After #1152 merged, sync to `origin/main`, publish PR #1156, and start its monitor.
 
 ## Decisions And Evidence
 
