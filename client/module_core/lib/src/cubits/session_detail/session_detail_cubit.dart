@@ -681,11 +681,16 @@ class SessionDetailCubit(
     return availableCommands.firstWhereOrNull((c) => c.name == stagedCommand.name);
   }
 
-  /// Returns the latest assistant or error [Message] from the list, or null if none.
+  /// Returns the latest agent-authored assistant or error [Message], or null if none.
   Message? _latestAssistantOrErrorMessage(List<MessageWithParts> messages) {
     for (var i = messages.length - 1; i >= 0; i--) {
       final info = messages[i].info;
-      if (info is MessageAssistant || info is MessageError) return info;
+      switch (info) {
+        case MessageAssistant(sender: MessageSender.agent) || MessageError():
+          return info;
+        case MessageAssistant() || MessageUser():
+          continue;
+      }
     }
     return null;
   }
@@ -1091,7 +1096,7 @@ class SessionDetailCubit(
     if (isClosed) return;
 
     if (message case
-        MessageAssistant(:final providerID, :final modelID, :final agent) ||
+        MessageAssistant(sender: MessageSender.agent, :final providerID, :final modelID, :final agent) ||
         MessageError(:final providerID, :final modelID, :final agent)) {
       final assistantAgentModel = providerID != null && modelID != null
           ? _resolveAgentModel(
@@ -2216,9 +2221,10 @@ class SessionDetailCubit(
     final childIds = children.map((child) => child.id).toSet();
     final agents = snapshot.agents.where((agent) => !agent.hidden && agent.mode != AgentMode.subagent).toList();
     final assistantAgentModel = switch (latestAssistant) {
-      MessageAssistant(:final modelID, :final providerID) || MessageError(:final modelID, :final providerID) =>
+      MessageAssistant(sender: MessageSender.agent, :final modelID, :final providerID) ||
+      MessageError(:final modelID, :final providerID) =>
         _resolveAgentModel(agents: agents, providerID: providerID, modelID: modelID),
-      MessageUser() || null => null,
+      MessageAssistant() || MessageUser() || null => null,
     };
     return (
       latestAssistant: latestAssistant,

@@ -424,6 +424,7 @@ final class ClaudeEventDispatcher({
     modelID: _models[sessionId],
     providerID: "anthropic",
     variant: null,
+    sender: PluginMessageSender.agent,
     time: time,
   );
 

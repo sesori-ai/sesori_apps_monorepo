@@ -105,6 +105,7 @@ void main() {
             modelID: "gpt-5",
             providerID: "openai",
             variant: "high",
+            sender: PluginMessageSender.agent,
             time: null,
           ),
           parts: [],

@@ -538,6 +538,10 @@ void main() {
         "pi:session:custom:${PiMessageIdentityBuilder.customMessageTimestampSentinel}:1",
         "pi:session:custom:${PiMessageIdentityBuilder.customMessageTimestampSentinel}:2",
       ]);
+      expect(
+        messages.map((message) => (message.info as PluginMessageAssistant).sender),
+        everyElement(PluginMessageSender.system),
+      );
       expect(messages.first.info.time?.created, 7);
       expect(messages[1].info.time, isNull);
       expect(messages[2].info.time, isNull);

@@ -1810,6 +1810,9 @@ void main() {
     await _waitForIdle(service: service, sessionId: "session");
     await _waitForEventCount<BridgeSseMessageUpdated>(events: events, count: 2);
 
+    final messageInfos = events.whereType<BridgeSseMessageUpdated>().map((event) => event.info).toList();
+    expect(messageInfos.map((info) => info["role"]), ["assistant", "assistant"]);
+    expect(messageInfos.map((info) => info["sender"]), ["system", "agent"]);
     expect(
       events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.text),
       containsAllInOrder(["[PR Monitor] report", "Handled report"]),

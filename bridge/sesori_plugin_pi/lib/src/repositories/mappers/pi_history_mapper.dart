@@ -303,7 +303,7 @@ final class PiHistoryMapper({
     if (!message.display) return null;
     final text = _visibleCustomText(content: message.content, warnings: <_PiHistoryWarning>{});
     if (text == null) return null;
-    final draft = _textMessage(
+    final draft = _systemMessage(
       sessionId: sessionId,
       messageId: messageId,
       timestamp: message.timestamp,
@@ -320,7 +320,7 @@ final class PiHistoryMapper({
     if (!entry.display) return null;
     final text = _visibleCustomText(content: entry.content, warnings: <_PiHistoryWarning>{});
     if (text == null) return null;
-    final draft = _textMessage(sessionId: sessionId, messageId: messageId, timestamp: null, text: text);
+    final draft = _systemMessage(sessionId: sessionId, messageId: messageId, timestamp: null, text: text);
     return PluginMessageWithParts(info: draft.info, parts: draft.parts);
   }
 
@@ -414,7 +414,7 @@ final class PiHistoryMapper({
               final text = _visibleCustomText(content: message.content, warnings: warnings);
               if (text == null) continue;
               messages.add(
-                _textMessage(sessionId: sessionId, messageId: messageId, timestamp: message.timestamp, text: text),
+                _systemMessage(sessionId: sessionId, messageId: messageId, timestamp: message.timestamp, text: text),
               );
             case PiBranchSummaryMessageDto() || PiCompactionSummaryMessageDto():
               continue;
@@ -431,7 +431,7 @@ final class PiHistoryMapper({
           final text = _visibleCustomText(content: content, warnings: warnings);
           if (text == null) continue;
           messages.add(
-            _textMessage(
+            _systemMessage(
               sessionId: sessionId,
               messageId: messageId,
               timestamp: null,
@@ -673,12 +673,13 @@ final class PiHistoryMapper({
         modelID: model,
         providerID: provider,
         variant: variant,
+        sender: PluginMessageSender.agent,
         time: _time(timestamp),
       ),
     };
   }
 
-  _MessageDraft _textMessage({
+  _MessageDraft _systemMessage({
     required String sessionId,
     required String messageId,
     required int? timestamp,
@@ -688,10 +689,11 @@ final class PiHistoryMapper({
       info: PluginMessage.assistant(
         id: messageId,
         sessionID: sessionId,
-        agent: _pluginId,
+        agent: null,
         modelID: null,
         providerID: null,
         variant: null,
+        sender: PluginMessageSender.system,
         time: _time(timestamp),
       ),
       parts: [
@@ -723,6 +725,7 @@ final class PiHistoryMapper({
         modelID: null,
         providerID: null,
         variant: null,
+        sender: PluginMessageSender.agent,
         time: _time(timestamp),
       ),
       parts: [

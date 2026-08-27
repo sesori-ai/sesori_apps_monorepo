@@ -341,6 +341,7 @@ class AcpReplayCollector({
       modelID: modelId,
       providerID: providerId,
       variant: null,
+      sender: PluginMessageSender.agent,
       time: draft.time,
     );
   }

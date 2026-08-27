@@ -13,13 +13,21 @@ extension PluginMessageMapper on PluginMessage {
       time: time.toShared(),
       promptId: promptId,
     ),
-    PluginMessageAssistant(:final id, :final agent, :final modelID, :final providerID, :final time) =>
+    PluginMessageAssistant(
+      :final id,
+      :final agent,
+      :final modelID,
+      :final providerID,
+      :final sender,
+      :final time,
+    ) =>
       Message.assistant(
         id: id,
         sessionID: sessionId,
         agent: agent,
         modelID: modelID,
         providerID: providerID,
+        sender: sender.toShared(),
         time: time.toShared(),
       ),
     PluginMessageError(
@@ -41,6 +49,14 @@ extension PluginMessageMapper on PluginMessage {
         errorMessage: errorMessage,
         time: time.toShared(),
       ),
+  };
+}
+
+extension on PluginMessageSender {
+  MessageSender toShared() => switch (this) {
+    PluginMessageSender.agent => MessageSender.agent,
+    PluginMessageSender.system => MessageSender.system,
+    PluginMessageSender.unknown => MessageSender.unknown,
   };
 }
 
@@ -71,14 +87,20 @@ extension PluginMessagePromptDefaultsMapper on List<PluginMessageWithParts> {
     for (var index = length - 1; index >= 0; index--) {
       final ({String? agent, String? modelID, String? providerID, String? variant})? selection =
           switch (this[index].info) {
-            PluginMessageAssistant(:final agent, :final modelID, :final providerID, :final variant) ||
+            PluginMessageAssistant(
+              sender: PluginMessageSender.agent,
+              :final agent,
+              :final modelID,
+              :final providerID,
+              :final variant,
+            ) ||
             PluginMessageError(:final agent, :final modelID, :final providerID, :final variant) => (
               agent: agent,
               modelID: modelID,
               providerID: providerID,
               variant: variant,
             ),
-            PluginMessageUser() => null,
+            PluginMessageAssistant() || PluginMessageUser() => null,
           };
       if (selection == null) continue;
       final (:agent, :modelID, :providerID, :variant) = selection;

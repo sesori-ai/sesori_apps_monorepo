@@ -4,17 +4,23 @@ part "message.freezed.dart";
 
 part "message.g.dart";
 
+/// Identifies who authored a non-user message.
+///
+/// [unknown] is forward-compatible and must be presented as non-agent output.
+@JsonEnum()
+enum MessageSender() { agent, system, unknown }
+
 /// Sealed class representing a message in a session.
 ///
 /// Three variants:
 /// - [MessageUser]: a message sent by the user
-/// - [MessageAssistant]: a regular assistant response
+/// - [MessageAssistant]: a non-user message with explicit sender attribution
 /// - [MessageError]: an assistant message that failed with an error
 ///
 /// The JSON serialization uses `"role"` as the union key. Each variant
 /// serializes with its corresponding role value:
 /// - `MessageUser`: `"user"`
-/// - `MessageAssistant`: `"assistant"`
+/// - `MessageAssistant`: `"assistant"` (including compatibility-safe system messages)
 /// - `MessageError`: `"error"`
 ///
 /// The bridge layer is responsible for flattening backend-specific error
@@ -43,6 +49,14 @@ sealed class const Message._() with _$Message {
     required String? agent,
     required String? modelID,
     required String? providerID,
+
+    /// Whether this envelope was authored by the agent or by session automation.
+    // COMPATIBILITY 2026-08-27 (v1.8.2): Older bridges omit sender because assistant envelopes did not
+    // distinguish automation. Default to agent until the minimum supported bridge always sends sender, then remove
+    // @Default.
+    @JsonKey(unknownEnumValue: MessageSender.unknown)
+    @Default(MessageSender.agent)
+    MessageSender sender,
     required MessageTime? time,
   }) = MessageAssistant;
 

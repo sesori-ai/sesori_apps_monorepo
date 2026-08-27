@@ -61,6 +61,7 @@ class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHar
           streamingText: _streamingText,
           children: const <Session>[],
           childStatuses: const <String, SessionStatus>{},
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         ),
       ),
     );

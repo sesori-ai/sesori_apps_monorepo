@@ -157,6 +157,33 @@ void main() {
       );
 
       expect(tracker.getLatestAssistantText("session-a"), equals("latest"));
+
+      tracker.handleEvent(
+        const SesoriSseEvent.messageUpdated(
+          info: Message.assistant(
+            id: "system-msg",
+            sessionID: "session-a",
+            agent: null,
+            modelID: null,
+            providerID: null,
+            sender: MessageSender.system,
+            time: null,
+          ),
+        ),
+      );
+      tracker.handleEvent(
+        const SesoriSseEvent.messagePartUpdated(
+          part: MessagePart.text(
+            id: "part-system",
+            sessionID: "session-a",
+            messageID: "system-msg",
+            text: "automation",
+          ),
+        ),
+      );
+
+      expect(tracker.getLatestAssistantText("session-a"), equals("latest"));
+      expect(tracker.createTelemetrySnapshot().assistantMessageRoleCount, equals(1));
     });
 
     test("tracks pending questions and clears on replied or rejected", () {

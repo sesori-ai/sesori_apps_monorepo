@@ -782,6 +782,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailErrorTitle => 'Failed to load messages';
 
   @override
+  String get sessionDetailAutomation => 'Automation';
+
+  @override
   String get sessionDetailRetry => 'Retry';
 
   @override

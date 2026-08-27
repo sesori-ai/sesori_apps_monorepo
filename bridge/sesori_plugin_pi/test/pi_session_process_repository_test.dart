@@ -420,6 +420,7 @@ void main() {
 
       final messages = await _loadFileFallback(storage: storage);
 
+      expect((messages.single.info as PluginMessageAssistant).sender, PluginMessageSender.system);
       expect(messages.single.parts.single.text, "hook content");
     });
 

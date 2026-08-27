@@ -1888,7 +1888,7 @@ $PluginMessageTimeCopyWith<$Res>? get time {
 @JsonSerializable(createFactory: false)
 
 class PluginMessageAssistant implements PluginMessage {
-  const PluginMessageAssistant({required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID, required this.variant, required this.time,  String? $type}): $type = $type ?? 'assistant';
+  const PluginMessageAssistant({required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID, required this.variant, required this.sender, required this.time,  String? $type}): $type = $type ?? 'assistant';
   
 
 @override final  String id;
@@ -1897,6 +1897,7 @@ class PluginMessageAssistant implements PluginMessage {
  final  String? modelID;
  final  String? providerID;
  final  String? variant;
+ final  PluginMessageSender sender;
 @override final  PluginMessageTime? time;
 
 @JsonKey(name: 'role')
@@ -1916,16 +1917,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageAssistant&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.variant, variant) || other.variant == variant)&&(identical(other.time, time) || other.time == time));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageAssistant&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.variant, variant) || other.variant == variant)&&(identical(other.sender, sender) || other.sender == sender)&&(identical(other.time, time) || other.time == time));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,agent,modelID,providerID,variant,time);
+int get hashCode => Object.hash(runtimeType,id,sessionID,agent,modelID,providerID,variant,sender,time);
 
 @override
 String toString() {
-  return 'PluginMessage.assistant(id: $id, sessionID: $sessionID, agent: $agent, modelID: $modelID, providerID: $providerID, variant: $variant, time: $time)';
+  return 'PluginMessage.assistant(id: $id, sessionID: $sessionID, agent: $agent, modelID: $modelID, providerID: $providerID, variant: $variant, sender: $sender, time: $time)';
 }
 
 
@@ -1936,7 +1937,7 @@ abstract mixin class $PluginMessageAssistantCopyWith<$Res> implements $PluginMes
   factory $PluginMessageAssistantCopyWith(PluginMessageAssistant value, $Res Function(PluginMessageAssistant) _then) = _$PluginMessageAssistantCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String? agent, String? modelID, String? providerID, String? variant, PluginMessageTime? time
+ String id, String sessionID, String? agent, String? modelID, String? providerID, String? variant, PluginMessageSender sender, PluginMessageTime? time
 });
 
 
@@ -1953,7 +1954,7 @@ class _$PluginMessageAssistantCopyWithImpl<$Res>
 
 /// Create a copy of PluginMessage
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? agent = freezed,Object? modelID = freezed,Object? providerID = freezed,Object? variant = freezed,Object? time = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? agent = freezed,Object? modelID = freezed,Object? providerID = freezed,Object? variant = freezed,Object? sender = null,Object? time = freezed,}) {
   return _then(PluginMessageAssistant(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
@@ -1961,7 +1962,8 @@ as String,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable
 as String?,modelID: freezed == modelID ? _self.modelID : modelID // ignore: cast_nullable_to_non_nullable
 as String?,providerID: freezed == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
 as String?,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
-as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
+as String?,sender: null == sender ? _self.sender : sender // ignore: cast_nullable_to_non_nullable
+as PluginMessageSender,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as PluginMessageTime?,
   ));
 }

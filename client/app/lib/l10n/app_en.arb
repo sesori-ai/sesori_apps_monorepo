@@ -436,6 +436,10 @@
   "sessionDetailLoadingSemantics": "Loading session",
   "sessionDetailEmpty": "No messages yet",
   "sessionDetailErrorTitle": "Failed to load messages",
+  "sessionDetailAutomation": "Automation",
+  "@sessionDetailAutomation": {
+    "description": "Label on a transcript message injected by session automation rather than authored by the user or agent."
+  },
   "sessionDetailRetry": "Retry",
   "sessionDetailPromptHint": "Ask anything...",
   "sessionDetailHoldToTalk": "Hold to talk",

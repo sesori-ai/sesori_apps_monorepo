@@ -36,6 +36,7 @@ void main() {
         modelID: "gpt",
         providerID: "openai",
         variant: "high",
+        sender: PluginMessageSender.agent,
         time: PluginMessageTime(created: 1718400000000, completed: 1718400005000),
       );
 
@@ -48,6 +49,7 @@ void main() {
             agent: "build",
             modelID: "gpt",
             providerID: "openai",
+            sender: MessageSender.agent,
             time: MessageTime(created: 1718400000000, completed: 1718400005000),
           ),
         ),
@@ -60,6 +62,25 @@ void main() {
           model: AgentModel(providerID: "openai", modelID: "gpt", variant: "high"),
         ),
       );
+    });
+
+    test("maps system attribution without using it as prompt defaults", () {
+      const message = PluginMessage.assistant(
+        id: "m-system",
+        sessionID: "s1",
+        agent: null,
+        modelID: null,
+        providerID: null,
+        variant: null,
+        sender: PluginMessageSender.system,
+        time: PluginMessageTime(created: 1718400000000, completed: null),
+      );
+
+      final shared = message.toSharedMessage(sessionId: "stable-session");
+
+      expect(shared, isA<MessageAssistant>());
+      expect((shared as MessageAssistant).sender, MessageSender.system);
+      expect([const PluginMessageWithParts(info: message, parts: [])].latestPromptDefaults(), isNull);
     });
 
     test("preserves time on an error message", () {
@@ -114,6 +135,7 @@ void main() {
             modelID: "gpt",
             providerID: "openai",
             variant: "low",
+            sender: PluginMessageSender.agent,
             time: null,
           ),
           parts: [],
@@ -160,6 +182,7 @@ void main() {
             modelID: "claude-sonnet-4-5",
             providerID: "anthropic",
             variant: "high",
+            sender: PluginMessageSender.agent,
             time: null,
           ),
           parts: [],
@@ -172,6 +195,7 @@ void main() {
             modelID: null,
             providerID: null,
             variant: null,
+            sender: PluginMessageSender.agent,
             time: null,
           ),
           parts: [],

@@ -135,6 +135,7 @@ final class const ClaudeHistoryMapper({
         modelID: entry.model,
         providerID: "anthropic",
         variant: entry.variant,
+        sender: PluginMessageSender.agent,
         time: _messageTime(entry.timestamp),
       ),
       parts: List.unmodifiable(parts),

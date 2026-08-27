@@ -294,11 +294,18 @@ sealed class PluginToolState with _$PluginToolState {
   }) = _PluginToolState;
 }
 
+/// Identifies who authored a plugin's non-user message envelope.
+///
+/// [unknown] lets a plugin preserve uncertain attribution without presenting
+/// the message as agent-authored.
+@JsonEnum()
+enum PluginMessageSender() { agent, system, unknown }
+
 /// Sealed class representing a plugin-level message.
 ///
 /// Three variants:
 /// - [PluginMessageUser]: a message sent by the user
-/// - [PluginMessageAssistant]: a regular assistant response
+/// - [PluginMessageAssistant]: a non-user message with explicit sender attribution
 /// - [PluginMessageError]: an assistant message that failed with an error
 ///
 /// The JSON serialization uses `"role"` as the union key.
@@ -324,6 +331,7 @@ sealed class PluginMessage with _$PluginMessage {
     required String? modelID,
     required String? providerID,
     required String? variant,
+    required PluginMessageSender sender,
     required PluginMessageTime? time,
   }) = PluginMessageAssistant;
 

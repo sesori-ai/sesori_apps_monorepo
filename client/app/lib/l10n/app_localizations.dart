@@ -1531,6 +1531,12 @@ abstract class AppLocalizations {
   /// **'Failed to load messages'**
   String get sessionDetailErrorTitle;
 
+  /// Label on a transcript message injected by session automation rather than authored by the user or agent.
+  ///
+  /// In en, this message translates to:
+  /// **'Automation'**
+  String get sessionDetailAutomation;
+
   /// No description provided for @sessionDetailRetry.
   ///
   /// In en, this message translates to:

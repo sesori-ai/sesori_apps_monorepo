@@ -16,11 +16,12 @@ class const AssistantMessageCard({
   required final Map<String, String> streamingText,
   required final List<Session> children,
   required final Map<String, SessionStatus> childStatuses,
+  required final EdgeInsetsGeometry contentPadding,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: contentPadding,
       child: SelectionArea(
         child: Column(
           crossAxisAlignment: .start,

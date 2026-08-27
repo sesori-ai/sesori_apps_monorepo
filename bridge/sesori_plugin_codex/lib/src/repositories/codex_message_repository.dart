@@ -92,6 +92,7 @@ class CodexMessageRepository({
       modelID: currentModel ?? config.model,
       providerID: sessionProvider ?? config.modelProvider ?? "openai",
       variant: currentVariant,
+      sender: PluginMessageSender.agent,
       time: time,
     );
 

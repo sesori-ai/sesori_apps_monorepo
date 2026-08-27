@@ -28,6 +28,7 @@ class const AssistantMessageMapper() {
         modelID: message.modelID,
         providerID: message.providerID,
         variant: message.variant,
+        sender: PluginMessageSender.agent,
         time: time,
       );
     }

@@ -89,9 +89,14 @@ defaults and queued client sends coherent.
   maps each stored payload through the same user-message path before clearing
   the queue. Process exit settles dispatched work before queued work reconnects.
   A resident Pi extension may initiate a turn after the bridge queue becomes
-  idle. Its visible custom message, assistant/tool output, and busy-to-idle
-  lifecycle still reach clients, and its activity restarts the resident idle
-  window instead of being discarded or reaped mid-turn.
+  idle. Its visible custom message is attributed as system automation live and
+  after replay, while assistant/tool output remains agent-authored. The client
+  renders automation on a neutral labelled surface, and it cannot replace
+  agent/model prompt defaults or completion-notification text. The complete
+  busy-to-idle lifecycle still reaches clients and restarts the resident idle
+  window instead of being discarded or reaped mid-turn. An older bridge's
+  omitted sender decodes as agent, while an older client ignores the additive
+  sender field and retains its prior assistant styling.
 - Pi slash commands are accepted by their correlated response or a matching
   extension dialog and remain in the request's sending state until then rather
   than exposing a cancellable bridge-queue entry. Commands reject while that
@@ -232,8 +237,8 @@ defaults and queued client sends coherent.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Live plugin, representative: a prompt streams assistant output and returns the session to idle. |
-| L2 Routine | Live plugin, representative: slash command returns on acceptance; prompt defaults update; first and stale transcript replay reconciles prompt defaults before the opening snapshot is applied; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. |
-| L3 Release | Client end to end (phone), every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming, composer, sending/queued feedback, and abort render; a stale selection refreshes, warns, and retries once without losing the queued prompt. |
+| L2 Routine | Live plugin, representative: slash command returns on acceptance; prompt defaults update; first and stale transcript replay reconciles prompt defaults before the opening snapshot is applied; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. Automated Pi coverage keeps visible custom messages system-attributed across live and replay without changing agent defaults or completion text. |
+| L3 Release | Client end to end (phone), every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming, composer, sending/queued feedback, and abort render; a stale selection refreshes, warns, and retries once without losing the queued prompt. A Pi custom message renders as labelled automation rather than agent output. |
 | L4 Extended | Relay integration, every supporting production plugin: a slow or unresponsive plugin leaves other sessions, plugins, and the relay responsive; archived sends and queued-prompt cancels are refused without racing archiving; disconnect and reconnect mid-turn resumes without lost or duplicated parts; bridge-owned prompts survive leaving and reopening in order and appear on a second client; a prompt waiting at a dispatch boundary can be cancelled; a permission reply lands while a command or selection-changing prompt waits behind the running turn; a second client observes the same turn and steering prompt. |
 | L5 Full | Client end to end, every supporting production plugin: retry status surfaces with attempt and timing; concurrent sends across sessions and plugins interleave without ordering damage; background and resume mid-turn recovers live state; an aborted turn triggers no completion notification. |
 
@@ -261,7 +266,9 @@ replay, and abort after output has started.
   command, or bare `/compact` leaves both its local bubble and backend echo in
   the transcript.
 - Internal backend command records or synthetic model attribution appear in
-  the conversation or replayed history.
+  the conversation or replayed history. A visible Pi custom message renders as
+  agent output, loses its automation attribution between live and replay,
+  changes agent/model defaults, or becomes completion-notification text.
 - Prompt defaults regress, an approved plan exit does not restore Agent
   across clients and restart, or a defaults-write failure fails the send.
 - Reopening or importing a session silently switches its latest transcript

@@ -679,6 +679,7 @@ MessageWithParts testMessageWithParts({String? id = _noString}) {
       agent: null,
       modelID: null,
       providerID: null,
+      sender: MessageSender.agent,
       time: null,
     ),
     parts: [
