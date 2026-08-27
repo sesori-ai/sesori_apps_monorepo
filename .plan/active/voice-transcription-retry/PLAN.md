@@ -3,13 +3,13 @@
 ## Status
 
 - **Plan slug:** `voice-transcription-retry`
-- **Status:** Active — Step 1/6 plan correction and publication
+- **Status:** Active — Step 1/5 plan correction and publication
 - **Plan date:** 2026-08-27
 - **Primary repository:** `sesori-ai/sesori_apps_monorepo`
 - **Server repository:** `sesori-ai/sesori_auth_server`
 - **Implementation base:** apps `origin/main` at `10e9c8c4bb`; auth `origin/master` at `93b4323dca`
 - **Current branch:** `voice-retry-behavior`
-- **Delivery:** one plan PR, one additive auth-contract PR, one client ownership/layering PR, one async-retry PR, one regression-doc PR, and one verification/retirement PR
+- **Delivery:** one plan PR, one additive auth-contract PR, one client ownership/layering PR, one async-retry-plus-regression-doc PR, and one verification/retirement PR
 - **External merge barrier:** apps realtime voice PR [#918](https://github.com/sesori-ai/sesori_apps_monorepo/pull/918), head `b3083b7ad3`, must rebase onto the merged async-retry implementation before it may merge
 
 This plan and `TRACKER.md` are the implementation authority. Current code and released behavior remain authoritative if either document becomes stale.
@@ -67,15 +67,15 @@ It changes the same `VoiceApi`, capture lifecycle, DI, `PromptInput`, tests, loc
 The merge order is locked:
 
 1. this plan's client ownership and async-retry Steps 3–4 merge first;
-2. PR #918 rebases onto that merged SHA and adapts its realtime/async orchestration to the new Foundation → API → Repository → Service ownership;
+2. PR #918 rebases onto that merged SHA and adapts its realtime/async orchestration to the new platform capability plus HTTP API → Repository → Service → Cubit ownership;
 3. #918 preserves async retained-file retry and its tests while keeping post-audio realtime partial-text/no-full-retry semantics; and
 4. only then may #918 merge.
 
-Step 2 updates both the auth realtime `PLAN.md` and `TRACKER.md` with this decision and barrier. Updating prose without reconciling the open apps branch is insufficient; the branch rebase is a required checkpoint before this plan's documentation step.
+Step 2 updates both the auth realtime `PLAN.md` and `TRACKER.md` with this decision and barrier. Updating prose without reconciling the open apps branch is insufficient; the branch rebase is a required checkpoint before this plan's final verification and retirement step.
 
 ### Regression documentation
 
-`docs/regression/voice-input.md` already lists transcription failure/retry at L4, but its required behavior says every exit path deletes the file and no owner retains residual audio. The document must be reconciled after implementation rather than treated as evidence that retry exists today.
+`docs/regression/voice-input.md` already lists transcription failure/retry at L4, but its required behavior says every exit path deletes the file and no owner retains residual audio. Step 4 updates the async contract in the same PR that changes production behavior, so no merged state leaves this source of truth stale. PR #918 updates its own realtime mode-specific contract when that unpublished branch rebases and eventually lands.
 
 ## Locked Architecture
 
@@ -105,7 +105,7 @@ or:
 
 `AsyncTranscriptionClient` remains provider-neutral. `OpenAIClient` and `SonioxTranscriptionClient` classify external outcomes into detailed `TranscriptionFailureReason` values; neither adapter chooses HTTP status, public `error`, or client retry policy.
 
-Add `UnusableAudio` to the closed internal reason set for a structurally valid provider result with no usable speech/text. Keep `MalformedOutput` for invalid/untrusted provider structure.
+Add `UnusableAudio` to the closed internal reason set for a structurally valid provider result with no usable speech/text. Add `QuotaExhausted` for provider billing/credit exhaustion that cannot recover by resubmitting identical audio. Keep `Capacity` for transient rate/concurrency pressure and `MalformedOutput` for invalid/untrusted provider structure.
 
 `TranscriptionFailure` continues carrying the reason, original local `cause`, and optional provider cooldown only. It gains no HTTP fields or provider name.
 
@@ -124,6 +124,7 @@ The public mapping is fixed:
 |---|---:|---|---|
 | `InvalidInput` | false | `400 bad_request` | `500 internal_server_error` |
 | `UnusableAudio` | false | preserve `502 transcription_provider_error` | `500 internal_server_error` |
+| `QuotaExhausted` | false | preserve `503 transcription_unavailable` | `500 internal_server_error` |
 | `Capacity` | true | `503 transcription_unavailable` | `500 internal_server_error` |
 | `Unavailable` | true | `503 transcription_unavailable` | `500 internal_server_error` |
 | `Timeout` | true | `504 transcription_timeout` | `500 internal_server_error` |
@@ -133,15 +134,25 @@ The public mapping is fixed:
 | `Cancelled`, caller still connected | false | `400 bad_request` | `400 bad_request` |
 | Unexpected non-`TranscriptionFailure` | false | `500 internal_server_error` | `500 internal_server_error` |
 
-The existing `ApiError` subclasses in `src/lib/errors.ts` remain the sole public HTTP errors. Extend or add typed transcription errors so every provider-derived response carries the fixed boolean while preserving the table's status and `error`. `Retry-After` remains only on retryable detailed errors; the OpenAI legacy policy adds only the boolean and preserves its existing status/error/header behavior.
+The existing `ApiError` subclasses in `src/lib/errors.ts` remain the sole public HTTP errors. Extend or add typed transcription errors so every provider-derived response carries the fixed boolean while preserving the table's status and `error`. The existing Sesori daily-quota precheck remains `429 quota_exceeded` with its `service` member and gains `retryable: false` on this voice endpoint. `Retry-After` remains only on retryable detailed errors; quota exhaustion emits no cooldown, and the OpenAI legacy policy adds only the boolean while preserving its existing status/error/header behavior.
 
-OpenAI classification recognizes caller cancellation first, then known SDK timeout/connection, 429 capacity, 5xx availability, 400/413/415/422 invalid input, 401/403/404 configuration, empty successful text, malformed output, and unknown internal failures. Raw provider values never cross the adapter.
+OpenAI classification recognizes caller cancellation first, then known SDK timeout/connection, provider error code/type for insufficient quota or a billing hard limit, generic 429 capacity, 5xx availability, 400/413/415/422 invalid input, 401/403/404 configuration, empty successful text, malformed output, and unknown internal failures. Soniox likewise recognizes documented quota-exhaustion metadata/402 before generic rate-limit 429. Raw provider values never cross either adapter.
 
-### 2. Client dependency flow is Foundation → API → Repository → Service → Composer
+### 2. Client separates the platform capability from the HTTP dependency chain
 
-#### Foundation/platform
+The two inputs meet only in the service layer:
 
-Add pure-Dart contracts under `client/module_core/lib/src/foundation/platform/` for the platform recording boundary. The boundary returns typed artifacts and events without exposing `record`, Flutter, wake-lock plugins, or raw maps.
+```text
+FlutterVoiceCapture → VoiceCapture platform capability ─────────┐
+VoiceApi → VoiceRepository ──────────────────────────────────────┴→ VoiceTranscriptionService
+VoiceTranscriptionService → VoiceTranscriptionSession → VoiceInputCubit → PromptInput
+```
+
+The async HTTP path follows API → Repository → Service without skipping a layer. Recording is a platform capability, not an endpoint or data repository; the client platform-abstraction rule explicitly allows module_core consumers to depend on that interface. Do not add misleading `VoiceCaptureApi`/`VoiceCaptureRepository` pass-through classes solely to rename the platform seam.
+
+#### Platform capability
+
+Add a pure-Dart `VoiceCapture` contract under `client/module_core/lib/src/platform/`. It returns typed artifacts, events, and one uniquely owned `VoiceCaptureSession` without exposing `record`, Flutter, wake-lock plugins, or raw maps.
 
 The concrete app implementation lives under `client/app/lib/core/platform/` and owns only platform mechanics:
 
@@ -154,7 +165,7 @@ The concrete app implementation lives under `client/app/lib/core/platform/` and 
 
 It does not call auth APIs, parse server failures, choose retryability, or own composer policy.
 
-The platform adapter and its `AudioRecorder` are factory-scoped so one composer service does not share disposable native state with another.
+The platform capability itself is stateless. Each opened `VoiceCaptureSession` owns a distinct `AudioRecorder` and native lifecycle, so composers never share disposable recording state. The concrete adapter may create that per-session native object directly; no DI factory or second production abstraction is added.
 
 #### Layer 1 API
 
@@ -172,25 +183,19 @@ Add `VoiceRepository` under `client/module_core/lib/src/repositories/`. It depen
 
 For a non-success HTTP body with omitted, malformed, or unknown retryability, the repository returns terminal rejection. This is the explicit old-server compatibility branch and carries the required dated app-version comment using the implementation date and then-current `client/app/pubspec.yaml` version (currently `1.8.2`).
 
-#### Layer 3 service
+#### Layer 3 service and per-composer session
 
-Move recording/transcription orchestration to `client/module_core/lib/src/services/voice_transcription_service.dart`. It depends only on `VoiceRepository` and the Foundation platform contract. It never imports Flutter or app-shell code and never calls `VoiceApi` directly.
+Move recording/transcription orchestration to `client/module_core/lib/src/services/voice_transcription_service.dart`. `VoiceTranscriptionService` depends only on `VoiceRepository` and `VoiceCapture`. It never imports Flutter or app-shell code and never calls `VoiceApi` directly.
 
-One private sealed lifecycle represents idle, starting, recording, transcribing, retry-pending, cancelling, and disposed. Prewarm remains an independent best-effort operation. The lifecycle owns at most one opaque recording artifact.
+Register the service with the module_core-required `@lazySingleton` lifetime. It holds no composer-specific mutable state. `createSession()` returns an unregistered, uniquely owned `VoiceTranscriptionSession` for one composer. That service-layer session owns the generation fence, one `VoiceCaptureSession`, and at most one opaque recording artifact. Its private sealed lifecycle represents idle, starting, recording, transcribing, retry-pending, cancelling, and disposed. Prewarm remains independent and best-effort.
 
-The service is registered as a DI factory, not a singleton. `PromptInput` resolves exactly one instance for its State lifetime and never resolves the service through a getter on each call.
+#### Layer 4 Cubit and composer ownership
 
-#### Composer ownership and disposal
+Add `VoiceInputCubit` and a sealed `VoiceInputState` under `client/module_core/lib/src/cubits/voice_input/`. The Cubit is not registered in DI. The app's session-detail owner constructs it in `BlocProvider(create:)` with the lazy-singleton service, and the Cubit creates/owns exactly one `VoiceTranscriptionSession` for that provider lifetime.
 
-`PromptInput` owns its service instance and UI interaction generation.
+The Cubit receives start, stop, retry, cancel, and discard intents; maps the service session lifecycle to renderable state; and keeps artifact/business policy out of Flutter. Its `close()` first invalidates the session synchronously before any asynchronous gap, then awaits best-effort session cleanup. Cleanup cancels native/upload work, releases wake lock, discards any retained artifact, closes streams, and logs contained failures.
 
-On widget disposal it:
-
-1. synchronously calls a non-async service invalidation/fence so no later completion can publish transcript or retry-pending state;
-2. starts best-effort asynchronous service disposal without awaiting from Flutter's synchronous `dispose`; and
-3. relies on service disposal to cancel native/upload work, release wake lock, discard any retained artifact, close streams, and contain/log cleanup failures.
-
-A late upload or platform callback checks the service generation/disposed state before any transition. It can never recreate retry-pending state after the composer is gone.
+`PromptInput` owns only Flutter presentation/controller concerns. It renders `context.watch<VoiceInputCubit>().state`, dispatches intents through `context.read<VoiceInputCubit>()`, and uses a listener for one-shot transcript/error effects. It neither resolves a service nor owns the voice business lifecycle. A late upload or platform callback checks the session generation and Cubit closure before any transition, so it cannot recreate retry-pending state after the provider is gone.
 
 ### 3. Async retained-file lifecycle
 
@@ -202,11 +207,11 @@ Public operations remain narrow:
 - retry the retained async artifact without invoking the recorder again;
 - cancel active work;
 - explicitly discard a retained artifact; and
-- invalidate/dispose the composer-owned service.
+- invalidate/close the composer-owned Cubit and service session.
 
 The exact disposition matrix is:
 
-| Async outcome | Artifact | Service state | UI |
+| Async outcome | Artifact | Session/Cubit state | UI |
 |---|---|---|---|
 | Transcript success | Delete best-effort | Idle | Insert text once for review |
 | Local transport failure | Retain | Retry pending | Saved-recording Retry + discard |
@@ -217,7 +222,7 @@ The exact disposition matrix is:
 | User cancels an in-flight attempt | Delete best-effort | Idle | No transcript |
 | User discards pending recording | Delete best-effort | Idle | Normal composer |
 | Retry finds artifact missing/unreadable | Clear ownership | Idle | Recording unavailable; re-record/type |
-| Composer service disposal | Delete best-effort | Disposed | No retained cross-route recording |
+| Composer Cubit/session close | Delete best-effort | Disposed | No retained cross-route recording |
 
 Each upload attempt releases busy/native wake-lock ownership when it settles. Retry reuses the exact artifact and MIME type, re-enters transcribing, and remains cancellable through the generation fence. Repeated retryable failures keep the artifact; success or any terminal outcome clears it.
 
@@ -225,7 +230,7 @@ Deletion failure remains observable and best-effort: log the path/error locally,
 
 ### 4. Retry is a persistent composer state
 
-Extend `PromptInput`'s existing sealed `_VoiceInteraction` with a retry-pending variant. It blocks a second recording from silently replacing the retained artifact and survives ordinary widget rebuilds.
+Replace `PromptInput`'s private `_VoiceInteraction` business state with the module_core sealed `VoiceInputState`, including a retry-pending variant. It blocks a second recording from silently replacing the retained artifact and survives ordinary widget rebuilds through the owning `BlocProvider`.
 
 The voice-aware composer slot shows:
 
@@ -290,8 +295,8 @@ No bridge route, relay message, plugin interface, shared crypto contract, or dat
 
 ### New or changed mutable parts
 
-1. **Composer-scoped service lifecycle:** one sealed lifecycle replaces singleton booleans/path coordination and owns one artifact.
-2. **Retry-pending UI variant:** one variant in the existing sealed composer interaction; no Cubit, registry, or timer.
+1. **Composer-scoped session:** one service-created session replaces singleton booleans/path coordination and owns one artifact.
+2. **Voice Cubit state:** one factory-constructed Cubit exposes the sealed lifecycle, including retry pending, to the composer; no registry or timer.
 3. **Retained async artifact:** the already-created compressed file lives longer only after an explicitly retryable failure.
 
 ### Deliberately not added
@@ -308,8 +313,8 @@ The architecture move is causally required by the new lifecycle: retry policy an
 
 ## Cleanup Assessment
 
-- Replace the app-shell `VoiceTranscriptionService` with the core service plus concrete platform adapter; do not keep an internal compatibility wrapper after all consumers move.
-- Add the missing repository and remove direct service-to-API mapping.
+- Replace the app-shell `VoiceTranscriptionService` and private `_VoiceInteraction` with the lazy-singleton core service, per-composer session/Cubit, and concrete platform adapter; do not keep an internal compatibility wrapper after all consumers move.
+- Add the missing HTTP repository and remove direct service-to-API mapping. Do not add pass-through API/repository types around the platform capability.
 - Replace unconditional async cleanup and generic network-error behavior that make retry impossible.
 - Remove obsolete voice error variants/mappers only when the repository outcomes make them unused; internal Dart contracts update in lockstep.
 - Update stale localization that tells users only to check the connection without saying the recording is saved.
@@ -322,18 +327,17 @@ No database field, route, transport field, cache, setting, or job becomes obsole
 
 | Step | Repository | Exact PR title | Changed-line target | Outcome |
 |---|---|---|---:|---|
-| 1/6 | apps | `🌱 [voice-transcription-retry] Plan async voice transcription retries [step 1/6]` | 500-700 | Publish this reviewed/corrected plan and tracker only |
-| 2/6 | auth | `⚙️ [voice-transcription-retry] Mark async transcription failures retryable [step 2/6]` | 450-900 | Add authoritative booleans with explicit public compatibility policy; update realtime plan/tracker |
-| 3/6 | apps | `🚧 [voice-transcription-retry] Move voice lifecycle into client core [step 3/6]` | 1,050-1,500 | Add platform contract, API/repository layering, composer-scoped core service, DI/codegen, and behavior-preserving tests |
-| 4/6 | apps | `⚙️ [voice-transcription-retry] Retain and retry async voice recordings [step 4/6]` | 650-1,150 | Add retained-artifact lifecycle, Retry/discard UI, localization/codegen, and focused tests |
-| 5/6 | apps | `🌱 [voice-transcription-retry] Document async voice retry behavior [step 5/6]` | 50-140 | Reconcile `docs/regression/voice-input.md` after #918 branch rebase checkpoint |
-| 6/6 | apps | `🌿 [voice-transcription-retry] Verify async voice retries and retire plan [step 6/6]` | 60-180 | Run/record required L4 async matrix and retire only after it passes |
+| 1/5 | apps | `🌱 [voice-transcription-retry] Plan async voice transcription retries [step 1/5]` | 500-700 | Publish this reviewed/corrected plan and tracker only |
+| 2/5 | auth | `⚙️ [voice-transcription-retry] Mark async transcription failures retryable [step 2/5]` | 500-950 | Add authoritative booleans, quota classification, and explicit public compatibility policy; update realtime plan/tracker |
+| 3/5 | apps | `🚧 [voice-transcription-retry] Move voice lifecycle into client core [step 3/5]` | 1,150-1,500 | Add platform/session boundary, HTTP API/repository layering, lazy service, VoiceInputCubit, DI/codegen, and behavior-preserving tests |
+| 4/5 | apps | `⚙️ [voice-transcription-retry] Retain and retry async voice recordings [step 4/5]` | 700-1,250 | Add retained-artifact lifecycle, Retry/discard UI, localization/codegen, regression contract, and focused tests |
+| 5/5 | apps | `🌿 [voice-transcription-retry] Verify async voice retries and retire plan [step 5/5]` | 60-180 | Run/record required L4 async matrix and retire only after it passes |
 
 Every implementation PR targets at most the 1,500-line soft cap. If the post-implementation estimate for Step 3 exceeds that after code-informed decomposition, stop and ask before changing the fixed series; do not hide a second lifecycle behind a nominally smaller PR.
 
-The existing PR #918 is an external merge-barrier action owned by the realtime plan, not a seventh PR in this series. Between Steps 4 and 5 it must rebase onto the merged Step 4 SHA, adopt the new repository/service/platform ownership, preserve async retry tests, update its own auth-hosted PLAN/TRACKER checkpoint, and return to mergeable CI-green state.
+The existing PR #918 is an external merge-barrier action owned by the realtime plan, not a sixth PR in this series. Between Steps 4 and 5 it must rebase onto the merged Step 4 SHA, adopt the new platform/service/session/Cubit ownership, preserve async retry tests, update its own mode-specific regression contract and auth-hosted PLAN/TRACKER checkpoint, and return to mergeable CI-green state.
 
-## Step 1/6 — Publish The Plan
+## Step 1/5 — Publish The Plan
 
 ### Scope
 
@@ -344,58 +348,63 @@ The existing PR #918 is an external merge-barrier action owned by the realtime p
 ### Verification
 
 - `git diff --check`
-- plan/tracker slug, six-step denominator, exact titles, repositories, and line targets agree
+- plan/tracker slug, five-step denominator, exact titles, repositories, and line targets agree
 - only plan files appear in the diff
 
-## Step 2/6 — Add The Authoritative Server Signal
+## Step 2/5 — Add The Authoritative Server Signal
 
 ### Scope
 
-- Update `AsyncTranscriptionClient`, `OpenAIClient`, `TranscriptionFailure`, `VoiceService`, composition, and typed public errors according to the fixed two-policy table.
+- Update `AsyncTranscriptionClient`, provider adapters, `TranscriptionFailure`, `VoiceService`, composition, and typed public errors according to the fixed two-policy table.
 - Preserve OpenAI's released HTTP-500/`internal_server_error` behavior while recovering detailed provider-neutral classification.
-- Preserve Soniox statuses/error values while adding false to invalid/unusable audio and retaining true on transient outcomes.
-- Keep cancellation, quota, request validation, provider cleanup, privacy, and existing Retry-After semantics intact.
+- Preserve Soniox statuses/error values while distinguishing terminal provider quota/unusable audio from transient capacity and availability.
+- Add `retryable: false` to the voice daily-quota response without changing its `429 quota_exceeded`/`service` contract.
+- Keep cancellation, request validation, provider cleanup, privacy, and existing Retry-After semantics intact.
 - Update auth README/tests plus realtime `PLAN.md` and `TRACKER.md` with the async-only product decision, #918 head/overlap, and merge barrier.
 
 ### Verification
 
-- Focused OpenAI/Soniox adapter tests cover every reason.
-- `VoiceService` and `POST /voice/transcribe` tests assert exact `{status, error, retryable}` under both policies, unexpected failures, and connected cancellation.
+- Focused OpenAI/Soniox adapter tests cover every reason, including quota-exhaustion metadata before generic 429 capacity.
+- `VoiceService` and `POST /voice/transcribe` tests assert exact `{status, error, retryable}` under both policies, daily quota, unexpected failures, and connected cancellation.
 - Compatibility fixtures prove existing status/error values are unchanged and the new field is additive.
 - Auth TypeScript check, lint/format check, focused Node tests, architecture implementation review, and `git diff --check`.
 
-## Step 3/6 — Correct Client Ownership Without Changing Behavior
+## Step 3/5 — Correct Client Ownership Without Changing Behavior
 
 ### Scope
 
-- Add the pure-Dart platform capture contract and concrete app factory adapter.
-- Keep `VoiceApi` Layer 1; add `VoiceRepository` Layer 2; add factory-scoped `VoiceTranscriptionService` Layer 3 in module_core.
+- Add the pure-Dart `VoiceCapture`/`VoiceCaptureSession` platform capability and concrete app adapter with one native recorder per session.
+- Keep HTTP `VoiceApi` Layer 1; add `VoiceRepository` Layer 2; add lazy-singleton `VoiceTranscriptionService` Layer 3.
+- Add an unregistered per-composer `VoiceTranscriptionSession` plus factory-constructed module_core `VoiceInputCubit`/sealed state.
 - Move current permission/capture/transcription/cancel/max-duration/amplitude/wake-lock orchestration through those seams without adding retry-pending behavior yet.
-- Make `PromptInput` own one service instance, synchronously invalidate it on dispose, and start contained async disposal.
-- Remove the app-shell singleton service and update all consumers/tests/DI in lockstep.
+- Wire the Cubit in the app owner; make `PromptInput` render state/dispatch intents only; synchronously fence session completion at Cubit close before asynchronous cleanup.
+- Remove the app-shell singleton service/private voice business state and update all consumers/tests/DI in lockstep.
 
 ### Verification
 
-- Repository mapping tests, pure-Dart service lifecycle tests with fake platform/API boundaries, concrete app platform-adapter tests, and existing composer voice tests.
-- Prove one composer gets one service/native recorder, disposal fences late completion, and behavior remains permission → record → transcribe → cleanup.
+- HTTP repository mapping tests, pure-Dart service/session/Cubit lifecycle tests with fake platform/API boundaries, concrete app platform-adapter tests, and existing composer widget tests.
+- Prove each Cubit gets one distinct service session/native recorder, two composers do not share state, close fences late completion, and behavior remains permission → record → transcribe → cleanup.
+- Prove the service is a stateless `@lazySingleton`, the Cubit is created only by `BlocProvider`, and no product shell calls service/API directly.
 - Run code generation only through build runner.
 - Strict analysis in module_core/app, focused/downstream mobile tests, architecture implementation review, and `git diff --check`.
 
-## Step 4/6 — Retain And Retry Async Recordings
+## Step 4/5 — Retain And Retry Async Recordings
 
 ### Scope
 
 - Add generated typed failure metadata and repository handling for true/false/omitted/malformed retryability.
-- Add retry-pending to the sealed core service lifecycle and implement exact artifact disposition.
+- Add retry-pending to the sealed service-session/Cubit lifecycle and implement exact artifact disposition.
 - Add retry-pending composer presentation plus localized Retry, discard, saved-recording, terminal-rejection, and missing-artifact copy.
 - Preserve editable draft, voice-span attribution, focus behavior, cancellation, max duration, and one completion analytics outcome.
-- Do not add realtime capture/retry behavior.
+- Update `docs/regression/voice-input.md` in this same PR with authoritative async outcomes, artifact deletion points, Retry/discard, old-server fallback, duplicate-work risk, scope limits, L2/L4 coverage, and failure signals.
+- Do not add realtime capture/retry behavior or document unpublished realtime behavior as current production support.
 
 ### Verification
 
-- `VoiceApi`/`VoiceRepository`: true, false, omitted, malformed, auth, local transport, success, and privacy-safe mapping.
-- Core service: retain on network/true, reuse exact artifact on retry, repeated failure, success/false/cancel/discard/dispose cleanup, missing artifact, deletion failure logging, stale completion fencing, wake lock, and one-artifact invariant.
-- App widgets: voice-first/text-first Retry/discard rendering, no Retry for terminal rejection, retry success inserts once, second recording blocked until discard, typed draft preserved, cancel/dispose, and stale isolation.
+- `VoiceApi`/`VoiceRepository`: true, false, omitted, malformed, auth/quota, local transport, success, and privacy-safe mapping.
+- Service session/Cubit: retain on network/true, reuse exact artifact on retry, repeated failure, success/false/cancel/discard/close cleanup, missing artifact, deletion failure logging, stale completion fencing, wake lock, and one-artifact invariant.
+- App widgets: voice-first/text-first Retry/discard rendering, no Retry for terminal rejection, retry success inserts once, second recording blocked until discard, typed draft preserved, cancel/close, and stale isolation.
+- Regression text matches the behavior in the same diff and removes the stale every-exit-deletes claim.
 - Codegen/localization generation, strict analysis, focused/downstream tests, architecture implementation review, and `git diff --check`.
 
 ## Realtime PR #918 Rebase Checkpoint
@@ -403,37 +412,14 @@ The existing PR #918 is an external merge-barrier action owned by the realtime p
 Before Step 5:
 
 - Rebase #918 onto the exact merged Step 4 SHA and record that base/head in auth realtime `TRACKER.md`.
-- Resolve its overlaps in `VoiceApi`, DI, platform capture, core service/repository, `PromptInput`, localization, tests, and voice regression docs.
+- Resolve its overlaps in `VoiceApi`, DI, platform capture/session, service/repository/Cubit, `PromptInput`, localization, tests, and voice regression docs.
 - Preserve async retained retry and old-server fallback tests.
-- Keep post-audio realtime confirmed-partial/no-full-retry behavior and prove it does not expose the async Retry control.
+- Keep post-audio realtime confirmed-partial/no-full-retry behavior, prove it does not expose the async Retry control, and update the regression document with that mode-specific contract in #918 itself.
 - Return #918 to mergeable, CI-green, reviewed state before it may merge.
 
 If #918 is closed, superseded, or materially redesigned instead, update this plan and the realtime plan before Step 5; do not silently ignore the barrier.
 
-## Step 5/6 — Reconcile Regression Documentation
-
-### Scope
-
-Update `docs/regression/voice-input.md` to state:
-
-- authoritative retryable versus terminal async outcomes;
-- retained temporary-artifact ownership and deletion points;
-- manual Retry/discard behavior;
-- old-server omission fallback;
-- no automatic, cross-route, or restart retry;
-- duplicate provider/quota possibility after response loss;
-- realtime pre-audio fallback versus post-audio partial-text/no-full-retry behavior; and
-- updated L2/L4 coverage and failure signals.
-
-Complete the cleanup audit against Steps 2–4 and the rebased #918 branch. Remove stale claims instead of leaving tombstones.
-
-### Verification
-
-- `git diff --check`
-- regression wording matches implemented async state/error names and accepted realtime distinction
-- documentation-only diff; no Dart/Flutter suites
-
-## Step 6/6 — Verify And Retire
+## Step 5/5 — Verify And Retire
 
 ### Highest required level
 
@@ -470,4 +456,4 @@ Record Pass/Partial/Fail/Blocked with mode, platform, auth build, provider scope
 
 ## Expected Result
 
-After an async connection or server-declared transient failure, the composer visibly keeps the completed compressed recording and lets the user resend that exact artifact. A server/model rejection that cannot benefit from resubmission deletes it, offers no Retry, and directs the user to re-record or type. Realtime remains intentionally simpler: pre-audio fallback is allowed, while post-audio failure keeps confirmed partial text without retaining the full recording. Existing apps and servers continue to interoperate, ownership follows Foundation → API → Repository → Service → Composer, and no bridge/plugin/database contract changes.
+After an async connection or server-declared transient failure, the composer visibly keeps the completed compressed recording and lets the user resend that exact artifact. A server/model rejection that cannot benefit from resubmission deletes it, offers no Retry, and directs the user to re-record or type. Realtime remains intentionally simpler: pre-audio fallback is allowed, while post-audio failure keeps confirmed partial text without retaining the full recording. Existing apps and servers continue to interoperate, the HTTP path follows API → Repository → Service → Cubit → Composer while recording stays behind its platform capability, and no bridge/plugin/database contract changes.
