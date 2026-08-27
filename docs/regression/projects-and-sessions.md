@@ -256,9 +256,6 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - Untested Hermes gap (remove this entry once verified): a failed or cancelled
   in-flight Hermes import was never exercised; only completed explicit imports
   and non-destructive re-imports were verified.
-- DeepSeek header mapping and isolated explicit import are automated. Live import,
-  restart identity, parent/child presentation, and tombstone no-reimport behavior
-  remain required Step 16 evidence.
 
 ## Sources
 

@@ -67,10 +67,6 @@ download, verification, or placement. Use a disposable data directory.
   login, and it never supersedes a configured binary path.
 - Pinned digests are release-engineering state, checked upstream externally; refresh of
   an installed managed runtime is not covered here.
-- DeepSeek archive metadata, checksums, secure extraction, atomic package adoption,
-  and a real managed-runtime smoke are automated. App/API progress, interruption,
-  all-host product installation, and enabled/selectable client behavior remain
-  required Step 16 evidence.
 
 ## Sources
 

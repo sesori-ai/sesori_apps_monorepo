@@ -486,10 +486,12 @@ Step 16 passed exact-tag runtime and Dart suites, the six matching-native packag
 jobs, archive inspection, a live managed install, source bridge
 lifecycle/crash/restart/history/deletion checks, the current iOS management and
 session-creation path, and the public `v1.8.1` client/bridge compatibility pair.
-The live provider catalog started from the unmodified published adapter; with no
-local `~/.dsh` credential profile, its model request followed the documented
-bounded setup-failure path while preserving the accepted message and bridge
-health. Successful model output, questions, permissions, images, and tools still
-require authenticated client -> relay -> bridge -> plugin evidence before plan
-retirement; deterministic adapter fixtures support but do not replace that
-product-boundary run.
+Private local OpenAI- and Anthropic-compatible profiles started through the
+unmodified published adapter, appeared as distinct provider/model selections,
+and each returned terminal output under its intended pair through both the debug
+boundary and current iOS client. The authenticated client -> relay -> bridge ->
+plugin run also settled one question, permission allow-once and rejection,
+inline-image understanding, failed and completed tools, a real workspace file
+write/read with a rendered diff, and rich-history replay after bridge and app
+restart. Credentials, settings values, prompts, transcripts, provider output,
+and protocol frames remain outside committed evidence.

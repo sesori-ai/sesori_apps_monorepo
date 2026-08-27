@@ -107,8 +107,6 @@ and branches that remain after the asserted cleanup behavior.
   purges its database, transcript, and requested worktree state and retains a
   plugin-scoped tombstone; it never infers and deletes private JSONL or attachment
   paths. A later explicit import must not resurrect the retained adapter row.
-- DeepSeek close ordering is automated. Live deletion residue, tombstone
-  no-reimport, and client presentation remain required Step 16 evidence.
 
 ## Sources
 

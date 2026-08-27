@@ -75,9 +75,6 @@ multi-byte, and empty output; compare live with a later reload.
 - An older client does not tolerate an unknown message-part `type` from a newer
   bridge: history decoding fails and the corresponding SSE event is dropped as
   malformed. Unknown tool status remains forward-compatible.
-- DeepSeek tool projection is automated at the protocol/mapper boundary. A live
-  workspace mutation, file-change signal, client tool card, failure, and replay
-  parity remain required Step 16 evidence.
 
 ## Sources
 

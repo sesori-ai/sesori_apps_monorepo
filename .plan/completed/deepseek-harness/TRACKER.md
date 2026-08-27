@@ -3,13 +3,13 @@
 ## Current State
 
 - **Plan slug:** `deepseek-harness`
-- **Plan status:** Steps 1-15 merged; Step 16/16 blocked on authenticated live client/provider coverage
+- **Plan status:** Completed through Step 16/16 and retired on 2026-08-27
 - **Current repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current branch:** `deepseek-harness/step-16-verify-retire`
 - **Current open PR:** [PR #1132](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1132)
-- **Next action:** configure a supported provider and complete the required live client turn/interaction matrix
+- **Next action:** complete review and merge of PR #1132
 - **Implementation started:** yes
-- **Retirement:** blocked until every required row in `PLAN.md` passes
+- **Retirement:** complete; every required row in `PLAN.md` passed
 
 ## Fixed Delivery Sequence
 
@@ -30,7 +30,7 @@
 | [x] | 13/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): install the managed DeepSeek runtime [step 13/16]` | Moderate managed-runtime integration | 1,250 | [PR #1109](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1109) merged |
 | [x] | 14/16 | apps monorepo | `⚙️ [deepseek-harness] feat(app): activate DeepSeek Harness [step 14/16]` | Moderate registry/client activation | 1,000 | [PR #1110](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1110) merged |
 | [x] | 15/16 | apps monorepo | `🌱 [deepseek-harness] docs: document DeepSeek regression coverage [step 15/16]` | Straight documentation reconciliation | 600 | [PR #1129](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1129) merged |
-| [ ] | 16/16 | apps monorepo | `🌱 [deepseek-harness] docs: verify DeepSeek and retire the plan [step 16/16]` | Trivial evidence/retirement changes after a complex external verification run | 700 | [PR #1132](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1132) open; authenticated live coverage pending |
+| [x] | 16/16 | apps monorepo | `🌱 [deepseek-harness] docs: verify DeepSeek and retire the plan [step 16/16]` | Trivial evidence/retirement changes after a complex external verification run | 700 | [PR #1132](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1132) open; verification complete |
 
 On 2026-08-24, user approved this 15-to-16 split because combined staged
 implementation measured 5,120 additions against the 1,500-line cap. Merged
@@ -278,9 +278,9 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
   manifest's exact digests
 - [x] All six archives contain the launcher, pinned Node runtime, package lock,
   build metadata, SBOM, notices, and licenses with no unsafe paths or symlinks
-- [ ] Headless bridge and live plugin matrix
-- [ ] Client E2E and compatibility build-pair matrix
-- [ ] Cleanup, final evidence, and plan retirement
+- [x] Headless bridge and live plugin matrix
+- [x] Client E2E and compatibility build-pair matrix
+- [x] Cleanup, final evidence, and plan retirement
 - [x] Markdown references and `git diff --check` pass
 
 #### Release Boundary
@@ -315,14 +315,11 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
   after `SIGTERM`; the adapter child did not survive shutdown
 - [x] Explicit catalog import used isolated adapter state, retained the
   bridge-derived project, and did not scan normal `DSH_HOME/sessions`
-- [ ] A real adapter/provider catalog started without test hooks, but the
-  standard local `~/.dsh` settings and credential files were absent. The model
-  turn returned the documented bounded configuration failure; the bridge stayed
-  healthy, returned to idle, and retained the accepted user message. Exact-tag
-  deterministic tests cover successful text/reasoning streaming, concurrent
-  sessions, commands, abort/recovery, questions, permissions, images, tools,
-  errors, retries, refusal, max-token settlement, and replay parity, but do not
-  replace the required authenticated client -> relay -> bridge -> plugin checks.
+- [x] Private local profiles exercised one OpenAI-compatible and one
+  Anthropic-compatible route without adapter test hooks. Refreshed options
+  exposed two custom provider groups with one available model each and opaque
+  selection IDs; independent direct sessions returned terminal output under
+  their intended provider/model pairs
 - [x] History remained queryable while DeepSeek was disabled and after a full
   bridge restart while the plugin was dormant, proving cache-first synced reopen
   without a scratch adapter process
@@ -332,12 +329,15 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 
 #### Client And Compatibility
 
-- [ ] The current iOS client traversed the real client -> relay -> bridge ->
+- [x] The current iOS client traversed the real client -> relay -> bridge ->
   managed plugin path, showed DeepSeek `0.1.1` setup/runtime/work state, invoked
-  lifecycle restart, selected DeepSeek in the normal picker, rendered its agent,
-  model, and reasoning options, created a session, displayed the durable prompt,
-  and reopened it across bridge restart. Successful model output, questions,
-  permissions, images, and tools remain unverified at this live boundary.
+  lifecycle restart, selected both compatibility routes independently in the
+  normal picker, and rendered terminal model output from each
+- [x] The same client answered a plan-review question; with bridge auto-approval
+  disabled it allowed one permission and rejected another; it sent and rendered
+  one inline image, rendered failed and completed tool states, verified a real
+  one-line workspace write/read and `+1/-0` diff, and reopened the rich transcript
+  after both bridge and app restart
 - [x] The public `v1.8.1` client remained functional against the current bridge;
   its session row used the generic unknown-harness presentation and raw
   `deepseek` accessibility fallback rather than failing decode
@@ -353,15 +353,17 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 
 - [x] Stopped the source and public compatibility bridges with no surviving
   DeepSeek child process
-- [x] Removed the two test-only retained DeepSeek artifact directories only
+- [x] Removed all six test-only retained DeepSeek artifact directories only
   after confirming tombstone/no-reimport behavior; the managed `0.1.1` runtime
-  installation and normal user configuration remained untouched
+  installation and user-authorized private provider configuration remained
 - [x] Restored the simulator to the current client build and removed temporary
   compatibility worktrees/downloads after evidence capture
+- [x] Removed the disposable workspace and outside-workspace proof files, deleted
+  all authenticated test sessions, restored the original bridge auto-approval
+  setting, stopped the source bridge, and shut down the simulator
 - [x] Confirmed Steps 1-15 merged
-- [ ] Move the plan to `.plan/completed/deepseek-harness/` only after the
-  remaining authenticated live matrix passes or the owner explicitly accepts a
-  reduced matrix
+- [x] Moved the plan to `.plan/completed/deepseek-harness/` after the full matrix
+  passed without a reduction
 
 Later implementation and live evidence is appended here by step. Never mark a
 regression row passed without the boundary and matrix required by `PLAN.md`.

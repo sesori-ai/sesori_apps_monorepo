@@ -127,9 +127,6 @@ image parts converge by their own rules.
   discovery can also still start a stopped backend.
 - Client session-detail refresh triggers are still under diagnosis; only the
   diagnostic logging is in place and any refresh correction is unfinished.
-- DeepSeek pagination and message identity are automated. Live cold history with
-  the published adapter, stopped-runtime reopen, plugin/bridge restart,
-  interrupted-tail recovery, and client pagination remain required Step 16 evidence.
 
 ## Sources
 

@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `deepseek-harness`
-- **Status:** Steps 1-15 merged; Step 16/16 blocked on authenticated live client/provider coverage
+- **Status:** Completed through Step 16/16 and retired on 2026-08-27
 - **Plan date:** 2026-08-22
 - **Implementation base:** `origin/main` at
   `ebcc09bf255e1410720be616b883fa40af95d4a4`

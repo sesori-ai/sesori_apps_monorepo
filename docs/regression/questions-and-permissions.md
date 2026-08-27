@@ -132,10 +132,6 @@ different combination than the previous recorded run.
   request was ever observed. The tested provider completed file tools without
   emitting an ACP permission request, so once/reject/always handling and
   two-session correlation are unexercised for this harness.
-- DeepSeek extension-question two-session correlation, standard permission
-  once/reject, question variants, invalid-answer settlement, abort, late reply,
-  and disposal are automated. Real provider prompts, process exit, and
-  client/relay presentation remain required Step 16 evidence.
 
 ## Sources
 

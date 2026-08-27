@@ -190,9 +190,6 @@ timeouts, and sessions afterwards.
 - DeepSeek is registered and enabled by default. Its generic-icon presentation,
   local provider setup guidance, and managed install controls follow the same
   backend-neutral registry and client surfaces as every other harness.
-- DeepSeek setup/lifecycle and light/dark generic branding have automated coverage.
-  Real provider startup, client lifecycle controls, and older-client/bridge
-  build-pair fallback remain required Step 16 evidence.
 - Backend authentication and credential persistence happen on the bridge machine. A forced
   disable leaves work interrupted.
 - Hermes model/provider configuration is intentionally unavailable through Sesori and must

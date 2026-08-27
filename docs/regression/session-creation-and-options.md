@@ -187,9 +187,6 @@ reconnect or option refresh while restoration is pending.
 - Client end-to-end coverage is phone-only; the desktop shell cannot create.
 - Prompt attachments are capability-gated, so absence is expected, not failure.
 - Only plugins registered in the build under test count.
-- DeepSeek catalog mapping and ordered fail-closed config writes are automated.
-  Real-provider discovery plus client picker, creation, command, and selection
-  behavior remain required Step 16 evidence.
 
 ## Sources
 

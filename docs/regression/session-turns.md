@@ -319,10 +319,6 @@ replay, and abort after output has started.
   was never observed from Hermes. An explicit chain-of-thought prompt produced
   no `agent_thought_chunk` against the tested model, so thought-part
   normalization is unverified for this harness.
-- DeepSeek protocol projection, question/permission settlement, slash admission,
-  and prompt identity are automated. Live provider output, concurrent sessions,
-  abort/recovery, refusal/error/max-token, and process restart remain required
-  Step 16 evidence.
 
 ## Sources
 
