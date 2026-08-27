@@ -3,7 +3,7 @@ import "dart:convert";
 
 import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart"
-    show GenerateSessionMetadataRequest, ProjectGlossaryWordsRequest, isValidProjectGlossaryKey, jsonDecodeMap;
+    show GenerateSessionMetadataRequest, ProjectGlossaryWordsRequest, jsonDecodeMap;
 
 import "../auth/token_refresher.dart";
 import "../foundation/abortable_request.dart";
@@ -38,6 +38,7 @@ class SesoriServerApi({
   required final TokenRefresher _tokenRefresher,
 }) {
   static const Duration defaultRequestDeadline = Duration(seconds: 35);
+  static final RegExp _projectGlossaryKeyPattern = RegExp(r"^prj_v1_[A-Za-z0-9_-]{43}$");
 
   final String _authBackendUrl = normalizeAuthBackendUrl(url: authBackendUrl);
 
@@ -243,7 +244,7 @@ class SesoriServerApi({
   }
 
   void _requireProjectGlossaryKey({required String projectKey}) {
-    if (!isValidProjectGlossaryKey(value: projectKey)) {
+    if (!_projectGlossaryKeyPattern.hasMatch(projectKey)) {
       throw ArgumentError.value(projectKey, "projectKey", "Expected opaque project glossary key");
     }
   }

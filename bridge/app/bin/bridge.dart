@@ -12,7 +12,6 @@ import 'package:sesori_bridge/src/api/wake_lock_client.dart';
 import 'package:sesori_bridge/src/auth/auth_api.dart';
 import 'package:sesori_bridge/src/auth/auth_repository.dart';
 import 'package:sesori_bridge/src/auth/bridge_id_storage.dart';
-import 'package:sesori_bridge/src/auth/bridge_identity_secret_storage.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_repository.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_service.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
@@ -388,10 +387,6 @@ Future<void> _unregisterBridgeRegistration({
       ),
       tokenRefresher: tokenService,
       bridgeIdStorage: bridgeIdStorage,
-      bridgeIdentitySecretStorage: FileBridgeIdentitySecretStorage(
-        dataDirectory: dataDirectory,
-        writeRestrictedFile: writeRestrictedFile,
-      ),
       hostName: Platform.localHostname,
       platform: BridgeRegistrationService.currentPlatformName(),
     );
