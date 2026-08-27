@@ -1,10 +1,12 @@
 import "dart:async";
 import "dart:convert";
 
+import "package:sesori_bridge/src/api/database/daos/new_session_defaults_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart" show SessionDto;
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
+import "package:sesori_bridge/src/repositories/new_session_defaults_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/routing/create_session_handler.dart";
@@ -62,6 +64,7 @@ void main() {
     late FakeSessionMetadataRepository metadataRepository;
     late _FakeWorktreeService worktreeService;
     late SessionRepository sessionRepository;
+    late NewSessionDefaultsRepository defaultsRepository;
     late SessionOperationDispatcher sessionOperationDispatcher;
     late SessionMutationDispatcher sessionMutationDispatcher;
     late SessionCreationService sessionCreationService;
@@ -74,6 +77,9 @@ void main() {
       plugin = _OpenCodeFakeBridgePlugin();
       metadataRepository = FakeSessionMetadataRepository();
       worktreeService = _FakeWorktreeService(database: db);
+      defaultsRepository = NewSessionDefaultsRepository(
+        dao: NewSessionDefaultsDao(database: db),
+      );
       sessionRepository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -91,6 +97,7 @@ void main() {
         sessionMetadataRepository: metadataRepository,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
+        newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: sessionMutationDispatcher,
       );
       handler = CreateSessionHandler(sessionCreationService: sessionCreationService);
@@ -468,6 +475,7 @@ void main() {
         sessionMetadataRepository: metadataRepository,
         worktreeService: worktreeService,
         sessionRepository: localRepository,
+        newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: localMutationDispatcher,
       );
       final localHandler = CreateSessionHandler(sessionCreationService: localCreationService);
@@ -977,6 +985,7 @@ void main() {
         sessionMetadataRepository: metadataRepository,
         worktreeService: worktreeService,
         sessionRepository: orderedRepository,
+        newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: orderedMutationDispatcher,
       );
       final localHandler = CreateSessionHandler(sessionCreationService: orderedCreationService);
@@ -1160,6 +1169,7 @@ void main() {
         sessionMetadataRepository: metadataRepository,
         worktreeService: worktreeService,
         sessionRepository: throwingRepository,
+        newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: throwingDispatcher,
       );
       final localHandler = CreateSessionHandler(sessionCreationService: localCreationService);

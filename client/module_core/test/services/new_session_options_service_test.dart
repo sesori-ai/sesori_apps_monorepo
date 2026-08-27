@@ -58,6 +58,7 @@ void main() {
         providers: _providers().items,
         providersConnectedOnly: false,
         commands: [_command(name: "review")],
+        lastUsedPromptDefaults: null,
       );
       when(
         () => repository.loadLegacySessionOptions(projectId: "project-1", pluginId: "plugin-1"),
@@ -98,6 +99,7 @@ void main() {
         providers: _providers().items,
         providersConnectedOnly: false,
         commands: [_command(name: "review")],
+        lastUsedPromptDefaults: null,
       );
       when(
         () => repository.loadLegacySessionOptions(projectId: "project-1", pluginId: "plugin-1"),
@@ -142,6 +144,7 @@ void main() {
         providers: const [],
         providersConnectedOnly: false,
         commands: [_command(name: "new-command")],
+        lastUsedPromptDefaults: null,
       );
       when(
         () => repository.loadLegacySessionOptions(projectId: "project-1", pluginId: "plugin-1"),
@@ -251,6 +254,7 @@ void main() {
         providers: _providers().items,
         providersConnectedOnly: false,
         commands: [_command(name: "review")],
+        lastUsedPromptDefaults: null,
       );
       when(
         () => repository.loadSessionOptions(
@@ -283,6 +287,81 @@ void main() {
       expect(result.source, NewSessionOptionsSource.aggregate);
     });
 
+    test("restores last successful creation defaults with deliberate dimensions taking precedence", () async {
+      final catalog = SessionOptionsCatalog(
+        agents: [_agent(name: "build"), _agent(name: "review")],
+        providers: _providers().items,
+        providersConnectedOnly: false,
+        commands: const [],
+        lastUsedPromptDefaults: const SessionPromptDefaults(
+          agent: "review",
+          model: AgentModel(providerID: "provider-a", modelID: "model-a", variant: "low"),
+        ),
+      );
+      when(
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: SessionOptionsRequestMode.dynamic,
+        ),
+      ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: catalog, isStale: false));
+
+      final result =
+          await service.load(
+                projectId: "project-1",
+                pluginId: "plugin-1",
+                source: NewSessionOptionsSource.aggregate,
+                mode: NewSessionOptionsLoadMode.dynamicLoad,
+                restoredSelection: const NewSessionSelectionIntent(
+                  agentName: "build",
+                  model: null,
+                  variant: null,
+                ),
+                previousOptions: null,
+              )
+              as NewSessionOptionsLoaded;
+
+      expect(result.options.selectedAgent, "build");
+      expect(result.options.selectedAgentModel?.modelID, "model-a");
+      expect(result.options.selectedAgentModel?.variant, "low");
+    });
+
+    test("unavailable remembered defaults fall back by provider order", () async {
+      final catalog = SessionOptionsCatalog(
+        agents: [_agent(name: "build")],
+        providers: _providers().items,
+        providersConnectedOnly: false,
+        commands: const [],
+        lastUsedPromptDefaults: const SessionPromptDefaults(
+          agent: "missing",
+          model: AgentModel(providerID: "provider-a", modelID: "unavailable", variant: "stale"),
+        ),
+      );
+      when(
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: SessionOptionsRequestMode.dynamic,
+        ),
+      ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: catalog, isStale: false));
+
+      final result =
+          await service.load(
+                projectId: "project-1",
+                pluginId: "plugin-1",
+                source: NewSessionOptionsSource.aggregate,
+                mode: NewSessionOptionsLoadMode.dynamicLoad,
+                restoredSelection: null,
+                previousOptions: null,
+              )
+              as NewSessionOptionsLoaded;
+
+      expect(result.options.selectedAgent, "build");
+      expect(result.options.selectedAgentModel?.providerID, "provider-a");
+      expect(result.options.selectedAgentModel?.modelID, "model-a");
+      expect(result.options.selectedAgentModel?.variant, "high");
+    });
+
     test("unavailable restored and agent models fall back by provider order", () async {
       final catalog = SessionOptionsCatalog(
         agents: [
@@ -294,6 +373,7 @@ void main() {
         providers: _providers().items,
         providersConnectedOnly: false,
         commands: const [],
+        lastUsedPromptDefaults: null,
       );
       when(
         () => repository.loadSessionOptions(
@@ -340,6 +420,7 @@ void main() {
         providers: _providers().items,
         providersConnectedOnly: false,
         commands: [refreshedCommand],
+        lastUsedPromptDefaults: null,
       );
       when(
         () => repository.loadSessionOptions(

@@ -20,6 +20,13 @@ variant, and worktree mode, and creating the session with its first input.
   default-first, and a model that offers variants always has one selected: the
   agent's declared variant when valid, otherwise the first available. Selecting a
   variant is therefore a switch between named levels, never a reset to unset.
+- After a new session and its first prompt or command are accepted, the bridge
+  remembers the complete agent, model, and effort selection per plugin. The next
+  New Session screen uses it as the prefill across projects for that plugin after
+  validating every value against the current catalog; removed values fall back to
+  current plugin defaults. A failed creation never replaces the remembered
+  selection. Preference read/write failures stay observable locally but never hide
+  usable options or turn an already-created session into a retryable failure.
 - Hermes Agent seeds its configured model and provider from `hermes status`,
   then discovers the available model catalog in a separate empty ACP session
   before the user creates one. The discovery process must exit before Sesori
@@ -134,7 +141,7 @@ variant, and worktree mode, and creating the session with its first input.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
-| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window is served at once and reported stale; dedicated mode produces a local lowercase `color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. |
+| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window is served at once and reported stale; dedicated mode produces a local lowercase `color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. |
 | L3 Release | Client end to end (phone), every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the refresh action spins in place rather than vanishing; pickers, plugin chooser, detail loading, and no-harness states render. |
 | L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
@@ -156,6 +163,9 @@ reconnect or option refresh while restoration is pending.
 
 - Options are empty or stale where a discovery failure should be an explicit
   error, or a partial observation overwrites a complete cache.
+- A successful creation does not become the next per-plugin prefill, a failed
+  creation replaces it, one plugin's selection leaks into another, or a removed
+  saved value prevents current catalog defaults from loading.
 - A cache-only read starts a backend, or automatic refresh wakes a stopped one.
 - The refresh action disappears while its own load runs, gives no sign it was
   pressed, or renames itself after which load it happens to be repeating.

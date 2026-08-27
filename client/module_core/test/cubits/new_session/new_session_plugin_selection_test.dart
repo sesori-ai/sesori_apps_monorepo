@@ -703,6 +703,7 @@ void main() {
                   providers: const [],
                   providersConnectedOnly: false,
                   commands: [command],
+                  lastUsedPromptDefaults: null,
                 ),
               )
             : const SessionOptionsRepositoryRefreshFailedRetained();
@@ -741,6 +742,7 @@ void main() {
             providers: _providerResponse().items,
             providersConnectedOnly: false,
             commands: const [],
+            lastUsedPromptDefaults: null,
           ),
         );
       });
@@ -776,6 +778,7 @@ void main() {
             providers: _providerResponse().items,
             providersConnectedOnly: false,
             commands: const [],
+            lastUsedPromptDefaults: null,
           ),
         );
       });
@@ -825,6 +828,7 @@ void main() {
                   providers: const [],
                   providersConnectedOnly: false,
                   commands: [command],
+                  lastUsedPromptDefaults: null,
                 ),
               )
             : LegacySessionOptionsRepositoryFailure(
@@ -885,6 +889,7 @@ void main() {
                   providers: const [],
                   providersConnectedOnly: false,
                   commands: [command],
+                  lastUsedPromptDefaults: null,
                 ),
               )
             : SessionOptionsRepositoryFailure(error: ApiError.generic());
@@ -926,6 +931,7 @@ void main() {
             providers: const [],
             providersConnectedOnly: false,
             commands: [command],
+            lastUsedPromptDefaults: null,
           ),
         );
       });
@@ -973,6 +979,7 @@ void main() {
             providers: const [],
             providersConnectedOnly: false,
             commands: [command],
+            lastUsedPromptDefaults: null,
           ),
         );
       });
@@ -1025,6 +1032,7 @@ void main() {
             providers: const [],
             providersConnectedOnly: false,
             commands: [command],
+            lastUsedPromptDefaults: null,
           ),
         ),
       );
@@ -1071,6 +1079,7 @@ void main() {
                   providers: const [],
                   providersConnectedOnly: false,
                   commands: [command],
+                  lastUsedPromptDefaults: null,
                 ),
               )
             : SessionOptionsRepositoryProjectNotFound(error: ApiError.generic());
@@ -1109,6 +1118,7 @@ void main() {
                   providers: _providerResponse().items,
                   providersConnectedOnly: false,
                   commands: const [],
+                  lastUsedPromptDefaults: null,
                 ),
               )
             : const SessionOptionsRepositoryRefreshFailedUnavailable();
@@ -1963,6 +1973,7 @@ SessionOptionsRepositoryAvailable _optionsCatalog({
       providers: providers,
       providersConnectedOnly: false,
       commands: const [],
+      lastUsedPromptDefaults: null,
     ),
   );
 }

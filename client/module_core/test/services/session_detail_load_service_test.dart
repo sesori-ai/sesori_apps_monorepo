@@ -167,6 +167,7 @@ void main() {
             providers: catalog.providers,
             providersConnectedOnly: catalog.providersConnectedOnly,
             commands: const <CommandInfo>[],
+            lastUsedPromptDefaults: null,
           ),
           errors: [LegacySessionOptionError(source: LegacySessionOptionSource.commands, error: error)],
         ),
@@ -581,6 +582,7 @@ SessionOptionsCatalog _sessionOptionsCatalog() {
         subtask: false,
       ),
     ],
+    lastUsedPromptDefaults: null,
   );
 }
 

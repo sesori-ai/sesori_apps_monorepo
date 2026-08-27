@@ -1,9 +1,11 @@
 import "dart:async";
 import "dart:io";
 
+import "package:sesori_bridge/src/api/database/daos/new_session_defaults_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
+import "package:sesori_bridge/src/repositories/new_session_defaults_repository.dart";
 import "package:sesori_bridge/src/repositories/session_metadata_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/services/session_creation_service.dart";
@@ -27,11 +29,15 @@ void main() {
     late _FakeWorktreeService worktreeService;
     late SessionOperationDispatcher operationDispatcher;
     late SessionMutationDispatcher mutationDispatcher;
+    late NewSessionDefaultsRepository defaultsRepository;
     late SessionCreationService service;
 
     setUp(() async {
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
+      defaultsRepository = NewSessionDefaultsRepository(
+        dao: NewSessionDefaultsDao(database: db),
+      );
       plugin = _FakePlugin();
       metadataRepository = _FakeSessionMetadataRepository();
       worktreeService = _FakeWorktreeService(
@@ -62,6 +68,7 @@ void main() {
         sessionMetadataRepository: metadataRepository,
         worktreeService: worktreeService,
         sessionRepository: repository,
+        newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: mutationDispatcher,
       );
     });
@@ -126,6 +133,7 @@ void main() {
         sessionMetadataRepository: metadataRepository,
         worktreeService: worktreeService,
         sessionRepository: repository,
+        newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: localMutationDispatcher,
       );
 
@@ -257,6 +265,7 @@ void main() {
         sessionMetadataRepository: metadataRepository,
         worktreeService: worktreeService,
         sessionRepository: repository,
+        newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: localMutationDispatcher,
       );
 
@@ -311,9 +320,10 @@ void main() {
         ),
       );
       expect(metadataRepository.generateCalls, isZero);
+      expect(await defaultsRepository.read(pluginId: "fake"), isNull);
     });
 
-    test("stores the created root with its explicit plugin and backend binding", () async {
+    test("stores the created root and remembers its complete plugin-scoped selection", () async {
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-one",
         branchName: "session-one",
@@ -327,9 +337,9 @@ void main() {
           pluginId: "fake",
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Build it")],
-          variant: null,
-          agent: null,
-          model: null,
+          variant: SessionVariant(id: "high"),
+          agent: "build",
+          model: PromptModel(providerID: "provider", modelID: "model"),
           command: null,
         ),
       );
@@ -341,12 +351,56 @@ void main() {
       expect(stored!.backendSessionId, "backend-session");
       expect(stored.pluginId, "fake");
       expect(stored.projectId, "/repo");
+      expect(
+        await defaultsRepository.read(pluginId: "fake"),
+        const SessionPromptDefaults(
+          agent: "build",
+          model: AgentModel(providerID: "provider", modelID: "model", variant: "high"),
+        ),
+      );
       expect(stored.directory, "/repo/.worktrees/session-one");
       expect(stored.worktreePath, "/repo/.worktrees/session-one");
       expect(plugin.lastCreateDirectory, "/repo/.worktrees/session-one");
       expect(plugin.lastCreateUserVisibleText, "Build it");
       expect(plugin.lastCreateParts, hasLength(2));
       expect(plugin.lastCreateParts?.last, const PluginPromptPart.text(text: "Build it"));
+    });
+
+    test("a defaults write failure does not turn a durable creation into a retryable failure", () async {
+      final localService = SessionCreationService(
+        sessionMetadataRepository: metadataRepository,
+        worktreeService: worktreeService,
+        sessionRepository: singlePluginSessionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+          pullRequestDao: db.pullRequestDao,
+          unseenCalculator: const SessionUnseenCalculator(),
+        ),
+        newSessionDefaultsRepository: _ThrowingNewSessionDefaultsRepository(),
+        sessionMutationDispatcher: mutationDispatcher,
+      );
+      late Session created;
+
+      final output = await _captureWarningLog(() async {
+        created = await localService.createSession(
+          request: const CreateSessionRequest(
+            projectId: "/repo",
+            pluginId: "fake",
+            dedicatedWorktree: false,
+            parts: [],
+            variant: null,
+            agent: null,
+            model: null,
+            command: null,
+          ),
+        );
+      });
+
+      expect(await db.sessionDao.getSession(sessionId: created.id), isNotNull);
+      expect(output, contains("Failed to remember new-session defaults for plugin fake"));
+      expect(output, contains("defaults write failed"));
+      await localService.drain();
     });
 
     test("applies dedicated-session metadata after returning the initial branch", () async {
@@ -697,6 +751,16 @@ class _FakeWorktreeService({required super.worktreeRepository}) extends Worktree
   }) async {
     rollbackCalls++;
   }
+}
+
+class _ThrowingNewSessionDefaultsRepository() implements NewSessionDefaultsRepository {
+  @override
+  Future<void> write({required String pluginId, required SessionPromptDefaults defaults}) {
+    return Future.error(StateError("defaults write failed"));
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakePlugin() implements NativeProjectsPluginApi {

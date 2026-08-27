@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/session_operation.dart";
+import "../repositories/new_session_defaults_repository.dart";
 import "../repositories/session_metadata_repository.dart";
 import "../repositories/session_repository.dart";
 import "session_mutation_dispatcher.dart";
@@ -16,6 +17,7 @@ class SessionCreationService({
   required final SessionMetadataRepository _sessionMetadataRepository,
   required final WorktreeService _worktreeService,
   required final SessionRepository _sessionRepository,
+  required final NewSessionDefaultsRepository _newSessionDefaultsRepository,
   required final SessionMutationDispatcher _sessionMutationDispatcher,
 }) {
   final PendingOperations _lateMetadataWork = PendingOperations();
@@ -27,7 +29,17 @@ class SessionCreationService({
     // The stored path is authoritative; unknown ids are not directories.
     final projectDirectory = await _sessionRepository.resolveProjectDirectory(projectId: request.projectId);
     final normalizedCommand = request.command?.normalize();
-    final agentModel = request.model;
+    final requestedModel = request.model;
+    final promptDefaults = SessionPromptDefaults(
+      agent: request.agent,
+      model: requestedModel == null
+          ? null
+          : AgentModel(
+              providerID: requestedModel.providerID,
+              modelID: requestedModel.modelID,
+              variant: request.variant?.id,
+            ),
+    );
     final userTexts = _extractTexts(parts: request.parts);
     final firstText = userTexts.firstOrNull;
     final userVisibleText = userTexts.isEmpty ? null : userTexts.join("\n\n");
@@ -60,14 +72,8 @@ class SessionCreationService({
       branchName: worktreeState.branchName,
       baseBranch: worktreeState.baseBranch,
       baseCommit: worktreeState.baseCommit,
-      lastAgent: request.agent,
-      lastAgentModel: agentModel != null
-          ? AgentModel(
-              providerID: agentModel.providerID,
-              modelID: agentModel.modelID,
-              variant: request.variant?.id,
-            )
-          : null,
+      lastAgent: promptDefaults.agent,
+      lastAgentModel: promptDefaults.model,
     );
     await _maybeSendCommand(
       session: created,
@@ -80,6 +86,11 @@ class SessionCreationService({
       variant: request.variant,
       agent: request.agent,
       model: request.model,
+    );
+    await _recordNewSessionDefaults(
+      sessionId: created.id,
+      pluginId: request.pluginId,
+      defaults: promptDefaults,
     );
     _startLateMetadata(session: created, firstText: firstText);
     return created;
@@ -177,6 +188,24 @@ class SessionCreationService({
           message: error.message,
           cause: error,
         ),
+        stackTrace,
+      );
+    }
+  }
+
+  Future<void> _recordNewSessionDefaults({
+    required String sessionId,
+    required String pluginId,
+    required SessionPromptDefaults defaults,
+  }) async {
+    try {
+      await _newSessionDefaultsRepository.write(pluginId: pluginId, defaults: defaults);
+    } on Object catch (error, stackTrace) {
+      // The backend session is already durable. Failing the request here would
+      // invite a duplicate retry for a preference write that can safely degrade.
+      Log.w(
+        "Failed to remember new-session defaults for plugin $pluginId after creating session $sessionId",
+        error,
         stackTrace,
       );
     }

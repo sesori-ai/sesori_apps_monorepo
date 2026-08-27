@@ -40,6 +40,10 @@ void main() {
           ),
         ],
       ),
+      lastUsedPromptDefaults: SessionPromptDefaults(
+        agent: "build",
+        model: AgentModel(providerID: "openai", modelID: "gpt-5", variant: "high"),
+      ),
     );
 
     final json = response.toJson();
@@ -48,6 +52,12 @@ void main() {
     expect(json.keys, containsAllInOrder(["agents", "providers", "commands"]));
     // A bridge that predates the staleness signal simply never reports one.
     expect(SessionOptionsResponse.fromJson({...json}..remove("stale")).stale, isFalse);
+    // A bridge that predates remembered new-session defaults has no stored
+    // selection to apply.
+    expect(
+      SessionOptionsResponse.fromJson({...json}..remove("lastUsedPromptDefaults")).lastUsedPromptDefaults,
+      isNull,
+    );
   });
 
   test("session options errors round-trip known codes", () {

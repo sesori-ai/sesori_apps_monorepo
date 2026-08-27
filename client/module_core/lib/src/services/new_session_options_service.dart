@@ -175,6 +175,7 @@ class NewSessionOptionsService({
                 commands: failedSources.contains(LegacySessionOptionSource.commands)
                     ? previousOptions.commands
                     : catalog.commands,
+                lastUsedPromptDefaults: null,
               );
         return NewSessionOptionsLoaded(
           options: _resolve(
@@ -219,9 +220,13 @@ class NewSessionOptionsService({
         .toList(growable: false);
     final providers = catalog.providers;
     final commands = catalog.commands;
+    final effectiveSelection = _mergeSelection(
+      restoredSelection: restoredSelection,
+      lastUsedPromptDefaults: catalog.lastUsedPromptDefaults,
+    );
 
     final defaultAgent = agents.firstOrNull?.name;
-    final restoredAgent = restoredSelection?.agentName;
+    final restoredAgent = effectiveSelection?.agentName;
     final selectedAgent = restoredAgent != null && agents.any((agent) => agent.name == restoredAgent)
         ? restoredAgent
         : defaultAgent;
@@ -235,7 +240,7 @@ class NewSessionOptionsService({
         ) ??
         _pickDefaultModel(providers: providers);
 
-    final restoredModel = restoredSelection?.model;
+    final restoredModel = effectiveSelection?.model;
     final selectedAgentModel = _applyVariantIntent(
       providers: providers,
       model:
@@ -250,7 +255,7 @@ class NewSessionOptionsService({
                   ),
           ) ??
           defaultAgentModel,
-      variantIntent: restoredSelection?.variant,
+      variantIntent: effectiveSelection?.variant,
     );
     final stagedCommandName = previousOptions?.stagedCommand?.name;
     final stagedCommand = stagedCommandName == null
@@ -265,6 +270,32 @@ class NewSessionOptionsService({
       selectedAgentModel: selectedAgentModel,
       stagedCommand: stagedCommand,
       availableVariants: availableVariants(providers: providers, model: selectedAgentModel),
+    );
+  }
+
+  NewSessionSelectionIntent? _mergeSelection({
+    required NewSessionSelectionIntent? restoredSelection,
+    required SessionPromptDefaults? lastUsedPromptDefaults,
+  }) {
+    final rememberedModel = lastUsedPromptDefaults?.model;
+    final rememberedVariant = rememberedModel?.variant;
+    final remembered = lastUsedPromptDefaults == null
+        ? null
+        : NewSessionSelectionIntent(
+            agentName: lastUsedPromptDefaults.agent,
+            model: rememberedModel == null
+                ? null
+                : NewSessionModelIntent(
+                    providerId: rememberedModel.providerID,
+                    modelId: rememberedModel.modelID,
+                  ),
+            variant: rememberedVariant == null ? null : NewSessionVariantIntent(id: rememberedVariant),
+          );
+    if (restoredSelection == null) return remembered;
+    return NewSessionSelectionIntent(
+      agentName: restoredSelection.agentName ?? remembered?.agentName,
+      model: restoredSelection.model ?? remembered?.model,
+      variant: restoredSelection.variant ?? remembered?.variant,
     );
   }
 
