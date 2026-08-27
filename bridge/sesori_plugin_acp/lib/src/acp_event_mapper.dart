@@ -856,6 +856,7 @@ class AcpEventMapper({
     final hasKind = update["kind"] is String && (update["kind"] as String).isNotEmpty;
     final mappedStatus = _contentMapper.toolStatus(status: update["status"]);
     final useCallTool = prior == null || (!prior.hasExplicitKind && (hasKind || prior.tool == "tool"));
+    final messageTime = _earliestMessageTime(prior?.time, time);
     final state = _LiveTool(
       // Fail-soft like the tool name and `_toolCallUpdate`'s title: a non-string
       // title (schema drift / malformed agent data) renders as null rather than
@@ -873,11 +874,13 @@ class AcpEventMapper({
       diffEmitted: prior?.diffEmitted ?? false,
       hasExplicitKind: (prior?.hasExplicitKind ?? false) || hasKind,
       hasExplicitStatus: (prior?.hasExplicitStatus ?? false) || mappedStatus != null,
+      time: messageTime,
     );
     (_liveTools[sessionId] ??= {})[toolCallId] = state;
     final events = <BridgeSseEvent>[
       ...boundaryEvents,
-      if (prior == null) _toolEnvelope(sessionId: sessionId, messageId: messageId, time: time),
+      if (prior == null || messageTime != prior.time)
+        _toolEnvelope(sessionId: sessionId, messageId: messageId, time: messageTime),
       _toolPartEvent(sessionId: sessionId, messageId: messageId, state: state),
     ];
     _appendCompletedMutationDiff(
@@ -918,6 +921,7 @@ class AcpEventMapper({
     final contentTracker = prior?.contentTracker ?? AcpToolContentTracker();
     contentTracker.apply(mutation: contentMutation);
     final mappedStatus = _contentMapper.toolStatus(status: update["status"]);
+    final messageTime = _earliestMessageTime(prior?.time, time);
     final state = _LiveTool(
       tool: hasKind
           ? _contentMapper.toolName(update: update)
@@ -934,6 +938,7 @@ class AcpEventMapper({
       diffEmitted: prior?.diffEmitted ?? false,
       hasExplicitKind: (prior?.hasExplicitKind ?? false) || hasKind,
       hasExplicitStatus: (prior?.hasExplicitStatus ?? false) || mappedStatus != null,
+      time: messageTime,
     );
     final events = <BridgeSseEvent>[
       ...boundaryEvents,
@@ -942,7 +947,8 @@ class AcpEventMapper({
       // first-seen, synthesize the message envelope — like `_textChunk` does —
       // so the client can render the part instead of receiving an orphan it
       // drops.
-      if (prior == null) _toolEnvelope(sessionId: sessionId, messageId: messageId, time: time),
+      if (prior == null || messageTime != prior.time)
+        _toolEnvelope(sessionId: sessionId, messageId: messageId, time: messageTime),
       _toolPartEvent(sessionId: sessionId, messageId: messageId, state: state),
     ];
     // Retained (not pruned on terminal) so a late reordered update still merges
@@ -989,6 +995,12 @@ class AcpEventMapper({
         time: time == null ? null : shared.MessageTime(created: time.created, completed: time.completed),
       ).toJson(),
     );
+  }
+
+  PluginMessageTime? _earliestMessageTime(PluginMessageTime? prior, PluginMessageTime? next) {
+    if (prior == null) return next;
+    if (next == null || prior.created <= next.created) return prior;
+    return next;
   }
 
   BridgeSseMessagePartUpdated _toolPartEvent({
@@ -1207,4 +1219,5 @@ class _LiveTool({
     required var bool diffEmitted,
     required final bool hasExplicitKind,
     required final bool hasExplicitStatus,
+    required final PluginMessageTime? time,
   });

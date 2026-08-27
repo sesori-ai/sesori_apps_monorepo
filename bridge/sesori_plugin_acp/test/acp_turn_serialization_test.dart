@@ -53,6 +53,16 @@ class _GatedSelectionPlugin({
   }
 }
 
+class _TimestampingEventMapper({
+  required super.launchDirectory,
+  required super.pluginId,
+  required super.configurationTracker,
+}) extends AcpEventMapper {
+  @override
+  PluginMessageTime localUserMessageTime({required int createdAtMs}) =>
+      PluginMessageTime(created: createdAtMs, completed: null);
+}
+
 class _FlushControlledAcpProcess() extends FakeAcpProcess {
   final _FlushControlledIOSink _controlledStdin = _FlushControlledIOSink();
 
@@ -293,6 +303,55 @@ void main() {
         promptId,
       );
       respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
+    test("a queued prompt message uses its dispatch time", () async {
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
+      final timestampingPlugin = TestAcpPlugin(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchDirectory: cwd,
+        eventMapper: _TimestampingEventMapper(
+          launchDirectory: cwd,
+          pluginId: "acp",
+          configurationTracker: configurationTracker,
+        ),
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
+        processFactory: (_) async => fake,
+      );
+      await plugin.dispose();
+      plugin = timestampingPlugin;
+      plugin.events.listen(emitted.add, onError: streamErrors.add);
+
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      final firstPromptId = await sendPrompt(sessionId, "first");
+      final first = await waitForFrame("session/prompt");
+      final secondPromptId = await sendPrompt(sessionId, "second");
+      final queuedAt = (await plugin.getQueuedPrompts(sessionId: sessionId))
+          .singleWhere((prompt) => prompt.id == secondPromptId)
+          .createdAt;
+
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+      respondTo(first, {"stopReason": "end_turn"});
+      final second = await waitForFrameCount("session/prompt", 2);
+      await pump();
+
+      final secondMessage = emitted.whereType<BridgeSseMessageUpdated>().singleWhere(
+        (event) => event.info["promptId"] == secondPromptId,
+      );
+      expect((secondMessage.info["time"] as Map)["created"], greaterThan(queuedAt));
+
+      expect(firstPromptId, isNot(secondPromptId));
+      respondTo(second, {"stopReason": "end_turn"});
     });
 
     test("a failed ACP frame flush never marks the prompt sent", () async {

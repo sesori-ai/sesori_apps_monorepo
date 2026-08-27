@@ -3,6 +3,18 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 
+class _EnvelopeTimeEventMapper({
+  required super.launchDirectory,
+  required super.pluginId,
+  required super.configurationTracker,
+}) extends AcpEventMapper {
+  @override
+  PluginMessageTime? messageTimeForNotification({required AcpNotification notification}) {
+    final created = notification.params["messageCreatedAt"];
+    return created is int ? PluginMessageTime(created: created, completed: null) : null;
+  }
+}
+
 /// Asserts the mapper emits sesori-schema payloads — message envelopes must
 /// round-trip through `Message.fromJson`, exactly like the codex mapper.
 void main() {
@@ -684,6 +696,46 @@ void main() {
       );
       expect(events.whereType<BridgeSseMessageUpdated>(), hasLength(1));
       expect(events.whereType<BridgeSseMessagePartUpdated>(), hasLength(1));
+    });
+
+    test("a reordered tool call corrects its synthesized envelope time", () {
+      mapper = _EnvelopeTimeEventMapper(
+        launchDirectory: "/repo",
+        pluginId: "cursor",
+        configurationTracker: configurationTracker,
+      );
+      AcpNotification timedUpdate(Map<String, dynamic> body, int createdAt) => AcpNotification(
+        method: "session/update",
+        params: {
+          "sessionId": "s1",
+          "update": body,
+          "messageCreatedAt": createdAt,
+        },
+      );
+
+      final updateEvents = mapper.map(
+        timedUpdate({
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "tc-reordered",
+          "status": "completed",
+        }, 20),
+      );
+      expect(
+        (updateEvents.whereType<BridgeSseMessageUpdated>().single.info["time"] as Map)["created"],
+        20,
+      );
+
+      final callEvents = mapper.map(
+        timedUpdate({
+          "sessionUpdate": "tool_call",
+          "toolCallId": "tc-reordered",
+          "kind": "read",
+        }, 10),
+      );
+      expect(
+        (callEvents.whereType<BridgeSseMessageUpdated>().single.info["time"] as Map)["created"],
+        10,
+      );
     });
 
     test("a completed tool retains its state for a late in-turn update; beginTurn clears it", () {

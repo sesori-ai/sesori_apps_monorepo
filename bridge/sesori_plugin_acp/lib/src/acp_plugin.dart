@@ -1293,7 +1293,7 @@ abstract class AcpPlugin({
           messageId: turn.messageId,
           promptId: queuedPrompt.presentation.id,
           parts: queuedPrompt.visibleParts,
-          createdAtMs: queuedPrompt.presentation.createdAt,
+          createdAtMs: DateTime.now().millisecondsSinceEpoch,
         )
         .forEach(_eventBuffer.add);
     if (state.queue.remove(queuedPrompt)) {
