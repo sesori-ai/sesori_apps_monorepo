@@ -93,6 +93,14 @@ class ProjectRepository({
     );
   }
 
+  Future<String> resolveProjectDirectory({required String projectId}) async {
+    final path = await _projectsDao.getResolvedPath(projectId: projectId);
+    if (path == null) {
+      throw ProjectNotFoundException(projectId: projectId);
+    }
+    return path;
+  }
+
   /// Resolves [path] locally, retaining any durable identity already recorded
   /// for the same canonical directory.
   Future<Project> resolveProjectOpenTarget({required String path}) async {
