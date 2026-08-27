@@ -119,7 +119,7 @@ void main() {
       );
     });
 
-    test("deleteSession records a plugin-scoped tombstone and removes the stored row", () async {
+    test("deleteSession removes the stored row including its prompt defaults", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
       final repository = singlePluginSessionRepository(
@@ -142,8 +142,12 @@ void main() {
         branchName: null,
         baseBranch: null,
         baseCommit: null,
-        lastAgent: null,
-        lastAgentModel: null,
+        lastAgent: "build",
+        lastAgentModel: const AgentModel(
+          providerID: "provider",
+          modelID: "model",
+          variant: "high",
+        ),
       );
       expect(await repository.isSessionTombstoned(sessionId: "sess-tomb"), isFalse);
 
