@@ -19,18 +19,9 @@ const _actionDispatcher = SessionListActionDispatcher();
 /// refresh action lives here, next to the content.
 Future<void> refreshSessionList(BuildContext context) async {
   final loc = context.loc;
-  final success = await context.read<SessionListCubit>().refreshSessions(waitForPrData: true);
+  final cubit = context.read<SessionListCubit>();
+  final success = await cubit.refreshSessions(waitForPrData: true);
   if (!context.mounted) return;
-  // One pull, one report — but only for a confirmation. A live scan row already
-  // says the list is being brought up to date, so a "Sessions updated" toast
-  // beside it announces the smaller half of the same action. A *failure* is
-  // never suppressed: the row reports the scan, not this read, and a pull that
-  // silently did nothing is worse than one toast too many.
-  if (success) {
-    if (context.read<SessionListCubit>().state case SessionListLoaded(catalogScan: final scan) when scan.isLive) {
-      return;
-    }
-  }
 
   PregoPopupAlertPresenter.of(context).show(
     title: success ? loc.sessionListRefreshSuccess : loc.sessionListRefreshFailed,

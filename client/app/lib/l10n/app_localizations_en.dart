@@ -1744,7 +1744,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'No. Everything between your phone and computer is end-to-end encrypted — the relay only passes along sealed data it can\'t read.';
 
   @override
-  String get catalogScanPullCaption => 'Keep pulling to scan all harnesses';
+  String get catalogScanPullCaption => 'Keep pulling to find new sessions';
 
   @override
   String get catalogScanRunningTitle => 'Scanning all harnesses';

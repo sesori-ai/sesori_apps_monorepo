@@ -3271,10 +3271,10 @@ abstract class AppLocalizations {
   /// **'No. Everything between your phone and computer is end-to-end encrypted — the relay only passes along sealed data it can\'t read.'**
   String get projectsOnboardingWhyFaqReadAnswer;
 
-  /// Caption under the pull-to-refresh spinner once the pull has passed the ordinary trigger, inviting the user to keep pulling to start a full catalog scan.
+  /// Caption under the pull-to-refresh spinner once the pull has passed the ordinary trigger, inviting the user to keep pulling to start a full catalog scan. Names what the user gets rather than the mechanism: scanning harnesses is how it works, not what it is for.
   ///
   /// In en, this message translates to:
-  /// **'Keep pulling to scan all harnesses'**
+  /// **'Keep pulling to find new sessions'**
   String get catalogScanPullCaption;
 
   /// Title of the row above a list while a catalog scan is in flight across every enabled harness.

@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:cupertino_ui/cupertino_ui.dart" show CupertinoSliverRefreshControl, RefreshIndicatorMode;
 import "package:flutter/scheduler.dart";
 import "package:material_ui/material_ui.dart";
@@ -14,12 +16,15 @@ const double _deepPullFactor = 1.8;
 /// One value rather than a callback plus two loose strings, so a host cannot
 /// open the deep pull without telling the user what crossing it will do.
 class const PregoDeepRefresh({
-  /// Runs in addition to the ordinary refresh, **the moment the pull passes
-  /// the deep threshold** — not on release. There is no release-gated commit to
-  /// hang it on, so once the threshold is crossed the action has started and the
-  /// host must offer its own way to cancel. Never awaited: the refresh control
-  /// settles on the ordinary refresh alone, so a long-running second stage
-  /// cannot hold the spinner.
+  /// Runs **the moment the pull passes the deep threshold** — not on release.
+  /// There is no release-gated commit to hang it on, so once the threshold is
+  /// crossed the action has started and the host must offer its own way to
+  /// cancel. Never awaited, so a long-running second stage cannot hold the
+  /// spinner.
+  ///
+  /// It *replaces* the ordinary refresh rather than adding to it: a gesture
+  /// that fires this never dispatches one, because this reaches the same
+  /// backend and settles into a refresh of its own.
   required final void Function() onDeepRefresh,
 
   /// Shown once the pull passes the ordinary trigger, inviting the user to
@@ -34,12 +39,12 @@ class const PregoDeepRefresh({
 /// Wraps [CupertinoSliverRefreshControl] and owns the whole two-stage gesture:
 /// the threshold, the captions, and dispatching both callbacks.
 ///
-/// Both stages commit while the finger is still down, because the underlying
-/// control invokes `onRefresh` the moment the pull crosses its trigger rather
-/// than on release (`refresh.dart` transitions `drag` straight to `armed` and
-/// schedules the task there). The second stage follows the same rule at its own
-/// deeper threshold, so a pull refreshes at one depth and additionally runs the
-/// host's second action at another.
+/// The second stage commits while the finger is still down, because the
+/// underlying control offers no release-gated commit to hang it on. The
+/// ordinary refresh is the other way round: the underlying control arms its
+/// task at the trigger, but this dispatches the host's callback only once the
+/// pull is let go, when the gesture has either fired the second stage or never
+/// will. A gesture that fired it runs no ordinary refresh at all.
 ///
 /// Hosts differ in where the indicator sits, not in how the pull behaves, so
 /// they supply [decorate] and get identical gesture semantics for free — which
@@ -80,10 +85,50 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
   /// only rescan once however far it travels.
   bool _deepFired = false;
 
+  /// Completes once the pending refresh may proceed: when the pull is let go,
+  /// or as soon as the second stage fires, whichever comes first. `null`
+  /// whenever no refresh is pending.
+  Completer<void>? _letGo;
+
+  /// Runs the ordinary refresh, once the gesture has chosen its stage.
+  ///
+  /// The underlying control arms its task the moment the pull crosses the
+  /// ordinary trigger, while the finger is still down and the deeper threshold
+  /// is still reachable. Dispatching there means the refresh races the pull:
+  /// its read can land before the user commits, so nothing downstream can tell
+  /// a plain refresh from the opening half of a scan. Waiting for the release
+  /// makes the question answerable — by then the gesture has either fired the
+  /// second stage or it never will.
+  Future<void> _runRefresh() async {
+    // Already fired before this even started. One fast move can cross both
+    // thresholds in a single frame, and the control only *schedules* this from
+    // its builder, so the release the second stage asked for found nothing to
+    // release. Finishing here is what hands the reserve back on that path too.
+    if (_deepFired) return;
+    final letGo = Completer<void>();
+    _letGo = letGo;
+    try {
+      await letGo.future;
+      // The scan supersedes this read: it reaches the same backend, imports
+      // through it, and settles into a list refresh of its own. Running one
+      // here as well would only queue work behind the scan and hold the pull
+      // open for the length of it.
+      if (_deepFired) return;
+      await widget._onRefresh();
+    } finally {
+      if (identical(_letGo, letGo)) _letGo = null;
+    }
+  }
+
+  /// Releases a pending refresh from waiting on the gesture.
+  void _markLetGo() {
+    if (_letGo case final letGo? when !letGo.isCompleted) letGo.complete();
+  }
+
   @override
   Widget build(BuildContext context) {
     return CupertinoSliverRefreshControl(
-      onRefresh: widget._onRefresh,
+      onRefresh: _runRefresh,
       builder: (context, refreshState, pulledExtent, triggerDistance, indicatorExtent) {
         widget._onPulledExtentChanged?.call(
           refreshState == RefreshIndicatorMode.inactive ? 0 : pulledExtent,
@@ -96,8 +141,23 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
         } else if (pulledExtent > _maxPulledExtent) {
           _maxPulledExtent = pulledExtent;
         }
+        // Anything past `armed` means the finger is off: the underlying control
+        // only leaves `armed` once the extent has fallen back to the height it
+        // holds on its own.
+        if (refreshState != RefreshIndicatorMode.drag && refreshState != RefreshIndicatorMode.armed) {
+          _markLetGo();
+        }
         if (deepRefresh != null && !_deepFired && _maxPulledExtent >= deepThreshold) {
           _deepFired = true;
+          // Finish the pending refresh now rather than on release. The
+          // underlying control reserves an indicator's height from the moment
+          // it arms its task, and only gives it back once that task is done —
+          // so waiting for the release leaves the list sitting one indicator
+          // below the top, then dropping. Finishing here means the reserve is
+          // already gone by the time the finger lifts, and the list springs
+          // straight to the top. There is nothing left to wait for anyway: a
+          // fired pull runs no ordinary refresh.
+          _markLetGo();
           // After this frame, because the refresh control calls its builder
           // from inside the sliver's layout and the callback is user code.
           SchedulerBinding.instance.addPostFrameCallback(

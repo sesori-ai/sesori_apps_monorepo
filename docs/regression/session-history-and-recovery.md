@@ -21,7 +21,11 @@ honest against backend-side changes, and rejoined after reconnect or restart.
 - Messages visible live but absent from the backend's replay remain visible
   after a stale re-read. They rejoin at their recorded creation time while
   preserving relative order, so a catalog re-import cannot move old rows to the
-  newest edge.
+  newest edge. A message a backend replay once contained is the opposite case:
+  its later absence is a removal, so a re-read drops it. That is how a session
+  rolled back outside Sesori — an edited message in the backend's own client,
+  with no removal events reaching this bridge — stops showing the messages it
+  replaced.
 - Live streamed messages and parts become queryable immediately after they
   finalize, with the same visibility filtering and tool-output bound a backend
   fetch returns. Reasoning finalizes when the stream advances to assistant or
@@ -96,7 +100,9 @@ image parts converge by their own rules.
   reattachment, or triggers repeated requests while one page is in flight.
 - A session advanced outside Sesori keeps serving the old transcript, or stored
   transcripts are marked complete after a gap without a full re-sync.
-- A stale re-read moves an older retained message to the newest edge.
+- A stale re-read moves an older retained message to the newest edge, or keeps
+  showing a message the backend removed — a rolled-back turn reappearing above
+  the edited one that replaced it.
 - A released database row or audit file is rejected because a known message-part
   payload omitted variant-specific data, or a decoded known variant still carries
   null variant data.

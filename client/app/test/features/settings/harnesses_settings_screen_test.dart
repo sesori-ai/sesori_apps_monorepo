@@ -1330,8 +1330,17 @@ void main() {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, 500));
-    await tester.pump(const Duration(seconds: 1));
+    // Dispatched on release, and the release must not be a fling: the control
+    // waits for the overscroll to spring back to the extent it holds itself.
+    final gesture = await tester.startGesture(tester.getCenter(find.byType(CustomScrollView)));
+    await gesture.moveBy(const Offset(0, 500));
+    await tester.pump();
+    await gesture.moveBy(Offset.zero);
+    await tester.pump(const Duration(milliseconds: 200));
+    await gesture.up();
+    for (var frame = 0; frame < 60; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
     verify(() => service.refresh()).called(1);
 
     await tester.tap(find.bySemanticsLabel("Close settings"));

@@ -11,6 +11,10 @@ import "package:theme_prego/module_prego.dart";
 const double _softTrigger = 100;
 const double _deepTrigger = _softTrigger * 1.8;
 
+/// The height the underlying control reserves for its indicator while a
+/// refresh is pending, and the height a fired pull must not come to rest at.
+const double _indicatorExtent = 60;
+
 void main() {
   group("PregoSliverRefreshControl", () {
     late int softRefreshes;
@@ -65,13 +69,15 @@ void main() {
       expect(deepRefreshes, 0, reason: "the deep threshold was never reached");
     });
 
-    testWidgets("a pull past the deep threshold runs both", (tester) async {
+    // The second stage reaches the same backend and settles into a refresh of
+    // its own, so the ordinary one would only queue work behind it.
+    testWidgets("a pull past the deep threshold runs the second stage instead", (tester) async {
       await tester.pumpWidget(harness(withDeepRefresh: true));
 
       await pullBy(tester, _deepTrigger + 80);
 
-      expect(softRefreshes, 1);
       expect(deepRefreshes, 1);
+      expect(softRefreshes, 0, reason: "the scan supersedes the ordinary refresh");
     });
 
     testWidgets("a pull abandoned before the trigger runs neither", (tester) async {
@@ -285,6 +291,188 @@ void main() {
       await tester.pumpAndSettle();
     });
 
+    // The ordinary refresh reaches the same backend the second stage just put
+    // to work, so waiting for it holds the list open for as long as the whole
+    // scan — with nothing in the held space to explain why.
+    testWidgets("a fired pull stops holding the list open for the ordinary refresh", (tester) async {
+      final completer = Completer<void>();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          home: Scaffold(
+            body: CustomScrollView(
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              slivers: [
+                PregoSliverRefreshControl(
+                  onRefresh: () => completer.future,
+                  decorate: null,
+                  onPulledExtentChanged: null,
+                  deepRefresh: PregoDeepRefresh(
+                    onDeepRefresh: () => deepRefreshes++,
+                    pullCaption: "Keep pulling to scan all harnesses",
+                  ),
+                ),
+                SliverList.list(
+                  children: [for (var i = 0; i < 20; i++) SizedBox(height: 80, child: Text("row $i"))],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      final restingTop = tester.getTopLeft(find.text("row 0")).dy;
+
+      final gesture = await tester.startGesture(const Offset(200, 100));
+      for (var step = 0; step < 12; step++) {
+        await gesture.moveBy(const Offset(0, 40));
+        await tester.pump();
+        await tester.pump();
+      }
+      expect(deepRefreshes, 1);
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(
+        completer.isCompleted,
+        isFalse,
+        reason: "the ordinary refresh is still running, which is the whole point",
+      );
+      expect(
+        tester.getTopLeft(find.text("row 0")).dy,
+        restingTop,
+        reason: "the list must not stay pushed down for the length of the scan",
+      );
+
+      completer.complete();
+      await tester.pumpAndSettle();
+    });
+
+    // The control only *schedules* its refresh from the builder, so a move fast
+    // enough to cross both thresholds in one frame fires the second stage
+    // before the refresh exists to be released from.
+    testWidgets("a single move across both thresholds still releases the list", (tester) async {
+      final completer = Completer<void>();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          home: Scaffold(
+            body: CustomScrollView(
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              slivers: [
+                PregoSliverRefreshControl(
+                  onRefresh: () => completer.future,
+                  decorate: null,
+                  onPulledExtentChanged: null,
+                  deepRefresh: PregoDeepRefresh(
+                    onDeepRefresh: () => deepRefreshes++,
+                    pullCaption: "Keep pulling to find new sessions",
+                  ),
+                ),
+                SliverList.list(
+                  children: [for (var i = 0; i < 20; i++) SizedBox(height: 80, child: Text("row $i"))],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      final restingTop = tester.getTopLeft(find.text("row 0")).dy;
+
+      // One move, far past both thresholds, rather than the gradual pull the
+      // other tests use.
+      final gesture = await tester.startGesture(const Offset(200, 100));
+      await gesture.moveBy(const Offset(0, 900));
+      await tester.pump();
+      await tester.pump();
+      expect(deepRefreshes, 1);
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(completer.isCompleted, isFalse);
+      expect(
+        tester.getTopLeft(find.text("row 0")).dy,
+        restingTop,
+        reason: "the release must not depend on the refresh having started first",
+      );
+
+      completer.complete();
+      await tester.pumpAndSettle();
+    });
+
+
+    // The control reserves an indicator's height from the moment it arms its
+    // task and gives it back only when that task is done. A fired pull has
+    // nothing to wait for, so the reserve has to go while the finger is still
+    // down — otherwise releasing parks the list an indicator below the top and
+    // a second collapse takes it the rest of the way.
+    //
+    // Run for both pull speeds: a fast move can cross both thresholds in one
+    // frame, before the control has even created the refresh the second stage
+    // asks to release.
+    for (final (name, stepCount, stepDistance) in [
+      ("a gradual pull", 12, 40.0),
+      ("a single fast move", 1, 500.0),
+    ]) {
+      testWidgets("$name gives the reserved indicator height back before release", (tester) async {
+        final completer = Completer<void>();
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(extensions: [PregoDesignSystem.light]),
+            home: Scaffold(
+              body: CustomScrollView(
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                slivers: [
+                  PregoSliverRefreshControl(
+                    onRefresh: () => completer.future,
+                    decorate: null,
+                    onPulledExtentChanged: null,
+                    deepRefresh: PregoDeepRefresh(
+                      onDeepRefresh: () => deepRefreshes++,
+                      pullCaption: "Keep pulling to find new sessions",
+                    ),
+                  ),
+                  SliverList.list(
+                    children: [for (var i = 0; i < 20; i++) SizedBox(height: 80, child: Text("row $i"))],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+        final restingTop = tester.getTopLeft(find.text("row 0")).dy;
+
+        final gesture = await tester.startGesture(const Offset(200, 100));
+        for (var step = 0; step < stepCount && deepRefreshes == 0; step++) {
+          await gesture.moveBy(Offset(0, stepDistance));
+          await tester.pump();
+          await tester.pump();
+        }
+        expect(deepRefreshes, 1);
+
+        await gesture.moveBy(Offset.zero);
+        await tester.pump();
+        await gesture.up();
+        final offsets = <double>[];
+        for (var frame = 0; frame < 60; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          offsets.add(tester.getTopLeft(find.text("row 0")).dy - restingTop);
+        }
+
+        // One spring, not two.
+        final restingAtIndicatorHeight = offsets.where((offset) => (offset - _indicatorExtent).abs() <= 5).length;
+        expect(
+          restingAtIndicatorHeight,
+          lessThanOrEqualTo(4),
+          reason: "the list must pass through the indicator height, not sit at it",
+        );
+        expect(offsets.last, 0, reason: "and reach the top within the same settle");
+
+        completer.complete();
+        await tester.pumpAndSettle();
+      });
+    }
+
     testWidgets("a long caption truncates rather than overflowing", (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -347,10 +535,11 @@ void main() {
 
       await pullBy(tester, _deepTrigger + 80);
       expect(deepRefreshes, 1);
+      expect(softRefreshes, 0);
 
       await pullBy(tester, _softTrigger + 40);
 
-      expect(softRefreshes, 2);
+      expect(softRefreshes, 1, reason: "the next pull is an ordinary one and runs");
       expect(deepRefreshes, 1, reason: "the arming must reset after each release");
     });
   });

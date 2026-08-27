@@ -3,16 +3,18 @@
 ## Status
 
 - **Plan slug:** `catalog-rescan`
-- **Status:** Active - Step 1/8 plan publication
+- **Status:** Completed 2026-08-26 - every step merged and every matrix row passed
 - **Plan date:** 2026-08-23
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main` at
   `7b1ebe9bc629d05b5d104e76cd5dbaa1514d65a2`
-- **Current branch:** `fix-missing-imports-logs`
 - **Origin issue:** [#961](https://github.com/sesori-ai/sesori_apps_monorepo/issues/961)
 - **Related:** [#1008](https://github.com/sesori-ai/sesori_apps_monorepo/issues/1008)
   owns Codex live updates and is not addressed here
-- **Delivery:** eight PRs, slug `catalog-rescan`
+- **Delivery:** slug `catalog-rescan`, numbered out of eight throughout. Step 6
+  split into 6a-6g as it went: 6a-6c were the planned client work, and
+  6d-6g answered owner feedback from running builds. The denominator was
+  deliberately left at eight so one series keeps one total
 
 ## Goal
 
@@ -787,15 +789,21 @@ before the plan is retired.
 | 6a/8 | `⚙️ [catalog-rescan] Route scan state through the list cubits [step 6a/8]` | 450-750 |
 | 6b/8 | `⚙️ [catalog-rescan] Show the catalog scan in the lists [step 6b/8]` | 500-800 |
 | 6c/8 | `🌿 [catalog-rescan] Scan one harness from Settings [step 6c/8]` | 350-600 |
+| 6d/8 | `⚙️ [catalog-rescan] Quieten the scan row and its pull [step 6d/8]` | 400-700 |
+| 6e/8 | `🌿 [catalog-rescan] Report a Settings scan's outcome [step 6e/8]` | 350-600 |
+| 6f/8 | `🌿 [catalog-rescan] Run the ordinary refresh on release [step 6f/8]` | 250-450 |
+| 6g/8 | `🌿 [catalog-rescan] Collapse a fired pull in one movement [step 6g/8]` | 60-140 |
 | 7/8 | `🌱 [catalog-rescan] Reconcile catalog rescan regression docs [step 7/8]` | 80-160 |
 | 8/8 | `🌱 [catalog-rescan] Verify and retire the catalog rescan plan [step 8/8]` | 60-140 |
 
 Step 5 is `⚙️` rather than `🌿` because it extracts a new shared component and
 moves the split-view pane onto it, rather than adding a parameter to one widget.
 
-Step 6 is delivered as three sub-steps rather than one PR, split by layer and
-surface so none exceeds the size cap. The denominator stays 8: these are one
-step's worth of scope, not three new steps.
+Step 6 was planned as three sub-steps rather than one PR, split by layer and
+surface so none exceeds the size cap, and delivered as seven. 6a-6c are those
+three planned splits; 6d-6g are follow-ups answering owner feedback from running
+builds, each scoped to one report. The denominator stays 8 throughout: this is
+one step's worth of scope however many PRs carried it.
 
 - **6a** is `module_core` only — the two list cubits gain the scan state, the
   intent methods, and the refresh on leaving a live operation. Nothing renders,
@@ -1069,7 +1077,9 @@ reviewer of one PR can see what belongs to it.
   targeted rejection, and its L3/L4 coverage. Step 7 only re-checks it against
   the shipped behaviour.
 - Record the required plugin, platform, compatibility, recovery, freshness, and
-  setup-state matrix in both.
+  setup-state matrix in both. Recorded as regression-level entries and
+  exploration guidance rather than as a separate table, because that is how
+  these documents already express what a level must cover.
 
 ### Verification
 

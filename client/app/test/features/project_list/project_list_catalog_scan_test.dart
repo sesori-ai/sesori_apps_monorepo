@@ -136,6 +136,34 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets("confirms an ordinary pull", (tester) async {
+    final loc = await pumpLoadedList(tester);
+
+    // The refresh starts on release now, so this settles the whole gesture
+    // rather than pumping a fixed window from the moment of the drag.
+    await tester.drag(find.text("My Project"), const Offset(0, 120));
+    await tester.pumpAndSettle();
+
+    expect(find.text(loc.projectListRefreshSuccess), findsOneWidget);
+  });
+
+  // A pull that fires the second stage runs no ordinary refresh at all, so it
+  // has nothing to confirm and the scan row is the only report.
+  testWidgets("does not confirm a pull that started a scan", (tester) async {
+    final loc = await pumpLoadedList(tester);
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("My Project")));
+    await pullFurtherUntil(tester, gesture, () => rescanService.startAllCalls > 0);
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(loc.projectListRefreshSuccess),
+      findsNothing,
+      reason: "the scan is the report; a confirmation beside it says the smaller half twice",
+    );
+  });
+
   testWidgets("reports a running scan above the list without displacing it", (tester) async {
     final loc = await pumpLoadedList(tester);
     expect(find.text(loc.catalogScanRunningTitle), findsNothing);
