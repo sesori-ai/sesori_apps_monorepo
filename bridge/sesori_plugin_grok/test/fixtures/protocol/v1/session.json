@@ -1,0 +1,36 @@
+{
+  "sessionId": "synthetic-session",
+  "models": {
+    "currentModelId": "opaque/provider:model-beta",
+    "availableModels": [
+      {
+        "modelId": "synthetic:model-alpha",
+        "name": "Model Alpha",
+        "description": "Synthetic reasoning model",
+        "_meta": {
+          "supportsReasoningEffort": true,
+          "reasoningEffort": "low",
+          "reasoningEfforts": [
+            {
+              "id": "low",
+              "value": "low",
+              "label": "Low",
+              "description": null,
+              "default": true
+            }
+          ]
+        }
+      },
+      {
+        "modelId": "opaque/provider:model-beta",
+        "name": "Model Beta",
+        "description": null,
+        "_meta": {
+          "supportsReasoningEffort": false,
+          "reasoningEffort": null,
+          "reasoningEfforts": []
+        }
+      }
+    ]
+  }
+}

@@ -3,21 +3,22 @@
 ## Current State
 
 - **Plan:** `.plan/active/grok-harness/PLAN.md`
-- **Status:** Step 1/9 in PR
-- **Current branch:** `grok-code-harness-inquiry`
+- **Status:** Step 1/9 merged; Step 2/9 verified and ready for PR
+- **Current branch:** `grok-harness-step-2-scaffold`
 - **Base:** `origin/main`
 - **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
-- **Open PR:** #1152 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1152>
-- **Local successor:** `grok-harness-step-2-scaffold`; released-binary research started and held locally
+- **Merged predecessor:** #1152 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1152>
+- **Current step:** `grok-harness-step-2-scaffold`; scaffold implemented, verified, and ready to publish
 
 ## Fixed Series
 
 1. `🌱 [grok-harness] docs: plan Grok Build harness support [step 1/9]`
-   - **State:** in PR #1152.
-   - **Evidence:** current revision architecture-approved; released-binary facts, titles, paths, and whitespace pass.
+   - **State:** merged in #1152.
+   - **Evidence:** architecture-approved plan; released-binary facts, titles, paths, and whitespace passed.
 2. `🌿 [grok-harness] feat(grok): scaffold the Grok plugin package [step 2/9]`
-   - **State:** started locally; held until #1152 merges.
-   - **Evidence:** isolated released 1.0.5 binary/version/help/initialize contract captured; package files not started.
+   - **State:** verified locally and ready to open.
+   - **Evidence:** workspace package, launch spec, typed model-state DTOs, synthetic protocol fixtures, generated output,
+     package tests/analyzer, LSP diagnostics, and the 1,500-line budget pass.
 3. `⚙️ [grok-harness] feat(grok): expose models and reasoning effort [step 3/9]`
    - **State:** not started.
 4. `⚙️ [grok-harness] feat(grok): compose ACP sessions and turns [step 4/9]`
@@ -49,6 +50,18 @@
 - [x] Commit, push, and open Step 1 PR (#1152).
 - [x] Start the PR monitor.
 - [x] Create the Step 2 successor branch in this worktree and begin released-binary research locally.
+
+## Step 2 Checklist
+
+- [x] Validate the official 1.0.5 artifact, build ID, SHA-256, launch arguments, and initialize structure.
+- [x] Add `sesori_plugin_grok` to workspace, Makefile/CI inventory, bridge module docs, and package docs.
+- [x] Add Grok identity and the dedicated no-update/no-leader ask-mode ACP launch spec.
+- [x] Add typed Freezed model/reasoning DTOs plus privacy-safe synthetic initialize/session fixtures.
+- [x] Generate source; do not hand-edit generated files.
+- [x] Run package tests, fatal-info analysis, and Dart LSP diagnostics.
+- [x] Run architecture implementation review for `origin/main...HEAD`; approved with no findings.
+- [x] Keep the measured change below the 1,500-line soft cap by leaving initialize/session envelope DTOs for Step 3.
+- [x] Commit the completed successor locally; do not push or open it before #1152 merges.
 
 ## Decisions And Evidence
 
