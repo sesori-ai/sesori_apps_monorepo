@@ -55,7 +55,9 @@ void main() {
 
 DeepSeekHistoryRepository _repository(DeepSeekAcpApi api) => DeepSeekHistoryRepository(
   api: api,
+  messageTimeParser: const DeepSeekMessageTimeParser(),
   eventMapper: DeepSeekEventMapper(
+    messageTimeParser: const DeepSeekMessageTimeParser(),
     launchDirectory: "/project",
     pluginId: DeepSeekIdentity.id,
     configurationTracker: AcpSessionConfigurationTracker(),

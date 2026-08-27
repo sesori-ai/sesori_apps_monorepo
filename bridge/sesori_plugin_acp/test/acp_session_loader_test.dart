@@ -86,6 +86,7 @@ void main() {
           agentId: "ACP",
           initialUserMessageId: null,
           messageIdOverride: null,
+          messageTimeResolver: null,
           haltClassifier: null,
         );
         final liveEvents = <BridgeSseEvent>[];
@@ -132,6 +133,7 @@ void main() {
                   providerId: null,
                   initialUserMessageId: "s1-initial-user",
                   messageIdOverride: null,
+                  messageTimeResolver: null,
                   haltClassifier: null,
                 )
                 ..consume(
@@ -176,6 +178,7 @@ void main() {
               providerId: "cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -230,6 +233,7 @@ void main() {
             agentId: "Cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
+            messageTimeResolver: null,
             haltClassifier: null,
           )..consume(
             upd({
@@ -265,6 +269,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -302,6 +307,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -345,6 +351,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -377,6 +384,7 @@ void main() {
             agentId: "Cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
+            messageTimeResolver: null,
             haltClassifier: null,
           )..consume(
             upd({
@@ -402,6 +410,7 @@ void main() {
             providerId: "cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
+            messageTimeResolver: null,
             haltClassifier: null,
           )..consume(
             upd({
@@ -423,6 +432,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -461,6 +471,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -485,6 +496,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -509,6 +521,7 @@ void main() {
         agentId: "Cursor",
         initialUserMessageId: null,
         messageIdOverride: null,
+        messageTimeResolver: null,
         haltClassifier: null,
       );
 
@@ -525,6 +538,7 @@ void main() {
         agentId: "Cursor",
         initialUserMessageId: null,
         messageIdOverride: null,
+        messageTimeResolver: null,
         haltClassifier: null,
       );
       final output = _captureWarnings(() {
@@ -551,6 +565,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -661,6 +676,7 @@ void main() {
                 agentId: "Cursor",
                 initialUserMessageId: null,
                 messageIdOverride: null,
+                messageTimeResolver: null,
                 haltClassifier: null,
               )
               ..consume(
@@ -713,6 +729,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -752,6 +769,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -781,6 +799,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -810,6 +829,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -855,6 +875,7 @@ void main() {
             providerId: "cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
+            messageTimeResolver: null,
             haltClassifier: ({required text}) =>
                 text.trim() == "Check your settings to continue" ? const AcpHaltNotice(errorName: "cursor_gate") : null,
           )..consume(
@@ -877,6 +898,7 @@ void main() {
             agentId: "Cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
+            messageTimeResolver: null,
             haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
           )..consume(
             upd({
@@ -896,6 +918,7 @@ void main() {
             agentId: "Cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
+            messageTimeResolver: null,
             haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
           )..consume(
             upd({
@@ -928,6 +951,7 @@ void main() {
             agentId: "Cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
+            messageTimeResolver: null,
             haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
           )..consume(
             upd({
@@ -951,6 +975,7 @@ void main() {
             agentId: "Cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
+            messageTimeResolver: null,
             haltClassifier: null,
           )..consume(
             upd({

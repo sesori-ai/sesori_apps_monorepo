@@ -83,15 +83,19 @@ void main() {
         }),
       );
 
-      final parts = [
-        ...transition.whereType<BridgeSseMessagePartUpdated>(),
-        ...mapper.finalizeTurn(sessionId: "s1").whereType<BridgeSseMessagePartUpdated>(),
-      ].map((event) => event.part).where(
-        (part) => switch (part) {
-          PluginMessagePartText(:final text) || PluginMessagePartReasoning(:final text) => text.isNotEmpty,
-          _ => false,
-        },
-      ).toList();
+      final parts =
+          [
+                ...transition.whereType<BridgeSseMessagePartUpdated>(),
+                ...mapper.finalizeTurn(sessionId: "s1").whereType<BridgeSseMessagePartUpdated>(),
+              ]
+              .map((event) => event.part)
+              .where(
+                (part) => switch (part) {
+                  PluginMessagePartText(:final text) || PluginMessagePartReasoning(:final text) => text.isNotEmpty,
+                  _ => false,
+                },
+              )
+              .toList();
 
       expect(parts.map((part) => part.id), [
         "s1-t1-assistant-a0-reasoning",
@@ -370,6 +374,7 @@ void main() {
         messageId: "s1-sent-1-user",
         promptId: "prompt-1",
         sessionId: "s1",
+        createdAtMs: 1,
         parts: [
           const PluginPromptPart.text(text: "Hello"),
           const PluginPromptPart.text(text: "Cursor"),
@@ -401,6 +406,7 @@ void main() {
           messageId: "s1-sent-1-user",
           promptId: "prompt-1",
           sessionId: "s1",
+          createdAtMs: 1,
           parts: parts,
         );
 
@@ -420,6 +426,7 @@ void main() {
     test("an initial prompt uses the history-stable message and part identity", () {
       final events = mapper.mapInitialPrompt(
         sessionId: "s1",
+        createdAtMs: 1,
         parts: const [
           PluginPromptPart.text(text: "Hello"),
           PluginPromptPart.fileData(mime: "image/png", base64: "AA==", filename: "private.png"),
@@ -443,6 +450,7 @@ void main() {
         messageId: "s1-sent-1-user",
         promptId: "prompt-1",
         sessionId: "s1",
+        createdAtMs: 1,
         parts: [const PluginPromptPart.text(text: "Hello")],
       );
 

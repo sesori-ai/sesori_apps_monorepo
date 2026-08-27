@@ -777,6 +777,7 @@ abstract class AcpPlugin({
     final initialPromptEvents = eventMapper.mapInitialPrompt(
       sessionId: session.sessionId,
       parts: visibleParts,
+      createdAtMs: createdAt,
     );
     if (initialPromptEvents.isNotEmpty) {
       _syntheticInitialPromptSessions.add(session.sessionId);
@@ -1292,6 +1293,7 @@ abstract class AcpPlugin({
           messageId: turn.messageId,
           promptId: queuedPrompt.presentation.id,
           parts: queuedPrompt.visibleParts,
+          createdAtMs: queuedPrompt.presentation.createdAt,
         )
         .forEach(_eventBuffer.add);
     if (state.queue.remove(queuedPrompt)) {
@@ -1546,6 +1548,7 @@ abstract class AcpPlugin({
           ? AcpEventMapper.initialUserMessageId(sessionId)
           : null,
       messageIdOverride: null,
+      messageTimeResolver: null,
       // Reclassify a halt notice (e.g. Cursor's account/plan gate) the same way
       // the live stream does, so reloaded history renders it identically.
       haltClassifier: eventMapper.classifyHaltNotice,

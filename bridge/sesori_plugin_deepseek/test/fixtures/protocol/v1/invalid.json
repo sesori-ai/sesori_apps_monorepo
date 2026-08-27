@@ -106,6 +106,25 @@
     }
   },
   {
+    "definition": "historyResponse",
+    "value": {
+      "updates": [
+        {
+          "sessionId": "session-1",
+          "update": {
+            "sessionUpdate": "agent_message_chunk"
+          },
+          "_meta": {
+            "sesori.ai/deepseek": {
+              "messageCreatedAt": -1
+            }
+          }
+        }
+      ],
+      "hasMore": false
+    }
+  },
+  {
     "definition": "renameRequest",
     "value": {
       "sessionId": "session-1",

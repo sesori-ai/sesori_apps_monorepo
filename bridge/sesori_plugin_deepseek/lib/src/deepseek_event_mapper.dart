@@ -3,13 +3,23 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/deepseek_acp_api.dart";
 import "api/models/deepseek_protocol_dto.dart";
+import "deepseek_message_time_parser.dart";
 
 class DeepSeekEventMapper({
   required super.launchDirectory,
   required super.pluginId,
   required super.configurationTracker,
   required final DeepSeekAcpApi api,
+  required final DeepSeekMessageTimeParser messageTimeParser,
 }) extends AcpEventMapper {
+  @override
+  PluginMessageTime? messageTimeForNotification({required AcpNotification notification}) =>
+      messageTimeParser.parse(notification.params);
+
+  @override
+  PluginMessageTime localUserMessageTime({required int createdAtMs}) =>
+      PluginMessageTime(created: createdAtMs, completed: null);
+
   @override
   List<BridgeSseEvent> mapExtension(AcpNotification notification) {
     if (notification.method != DeepSeekAcpApi.sessionStatusMethod) {

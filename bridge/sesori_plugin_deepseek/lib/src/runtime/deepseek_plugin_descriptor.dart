@@ -10,6 +10,7 @@ import "../api/deepseek_acp_api.dart";
 import "../deepseek_binary.dart";
 import "../deepseek_event_mapper.dart";
 import "../deepseek_identity.dart";
+import "../deepseek_message_time_parser.dart";
 import "../deepseek_plugin_impl.dart";
 import "../repositories/deepseek_catalog_repository.dart";
 import "../repositories/deepseek_history_repository.dart";
@@ -236,11 +237,13 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
     final configurationTracker = AcpSessionConfigurationTracker();
     final commandTracker = AcpCommandTracker();
     const api = DeepSeekAcpApi(pluginId: DeepSeekIdentity.id);
+    const messageTimeParser = DeepSeekMessageTimeParser();
     final mapper = DeepSeekEventMapper(
       launchDirectory: cwd,
       pluginId: DeepSeekIdentity.id,
       configurationTracker: configurationTracker,
       api: api,
+      messageTimeParser: messageTimeParser,
     );
     const catalogMapper = DeepSeekCatalogMapper();
     const catalogRepository = DeepSeekCatalogRepository(api: api, mapper: catalogMapper);
@@ -264,6 +267,7 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
         api: api,
         eventMapper: mapper,
         pluginId: DeepSeekIdentity.id,
+        messageTimeParser: messageTimeParser,
       ),
       deepSeekSessionService: const DeepSeekSessionService(
         repository: DeepSeekSessionRepository(api: api),

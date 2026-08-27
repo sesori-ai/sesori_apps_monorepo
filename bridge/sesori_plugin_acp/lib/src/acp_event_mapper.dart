@@ -67,6 +67,12 @@ class AcpEventMapper({
   String? providerForSession({required String sessionId}) =>
       _configurationTracker.snapshotForSession(sessionId: sessionId).providerId;
 
+  /// Backend extension time for a message-bearing ACP notification.
+  PluginMessageTime? messageTimeForNotification({required AcpNotification notification}) => null;
+
+  /// Backend-authoritative time for a locally projected accepted user message.
+  PluginMessageTime? localUserMessageTime({required int createdAtMs}) => null;
+
   /// Last-known per-session metadata (title/times), fed by the plugin from
   /// enumeration and creation (like [setSessionProject]). `session_info_update`
   /// merges against it so the emitted `session.updated` payload doesn't null
@@ -251,11 +257,13 @@ class AcpEventMapper({
   List<BridgeSseEvent> mapInitialPrompt({
     required String sessionId,
     required List<PluginPromptPart> parts,
+    required int createdAtMs,
   }) => _mapUserPrompt(
     sessionId: sessionId,
     messageId: initialUserMessageId(sessionId),
     promptId: null,
     parts: parts,
+    time: localUserMessageTime(createdAtMs: createdAtMs),
   );
 
   /// Derives the durable user-message identity from the accepted prompt id.
@@ -267,11 +275,13 @@ class AcpEventMapper({
     required String messageId,
     required String promptId,
     required List<PluginPromptPart> parts,
+    required int createdAtMs,
   }) => _mapUserPrompt(
     sessionId: sessionId,
     messageId: messageId,
     promptId: promptId,
     parts: parts,
+    time: localUserMessageTime(createdAtMs: createdAtMs),
   );
 
   List<BridgeSseEvent> _mapUserPrompt({
@@ -279,6 +289,7 @@ class AcpEventMapper({
     required String messageId,
     required String? promptId,
     required List<PluginPromptPart> parts,
+    required PluginMessageTime? time,
   }) {
     final content = <Map<String, dynamic>>[
       for (final part in parts)
@@ -302,7 +313,7 @@ class AcpEventMapper({
     if (mutations.isEmpty) return const [];
     return [
       BridgeSseMessageUpdated(
-        info: _messageFor(_ChunkRole.user, messageId, sessionId, promptId: promptId).toJson(),
+        info: _messageFor(_ChunkRole.user, messageId, sessionId, promptId: promptId, time: time).toJson(),
       ),
       for (final mutation in mutations)
         BridgeSseMessagePartUpdated(
@@ -368,11 +379,12 @@ class AcpEventMapper({
       return const [];
     }
 
+    final messageTime = messageTimeForNotification(notification: notification);
     switch (update["sessionUpdate"] as String?) {
       case "agent_message_chunk":
         return _afterReasoning(
           sessionId: sessionId,
-          events: _assistantContentChunk(sessionId: sessionId, update: update),
+          events: _assistantContentChunk(sessionId: sessionId, update: update, time: messageTime),
         );
       case "agent_thought_chunk":
         return _textChunk(
@@ -381,6 +393,7 @@ class AcpEventMapper({
           role: _ChunkRole.assistant,
           partSuffix: "reasoning",
           partType: PluginMessagePartType.reasoning,
+          time: messageTime,
         );
       case "user_message_chunk":
         // This plugin emits the accepted prompt itself. A live user chunk is
@@ -390,12 +403,12 @@ class AcpEventMapper({
       case "tool_call":
         return _afterReasoning(
           sessionId: sessionId,
-          events: _toolCall(sessionId: sessionId, update: update),
+          events: _toolCall(sessionId: sessionId, update: update, time: messageTime),
         );
       case "tool_call_update":
         return _afterReasoning(
           sessionId: sessionId,
-          events: _toolCallUpdate(sessionId: sessionId, update: update),
+          events: _toolCallUpdate(sessionId: sessionId, update: update, time: messageTime),
         );
       case "plan":
         return [BridgeSseTodoUpdated(sessionID: sessionId)];
@@ -526,6 +539,7 @@ class AcpEventMapper({
   List<BridgeSseEvent> _assistantContentChunk({
     required String sessionId,
     required Map<String, dynamic> update,
+    required PluginMessageTime? time,
   }) {
     final identity = _chunkIdentity(
       sessionId: sessionId,
@@ -545,6 +559,7 @@ class AcpEventMapper({
       identity: identity,
       tracker: tracker,
       blocks: blocks,
+      time: time,
     );
   }
 
@@ -576,6 +591,7 @@ class AcpEventMapper({
         identity: identity,
         tracker: tracker,
         blocks: blocks,
+        time: null,
       ),
     );
   }
@@ -585,6 +601,7 @@ class AcpEventMapper({
     required ({String messageId, bool hasAcpMessageId}) identity,
     required AcpContentTracker tracker,
     required Iterable<AcpMappedContentBlock> blocks,
+    required PluginMessageTime? time,
   }) {
     if (blocks.isEmpty) return const [];
     final hasTrackableContent = blocks.any(
@@ -600,7 +617,7 @@ class AcpEventMapper({
       final text = blocks.whereType<AcpMappedTextContentBlock>().map((block) => block.text).join();
       if (text.isNotEmpty) {
         final halt = classifyHaltNotice(text: text);
-        if (halt != null) return _haltNoticeEvents(sessionId: sessionId, notice: halt, message: text);
+        if (halt != null) return _haltNoticeEvents(sessionId: sessionId, notice: halt, message: text, time: time);
       }
     }
 
@@ -611,7 +628,7 @@ class AcpEventMapper({
     if (started.add(identity.messageId)) {
       events.add(
         BridgeSseMessageUpdated(
-          info: _messageFor(_ChunkRole.assistant, identity.messageId, sessionId, promptId: null).toJson(),
+          info: _messageFor(_ChunkRole.assistant, identity.messageId, sessionId, promptId: null, time: time).toJson(),
         ),
       );
     }
@@ -675,6 +692,7 @@ class AcpEventMapper({
     required _ChunkRole role,
     required String partSuffix,
     required PluginMessagePartType partType,
+    required PluginMessageTime? time,
   }) {
     final text = _contentMapper.text(content: update["content"]);
     if (text == null || text.isEmpty) return const [];
@@ -689,7 +707,7 @@ class AcpEventMapper({
     // text (no regression).
     if (partType == PluginMessagePartType.text) {
       final halt = classifyHaltNotice(text: text);
-      if (halt != null) return _haltNoticeEvents(sessionId: sessionId, notice: halt, message: text);
+      if (halt != null) return _haltNoticeEvents(sessionId: sessionId, notice: halt, message: text, time: time);
     }
 
     // ACP v1: chunks of one message share a `messageId`; a change starts a new
@@ -707,7 +725,7 @@ class AcpEventMapper({
     if (started.add(partId)) {
       if (started.add(messageId)) {
         events.add(
-          BridgeSseMessageUpdated(info: _messageFor(role, messageId, sessionId, promptId: null).toJson()),
+          BridgeSseMessageUpdated(info: _messageFor(role, messageId, sessionId, promptId: null, time: time).toJson()),
         );
       }
       events.add(
@@ -789,6 +807,7 @@ class AcpEventMapper({
     required String sessionId,
     required AcpHaltNotice notice,
     required String message,
+    required PluginMessageTime? time,
   }) {
     final messageId = "$sessionId-t${_turn(sessionId)}-halt";
     final started = _startedParts.putIfAbsent(sessionId, () => <String>{});
@@ -810,7 +829,7 @@ class AcpEventMapper({
           providerID: providerForSession(sessionId: sessionId),
           errorName: notice.errorName,
           errorMessage: message,
-          time: null,
+          time: time == null ? null : shared.MessageTime(created: time.created, completed: time.completed),
         ).toJson(),
       ),
     ];
@@ -819,6 +838,7 @@ class AcpEventMapper({
   List<BridgeSseEvent> _toolCall({
     required String sessionId,
     required Map<String, dynamic> update,
+    required PluginMessageTime? time,
   }) {
     final toolCallId = update["toolCallId"] as String?;
     if (toolCallId == null || toolCallId.isEmpty) return const [];
@@ -857,7 +877,7 @@ class AcpEventMapper({
     (_liveTools[sessionId] ??= {})[toolCallId] = state;
     final events = <BridgeSseEvent>[
       ...boundaryEvents,
-      if (prior == null) _toolEnvelope(sessionId: sessionId, messageId: messageId),
+      if (prior == null) _toolEnvelope(sessionId: sessionId, messageId: messageId, time: time),
       _toolPartEvent(sessionId: sessionId, messageId: messageId, state: state),
     ];
     _appendCompletedMutationDiff(
@@ -872,6 +892,7 @@ class AcpEventMapper({
   List<BridgeSseEvent> _toolCallUpdate({
     required String sessionId,
     required Map<String, dynamic> update,
+    required PluginMessageTime? time,
   }) {
     final toolCallId = update["toolCallId"] as String?;
     if (toolCallId == null || toolCallId.isEmpty) return const [];
@@ -921,7 +942,7 @@ class AcpEventMapper({
       // first-seen, synthesize the message envelope — like `_textChunk` does —
       // so the client can render the part instead of receiving an orphan it
       // drops.
-      if (prior == null) _toolEnvelope(sessionId: sessionId, messageId: messageId),
+      if (prior == null) _toolEnvelope(sessionId: sessionId, messageId: messageId, time: time),
       _toolPartEvent(sessionId: sessionId, messageId: messageId, state: state),
     ];
     // Retained (not pruned on terminal) so a late reordered update still merges
@@ -953,7 +974,11 @@ class AcpEventMapper({
   String _currentIdlessAssistantMessageId(String sessionId) =>
       "$sessionId-t${_turn(sessionId)}-${_ChunkRole.assistant.name}-a${_idlessAssistantSeq[sessionId] ?? 0}";
 
-  BridgeSseMessageUpdated _toolEnvelope({required String sessionId, required String messageId}) {
+  BridgeSseMessageUpdated _toolEnvelope({
+    required String sessionId,
+    required String messageId,
+    required PluginMessageTime? time,
+  }) {
     return BridgeSseMessageUpdated(
       info: shared.Message.assistant(
         id: messageId,
@@ -961,9 +986,7 @@ class AcpEventMapper({
         agent: pluginId,
         modelID: modelForSession(sessionId: sessionId),
         providerID: providerForSession(sessionId: sessionId),
-        // ACP carries no per-message timestamps; the mobile model treats a null
-        // time as "unknown".
-        time: null,
+        time: time == null ? null : shared.MessageTime(created: time.created, completed: time.completed),
       ).toJson(),
     );
   }
@@ -991,13 +1014,19 @@ class AcpEventMapper({
     );
   }
 
-  shared.Message _messageFor(_ChunkRole role, String messageId, String sessionId, {required String? promptId}) {
+  shared.Message _messageFor(
+    _ChunkRole role,
+    String messageId,
+    String sessionId, {
+    required String? promptId,
+    required PluginMessageTime? time,
+  }) {
     return switch (role) {
       _ChunkRole.user => shared.Message.user(
         id: messageId,
         sessionID: sessionId,
         agent: null,
-        time: null,
+        time: time == null ? null : shared.MessageTime(created: time.created, completed: time.completed),
         promptId: promptId,
       ),
       _ChunkRole.assistant => shared.Message.assistant(
@@ -1006,7 +1035,7 @@ class AcpEventMapper({
         agent: pluginId,
         modelID: modelForSession(sessionId: sessionId),
         providerID: providerForSession(sessionId: sessionId),
-        time: null,
+        time: time == null ? null : shared.MessageTime(created: time.created, completed: time.completed),
       ),
     };
   }

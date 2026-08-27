@@ -4,11 +4,13 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../api/deepseek_acp_api.dart";
 import "../api/models/deepseek_protocol_dto.dart";
 import "../deepseek_event_mapper.dart";
+import "../deepseek_message_time_parser.dart";
 
 class DeepSeekHistoryRepository({
   required final DeepSeekAcpApi api,
   required final DeepSeekEventMapper eventMapper,
   required final String pluginId,
+  required final DeepSeekMessageTimeParser messageTimeParser,
 }) {
   static const int _maxPages = 100;
   static const int _pageSize = 100;
@@ -24,6 +26,7 @@ class DeepSeekHistoryRepository({
       providerId: eventMapper.providerForSession(sessionId: sessionId),
       initialUserMessageId: null,
       messageIdOverride: ({required acpMessageId}) => acpMessageId,
+      messageTimeResolver: ({required params}) => messageTimeParser.parse(params),
       haltClassifier: eventMapper.classifyHaltNotice,
     );
     int? cursor;
