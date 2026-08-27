@@ -156,6 +156,10 @@ live, after paging back, or after a reopen, and vary the plugin.
   continue to render inline images returned by older bridges. The current
   viewer remains single-image; galleries and persistent original caching are
   intentionally excluded.
+- DeepSeek advertises image prompts and its protocol fixtures cover bounded
+  inline image admission and normalized image projection. A real vision-model
+  prompt, generated output where available, rejection cases, live/replay parity,
+  and client rendering remain required Step 16 evidence.
 
 ## Sources
 
