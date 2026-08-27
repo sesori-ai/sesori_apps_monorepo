@@ -1263,9 +1263,24 @@ abstract class AcpPlugin({
       // backend failure must remain observable rather than silently dropping
       // the accepted prompt.
       Log.w("[$id] accepted session/prompt for $sessionId failed", error, stack);
+      _eventBuffer.add(
+        eventMapper.mapPromptError(
+          sessionId: sessionId,
+          message: _promptFailureMessage(error: error),
+        ),
+      );
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: true, refused: false);
       mapPromptFailure(sessionId: sessionId, error: error).forEach(_eventBuffer.add);
     }
+  }
+
+  String _promptFailureMessage({required Object error}) {
+    if (error case AcpRpcException(:final message, :final data)) {
+      final Object? details = data is Map<Object?, Object?> ? data["details"] : null;
+      if (details case final String details when details.trim().isNotEmpty) return details;
+      if (message.trim().isNotEmpty) return message;
+    }
+    return error.toString();
   }
 
   bool _turnWasCancelled({

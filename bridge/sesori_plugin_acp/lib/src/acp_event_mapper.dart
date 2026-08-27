@@ -224,6 +224,25 @@ class AcpEventMapper({
     _liveTools.remove(sessionId);
   }
 
+  /// Maps a rejected `session/prompt` into a durable inline error. A session
+  /// error event carries no diagnostic text, so emitting only that event would
+  /// make an accepted prompt appear to finish silently.
+  BridgeSseMessageUpdated mapPromptError({
+    required String sessionId,
+    required String message,
+  }) => BridgeSseMessageUpdated(
+    info: shared.Message.error(
+      id: "$sessionId-t${_turn(sessionId)}-error",
+      sessionID: sessionId,
+      agent: pluginId,
+      modelID: modelForSession(sessionId: sessionId),
+      providerID: providerForSession(sessionId: sessionId),
+      errorName: "ACP prompt failed",
+      errorMessage: message,
+      time: null,
+    ).toJson(),
+  );
+
   /// Emits complete snapshots for text and reasoning parts streamed during the
   /// current turn. The caller owns the turn boundary and must call this before
   /// the next turn starts.

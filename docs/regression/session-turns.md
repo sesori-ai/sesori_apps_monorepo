@@ -131,8 +131,10 @@ defaults and queued client sends coherent.
   immediately cancelling the active turn and dispatching the queued input after
   cancellation settles. Further already-queued inputs retain FIFO order. Their
   synthetic user transcript message is published only after its frame flushes
-  successfully to the agent's stdin. Follow-up and replayed user messages
-  preserve ordered text and bounded data-backed image parts, including
+  successfully to the agent's stdin. A prompt rejected after that dispatch
+  renders a durable inline error, preserving the agent's diagnostic detail
+  rather than transitioning silently to idle. Follow-up and replayed user
+  messages preserve ordered text and bounded data-backed image parts, including
   attachment-only prompts. Initial projection contains only normalized
   user-visible text plus those images; injected context, local paths, and URLs
   remain absent. OMP runs different sessions concurrently because its permission
@@ -251,6 +253,8 @@ replay, and abort after output has started.
 
 - A slash command holds the client request open for the whole run, or a slow
   plugin blocks unrelated sessions, other plugins, or relay traffic.
+- An accepted ACP prompt rejection returns the session to idle without a durable
+  inline error containing the backend's diagnostic detail.
 - Streaming stalls, duplicates or loses parts, shows an empty user bubble, or
   orders a late envelope at the wrong transcript position; the session never
   returns to idle. A terminal provider failure returns to idle without showing
