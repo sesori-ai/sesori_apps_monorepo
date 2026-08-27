@@ -149,7 +149,7 @@ import "services/device_canvas_agent_tool_service.dart";
 import "services/device_canvas_claim_service.dart";
 import "services/device_canvas_client_service.dart";
 import "services/device_canvas_stream_service.dart";
-import "services/device_canvas_turn_credential_builder.dart";
+import "services/device_canvas_turn_credential_issuer.dart";
 import "services/pending_interaction_service.dart";
 import "services/permission_auto_approval_service.dart";
 import "services/plugin_lifecycle_service.dart";
@@ -219,7 +219,7 @@ class Orchestrator({
     required final FailureReporter _failureReporter,
     required final BridgeRestartService _restartService,
     required final bool _filesystemAccessOk,
-    final DeviceCanvasTurnCredentialBuilder? _deviceCanvasTurnCredentialBuilder,
+    final DeviceCanvasTurnCredentialIssuer? _deviceCanvasTurnCredentialIssuer,
     // Supervised mode only: owns the status-class pushes to the desktop GUI.
     // Standalone has no control channel, so this is null there.
     required final ControlStatusNotifier? _statusNotifier,
@@ -258,7 +258,7 @@ class Orchestrator({
       integrationState: deviceCanvasIntegrationState,
       gateway: deviceCanvasStreamGateway,
       clock: _clock,
-      turnCredentialBuilder: _deviceCanvasTurnCredentialBuilder,
+      turnCredentialIssuer: _deviceCanvasTurnCredentialIssuer,
     );
     final deviceCanvasClientService = DeviceCanvasClientService(
       bridgeIdProvider: _bridgeRegistrationService,

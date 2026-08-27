@@ -225,6 +225,50 @@ void main() {
     });
   });
 
+  group("Device Canvas production TURN", () {
+    test("is disabled by default and accepts only explicit boolean values", () {
+      expect(_parseOptions(args: const []).deviceCanvasProductionTurnEnabled, isFalse);
+      expect(
+        _parseOptions(
+          args: const [],
+          environment: const {"DEVICE_CANVAS_PRODUCTION_TURN": "true"},
+        ).deviceCanvasProductionTurnEnabled,
+        isTrue,
+      );
+      expect(
+        _parseOptions(
+          args: const [],
+          environment: const {"DEVICE_CANVAS_PRODUCTION_TURN": "1"},
+        ).deviceCanvasProductionTurnEnabled,
+        isTrue,
+      );
+      for (final value in const ["", "TRUE", "yes"]) {
+        expect(
+          () => _parseOptions(
+            args: const [],
+            environment: {"DEVICE_CANVAS_PRODUCTION_TURN": value},
+          ),
+          throwsA(isA<ArgParserException>()),
+        );
+      }
+    });
+
+    test("cannot be combined with the local issuer", () {
+      expect(
+        () => _parseOptions(
+          args: const [
+            "--device-canvas-local-turn-url",
+            "turn:192.168.1.10",
+            "--device-canvas-local-turn-secret-file",
+            "/tmp/secret",
+          ],
+          environment: const {"DEVICE_CANVAS_PRODUCTION_TURN": "true"},
+        ),
+        throwsA(isA<ArgParserException>()),
+      );
+    });
+  });
+
   group("supervised mode (--control-url)", () {
     test("is standalone when --control-url is absent", () {
       final options = _parseOptions(args: const []);
@@ -263,7 +307,7 @@ void main() {
   });
 }
 
-BridgeCliOptions _parseOptions({required List<String> args}) {
+BridgeCliOptions _parseOptions({required List<String> args, Map<String, String> environment = const {}}) {
   // Only the core options the RunCommand parser registers. Plugin-owned
   // options (e.g. opencode's --port/--password) are intentionally absent:
   // BridgeCliOptions must not read them, or selecting a plugin that doesn't
@@ -289,7 +333,7 @@ BridgeCliOptions _parseOptions({required List<String> args}) {
   return BridgeCliOptions.fromArgResults(
     cliArgs: args,
     results: results,
-    environment: const {"HOME": "/test/home"},
+    environment: {"HOME": "/test/home", ...environment},
     defaultAuthUrl: "https://api.sesori.com",
     defaultDataDirectory: "/default/sesori-data",
   );

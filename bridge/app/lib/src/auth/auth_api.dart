@@ -3,8 +3,12 @@ import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../foundation/abortable_request.dart";
+
 const String oauthSessionTokenHeader = "X-Sesori-Session-Token";
 const Duration _bridgeRegistrationDeadline = Duration(seconds: 15);
+const Duration _deviceCanvasTurnCredentialDeadline = Duration(seconds: 10);
+const int _maxDeviceCanvasTurnCredentialResponseBytes = 32768;
 
 typedef AuthRequestSender = Future<http.Response> Function({
   required http.Client client,
@@ -13,6 +17,7 @@ typedef AuthRequestSender = Future<http.Response> Function({
   required Map<String, String>? headers,
   required String? body,
   required Duration deadline,
+  required int? maxResponseBytes,
 });
 
 class AuthApiException({
@@ -30,6 +35,12 @@ class BridgeRegistrationException({required final int statusCode, required Strin
 
   @override
   String toString() => message;
+}
+
+class const DeviceCanvasTurnApiException({required final int statusCode, required final String reason})
+    implements Exception {
+  @override
+  String toString() => "DeviceCanvasTurnApiException: $reason (status $statusCode)";
 }
 
 class AuthApi({
@@ -118,6 +129,7 @@ class AuthApi({
       },
       body: jsonEncode(RegisterBridgeRequest(name: name, platform: platform, bridgeId: bridgeId).toJson()),
       deadline: _bridgeRegistrationDeadline,
+      maxResponseBytes: null,
     );
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw BridgeRegistrationException(statusCode: response.statusCode, body: response.body);
@@ -133,9 +145,60 @@ class AuthApi({
       headers: {"Authorization": "Bearer $accessToken"},
       body: null,
       deadline: _bridgeRegistrationDeadline,
+      maxResponseBytes: null,
     );
     if (response.statusCode != 200) {
       throw BridgeRegistrationException(statusCode: response.statusCode, body: response.body);
+    }
+  }
+
+  Future<DeviceCanvasTurnConfiguration> issueDeviceCanvasTurnCredentials({
+    required String bridgeId,
+    required String operationId,
+    required int leaseExpiresAt,
+    required String accessToken,
+  }) async {
+    final uri = _uri("device-canvas/turn-credentials");
+    final http.Response response;
+    try {
+      response = await _sendRequest(
+        client: _client,
+        method: "POST",
+        url: uri,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $accessToken",
+        },
+        body: jsonEncode(
+          DeviceCanvasTurnCredentialsRequest(
+            bridgeId: bridgeId,
+            operationId: operationId,
+            leaseExpiresAt: leaseExpiresAt,
+          ).toJson(),
+        ),
+        deadline: _deviceCanvasTurnCredentialDeadline,
+        maxResponseBytes: _maxDeviceCanvasTurnCredentialResponseBytes,
+      );
+    } on ResponseBodyTooLargeException catch (error) {
+      throw DeviceCanvasTurnApiException(statusCode: error.statusCode, reason: "response is malformed");
+    }
+    if (response.statusCode != 200) {
+      throw DeviceCanvasTurnApiException(statusCode: response.statusCode, reason: "request rejected");
+    }
+    if (response.bodyBytes.length > _maxDeviceCanvasTurnCredentialResponseBytes) {
+      throw const DeviceCanvasTurnApiException(statusCode: 200, reason: "response is malformed");
+    }
+    try {
+      final payload = jsonDecodeMap(response.body);
+      const expectedKeys = {"urls", "username", "credential", "expiresAt"};
+      if (payload.length != expectedKeys.length ||
+          !expectedKeys.every(payload.containsKey) ||
+          payload["expiresAt"] is! int) {
+        throw const FormatException("unexpected TURN credential response shape");
+      }
+      return DeviceCanvasTurnConfiguration.fromJson(payload);
+    } on Object {
+      throw const DeviceCanvasTurnApiException(statusCode: 200, reason: "response is malformed");
     }
   }
 
@@ -148,6 +211,7 @@ class AuthApi({
       headers: {"Authorization": "Bearer $accessToken"},
       body: null,
       deadline: _requestDeadline,
+      maxResponseBytes: null,
     );
     if (response.statusCode != 200) {
       throw AuthApiException(method: "GET", uri: uri, statusCode: response.statusCode, body: response.body);
@@ -166,6 +230,7 @@ class AuthApi({
       headers: const {"Content-Type": "application/json"},
       body: jsonEncode({"refreshToken": refreshToken}),
       deadline: _requestDeadline,
+      maxResponseBytes: null,
     );
     if (response.statusCode != 200) {
       throw AuthApiException(method: "POST", uri: uri, statusCode: response.statusCode, body: response.body);

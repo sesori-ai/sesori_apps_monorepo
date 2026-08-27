@@ -175,6 +175,17 @@ sealed class const DeviceCanvasIceCandidate._() with _$DeviceCanvasIceCandidate 
 }
 
 @Freezed(fromJson: true, toJson: true, toStringOverride: false)
+sealed class const DeviceCanvasTurnCredentialsRequest._() with _$DeviceCanvasTurnCredentialsRequest {
+  const factory({
+    required String bridgeId,
+    required String operationId,
+    required int leaseExpiresAt,
+  }) = _DeviceCanvasTurnCredentialsRequest;
+
+  factory fromJson(Map<String, dynamic> json) => _$DeviceCanvasTurnCredentialsRequestFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: true, toStringOverride: false)
 sealed class const DeviceCanvasTurnConfiguration._() with _$DeviceCanvasTurnConfiguration {
   const factory({
     required List<String> urls,

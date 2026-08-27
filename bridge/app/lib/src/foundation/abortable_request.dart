@@ -1,6 +1,13 @@
 import "dart:async";
+import "dart:typed_data";
 
 import "package:http/http.dart" as http;
+
+class const ResponseBodyTooLargeException({required final Uri uri, required final int statusCode})
+    implements Exception {
+  @override
+  String toString() => "ResponseBodyTooLargeException: $uri returned an oversized response (status $statusCode)";
+}
 
 final class AbortSignal() {
   final StreamController<void> _controller = StreamController<void>.broadcast(sync: true);
@@ -24,6 +31,7 @@ Future<http.Response> sendRequestWithDeadline({
   required Map<String, String>? headers,
   required String? body,
   required Duration deadline,
+  required int? maxResponseBytes,
 }) => sendAbortableRequest(
   client: client,
   method: method,
@@ -32,6 +40,7 @@ Future<http.Response> sendRequestWithDeadline({
   body: body,
   deadline: deadline,
   abortSignal: null,
+  maxResponseBytes: maxResponseBytes,
 );
 
 /// Sends one HTTP request whose [deadline] and optional [abortSignal] abort the
@@ -44,8 +53,12 @@ Future<http.Response> sendAbortableRequest({
   required String? body,
   required Duration deadline,
   required AbortSignal? abortSignal,
+  int? maxResponseBytes,
 }) async {
   if (abortSignal?.isAborted ?? false) throw http.RequestAbortedException(url);
+  if (maxResponseBytes != null && maxResponseBytes < 0) {
+    throw ArgumentError.value(maxResponseBytes, "maxResponseBytes", "must not be negative");
+  }
 
   final abortCompleter = Completer<void>();
   final abortSubscription = abortSignal?.aborts.listen((_) {
@@ -59,7 +72,29 @@ Future<http.Response> sendAbortableRequest({
   if (body != null) request.body = body;
 
   try {
-    return await http.Response.fromStream(await client.send(request));
+    final response = await client.send(request);
+    if (maxResponseBytes != null && response.contentLength != null && response.contentLength! > maxResponseBytes) {
+      if (!abortCompleter.isCompleted) abortCompleter.complete();
+      throw ResponseBodyTooLargeException(uri: url, statusCode: response.statusCode);
+    }
+
+    final bodyBytes = BytesBuilder(copy: false);
+    await for (final chunk in response.stream) {
+      if (maxResponseBytes != null && bodyBytes.length + chunk.length > maxResponseBytes) {
+        if (!abortCompleter.isCompleted) abortCompleter.complete();
+        throw ResponseBodyTooLargeException(uri: url, statusCode: response.statusCode);
+      }
+      bodyBytes.add(chunk);
+    }
+    return http.Response.bytes(
+      bodyBytes.takeBytes(),
+      response.statusCode,
+      request: response.request,
+      headers: response.headers,
+      isRedirect: response.isRedirect,
+      persistentConnection: response.persistentConnection,
+      reasonPhrase: response.reasonPhrase,
+    );
   } finally {
     deadlineTimer.cancel();
     await abortSubscription?.cancel();

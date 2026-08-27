@@ -73,6 +73,16 @@ list, claim, and release tools.
   stop, expiry, and shutdown remove the reservation; credentials, SDP,
   candidates, and leases are never persisted or emitted through diagnostics,
   rendezvous, or analytics.
+- Production relay selection is a separate default-off
+  `DEVICE_CANVAS_PRODUCTION_TURN=true` client define and Bridge environment gate;
+  the existing LAN-video define is still required. The Bridge first authorizes
+  the exact claim/lease locally, then calls the authenticated auth-server issuer
+  with its registered bridge ID. One 401 forces one token refresh; the request is
+  aborted after 10 seconds. The response must contain canonical production DNS
+  TURN URLs, a canonical SHA1 credential, the exact operation-bound username,
+  and an expiry no later than the lease. Registration change, timeout, malformed
+  output, or late completion fails unavailable without promoting or logging the
+  reservation. Local and production Bridge issuers cannot be enabled together.
 - Each start has a bounded random operation ID; status is accepted only for that
   operation and when its echoed offer fingerprint matches the current peer.
   Start and prepare processing are bounded to 15 seconds; a timeout or late
@@ -174,7 +184,32 @@ expiry, URLs, username, and credential. Repeat explicit close, modal dismissal,
 backgrounding, source loss, and claim release/reassignment. This proves the
 production signaling and media peers can traverse local coturn; it does not prove
 external NAT/cellular reachability, TLS/SNI, public firewall behavior, abuse
-limits, observability, or production backend credential issuance.
+limits, observability, or deployed production credential issuance.
+
+### Production self-hosted TURN deployment gate
+
+The authenticated issuer and Bridge client are implemented, but they are not a
+deployed Step 10 claim. Before enabling any production gate:
+
+1. Allocate a dedicated coturn host and canonical DNS name. Publish UDP and TCP
+   listeners, a TLS/TCP listener with a valid certificate chain and SNI, and one
+   bounded UDP relay range through the host and cloud firewalls.
+2. Generate one high-entropy coturn REST `static-auth-secret`; deliver it only to
+   coturn and the auth server's encrypted production environment. Never place it
+   in Bridge/client configuration, logs, images, analytics, or this repository.
+3. Configure coturn fingerprints, REST-secret auth, a 300-second maximum
+   allocation lifetime, stale nonces, per-user/total allocation quotas,
+   bandwidth capacity, restricted peer ranges, disabled credential logging, and
+   a disabled or separately protected CLI.
+4. Configure the auth server's `DEVICE_CANVAS_TURN_URLS` with unique canonical
+   DNS URLs, set the paired secret and TTL, deploy with
+   `DEVICE_CANVAS_TURN_ENABLED=true`, and verify that disabled/partial
+   configurations still fail closed.
+5. Enable `DEVICE_CANVAS_PRODUCTION_TURN=true` only on an isolated Bridge and
+   validation client build. Prove UDP, TCP fallback, TLS/SNI, two carrier or NAT
+   shapes, IPv4/IPv6 where supported, allocation expiry, revocation, network
+   loss, restart, abuse limits, secret rotation, dashboards/alerts, and bounded
+   cost before widening rollout.
 
 The Flutter WebRTC SDK and its generated native registrations remain present in
 the app artifact even when the UI flag is off. The flag is rollout reachability,
@@ -230,9 +265,12 @@ Recorded on 2026-08-25 on the release-target macOS host:
   on `192.168.0.39`. `turnutils_uclient` authenticated with the generated REST
   secret and sent two messages/200 bytes through both UDP and TCP TURN transports
   with zero loss under the default-deny same-host peer ACL. HUP shutdown left no
-  listener, temporary secret/config directory, or coturn server log. This proves
-  the bounded local launcher and relay path, not physical phone integration or
-  external TURN behavior.
+  listener, temporary secret/config directory, or coturn server log.
+- User-confirmed physical relay-only testing on 2026-08-27 passed from both
+  Android and iOS Sesori clients. Each displayed the Android device's first frame
+  and continuous real-time screen updates through development local coturn. This
+  proves the bounded local launcher, production relay peers, signaling, and
+  physical client path on the trusted LAN, not external TURN behavior.
 - A connected test joins encrypted relay framing, exact connection incarnation,
   claim revision, authenticated local IPC, parser-valid SDP, fingerprint tamper
   rejection, answer correlation, claim-release revocation, and post-release

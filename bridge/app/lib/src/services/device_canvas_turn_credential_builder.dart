@@ -4,11 +4,13 @@ import "package:crypto/crypto.dart" show Hmac, sha1;
 import "package:sesori_shared/sesori_shared.dart"
     show DeviceCanvasTurnConfiguration, maxDeviceCanvasStreamOperationIdLength, maxDeviceCanvasTurnUsernameByteCount;
 
+import "device_canvas_turn_credential_issuer.dart";
+
 class DeviceCanvasTurnCredentialBuilder({
   required List<String> urls,
   required List<int> sharedSecret,
   Duration credentialLifetime = const Duration(minutes: 5),
-}) {
+}) implements DeviceCanvasTurnCredentialIssuer {
   static const int minimumSharedSecretBytes = 32;
   static final RegExp _opaqueOperationIdPattern = RegExp(r"^[A-Za-z0-9_-]+$");
 
@@ -57,6 +59,13 @@ class DeviceCanvasTurnCredentialBuilder({
     }
     return configuration;
   }
+
+  @override
+  Future<DeviceCanvasTurnConfiguration> issue({
+    required String operationId,
+    required int leaseExpiresAt,
+    required DateTime now,
+  }) async => build(operationId: operationId, leaseExpiresAt: leaseExpiresAt, now: now);
 
   static List<String> _validateAndCopyUrls(List<String> urls) {
     final validation = DeviceCanvasTurnConfiguration(

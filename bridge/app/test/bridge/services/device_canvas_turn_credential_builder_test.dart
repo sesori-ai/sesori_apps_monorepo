@@ -51,6 +51,20 @@ void main() {
       expect(leaseLimited.expiresAt, 1700000123000);
     });
 
+    test("implements the asynchronous issuer seam without changing local credentials", () async {
+      final builder = DeviceCanvasTurnCredentialBuilder(
+        urls: const ["turn:relay.example.test"],
+        sharedSecret: _validSecret(),
+      );
+      final now = DateTime.fromMillisecondsSinceEpoch(1700000000123, isUtc: true);
+      final built = builder.build(operationId: "operation", leaseExpiresAt: 1700000600000, now: now);
+
+      expect(
+        await builder.issue(operationId: "operation", leaseExpiresAt: 1700000600000, now: now),
+        built,
+      );
+    });
+
     test("rejects empty, invalid, excessive, and canonically duplicate URL lists", () {
       final invalidLists = <List<String>>[
         <String>[],

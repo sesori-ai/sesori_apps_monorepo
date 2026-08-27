@@ -17,6 +17,7 @@ import "package:sesori_bridge/src/routing/routed_request_dispatcher.dart";
 import "package:sesori_bridge/src/services/device_canvas_claim_service.dart";
 import "package:sesori_bridge/src/services/device_canvas_stream_service.dart";
 import "package:sesori_bridge/src/services/device_canvas_turn_credential_builder.dart";
+import "package:sesori_bridge/src/services/device_canvas_turn_credential_issuer.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show ServerClock;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -26,7 +27,7 @@ import "../routing/routing_test_helpers.dart";
 
 void main() {
   group("DeviceCanvasStreamService", () {
-    test("prepare is unsupported without a credential builder and sends no Canvas IPC", () async {
+    test("prepare is unsupported without a credential issuer and sends no Canvas IPC", () async {
       final fixture = await _StreamFixture.create();
       addTearDown(fixture.dispose);
 
@@ -108,6 +109,71 @@ void main() {
         same(response),
       );
       expect(fixture.commands, isEmpty);
+    });
+
+    test("awaits one asynchronous credential issuance for exact concurrent prepares", () async {
+      final issuer = _PendingTurnCredentialIssuer();
+      final turn = _turn(expiresAt: _now.add(const Duration(minutes: 2)).millisecondsSinceEpoch);
+      final fixture = await _StreamFixture.create(turnCredentialBuilder: issuer);
+      addTearDown(fixture.dispose);
+
+      final first = fixture.service.prepare(client: fixture.firstClient, request: fixture.prepareRequest());
+      await issuer.called.future;
+      final concurrent = fixture.service.prepare(client: fixture.firstClient, request: fixture.prepareRequest());
+
+      expect(concurrent, same(first));
+      expect(issuer.calls, 1);
+      expect(issuer.operationId, _operationId);
+      expect(issuer.leaseExpiresAt, _now.add(const Duration(minutes: 10)).millisecondsSinceEpoch);
+      expect(issuer.now, _now);
+
+      issuer.response.complete(turn);
+      expect((await first).turn, same(turn));
+      expect((await concurrent).turn, same(turn));
+    });
+
+    test("a timed-out asynchronous issuance cannot promote its late response", () async {
+      final issuer = _PendingTurnCredentialIssuer();
+      final fixture = await _StreamFixture.create(
+        turnCredentialBuilder: issuer,
+        startOperationTimeout: const Duration(milliseconds: 30),
+      );
+      addTearDown(fixture.dispose);
+
+      final pending = fixture.service.prepare(client: fixture.firstClient, request: fixture.prepareRequest());
+      await issuer.called.future;
+      expect((await pending).outcome, DeviceCanvasStreamPrepareOutcome.unavailable);
+
+      issuer.response.complete(_turn(expiresAt: _now.add(const Duration(minutes: 2)).millisecondsSinceEpoch));
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        (await fixture.service.start(
+          client: fixture.firstClient,
+          request: fixture.startRequest(leaseId: _preparedLeaseId),
+        )).outcome,
+        DeviceCanvasStreamStartOutcome.unavailable,
+      );
+      expect(fixture.commands, isEmpty);
+    });
+
+    test("rejects invalid or lease-escaping issuer output", () async {
+      for (final turn in [
+        _turn(expiresAt: _now.add(const Duration(minutes: 2)).millisecondsSinceEpoch).copyWith(credential: ""),
+        _turn(expiresAt: _now.add(const Duration(minutes: 11)).millisecondsSinceEpoch),
+      ]) {
+        final fixture = await _StreamFixture.create(
+          turnCredentialBuilder: _FixedTurnCredentialBuilder(turn),
+        );
+        try {
+          expect(
+            (await fixture.service.prepare(client: fixture.firstClient, request: fixture.prepareRequest())).outcome,
+            DeviceCanvasStreamPrepareOutcome.unavailable,
+          );
+          expect(fixture.commands, isEmpty);
+        } finally {
+          await fixture.dispose();
+        }
+      }
     });
 
     test("an unauthorized in-flight prepare does not reserve the device slot", () async {
@@ -1050,7 +1116,7 @@ class _StreamFixture({
   static Future<_StreamFixture> create({
     Duration leaseDuration = const Duration(minutes: 10),
     Duration startOperationTimeout = const Duration(seconds: 15),
-    DeviceCanvasTurnCredentialBuilder? turnCredentialBuilder,
+    DeviceCanvasTurnCredentialIssuer? turnCredentialBuilder,
     bool blockFirstAuthorization = false,
   }) async {
     final db = createTestDatabase();
@@ -1094,7 +1160,7 @@ class _StreamFixture({
             integrationState: integrationState,
             gateway: gateway,
             clock: const _FixedClock(),
-            turnCredentialBuilder: turnCredentialBuilder,
+            turnCredentialIssuer: turnCredentialBuilder,
             leaseDuration: leaseDuration,
             startOperationTimeout: startOperationTimeout,
           )
@@ -1331,6 +1397,29 @@ class _FixedTurnCredentialBuilder(DeviceCanvasTurnConfiguration turn) extends De
     required int leaseExpiresAt,
     required DateTime now,
   }) => _turn;
+}
+
+class _PendingTurnCredentialIssuer() implements DeviceCanvasTurnCredentialIssuer {
+  final Completer<void> called = Completer<void>();
+  final Completer<DeviceCanvasTurnConfiguration> response = Completer<DeviceCanvasTurnConfiguration>();
+  int calls = 0;
+  String? operationId;
+  int? leaseExpiresAt;
+  DateTime? now;
+
+  @override
+  Future<DeviceCanvasTurnConfiguration> issue({
+    required String operationId,
+    required int leaseExpiresAt,
+    required DateTime now,
+  }) {
+    calls += 1;
+    this.operationId = operationId;
+    this.leaseExpiresAt = leaseExpiresAt;
+    this.now = now;
+    if (!called.isCompleted) called.complete();
+    return response.future;
+  }
 }
 
 class _FirstGetBlockingClaimRepository({required AppDatabase db}) extends DeviceCanvasClaimRepository {

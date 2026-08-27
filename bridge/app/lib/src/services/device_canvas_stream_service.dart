@@ -12,7 +12,7 @@ import "../bridge/device_canvas/protocol.dart";
 import "../bridge/device_canvas/stream_gateway.dart";
 import "../repositories/device_canvas_claim_repository.dart";
 import "device_canvas_claim_service.dart";
-import "device_canvas_turn_credential_builder.dart";
+import "device_canvas_turn_credential_issuer.dart";
 
 class const DeviceCanvasStreamClient({
   required final int connectionId,
@@ -27,7 +27,7 @@ class DeviceCanvasStreamService({
   required final DeviceCanvasIntegrationState _integrationState,
   required final DeviceCanvasStreamGateway _gateway,
   required final ServerClock _clock,
-  DeviceCanvasTurnCredentialBuilder? turnCredentialBuilder,
+  DeviceCanvasTurnCredentialIssuer? turnCredentialIssuer,
   Duration leaseDuration = const Duration(minutes: 10),
   Duration startOperationTimeout = const Duration(seconds: 15),
 }) {
@@ -35,7 +35,7 @@ class DeviceCanvasStreamService({
   static const int _maxPendingAuthorizations = 64;
   final Duration _leaseDuration = leaseDuration;
   final Duration _startOperationTimeout = startOperationTimeout;
-  final DeviceCanvasTurnCredentialBuilder? _turnCredentialBuilder = turnCredentialBuilder;
+  final DeviceCanvasTurnCredentialIssuer? _turnCredentialIssuer = turnCredentialIssuer;
   final Random _random = Random.secure();
   final CompositeSubscription _subscriptions = CompositeSubscription();
   final StreamController<DeviceCanvasStreamChange> _changes = StreamController<DeviceCanvasStreamChange>.broadcast(
@@ -91,8 +91,8 @@ class DeviceCanvasStreamService({
     required DeviceCanvasStreamClient client,
     required DeviceCanvasStreamPrepareRequest request,
   }) {
-    final credentialBuilder = _turnCredentialBuilder;
-    if (credentialBuilder == null) {
+    final credentialIssuer = _turnCredentialIssuer;
+    if (credentialIssuer == null) {
       return Future<DeviceCanvasStreamPrepareResponse>.value(
         _prepareWithoutPayload(DeviceCanvasStreamPrepareOutcome.unsupported),
       );
@@ -151,7 +151,7 @@ class DeviceCanvasStreamService({
         request: request,
         lease: lease,
         preparing: preparing,
-        credentialBuilder: credentialBuilder,
+        credentialIssuer: credentialIssuer,
         authorizationSlot: authorizationSlot,
       ),
     );
@@ -163,7 +163,7 @@ class DeviceCanvasStreamService({
     required DeviceCanvasStreamPrepareRequest request,
     required _DeviceCanvasStreamLease lease,
     required _DeviceCanvasStreamPreparing preparing,
-    required DeviceCanvasTurnCredentialBuilder credentialBuilder,
+    required DeviceCanvasTurnCredentialIssuer credentialIssuer,
     required _DeviceCanvasStreamAuthorizationSlot authorizationSlot,
   }) async {
     final _DeviceCanvasStreamAuthorization authorization;
@@ -228,17 +228,21 @@ class DeviceCanvasStreamService({
 
     final DeviceCanvasTurnConfiguration turn;
     try {
-      turn = credentialBuilder.build(
+      turn = await credentialIssuer.issue(
         operationId: lease.operationId,
         leaseExpiresAt: lease.expiresAt,
         now: _clock.now(),
       );
-    } on Object catch (error, stackTrace) {
-      Log.w("Failed to issue Device Canvas TURN credentials", error, stackTrace);
+    } on Object catch (error) {
+      Log.w("Failed to issue Device Canvas TURN credentials (${error.runtimeType})");
       _removeLease(lease: lease, reason: DeviceCanvasStreamRevokeReason.deviceUnavailable, notifyCanvas: false);
       return;
     }
     if (!_isCurrentPreparing(lease: lease, preparing: preparing)) return;
+    if (!turn.isValid || turn.expiresAt > lease.expiresAt) {
+      _removeLease(lease: lease, reason: DeviceCanvasStreamRevokeReason.deviceUnavailable, notifyCanvas: false);
+      return;
+    }
     if (turn.expiresAt <= _clock.now().millisecondsSinceEpoch) {
       _removeLease(lease: lease, reason: DeviceCanvasStreamRevokeReason.expired, notifyCanvas: false);
       return;

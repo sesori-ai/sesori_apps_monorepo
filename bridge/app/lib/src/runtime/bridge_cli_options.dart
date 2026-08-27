@@ -17,6 +17,7 @@ class const BridgeCliOptions({
   required final List<String> importPluginIds,
   final List<String> deviceCanvasLocalTurnUrls = const <String>[],
   final String? deviceCanvasLocalTurnSecretFile,
+  final bool deviceCanvasProductionTurnEnabled = false,
 
   /// Loopback control-channel URL supplied by a GUI supervisor via
   /// `--control-url`. `null` in standalone mode. See [isSupervised].
@@ -58,6 +59,10 @@ class const BridgeCliOptions({
       secretFile: results["device-canvas-local-turn-secret-file"] as String?,
       environment: environment,
     );
+    final productionTurnEnabled = _resolveDeviceCanvasProductionTurnEnabled(environment);
+    if (productionTurnEnabled && turnOptions.urls.isNotEmpty) {
+      throw ArgParserException("Production and local Device Canvas TURN modes are mutually exclusive.");
+    }
 
     return BridgeCliOptions(
       cliArgs: cliArgs,
@@ -69,6 +74,7 @@ class const BridgeCliOptions({
       importPluginIds: List.unmodifiable(results["import-plugin"] as List<String>),
       deviceCanvasLocalTurnUrls: turnOptions.urls,
       deviceCanvasLocalTurnSecretFile: turnOptions.secretFile,
+      deviceCanvasProductionTurnEnabled: productionTurnEnabled,
       controlUrl: controlUrl,
     );
   }
@@ -183,6 +189,14 @@ class const BridgeCliOptions({
       _ => false,
     };
     return isPrivate ? endpoint : null;
+  }
+
+  static bool _resolveDeviceCanvasProductionTurnEnabled(Map<String, String> environment) {
+    return switch (environment["DEVICE_CANVAS_PRODUCTION_TURN"]) {
+      null || "false" || "0" => false,
+      "true" || "1" => true,
+      _ => throw ArgParserException("DEVICE_CANVAS_PRODUCTION_TURN must be true, false, 1, or 0."),
+    };
   }
 
   static bool isDefaultDataDirectory({

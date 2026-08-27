@@ -137,6 +137,21 @@ void main() {
     expect(exactLimit.copyWith(sdp: "${exactLimit.sdp}x").isValid, isFalse);
   });
 
+  test("TURN credential requests round-trip the auth endpoint contract", () {
+    const request = DeviceCanvasTurnCredentialsRequest(
+      bridgeId: "br_server001",
+      operationId: "operation_1",
+      leaseExpiresAt: 1000,
+    );
+
+    expect(request.toJson(), {
+      "bridgeId": "br_server001",
+      "operationId": "operation_1",
+      "leaseExpiresAt": 1000,
+    });
+    expect(DeviceCanvasTurnCredentialsRequest.fromJson(request.toJson()), request);
+  });
+
   test("ICE candidates and TURN configuration enforce collection and field bounds", () {
     const candidate = DeviceCanvasIceCandidate(candidate: "candidate:1", sdpMid: "0", sdpMLineIndex: 0);
     final turn = DeviceCanvasTurnConfiguration(

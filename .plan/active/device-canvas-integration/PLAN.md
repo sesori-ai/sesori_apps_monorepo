@@ -757,7 +757,9 @@ Steps 10-12. The exception is compiled behind
 `DEVICE_CANVAS_LAN_VIDEO=true`; it is off by default and does not change the
   delivery order or Phase 2 **NO-GO** decision. A second default-off define,
   `DEVICE_CANVAS_LOCAL_TURN=true`, now permits the same video-only viewport to
-  validate local coturn without making external Step 10 claims.
+  validate local coturn without making external Step 10 claims. A separate
+  `DEVICE_CANVAS_PRODUCTION_TURN=true` define selects the default-off production
+  relay path only when the Bridge process has the same explicit environment gate.
 
 The exception is deliberately narrower than Step 12:
 
@@ -786,6 +788,17 @@ The exception is deliberately narrower than Step 12:
   development coturn launcher limits allocations to five minutes with quotas,
   bandwidth caps, and a default-deny peer policy that permits only its own LAN
   relay address;
+- production relay mode uses the same prepare/reservation and relay-only peer
+  path but never gives Bridge the static coturn secret. A bearer-authenticated
+  Bridge calls the default-absent auth-server issuer after local claim
+  authorization. The server verifies active bridge ownership and returns a
+  five-minute-or-shorter self-hosted-coturn REST credential with `no-store` and a
+  verified-account issuance limit. Bridge retries only one 401 after forced token
+  refresh, bounds the abortable request to 10 seconds, fences bridge-registration
+  changes, validates exact operation/expiry/HMAC and canonical DNS TURN output,
+  and cannot promote a late response after reservation removal. Auth, Bridge, and
+  client rollout gates all default off, and local/production Bridge issuers are
+  mutually exclusive;
 - uncertain-start status is adopted only when the bridge echoes the originating
   offer fingerprint. Each start also carries a bounded random operation ID, and
   status can wait for or inspect only the matching operation and lease. Status
@@ -810,8 +823,12 @@ correlation, DTLS fingerprint validation, and SRTP remain authoritative. On
 and a local Android Studio emulator source; the exact evidence is recorded in
 `TRACKER.md`. Local coturn can validate the production relay peers and signaling
 path, but not external NAT/cellular reachability, TLS/SNI, public firewall
-behavior, abuse/observability, or production backend issuance. Neither validation
-opens the Phase 2 product gate.
+behavior, abuse/observability, or deployed production issuance. Neither validation
+opens the Phase 2 product gate. On 2026-08-27, physical local-coturn relay testing
+passed from both Android and iOS Sesori clients, with each displaying continuous
+live updates from the Android source. This closes the physical-client local-relay
+unknown only; it does not establish any external-network or production Step 10
+claim.
 
 The component-level decisions are:
 

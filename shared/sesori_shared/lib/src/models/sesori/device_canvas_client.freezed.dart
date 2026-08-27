@@ -278,6 +278,138 @@ as int,
 
 
 /// @nodoc
+mixin _$DeviceCanvasTurnCredentialsRequest {
+
+ String get bridgeId; String get operationId; int get leaseExpiresAt;
+/// Create a copy of DeviceCanvasTurnCredentialsRequest
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$DeviceCanvasTurnCredentialsRequestCopyWith<DeviceCanvasTurnCredentialsRequest> get copyWith => _$DeviceCanvasTurnCredentialsRequestCopyWithImpl<DeviceCanvasTurnCredentialsRequest>(this as DeviceCanvasTurnCredentialsRequest, _$identity);
+
+  /// Serializes this DeviceCanvasTurnCredentialsRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeviceCanvasTurnCredentialsRequest&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.operationId, operationId) || other.operationId == operationId)&&(identical(other.leaseExpiresAt, leaseExpiresAt) || other.leaseExpiresAt == leaseExpiresAt));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,bridgeId,operationId,leaseExpiresAt);
+
+
+
+}
+
+/// @nodoc
+abstract mixin class $DeviceCanvasTurnCredentialsRequestCopyWith<$Res>  {
+  factory $DeviceCanvasTurnCredentialsRequestCopyWith(DeviceCanvasTurnCredentialsRequest value, $Res Function(DeviceCanvasTurnCredentialsRequest) _then) = _$DeviceCanvasTurnCredentialsRequestCopyWithImpl;
+@useResult
+$Res call({
+ String bridgeId, String operationId, int leaseExpiresAt
+});
+
+
+
+
+}
+/// @nodoc
+class _$DeviceCanvasTurnCredentialsRequestCopyWithImpl<$Res>
+    implements $DeviceCanvasTurnCredentialsRequestCopyWith<$Res> {
+  _$DeviceCanvasTurnCredentialsRequestCopyWithImpl(this._self, this._then);
+
+  final DeviceCanvasTurnCredentialsRequest _self;
+  final $Res Function(DeviceCanvasTurnCredentialsRequest) _then;
+
+/// Create a copy of DeviceCanvasTurnCredentialsRequest
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? bridgeId = null,Object? operationId = null,Object? leaseExpiresAt = null,}) {
+  return _then(DeviceCanvasTurnCredentialsRequest(
+bridgeId: null == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String,operationId: null == operationId ? _self.operationId : operationId // ignore: cast_nullable_to_non_nullable
+as String,leaseExpiresAt: null == leaseExpiresAt ? _self.leaseExpiresAt : leaseExpiresAt // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _DeviceCanvasTurnCredentialsRequest extends DeviceCanvasTurnCredentialsRequest {
+  const _DeviceCanvasTurnCredentialsRequest({required this.bridgeId, required this.operationId, required this.leaseExpiresAt}): super._();
+  factory _DeviceCanvasTurnCredentialsRequest.fromJson(Map<String, dynamic> json) => _$DeviceCanvasTurnCredentialsRequestFromJson(json);
+
+@override final  String bridgeId;
+@override final  String operationId;
+@override final  int leaseExpiresAt;
+
+/// Create a copy of DeviceCanvasTurnCredentialsRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$DeviceCanvasTurnCredentialsRequestCopyWith<_DeviceCanvasTurnCredentialsRequest> get copyWith => __$DeviceCanvasTurnCredentialsRequestCopyWithImpl<_DeviceCanvasTurnCredentialsRequest>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$DeviceCanvasTurnCredentialsRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeviceCanvasTurnCredentialsRequest&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.operationId, operationId) || other.operationId == operationId)&&(identical(other.leaseExpiresAt, leaseExpiresAt) || other.leaseExpiresAt == leaseExpiresAt));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,bridgeId,operationId,leaseExpiresAt);
+
+
+
+}
+
+/// @nodoc
+abstract mixin class _$DeviceCanvasTurnCredentialsRequestCopyWith<$Res> implements $DeviceCanvasTurnCredentialsRequestCopyWith<$Res> {
+  factory _$DeviceCanvasTurnCredentialsRequestCopyWith(_DeviceCanvasTurnCredentialsRequest value, $Res Function(_DeviceCanvasTurnCredentialsRequest) _then) = __$DeviceCanvasTurnCredentialsRequestCopyWithImpl;
+@override @useResult
+$Res call({
+ String bridgeId, String operationId, int leaseExpiresAt
+});
+
+
+
+
+}
+/// @nodoc
+class __$DeviceCanvasTurnCredentialsRequestCopyWithImpl<$Res>
+    implements _$DeviceCanvasTurnCredentialsRequestCopyWith<$Res> {
+  __$DeviceCanvasTurnCredentialsRequestCopyWithImpl(this._self, this._then);
+
+  final _DeviceCanvasTurnCredentialsRequest _self;
+  final $Res Function(_DeviceCanvasTurnCredentialsRequest) _then;
+
+/// Create a copy of DeviceCanvasTurnCredentialsRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? bridgeId = null,Object? operationId = null,Object? leaseExpiresAt = null,}) {
+  return _then(_DeviceCanvasTurnCredentialsRequest(
+bridgeId: null == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String,operationId: null == operationId ? _self.operationId : operationId // ignore: cast_nullable_to_non_nullable
+as String,leaseExpiresAt: null == leaseExpiresAt ? _self.leaseExpiresAt : leaseExpiresAt // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$DeviceCanvasTurnConfiguration {
 
  List<String> get urls; String get username; String get credential; int get expiresAt;

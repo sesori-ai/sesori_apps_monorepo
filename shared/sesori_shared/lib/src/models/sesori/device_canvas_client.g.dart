@@ -46,6 +46,22 @@ Map<String, dynamic> _$DeviceCanvasIceCandidateToJson(
   'sdpMLineIndex': instance.sdpMLineIndex,
 };
 
+_DeviceCanvasTurnCredentialsRequest
+_$DeviceCanvasTurnCredentialsRequestFromJson(Map json) =>
+    _DeviceCanvasTurnCredentialsRequest(
+      bridgeId: json['bridgeId'] as String,
+      operationId: json['operationId'] as String,
+      leaseExpiresAt: (json['leaseExpiresAt'] as num).toInt(),
+    );
+
+Map<String, dynamic> _$DeviceCanvasTurnCredentialsRequestToJson(
+  _DeviceCanvasTurnCredentialsRequest instance,
+) => <String, dynamic>{
+  'bridgeId': instance.bridgeId,
+  'operationId': instance.operationId,
+  'leaseExpiresAt': instance.leaseExpiresAt,
+};
+
 _DeviceCanvasTurnConfiguration _$DeviceCanvasTurnConfigurationFromJson(
   Map json,
 ) => _DeviceCanvasTurnConfiguration(

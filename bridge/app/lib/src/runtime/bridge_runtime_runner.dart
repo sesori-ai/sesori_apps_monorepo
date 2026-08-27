@@ -96,7 +96,9 @@ import "../services/catalog_import_service.dart";
 import "../services/control_channel_token_service.dart";
 import "../services/control_prompt_service.dart";
 import "../services/control_unregister_service.dart";
+import "../services/device_canvas_remote_turn_credential_issuer.dart";
 import "../services/device_canvas_turn_credential_builder.dart";
+import "../services/device_canvas_turn_credential_issuer.dart";
 import "../services/plugin_lifecycle_service.dart";
 import "../sse/sse_manager.dart";
 import "../updater/api/checksum_manifest_api.dart";
@@ -654,6 +656,18 @@ class const BridgeRuntimeRunner._() {
         );
         shutdownCoordinator.add(disposable: bridgeRegistrationService.dispose);
       }
+      if (deviceCanvasTurnCredentialBuilder != null && options.deviceCanvasProductionTurnEnabled) {
+        throw StateError("Production and local Device Canvas TURN modes are mutually exclusive");
+      }
+      final DeviceCanvasTurnCredentialIssuer? deviceCanvasTurnCredentialIssuer =
+          deviceCanvasTurnCredentialBuilder ??
+          (options.deviceCanvasProductionTurnEnabled
+              ? DeviceCanvasRemoteTurnCredentialIssuer(
+                  requestCredentials: authApi.issueDeviceCanvasTurnCredentials,
+                  tokenRefresher: tokenRefresher,
+                  bridgeIdProvider: bridgeRegistrationService,
+                )
+              : null);
 
       final currentBridgeIdentity = await _resolveCurrentBridgeIdentity(
         processRepository: processRepository,
@@ -908,7 +922,7 @@ class const BridgeRuntimeRunner._() {
         failureReporter: failureReporter,
         restartService: restartService,
         filesystemAccessOk: filesystemAccessOk,
-        deviceCanvasTurnCredentialBuilder: deviceCanvasTurnCredentialBuilder,
+        deviceCanvasTurnCredentialIssuer: deviceCanvasTurnCredentialIssuer,
         statusNotifier: controlStatusNotifier,
         reconnectBackoff: ReconnectBackoffPolicy.standard,
       ).create();

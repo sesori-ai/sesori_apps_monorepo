@@ -133,6 +133,14 @@ Bridge core flags:
 | `--log-level` | `info` | Minimum **diagnostic log** level (written to stderr): `verbose`, `debug`, `info`, `warning`, `error` |
 | `--version` | — | Print the bridge version and exit |
 
+Device Canvas production TURN remains off unless the process environment sets
+`DEVICE_CANVAS_PRODUCTION_TURN=true` (or `1`) exactly. That mode obtains
+short-lived credentials from the configured auth backend with the Bridge's
+normal bearer token; it never reads the coturn static secret. It is mutually
+exclusive with the hidden development local-TURN options. The client viewport
+also remains independently compile-time gated, so this environment value alone
+does not expose the feature.
+
 > `--log-level` controls **diagnostic logging only**. Logs are written to stderr and can be silenced freely. User-facing messages — login prompts, the authorization URL and code, startup status, "Authenticated as…" — are written to stdout and are **always shown regardless of `--log-level`**, so the bridge stays operable even with logging disabled (`--log-level error`, or redirecting stderr with `2>/dev/null`).
 
 Every registered plugin always contributes its namespaced options. Run `--help`
