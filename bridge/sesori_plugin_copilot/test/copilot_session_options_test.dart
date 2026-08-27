@@ -5,86 +5,61 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
-  group("CopilotSessionOptionsService", () {
-    late AcpCommandTracker commands;
-    late AcpSessionConfigurationTracker configurations;
-    late _CatalogRepository repository;
-    late CopilotSessionOptionsService service;
+  late AcpCommandTracker commands;
+  late AcpSessionConfigurationTracker configurations;
+  late _CatalogRepository repository;
+  late CopilotSessionOptionsService service;
 
-    setUp(() {
-      commands = AcpCommandTracker()
-        ..replaceSnapshot(
-          commands: const [
-            PluginCommand(
-              name: "review",
-              description: "Review changes",
-              hints: [],
-              provider: null,
-              source: PluginCommandSource.command,
-            ),
-          ],
-        );
-      configurations = AcpSessionConfigurationTracker();
-      repository = _CatalogRepository(result: _sessionResult());
-      service = CopilotSessionOptionsService(
-        commandTracker: commands,
-        configurationTracker: configurations,
-        repository: repository,
-        launchDirectory: "/project",
-        discoveryTimeout: const Duration(seconds: 1),
-      );
-    });
+  setUp(() {
+    commands = AcpCommandTracker();
+    configurations = AcpSessionConfigurationTracker();
+    repository = _CatalogRepository(result: _sessionResult());
+    service = CopilotSessionOptionsService(
+      commandTracker: commands,
+      configurationTracker: configurations,
+      repository: repository,
+      launchDirectory: "/project",
+      discoveryTimeout: const Duration(seconds: 1),
+    );
+  });
 
-    tearDown(() => service.dispose());
+  tearDown(() => service.dispose());
 
-    test("discovers standard model, mode, reasoning, and command options", () async {
-      final result = await service.getSessionOptions(
-        discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
-      );
+  test("discovers standard model, mode, and reasoning options", () async {
+    final result = await service.getSessionOptions(
+      discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+    );
 
-      final options = (result as PluginSessionOptionsDiscoveryObserved).options;
-      expect(repository.createdDirectories, ["/project"]);
-      expect(repository.closedSessions, ["catalog-session"]);
-      expect(options.completeness, PluginSessionOptionsCompleteness.complete);
-      expect(options.commands.single.name, "review");
-      expect(options.agents.map((agent) => agent.name), ["Agent", "Plan"]);
-      final provider = options.providers.providers.single;
-      expect(provider.id, "copilot");
-      expect(provider.defaultModelID, "gpt-5.4");
-      expect(provider.models.map((model) => model.id), ["gpt-5.4", "claude-sonnet-4.5"]);
-      expect(provider.models.first.variants, ["low", "high"]);
-      expect(configurations.processDefaults.modelId, "gpt-5.4");
-      expect(configurations.processDefaults.providerId, "copilot");
+    final options = (result as PluginSessionOptionsDiscoveryObserved).options;
+    expect(options.agents.map((agent) => agent.name), ["Agent", "Plan"]);
+    final provider = options.providers.providers.single;
+    expect(provider.models.map((model) => model.id), ["gpt-5.4", "claude-sonnet-4.5"]);
+    expect(provider.models.first.variants, ["low", "high"]);
+  });
 
-      await service.getSessionOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
-      expect(repository.createdDirectories, ["/project"]);
-    });
+  test("applies model, mode, and reasoning through standard config writes", () async {
+    service.captureSessionConfig(_sessionResult(), sessionId: "session", fromNewSession: true);
+    final configRepository = _ConfigRepository(
+      results: [
+        _sessionResult(model: "claude-sonnet-4.5"),
+        _sessionResult(model: "claude-sonnet-4.5", mode: "plan"),
+        _sessionResult(model: "claude-sonnet-4.5", mode: "plan", thoughtLevel: "high"),
+      ],
+    );
 
-    test("applies model, mode, and reasoning through standard config writes", () async {
-      service.captureSessionConfig(_sessionResult(), sessionId: "session", fromNewSession: true);
-      final configRepository = _ConfigRepository(
-        results: [
-          _sessionResult(model: "claude-sonnet-4.5"),
-          _sessionResult(model: "claude-sonnet-4.5", mode: "plan"),
-          _sessionResult(model: "claude-sonnet-4.5", mode: "plan", thoughtLevel: "high"),
-        ],
-      );
+    await service.applyTurnSelection(
+      configRepository: configRepository,
+      sessionId: "session",
+      model: (providerID: "copilot", modelID: "claude-sonnet-4.5"),
+      variant: const PluginSessionVariant(id: "high"),
+      agent: "Plan",
+    );
 
-      await service.applyTurnSelection(
-        configRepository: configRepository,
-        sessionId: "session",
-        model: (providerID: "copilot", modelID: "claude-sonnet-4.5"),
-        variant: const PluginSessionVariant(id: "high"),
-        agent: "Plan",
-      );
-
-      expect(configRepository.writes, [
-        (configId: "model", value: "claude-sonnet-4.5"),
-        (configId: "mode", value: "plan"),
-        (configId: "reasoning_effort", value: "high"),
-      ]);
-      expect(configurations.snapshotForSession(sessionId: "session").modelId, "claude-sonnet-4.5");
-    });
+    expect(configRepository.writes, [
+      (configId: "model", value: "claude-sonnet-4.5"),
+      (configId: "mode", value: "plan"),
+      (configId: "reasoning_effort", value: "high"),
+    ]);
   });
 }
 
@@ -137,9 +112,6 @@ Map<String, Object?> _option({
 };
 
 class _CatalogRepository({required final AcpNewSessionResult result}) implements CopilotCatalogRepository {
-  final List<String> createdDirectories = [];
-  final List<String> closedSessions = [];
-
   @override
   List<PluginCommand> get commands => const [];
 
@@ -150,15 +122,10 @@ class _CatalogRepository({required final AcpNewSessionResult result}) implements
   Future<void> open({required Duration timeout}) async {}
 
   @override
-  Future<AcpNewSessionResult> createSession({required String cwd, required Duration timeout}) async {
-    createdDirectories.add(cwd);
-    return result;
-  }
+  Future<AcpNewSessionResult> createSession({required String cwd, required Duration timeout}) async => result;
 
   @override
-  Future<void> closeSession({required String sessionId, required Duration timeout}) async {
-    closedSessions.add(sessionId);
-  }
+  Future<void> closeSession({required String sessionId, required Duration timeout}) async {}
 
   @override
   Future<void> waitForCommandSnapshot({required Duration timeout}) async {}

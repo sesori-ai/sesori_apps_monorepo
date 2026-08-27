@@ -36,12 +36,10 @@ void main() {
       expect(diagnostics.details, {"transport": "acp-stdio", "agent": "ACP"});
     });
 
-    test("authentication failure preserves required user action", () async {
-      final starting = AcpBridgePlugin.start(
-        plugin: plugin,
-        host: _Host(startAborted: StartAbortSignal.never, clock: _ImmediateClock()),
-        connectBudget: const Duration(seconds: 5),
-      );
+    test("authentication failure after connect returns updates required user action", () async {
+      final wrapper = AcpBridgePlugin(plugin: plugin, clock: _ImmediateClock());
+      addTearDown(() => wrapper.shutdown(budget: null));
+      await wrapper.connect(budget: Duration.zero, startAborted: StartAbortSignal.never);
       await waitForFrame("initialize");
       final initialize = fake.written.firstWhere((frame) => frame["method"] == "initialize");
       fake.emit({
@@ -63,8 +61,6 @@ void main() {
         "error": {"code": -32000, "message": "authentication required"},
       });
 
-      final wrapper = await starting;
-      addTearDown(() => wrapper.shutdown(budget: null));
       await Future<void>.delayed(Duration.zero);
       expect(wrapper.currentStatus, isA<PluginDegraded>());
       if (wrapper.currentStatus case PluginDegraded(:final requiresUserAction, :final userActionHint)) {

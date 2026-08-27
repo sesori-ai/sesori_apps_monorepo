@@ -16,6 +16,7 @@ const int _setupProbeOutputLimit = 64 * 1024;
 typedef CopilotPluginFactory = CopilotPlugin Function({
   required String binaryPath,
   required String launchDirectory,
+  required String catalogConfigDirectory,
   required Map<String, String> environment,
   required AcpProcessFactory processFactory,
 });
@@ -23,21 +24,18 @@ typedef CopilotPluginFactory = CopilotPlugin Function({
 CopilotPlugin _buildCopilotPlugin({
   required String binaryPath,
   required String launchDirectory,
+  required String catalogConfigDirectory,
   required Map<String, String> environment,
   required AcpProcessFactory processFactory,
 }) => CopilotPlugin(
   binaryPath: binaryPath,
   launchDirectory: launchDirectory,
+  catalogConfigDirectory: catalogConfigDirectory,
   environment: environment,
   processFactory: processFactory,
 );
 
-/// Inert lifecycle descriptor for GitHub Copilot CLI.
-///
-/// Setup proves only that the selected executable is a supported Copilot CLI.
-/// Authentication remains authoritative at the ACP handshake because Copilot
-/// can source credentials from its secure store, GitHub token environment
-/// variables, or BYOK configuration without a side-effect-free status command.
+/// Lifecycle descriptor for GitHub Copilot CLI.
 final class const CopilotPluginDescriptor({
   required final CopilotPluginFactory _buildPlugin,
   required final Duration _connectBudget,
@@ -192,6 +190,7 @@ final class const CopilotPluginDescriptor({
     final copilot = _buildPlugin(
       binaryPath: binaryPath,
       launchDirectory: io.Directory.current.path,
+      catalogConfigDirectory: "${host.stateDirectory}${io.Platform.pathSeparator}catalog",
       // hostProcessAcpFactory contributes the host environment once at spawn.
       environment: const {},
       processFactory: hostProcessAcpFactory(

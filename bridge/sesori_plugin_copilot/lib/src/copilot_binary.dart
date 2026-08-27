@@ -11,6 +11,17 @@ abstract final class CopilotBinary() {
   /// Copilot's standard ACP authentication method for its local login state.
   static const String acpAuthMethodId = "copilot-login";
 
+  static AcpLaunchSpec catalogLaunchSpec({
+    required AcpLaunchSpec liveSpec,
+    required String configDirectory,
+  }) => AcpLaunchSpec(
+    command: liveSpec.command,
+    args: liveSpec.args,
+    cwd: liveSpec.cwd,
+    // Probe sessions must not enter the user's resumable Copilot history.
+    environment: {...liveSpec.environment, "COPILOT_HOME": configDirectory},
+  );
+
   static AcpLaunchSpec launchSpec({
     required String binary,
     required String cwd,

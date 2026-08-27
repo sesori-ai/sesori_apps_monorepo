@@ -20,6 +20,9 @@ class CopilotSessionOptionsService({
   String? _defaultModelValue;
   String? _defaultModeValue;
   Future<PluginSessionOptionsDiscoveryResult>? _inFlight;
+  ({PluginOperationException error, StackTrace stack})? _lastDiscoveryFailure;
+
+  ({PluginOperationException error, StackTrace stack})? get lastDiscoveryFailure => _lastDiscoveryFailure;
 
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required PluginSessionOptionsDiscoveryMode discoveryMode,
@@ -38,6 +41,7 @@ class CopilotSessionOptionsService({
   }
 
   Future<PluginSessionOptionsDiscoveryResult> _discover() async {
+    _lastDiscoveryFailure = null;
     final stopwatch = Stopwatch()..start();
     final expectedCommandRevision = _commandTracker.revision;
     String? sessionId;
@@ -60,6 +64,14 @@ class CopilotSessionOptionsService({
       }
       observed = true;
     } on Object catch (error, stack) {
+      _lastDiscoveryFailure = (
+        error: PluginOperationException(
+          "session/options",
+          message: "GitHub Copilot session options could not be discovered",
+          cause: error,
+        ),
+        stack: stack,
+      );
       Log.w("[${CopilotPluginIdentity.id}] session option discovery failed", error, stack);
     } finally {
       if (sessionId != null) {
@@ -155,39 +167,28 @@ class CopilotSessionOptionsService({
       agent: agent,
     );
     final snapshot = _snapshot;
-    final requestedModel = model?.modelID;
-    final modelConfigId = snapshot?.modelConfigId;
-    if (requestedModel != null && requestedModel.isNotEmpty && modelConfigId != null) {
-      await _writeAndVerify(
-        configRepository: configRepository,
-        sessionId: sessionId,
-        configId: modelConfigId,
-        value: requestedModel,
-        kind: CopilotConfigOptionKind.model,
-      );
-    }
     final requestedMode = agent == null
         ? null
         : _resolveOption(valueOrName: agent, options: snapshot?.modes ?? const []);
-    final modeConfigId = snapshot?.modeConfigId;
-    if (requestedMode != null && modeConfigId != null) {
-      await _writeAndVerify(
-        configRepository: configRepository,
-        sessionId: sessionId,
-        configId: modeConfigId,
-        value: requestedMode,
-        kind: CopilotConfigOptionKind.mode,
-      );
-    }
-    final requestedVariant = variant?.id;
-    final thoughtLevelConfigId = snapshot?.thoughtLevelConfigId;
-    if (requestedVariant != null && requestedVariant.isNotEmpty && thoughtLevelConfigId != null) {
-      await _writeAndVerify(
-        configRepository: configRepository,
-        sessionId: sessionId,
-        configId: thoughtLevelConfigId,
-        value: requestedVariant,
+    final selections = [
+      (configId: snapshot?.modelConfigId, value: model?.modelID, kind: CopilotConfigOptionKind.model),
+      (configId: snapshot?.modeConfigId, value: requestedMode, kind: CopilotConfigOptionKind.mode),
+      (
+        configId: snapshot?.thoughtLevelConfigId,
+        value: variant?.id,
         kind: CopilotConfigOptionKind.thoughtLevel,
+      ),
+    ];
+    for (final selection in selections) {
+      final configId = selection.configId;
+      final value = selection.value;
+      if (configId == null || value == null || value.isEmpty) continue;
+      await _writeAndVerify(
+        configRepository: configRepository,
+        sessionId: sessionId,
+        configId: configId,
+        value: value,
+        kind: selection.kind,
       );
     }
   }
@@ -203,6 +204,7 @@ class CopilotSessionOptionsService({
     _defaultModelValue = null;
     _defaultModeValue = null;
     _configurationTracker.clear();
+    _lastDiscoveryFailure = null;
   }
 
   Future<void> dispose() => _repository.dispose();

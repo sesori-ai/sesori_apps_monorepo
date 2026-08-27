@@ -56,6 +56,7 @@ class AcpBridgePlugin({
 
   StreamSubscription<int>? _exitSubscription;
   StreamSubscription<void>? _connectedSubscription;
+  StreamSubscription<String?>? _authenticationFailureSubscription;
   var _stopping = false;
 
   @override
@@ -113,11 +114,12 @@ class AcpBridgePlugin({
     // _armExitWatch are idempotent, so the connected branch below double-firing
     // with this listener is harmless.
     _connectedSubscription ??= _plugin.onConnected.listen((_) {
-      if (_stopping) {
-        return;
-      }
+      if (_stopping) return;
       _armExitWatch();
       markReady();
+    });
+    _authenticationFailureSubscription ??= _plugin.onAuthenticationFailure.listen((hint) {
+      if (!_stopping) _markAuthenticationFailure(actionHint: hint);
     });
 
     bool connected;
@@ -140,13 +142,19 @@ class AcpBridgePlugin({
       markReady();
     } else {
       final authenticationHint = _plugin.authenticationFailureActionHint;
-      markDegraded(
-        recoverable: true,
-        requiresUserAction: authenticationHint != null,
-        userActionHint: authenticationHint,
-      );
+      if (authenticationHint == null) {
+        markDegraded(recoverable: true, requiresUserAction: false, userActionHint: null);
+      } else {
+        _markAuthenticationFailure(actionHint: authenticationHint);
+      }
     }
   }
+
+  void _markAuthenticationFailure({required String? actionHint}) => markDegraded(
+    recoverable: true,
+    requiresUserAction: true,
+    userActionHint: actionHint,
+  );
 
   /// Surfaces an unexpected agent exit as [PluginDegraded] (recoverable: the
   /// next request re-spawns via [AcpPlugin.ensureConnected]). A deliberate exit
@@ -188,6 +196,13 @@ class AcpBridgePlugin({
       Log.w("[${_plugin.id}] failed to cancel connected subscription", e, st);
     } finally {
       _connectedSubscription = null;
+    }
+    try {
+      await _authenticationFailureSubscription?.cancel();
+    } on Object catch (e, st) {
+      Log.w("[${_plugin.id}] failed to cancel authentication-failure subscription", e, st);
+    } finally {
+      _authenticationFailureSubscription = null;
     }
     try {
       await _exitSubscription?.cancel();

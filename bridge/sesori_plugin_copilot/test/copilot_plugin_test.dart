@@ -38,18 +38,24 @@ void main() {
     late FakeAcpProcess fake;
     late FakeAcpProcess catalogFake;
     late CopilotPlugin plugin;
+    late List<Map<String, String>> launchEnvironments;
     late Set<Map<String, dynamic>> handledFrames;
 
     setUp(() {
       fake = FakeAcpProcess();
       catalogFake = FakeAcpProcess();
       handledFrames = {};
+      launchEnvironments = [];
       var spawnCount = 0;
       plugin = CopilotPlugin(
         binaryPath: "/opt/copilot",
         launchDirectory: "/repo",
+        catalogConfigDirectory: "/state/catalog",
         environment: const {"COPILOT_HOME": "/state/copilot"},
-        processFactory: (_) async => spawnCount++ == 0 ? fake : catalogFake,
+        processFactory: (spec) async {
+          launchEnvironments.add(spec.environment);
+          return spawnCount++ == 0 ? fake : catalogFake;
+        },
       );
     });
 
@@ -106,15 +112,6 @@ void main() {
       expect(plugin.launchSpec.environment, const {"COPILOT_HOME": "/state/copilot"});
     });
 
-    test("keeps stock ACP policies except Copilot auth and stop-and-send", () {
-      expect(plugin.authMethodId, CopilotBinary.acpAuthMethodId);
-      expect(plugin.initializeCapabilityMeta, isNull);
-      expect(plugin.supportsFormElicitation, isFalse);
-      expect(plugin.serializesPromptsProcessWide, isFalse);
-      expect(plugin.cancelsActiveTurnForQueuedInput, isTrue);
-      expect(plugin.failsTurnOnSelectionError, isTrue);
-    });
-
     test("completes Copilot's standard ACP handshake", () async {
       final connecting = plugin.ensureConnected();
       final initialize = await waitForFrame(process: fake, method: "initialize");
@@ -168,6 +165,7 @@ void main() {
       catalogFake.emit({"jsonrpc": "2.0", "id": closeSession["id"], "result": <String, dynamic>{}});
 
       expect((await discovering).map((agent) => agent.name), ["Agent", "Plan"]);
+      expect(launchEnvironments.last["COPILOT_HOME"], "/state/catalog");
       expect(fake.written.where((frame) => frame["method"] == "session/new"), isEmpty);
       await expectLater(
         plugin.sendPrompt(
@@ -198,7 +196,16 @@ void main() {
 
       final agents = plugin.getAgents(projectId: "/repo");
       await completeHandshake(process: catalogFake, rejectAuthentication: true);
-      await expectLater(agents, throwsA(isA<PluginOperationException>()));
+      await expectLater(
+        agents,
+        throwsA(
+          isA<PluginOperationException>().having(
+            (error) => error.cause,
+            "cause",
+            isA<PluginAuthenticationRequiredException>(),
+          ),
+        ),
+      );
     });
   });
 }

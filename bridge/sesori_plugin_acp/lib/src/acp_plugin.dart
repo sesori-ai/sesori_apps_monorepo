@@ -102,6 +102,8 @@ abstract class AcpPlugin({
   /// subscriber so it is not double-handled.
   final StreamController<void> _connected = StreamController<void>.broadcast();
   Stream<void> get onConnected => _connected.stream;
+  final StreamController<String?> _authenticationFailures = StreamController<String?>.broadcast();
+  Stream<String?> get onAuthenticationFailure => _authenticationFailures.stream;
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.unknown);
 
   Stream<PluginWorkState> get workState => _workState.stream;
@@ -377,6 +379,7 @@ abstract class AcpPlugin({
         _commandListener = null;
         if (error is PluginAuthenticationRequiredException) {
           _authenticationFailure = error;
+          if (!_authenticationFailures.isClosed) _authenticationFailures.add(authenticationFailureActionHint);
         }
         _workState.set(PluginWorkState.unknown);
         await client.dispose();
@@ -770,6 +773,7 @@ abstract class AcpPlugin({
     // A session/new response is the authoritative source of the backend's
     // new-session default model/mode.
     captureSessionConfig(session, sessionId: session.sessionId, fromNewSession: true);
+    validateTurnSelection(operation: "createSession", model: model, variant: variant, agent: agent);
     // session/new leaves the session resident in the agent process.
     _residentSessions.add(session.sessionId);
     _sessionStatuses[session.sessionId] = const PluginSessionStatus.idle();
@@ -1841,6 +1845,11 @@ abstract class AcpPlugin({
       await _connected.close();
     } on Object catch (e, st) {
       Log.w("[$id] failed to close connected stream", e, st);
+    }
+    try {
+      await _authenticationFailures.close();
+    } on Object catch (e, st) {
+      Log.w("[$id] failed to close authentication-failure stream", e, st);
     }
     try {
       await _workState.close();

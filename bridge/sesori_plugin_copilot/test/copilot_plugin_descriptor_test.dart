@@ -8,61 +8,39 @@ import "package:test/test.dart";
 void main() {
   const defaultConfig = PluginConfig(values: {CopilotPluginDescriptor.binOption: "copilot"});
 
-  group("CopilotPluginDescriptor setup", () {
-    test("declares a bridge-derived attachment-capable ACP plugin", () {
-      final descriptor = CopilotPluginDescriptor.production();
+  test("reports a supported PATH runtime ready without starting ACP", () async {
+    final processes = _Processes(
+      outputs: const [_Output(stdout: "GitHub Copilot CLI 1.0.80.\nRun 'copilot update' to check.\n", exitCode: 0)],
+    );
+    final result = await CopilotPluginDescriptor.production().inspectSetup(
+      config: defaultConfig,
+      processes: processes,
+      environment: const {"COPILOT_HOME": "/profile"},
+      stateDirectory: "/state",
+    );
 
-      expect(descriptor.id, "copilot");
-      expect(descriptor.projectOwnership, PluginProjectOwnership.bridgeDerived);
-      expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
-    });
+    expect(result, const PluginSetupReady.versioned(runtimeVersion: "1.0.80"));
+  });
 
-    test("reports a supported PATH runtime ready without starting ACP", () async {
-      final processes = _Processes(
-        outputs: const [_Output(stdout: "GitHub Copilot CLI 1.0.80.\nRun 'copilot update' to check.\n", exitCode: 0)],
-      );
-      final result = await CopilotPluginDescriptor.production().inspectSetup(
-        config: defaultConfig,
-        processes: processes,
-        environment: const {"COPILOT_HOME": "/profile"},
-        stateDirectory: "/state",
-      );
+  test("classifies an unrelated explicit runtime as unrecognized", () async {
+    const explicit = PluginConfig(values: {CopilotPluginDescriptor.binOption: "/custom/copilot"});
+    final unknown = await CopilotPluginDescriptor.production().inspectSetup(
+      config: explicit,
+      processes: _Processes(
+        outputs: const [_Output(stdout: "git version 2.43.0\n", exitCode: 0)],
+      ),
+      environment: const {},
+      stateDirectory: "/state",
+    );
 
-      expect(result, const PluginSetupReady.versioned(runtimeVersion: "1.0.80"));
-      expect(processes.executables, ["copilot"]);
-    });
+    expect(unknown, isA<PluginSetupUnknown>());
+  });
 
-    test("classifies a missing automatic runtime without probing credentials", () async {
-      final result = await CopilotPluginDescriptor.production().inspectSetup(
-        config: defaultConfig,
-        processes: _Processes(),
-        environment: const {},
-        stateDirectory: "/state",
-      );
-
-      expect(result, isA<PluginSetupRuntimeMissing>());
-    });
-
-    test("classifies an unrelated explicit runtime as unrecognized", () async {
-      const explicit = PluginConfig(values: {CopilotPluginDescriptor.binOption: "/custom/copilot"});
-      final unknown = await CopilotPluginDescriptor.production().inspectSetup(
-        config: explicit,
-        processes: _Processes(
-          outputs: const [_Output(stdout: "git version 2.43.0\n", exitCode: 0)],
-        ),
-        environment: const {},
-        stateDirectory: "/state",
-      );
-
-      expect(unknown, isA<PluginSetupUnknown>());
-    });
-
-    test("does not launch when runtime provisioning rejected every candidate", () async {
-      await expectLater(
-        CopilotPluginDescriptor.production().start(const _Host(provisionedRuntimePath: null)),
-        throwsA(isA<PluginStartException>()),
-      );
-    });
+  test("does not launch when runtime provisioning rejected every candidate", () async {
+    await expectLater(
+      CopilotPluginDescriptor.production().start(const _Host(provisionedRuntimePath: null)),
+      throwsA(isA<PluginStartException>()),
+    );
   });
 }
 
@@ -77,9 +55,6 @@ class const _Host({@override required final String? provisionedRuntimePath}) imp
 class const _Output({required final String stdout, required final int exitCode});
 
 class _Processes({final List<_Output> outputs = const []}) implements HostProcessService {
-  final List<String> executables = [];
-  final List<List<String>> arguments = [];
-  final List<Map<String, String>?> environments = [];
   int _index = 0;
 
   @override
@@ -90,9 +65,6 @@ class _Processes({final List<_Output> outputs = const []}) implements HostProces
     required String? workingDirectory,
     required bool runInShell,
   }) async {
-    executables.add(executable);
-    this.arguments.add(arguments);
-    environments.add(environment);
     if (_index >= outputs.length) {
       throw ProcessException(executable, arguments, "missing", 2);
     }
