@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../foundation/data_directory_hardening.dart";
+import "converters/agent_model_converter.dart";
 import "daos/catalog_hydrations_dao.dart";
 import "daos/projects_dao.dart";
 import "daos/pull_request_dao.dart";
@@ -14,6 +15,7 @@ import "daos/session_dao.dart";
 import "database.steps.dart";
 import "tables/catalog_hydrations_table.dart";
 import "tables/deleted_sessions_table.dart";
+import "tables/new_session_defaults_table.dart";
 import "tables/projects_table.dart";
 import "tables/pull_requests_table.dart";
 import "tables/session_options_cache_table.dart";
@@ -32,6 +34,7 @@ part "database.g.dart";
     PullRequestsTable,
     CatalogHydrationsTable,
     SessionOptionsCacheTable,
+    NewSessionDefaultsTable,
   ],
   daos: [ProjectsDao, SessionDao, PullRequestDao, CatalogHydrationsDao],
 )
@@ -39,7 +42,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -279,6 +282,9 @@ class AppDatabase(super.e) extends _$AppDatabase {
         if (violations.isNotEmpty) {
           throw StateError("Migration v12->v13 left foreign key violations: ${violations.map((row) => row.data)}");
         }
+      },
+      from13To14: (m, schema) async {
+        await m.createTable(schema.newSessionDefaultsTable);
       },
     ),
     beforeOpen: (details) async {
