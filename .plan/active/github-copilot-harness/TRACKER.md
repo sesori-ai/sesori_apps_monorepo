@@ -12,13 +12,14 @@ Plan: [PLAN.md](PLAN.md)
   - State: merged
   - PR: [#1155](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1155)
   - Evidence: package tests and analyzer pass; architecture implementation review passed
-- [ ] **Step 3/7** — `⚙️ [github-copilot-harness] feat(copilot): add runtime setup and lifecycle [step 3/7]`
-  - State: in review
+- [x] **Step 3/7** — `⚙️ [github-copilot-harness] feat(copilot): add runtime setup and lifecycle [step 3/7]`
+  - State: merged
   - PR: [#1158](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1158)
-  - Evidence: 6 Copilot package tests and 266 shared ACP tests pass; both analyzers report no issues; Makefile verification includes the package; live `1.0.80` probes confirmed authenticated scratch discovery and `session/set_config_option`; architecture implementation review passed
+  - Evidence: 5 Copilot package tests, 266 shared ACP tests, and 47 focused app tests pass; owning analyzers report no issues; Makefile verification includes the package; live `1.0.80` probes confirmed authenticated scratch discovery and `session/set_config_option`; architecture implementation review passed
 - [ ] **Step 4/7** — `⚙️ [github-copilot-harness] feat(copilot): install the managed Copilot CLI [step 4/7]`
-  - State: not started
+  - State: implemented and verified locally on `github-copilot-harness/step-4-install`; ready for review
   - PR: pending
+  - Evidence: 13 package tests pass; analyzer reports no issues; all six official `1.0.80` asset names and SHA-256 digests match the GitHub release API; architecture implementation review passed
 - [ ] **Step 5/7** — `⚙️ [github-copilot-harness] feat(app): activate and brand GitHub Copilot [step 5/7]`
   - State: not started
   - PR: pending

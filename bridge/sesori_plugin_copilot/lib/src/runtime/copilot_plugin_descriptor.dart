@@ -1,6 +1,7 @@
 import "dart:io" as io;
 
 import "package:acp_plugin/acp_plugin.dart";
+import "package:http/http.dart" as http;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
@@ -81,6 +82,24 @@ final class const CopilotPluginDescriptor({
   }
 
   @override
+  Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) {
+    return {
+      ...super.managementCapabilities(config: config),
+      if (_supportsManagedInstall(config: config)) PluginControlCapability.install,
+    };
+  }
+
+  bool _supportsManagedInstall({required PluginConfig config}) {
+    if (_explicitBin(config: config) != null) return false;
+    try {
+      return const CopilotRuntimeManifest().supportsManagedInstallOn(target: PlatformTarget.current());
+    } on Object catch (error, stack) {
+      Log.w("[${CopilotPluginIdentity.id}] platform detection failed; managed install unavailable", error, stack);
+      return false;
+    }
+  }
+
+  @override
   Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
     const manifest = CopilotRuntimeManifest();
     yield* ManagedRuntimeProvisionService(
@@ -94,6 +113,49 @@ final class const CopilotPluginDescriptor({
       host: host,
       explicitExecutablePath: _explicitBin(config: host.config),
     );
+  }
+
+  @override
+  Stream<RuntimeProvisionProgress> installRuntime({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+    required StartAbortSignal startAborted,
+  }) async* {
+    const manifest = CopilotRuntimeManifest();
+    final commandExecutor = HostProcessCommandExecutor(
+      processes: processes,
+      runInShell: io.Platform.isWindows,
+      maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+    );
+    final httpClient = http.Client();
+    try {
+      final service = ManagedRuntimeInstallService(
+        manifest: manifest,
+        versionValidator: RuntimeVersionValidator(
+          commandExecutor: commandExecutor,
+          manifest: manifest,
+          probeTimeout: _versionProbeTimeout,
+        ),
+        installService: RuntimeInstallService(
+          downloadClient: BinaryDownloadClient(httpClient: httpClient),
+          checksumValidator: ChecksumValidator(),
+          archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
+          commandExecutor: commandExecutor,
+          runtimeId: manifest.runtimeId,
+        ),
+        cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
+        assetResolver: ({required target}) async => manifest.assetFor(target: target),
+      );
+      yield* service.install(
+        environment: environment,
+        stateDirectory: stateDirectory,
+        startAborted: startAborted,
+      );
+    } finally {
+      httpClient.close();
+    }
   }
 
   @override
@@ -125,6 +187,7 @@ final class const CopilotPluginDescriptor({
       ManagedRuntimeAutomaticNotSelected(:final primaryRejection, :final managedRejection) => _automaticSetupStatus(
         primaryRejection: primaryRejection,
         managedRejection: managedRejection,
+        supportsManagedInstall: _supportsManagedInstall(config: config),
       ),
     };
   }
@@ -146,14 +209,17 @@ final class const CopilotPluginDescriptor({
   PluginSetupStatus _automaticSetupStatus({
     required ManagedRuntimeRejection primaryRejection,
     required ManagedRuntimeRejection managedRejection,
+    required bool supportsManagedInstall,
   }) {
     if (_isUnknownRejection(primaryRejection) || _isUnknownRejection(managedRejection)) {
       return const PluginSetupUnknown(
         actionHint: "GitHub Copilot setup could not be determined. Verify the local CLI and retry.",
       );
     }
-    return const PluginSetupRuntimeMissing(
-      actionHint: "Install GitHub Copilot CLI locally, authenticate with `copilot login`, then retry setup detection.",
+    return PluginSetupRuntimeMissing(
+      actionHint: supportsManagedInstall
+          ? "Install GitHub Copilot from Sesori, or install it locally and retry setup detection."
+          : "Install GitHub Copilot CLI locally, authenticate with `copilot login`, then retry setup detection.",
     );
   }
 
