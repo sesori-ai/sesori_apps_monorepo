@@ -12,16 +12,17 @@ import "../../helpers/test_helpers.dart";
 
 void main() {
   test("loads only bounded high-signal metadata and excludes generated or vendored paths", () async {
+    final gitCliApi = _SourceGitCliApi(
+      trackedPaths: const [
+        "README.md",
+        "pubspec.yaml",
+        "lib/src/XChaCha20Cipher.dart",
+        "node_modules/private/SecretSdk.dart",
+        "lib/src/generated_model.freezed.dart",
+      ],
+    );
     final repository = ProjectGlossaryRepository(
-      gitCliApi: _SourceGitCliApi(
-        trackedPaths: const [
-          "README.md",
-          "pubspec.yaml",
-          "lib/src/XChaCha20Cipher.dart",
-          "node_modules/private/SecretSdk.dart",
-          "lib/src/generated_model.freezed.dart",
-        ],
-      ),
+      gitCliApi: gitCliApi,
       filesystemApi: const _SourceFilesystemApi(
         rootEntries: ["README.md", "pubspec.yaml"],
         files: {
@@ -47,10 +48,13 @@ void main() {
       "lib/src/XChaCha20Cipher.dart",
     ]);
     expect(source.metadataDocuments, ["# Acme Quasar", "name: acme_quasar"]);
+    expect(gitCliApi.requestedMaximumPaths, 50000);
   });
 }
 
 class _SourceGitCliApi({required final List<String> trackedPaths}) extends GitCliApi {
+  int? requestedMaximumPaths;
+
   this
     : super(
         processRunner: ProcessRunner(),
@@ -61,7 +65,10 @@ class _SourceGitCliApi({required final List<String> trackedPaths}) extends GitCl
   Future<bool> isInsideGitWorkTree({required String projectPath}) async => true;
 
   @override
-  Future<List<String>> listTrackedFiles({required String projectPath}) async => trackedPaths;
+  Future<List<String>> listTrackedFiles({required String projectPath, required int maximumPaths}) async {
+    requestedMaximumPaths = maximumPaths;
+    return trackedPaths.take(maximumPaths).toList(growable: false);
+  }
 
   @override
   Future<String?> getRemoteUrl({required String projectPath}) async =>

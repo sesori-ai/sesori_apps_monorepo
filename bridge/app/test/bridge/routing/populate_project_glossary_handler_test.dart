@@ -24,8 +24,26 @@ void main() {
       body: const ProjectIdRequest(projectId: "project-1"),
     );
 
-    expect(response, const SuccessEmptyResponse());
+    expect(
+      response,
+      const PopulateProjectVoiceGlossaryResponse(
+        projectKey: "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      ),
+    );
     expect(service.scheduledProjectIds, ["project-1"]);
+  });
+
+  test("rejects population while bridge identity is unavailable", () async {
+    final unavailableService = FakeProjectGlossaryService(projectKey: null);
+    final unavailableHandler = PopulateProjectGlossaryHandler(projectGlossaryService: unavailableService);
+
+    await expectLater(
+      () => unavailableHandler.handle(
+        makeRequest("POST", "/project/voice-glossary/populate"),
+        body: const ProjectIdRequest(projectId: "project-1"),
+      ),
+      throwsA(isA<RelayResponse>().having((response) => response.status, "status", 503)),
+    );
   });
 
   test("rejects an empty project id", () async {

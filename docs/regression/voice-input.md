@@ -30,14 +30,16 @@ directly from the client to the transcription endpoint.
   as voice-assisted input.
 - Successful transcription reports one content-free analytics event. No audio, transcript, or prompt text reaches logs
   or analytics.
-- A scoped transcription sends only the versioned opaque glossary key derived from the stable project id. It never
-  sends the project id itself, which may contain a local filesystem path.
+- A scoped transcription sends only the versioned opaque glossary key derived by the bridge from its stable
+  registration id and the stable project id. The client reuses that exact returned key; neither identifier reaches the
+  auth server, and equal local project paths on different bridges cannot share a glossary.
 - Glossary population starts only from explicit hosted-voice use and is best effort; it never delays recording or
-  transcription. The bridge attempts a project once per process, serializes different projects, reads existing server
-  words before local inference, and skips local scanning once the project already has 50 terms.
-- Local inference reads tracked path names plus bounded README and package-manifest prefixes, excludes ignored vendor,
-  build, generated, hash-like, and generic code terms, and uploads at most enough ranked terms to reach 50. Source
-  contents and paths never leave the bridge.
+  transcription. A transcription remains unscoped when the local route has not answered yet or is unsupported. The
+  bridge attempts a project once per process, serializes different projects, reads existing server words before local
+  inference, and skips local scanning once the project already has 50 terms.
+- Local inference reads at most 50,000 collected tracked path names plus bounded README and package-manifest prefixes,
+  excludes ignored vendor, build, generated, credential-shaped, high-entropy, hash-like, and generic code terms, and
+  uploads at most enough ranked terms to reach 50. Source contents and paths never leave the bridge.
 - The preference defaults to voice-first, persists, and falls back to voice-first on a corrupt or unknown stored
   value.
 
@@ -46,7 +48,7 @@ directly from the client to the transcription endpoint.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because microphone and transcription setup is too expensive for a heartbeat. |
-| L2 Routine | Automated, mobile client and bridge, no plugin: fake recorder and HTTP client cover permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, error mapping, max-duration signalling, file cleanup, draft voice-span/input-mode derivation, opaque project-key transmission, old-bridge degradation, ranked term selection, serialized/coalesced population, authenticated glossary reads/additions, and shutdown drain. |
+| L2 Routine | Automated, mobile client and bridge, no plugin: fake recorder and HTTP client cover permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, error mapping, max-duration signalling, file cleanup, draft voice-span/input-mode derivation, bridge-namespaced opaque-key transmission, pending/old-bridge unscoped degradation, bounded tracked-path collection, credential-shaped term rejection, ranked term selection, serialized/coalesced population, authenticated glossary reads/additions, and shutdown drain. |
 | L3 Release | Client end to end on the release-target client platform: hold to record, release to transcribe, transcript inserted and editable, drag-to-cancel, layout stability, and the voice-first/text-first preference changing which control leads. |
 | L4 Extended | Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, transcription failure and retry, offline upload failure, disposal while recording, wake lock released on every path. |
 | L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording. |
@@ -66,9 +68,9 @@ interruptions such as a call.
   lock stays held.
 - Audio is uploaded despite denied permission, or denial is reported as a generic network or server failure.
 - Text is sent without review, or a message with surviving voice text is classified as typed.
-- Any audio, transcript, prompt, or local metadata content reaches glossary requests, logs, or analytics, or a raw
-  project id/path reaches the auth server. Only inferred terms and the opaque project key may reach the glossary
-  endpoint.
+- Any audio, transcript, prompt, or local metadata content reaches glossary requests, logs, or analytics, a raw bridge
+  or project identifier/path reaches the auth server, or equal project ids on two bridges derive the same key. Only
+  filtered inferred terms and the opaque bridge/project key may reach the glossary endpoint.
 - Starting voice waits for glossary population, starts multiple glossary scans for that project, or lets several
   project scans run concurrently.
 
@@ -91,4 +93,5 @@ interruptions such as a call.
 `bridge/app/test/bridge/{repositories,services,routing}/`, `bridge/app/test/api/sesori_server_api_test.dart`, and
 `client/module_prego/test/components/`; production code under `client/app/lib/capabilities/voice/`,
 `client/module_core/lib/src/{capabilities/voice,services}/`,
-`bridge/app/lib/src/{repositories,services,routing}/`, and `shared/sesori_shared/lib/src/voice/`.
+`bridge/app/lib/src/{repositories,services,routing}/`, and
+`shared/sesori_shared/lib/src/{models/sesori,voice}/`.

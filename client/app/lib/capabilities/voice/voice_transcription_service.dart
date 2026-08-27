@@ -38,6 +38,9 @@ class VoiceTranscriptionService({
   bool _isBusy = false;
   Future<void>? _prewarmFuture;
   int _transcriptionGeneration = 0;
+  int _projectGlossaryRequestGeneration = 0;
+  String? _recordingProjectId;
+  String? _recordingProjectKey;
   String? _currentRecordingPath;
   StreamSubscription<Amplitude>? _amplitudeSub;
   Timer? _maxDurationTimer;
@@ -143,9 +146,7 @@ class VoiceTranscriptionService({
         _isRecording = true;
         _startAmplitudeMonitoring(_recorder);
         _startMaxDurationTimer();
-        if (projectId != null) {
-          unawaited(_projectVoiceGlossaryService.requestPopulation(projectId: projectId));
-        }
+        _requestProjectGlossaryKey(projectId: projectId);
         unawaited(_wakeLockService.enable());
       } catch (error, stackTrace) {
         loge("Failed to start recording", error, stackTrace);
@@ -159,6 +160,20 @@ class VoiceTranscriptionService({
       if (!_isRecording) _isBusy = false;
       rethrow;
     }
+  }
+
+  void _requestProjectGlossaryKey({required String? projectId}) {
+    final generation = ++_projectGlossaryRequestGeneration;
+    _recordingProjectId = projectId;
+    _recordingProjectKey = null;
+    if (projectId == null) return;
+
+    unawaited(
+      _projectVoiceGlossaryService.requestPopulation(projectId: projectId).then((projectKey) {
+        if (generation != _projectGlossaryRequestGeneration || _recordingProjectId != projectId) return;
+        _recordingProjectKey = projectKey;
+      }),
+    );
   }
 
   /// Stops the current recording, uploads the audio to the server,
@@ -198,7 +213,7 @@ class VoiceTranscriptionService({
       final response = await _voiceApi.transcribe(
         audioFilePath: path,
         mimeType: _audioFormat.mimeType,
-        projectId: projectId,
+        projectKey: projectId == _recordingProjectId ? _recordingProjectKey : null,
       );
 
       // If cancelled (or a new call started) while awaiting the HTTP call,
@@ -306,6 +321,9 @@ class VoiceTranscriptionService({
   Future<void> _cleanup() async {
     final path = _currentRecordingPath;
     _currentRecordingPath = null;
+    _projectGlossaryRequestGeneration++;
+    _recordingProjectId = null;
+    _recordingProjectKey = null;
 
     if (path != null) {
       await _cleanupFile(path);

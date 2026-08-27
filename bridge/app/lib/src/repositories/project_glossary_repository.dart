@@ -87,11 +87,12 @@ class ProjectGlossaryRepository({
     final rootEntryNames = _filesystemApi.listEntryNames(projectPath);
     final isGitProject = await _gitCliApi.isInsideGitWorkTree(projectPath: projectPath);
     final repositoryName = isGitProject ? await _readRepositoryName(projectPath: projectPath) : null;
-    final allTrackedPaths = isGitProject ? await _gitCliApi.listTrackedFiles(projectPath: projectPath) : rootEntryNames;
-    final candidatePaths = allTrackedPaths.where((path) => !_isExcludedPath(path)).toList(growable: false);
-    final trackedPaths = _boundedPathSample(candidatePaths);
+    final sourcePaths = isGitProject
+        ? await _gitCliApi.listTrackedFiles(projectPath: projectPath, maximumPaths: _maximumTrackedPaths)
+        : rootEntryNames.take(_maximumTrackedPaths);
+    final trackedPaths = sourcePaths.where((path) => !_isExcludedPath(path)).toList(growable: false);
     final metadataPaths = <String>{
-      for (final path in candidatePaths)
+      for (final path in trackedPaths)
         if (_isMetadataPath(path)) path,
       for (final entryName in rootEntryNames)
         if (_isMetadataPath(entryName)) entryName,
@@ -118,16 +119,6 @@ class ProjectGlossaryRepository({
       Log.w("Could not read the project remote while inferring glossary terms", error, stackTrace);
       return null;
     }
-  }
-
-  List<String> _boundedPathSample(List<String> paths) {
-    if (paths.length <= _maximumTrackedPaths) return paths;
-
-    return List<String>.generate(
-      _maximumTrackedPaths,
-      (index) => paths[(index * paths.length / _maximumTrackedPaths).floor()],
-      growable: false,
-    );
   }
 
   bool _isExcludedPath(String relativePath) {

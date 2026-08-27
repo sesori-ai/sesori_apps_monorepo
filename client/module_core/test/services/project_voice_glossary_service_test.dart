@@ -2,6 +2,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/services/project_voice_glossary_service.dart";
 import "package:sesori_dart_core/testing.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -16,11 +17,31 @@ void main() {
   test("requests the explicit bridge capability for the current project", () async {
     when(
       () => projectRepository.populateVoiceGlossary(projectId: "project-1"),
-    ).thenAnswer((_) async => ApiResponse.success(null));
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        const PopulateProjectVoiceGlossaryResponse(
+          projectKey: "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        ),
+      ),
+    );
 
-    await service.requestPopulation(projectId: "project-1");
-
+    expect(
+      await service.requestPopulation(projectId: "project-1"),
+      "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    );
     verify(() => projectRepository.populateVoiceGlossary(projectId: "project-1")).called(1);
+  });
+
+  test("an invalid bridge response degrades without forwarding a raw identifier", () async {
+    when(
+      () => projectRepository.populateVoiceGlossary(projectId: "project-1"),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        const PopulateProjectVoiceGlossaryResponse(projectKey: "/Users/developer/private-project"),
+      ),
+    );
+
+    expect(await service.requestPopulation(projectId: "project-1"), isNull);
   });
 
   test("an older bridge without the capability degrades without throwing", () async {
@@ -32,7 +53,7 @@ void main() {
       ),
     );
 
-    await expectLater(service.requestPopulation(projectId: "project-1"), completes);
+    expect(await service.requestPopulation(projectId: "project-1"), isNull);
   });
 
   test("an unexpected relay failure remains best effort", () async {
@@ -40,6 +61,6 @@ void main() {
       () => projectRepository.populateVoiceGlossary(projectId: "project-1"),
     ).thenThrow(StateError("relay unavailable"));
 
-    await expectLater(service.requestPopulation(projectId: "project-1"), completes);
+    expect(await service.requestPopulation(projectId: "project-1"), isNull);
   });
 }

@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:sesori_bridge/src/auth/bridge_id_provider.dart";
 import "package:sesori_bridge/src/foundation/abortable_request.dart";
 import "package:sesori_bridge/src/repositories/models/project_glossary_source.dart";
 import "package:sesori_bridge/src/repositories/project_glossary_repository.dart";
@@ -10,6 +11,9 @@ import "package:sesori_shared/sesori_shared.dart" show deriveProjectGlossaryKey;
 import "package:test/test.dart";
 
 void main() {
+  const bridgeId = "br_test1234";
+  const bridgeIdProvider = _TestBridgeIdProvider(bridgeId);
+
   test("serializes projects and coalesces duplicate scheduling", () async {
     final firstStarted = Completer<void>();
     final releaseFirst = Completer<void>();
@@ -25,6 +29,7 @@ void main() {
       },
     );
     final service = ProjectGlossaryService(
+      bridgeIdProvider: bridgeIdProvider,
       projectRepository: _FakeProjectRepository(
         paths: {"project-a": "/projects/a", "project-b": "/projects/b"},
       ),
@@ -43,8 +48,8 @@ void main() {
     await service.drain();
 
     expect(glossaryRepository.getWordsProjectKeys, [
-      deriveProjectGlossaryKey(projectId: "project-a"),
-      deriveProjectGlossaryKey(projectId: "project-b"),
+      deriveProjectGlossaryKey(bridgeId: bridgeId, projectId: "project-a"),
+      deriveProjectGlossaryKey(bridgeId: bridgeId, projectId: "project-b"),
     ]);
   });
 
@@ -61,6 +66,7 @@ void main() {
       },
     );
     final service = ProjectGlossaryService(
+      bridgeIdProvider: bridgeIdProvider,
       projectRepository: _FakeProjectRepository(
         paths: {"project-a": "/projects/a", "project-b": "/projects/b"},
       ),
@@ -75,13 +81,15 @@ void main() {
     releaseFirst.complete();
     await service.drain();
 
-    expect(glossaryRepository.getWordsProjectKeys, [deriveProjectGlossaryKey(projectId: "project-a")]);
+    expect(glossaryRepository.getWordsProjectKeys, [
+      deriveProjectGlossaryKey(bridgeId: bridgeId, projectId: "project-a"),
+    ]);
     expect(glossaryRepository.abortSignals.single.isAborted, isTrue);
   });
 
   test("fills only the remaining capacity and ignores existing case variants", () async {
     const projectId = "/Users/developer/AcmeCompiler";
-    final projectKey = deriveProjectGlossaryKey(projectId: projectId);
+    final projectKey = deriveProjectGlossaryKey(bridgeId: bridgeId, projectId: projectId);
     final existingWords = [
       "AcmeCompiler",
       for (var index = 0; index < 47; index++) "Existing$index",
@@ -101,6 +109,7 @@ void main() {
       getWordsCallback: null,
     );
     final service = ProjectGlossaryService(
+      bridgeIdProvider: bridgeIdProvider,
       projectRepository: _FakeProjectRepository(paths: {projectId: "/moved/AcmeCompiler"}),
       glossaryRepository: glossaryRepository,
       termCalculator: const ProjectGlossaryTermCalculator(),
@@ -116,7 +125,7 @@ void main() {
 
   test("skips local source scanning when the server already has fifty terms", () async {
     const projectId = "project-full";
-    final projectKey = deriveProjectGlossaryKey(projectId: projectId);
+    final projectKey = deriveProjectGlossaryKey(bridgeId: bridgeId, projectId: projectId);
     final projectRepository = _FakeProjectRepository(paths: {projectId: "/projects/full"});
     final glossaryRepository = _FakeProjectGlossaryRepository(
       existingWords: {
@@ -126,6 +135,7 @@ void main() {
       getWordsCallback: null,
     );
     final service = ProjectGlossaryService(
+      bridgeIdProvider: bridgeIdProvider,
       projectRepository: projectRepository,
       glossaryRepository: glossaryRepository,
       termCalculator: const ProjectGlossaryTermCalculator(),
@@ -146,6 +156,7 @@ void main() {
       getWordsCallback: ({required String projectKey}) async => throw StateError("server unavailable"),
     );
     final service = ProjectGlossaryService(
+      bridgeIdProvider: bridgeIdProvider,
       projectRepository: _FakeProjectRepository(paths: {"project": "/projects/project"}),
       glossaryRepository: glossaryRepository,
       termCalculator: const ProjectGlossaryTermCalculator(),
@@ -158,6 +169,8 @@ void main() {
     expect(glossaryRepository.getWordsProjectKeys, hasLength(1));
   });
 }
+
+class const _TestBridgeIdProvider(@override final String? bridgeId) implements BridgeIdProvider;
 
 class _FakeProjectRepository({required final Map<String, String> paths}) implements ProjectRepository {
   int resolveCalls = 0;

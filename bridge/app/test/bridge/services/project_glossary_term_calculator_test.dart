@@ -30,6 +30,24 @@ void main() {
     expect(terms.where((term) => term.contains("0123456789abcdef")), isEmpty);
   });
 
+  test("rejects credential prefixes and high-entropy secret-shaped metadata", () {
+    final terms = calculator.calculate(
+      source: ProjectGlossarySource(
+        projectName: "AcmeCompiler",
+        repositoryName: null,
+        trackedPaths: const [],
+        metadataDocuments: const [
+          "AcmeCompiler uses AKIAIOSFODNN7EXAMPLE and q7Vn2Lp9Rk4Tz8Mw6Hx3 for local examples.",
+          "AcmeCompiler appears again without exposing credentials.",
+        ],
+      ),
+    );
+
+    expect(terms, contains("AcmeCompiler"));
+    expect(terms, isNot(contains("AKIAIOSFODNN7EXAMPLE")));
+    expect(terms, isNot(contains("q7Vn2Lp9Rk4Tz8Mw6Hx3")));
+  });
+
   test("requires repeated metadata evidence for ordinary lowercase prose", () {
     final terms = calculator.calculate(
       source: ProjectGlossarySource(

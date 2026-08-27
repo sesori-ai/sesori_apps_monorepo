@@ -205,12 +205,15 @@ class FakeSessionDao() {
   }
 }
 
-class FakeProjectGlossaryService() implements ProjectGlossaryService {
+class FakeProjectGlossaryService({
+  final String? projectKey = "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+}) implements ProjectGlossaryService {
   final List<String> scheduledProjectIds = [];
 
   @override
-  void schedule({required String projectId}) {
+  String? schedule({required String projectId}) {
     scheduledProjectIds.add(projectId);
+    return projectKey;
   }
 
   @override

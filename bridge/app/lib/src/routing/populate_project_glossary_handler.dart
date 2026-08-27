@@ -6,16 +6,19 @@ import "request_handler.dart";
 /// Handles the explicit client signal that hosted voice transcription is being
 /// used for this project. Population remains detached and best effort.
 class PopulateProjectGlossaryHandler({required final ProjectGlossaryService _projectGlossaryService})
-    extends BodyRequestHandler<ProjectIdRequest, SuccessEmptyResponse> {
+    extends BodyRequestHandler<ProjectIdRequest, PopulateProjectVoiceGlossaryResponse> {
   this : super(HttpMethod.post, "/project/voice-glossary/populate", fromJson: ProjectIdRequest.fromJson);
 
   @override
-  Future<SuccessEmptyResponse> handle(
+  Future<PopulateProjectVoiceGlossaryResponse> handle(
     RelayRequest request, {
     required ProjectIdRequest body,
   }) {
     final projectId = requireNonEmpty(request: request, value: body.projectId, label: "project id");
-    _projectGlossaryService.schedule(projectId: projectId);
-    return Future.value(const SuccessEmptyResponse());
+    final projectKey = _projectGlossaryService.schedule(projectId: projectId);
+    if (projectKey == null) {
+      throw buildErrorResponse(request, 503, "project voice glossary is unavailable");
+    }
+    return Future.value(PopulateProjectVoiceGlossaryResponse(projectKey: projectKey));
   }
 }

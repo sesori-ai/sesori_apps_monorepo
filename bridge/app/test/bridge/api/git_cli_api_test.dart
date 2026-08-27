@@ -55,11 +55,23 @@ void main() {
       gitPathExists: ({required String gitPath}) => true,
     );
 
-    final paths = await api.listTrackedFiles(projectPath: "/project");
+    final paths = await api.listTrackedFiles(projectPath: "/project", maximumPaths: 50000);
 
     expect(paths, ["README.md", "lib/src/SesoriClient.dart"]);
     expect(processRunner.workingDirectory, "/project");
     expect(processRunner.arguments, ["ls-files", "--cached", "-z", "--", "."]);
+  });
+
+  test("listTrackedFiles stops collecting at the requested bound", () async {
+    final api = GitCliApi(
+      processRunner: _RecordingProcessRunner(stdout: "a.dart\u0000b.dart\u0000c.dart\u0000"),
+      gitPathExists: ({required String gitPath}) => true,
+    );
+
+    expect(
+      await api.listTrackedFiles(projectPath: "/project", maximumPaths: 2),
+      ["a.dart", "b.dart"],
+    );
   });
 
   test("getCurrentBranch removes one line ending without trimming the branch", () async {

@@ -19,6 +19,28 @@ class const ProjectGlossaryTermCalculator() {
   static final RegExp _hasDigitPattern = RegExp("[0-9]");
   static final RegExp _hasLetterPattern = RegExp("[A-Za-z]");
   static final RegExp _startsWithLetterPattern = RegExp("^[A-Za-z]");
+  static final RegExp _credentialSeparatorPattern = RegExp("[-.+#]");
+
+  static const Set<String> _credentialPrefixes = {
+    "aiza",
+    "akia",
+    "asia",
+    "gho",
+    "ghp",
+    "ghr",
+    "ghs",
+    "ghu",
+    "githubpat",
+    "rklive",
+    "skant",
+    "sklive",
+    "skproj",
+    "xoxa",
+    "xoxb",
+    "xoxp",
+    "xoxr",
+    "xoxs",
+  };
 
   static const Set<String> _stopWords = {
     "a",
@@ -381,11 +403,31 @@ class const ProjectGlossaryTermCalculator() {
     final folded = term.toLowerCase();
     if (_stopWords.contains(folded)) return false;
     if (_hexTokenPattern.hasMatch(term)) return false;
+    if (_looksCredentialShaped(term)) return false;
 
     final minimumLength = _allCapsPattern.hasMatch(term) ? 2 : 3;
     if (term.length < minimumLength) return false;
     if (_hasDigitPattern.allMatches(term).length > 6) return false;
     return true;
+  }
+
+  static bool _looksCredentialShaped(String value) {
+    final compact = value.replaceAll(_credentialSeparatorPattern, "");
+    final folded = compact.toLowerCase();
+    if (compact.length >= 16 && _credentialPrefixes.any(folded.startsWith)) return true;
+    if (compact.length < 20 || !_hasLetterPattern.hasMatch(compact) || !_hasDigitPattern.hasMatch(compact)) {
+      return false;
+    }
+
+    final upperCount = _hasUpperPattern.allMatches(compact).length;
+    final lowerCount = _hasLowerPattern.allMatches(compact).length;
+    final digitCount = _hasDigitPattern.allMatches(compact).length;
+    final distinctCharacters = compact.codeUnits.toSet().length;
+    if (distinctCharacters < 10) return false;
+
+    return (upperCount >= 6 && lowerCount >= 6 && digitCount >= 3) ||
+        (upperCount == 0 && lowerCount >= 12 && digitCount >= 6) ||
+        (lowerCount == 0 && upperCount >= 12 && digitCount >= 2);
   }
 
   static bool _hasTechnicalSignal(String value) {

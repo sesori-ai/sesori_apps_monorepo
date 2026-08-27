@@ -14,6 +14,8 @@ void main() {
   setUpAll(registerAllFallbackValues);
 
   group("VoiceTranscriptionService", () {
+    const projectKey = "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
     late MockVoiceApi mockVoiceApi;
     late MockProjectVoiceGlossaryService mockProjectVoiceGlossaryService;
     late MockAudioRecorder mockRecorder;
@@ -53,7 +55,7 @@ void main() {
       when(() => mockFileProvider.createRecordingPath()).thenAnswer((_) async => recordingPath);
       when(
         () => mockProjectVoiceGlossaryService.requestPopulation(projectId: any(named: "projectId")),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => projectKey);
       when(mockWakeLockService.enable).thenAnswer((_) async {});
       when(mockWakeLockService.disable).thenAnswer((_) async {});
       when(() => mockAudioFormat.encoder).thenReturn(AudioEncoder.aacLc);
@@ -287,6 +289,7 @@ void main() {
     group("stopAndTranscribe", () {
       Future<void> startWithRecordedFile() async {
         await service.startRecording(projectId: "project-1");
+        await Future<void>.delayed(Duration.zero);
         await File(recordingPath).writeAsBytes([1, 2, 3]);
       }
 
@@ -296,7 +299,7 @@ void main() {
           () => mockVoiceApi.transcribe(
             audioFilePath: recordingPath,
             mimeType: "audio/mp4",
-            projectId: "project-1",
+            projectKey: projectKey,
           ),
         ).thenAnswer((_) async => ApiResponse.success("hello world"));
 
@@ -310,10 +313,33 @@ void main() {
           () => mockVoiceApi.transcribe(
             audioFilePath: recordingPath,
             mimeType: "audio/mp4",
-            projectId: "project-1",
+            projectKey: projectKey,
           ),
         ).called(1);
         verify(mockWakeLockService.disable).called(1);
+      });
+
+      test("a pending glossary route does not delay unscoped transcription", () async {
+        final glossaryCompleter = Completer<String?>();
+        when(
+          () => mockProjectVoiceGlossaryService.requestPopulation(projectId: "project-1"),
+        ).thenAnswer((_) => glossaryCompleter.future);
+        await service.startRecording(projectId: "project-1");
+        await File(recordingPath).writeAsBytes([1, 2, 3]);
+        when(
+          () => mockVoiceApi.transcribe(
+            audioFilePath: recordingPath,
+            mimeType: "audio/mp4",
+            projectKey: null,
+          ),
+        ).thenAnswer((_) async => ApiResponse.success("unscoped transcript"));
+
+        expect(
+          await service.stopAndTranscribe(projectId: "project-1"),
+          "unscoped transcript",
+        );
+        glossaryCompleter.complete(projectKey);
+        await Future<void>.delayed(Duration.zero);
       });
 
       test("not recording: throws NotRecordingError", () async {
@@ -353,7 +379,7 @@ void main() {
           () => mockVoiceApi.transcribe(
             audioFilePath: recordingPath,
             mimeType: "audio/mp4",
-            projectId: "project-1",
+            projectKey: projectKey,
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.notAuthenticated()));
 
@@ -369,7 +395,7 @@ void main() {
           () => mockVoiceApi.transcribe(
             audioFilePath: recordingPath,
             mimeType: "audio/mp4",
-            projectId: "project-1",
+            projectKey: projectKey,
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: "down")));
 
@@ -382,7 +408,7 @@ void main() {
           () => mockVoiceApi.transcribe(
             audioFilePath: recordingPath,
             mimeType: "audio/mp4",
-            projectId: "project-1",
+            projectKey: projectKey,
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.dartHttpClient(Exception("network"))));
 
@@ -404,6 +430,7 @@ void main() {
 
       test("cancels during transcription: throws TranscriptionCancelledError when HTTP completes", () async {
         await service.startRecording(projectId: "project-1");
+        await Future<void>.delayed(Duration.zero);
         await File(recordingPath).writeAsBytes([1, 2, 3]);
 
         final transcribeCompleter = Completer<ApiResponse<String>>();
@@ -411,7 +438,7 @@ void main() {
           () => mockVoiceApi.transcribe(
             audioFilePath: recordingPath,
             mimeType: "audio/mp4",
-            projectId: "project-1",
+            projectKey: any(named: "projectKey"),
           ),
         ).thenAnswer((_) => transcribeCompleter.future);
 
@@ -435,6 +462,7 @@ void main() {
 
       test("cancels during transcription: HTTP error after cancel still throws TranscriptionCancelledError", () async {
         await service.startRecording(projectId: "project-1");
+        await Future<void>.delayed(Duration.zero);
         await File(recordingPath).writeAsBytes([1, 2, 3]);
 
         final transcribeCompleter = Completer<ApiResponse<String>>();
@@ -442,7 +470,7 @@ void main() {
           () => mockVoiceApi.transcribe(
             audioFilePath: recordingPath,
             mimeType: "audio/mp4",
-            projectId: "project-1",
+            projectKey: any(named: "projectKey"),
           ),
         ).thenAnswer((_) => transcribeCompleter.future);
 
@@ -462,6 +490,7 @@ void main() {
       test("cancel then restart: stale transcript from first call is discarded", () async {
         // Start recording #1 and begin transcription.
         await service.startRecording(projectId: "project-1");
+        await Future<void>.delayed(Duration.zero);
         await File(recordingPath).writeAsBytes([1, 2, 3]);
 
         final transcribeCompleter1 = Completer<ApiResponse<String>>();
@@ -469,7 +498,7 @@ void main() {
           () => mockVoiceApi.transcribe(
             audioFilePath: recordingPath,
             mimeType: "audio/mp4",
-            projectId: "project-1",
+            projectKey: any(named: "projectKey"),
           ),
         ).thenAnswer((_) => transcribeCompleter1.future);
 
@@ -481,6 +510,7 @@ void main() {
 
         // Start recording #2 immediately and begin transcription.
         await service.startRecording(projectId: "project-1");
+        await Future<void>.delayed(Duration.zero);
         await File(recordingPath).writeAsBytes([4, 5, 6]);
 
         final transcribeCompleter2 = Completer<ApiResponse<String>>();
@@ -488,7 +518,7 @@ void main() {
           () => mockVoiceApi.transcribe(
             audioFilePath: recordingPath,
             mimeType: "audio/mp4",
-            projectId: "project-1",
+            projectKey: any(named: "projectKey"),
           ),
         ).thenAnswer((_) => transcribeCompleter2.future);
 
@@ -578,7 +608,7 @@ void main() {
             () => mockVoiceApi.transcribe(
               audioFilePath: recordingPath,
               mimeType: "audio/mp4",
-              projectId: "project-1",
+              projectKey: projectKey,
             ),
           ).thenAnswer((_) async => ApiResponse.success("text"));
 

@@ -383,6 +383,7 @@ class Orchestrator({
       tokenRefresher: _tokenRefresher,
     );
     final projectGlossaryService = ProjectGlossaryService(
+      bridgeIdProvider: _bridgeRegistrationService,
       projectRepository: projectRepository,
       glossaryRepository: ProjectGlossaryRepository(
         gitCliApi: gitCliApi,

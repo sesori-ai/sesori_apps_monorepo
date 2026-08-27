@@ -162,19 +162,22 @@ void main() {
 
   group("populateVoiceGlossary", () {
     test("posts the stable project id to the explicit bridge capability", () async {
+      const population = PopulateProjectVoiceGlossaryResponse(
+        projectKey: "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      );
       when(
-        () => client.post<void>(
+        () => client.post<PopulateProjectVoiceGlossaryResponse>(
           "/project/voice-glossary/populate",
           fromJson: any(named: "fromJson"),
           body: any(named: "body"),
         ),
-      ).thenAnswer((_) async => ApiResponse.success(null));
+      ).thenAnswer((_) async => ApiResponse.success(population));
 
       final response = await api.populateVoiceGlossary(projectId: "project-1");
 
-      expect(response, ApiResponse<void>.success(null));
+      expect(response, ApiResponse<PopulateProjectVoiceGlossaryResponse>.success(population));
       verify(
-        () => client.post<void>(
+        () => client.post<PopulateProjectVoiceGlossaryResponse>(
           "/project/voice-glossary/populate",
           fromJson: any(named: "fromJson"),
           body: const ProjectIdRequest(projectId: "project-1"),

@@ -44,7 +44,7 @@ void main() {
       final result = await voiceApi.transcribe(
         audioFilePath: audioPath,
         mimeType: "audio/mp4",
-        projectId: null,
+        projectKey: null,
       );
 
       expect(result, ApiResponse.success("transcribed text"));
@@ -92,7 +92,7 @@ void main() {
       await voiceApi.transcribe(
         audioFilePath: audioPath,
         mimeType: "audio/mp4",
-        projectId: "project-123",
+        projectKey: "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
       );
 
       final fields = verify(
@@ -105,7 +105,7 @@ void main() {
         ),
       ).captured.single;
       expect(fields, {
-        "projectKey": "prj_v1_xgjNDm_yyduAKisFHr498ZgcjIU1FACdyEj68wSmbhc",
+        "projectKey": "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
       });
       expect(fields.toString(), isNot(contains("project-123")));
     });
@@ -129,7 +129,7 @@ void main() {
       final result = await voiceApi.transcribe(
         audioFilePath: audioPath,
         mimeType: "audio/mp4",
-        projectId: null,
+        projectKey: null,
       );
 
       expect(
@@ -161,7 +161,7 @@ void main() {
       final result = await voiceApi.transcribe(
         audioFilePath: audioPath,
         mimeType: "audio/mp4",
-        projectId: null,
+        projectKey: null,
       );
 
       expect(result.toString(), contains("dartHttpClient"));
@@ -185,7 +185,7 @@ void main() {
       final result = await voiceApi.transcribe(
         audioFilePath: audioPath,
         mimeType: "audio/mp4",
-        projectId: null,
+        projectKey: null,
       );
 
       expect(result.toString(), contains("dartHttpClient"));
@@ -207,7 +207,7 @@ void main() {
       final result = await voiceApi.transcribe(
         audioFilePath: audioPath,
         mimeType: "audio/mp4",
-        projectId: null,
+        projectKey: null,
       );
 
       expect(result, ApiResponse<String>.error(ApiError.jsonParsing("not json")));
@@ -230,7 +230,7 @@ void main() {
       final result = await voiceApi.transcribe(
         audioFilePath: audioPath,
         mimeType: "audio/mp4",
-        projectId: null,
+        projectKey: null,
       );
 
       expect(result.toString(), contains("dartHttpClient"));

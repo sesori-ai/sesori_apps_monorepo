@@ -423,13 +423,28 @@ class GitCliApi({
     );
   }
 
-  Future<List<String>> listTrackedFiles({required String projectPath}) async {
+  Future<List<String>> listTrackedFiles({required String projectPath, required int maximumPaths}) async {
+    if (maximumPaths <= 0) {
+      throw ArgumentError.value(maximumPaths, "maximumPaths", "must be positive");
+    }
+
     const arguments = ["ls-files", "--cached", "-z", "--", "."];
     final result = await runGit(projectPath: projectPath, arguments: arguments);
     if (result.exitCode != 0) {
       throw ProcessException("git", arguments, result.stderr.toString(), result.exitCode);
     }
-    return result.stdout.toString().split("\u0000").where((path) => path.isNotEmpty).toList(growable: false);
+
+    final output = result.stdout.toString();
+    final paths = <String>[];
+    var start = 0;
+    while (start < output.length && paths.length < maximumPaths) {
+      final terminator = output.indexOf("\u0000", start);
+      final end = terminator < 0 ? output.length : terminator;
+      if (end > start) paths.add(output.substring(start, end));
+      if (terminator < 0) break;
+      start = terminator + 1;
+    }
+    return paths;
   }
 
   Future<ProcessResult> listUntrackedFiles({required String projectPath}) {
