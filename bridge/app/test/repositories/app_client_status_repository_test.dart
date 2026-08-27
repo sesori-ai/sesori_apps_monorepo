@@ -67,4 +67,7 @@ class _FakeSesoriServerApi() implements SesoriServerApi {
     required GenerateSessionMetadataRequest request,
     required AbortSignal abortSignal,
   }) => throw UnimplementedError();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -6,7 +6,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "auth_api.dart";
 import "bridge_id_provider.dart";
 import "bridge_id_storage.dart";
+import "bridge_identity_secret_storage.dart";
 import "bridge_registration_repository.dart";
+import "project_glossary_key_material_provider.dart";
 import "token_refresher.dart";
 
 /// Registers this bridge with the auth server and tracks the assigned
@@ -21,14 +23,16 @@ class BridgeRegistrationService({
   required final BridgeRegistrationRepository _repository,
   required final TokenRefresher _tokenRefresher,
   required final BridgeIdStorage _bridgeIdStorage,
+  required final BridgeIdentitySecretStorage _bridgeIdentitySecretStorage,
   required String hostName,
   required final String _platform,
-}) implements BridgeIdProvider {
+}) implements BridgeIdProvider, ProjectGlossaryKeyMaterialProvider {
   static const fallbackName = "sesori-bridge";
 
   final String _hostName = sanitizeBridgeName(hostName);
   bool _registered = false;
   String? _bridgeId;
+  List<int>? _projectGlossarySecret;
   final StreamController<String> _registrations = StreamController<String>.broadcast();
 
   /// The bridge platform name reported to the auth server.
@@ -49,6 +53,9 @@ class BridgeRegistrationService({
 
   @override
   String? get bridgeId => _bridgeId;
+
+  @override
+  List<int>? get projectGlossarySecret => _projectGlossarySecret;
 
   /// Emits the assigned bridge id each time a registration round-trip
   /// actually succeeds: the first [ensureRegistered] of the process and any
@@ -82,6 +89,14 @@ class BridgeRegistrationService({
     _bridgeId = summary.id;
     if (existingId != summary.id) {
       await _bridgeIdStorage.write(bridgeId: summary.id);
+    }
+    if (_projectGlossarySecret == null) {
+      try {
+        _projectGlossarySecret = List<int>.unmodifiable(await _bridgeIdentitySecretStorage.getOrCreate());
+      } on Object catch (error, stackTrace) {
+        // Glossary scoping is optional and must never block bridge registration.
+        Log.w("Could not load the bridge-local project glossary secret", error, stackTrace);
+      }
     }
     _registered = true;
     if (!_registrations.isClosed) {

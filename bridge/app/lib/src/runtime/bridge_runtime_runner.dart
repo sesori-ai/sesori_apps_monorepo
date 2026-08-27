@@ -39,6 +39,7 @@ import "../auth/access_token_provider.dart";
 import "../auth/auth_api.dart";
 import "../auth/auth_repository.dart";
 import "../auth/bridge_id_storage.dart";
+import "../auth/bridge_identity_secret_storage.dart";
 import "../auth/bridge_registration_repository.dart";
 import "../auth/bridge_registration_service.dart";
 import "../auth/login_email_api.dart";
@@ -360,6 +361,10 @@ class const BridgeRuntimeRunner._() {
       filePath: bridgeIdPath(dataDirectory: options.dataDirectory),
       writeRestrictedFile: writeRestrictedFile,
     );
+    final bridgeIdentitySecretStorage = FileBridgeIdentitySecretStorage(
+      dataDirectory: options.dataDirectory,
+      writeRestrictedFile: writeRestrictedFile,
+    );
 
     try {
       // Supervised mode (desktop GUI): bring up the loopback control channel
@@ -403,6 +408,7 @@ class const BridgeRuntimeRunner._() {
           authApi: authApi,
           tokenRefresher: controlChannelTokenService,
           bridgeIdStorage: bridgeIdStorage,
+          bridgeIdentitySecretStorage: bridgeIdentitySecretStorage,
           machineName: machineName,
         );
         shutdownCoordinator.add(disposable: supervisedRegistrationService.dispose);
@@ -579,6 +585,7 @@ class const BridgeRuntimeRunner._() {
           authApi: authApi,
           tokenRefresher: tokenRefresher,
           bridgeIdStorage: bridgeIdStorage,
+          bridgeIdentitySecretStorage: bridgeIdentitySecretStorage,
           machineName: machineName,
         );
         shutdownCoordinator.add(disposable: bridgeRegistrationService.dispose);
@@ -1112,6 +1119,7 @@ class const BridgeRuntimeRunner._() {
     required AuthApi authApi,
     required TokenRefresher tokenRefresher,
     required BridgeIdStorage bridgeIdStorage,
+    required BridgeIdentitySecretStorage bridgeIdentitySecretStorage,
     required String machineName,
   }) {
     return BridgeRegistrationService(
@@ -1120,6 +1128,7 @@ class const BridgeRuntimeRunner._() {
       ),
       tokenRefresher: tokenRefresher,
       bridgeIdStorage: bridgeIdStorage,
+      bridgeIdentitySecretStorage: bridgeIdentitySecretStorage,
       hostName: machineName,
       platform: BridgeRegistrationService.currentPlatformName(),
     );

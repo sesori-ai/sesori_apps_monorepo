@@ -2,11 +2,13 @@ import "dart:async";
 import "dart:collection";
 import "dart:io";
 import "dart:math";
+import "dart:typed_data";
 
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge/src/auth/access_token_provider.dart";
 import "package:sesori_bridge/src/auth/bridge_id_provider.dart";
 import "package:sesori_bridge/src/auth/bridge_id_storage.dart";
+import "package:sesori_bridge/src/auth/bridge_identity_secret_storage.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_repository.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_service.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
@@ -27,6 +29,11 @@ class FakeAccessTokenProvider([String token = "test-token"]) implements AccessTo
 class FakeBridgeIdProvider([var String? id]) implements BridgeIdProvider {
   @override
   String? get bridgeId => id;
+}
+
+class const FakeBridgeIdentitySecretStorage() implements BridgeIdentitySecretStorage {
+  @override
+  Future<Uint8List> getOrCreate() async => Uint8List.fromList(List<int>.filled(32, 7));
 }
 
 class FakeTokenRefresher({String token = "test-token", String? refreshedToken}) implements TokenRefresher {
@@ -126,6 +133,7 @@ BridgeRegistrationService createFakeBridgeRegistrationService({
     repository: repository ?? FakeBridgeRegistrationRepository(),
     tokenRefresher: FakeTokenRefresher(),
     bridgeIdStorage: bridgeIdStorage ?? FakeBridgeIdStorage(),
+    bridgeIdentitySecretStorage: const FakeBridgeIdentitySecretStorage(),
     hostName: "test-host",
     platform: "macos",
   );

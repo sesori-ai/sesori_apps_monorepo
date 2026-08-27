@@ -1,6 +1,8 @@
 import "dart:io";
+import "dart:typed_data";
 
 import "package:sesori_bridge/src/auth/auth_api.dart";
+import "package:sesori_bridge/src/auth/bridge_identity_secret_storage.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_repository.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_service.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
@@ -23,6 +25,7 @@ void main() {
       repository: repository,
       tokenRefresher: tokenRefresher,
       bridgeIdStorage: bridgeIdStorage,
+      bridgeIdentitySecretStorage: const FakeBridgeIdentitySecretStorage(),
       hostName: "dev-laptop",
       platform: "macos",
     );
@@ -34,7 +37,24 @@ void main() {
 
       expect(repository.registeredBridgeIds, equals([null]));
       expect(service.bridgeId, equals("br_test1234"));
+      expect(service.projectGlossarySecret, hasLength(32));
       expect(bridgeIdStorage.bridgeId, equals("br_test1234"));
+    });
+
+    test("secret storage failure does not block bridge registration", () async {
+      final resilientService = BridgeRegistrationService(
+        repository: repository,
+        tokenRefresher: tokenRefresher,
+        bridgeIdStorage: bridgeIdStorage,
+        bridgeIdentitySecretStorage: const _FailingBridgeIdentitySecretStorage(),
+        hostName: "dev-laptop",
+        platform: "macos",
+      );
+
+      await resilientService.ensureRegistered();
+
+      expect(resilientService.bridgeId, "br_test1234");
+      expect(resilientService.projectGlossarySecret, isNull);
     });
 
     test("posts the persisted bridge id when one exists", () async {
@@ -209,6 +229,7 @@ void main() {
         repository: failingRepository,
         tokenRefresher: tokenRefresher,
         bridgeIdStorage: bridgeIdStorage,
+        bridgeIdentitySecretStorage: const FakeBridgeIdentitySecretStorage(),
         hostName: "dev-laptop",
         platform: "macos",
       );
@@ -225,6 +246,7 @@ void main() {
         repository: failingRepository,
         tokenRefresher: tokenRefresher,
         bridgeIdStorage: bridgeIdStorage,
+        bridgeIdentitySecretStorage: const FakeBridgeIdentitySecretStorage(),
         hostName: "dev-laptop",
         platform: "macos",
       );
@@ -236,6 +258,11 @@ void main() {
       expect(bridgeIdStorage.bridgeId, equals("br_persisted1"));
     });
   });
+}
+
+class const _FailingBridgeIdentitySecretStorage() implements BridgeIdentitySecretStorage {
+  @override
+  Future<Uint8List> getOrCreate() => Future.error(StateError("storage unavailable"));
 }
 
 class _RecordingTokenRefresher() implements TokenRefresher {

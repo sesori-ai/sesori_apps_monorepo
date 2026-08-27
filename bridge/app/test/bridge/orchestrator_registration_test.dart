@@ -523,6 +523,7 @@ class _RegistrationHarness._({
       repository: repository,
       tokenRefresher: FakeTokenRefresher(),
       bridgeIdStorage: bridgeIdStorage,
+      bridgeIdentitySecretStorage: const FakeBridgeIdentitySecretStorage(),
       hostName: "test-host",
       platform: "macos",
     );
