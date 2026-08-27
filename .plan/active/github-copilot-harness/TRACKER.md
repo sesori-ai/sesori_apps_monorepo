@@ -9,8 +9,8 @@ Plan: [PLAN.md](PLAN.md)
   - PR: [#1154](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1154)
   - Evidence: upstream ACP/release/license research and no-prompt `1.0.80` protocol probe recorded in the plan
 - [ ] **Step 2/7** — `⚙️ [github-copilot-harness] feat(copilot): add the ACP harness package [step 2/7]`
-  - State: ready for review on `github-copilot-harness/step-2-package`
-  - PR: pending
+  - State: in review
+  - PR: [#1155](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1155)
   - Evidence: package tests and analyzer pass; architecture implementation review passed
 - [ ] **Step 3/7** — `⚙️ [github-copilot-harness] feat(copilot): add runtime setup and lifecycle [step 3/7]`
   - State: not started
