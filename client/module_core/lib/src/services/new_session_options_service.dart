@@ -241,21 +241,22 @@ class NewSessionOptionsService({
         _pickDefaultModel(providers: providers);
 
     final restoredModel = effectiveSelection?.model;
+    final validatedRestoredModel = _validatedModel(
+      providers: providers,
+      model: restoredModel == null
+          ? null
+          : AgentModel(
+              providerID: restoredModel.providerId,
+              modelID: restoredModel.modelId,
+              variant: null,
+            ),
+    );
     final selectedAgentModel = _applyVariantIntent(
       providers: providers,
-      model:
-          _validatedModel(
-            providers: providers,
-            model: restoredModel == null
-                ? null
-                : AgentModel(
-                    providerID: restoredModel.providerId,
-                    modelID: restoredModel.modelId,
-                    variant: null,
-                  ),
-          ) ??
-          defaultAgentModel,
-      variantIntent: effectiveSelection?.variant,
+      model: validatedRestoredModel ?? defaultAgentModel,
+      variantIntent: restoredModel == null || validatedRestoredModel != null
+          ? effectiveSelection?.variant
+          : null,
     );
     final stagedCommandName = previousOptions?.stagedCommand?.name;
     final stagedCommand = stagedCommandName == null

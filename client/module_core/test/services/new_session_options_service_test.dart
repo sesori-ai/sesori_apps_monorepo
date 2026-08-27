@@ -334,7 +334,7 @@ void main() {
         commands: const [],
         lastUsedPromptDefaults: const SessionPromptDefaults(
           agent: "missing",
-          model: AgentModel(providerID: "provider-a", modelID: "unavailable", variant: "stale"),
+          model: AgentModel(providerID: "provider-a", modelID: "unavailable", variant: "low"),
         ),
       );
       when(
