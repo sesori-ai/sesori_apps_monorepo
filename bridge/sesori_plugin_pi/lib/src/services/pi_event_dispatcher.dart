@@ -67,14 +67,16 @@ final class PiEventDispatcher({
     PiSummarizationRetryAttemptStartEvent() ||
     PiCompactionStartEvent() => const PluginSessionStatus.busy(),
     PiAgentSettledEvent() => const PluginSessionStatus.idle(),
-    PiAutoRetryStartEvent(:final attempt, :final delayMs) => _retryStatus(
+    PiAutoRetryStartEvent(:final attempt, :final delayMs, :final errorMessage) => _retryStatus(
       attempt: attempt,
       delayMs: delayMs,
+      errorMessage: errorMessage,
       now: now ?? DateTime.now(),
     ),
-    PiSummarizationRetryScheduledEvent(:final attempt, :final delayMs) => _retryStatus(
+    PiSummarizationRetryScheduledEvent(:final attempt, :final delayMs, :final errorMessage) => _retryStatus(
       attempt: attempt,
       delayMs: delayMs,
+      errorMessage: errorMessage,
       now: now ?? DateTime.now(),
     ),
     _ => null,
@@ -547,12 +549,13 @@ final class PiEventDispatcher({
   PluginSessionStatus? _retryStatus({
     required int? attempt,
     required int? delayMs,
+    required String? errorMessage,
     required DateTime now,
   }) {
     if (attempt == null || delayMs == null || attempt < 0 || delayMs < 0) return null;
     return PluginSessionStatus.retry(
       attempt: attempt,
-      message: "Pi is retrying the provider request.",
+      message: errorMessage ?? "Pi is retrying the provider request.",
       next: now.millisecondsSinceEpoch + delayMs,
     );
   }

@@ -212,8 +212,8 @@ void main() {
       expect(messages.toString(), isNot(contains(privateSummary)));
     });
 
-    test("logs assistant failure locally and maps it privately", () async {
-      const privateError = "secret provider payload";
+    test("logs assistant failure locally and forwards it unchanged", () async {
+      const backendError = "provider overload detail";
       late List<PluginMessageWithParts> messages;
       final warnings = await _captureWarnings(() async {
         messages = mapper.map(
@@ -234,7 +234,7 @@ void main() {
                 "provider": "provider",
                 "model": "model",
                 "stopReason": "error",
-                "errorMessage": privateError,
+                "errorMessage": backendError,
                 "timestamp": 1,
               }),
             ),
@@ -268,6 +268,7 @@ void main() {
 
       expect(messages, hasLength(2));
       expect(messages.first.info, isA<PluginMessageError>());
+      expect((messages.first.info as PluginMessageError).errorMessage, backendError);
       expect(_reasoning(messages), ["visible reasoning"]);
       final completed = messages.first.parts.singleWhere((part) => part.id == "completed");
       final unfinished = messages.first.parts.singleWhere((part) => part.id == "unfinished");
@@ -278,9 +279,8 @@ void main() {
       expect(unfinished.state.error, "Pi tool call did not complete.");
       expect(aborted.state.status, PluginToolStatus.error);
       expect(aborted.state.error, "Pi tool call did not complete.");
-      expect(messages.toString(), isNot(contains(privateError)));
       expect(messages.toString(), isNot(contains("private reasoning")));
-      expect(warnings, contains(privateError));
+      expect(warnings, contains(backendError));
     });
 
     test("enforces image candidate count", () {

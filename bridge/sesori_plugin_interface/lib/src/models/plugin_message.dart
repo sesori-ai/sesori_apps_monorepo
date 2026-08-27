@@ -333,6 +333,9 @@ sealed class PluginMessage with _$PluginMessage {
     required String? modelID,
     required String? providerID,
     required String errorName,
+
+    /// Backend-provided error text must be preserved verbatim when present.
+    /// A plugin may synthesize a fallback only when its backend supplied no text.
     required String errorMessage,
     required PluginMessageTime? time,
   }) = PluginMessageError;

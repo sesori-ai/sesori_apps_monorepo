@@ -1239,7 +1239,7 @@ void main() {
         events.whereType<BridgeSseMessageUpdated>().single.info,
       );
       expect(message, isA<shared.MessageError>());
-      expect((message as shared.MessageError).errorMessage, "HALT: fix it");
+      expect((message as shared.MessageError).errorMessage, "\n\nHALT: fix it");
       // No assistant text part or delta — the notice rides in the error message.
       expect(events.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
       expect(events.whereType<BridgeSseMessagePartDelta>(), isEmpty);
@@ -1418,7 +1418,7 @@ void main() {
 }
 
 /// Test double: classifies any message whose trimmed text starts with "HALT:"
-/// as a halt notice, using the trimmed text as the shown message.
+/// while the base mapper preserves the original text as the shown message.
 class _HaltMapper({required super.configurationTracker}) extends AcpEventMapper {
   this
     : super(
@@ -1430,7 +1430,7 @@ class _HaltMapper({required super.configurationTracker}) extends AcpEventMapper 
   AcpHaltNotice? classifyHaltNotice({required String text}) {
     final trimmed = text.trim();
     if (trimmed.startsWith("HALT:")) {
-      return AcpHaltNotice(errorName: "test_halt", message: trimmed);
+      return const AcpHaltNotice(errorName: "test_halt");
     }
     return null;
   }

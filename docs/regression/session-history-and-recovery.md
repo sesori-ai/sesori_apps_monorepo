@@ -101,8 +101,8 @@ image parts converge by their own rules.
   payload omitted variant-specific data, or a decoded known variant still carries
   null variant data.
 - Pi falls back after an arbitrary RPC failure, shows an abandoned branch or
-  summary payload, or exposes a private path, raw backend error, or hidden prompt
-  prefix in mapped history.
+  summary payload, exposes a private persisted path or hidden prompt prefix, or
+  rewrites backend-provided error text in mapped history.
 - A Pi streamed part changes identity when finalized, cumulative tool output is
   appended, a duplicate terminal tool event repeats a diff invalidation, or
   `agent_end` marks the session idle before `agent_settled`.

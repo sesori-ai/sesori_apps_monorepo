@@ -331,7 +331,7 @@ void main() {
       expect(message, isA<shared.MessageError>());
       expect(
         (message as shared.MessageError).errorMessage,
-        "Check your settings to continue",
+        "\n\nCheck your settings to continue",
       );
       expect(events.whereType<BridgeSseMessagePartDelta>(), isEmpty);
     });

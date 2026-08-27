@@ -325,6 +325,7 @@ class MessageError extends Message {
  final  String? modelID;
  final  String? providerID;
  final  String errorName;
+/// The backend-provided error text, unchanged when the backend supplied it.
  final  String errorMessage;
 @override final  MessageTime? time;
 

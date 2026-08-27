@@ -27,14 +27,16 @@ defaults and queued client sends coherent.
   concurrently on one plugin, and one slow session or plugin must not stall other
   sessions, other plugins, the relay read loop, or catalog reads.
 - Streaming produces incremental message and part events and a terminal status
-  transition back to idle; retry carries attempt, message, and timing and
-  returns to busy as soon as the retried request streams output again, and
-  finalized messages enter durable history matching a history read. A terminal
+  transition back to idle; retry carries attempt, backend-provided message, and
+  timing and returns to busy as soon as the retried request streams output again,
+  and finalized messages enter durable history matching a history read. A terminal
   provider failure appears as an inline error message and remains visible after
-  refresh or reopen. Backend-provided message timestamps remain present through
-  live updates and durable-history reloads, using the backend's authoritative
-  source for each path. Internal backend command records are not rendered as
-  conversation messages or used as assistant model attribution.
+  refresh or reopen. Backend-provided terminal and retry error text is forwarded
+  verbatim for every harness; plugins may flatten an error envelope but synthesize
+  text only when the backend supplied none. Backend-provided message timestamps
+  remain present through live updates and durable-history reloads, using the
+  backend's authoritative source for each path. Internal backend command records
+  are not rendered as conversation messages or used as assistant model attribution.
 - Claude user prompts appear in the live transcript from the CLI's replayed
   stdin echo under their transcript uuid, so a follow-up prompt stays visible
   and a later transcript backfill converges on the same message instead of
@@ -235,7 +237,9 @@ replay, and abort after output has started.
 - Streaming stalls, duplicates or loses parts, shows an empty user bubble, or
   orders a late envelope at the wrong transcript position; the session never
   returns to idle. A terminal provider failure returns to idle without showing
-  its error, the error disappears after refresh or reopen, or a live update
+  its error, a harness replaces backend-provided terminal or retry error text,
+  a plugin status serializes with a private discriminator and is dropped at the
+  shared SSE boundary, the error disappears after refresh or reopen, or a live update
   removes a backend-provided message timestamp. An OpenCode prompt, slash
   command, or bare `/compact` leaves both its local bubble and backend echo in
   the transcript.

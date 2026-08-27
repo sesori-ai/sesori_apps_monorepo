@@ -52,6 +52,8 @@ class const BridgeSseSessionError({required final String? sessionID}) extends Br
 
 class const BridgeSseSessionCompacted({required final String sessionID}) extends BridgeSseEvent;
 
+/// [status] uses the shared session-status JSON shape with a `type` discriminator.
+/// `PluginSessionStatus.toJson()` produces that shape for plugin-owned status.
 // ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
 class const BridgeSseSessionStatus({required final String sessionID, required final Map<String, dynamic> status})
     extends BridgeSseEvent;

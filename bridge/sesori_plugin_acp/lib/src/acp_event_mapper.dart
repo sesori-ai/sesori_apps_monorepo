@@ -19,13 +19,12 @@ import "repositories/trackers/acp_tool_content_tracker.dart";
 /// backend that knows its own gate wording recognizes it (see
 /// [AcpEventMapper.classifyHaltNotice]) and it is surfaced as a
 /// [shared.Message.error] instead of quiet assistant text, giving the user an
-/// explicit "the turn did not run" signal.
+/// explicit "the turn did not run" signal. Classification carries no replacement
+/// message; the mapper always forwards the original backend text unchanged.
 class const AcpHaltNotice({
   /// Short stable label for the halt class (e.g. "cursor_gate"), carried in
   /// the error message's `errorName`.
   required final String errorName,
-  /// The user-facing notice text to show (the agent's own wording).
-  required final String message,
 });
 
 /// Translates ACP `session/update` notifications into bridge-neutral
@@ -517,10 +516,11 @@ class AcpEventMapper({
   /// that splits its notice across chunks) has to account for the live per-chunk
   /// shape.
   ///
-  /// Base backends never halt this way; harness subclasses that emit
-  /// recognizable gate text (e.g. Cursor) override this. Also consulted by the
-  /// history-replay collector so a reloaded session renders the notice the same
-  /// way it did live.
+  /// The returned notice classifies the text but cannot replace it; live and
+  /// replay mapping retain [text] verbatim. Base backends never halt this way;
+  /// harness subclasses that emit recognizable gate text (e.g. Cursor) override
+  /// this. The history-replay collector also consults it so a reloaded session
+  /// renders the notice the same way it did live.
   AcpHaltNotice? classifyHaltNotice({required String text}) => null;
 
   List<BridgeSseEvent> _assistantContentChunk({
@@ -600,7 +600,7 @@ class AcpEventMapper({
       final text = blocks.whereType<AcpMappedTextContentBlock>().map((block) => block.text).join();
       if (text.isNotEmpty) {
         final halt = classifyHaltNotice(text: text);
-        if (halt != null) return _haltNoticeEvents(sessionId: sessionId, notice: halt);
+        if (halt != null) return _haltNoticeEvents(sessionId: sessionId, notice: halt, message: text);
       }
     }
 
@@ -689,7 +689,7 @@ class AcpEventMapper({
     // text (no regression).
     if (partType == PluginMessagePartType.text) {
       final halt = classifyHaltNotice(text: text);
-      if (halt != null) return _haltNoticeEvents(sessionId: sessionId, notice: halt);
+      if (halt != null) return _haltNoticeEvents(sessionId: sessionId, notice: halt, message: text);
     }
 
     // ACP v1: chunks of one message share a `messageId`; a change starts a new
@@ -788,6 +788,7 @@ class AcpEventMapper({
   List<BridgeSseEvent> _haltNoticeEvents({
     required String sessionId,
     required AcpHaltNotice notice,
+    required String message,
   }) {
     final messageId = "$sessionId-t${_turn(sessionId)}-halt";
     final started = _startedParts.putIfAbsent(sessionId, () => <String>{});
@@ -808,7 +809,7 @@ class AcpEventMapper({
           modelID: modelForSession(sessionId: sessionId),
           providerID: providerForSession(sessionId: sessionId),
           errorName: notice.errorName,
-          errorMessage: notice.message,
+          errorMessage: message,
           time: null,
         ).toJson(),
       ),

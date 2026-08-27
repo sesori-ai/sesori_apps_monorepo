@@ -855,9 +855,8 @@ void main() {
             providerId: "cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
-            haltClassifier: ({required text}) => text.trim() == "Check your settings to continue"
-                ? const AcpHaltNotice(errorName: "cursor_gate", message: "Check your settings to continue")
-                : null,
+            haltClassifier: ({required text}) =>
+                text.trim() == "Check your settings to continue" ? const AcpHaltNotice(errorName: "cursor_gate") : null,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -867,7 +866,7 @@ void main() {
 
       final message = collector.build().single;
       expect(message.info, isA<PluginMessageError>());
-      expect((message.info as PluginMessageError).errorMessage, "Check your settings to continue");
+      expect((message.info as PluginMessageError).errorMessage, "\n\nCheck your settings to continue");
       expect(message.parts, isEmpty);
     });
 
@@ -878,7 +877,7 @@ void main() {
             agentId: "Cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
-            haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate", message: "gate"),
+            haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -897,7 +896,7 @@ void main() {
             agentId: "Cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
-            haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate", message: "gate"),
+            haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -929,7 +928,7 @@ void main() {
             agentId: "Cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
-            haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate", message: "gate"),
+            haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",

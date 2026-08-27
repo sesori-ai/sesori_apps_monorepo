@@ -337,6 +337,9 @@ final class const ClaudeApiRetryMessage({
   required final int? retryDelayMs,
   required final int? errorStatus,
   required final ClaudeAssistantError error,
+
+  /// The CLI-provided retry error, retained verbatim for user-facing status.
+  required final String? rawError,
   required super.sessionId,
   required super.uuid,
   required super.raw,
@@ -351,6 +354,7 @@ final class const ClaudeApiRetryMessage({
     retryDelayMs: _intOrNull(json["retry_delay_ms"]),
     errorStatus: _intOrNull(json["error_status"]),
     error: ClaudeAssistantError.parse(json["error"]),
+    rawError: _stringOrNull(json["error"]),
     sessionId: sessionId,
     uuid: uuid,
     raw: json,

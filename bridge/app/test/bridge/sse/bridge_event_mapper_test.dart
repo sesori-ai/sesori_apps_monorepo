@@ -73,6 +73,27 @@ void main() {
       );
     });
 
+    test("maps serialized plugin retry status through the shared SSE union", () {
+      final result = mapEvent(
+        BridgeSseSessionStatus(
+          sessionID: "s1",
+          status: const PluginSessionStatus.retry(
+            attempt: 1,
+            message: "provider overloaded",
+            next: 2000,
+          ).toJson(),
+        ),
+      );
+
+      expect(result, isA<SesoriSessionStatus>());
+      final event = result! as SesoriSessionStatus;
+      expect(event.sessionID, "s1");
+      expect(
+        event.status,
+        const SessionStatus.retry(attempt: 1, message: "provider overloaded", next: 2000),
+      );
+    });
+
     test("attributes command catalog updates to their source plugin", () {
       final result = mapper.map(
         event: const BridgeSseCommandCatalogUpdated(),

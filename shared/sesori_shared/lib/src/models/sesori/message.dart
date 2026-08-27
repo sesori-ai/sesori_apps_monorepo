@@ -17,10 +17,10 @@ part "message.g.dart";
 /// - `MessageAssistant`: `"assistant"`
 /// - `MessageError`: `"error"`
 ///
-/// The bridge layer is responsible for normalizing backend-specific error
-/// shapes (e.g., a nested `error.data.message`) into the flat
-/// `errorName` and `errorMessage` fields before constructing a
-/// [MessageError].
+/// The bridge layer is responsible for flattening backend-specific error
+/// shapes (e.g., a nested `error.data.message`) into `errorName` and
+/// `errorMessage`. Backend-provided text is preserved verbatim; a harness may
+/// synthesize a fallback only when its backend supplied no error text.
 @Freezed(unionKey: "role", fromJson: true, toJson: true)
 sealed class const Message._() with _$Message {
   const factory user({
@@ -53,6 +53,8 @@ sealed class const Message._() with _$Message {
     required String? modelID,
     required String? providerID,
     required String errorName,
+
+    /// The backend-provided error text, unchanged when the backend supplied it.
     required String errorMessage,
     required MessageTime? time,
   }) = MessageError;
