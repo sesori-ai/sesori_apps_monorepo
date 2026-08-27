@@ -45,7 +45,7 @@
 - [x] Validate the released 1.0.5 binary and correct the plan's auth/state assumptions.
 - [x] Re-run architecture plan review for the material shared auth-policy hook; current revision approved.
 - [x] Revalidate Markdown paths/titles and `git diff --check` after that correction.
-- [ ] Address all actionable #1152 review feedback and leave prefixed thread replies.
+- [x] Address all actionable #1152 review feedback and leave prefixed thread replies.
 - [x] Commit, push, and open Step 1 PR (#1152).
 - [x] Start the PR monitor.
 - [x] Create the Step 2 successor branch in this worktree and begin released-binary research locally.
