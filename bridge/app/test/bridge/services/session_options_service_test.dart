@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:io";
 
 import "package:sesori_bridge/src/repositories/models/session_options_cache_key.dart";
+import "package:sesori_bridge/src/repositories/new_session_defaults_repository.dart";
 import "package:sesori_bridge/src/repositories/session_options_repository.dart";
 import "package:sesori_bridge/src/services/session_options_service.dart";
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
@@ -36,6 +37,71 @@ void main() {
       expect(repository.captureCalls, isEmpty);
       expect(repository.commitCalls, isEmpty);
       expect(repository.runtimeChecks, 0);
+    });
+
+    test("client-facing options include the last successful creation defaults for that plugin", () async {
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/one"
+        ..put(
+          _entry(
+            key: const SessionOptionsCacheKey.plugin(pluginId: "plugin-1"),
+            response: _response(marker: "cached"),
+            capturedAt: now,
+          ),
+        );
+      final defaultsRepository = _FakeNewSessionDefaultsRepository()
+        ..defaultsByPlugin["plugin-1"] = const SessionPromptDefaults(
+          agent: "build",
+          model: AgentModel(providerID: "provider", modelID: "model", variant: "high"),
+        );
+      final service = SessionOptionsService(
+        repository: repository,
+        newSessionDefaultsRepository: defaultsRepository,
+        pluginScopes: const {"plugin-1": PluginSessionOptionsScope.plugin},
+        clock: _FixedClock(nowValue: now),
+        retention: const Duration(days: 30),
+      );
+
+      final outcome = await service.loadCacheOnly(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(
+        (outcome as SessionOptionsAvailable).response.lastUsedPromptDefaults,
+        defaultsRepository.defaultsByPlugin["plugin-1"],
+      );
+      expect(defaultsRepository.readCalls, 1);
+    });
+
+    test("a defaults read failure keeps the options catalog usable and observable", () async {
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/one"
+        ..put(
+          _entry(
+            key: const SessionOptionsCacheKey.plugin(pluginId: "plugin-1"),
+            response: _response(marker: "cached"),
+            capturedAt: now,
+          ),
+        );
+      final defaultsRepository = _FakeNewSessionDefaultsRepository()..readError = StateError("defaults unavailable");
+      final service = SessionOptionsService(
+        repository: repository,
+        newSessionDefaultsRepository: defaultsRepository,
+        pluginScopes: const {"plugin-1": PluginSessionOptionsScope.plugin},
+        clock: _FixedClock(nowValue: now),
+        retention: const Duration(days: 30),
+      );
+
+      late SessionOptionsOutcome outcome;
+      final output = await _captureLogOutput(
+        level: LogLevel.debug,
+        action: () async {
+          outcome = await service.loadCacheOnly(pluginId: "plugin-1", projectId: "project-1");
+        },
+      );
+
+      expect(outcome, isA<SessionOptionsAvailable>());
+      expect((outcome as SessionOptionsAvailable).response.lastUsedPromptDefaults, isNull);
+      expect(output, contains("Failed to read new-session defaults for plugin plugin-1"));
+      expect(output, contains("defaults unavailable"));
     });
 
     test("cache-only load does not expose a project row after its path moves", () async {
@@ -877,6 +943,7 @@ void main() {
       );
       final service = SessionOptionsService(
         repository: repository,
+        newSessionDefaultsRepository: _FakeNewSessionDefaultsRepository(),
         pluginScopes: const {"plugin-1": PluginSessionOptionsScope.project},
         clock: clock,
         retention: Duration.zero,
@@ -1034,6 +1101,7 @@ void main() {
         };
       final service = SessionOptionsService(
         repository: repository,
+        newSessionDefaultsRepository: _FakeNewSessionDefaultsRepository(),
         pluginScopes: const {"plugin-1": PluginSessionOptionsScope.project},
         clock: clock,
         retention: Duration.zero,
@@ -1239,6 +1307,7 @@ void main() {
       };
       final service = SessionOptionsService(
         repository: repository,
+        newSessionDefaultsRepository: _FakeNewSessionDefaultsRepository(),
         pluginScopes: const {"plugin-1": PluginSessionOptionsScope.project},
         clock: _AdvancingClock(now: now),
         retention: const Duration(days: 30),
@@ -1538,6 +1607,7 @@ SessionOptionsService _service({
 }) {
   return SessionOptionsService(
     repository: repository,
+    newSessionDefaultsRepository: _FakeNewSessionDefaultsRepository(),
     pluginScopes: scopes,
     clock: _FixedClock(nowValue: now),
     retention: const Duration(days: 30),
@@ -1586,6 +1656,7 @@ SessionOptionsResponse _response({required String marker}) {
     ),
     providers: const ProviderListResponse(items: [], connectedOnly: true),
     commands: const CommandListResponse(items: []),
+    lastUsedPromptDefaults: null,
   );
 }
 
@@ -1653,6 +1724,23 @@ class const _CommitCall({
 });
 
 class const _ConditionalDeleteCall({required final SessionOptionsCacheKey key, required final int expectedRevision});
+
+class _FakeNewSessionDefaultsRepository() implements NewSessionDefaultsRepository {
+  final Map<String, SessionPromptDefaults> defaultsByPlugin = {};
+  Object? readError;
+  int readCalls = 0;
+
+  @override
+  Future<SessionPromptDefaults?> read({required String pluginId}) async {
+    readCalls++;
+    final error = readError;
+    if (error != null) throw error;
+    return defaultsByPlugin[pluginId];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 class _FakeSessionOptionsRepository() implements SessionOptionsRepository {
   final Map<String, String> projectPaths = {};

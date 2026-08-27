@@ -21,7 +21,7 @@ void main() {
           "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'session_options_cache_table'",
         )
         .getSingle();
-    expect(database.schemaVersion, 13);
+    expect(database.schemaVersion, 14);
     expect(definition.read<String>("sql").toUpperCase(), contains("WITHOUT ROWID"));
 
     final foreignKeys = await database.customSelect("PRAGMA foreign_key_list('session_options_cache_table')").get();
@@ -30,6 +30,40 @@ void main() {
     expect(foreignKeys.single.read<String>("from"), "project_id");
     expect(foreignKeys.single.read<String>("to"), "project_id");
     expect(foreignKeys.single.read<String>("on_delete").toUpperCase(), "CASCADE");
+  });
+
+  test("current schema creates plugin-scoped new-session defaults", () async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+
+    final definition = await database
+        .customSelect(
+          "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'new_session_defaults_table'",
+        )
+        .getSingle();
+    expect(definition.read<String>("sql").toUpperCase(), contains("WITHOUT ROWID"));
+
+    await database
+        .into(database.newSessionDefaultsTable)
+        .insert(
+          NewSessionDefaultsTableCompanion.insert(
+            pluginId: "plugin-a",
+            agent: const Value("build"),
+            agentModel: const Value(null),
+          ),
+        );
+    await expectLater(
+      database
+          .into(database.newSessionDefaultsTable)
+          .insert(
+            NewSessionDefaultsTableCompanion.insert(
+              pluginId: "",
+              agent: const Value("build"),
+              agentModel: const Value(null),
+            ),
+          ),
+      throwsA(isA<SqliteException>()),
+    );
   });
 
   test("session options CAS requires the exact next revision", () async {

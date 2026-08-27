@@ -27,6 +27,7 @@ void main() {
       agents: Agents(agents: <AgentInfo>[]),
       providers: ProviderListResponse(items: <ProviderInfo>[], connectedOnly: false),
       commands: CommandListResponse(items: <CommandInfo>[]),
+      lastUsedPromptDefaults: null,
     );
 
     test("loadSessionOptions omits the query for dynamic loading", () async {

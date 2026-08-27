@@ -22,6 +22,10 @@ entirely along with its transcript and, optionally, its worktree.
   reconciliation. Worktree cleanup happens only when requested; unsafe cleanup
   (unstaged changes or a shared worktree) is refused with its issues and proceeds
   only on a forced retry. Session retirement never deletes a Git branch.
+- Per-session prompt defaults are live composer cache, not audit data. Archiving
+  clears them from the session row and omits them from the archive snapshot;
+  deletion removes them with the row. The separate last-successful New Session
+  preference is plugin-scoped and survives retiring any individual session.
 - Once deletion cleanup starts, the bridge suppresses session-created and
   session-updated events for the named session and its persisted descendants.
   Suppression remains for the bridge lifetime after success and is removed if
@@ -74,7 +78,8 @@ and branches that remain after the asserted cleanup behavior.
 - An archived session accepts a prohibited non-deletion mutation, or becomes
   unarchived by any path.
 - An audit record is missing or unreadable, history is purged without a durable
-  record, or a partial export is recorded as complete.
+  record, a partial export is recorded as complete, or an archived snapshot
+  retains live prompt defaults.
 - Deletion residue survives startup reconciliation without an observable failure
   and later retry, or cleanup removes a worktree or branch that was not requested.
 - A close-capable backend is closed while its prompt is still settling, emits

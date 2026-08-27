@@ -50,6 +50,7 @@ SessionOptionsRepositoryResult _freshClaudeOptions() => SessionOptionsRepository
     providers: const [],
     providersConnectedOnly: false,
     commands: const [],
+    lastUsedPromptDefaults: null,
   ),
 );
 
@@ -83,6 +84,7 @@ SessionOptionsRepositoryResult _claudeOptionsWithVariants(List<String> variants)
     providers: _providerDataWithVariants(variants).items,
     providersConnectedOnly: false,
     commands: const [],
+    lastUsedPromptDefaults: null,
   ),
 );
 

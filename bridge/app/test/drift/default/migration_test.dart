@@ -6,6 +6,7 @@ import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
+
 import 'generated/schema.dart';
 
 import 'generated/schema_v1.dart' as v1;
@@ -1542,6 +1543,23 @@ void main() {
       expect(session.catalogTitle, 'Catalog title');
       expect(await db.select(db.pullRequestsTable).get(), isEmpty);
       expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
+    },
+  );
+
+  test(
+    'migration v13 → v14 creates empty plugin-scoped new-session defaults',
+    () async {
+      final connection = await verifier.startAt(13);
+      final db = AppDatabase(connection);
+
+      await verifier.migrateAndValidate(
+        db,
+        14,
+        options: const ValidationOptions(validateDropped: true),
+      );
+
+      expect(await db.select(db.newSessionDefaultsTable).get(), isEmpty);
+      await db.close();
     },
   );
 
