@@ -3,11 +3,11 @@
 ## Current State
 
 - **Plan slug:** `deepseek-harness`
-- **Plan status:** Steps 1-14 merged; Step 15/16 in progress locally
+- **Plan status:** Steps 1-14 merged; Step 15/16 open for review
 - **Current repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current branch:** `deepseek-harness/step-15-regression-docs`
-- **Current open PR:** none
-- **Next action:** verify and publish Step 15 regression documentation
+- **Current open PR:** [PR #1129](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1129)
+- **Next action:** review and merge Step 15, then run the Step 16 verification matrix
 - **Implementation started:** yes
 - **Retirement:** blocked until every required row in `PLAN.md` passes
 
@@ -29,7 +29,7 @@
 | [x] | 12/16 | deepseek adapter | `🚧 [deepseek-harness] build(runtime): release the managed DeepSeek adapter [step 12/16]` | Complex supply chain and six-platform release | 1,300 | [runtime PR #9](https://github.com/sesori-ai/sesori-deepseek-acp/pull/9) merged; extractor-safe [v0.1.1 release](https://github.com/sesori-ai/sesori-deepseek-acp/releases/tag/v0.1.1) published after [PR #10](https://github.com/sesori-ai/sesori-deepseek-acp/pull/10) |
 | [x] | 13/16 | apps monorepo | `⚙️ [deepseek-harness] feat(deepseek): install the managed DeepSeek runtime [step 13/16]` | Moderate managed-runtime integration | 1,250 | [PR #1109](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1109) merged |
 | [x] | 14/16 | apps monorepo | `⚙️ [deepseek-harness] feat(app): activate DeepSeek Harness [step 14/16]` | Moderate registry/client activation | 1,000 | [PR #1110](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1110) merged |
-| [ ] | 15/16 | apps monorepo | `🌱 [deepseek-harness] docs: document DeepSeek regression coverage [step 15/16]` | Straight documentation reconciliation | 600 | In progress locally atop Step 14 |
+| [ ] | 15/16 | apps monorepo | `🌱 [deepseek-harness] docs: document DeepSeek regression coverage [step 15/16]` | Straight documentation reconciliation | 600 | [PR #1129](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1129) open for review |
 | [ ] | 16/16 | apps monorepo | `🌱 [deepseek-harness] docs: verify DeepSeek and retire the plan [step 16/16]` | Trivial evidence/retirement changes after a complex external verification run | 700 | Pending Step 15 |
 
 On 2026-08-24, user approved this 15-to-16 split because combined staged
@@ -261,7 +261,7 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] Markdown fences, local links, and all ten regression-document references valid
 - [x] `git diff --check`
 - [x] Final changed-line count: 179, below the 600 soft target and 1,500 hard cap
-- [ ] PR evidence
+- [x] PR #1129 opened against `main`
 
 Later implementation and live evidence is appended here by step. Never mark a
 regression row passed without the boundary and matrix required by `PLAN.md`.
