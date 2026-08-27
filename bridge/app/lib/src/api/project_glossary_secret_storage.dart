@@ -2,7 +2,7 @@ import "dart:io";
 
 import "package:path/path.dart" as p;
 
-import "../auth/restricted_file_writer.dart";
+import "../foundation/restricted_file_writer.dart";
 
 /// Reads and writes bridge-local glossary HMAC material with owner-only
 /// permissions. Creation, validation, and caching policy belong to Layer 2.

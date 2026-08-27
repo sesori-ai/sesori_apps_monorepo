@@ -4,6 +4,7 @@ import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../foundation/process_runner.dart";
+import "../foundation/streaming_process_runner.dart";
 
 typedef GitPathExistsChecker = bool Function({required String gitPath});
 
@@ -25,9 +26,29 @@ class GitWorktreeSafetySnapshot({
 class GitCliApi({
   required final ProcessRunner _processRunner,
   required final GitPathExistsChecker _gitPathExists,
+  final StreamingProcessRunner _streamingProcessRunner = const StreamingProcessRunner(),
 }) {
+  static const Duration _trackedFilesTimeout = Duration(seconds: 15);
+  static const List<String> _trackedFilesArguments = ["ls-files", "--cached", "-z", "--", "."];
   Future<bool> isGitInitialized({required String projectPath}) async {
     return _gitPathExists(gitPath: p.join(projectPath, ".git"));
+  }
+
+  /// Streams a bounded tracked-file prefix without buffering Git's complete
+  /// index output in bridge memory.
+  Future<List<String>> listTrackedFiles({required String projectPath, required int maximumPaths}) async {
+    if (maximumPaths <= 0) {
+      throw ArgumentError.value(maximumPaths, "maximumPaths", "must be positive");
+    }
+
+    return await _streamingProcessRunner.run(
+      executable: "git",
+      arguments: _trackedFilesArguments,
+      workingDirectory: projectPath,
+      environment: const {"LC_ALL": "C"},
+      timeout: _trackedFilesTimeout,
+      operation: ({required process}) => _collectTrackedFiles(process: process, maximumPaths: maximumPaths),
+    );
   }
 
   Future<bool> isInsideGitWorkTree({required String projectPath}) async {
@@ -570,6 +591,39 @@ class GitCliApi({
     }
 
     return removed;
+  }
+
+  Future<List<String>> _collectTrackedFiles({
+    required StreamingProcess process,
+    required int maximumPaths,
+  }) async {
+    final paths = <String>[];
+    final currentPath = StringBuffer();
+    final stderrFuture = process.stderr.transform(const SystemEncoding().decoder).join();
+
+    await for (final chunk in process.stdout.transform(const SystemEncoding().decoder)) {
+      var start = 0;
+      while (start < chunk.length) {
+        final terminator = chunk.indexOf("\u0000", start);
+        if (terminator < 0) {
+          currentPath.write(chunk.substring(start));
+          break;
+        }
+        currentPath.write(chunk.substring(start, terminator));
+        if (currentPath.isNotEmpty) paths.add(currentPath.toString());
+        currentPath.clear();
+        start = terminator + 1;
+        if (paths.length == maximumPaths) return paths;
+      }
+    }
+
+    if (currentPath.isNotEmpty && paths.length < maximumPaths) paths.add(currentPath.toString());
+    final exitCode = await process.exitCode;
+    final stderr = await stderrFuture;
+    if (exitCode != 0) {
+      throw ProcessException("git", _trackedFilesArguments, stderr, exitCode);
+    }
+    return paths;
   }
 
   Future<ProcessResult> runGit({required String projectPath, required List<String> arguments}) {

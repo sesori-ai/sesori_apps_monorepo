@@ -45,6 +45,7 @@ void main() {
           "AcmeCompiler uses AKIAIOSFODNN7EXAMPLE, q7Vn2Lp9Rk4Tz8Mw6Hx3, and $secretAccessKey for examples.",
           "password=SuperSecretProductionPassword token=aBcDeFgHiJkLmNoPqRsTuVwXyZ",
           '''{"api_key":"abcdEfghijklmnopqrstuvwxyz"}''',
+          "Authorization: Bearer abcDefghijklmnopqrstuvwxyz",
           "AcmeCompiler appears again without exposing credentials.",
         ],
       ),
@@ -61,6 +62,7 @@ void main() {
     expect(terms, isNot(contains("privatehostedcredentialvalue")));
     expect(terms, isNot(contains("aBcDeFgHiJkLmNoPqRsTuVwXyZ")));
     expect(terms, isNot(contains("abcdEfghijklmnopqrstuvwxyz")));
+    expect(terms, isNot(contains("abcDefghijklmnopqrstuvwxyz")));
   });
 
   test("requires repeated metadata evidence for ordinary lowercase prose", () {

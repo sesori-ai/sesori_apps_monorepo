@@ -20,7 +20,6 @@ import "api/database/history/chat_history_database.dart";
 import "api/filesystem_api.dart";
 import "api/gh_cli_api.dart";
 import "api/git_cli_api.dart";
-import "api/git_tracked_files_api.dart";
 import "api/sesori_server_api.dart";
 import "auth/access_token_provider.dart";
 import "auth/bridge_registration_service.dart";
@@ -220,7 +219,11 @@ class Orchestrator({
     const aggregateSourceDeadline = Duration(seconds: 5);
     const unseenCalculator = SessionUnseenCalculator();
     const projectCatalogIdentityCalculator = ProjectCatalogIdentityCalculator();
-    final gitCliApi = GitCliApi(processRunner: _processRunner, gitPathExists: _gitPathExists);
+    final gitCliApi = GitCliApi(
+      processRunner: _processRunner,
+      gitPathExists: _gitPathExists,
+      streamingProcessRunner: const StreamingProcessRunner(),
+    );
     final sessionRepository = SessionRepository(
       runtime: _pluginRuntime,
       sessionDao: _database.sessionDao,
@@ -394,7 +397,6 @@ class Orchestrator({
       projectRepository: projectRepository,
       glossaryRepository: ProjectGlossaryRepository(
         gitCliApi: gitCliApi,
-        gitTrackedFilesApi: GitTrackedFilesApi(processRunner: const StreamingProcessRunner()),
         filesystemApi: const FilesystemApi(),
         serverApi: sesoriServerApi,
       ),

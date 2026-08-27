@@ -5,12 +5,10 @@ import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
-import "package:sesori_bridge/src/api/git_tracked_files_api.dart";
 import "package:sesori_bridge/src/api/models/project_glossary_response.dart";
 import "package:sesori_bridge/src/api/sesori_server_api.dart";
 import "package:sesori_bridge/src/foundation/abortable_request.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
-import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:sesori_bridge/src/repositories/project_glossary_repository.dart";
 import "package:test/test.dart";
 
@@ -18,7 +16,7 @@ import "../../helpers/test_helpers.dart";
 
 void main() {
   test("loads only bounded high-signal metadata and excludes generated or vendored paths", () async {
-    final gitTrackedFilesApi = _SourceGitTrackedFilesApi(
+    final gitCliApi = _SourceGitCliApi(
       trackedPaths: const [
         "README.md",
         "pubspec.yaml",
@@ -28,8 +26,7 @@ void main() {
       ],
     );
     final repository = ProjectGlossaryRepository(
-      gitCliApi: _SourceGitCliApi(),
-      gitTrackedFilesApi: gitTrackedFilesApi,
+      gitCliApi: gitCliApi,
       filesystemApi: const _SourceFilesystemApi(
         files: {
           "/project/README.md": "# Acme Quasar",
@@ -54,14 +51,13 @@ void main() {
       "lib/src/XChaCha20Cipher.dart",
     ]);
     expect(source.metadataDocuments, ["# Acme Quasar", "name: acme_quasar"]);
-    expect(gitTrackedFilesApi.requestedMaximumPaths, 50000);
+    expect(gitCliApi.requestedMaximumPaths, 50000);
   });
 
   test("translates HTTP aborts at the repository boundary", () async {
     final abort = http.RequestAbortedException(Uri.parse("https://auth.example.test/voice/glossary"));
     final repository = ProjectGlossaryRepository(
       gitCliApi: _SourceGitCliApi(),
-      gitTrackedFilesApi: _SourceGitTrackedFilesApi(trackedPaths: const []),
       filesystemApi: const _SourceFilesystemApi(files: {}),
       serverApi: _AbortingSesoriServerApi(abort),
     );
@@ -82,7 +78,6 @@ void main() {
     final serverApi = _PendingSesoriServerApi();
     final repository = ProjectGlossaryRepository(
       gitCliApi: _SourceGitCliApi(),
-      gitTrackedFilesApi: _SourceGitTrackedFilesApi(trackedPaths: const []),
       filesystemApi: const _SourceFilesystemApi(files: {}),
       serverApi: serverApi,
     );
@@ -99,7 +94,6 @@ void main() {
   test("preserves operational Git failures instead of scanning as non-Git", () async {
     final repository = ProjectGlossaryRepository(
       gitCliApi: _FailingMembershipGitCliApi(),
-      gitTrackedFilesApi: _SourceGitTrackedFilesApi(trackedPaths: const []),
       filesystemApi: const _SourceFilesystemApi(files: {}),
       serverApi: SesoriServerApi(
         authBackendUrl: "https://unused.example.test",
@@ -117,8 +111,7 @@ void main() {
 
   test("does not scan untracked or ignored root metadata in a Git project", () async {
     final repository = ProjectGlossaryRepository(
-      gitCliApi: _SourceGitCliApi(),
-      gitTrackedFilesApi: _SourceGitTrackedFilesApi(trackedPaths: const ["lib/App.dart"]),
+      gitCliApi: _SourceGitCliApi(trackedPaths: const ["lib/App.dart"]),
       filesystemApi: const _SourceFilesystemApi(
         files: {
           "/project/README.md": "private local vocabulary",
@@ -170,12 +163,14 @@ class _PendingSesoriServerApi() implements SesoriServerApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _SourceGitCliApi() extends GitCliApi {
+class _SourceGitCliApi({final List<String> trackedPaths = const []}) extends GitCliApi {
   this
     : super(
         processRunner: ProcessRunner(),
         gitPathExists: ({required String gitPath}) => true,
       );
+
+  int? requestedMaximumPaths;
 
   @override
   Future<bool> isInsideGitWorkTree({required String projectPath}) async => true;
@@ -183,12 +178,6 @@ class _SourceGitCliApi() extends GitCliApi {
   @override
   Future<String?> getRemoteUrl({required String projectPath}) async =>
       "git@github.com:sesori-ai/sesori_apps_monorepo.git";
-}
-
-class _SourceGitTrackedFilesApi({required final List<String> trackedPaths}) extends GitTrackedFilesApi {
-  this : super(processRunner: const StreamingProcessRunner());
-
-  int? requestedMaximumPaths;
 
   @override
   Future<List<String>> listTrackedFiles({required String projectPath, required int maximumPaths}) async {

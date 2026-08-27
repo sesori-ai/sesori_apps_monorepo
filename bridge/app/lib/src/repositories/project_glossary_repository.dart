@@ -8,7 +8,6 @@ import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryWordsReque
 
 import "../api/filesystem_api.dart";
 import "../api/git_cli_api.dart";
-import "../api/git_tracked_files_api.dart";
 import "../api/sesori_server_api.dart";
 import "../foundation/abortable_request.dart";
 import "mappers/git_remote_identity_parser.dart";
@@ -23,7 +22,6 @@ class ProjectGlossaryRepositoryAbortedException({
 /// the authenticated Sesori server API.
 class ProjectGlossaryRepository({
   required final GitCliApi _gitCliApi,
-  required final GitTrackedFilesApi _gitTrackedFilesApi,
   required final FilesystemApi _filesystemApi,
   required final SesoriServerApi _serverApi,
 }) {
@@ -109,7 +107,7 @@ class ProjectGlossaryRepository({
             maximumEntries: _maximumTrackedPaths,
           );
     final sourcePaths = isGitProject
-        ? await _gitTrackedFilesApi.listTrackedFiles(projectPath: projectPath, maximumPaths: _maximumTrackedPaths)
+        ? await _gitCliApi.listTrackedFiles(projectPath: projectPath, maximumPaths: _maximumTrackedPaths)
         : rootEntryNames;
     final trackedPaths = sourcePaths.where((path) => !_isExcludedPath(path)).toList(growable: false);
     final metadataPaths = <String>{

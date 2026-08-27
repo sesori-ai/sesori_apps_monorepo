@@ -1,6 +1,6 @@
 import "dart:io";
 
-import "restricted_file_writer.dart";
+import "../foundation/restricted_file_writer.dart";
 
 /// File-backed persistence for the bridge id assigned by the auth server's
 /// `/auth/bridges` endpoint.

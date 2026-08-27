@@ -20,6 +20,10 @@ class const ProjectGlossaryTermCalculator() {
     r'''["']?[^"'\s,;}\]]+["']?''',
     caseSensitive: false,
   );
+  static final RegExp _bearerCredentialPattern = RegExp(
+    r'''(?:["']?authorization["']?\s*[:=]\s*["']?)?bearer\s+[A-Za-z0-9_./+=#-]{8,}["']?''',
+    caseSensitive: false,
+  );
   static final RegExp _credentialPrefixedSpanPattern = RegExp(
     "(?:AIza|AKIA|ASIA|gh[oprsu]|github[_-]?pat|rk[_-]?live|sk[_-]?(?:ant|live|proj)|xox[a-z])"
     "[_-]?[A-Za-z0-9_./+=#-]{8,}",
@@ -187,6 +191,7 @@ when with web widget widgets will windows window workspace www
 
   String _filterCredentialSpans(String value) => value
       .replaceAll(_credentialAssignmentPattern, " ")
+      .replaceAll(_bearerCredentialPattern, " ")
       .replaceAll(_credentialLabeledSpanPattern, " ")
       .replaceAll(_credentialPrefixedSpanPattern, " ")
       .replaceAllMapped(

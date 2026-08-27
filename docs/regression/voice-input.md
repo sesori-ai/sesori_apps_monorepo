@@ -35,9 +35,10 @@ client to the external transcription endpoint.
 - Git inference streams at most 50,000 tracked paths and never enumerates untracked or ignored root metadata. An
   operational Git failure aborts inference rather than treating the project as non-Git; non-Git enumeration is also
   streamed and bounded.
-- README and package-manifest reads are capped. Credential assignments and prefixed/secret-shaped spans are removed
-  before token splitting; generated/vendor/build paths, hashes, and generic terms are excluded before deterministic
-  ranking. Only filtered terms and the opaque key reach auth—never source contents, paths, or raw identifiers.
+- README and package-manifest reads are capped. Quoted/unquoted credential assignments, authorization/bearer values,
+  and prefixed/secret-shaped spans are removed before token splitting; generated/vendor/build paths, hashes, and
+  generic terms are excluded before deterministic ranking. Only filtered terms and the opaque key reach auth—never
+  source contents, paths, or raw identifiers.
 - The bridge reads existing words before scanning, uploads at most enough to reach 50, attempts each project once per
   process, serializes different projects, and aborts/drains admitted work during shutdown.
 - The preference defaults to voice-first, persists, and falls back to voice-first on a corrupt or unknown stored

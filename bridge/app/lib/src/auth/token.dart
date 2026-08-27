@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:sesori_shared/sesori_shared.dart';
 
-import 'restricted_file_writer.dart';
+import '../foundation/restricted_file_writer.dart';
 
 /// TokenData holds authentication tokens for the Sesori Bridge.
 class TokenData({
