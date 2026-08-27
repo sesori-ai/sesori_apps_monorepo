@@ -103,8 +103,8 @@ is corrected before production code relies on the mismatch.
   resume, and close behavior inherited from the shared ACP implementation.
 - Pre-session model discovery from initialize metadata, explicit refresh through a short-lived initialize-only ACP
   process, exact model/effort selection, and last-good catalog retention.
-- Bridge registry/workspace/CI inventory, built-in `Harness.grok` identity, client name/logo mapping, README and
-  architecture documentation.
+- Bridge workspace/Makefile/CI inventory during package scaffolding, then app registry activation, built-in
+  `Harness.grok` identity, client name/logo mapping, README, and architecture documentation.
 - Regression-document reconciliation and live Grok verification through the matrix below.
 
 ### Excluded
@@ -146,10 +146,13 @@ client <-> relay <-> bridge app <-> sesori_plugin_grok <-> grok agent --no-leade
   `GrokSessionModelStateDto`: typed boundary parsing for the reviewed Grok wire shape.
 - `GrokAcpApi`: initialize-only catalog probe plus `session/set_model`; no business mapping.
 - `GrokCatalogRepository`: validates Grok initialize identity and maps exact model/effort values into a catalog.
+- `GrokSessionConfigRepository`: validates and delegates exact session-local model/effort writes to `GrokAcpApi`,
+  preserving the original failure as the cause of a typed operation error.
 - `GrokCatalogTracker`: sole owner of the last-good immutable catalog and its replace-on-success/retain-on-failure
   invariant across initialize capture, new/load capture, and explicit refresh.
-- `GrokSessionOptionsService`: consumes the repository and tracker to coordinate discovery, project one primary
-  agent/provider, and apply exact session-local selections before turns without storing duplicate catalog state.
+- `GrokSessionOptionsService`: consumes both repositories and the tracker to coordinate discovery, project one primary
+  agent/provider, and apply exact session-local selections before turns without storing duplicate catalog state or
+  calling the API layer directly.
 - `GrokPlugin`: thin `AcpPlugin` specialization that captures initialize/new/load model state, exposes options, opts
   into fail-closed selection and stop-and-send, and delegates Grok-specific work.
 - `GrokPluginDescriptor`: CLI option, version/setup probes, pre-start runtime validation, composition, and lifecycle.
@@ -172,9 +175,10 @@ explicit option refresh -> short-lived dedicated grok ACP process
                         -> dispose without session/new
                         -> replace last-good catalog only on success
 
-create/send -> validate exact requested model + variant against catalog
-            -> session/set_model(sessionId, modelId, _meta.reasoningEffort?)
-            -> record selection only after success
+create/send -> service validates requested model + variant against catalog
+            -> GrokSessionConfigRepository
+            -> GrokAcpApi.session/set_model(sessionId, modelId, _meta.reasoningEffort?)
+            -> record selection only after repository success
             -> standard ACP session/prompt
 ```
 
@@ -206,9 +210,10 @@ typed failure. Bridge lifecycle code then blocks only Grok and shows local `grok
   under Grok's own permission/sandbox policy and standard ACP approvals remain phone-mediated.
 - `--no-leader` keeps subprocess/session lifecycle within the plugin generation rather than attaching to an unrelated
   shared daemon. `--no-auto-update` prevents the owned child from mutating its executable during bridge operation.
-- Credentials, auth payloads, model configuration, raw initialize metadata, prompts, transcripts, paths, and tool
-  payloads are never logged or persisted by new Grok-specific code. Interactive `grok.com`/OIDC methods are never
-  invoked by the headless bridge.
+- Credentials, auth payloads, model configuration values, raw initialize metadata, prompts, transcripts, and tool
+  payloads are never logged or persisted by new Grok-specific code. Local diagnostics preserve useful executable paths,
+  operation context, caught errors, and stack traces. Interactive `grok.com`/OIDC methods are never invoked by the
+  headless bridge.
 - Grok's own provider traffic, telemetry, retention, and enterprise policy remain governed by the user's Grok
   configuration; Sesori neither weakens nor silently overrides them.
 - Unknown model metadata is ignored at the typed boundary. Exact recognized values are retained without interpretation.
@@ -261,11 +266,11 @@ closed analytics privacy contract forbidding coding provider/model names.
 1. `🌱 [grok-harness] docs: plan Grok Build harness support [step 1/9]`
    - Add and architecture-review this plan/tracker; no production behavior.
 2. `🌿 [grok-harness] feat(grok): scaffold the Grok plugin package [step 2/9]`
-   - Add the workspace package, identity, binary launch spec, typed DTOs/fixtures, released-binary contract evidence,
-     and focused parsing/launch tests. Freeze the validated floor and invocation.
+   - Add the package plus bridge workspace/Makefile/CI inventory, identity, binary launch spec, typed DTOs/fixtures,
+     released-binary contract evidence, and focused parsing/launch tests. Freeze the validated floor and invocation.
 3. `⚙️ [grok-harness] feat(grok): expose models and reasoning effort [step 3/9]`
-   - Add the ACP API, catalog repository/tracker, options service, exact model/effort mapping, refresh/last-good
-     behavior, selection calls, and tests.
+   - Add the ACP API, catalog/config repositories, tracker, options service, exact model/effort mapping,
+     refresh/last-good behavior, selection calls, and direct collaborator tests without production plugin hooks.
 4. `⚙️ [grok-harness] feat(grok): compose ACP sessions and turns [step 4/9]`
    - Add the optional generic advertised-auth allowlist hook, `GrokPlugin`, initialize identity/catalog capture,
      standard ACP lifecycle hooks, stop-and-send/fail-closed behavior, conformance tests, and idempotent disposal.
@@ -286,9 +291,9 @@ closed analytics privacy contract forbidding coding provider/model names.
      plan to `.plan/completed/grok-harness/`, and update the tracker.
 
 Each step targets fewer than 1,500 changed lines, including tests and generated output. Step 3 may approach that cap
-because its typed generated DTOs and behavioral tests are one coherent mapping boundary; split only if measured changed
-lines
-exceed the cap and an independently valid boundary exists. The fixed nine-step total otherwise remains unchanged.
+because its typed generated DTOs and behavioral tests are one coherent mapping boundary; split only if measured
+changed lines exceed the cap and an independently valid boundary exists. The fixed nine-step total otherwise remains
+unchanged.
 
 ## Step Details
 
@@ -302,7 +307,9 @@ exceed the cap and an independently valid boundary exists. The fixed nine-step t
 ### Step 2/9: Scaffold and pin the released contract
 
 - Create `bridge/sesori_plugin_grok/` with workspace metadata, exports, build options, `GrokPluginIdentity`,
-  `GrokBinary`, and typed model-state DTOs.
+  `GrokBinary`, and typed model-state DTOs. Add it to `bridge/pubspec.yaml`, `bridge/Makefile`, and package-level CI
+  inventory now so resolution, generation, analysis, and tests run from this step onward; do not add the app dependency
+  or production registry entry yet.
 - Record the released 1.0.5 output (`grok 1.0.5 (5115b46bc909)`), exact accepted agent argument ordering,
   initialize identity/capabilities, interactive-only logged-out auth shape, model metadata, permission mode, ordinary
   initialize-owned state effects, and clean process exit without creating a session.
@@ -312,20 +319,23 @@ exceed the cap and an independently valid boundary exists. The fixed nine-step t
 ### Step 3/9: Models and reasoning effort
 
 - Implement typed initialize/new/load model-state mapping with exact opaque model IDs.
-- Add `GrokCatalogTracker` as the only owner of last-good catalog replacement and retention.
+- Add `GrokCatalogRepository`, `GrokSessionConfigRepository`, and `GrokCatalogTracker`; the tracker alone owns last-good
+  catalog replacement and retention.
 - Expose one primary Grok agent and one Grok-owned provider group; map per-model reasoning options to variants.
-- Route production initialize, new/load capture, and explicit initialize-only refresh through the tracker; a failed
-  refresh retains its prior catalog.
-- Send exact model plus optional `_meta.reasoningEffort` through `session/set_model` before a turn; reject unknown/stale
-  selections and retain original causes.
+- Exercise initialize/new/load capture and explicit initialize-only refresh directly through the repository, tracker,
+  and service; a failed refresh retains the prior catalog. Production `AcpPlugin` hook wiring waits for Step 4.
+- Send exact model plus optional `_meta.reasoningEffort` from service through the configuration repository before a
+  turn; reject unknown/stale selections, preserve original causes, and never call the API layer from the service.
 - Cover malformed peers, empty/partial catalogs, default ordering, refresh failure, model-only/effort-only changes, and
-  no partial tracker write.
+  no partial tracker write through direct collaborator tests.
 
 ### Step 4/9: ACP plugin core
 
 - Add an optional ACP allowlist that chooses only an advertised allowed auth method; preserve every existing plugin's
   default behavior and cover both allowed-method success and interactive-only immediate rejection.
 - Compose the existing ACP trackers/mapper/process factory with Grok-specific options.
+- Wire production initialize/new/load capture, explicit refresh, and pre-turn selection into the Step 3 repository,
+  tracker, and service collaborators.
 - Validate Grok identity metadata before accepting the connection and capture refreshed model state after new/load.
 - Use standard per-session concurrency, cancellation, permission handling, command tracking, list/load/replay/close,
   and crash recovery. Enable stop-and-send and fail-closed selection only where Grok's verified behavior requires them.
@@ -344,8 +354,8 @@ exceed the cap and an independently valid boundary exists. The fixed nine-step t
 ### Step 6/9: Activate the bridge
 
 - Add the app dependency and descriptor to `knownPlugins`; add `Harness.grok` so exact registry tests remain true.
-- Update bridge workspace/Makefile/module order, package inventories, app docs, root architecture, and relevant CI/test
-  fixtures.
+- Update app composition docs, root architecture, built-in/exact-set inventories, and activation-specific test fixtures;
+  package workspace/Makefile/CI registration already landed in Step 2.
 - Preserve OpenCode as preferred default. Grok is eligible by default but starts only on demand after setup allows it.
 - Verify unknown older clients remain safe because transport IDs are strings.
 
@@ -376,7 +386,10 @@ unchanged because Grok deliberately has no managed install.
 
 ### Step 9/9: Verify and retire
 
-- Run focused package/app/client tests and analyzers after the final code state.
+- Run `architecture-implementation-review` through a sub-agent over the Git-defined Step 2-7 production commit/PR
+  range after all architecture-bearing changes are present. Resolve valid in-scope findings before retirement, using at
+  most the two review passes allowed by repository policy.
+- Run focused package/app/client tests and analyzers after the final code state and any review fixes.
 - Execute the matrix below with a real supported Grok release and account.
 - Record Pass/Partial/Fail/Blocked with privacy-safe evidence and cleanup in `TRACKER.md`.
 - Do not retire on incomplete required coverage unless the user explicitly accepts a named reduction in this plan.

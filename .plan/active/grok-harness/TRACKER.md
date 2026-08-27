@@ -45,6 +45,7 @@
 - [x] Validate the released 1.0.5 binary and correct the plan's auth/state assumptions.
 - [x] Re-run architecture plan review for the material shared auth-policy hook; current revision approved.
 - [x] Revalidate Markdown paths/titles and `git diff --check` after that correction.
+- [ ] Address all actionable #1152 review feedback and leave prefixed thread replies.
 - [x] Commit, push, and open Step 1 PR (#1152).
 - [x] Start the PR monitor.
 - [x] Create the Step 2 successor branch in this worktree and begin released-binary research locally.
@@ -70,6 +71,12 @@
   `GrokCatalogTracker`; the service consumes the tracker and stores no duplicate. Per repository policy, the valid
   finding was applied directly. A later material auth-policy change justified one fresh review of the complete revised
   plan; that current revision was approved with no findings.
+- 2026-08-27: #1152 review feedback added a configuration repository between service and API, moved
+  workspace/Makefile/CI registration into Step 2, moved production hook wiring into Step 4, preserved useful local
+  diagnostic paths, and
+  scheduled final Git-scoped architecture implementation review. The plan retains built-in `Harness.grok` branding
+  because identity/presentation is not backend behavior and the existing client contract intentionally maps built-ins;
+  it also retains penultimate regression reconciliation because that is the repository's mandated durable-plan flow.
 
 ## Required Final Evidence
 
