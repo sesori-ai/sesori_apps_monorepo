@@ -20,8 +20,16 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
   ///
   /// [mimeType] is sent as the file's content-type so the server can forward
   /// it to the transcription model (e.g. `"audio/mp4"` for m4a/AAC).
-  Future<ApiResponse<String>> transcribe(String audioFilePath, {required String mimeType}) async {
+  /// [projectKey] is the opaque bridge/project namespace returned by the
+  /// bridge's population route. Null preserves unscoped transcription when the
+  /// best-effort route has not completed or is unsupported.
+  Future<ApiResponse<String>> transcribe({
+    required String audioFilePath,
+    required String mimeType,
+    required String? projectKey,
+  }) async {
     final uri = Uri.parse("$authBaseUrl/voice/transcribe");
+    final fields = projectKey == null ? null : {"projectKey": projectKey};
 
     try {
       // `await` is required here so async errors thrown inside the returned
@@ -31,6 +39,7 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
       return await _client.postMultipart(
         uri,
         fromJson: _parseTranscript,
+        fields: fields,
         createFiles: () async => [
           await http.MultipartFile.fromPath(
             "audio",

@@ -106,6 +106,8 @@ import 'package:sesori_dart_core/src/services/catalog_rescan_service.dart'
     as _i572;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
+import 'package:sesori_dart_core/src/services/hosted_voice_input_service.dart'
+    as _i193;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
     as _i285;
 import 'package:sesori_dart_core/src/services/message_thumbnail_cache_service.dart'
@@ -130,6 +132,8 @@ import 'package:sesori_dart_core/src/services/project_list_service.dart'
     as _i703;
 import 'package:sesori_dart_core/src/services/project_viewing_service.dart'
     as _i413;
+import 'package:sesori_dart_core/src/services/project_voice_glossary_service.dart'
+    as _i497;
 import 'package:sesori_dart_core/src/services/registered_bridges_service.dart'
     as _i699;
 import 'package:sesori_dart_core/src/services/session_activity_calculator.dart'
@@ -462,6 +466,11 @@ extension GetItInjectableX on _i174.GetIt {
         productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
       ),
     );
+    gh.lazySingleton<_i497.ProjectVoiceGlossaryService>(
+      () => _i497.ProjectVoiceGlossaryService(
+        projectRepository: gh<_i80.ProjectRepository>(),
+      ),
+    );
     gh.lazySingleton<_i709.SessionDetailLoadService>(
       () => _i709.SessionDetailLoadService(
         repository: gh<_i7.SessionRepository>(),
@@ -482,6 +491,12 @@ extension GetItInjectableX on _i174.GetIt {
         pluginRepository: gh<_i337.PluginRepository>(),
         managementService: gh<_i110.PluginManagementService>(),
         connectionService: gh<_i369.ConnectionService>(),
+      ),
+    );
+    gh.lazySingleton<_i193.HostedVoiceInputService>(
+      () => _i193.HostedVoiceInputService(
+        voiceApi: gh<_i176.VoiceApi>(),
+        projectVoiceGlossaryService: gh<_i497.ProjectVoiceGlossaryService>(),
       ),
     );
     return this;

@@ -35,11 +35,13 @@ import "../repositories/registered_bridges_store.dart";
 import "../repositories/session_repository.dart";
 import "../routing/app_routes.dart";
 import "../services/catalog_rescan_service.dart";
+import "../services/hosted_voice_input_service.dart";
 import "../services/models/catalog_rescan_state.dart";
 import "../services/models/session_activity_info.dart";
 import "../services/models/session_list_item_state.dart";
 import "../services/product_analytics_service.dart";
 import "../services/project_viewing_service.dart";
+import "../services/project_voice_glossary_service.dart";
 import "../services/registered_bridges_service.dart";
 import "../services/session_detail_load_service.dart";
 import "../services/session_unseen_tracker.dart";
@@ -244,6 +246,10 @@ class MockLifecycleSource() extends Mock implements LifecycleSource {
 class MockFilesystemApi() extends Mock implements FilesystemApi;
 
 class MockProjectRepository() extends Mock implements ProjectRepository;
+
+class MockHostedVoiceInputService() extends Mock implements HostedVoiceInputService;
+
+class MockProjectVoiceGlossaryService() extends Mock implements ProjectVoiceGlossaryService;
 
 class MockSessionApi() extends Mock implements SessionApi;
 
@@ -679,7 +685,6 @@ MessageWithParts testMessageWithParts({String? id = _noString}) {
       agent: null,
       modelID: null,
       providerID: null,
-      sender: MessageSender.agent,
       time: null,
     ),
     parts: [

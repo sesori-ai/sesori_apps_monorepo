@@ -3,6 +3,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
 import "../helpers/test_helpers.dart";
 
 void main() {
@@ -152,6 +153,32 @@ void main() {
       verify(
         () => client.post<Project>(
           "/project/current",
+          fromJson: any(named: "fromJson"),
+          body: const ProjectIdRequest(projectId: "project-1"),
+        ),
+      ).called(1);
+    });
+  });
+
+  group("populateVoiceGlossary", () {
+    test("posts the stable project id to the explicit bridge capability", () async {
+      const population = PopulateProjectVoiceGlossaryResponse(
+        projectKey: "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      );
+      when(
+        () => client.post<PopulateProjectVoiceGlossaryResponse>(
+          "/project/voice-glossary/populate",
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(population));
+
+      final response = await api.populateVoiceGlossary(projectId: "project-1");
+
+      expect(response, ApiResponse<PopulateProjectVoiceGlossaryResponse>.success(population));
+      verify(
+        () => client.post<PopulateProjectVoiceGlossaryResponse>(
+          "/project/voice-glossary/populate",
           fromJson: any(named: "fromJson"),
           body: const ProjectIdRequest(projectId: "project-1"),
         ),

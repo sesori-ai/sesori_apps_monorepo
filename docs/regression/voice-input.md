@@ -4,9 +4,9 @@
 
 The mobile composer records speech while the user holds the mic control, uploads the audio to the Sesori auth server
 for transcription, and inserts the text into the prompt field for review before sending. A voice-first or text-first
-preference decides which control leads. The bridge separately exposes an explicit route that can infer and upload
-optional project-specific glossary terms; no backend plugin participates, and audio still travels directly from the
-client to the external transcription endpoint.
+preference decides which control leads. After a user successfully begins recording, the client explicitly asks the
+bridge to seed optional project-specific glossary context; no backend plugin participates, and audio still travels
+directly from the client to the transcription endpoint.
 
 ## Required Behavior
 
@@ -30,17 +30,19 @@ client to the external transcription endpoint.
   as voice-assisted input.
 - Successful transcription reports one content-free analytics event. No audio, transcript, or prompt text reaches logs
   or analytics.
-- Glossary population starts only from an explicit bridge request. The route returns a versioned opaque key after
-  lazily loading a private persisted HMAC secret, then schedules best-effort work without waiting for inference.
-- Git inference streams at most 50,000 tracked paths and never enumerates untracked or ignored root metadata. An
-  operational Git failure aborts inference rather than treating the project as non-Git; non-Git enumeration is also
-  streamed and bounded.
-- README and package-manifest reads are capped. Quoted/unquoted credential assignments, authorization/bearer values,
-  and prefixed/secret-shaped spans are removed before token splitting; generated/vendor/build paths, hashes, and
-  generic terms are excluded before deterministic ranking. Only filtered terms and the opaque key reach auth—never
-  source contents, paths, or raw identifiers.
-- The bridge reads existing words before scanning, uploads at most enough to reach 50, attempts each project once per
-  process, serializes different projects, and aborts/drains admitted work during shutdown.
+- A scoped transcription sends only the versioned opaque glossary key derived by the bridge using a private persisted
+  HMAC secret over its stable registration id and the stable project id. The client reuses that exact returned key; the
+  secret and identifiers never reach auth, and equal local paths on different bridges cannot share a glossary.
+- Pure-Dart core logic owns the recording-to-population/key/transcription coordination. The Flutter service only adapts
+  native recording lifecycle and delegates after capture starts, so another product shell can reuse the same policy.
+- Glossary population starts only from explicit hosted-voice use and is best effort; it never delays recording or
+  transcription. A transcription remains unscoped when the local route has not answered yet or is unsupported. The
+  bridge attempts a project once per process, serializes different projects, reads existing server words before local
+  inference, and skips local scanning once the project already has 50 terms.
+- Git inference streams at most 50,000 tracked path names and never inspects ignored/untracked root metadata. Non-Git
+  root enumeration is also streamed and bounded. README/package-manifest reads are capped, and credential assignments,
+  secret-shaped spans, ignored vendor/build/generated paths, hashes, and generic terms are excluded before ranking.
+  At most enough terms to reach 50 are uploaded; source contents and paths never leave the bridge.
 - The preference defaults to voice-first, persists, and falls back to voice-first on a corrupt or unknown stored
   value.
 
@@ -49,7 +51,7 @@ client to the external transcription endpoint.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because microphone and transcription setup is too expensive for a heartbeat. |
-| L2 Routine | Automated, mobile client and bridge, no plugin: fake recorder and HTTP client cover permission denial, concurrent-start rejection, zero-byte rejection, cancellation, error mapping, duration signalling, cleanup, and draft voice-span/input-mode derivation; bridge coverage includes authenticated glossary calls, lazy secret persistence, deterministic HMAC scoping, tracked-only bounded streams, Git-failure handling, credential-span rejection, serialized/coalesced population, and shutdown drain. |
+| L2 Routine | Automated, mobile client and bridge, no plugin: fake recorder and HTTP client cover permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, error mapping, max-duration signalling, file cleanup, draft voice-span/input-mode derivation, core-owned bridge-namespaced opaque-key handoff, pending/old-bridge unscoped degradation, lazy secret persistence, bounded Git/non-Git enumeration, tracked-only metadata, credential-assignment/span rejection, ranked term selection, serialized/coalesced population, authenticated glossary reads/additions, and shutdown drain. |
 | L3 Release | Client end to end on the release-target client platform: hold to record, release to transcribe, transcript inserted and editable, drag-to-cancel, layout stability, and the voice-first/text-first preference changing which control leads. |
 | L4 Extended | Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, transcription failure and retry, offline upload failure, disposal while recording, wake lock released on every path. |
 | L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording. |
@@ -69,11 +71,11 @@ interruptions such as a call.
   lock stays held.
 - Audio is uploaded despite denied permission, or denial is reported as a generic network or server failure.
 - Text is sent without review, or a message with surviving voice text is classified as typed.
-- Any audio, transcript, or prompt content reaches logs or analytics.
-- Source/path content, the bridge-local HMAC secret, or raw bridge/project identifiers reach auth; only filtered terms
-  and the opaque bridge/project key may leave the bridge for glossary storage.
-- A Git operational failure falls back to untracked root enumeration, a credential prefix is stripped before its
-  suffix is filtered, multiple project scans compete, or shutdown leaves admitted glossary work undrained.
+- Any audio, transcript, prompt, or local metadata content reaches glossary requests, logs, or analytics, a raw bridge
+  or project identifier/path reaches the auth server, or equal project ids on two bridges derive the same key. Only
+  filtered inferred terms and the opaque bridge/project key may reach the glossary endpoint.
+- Starting voice waits for glossary population, starts multiple glossary scans for that project, or lets several
+  project scans run concurrently.
 
 ## Known Limitations
 
@@ -84,14 +86,17 @@ interruptions such as a call.
   mobile-only; desktop and bridge do not record or transport microphone audio.
 - Failed recording-file deletion can leave audio on disk because cleanup is
   best-effort and has no retry owner.
-- The current mobile client does not yet request glossary population or send the returned key; the bridge route is the
-  first half of the stacked feature.
-- Glossary inference is attempted only once per project per bridge process. A failed attempt waits for restart rather
-  than retrying in the background, and deleting/corrupting the local secret starts a new empty opaque namespace.
+- Glossary inference is intentionally attempted only once per project per bridge process. A failed attempt waits for a
+  bridge restart rather than retrying in the background; an existing 50-term glossary is not rescanned during that
+  process.
+- Deleting or corrupting the bridge-local glossary secret starts a new opaque namespace. The optional glossary
+  self-heals empty rather than attempting to recover or migrate unreachable server words.
 
 ## Sources
 
-`client/app/test/capabilities/voice/`, `client/module_core/test/services/`, `client/module_prego/test/components/`, and
-`bridge/app/test/bridge/{api,repositories,services,routing}/`; production code under
-`client/app/lib/capabilities/voice/`, `client/module_core/lib/src/capabilities/voice/`,
-`client/module_core/lib/src/foundation/models/composer/`, and `bridge/app/lib/src/{api,repositories,services,routing}/`.
+`client/app/test/capabilities/voice/`, `client/module_core/test/capabilities/voice/`,
+`bridge/app/test/bridge/{repositories,services,routing}/`, `bridge/app/test/api/sesori_server_api_test.dart`, and
+`client/module_prego/test/components/`; production code under `client/app/lib/capabilities/voice/`,
+`client/module_core/lib/src/{capabilities/voice,services}/`,
+`bridge/app/lib/src/{api,repositories,services,routing}/`, and
+`shared/sesori_shared/lib/src/models/{auth,sesori}/`.

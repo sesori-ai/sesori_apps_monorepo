@@ -37,6 +37,14 @@ class ProjectApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  Future<ApiResponse<PopulateProjectVoiceGlossaryResponse>> populateVoiceGlossary({required String projectId}) {
+    return _client.post(
+      "/project/voice-glossary/populate",
+      body: ProjectIdRequest(projectId: projectId),
+      fromJson: PopulateProjectVoiceGlossaryResponse.fromJson,
+    );
+  }
+
   Future<ApiResponse<void>> hideProject({required String projectId}) {
     return _client.post(
       "/project/hide",
