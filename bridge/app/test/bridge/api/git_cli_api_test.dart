@@ -44,6 +44,24 @@ void main() {
     expect(isInside, isTrue);
     expect(processRunner.workingDirectory, "/project/child");
     expect(processRunner.arguments, ["rev-parse", "--is-inside-work-tree"]);
+    expect(processRunner.environment, const {"LC_ALL": "C"});
+  });
+
+  test("isInsideGitWorkTree distinguishes non-repositories from operational failures", () async {
+    final nonRepositoryApi = GitCliApi(
+      processRunner: _RecordingProcessRunner(exitCode: 128, stderr: "fatal: not a git repository"),
+      gitPathExists: ({required String gitPath}) => false,
+    );
+    final failingApi = GitCliApi(
+      processRunner: _RecordingProcessRunner(exitCode: 128, stderr: "fatal: detected dubious ownership"),
+      gitPathExists: ({required String gitPath}) => true,
+    );
+
+    expect(await nonRepositoryApi.isInsideGitWorkTree(projectPath: "/plain"), isFalse);
+    await expectLater(
+      failingApi.isInsideGitWorkTree(projectPath: "/mounted"),
+      throwsA(isA<ProcessException>()),
+    );
   });
 
   test("getCurrentBranch removes one line ending without trimming the branch", () async {
@@ -211,8 +229,7 @@ class _RecordingProcessRunner({
   final String stderr = "",
   final int exitCode = 0,
   final List<ProcessResult>? results,
-})
-    implements ProcessRunner {
+}) implements ProcessRunner {
   List<String>? arguments;
   final List<List<String>> invocations = [];
   String? workingDirectory;

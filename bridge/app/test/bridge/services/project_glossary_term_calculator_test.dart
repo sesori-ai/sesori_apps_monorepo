@@ -36,7 +36,10 @@ void main() {
       source: ProjectGlossarySource(
         projectName: "AcmeCompiler",
         repositoryName: null,
-        trackedPaths: const ["config/password=SuperSecretProductionPassword.txt"],
+        trackedPaths: const [
+          "config/password=SuperSecretProductionPassword.txt",
+          "fixtures/sk_live_abcdefghijklmnopqrstuvwxyz.json",
+        ],
         metadataDocuments: const [
           "AcmeCompiler uses AKIAIOSFODNN7EXAMPLE, q7Vn2Lp9Rk4Tz8Mw6Hx3, and $secretAccessKey for examples.",
           "password=SuperSecretProductionPassword token=aBcDeFgHiJkLmNoPqRsTuVwXyZ",
@@ -52,6 +55,7 @@ void main() {
     expect(terms, isNot(contains("K7MDENG")));
     expect(terms, isNot(contains("bPxRfiCYEXAMPLEKEY")));
     expect(terms, isNot(contains("SuperSecretProductionPassword")));
+    expect(terms, isNot(contains("abcdefghijklmnopqrstuvwxyz")));
     expect(terms, isNot(contains("aBcDeFgHiJkLmNoPqRsTuVwXyZ")));
   });
 

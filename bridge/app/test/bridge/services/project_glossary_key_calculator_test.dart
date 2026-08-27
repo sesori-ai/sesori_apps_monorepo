@@ -5,8 +5,8 @@ void main() {
   const calculator = ProjectGlossaryKeyCalculator();
   final secret = List<int>.generate(32, (index) => index);
 
-  test("derives a deterministic opaque bridge/project HMAC key", () {
-    final key = calculator.calculate(
+  test("derives a deterministic opaque bridge/project HMAC key", () async {
+    final key = await calculator.calculate(
       secret: secret,
       bridgeId: "br_test1234",
       projectId: "project-123",
@@ -16,11 +16,11 @@ void main() {
     expect(key, isNot(contains("br_test1234")));
     expect(key, isNot(contains("project-123")));
     expect(
-      calculator.calculate(secret: secret, bridgeId: "br_other", projectId: "project-123"),
+      await calculator.calculate(secret: secret, bridgeId: "br_other", projectId: "project-123"),
       isNot(key),
     );
     expect(
-      calculator.calculate(
+      await calculator.calculate(
         secret: List<int>.filled(32, 255),
         bridgeId: "br_test1234",
         projectId: "project-123",
@@ -29,17 +29,17 @@ void main() {
     );
   });
 
-  test("rejects short secrets and empty identifiers", () {
-    expect(
-      () => calculator.calculate(secret: const [1, 2, 3], bridgeId: "bridge", projectId: "project"),
+  test("rejects short secrets and empty identifiers", () async {
+    await expectLater(
+      calculator.calculate(secret: const [1, 2, 3], bridgeId: "bridge", projectId: "project"),
       throwsArgumentError,
     );
-    expect(
-      () => calculator.calculate(secret: secret, bridgeId: "", projectId: "project"),
+    await expectLater(
+      calculator.calculate(secret: secret, bridgeId: "", projectId: "project"),
       throwsArgumentError,
     );
-    expect(
-      () => calculator.calculate(secret: secret, bridgeId: "bridge", projectId: ""),
+    await expectLater(
+      calculator.calculate(secret: secret, bridgeId: "bridge", projectId: ""),
       throwsArgumentError,
     );
   });

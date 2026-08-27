@@ -2,7 +2,6 @@ import "dart:async";
 import "dart:collection";
 import "dart:io";
 import "dart:math";
-import "dart:typed_data";
 
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge/src/api/project_glossary_secret_storage.dart";
@@ -31,9 +30,12 @@ class FakeBridgeIdProvider([var String? id]) implements BridgeIdProvider {
   String? get bridgeId => id;
 }
 
-class const FakeProjectGlossarySecretStorage() implements ProjectGlossarySecretStorage {
+class const FakeProjectGlossarySecretStorage() implements FileProjectGlossarySecretStorage {
   @override
-  Future<Uint8List> getOrCreate() async => Uint8List.fromList(List<int>.generate(32, (index) => index));
+  Future<String?> read() async => "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8";
+
+  @override
+  Future<void> write({required String encodedSecret}) async {}
 }
 
 class FakeTokenRefresher({String token = "test-token", String? refreshedToken}) implements TokenRefresher {

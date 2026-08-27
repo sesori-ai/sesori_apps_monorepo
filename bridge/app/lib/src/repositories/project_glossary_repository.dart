@@ -32,6 +32,8 @@ class ProjectGlossaryRepository({
   static const int _maximumMetadataFiles = 24;
   static const int _maximumMetadataBytes = 32 * 1024;
 
+  final AbortSignal _abortSignal = AbortSignal();
+
   static const Set<String> _excludedPathSegments = {
     ".dart_tool",
     ".git",
@@ -68,14 +70,13 @@ class ProjectGlossaryRepository({
     "settings.gradle.kts",
   };
 
-  Future<List<String>> getWords({
-    required String projectKey,
-    required AbortSignal abortSignal,
-  }) async {
+  void beginShutdown() => _abortSignal.abort();
+
+  Future<List<String>> getWords({required String projectKey}) async {
     try {
       final response = await _serverApi.getProjectGlossary(
         projectKey: projectKey,
-        abortSignal: abortSignal,
+        abortSignal: _abortSignal,
       );
       return response.words;
     } on http.RequestAbortedException catch (error, stackTrace) {
@@ -86,12 +87,11 @@ class ProjectGlossaryRepository({
   Future<List<String>> addWords({
     required String projectKey,
     required List<String> words,
-    required AbortSignal abortSignal,
   }) async {
     try {
       final response = await _serverApi.addProjectGlossaryWords(
         request: ProjectGlossaryWordsRequest(projectKey: projectKey, words: words),
-        abortSignal: abortSignal,
+        abortSignal: _abortSignal,
       );
       return response.added;
     } on http.RequestAbortedException catch (error, stackTrace) {

@@ -31,11 +31,20 @@ class GitCliApi({
   }
 
   Future<bool> isInsideGitWorkTree({required String projectPath}) async {
-    final result = await runGit(
-      projectPath: projectPath,
-      arguments: const ["rev-parse", "--is-inside-work-tree"],
+    const arguments = ["rev-parse", "--is-inside-work-tree"];
+    final result = await _processRunner.run(
+      "git",
+      arguments,
+      workingDirectory: projectPath,
+      environment: const {"LC_ALL": "C"},
     );
-    return result.exitCode == 0 && result.stdout.toString().trim() == "true";
+    if (result.exitCode == 0) {
+      return result.stdout.toString().trim() == "true";
+    }
+    if (result.stderr.toString().toLowerCase().contains("not a git repository")) {
+      return false;
+    }
+    throw ProcessException("git", arguments, result.stderr.toString(), result.exitCode);
   }
 
   Future<GitCurrentBranchResult> getCurrentBranch({required String projectPath}) async {
@@ -284,11 +293,7 @@ class GitCliApi({
     if (refsResult.exitCode != 0) {
       throw ProcessException("git", refArguments, refsResult.stderr.toString(), refsResult.exitCode);
     }
-    return refsResult.stdout
-        .toString()
-        .split("\n")
-        .map((ref) => ref.trim())
-        .any(matchingRefs.contains);
+    return refsResult.stdout.toString().split("\n").map((ref) => ref.trim()).any(matchingRefs.contains);
   }
 
   Future<void> renameBranch({

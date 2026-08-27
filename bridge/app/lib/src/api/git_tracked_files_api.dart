@@ -1,9 +1,10 @@
-import "dart:async";
 import "dart:io";
+
+import "../foundation/streaming_process_runner.dart";
 
 /// Streams bounded tracked-file names from Git without buffering the complete
 /// repository index output in bridge memory.
-class const GitTrackedFilesApi() {
+class GitTrackedFilesApi({required final StreamingProcessRunner _processRunner}) {
   static const Duration _timeout = Duration(seconds: 15);
   static const List<String> _arguments = ["ls-files", "--cached", "-z", "--", "."];
 
@@ -12,34 +13,23 @@ class const GitTrackedFilesApi() {
       throw ArgumentError.value(maximumPaths, "maximumPaths", "must be positive");
     }
 
-    final process = await Process.start(
-      "git",
-      _arguments,
+    return await _processRunner.run(
+      executable: "git",
+      arguments: _arguments,
       workingDirectory: projectPath,
       environment: const {"LC_ALL": "C"},
-    );
-    final stderrFuture = process.stderr.transform(const SystemEncoding().decoder).join();
-    final operation = _collect(
-      process: process,
-      stderrFuture: stderrFuture,
-      maximumPaths: maximumPaths,
-    );
-    return await operation.timeout(
-      _timeout,
-      onTimeout: () {
-        process.kill();
-        throw TimeoutException("git timed out after $_timeout", _timeout);
-      },
+      timeout: _timeout,
+      operation: ({required process}) => _collect(process: process, maximumPaths: maximumPaths),
     );
   }
 
   Future<List<String>> _collect({
-    required Process process,
-    required Future<String> stderrFuture,
+    required StreamingProcess process,
     required int maximumPaths,
   }) async {
     final paths = <String>[];
     final currentPath = StringBuffer();
+    final stderrFuture = process.stderr.transform(const SystemEncoding().decoder).join();
 
     await for (final chunk in process.stdout.transform(const SystemEncoding().decoder)) {
       var start = 0;
@@ -53,12 +43,7 @@ class const GitTrackedFilesApi() {
         if (currentPath.isNotEmpty) paths.add(currentPath.toString());
         currentPath.clear();
         start = terminator + 1;
-        if (paths.length == maximumPaths) {
-          process.kill();
-          await process.exitCode;
-          await stderrFuture;
-          return paths;
-        }
+        if (paths.length == maximumPaths) return paths;
       }
     }
 

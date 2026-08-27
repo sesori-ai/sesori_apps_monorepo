@@ -19,6 +19,11 @@ class const ProjectGlossaryTermCalculator() {
     r"(?:password|passwd|pwd|secret|api[_-]?key|token|credential)\s*[:=]\s*[^\s,;]+",
     caseSensitive: false,
   );
+  static final RegExp _credentialPrefixedSpanPattern = RegExp(
+    "(?:AIza|AKIA|ASIA|gh[oprsu]|github[_-]?pat|rk[_-]?live|sk[_-]?(?:ant|live|proj)|xox[a-z])"
+    "[_-]?[A-Za-z0-9_./+=#-]{8,}",
+    caseSensitive: false,
+  );
   static final RegExp _hexTokenPattern = RegExp(r"^[A-Fa-f0-9]{12,}$");
   static final RegExp _allCapsPattern = RegExp(r"^[A-Z]{2,}$");
   static final RegExp _hasUpperPattern = RegExp("[A-Z]");
@@ -109,10 +114,7 @@ when with web widget widgets will windows window workspace www
 
     for (final document in source.metadataDocuments) {
       final documentTerms = <String>{};
-      final filteredDocument = document.replaceAll(_credentialAssignmentPattern, " ").replaceAllMapped(
-        _metadataSecretSpanPattern,
-        (match) => _looksCredentialShaped(match.group(0)!) ? " " : match.group(0)!,
-      );
+      final filteredDocument = _filterCredentialSpans(document);
       for (final match in _metadataTokenPattern.allMatches(filteredDocument)) {
         _recordTerm(
           candidates: candidates,
@@ -143,20 +145,20 @@ when with web widget widgets will windows window workspace www
     required bool includeCompound,
     Set<String>? distinctTerms,
   }) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty || _credentialAssignmentPattern.hasMatch(trimmed)) return;
+    final filtered = _filterCredentialSpans(value).trim();
+    if (filtered.isEmpty) return;
 
-    if (includeCompound && !trimmed.contains("_")) {
+    if (includeCompound && !filtered.contains("_") && !filtered.contains(RegExp(r"\s"))) {
       _recordTerm(
         candidates: candidates,
-        term: trimmed,
+        term: filtered,
         origin: origin,
         isCompound: true,
         distinctTerms: distinctTerms,
       );
     }
 
-    final separated = trimmed
+    final separated = filtered
         .replaceAllMapped(
           RegExp("([A-Z]+)([A-Z][a-z])"),
           (match) => "${match.group(1)} ${match.group(2)}",
@@ -177,6 +179,14 @@ when with web widget widgets will windows window workspace www
       );
     }
   }
+
+  String _filterCredentialSpans(String value) => value
+      .replaceAll(_credentialAssignmentPattern, " ")
+      .replaceAll(_credentialPrefixedSpanPattern, " ")
+      .replaceAllMapped(
+        _metadataSecretSpanPattern,
+        (match) => _looksCredentialShaped(match.group(0)!) ? " " : match.group(0)!,
+      );
 
   void _recordTerm({
     required Map<String, _GlossaryCandidate> candidates,

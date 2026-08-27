@@ -31,6 +31,7 @@ import "foundation/filesystem_permission_validator.dart";
 import "foundation/key_exchange.dart";
 import "foundation/process_runner.dart";
 import "foundation/relay_client.dart";
+import "foundation/streaming_process_runner.dart";
 import "listeners/chat_history_activity_listener.dart";
 import "listeners/chat_history_listener.dart";
 import "listeners/plugin_catalog_hydration_listener.dart";
@@ -64,6 +65,7 @@ import "repositories/permission_repository.dart";
 import "repositories/pr_source_repository.dart";
 import "repositories/project_activity_repository.dart";
 import "repositories/project_catalog_identity_calculator.dart";
+import "repositories/project_glossary_key_material_repository.dart";
 import "repositories/project_glossary_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
@@ -203,7 +205,7 @@ class Orchestrator({
     required final AccessTokenProvider _accessTokenProvider,
     required final TokenRefresher _tokenRefresher,
     required final BridgeRegistrationService _bridgeRegistrationService,
-    required final ProjectGlossarySecretStorage _projectGlossarySecretStorage,
+    required final FileProjectGlossarySecretStorage _projectGlossarySecretStorage,
     required final FailureReporter _failureReporter,
     required final BridgeRestartService _restartService,
     required final bool _filesystemAccessOk,
@@ -388,12 +390,12 @@ class Orchestrator({
     );
     final projectGlossaryService = ProjectGlossaryService(
       bridgeIdProvider: _bridgeRegistrationService,
-      secretStorage: _projectGlossarySecretStorage,
+      keyMaterialRepository: ProjectGlossaryKeyMaterialRepository(storage: _projectGlossarySecretStorage),
       keyCalculator: const ProjectGlossaryKeyCalculator(),
       projectRepository: projectRepository,
       glossaryRepository: ProjectGlossaryRepository(
         gitCliApi: gitCliApi,
-        gitTrackedFilesApi: const GitTrackedFilesApi(),
+        gitTrackedFilesApi: GitTrackedFilesApi(processRunner: const StreamingProcessRunner()),
         filesystemApi: const FilesystemApi(),
         serverApi: sesoriServerApi,
       ),

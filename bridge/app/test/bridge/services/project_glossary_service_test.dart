@@ -4,8 +4,8 @@ import "dart:typed_data";
 
 import "package:sesori_bridge/src/api/project_glossary_secret_storage.dart";
 import "package:sesori_bridge/src/auth/bridge_id_provider.dart";
-import "package:sesori_bridge/src/foundation/abortable_request.dart";
 import "package:sesori_bridge/src/repositories/models/project_glossary_source.dart";
+import "package:sesori_bridge/src/repositories/project_glossary_key_material_repository.dart";
 import "package:sesori_bridge/src/repositories/project_glossary_repository.dart";
 import "package:sesori_bridge/src/repositories/project_repository.dart";
 import "package:sesori_bridge/src/services/project_glossary_key_calculator.dart";
@@ -67,7 +67,7 @@ void main() {
     );
     final service = ProjectGlossaryService(
       bridgeIdProvider: bridgeIdProvider,
-      secretStorage: const _TestSecretStorage(projectSecret),
+      keyMaterialRepository: _TestKeyMaterialRepository(projectSecret),
       keyCalculator: const ProjectGlossaryKeyCalculator(),
       projectRepository: _FakeProjectRepository(
         paths: {"project-a": "/projects/a", "project-b": "/projects/b"},
@@ -87,8 +87,16 @@ void main() {
     await service.drain();
 
     expect(glossaryRepository.getWordsProjectKeys, [
-      const ProjectGlossaryKeyCalculator().calculate(secret: projectSecret, bridgeId: bridgeId, projectId: "project-a"),
-      const ProjectGlossaryKeyCalculator().calculate(secret: projectSecret, bridgeId: bridgeId, projectId: "project-b"),
+      await const ProjectGlossaryKeyCalculator().calculate(
+        secret: projectSecret,
+        bridgeId: bridgeId,
+        projectId: "project-a",
+      ),
+      await const ProjectGlossaryKeyCalculator().calculate(
+        secret: projectSecret,
+        bridgeId: bridgeId,
+        projectId: "project-b",
+      ),
     ]);
   });
 
@@ -106,7 +114,7 @@ void main() {
     );
     final service = ProjectGlossaryService(
       bridgeIdProvider: bridgeIdProvider,
-      secretStorage: const _TestSecretStorage(projectSecret),
+      keyMaterialRepository: _TestKeyMaterialRepository(projectSecret),
       keyCalculator: const ProjectGlossaryKeyCalculator(),
       projectRepository: _FakeProjectRepository(
         paths: {"project-a": "/projects/a", "project-b": "/projects/b"},
@@ -123,14 +131,18 @@ void main() {
     await service.drain();
 
     expect(glossaryRepository.getWordsProjectKeys, [
-      const ProjectGlossaryKeyCalculator().calculate(secret: projectSecret, bridgeId: bridgeId, projectId: "project-a"),
+      await const ProjectGlossaryKeyCalculator().calculate(
+        secret: projectSecret,
+        bridgeId: bridgeId,
+        projectId: "project-a",
+      ),
     ]);
-    expect(glossaryRepository.abortSignals.single.isAborted, isTrue);
+    expect(glossaryRepository.shutdownStarted, isTrue);
   });
 
   test("fills only the remaining capacity and ignores existing case variants", () async {
     const projectId = "/Users/developer/AcmeCompiler";
-    final projectKey = const ProjectGlossaryKeyCalculator().calculate(
+    final projectKey = await const ProjectGlossaryKeyCalculator().calculate(
       secret: projectSecret,
       bridgeId: bridgeId,
       projectId: projectId,
@@ -155,7 +167,7 @@ void main() {
     );
     final service = ProjectGlossaryService(
       bridgeIdProvider: bridgeIdProvider,
-      secretStorage: const _TestSecretStorage(projectSecret),
+      keyMaterialRepository: _TestKeyMaterialRepository(projectSecret),
       keyCalculator: const ProjectGlossaryKeyCalculator(),
       projectRepository: _FakeProjectRepository(paths: {projectId: "/moved/AcmeCompiler"}),
       glossaryRepository: glossaryRepository,
@@ -172,7 +184,7 @@ void main() {
 
   test("skips local source scanning when the server already has fifty terms", () async {
     const projectId = "project-full";
-    final projectKey = const ProjectGlossaryKeyCalculator().calculate(
+    final projectKey = await const ProjectGlossaryKeyCalculator().calculate(
       secret: projectSecret,
       bridgeId: bridgeId,
       projectId: projectId,
@@ -187,7 +199,7 @@ void main() {
     );
     final service = ProjectGlossaryService(
       bridgeIdProvider: bridgeIdProvider,
-      secretStorage: const _TestSecretStorage(projectSecret),
+      keyMaterialRepository: _TestKeyMaterialRepository(projectSecret),
       keyCalculator: const ProjectGlossaryKeyCalculator(),
       projectRepository: projectRepository,
       glossaryRepository: glossaryRepository,
@@ -210,7 +222,7 @@ void main() {
     );
     final service = ProjectGlossaryService(
       bridgeIdProvider: bridgeIdProvider,
-      secretStorage: const _FailingSecretStorage(),
+      keyMaterialRepository: _FailingKeyMaterialRepository(),
       keyCalculator: const ProjectGlossaryKeyCalculator(),
       projectRepository: _FakeProjectRepository(paths: {"project": "/projects/project"}),
       glossaryRepository: glossaryRepository,
@@ -231,7 +243,7 @@ void main() {
     );
     final service = ProjectGlossaryService(
       bridgeIdProvider: bridgeIdProvider,
-      secretStorage: const _TestSecretStorage(projectSecret),
+      keyMaterialRepository: _TestKeyMaterialRepository(projectSecret),
       keyCalculator: const ProjectGlossaryKeyCalculator(),
       projectRepository: _FakeProjectRepository(paths: {"project": "/projects/project"}),
       glossaryRepository: glossaryRepository,
@@ -248,14 +260,26 @@ void main() {
 
 class const _TestBridgeIdProvider(@override final String? bridgeId) implements BridgeIdProvider;
 
-class const _TestSecretStorage(final List<int> secret) implements ProjectGlossarySecretStorage {
+class _TestKeyMaterialRepository(final List<int> secret) extends ProjectGlossaryKeyMaterialRepository {
+  this : super(storage: const _UnusedSecretStorage());
+
   @override
   Future<Uint8List> getOrCreate() async => Uint8List.fromList(secret);
 }
 
-class const _FailingSecretStorage() implements ProjectGlossarySecretStorage {
+class _FailingKeyMaterialRepository() extends ProjectGlossaryKeyMaterialRepository {
+  this : super(storage: const _UnusedSecretStorage());
+
   @override
   Future<Uint8List> getOrCreate() => Future<Uint8List>.error(StateError("storage unavailable"));
+}
+
+class const _UnusedSecretStorage() implements FileProjectGlossarySecretStorage {
+  @override
+  Future<String?> read() => throw UnsupportedError("unused");
+
+  @override
+  Future<void> write({required String encodedSecret}) => throw UnsupportedError("unused");
 }
 
 class _FakeProjectRepository({required final Map<String, String> paths}) implements ProjectRepository {
@@ -277,18 +301,14 @@ class _FakeProjectGlossaryRepository({
   required final Future<List<String>> Function({required String projectKey})? getWordsCallback,
 }) implements ProjectGlossaryRepository {
   final List<String> getWordsProjectKeys = [];
-  final List<AbortSignal> abortSignals = [];
+  bool shutdownStarted = false;
   String? addedProjectKey;
   List<String> addedWords = [];
   int loadSourceCalls = 0;
 
   @override
-  Future<List<String>> getWords({
-    required String projectKey,
-    required AbortSignal abortSignal,
-  }) async {
+  Future<List<String>> getWords({required String projectKey}) async {
     getWordsProjectKeys.add(projectKey);
-    abortSignals.add(abortSignal);
     final callback = getWordsCallback;
     if (callback != null) return await callback(projectKey: projectKey);
     return existingWords[projectKey] ?? const [];
@@ -310,13 +330,14 @@ class _FakeProjectGlossaryRepository({
   Future<List<String>> addWords({
     required String projectKey,
     required List<String> words,
-    required AbortSignal abortSignal,
   }) async {
-    abortSignals.add(abortSignal);
     addedProjectKey = projectKey;
     addedWords = words;
     return words;
   }
+
+  @override
+  void beginShutdown() => shutdownStarted = true;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

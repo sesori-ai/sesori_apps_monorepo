@@ -7,6 +7,7 @@ export "src/constants/sse_constants.dart";
 export "src/converters/auth_provider_converter.dart";
 export "src/converters/date_converter.dart";
 export "src/crypto/crypto_service.dart";
+export "src/crypto/hmac_sha256.dart";
 export "src/crypto/session_encryptor.dart";
 export "src/extensions/iterable_x.dart";
 export "src/extensions/sugar_dart.dart";

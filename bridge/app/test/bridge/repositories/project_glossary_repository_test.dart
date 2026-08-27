@@ -1,4 +1,5 @@
-import "dart:io" show FileSystemEntityType;
+import "dart:async";
+import "dart:io" show FileSystemEntityType, ProcessException;
 
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
@@ -9,6 +10,7 @@ import "package:sesori_bridge/src/api/models/project_glossary_response.dart";
 import "package:sesori_bridge/src/api/sesori_server_api.dart";
 import "package:sesori_bridge/src/foundation/abortable_request.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
+import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:sesori_bridge/src/repositories/project_glossary_repository.dart";
 import "package:test/test.dart";
 
@@ -65,7 +67,7 @@ void main() {
     );
 
     await expectLater(
-      repository.getWords(projectKey: "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", abortSignal: AbortSignal()),
+      repository.getWords(projectKey: "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
       throwsA(
         isA<ProjectGlossaryRepositoryAbortedException>().having(
           (error) => error.innerError,
@@ -73,6 +75,43 @@ void main() {
           same(abort),
         ),
       ),
+    );
+  });
+
+  test("owns and aborts the HTTP lifecycle signal during shutdown", () async {
+    final serverApi = _PendingSesoriServerApi();
+    final repository = ProjectGlossaryRepository(
+      gitCliApi: _SourceGitCliApi(),
+      gitTrackedFilesApi: _SourceGitTrackedFilesApi(trackedPaths: const []),
+      filesystemApi: const _SourceFilesystemApi(files: {}),
+      serverApi: serverApi,
+    );
+
+    final request = repository.getWords(projectKey: "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+    await serverApi.requestStarted.future;
+    repository.beginShutdown();
+
+    expect(serverApi.abortSignal?.isAborted, isTrue);
+    serverApi.response.complete(const ProjectGlossaryWordsResponse(words: []));
+    expect(await request, isEmpty);
+  });
+
+  test("preserves operational Git failures instead of scanning as non-Git", () async {
+    final repository = ProjectGlossaryRepository(
+      gitCliApi: _FailingMembershipGitCliApi(),
+      gitTrackedFilesApi: _SourceGitTrackedFilesApi(trackedPaths: const []),
+      filesystemApi: const _SourceFilesystemApi(files: {}),
+      serverApi: SesoriServerApi(
+        authBackendUrl: "https://unused.example.test",
+        client: MockClient((_) async => throw StateError("network must not be called")),
+        requestDeadline: const Duration(seconds: 1),
+        tokenRefresher: FakeTokenRefresher(token: "unused"),
+      ),
+    );
+
+    await expectLater(
+      repository.loadSource(projectPath: "/project"),
+      throwsA(isA<ProcessException>()),
     );
   });
 
@@ -112,6 +151,25 @@ class _AbortingSesoriServerApi(final Object failure) implements SesoriServerApi 
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _PendingSesoriServerApi() implements SesoriServerApi {
+  final Completer<void> requestStarted = Completer<void>();
+  final Completer<ProjectGlossaryWordsResponse> response = Completer<ProjectGlossaryWordsResponse>();
+  AbortSignal? abortSignal;
+
+  @override
+  Future<ProjectGlossaryWordsResponse> getProjectGlossary({
+    required String projectKey,
+    required AbortSignal abortSignal,
+  }) {
+    this.abortSignal = abortSignal;
+    requestStarted.complete();
+    return response.future;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _SourceGitCliApi() extends GitCliApi {
   this
     : super(
@@ -128,12 +186,21 @@ class _SourceGitCliApi() extends GitCliApi {
 }
 
 class _SourceGitTrackedFilesApi({required final List<String> trackedPaths}) extends GitTrackedFilesApi {
+  this : super(processRunner: const StreamingProcessRunner());
+
   int? requestedMaximumPaths;
 
   @override
   Future<List<String>> listTrackedFiles({required String projectPath, required int maximumPaths}) async {
     requestedMaximumPaths = maximumPaths;
     return trackedPaths.take(maximumPaths).toList(growable: false);
+  }
+}
+
+class _FailingMembershipGitCliApi() extends _SourceGitCliApi {
+  @override
+  Future<bool> isInsideGitWorkTree({required String projectPath}) async {
+    throw const ProcessException("git", ["rev-parse"], "fatal: detected dubious ownership", 128);
   }
 }
 
