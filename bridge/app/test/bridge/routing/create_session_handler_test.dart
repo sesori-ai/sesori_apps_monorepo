@@ -832,7 +832,7 @@ void main() {
       expect(plugin.lastCreateSessionModel, isNull);
       expect(plugin.lastCreateSessionParts, isEmpty);
       expect(plugin.lastCreateSessionUserVisibleText, isNull);
-      expect(plugin.lastCreateSessionVariant, equals("low"));
+      expect(plugin.lastCreateSessionVariant, isNull);
       expect(plugin.lastSendCommandSessionId, equals("cmd-session-1"));
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("Review this code"));

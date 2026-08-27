@@ -302,7 +302,6 @@ abstract class AcpPlugin({
 
   // --- Protected accessors for subclasses ---
 
-  /// Recovery guidance retained when the most recent connection failed authentication.
   String? get authenticationFailureActionHint => _authenticationFailure?.actionHint;
 
   AcpStdioClient? get client => _client;
@@ -924,7 +923,6 @@ abstract class AcpPlugin({
     required ({String providerID, String modelID})? model,
   }) async {
     if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
-    // Acceptance gate — see [sendPrompt].
     await _connectedClient();
     await validateTurnSelection(operation: "sendCommand", model: model, variant: variant, agent: agent);
     final backendCommand = commandForDispatch(command: command);
