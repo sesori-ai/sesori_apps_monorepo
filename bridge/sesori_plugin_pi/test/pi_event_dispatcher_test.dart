@@ -613,12 +613,12 @@ void main() {
       "attempt": 2,
       "message": "Pi is retrying the provider request.",
       "next": 1500,
-      "runtimeType": "retry",
+      "type": "retry",
     });
     expect(agentEnd, isEmpty);
-    expect((autoRetryResumed.single as BridgeSseSessionStatus).status, {"runtimeType": "busy"});
-    expect((summarizationResumed.single as BridgeSseSessionStatus).status, {"runtimeType": "busy"});
-    expect(compacting.whereType<BridgeSseSessionStatus>().single.status, {"runtimeType": "busy"});
+    expect((autoRetryResumed.single as BridgeSseSessionStatus).status, {"type": "busy"});
+    expect((summarizationResumed.single as BridgeSseSessionStatus).status, {"type": "busy"});
+    expect(compacting.whereType<BridgeSseSessionStatus>().single.status, {"type": "busy"});
     final runningMessage = compacting.whereType<BridgeSseMessageUpdated>().single;
     expect(runningMessage.info["id"], "pi:session:compaction:compaction:1");
     final runningPart = compacting.whereType<BridgeSseMessagePartUpdated>().single.part;
