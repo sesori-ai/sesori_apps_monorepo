@@ -82,6 +82,7 @@ extension PluginMessagePromptDefaultsMapper on List<PluginMessageWithParts> {
           };
       if (selection == null) continue;
       final (:agent, :modelID, :providerID, :variant) = selection;
+      if (modelID == null && providerID == null) continue;
       return SessionPromptDefaults(
         agent: agent,
         model: modelID == null || providerID == null

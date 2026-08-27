@@ -82,6 +82,7 @@ class ChatHistoryService({
     // let queued work — an observed import, or a failed capture clearing
     // `syncedAt` — commit in between, and the caller would receive a
     // transcript the store already knew was stale.
+    final activeBackfill = _inFlightBackfills[sessionId];
     final decided = await _enqueueRead(
       sessionId: sessionId,
       read: () async {
@@ -117,15 +118,16 @@ class ChatHistoryService({
       },
     );
     if (decided != null) {
+      final replayedPromptDefaults = activeBackfill == null ? null : await activeBackfill;
       // A store that stayed "fresh" across an abrupt bridge death still holds
       // the dead turn's open tool parts — no idle event ever fired and no
       // backfill will run. The page is already in memory, so detecting them is
       // free; only a page that actually contains one pays for a status read.
       if (!_containsOpenToolPart(page: decided)) {
-        return _messagesPage(page: decided, replayedPromptDefaults: null);
+        return _messagesPage(page: decided, replayedPromptDefaults: replayedPromptDefaults);
       }
       if (!await _sweepUnlessTurnRunning(sessionId: sessionId)) {
-        return _messagesPage(page: decided, replayedPromptDefaults: null);
+        return _messagesPage(page: decided, replayedPromptDefaults: replayedPromptDefaults);
       }
       final storageScope = await _requireStorageScope(sessionId: sessionId);
       final page = await _enqueueRead(
@@ -138,7 +140,7 @@ class ChatHistoryService({
           attachmentProjection: attachmentProjection,
         ),
       );
-      return _messagesPage(page: page, replayedPromptDefaults: null);
+      return _messagesPage(page: page, replayedPromptDefaults: replayedPromptDefaults);
     }
 
     final replayedPromptDefaults = await _backfillSessionForRead(sessionId: sessionId);

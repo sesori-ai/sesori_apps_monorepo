@@ -68,6 +68,31 @@ void main() {
       expect(page.messages, repository.transcript);
     });
 
+    test("a reader queued behind a backfill receives its replayed prompt defaults", () async {
+      final fetchGate = Completer<void>();
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])
+        ..fetchGate = fetchGate.future
+        ..replayedPromptDefaults = const SessionPromptDefaults(
+          agent: "build",
+          model: AgentModel(providerID: "openai", modelID: "gpt-5", variant: "high"),
+        );
+      final history = createTestChatHistory(sessionRepository: repository);
+
+      final first = history.service.getSessionMessages(sessionId: "ses_a");
+      while (repository.fetchCount == 0) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      final queued = history.service.getSessionMessages(sessionId: "ses_a");
+      fetchGate.complete();
+
+      final pages = await Future.wait([first, queued]);
+      expect(pages.map((page) => page.replayedPromptDefaults), [
+        repository.replayedPromptDefaults,
+        repository.replayedPromptDefaults,
+      ]);
+      expect(repository.fetchCount, 1);
+    });
+
     test("observed backend activity forces one re-read, then settles", () async {
       final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
       final history = createTestChatHistory(sessionRepository: repository);

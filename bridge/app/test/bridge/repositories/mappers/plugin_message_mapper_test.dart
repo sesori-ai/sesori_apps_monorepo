@@ -150,6 +150,43 @@ void main() {
       );
     });
 
+    test("latestPromptDefaults skips renderer-only assistant messages", () {
+      const messages = [
+        PluginMessageWithParts(
+          info: PluginMessage.assistant(
+            id: "m1",
+            sessionID: "s1",
+            agent: "pi",
+            modelID: "claude-sonnet-4-5",
+            providerID: "anthropic",
+            variant: "high",
+            time: null,
+          ),
+          parts: [],
+        ),
+        PluginMessageWithParts(
+          info: PluginMessage.assistant(
+            id: "m2",
+            sessionID: "s1",
+            agent: "pi",
+            modelID: null,
+            providerID: null,
+            variant: null,
+            time: null,
+          ),
+          parts: [],
+        ),
+      ];
+
+      expect(
+        messages.latestPromptDefaults(),
+        const SessionPromptDefaults(
+          agent: "pi",
+          model: AgentModel(providerID: "anthropic", modelID: "claude-sonnet-4-5", variant: "high"),
+        ),
+      );
+    });
+
     test("latestPromptDefaults ignores transcripts without assistant or error messages", () {
       const messages = [
         PluginMessageWithParts(
