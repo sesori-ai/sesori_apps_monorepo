@@ -27,6 +27,7 @@ final class const PiExtensionUiQuestionRejected({
 }) extends PiExtensionUiEvent;
 
 final class const PiExtensionUiToast({
+  required final String sessionId,
   required final String title,
   required final String message,
   required final PiNotificationType variant,
@@ -64,7 +65,12 @@ final class PiExtensionUiService({
         final visible = message == null ? null : _bounded(message);
         if (visible != null && visible.isNotEmpty) {
           _events.add(
-            PiExtensionUiToast(title: "Pi", message: visible, variant: notifyType ?? PiNotificationType.info),
+            PiExtensionUiToast(
+              sessionId: ownerSessionId,
+              title: "Pi",
+              message: visible,
+              variant: notifyType ?? PiNotificationType.info,
+            ),
           );
         }
         return;

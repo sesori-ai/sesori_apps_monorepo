@@ -3759,10 +3759,11 @@ as String?,
 /// @nodoc
 @JsonSerializable()
 
-class SesoriTuiToastShow implements SesoriSseEvent {
-  const SesoriTuiToastShow({required this.title, required this.message, required this.variant,  String? $type}): $type = $type ?? 'tui.toast.show';
+class SesoriTuiToastShow implements SesoriSseEvent, SesoriSessionEvent {
+  const SesoriTuiToastShow({required this.sessionID, required this.title, required this.message, required this.variant,  String? $type}): $type = $type ?? 'tui.toast.show';
   factory SesoriTuiToastShow.fromJson(Map<String, dynamic> json) => _$SesoriTuiToastShowFromJson(json);
 
+ final  String? sessionID;
  final  String? title;
  final  String? message;
  final  String? variant;
@@ -3784,16 +3785,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriTuiToastShow&&(identical(other.title, title) || other.title == title)&&(identical(other.message, message) || other.message == message)&&(identical(other.variant, variant) || other.variant == variant));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriTuiToastShow&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.title, title) || other.title == title)&&(identical(other.message, message) || other.message == message)&&(identical(other.variant, variant) || other.variant == variant));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,title,message,variant);
+int get hashCode => Object.hash(runtimeType,sessionID,title,message,variant);
 
 @override
 String toString() {
-  return 'SesoriSseEvent.tuiToastShow(title: $title, message: $message, variant: $variant)';
+  return 'SesoriSseEvent.tuiToastShow(sessionID: $sessionID, title: $title, message: $message, variant: $variant)';
 }
 
 
@@ -3804,7 +3805,7 @@ abstract mixin class $SesoriTuiToastShowCopyWith<$Res> implements $SesoriSseEven
   factory $SesoriTuiToastShowCopyWith(SesoriTuiToastShow value, $Res Function(SesoriTuiToastShow) _then) = _$SesoriTuiToastShowCopyWithImpl;
 @useResult
 $Res call({
- String? title, String? message, String? variant
+ String? sessionID, String? title, String? message, String? variant
 });
 
 
@@ -3821,9 +3822,10 @@ class _$SesoriTuiToastShowCopyWithImpl<$Res>
 
 /// Create a copy of SesoriSseEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? title = freezed,Object? message = freezed,Object? variant = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? sessionID = freezed,Object? title = freezed,Object? message = freezed,Object? variant = freezed,}) {
   return _then(SesoriTuiToastShow(
-title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+sessionID: freezed == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String?,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,message: freezed == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
 as String?,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
 as String?,

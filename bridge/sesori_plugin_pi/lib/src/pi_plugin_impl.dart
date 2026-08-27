@@ -482,7 +482,11 @@ final class PiPlugin._({
       throw _unsupportedSelection(operation: operation, message: "Unsupported Pi agent.", staleOptions: staleOptions);
     }
     if (variant != null && PiThinkingLevel.tryParse(value: variant.id) == null) {
-      throw _unsupportedSelection(operation: operation, message: "Unsupported Pi thinking level.", staleOptions: staleOptions);
+      throw _unsupportedSelection(
+        operation: operation,
+        message: "Unsupported Pi thinking level.",
+        staleOptions: staleOptions,
+      );
     }
     if (model == null) return;
     final options = await _catalogService.requireOptions(projectId: projectId);
@@ -529,7 +533,8 @@ final class PiPlugin._({
             sessionID: ownerSessionId,
             displaySessionId: displaySessionId,
           ),
-        PiExtensionUiToast(:final title, :final message, :final variant) => BridgeSseTuiToastShow(
+        PiExtensionUiToast(:final sessionId, :final title, :final message, :final variant) => BridgeSseTuiToastShow(
+          sessionID: sessionId,
           title: title,
           message: message,
           variant: switch (variant) {

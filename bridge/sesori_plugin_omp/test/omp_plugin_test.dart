@@ -576,6 +576,7 @@ void main() {
 
       expect(events.whereType<BridgeSseSessionError>(), hasLength(1));
       final toast = events.whereType<BridgeSseTuiToastShow>().single;
+      expect(toast.sessionID, session.id);
       expect(toast.message, contains("run /login"));
       expect(toast.message, isNot(contains("/Users/private")));
       expect(toast.message, isNot(contains("private prompt")));

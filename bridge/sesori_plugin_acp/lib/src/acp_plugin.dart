@@ -811,7 +811,8 @@ abstract class AcpPlugin({
           stack,
         );
         _eventBuffer.add(
-          const BridgeSseTuiToastShow(
+          BridgeSseTuiToastShow(
+            sessionID: session.sessionId,
             title: "Session options not applied",
             message: "The selected options will be retried before the first turn.",
             variant: "warning",

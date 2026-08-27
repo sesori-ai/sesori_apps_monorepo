@@ -229,6 +229,7 @@ void main() {
     expect(processes.replies.single.reply, isA<PiExtensionUiCancelledReply>());
     expect(events.whereType<PiExtensionUiQuestionRejected>(), hasLength(2));
     final toast = events.whereType<PiExtensionUiToast>().single;
+    expect(toast.sessionId, "child");
     expect(toast.message.runes.length, PiExtensionUiService.maxTextLength);
     expect(toast.variant, PiNotificationType.warning);
   });

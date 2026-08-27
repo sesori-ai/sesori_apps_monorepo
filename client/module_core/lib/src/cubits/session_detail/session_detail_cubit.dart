@@ -745,7 +745,8 @@ class SessionDetailCubit(
             SesoriSessionDiff() ||
             SesoriSessionError() ||
             SesoriSessionCompacted() ||
-            SesoriTodoUpdated():
+            SesoriTodoUpdated() ||
+            SesoriTuiToastShow():
           break;
       }
     } catch (e, st) {

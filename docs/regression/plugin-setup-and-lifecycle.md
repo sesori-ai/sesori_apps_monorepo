@@ -45,11 +45,12 @@ idle suspension, the management snapshot, and lifecycle commands.
   skills, and prompt templates are trusted without prompts); OMP launches `omp acp`
   without an approval-mode override, leaving approval behavior to OMP. Provider login
   for both happens locally, never from the phone.
-- Backend `tui.toast.show` SSE events render app-wide through the backend-neutral
-  toast surface, presented with the design-system popup alert on the root
-  navigator's overlay: every accepted toast is a new effect (equal repeated guidance
-  included), toasts with no renderable text are dropped, and unknown variants
-  degrade to info.
+- Backend `tui.toast.show` SSE events render through the backend-neutral toast
+  surface, presented with the design-system popup alert on the root navigator's
+  overlay. Session-attributed events appear only while that session's detail or
+  diffs route is on top; unattributed events remain app-wide. Every accepted toast
+  is a new effect (equal repeated guidance included), toasts with no renderable
+  text are dropped, and unknown variants degrade to info.
 - Listings order by display name case-insensitively with the identifier as tie-breaker,
   and the default is the preferred harness when selectable, else the first selectable.
 - Client-owned branding maps recognized built-in harness ids to their stable names and

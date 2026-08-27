@@ -29,6 +29,7 @@ class SseEvent({required final SesoriSseEvent data, final String? directory}) {
     SesoriPermissionReplied(:final sessionID) => sessionID,
     SesoriSessionPromptDefaultsChanged(:final sessionID) => sessionID,
     SesoriSessionQueuedPrompts(:final sessionID) => sessionID,
+    SesoriTuiToastShow(:final sessionID) => sessionID,
     SesoriServerConnected() ||
     SesoriServerHeartbeat() ||
     SesoriServerInstanceDisposed() ||
@@ -58,7 +59,6 @@ class SseEvent({required final SesoriSseEvent data, final String? directory}) {
     SesoriInstallationUpdateAvailable() ||
     SesoriWorkspaceReady() ||
     SesoriWorkspaceFailed() ||
-    SesoriTuiToastShow() ||
     SesoriWorktreeReady() ||
     SesoriWorktreeFailed() => null,
   };

@@ -545,6 +545,7 @@ final class PiSessionService({
       if (presented.message?.contains("/login") ?? false) {
         _emit(
           BridgeSseTuiToastShow(
+            sessionID: sessionId,
             title: "Pi login required",
             message: presented.message,
             variant: "warning",
@@ -769,7 +770,8 @@ final class PiSessionService({
     );
     if (hasUncancelled && exit.authUnavailable) {
       _emit(
-        const BridgeSseTuiToastShow(
+        BridgeSseTuiToastShow(
+          sessionID: exit.sessionId,
           title: "Pi login required",
           message: "Pi has no model available. Run Pi locally and use /login, then try again.",
           variant: "warning",
