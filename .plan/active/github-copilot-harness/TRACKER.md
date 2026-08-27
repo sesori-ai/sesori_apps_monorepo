@@ -5,8 +5,8 @@ Plan: [PLAN.md](PLAN.md)
 ## Delivery
 
 - [ ] **Step 1/7** — `🌱 [github-copilot-harness] docs: plan GitHub Copilot harness support [step 1/7]`
-  - State: ready for review
-  - PR: pending
+  - State: in review
+  - PR: [#1154](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1154)
   - Evidence: upstream ACP/release/license research and no-prompt `1.0.80` protocol probe recorded in the plan
 - [ ] **Step 2/7** — `⚙️ [github-copilot-harness] feat(copilot): add the ACP harness package [step 2/7]`
   - State: not started
