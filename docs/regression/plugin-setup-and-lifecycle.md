@@ -55,9 +55,9 @@ idle suspension, the management snapshot, and lifecycle commands.
 - Client-owned branding maps recognized built-in harness ids to their stable names and
   theme-specific artwork. Hermes renders as `Hermes Agent` with its light or dark
   NousResearch logo, Pi as `Pi` with its official glyph, and Oh My Pi as `Oh My Pi`
-  with its official icon. DeepSeek renders its bridge-supplied name with the
-  generic icon; surfaces without metadata retain the same generic icon and
-  raw-id fallback rather than teaching shared widgets a backend name.
+  with its official icon. DeepSeek renders as `DeepSeek` with its official
+  theme-independent brand-blue whale mark. Surfaces without recognized
+  metadata retain the generic icon and raw-id fallback.
 - Harnesses start on demand unless eager; a transient one may suspend after a confirmed
   idle window and a resident one never does, and idle timeouts survive restart. With no
   configured default or per-harness override, every harness uses the bridge's 45-minute
@@ -188,9 +188,9 @@ timeouts, and sessions afterwards.
 
 - The harness set comes from the current registry; unregistered in-development harnesses
   are out of scope.
-- DeepSeek is registered and enabled by default. Its generic-icon presentation,
-  local provider setup guidance, and managed install controls follow the same
-  backend-neutral registry and client surfaces as every other harness.
+- DeepSeek is registered and enabled by default. Its official theme-independent
+  brand-blue artwork, local provider setup guidance, and managed install controls
+  follow the same backend-neutral registry and client surfaces as every other harness.
 - Backend authentication and credential persistence happen on the bridge machine. A forced
   disable leaves work interrupted.
 - Hermes model/provider configuration is intentionally unavailable through Sesori and must
