@@ -3,7 +3,13 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_mobile/core/extensions/build_context_x.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 
-Future<BuildContext> _pumpContext(WidgetTester tester) async {
+Future<BuildContext> _pumpContext(
+  WidgetTester tester, {
+  Locale platformLocale = const Locale("en", "US"),
+}) async {
+  tester.platformDispatcher.localeTestValue = platformLocale;
+  addTearDown(tester.platformDispatcher.clearLocaleTestValue);
+
   late BuildContext captured;
   await tester.pumpWidget(
     MaterialApp(
@@ -22,6 +28,22 @@ Future<BuildContext> _pumpContext(WidgetTester tester) async {
 }
 
 void main() {
+  group("formatTimestampCompact", () {
+    testWidgets("uses the user's full platform locale for old session dates", (tester) async {
+      final date = DateTime(DateTime.now().year - 1, 7, 8);
+
+      final britishContext = await _pumpContext(tester, platformLocale: const Locale("en", "GB"));
+      final britishLabel = britishContext.formatTimestampCompact(ms: date.millisecondsSinceEpoch);
+
+      expect(britishLabel, "08/07/${date.year}");
+
+      final americanContext = await _pumpContext(tester);
+      final americanLabel = americanContext.formatTimestampCompact(ms: date.millisecondsSinceEpoch);
+
+      expect(americanLabel, "7/8/${date.year}");
+    });
+  });
+
   group("formatMessageTimestamp", () {
     testWidgets("shows time only for messages from today", (tester) async {
       final context = await _pumpContext(tester);

@@ -3,11 +3,11 @@
 ## Current State
 
 - **Plan slug:** `deepseek-harness`
-- **Plan status:** Steps 1-14 merged; Step 15/16 open for review; Step 16/16 verification in progress locally
+- **Plan status:** Steps 1-15 merged; Step 16/16 verification in progress locally
 - **Current repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current branch:** `deepseek-harness/step-16-verify-retire`
-- **Current open PR:** [PR #1129](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1129)
-- **Next action:** continue Step 16 locally while Step 15 is reviewed
+- **Current open PR:** none
+- **Next action:** complete the Step 16 verification matrix and retire the plan
 - **Implementation started:** yes
 - **Retirement:** blocked until every required row in `PLAN.md` passes
 
@@ -262,6 +262,7 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] `git diff --check`
 - [x] Final changed-line count: 178, below the 600 soft target and 1,500 hard cap
 - [x] PR #1129 opened against `main`
+- [x] PR #1129 merged with all 8 checks passing
 
 ### Step 16/16
 
