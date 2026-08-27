@@ -93,6 +93,21 @@ void main() {
     expect(icon.color, color);
   });
 
+  for (final brightness in Brightness.values) {
+    testWidgets("uses the generic plug for DeepSeek in ${brightness.name} mode", (tester) async {
+      const color = Color(0xFF654321);
+      await tester.pumpWidget(
+        _harness(
+          logo: PregoBrandLogo(pluginId: Harness.deepseek.name, color: color),
+          brightness: brightness,
+        ),
+      );
+
+      expect(find.byType(SvgPicture), findsNothing);
+      expect(tester.widget<Icon>(find.byIcon(TablerRegular.plug)).color, color);
+    });
+  }
+
   test("names each harness it has a mark for, and speaks an unknown id as-is", () {
     expect(PregoBrandLogo.displayNameFor(Harness.opencode.name), "OpenCode");
     expect(PregoBrandLogo.displayNameFor(Harness.codex.name), "Codex");
@@ -101,6 +116,7 @@ void main() {
     expect(PregoBrandLogo.displayNameFor(Harness.hermes.name), "Hermes Agent");
     expect(PregoBrandLogo.displayNameFor(Harness.pi.name), "Pi");
     expect(PregoBrandLogo.displayNameFor(Harness.omp.name), "Oh My Pi");
+    expect(PregoBrandLogo.displayNameFor(Harness.deepseek.name), Harness.deepseek.name);
     expect(PregoBrandLogo.displayNameFor("future-plugin"), "future-plugin");
   });
 

@@ -48,8 +48,9 @@ idle suspension, the management snapshot, and lifecycle commands.
 - Client-owned branding maps recognized built-in harness ids to their stable names and
   theme-specific artwork. Hermes renders as `Hermes Agent` with its light or dark
   NousResearch logo, Pi as `Pi` with its official glyph, and Oh My Pi as `Oh My Pi`
-  with its official icon, while an unknown plugin id retains the generic icon and
-  raw-id fallback.
+  with its official icon. DeepSeek renders its bridge-supplied name with the
+  generic icon; surfaces without metadata retain the same generic icon and
+  raw-id fallback rather than teaching shared widgets a backend name.
 - Harnesses start on demand unless eager; a transient one may suspend after a confirmed
   idle window and a resident one never does, and idle timeouts survive restart.
   Enable, disable, restart, and refresh are offered only where declared, with enable
@@ -127,7 +128,7 @@ idle suspension, the management snapshot, and lifecycle commands.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | A started bridge inspects every registered harness and publishes coherent setup and management snapshots. A ready fixture has a selectable default; a fixture with no usable harness has zero selectable entries and no default without failing startup. Headless bridge; all registered harnesses listed. |
-| L2 Routine | Demand-driven start of a ready harness, clean lifecycle-owned bridge shutdown, Codex keepalive traffic remaining local and stopping on disposal, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Package automation covers DeepSeek explicit/PATH/managed selection, immutable six-platform archive metadata, readiness, extension refusal, crash/reconnect, and idempotent shutdown before registry activation. Headless bridge; representative managed harness for start and shutdown, every registered harness for listing and ordering. |
+| L2 Routine | Demand-driven start of a ready harness, clean lifecycle-owned bridge shutdown, Codex keepalive traffic remaining local and stopping on disposal, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Package automation covers DeepSeek explicit/PATH/managed selection, immutable six-platform archive metadata, readiness, extension refusal, crash/reconnect, and idempotent shutdown. Headless bridge; representative managed harness for start and shutdown, every registered harness for listing and ordering. |
 | L3 Release | The management surface as rendered: per-harness selected runtime version when reported, setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, default badge, enable/disable, restart, idle-timeout default plus override persisted across a bridge restart, and the per-harness catalog scan on a routable harness including its in-place progress and the announcement of what it found. Client end to end; every harness declaring the relevant capability must pass. |
 | L4 Extended | Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication with no catalog-scan action offered on them, a targeted scan rejected by the bridge reporting on its own card, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. |
 | L5 Full | Every registered production harness through inspect, enable, disable, restart, refresh, and idle behavior on a supported platform, plus forward-compatible presentation of an unknown harness or capability and the reported state of a session interrupted by a forced disable. Live plugin and client end to end as each entry requires. |
@@ -178,10 +179,10 @@ timeouts, and sessions afterwards.
 ## Known Limitations
 
 - The harness set comes from the current registry; unregistered in-development harnesses
-  are out of scope, and no lifecycle path installs a runtime.
-- DeepSeek remains unregistered in the bridge app at this stage; package-level
-  descriptor and managed-runtime behavior are covered, while registry/client
-  behavior begins at its activation step.
+  are out of scope.
+- DeepSeek is registered and enabled by default. Its generic-icon presentation,
+  local provider setup guidance, and managed install controls follow the same
+  backend-neutral registry and client surfaces as every other harness.
 - Backend authentication and credential persistence happen on the bridge machine. A forced
   disable leaves work interrupted.
 - Hermes model/provider configuration is intentionally unavailable through Sesori and must
