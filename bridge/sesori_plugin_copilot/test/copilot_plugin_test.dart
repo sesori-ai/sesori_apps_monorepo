@@ -168,6 +168,8 @@ void main() {
       expect((await discovering).map((agent) => agent.name), ["Agent", "Plan"]);
       expect(launchEnvironments.last["COPILOT_HOME"], "/state/catalog");
       expect(fake.written.where((frame) => frame["method"] == "session/new"), isEmpty);
+      plugin.onConnectionReset();
+      plugin.validateTurnSelection(operation: "sendPrompt", model: null, variant: null, agent: "Plan");
       await expectLater(
         plugin.sendPrompt(
           sessionId: "session",

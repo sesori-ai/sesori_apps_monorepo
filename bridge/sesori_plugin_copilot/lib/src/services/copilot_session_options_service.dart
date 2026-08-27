@@ -203,9 +203,6 @@ class CopilotSessionOptionsService({
   PluginProvidersResult get providers => _providers();
 
   void resetConnection() {
-    _snapshot = null;
-    _defaultModelValue = null;
-    _defaultModeValue = null;
     _configurationTracker.clear();
     _lastDiscoveryFailure = null;
   }
