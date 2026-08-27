@@ -282,7 +282,7 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] Client E2E and compatibility build-pair matrix
 - [x] Cleanup, final evidence, and plan retirement
 - [x] Markdown references and `git diff --check` pass
-- [x] Final changed-line count: 107, below the 700 soft target and 1,500 hard cap
+- [x] Final changed-line count: 124, below the 700 soft target and 1,500 hard cap
 
 #### Release Boundary
 
