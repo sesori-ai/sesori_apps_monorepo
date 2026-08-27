@@ -1,6 +1,6 @@
 import '../updater/foundation/release_track.dart';
 
-const int defaultPluginIdleTimeoutMins = 10;
+const int defaultPluginIdleTimeoutMins = 45;
 const int defaultPullRequestRefreshIntervalSeconds = 30;
 const int minimumPullRequestRefreshIntervalSeconds = 15;
 const int maximumPullRequestRefreshIntervalSeconds = 3600;
