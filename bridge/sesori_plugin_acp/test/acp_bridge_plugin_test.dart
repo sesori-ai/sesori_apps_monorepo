@@ -36,12 +36,49 @@ void main() {
       expect(diagnostics.details, {"transport": "acp-stdio", "agent": "ACP"});
     });
 
+    test("authentication failure preserves required user action", () async {
+      final starting = AcpBridgePlugin.start(
+        plugin: plugin,
+        host: _Host(startAborted: StartAbortSignal.never, clock: _ImmediateClock()),
+        connectBudget: const Duration(seconds: 5),
+      );
+      await waitForFrame("initialize");
+      final initialize = fake.written.firstWhere((frame) => frame["method"] == "initialize");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": initialize["id"],
+        "result": {
+          "protocolVersion": 1,
+          "agentCapabilities": <String, dynamic>{},
+          "authMethods": [
+            {"id": "token", "name": "Token"},
+          ],
+        },
+      });
+      await waitForFrame("authenticate");
+      final authenticate = fake.written.firstWhere((frame) => frame["method"] == "authenticate");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": authenticate["id"],
+        "error": {"code": -32000, "message": "authentication required"},
+      });
+
+      final wrapper = await starting;
+      addTearDown(() => wrapper.shutdown(budget: null));
+      await Future<void>.delayed(Duration.zero);
+      expect(wrapper.currentStatus, isA<PluginDegraded>());
+      if (wrapper.currentStatus case PluginDegraded(:final requiresUserAction, :final userActionHint)) {
+        expect(requiresUserAction, isTrue);
+        expect(userActionHint, isNotEmpty);
+      }
+    });
+
     test("start rolls back as soon as the start is aborted during a hanging handshake", () async {
       final controller = StartAbortController();
       final stopwatch = Stopwatch()..start();
       final starting = AcpBridgePlugin.start(
         plugin: plugin,
-        host: _Host(startAborted: controller.signal),
+        host: _Host(startAborted: controller.signal, clock: const ServerClock()),
         connectBudget: const Duration(seconds: 30),
       );
       // The agent never answers `initialize`; abort while the handshake hangs.
@@ -58,10 +95,18 @@ void main() {
   });
 }
 
-class _Host({@override required final StartAbortSignal startAborted}) implements PluginHost {
-  @override
-  ServerClock get clock => const ServerClock();
-
+class _Host({
+  @override required final StartAbortSignal startAborted,
+  @override required final ServerClock clock,
+}) implements PluginHost {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _ImmediateClock() implements ServerClock {
+  @override
+  Future<void> delay({required Duration duration}) async {}
+
+  @override
+  DateTime now() => DateTime.utc(2026, 8, 27);
 }

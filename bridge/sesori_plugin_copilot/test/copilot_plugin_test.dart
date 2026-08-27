@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:acp_plugin/acp_testing.dart";
 import "package:copilot_plugin/copilot_plugin.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 const Map<String, dynamic> _copilotInitializeResult = {
@@ -78,6 +79,23 @@ void main() {
       throw StateError("agent never wrote a '$method' frame");
     }
 
+    Future<void> completeHandshake({
+      required FakeAcpProcess process,
+      bool rejectAuthentication = false,
+    }) async {
+      final initialize = await waitForFrame(process: process, method: "initialize");
+      process.emit({"jsonrpc": "2.0", "id": initialize["id"], "result": _copilotInitializeResult});
+      final authenticate = await waitForFrame(process: process, method: "authenticate");
+      process.emit({
+        "jsonrpc": "2.0",
+        "id": authenticate["id"],
+        if (rejectAuthentication)
+          "error": {"code": -32000, "message": "authentication required"}
+        else
+          "result": <String, dynamic>{},
+      });
+    }
+
     test("owns the stable Copilot identity and launch arguments", () {
       expect(CopilotPluginIdentity.id, "copilot");
       expect(CopilotPluginIdentity.displayName, "GitHub Copilot");
@@ -115,10 +133,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final discovering = plugin.getAgents(projectId: "/repo");
-      final catalogInitialize = await waitForFrame(process: catalogFake, method: "initialize");
-      catalogFake.emit({"jsonrpc": "2.0", "id": catalogInitialize["id"], "result": _copilotInitializeResult});
-      final catalogAuthenticate = await waitForFrame(process: catalogFake, method: "authenticate");
-      catalogFake.emit({"jsonrpc": "2.0", "id": catalogAuthenticate["id"], "result": <String, dynamic>{}});
+      await completeHandshake(process: catalogFake);
       final newSession = await waitForFrame(process: catalogFake, method: "session/new");
       catalogFake.emit({
         "jsonrpc": "2.0",
@@ -154,6 +169,24 @@ void main() {
 
       expect((await discovering).map((agent) => agent.name), ["Agent", "Plan"]);
       expect(fake.written.where((frame) => frame["method"] == "session/new"), isEmpty);
+    });
+
+    test("retains local Copilot login guidance after authentication failure", () async {
+      final connecting = plugin.ensureConnected();
+      await completeHandshake(process: fake, rejectAuthentication: true);
+
+      expect(await connecting, isFalse);
+      expect(plugin.authenticationFailureActionHint, contains("copilot login"));
+    });
+
+    test("legacy option getters surface isolated discovery failures", () async {
+      final connecting = plugin.ensureConnected();
+      await completeHandshake(process: fake);
+      expect(await connecting, isTrue);
+
+      final agents = plugin.getAgents(projectId: "/repo");
+      await completeHandshake(process: catalogFake, rejectAuthentication: true);
+      await expectLater(agents, throwsA(isA<PluginOperationException>()));
     });
   });
 }

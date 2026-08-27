@@ -79,6 +79,11 @@ class CopilotPlugin._({
   String? get authMethodId => CopilotBinary.acpAuthMethodId;
 
   @override
+  String? get authenticationFailureActionHint => super.authenticationFailureActionHint == null
+      ? null
+      : "Run `copilot login` on the bridge machine, then retry GitHub Copilot.";
+
+  @override
   bool get cancelsActiveTurnForQueuedInput => true;
 
   @override
@@ -115,19 +120,19 @@ class CopilotPlugin._({
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async {
-    await _discoverOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
+    await _requireOptions();
     return _copilotSessionOptionsService.agents;
   }
 
   @override
   Future<PluginProvidersResult> getProviders({required String projectId}) async {
-    await _discoverOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
+    await _requireOptions();
     return _copilotSessionOptionsService.providers;
   }
 
   @override
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
-    await _discoverOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
+    await _requireOptions();
     return _copilotSessionOptionsService.commands;
   }
 
@@ -137,6 +142,16 @@ class CopilotPlugin._({
   Future<PluginSessionOptionsDiscoveryResult> _discoverOptions({
     required PluginSessionOptionsDiscoveryMode discoveryMode,
   }) => _copilotSessionOptionsService.getSessionOptions(discoveryMode: discoveryMode);
+
+  Future<void> _requireOptions() async {
+    final result = await _discoverOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
+    if (result is PluginSessionOptionsDiscoveryFailed) {
+      throw const PluginOperationException(
+        "session/options",
+        message: "GitHub Copilot session options could not be discovered",
+      );
+    }
+  }
 
   @override
   Future<void> dispose() async {

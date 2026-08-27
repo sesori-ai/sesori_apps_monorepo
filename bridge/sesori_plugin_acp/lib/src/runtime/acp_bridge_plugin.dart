@@ -139,7 +139,12 @@ class AcpBridgePlugin({
       _armExitWatch();
       markReady();
     } else {
-      markDegraded(recoverable: true, requiresUserAction: false, userActionHint: null);
+      final authenticationHint = _plugin.authenticationFailureActionHint;
+      markDegraded(
+        recoverable: true,
+        requiresUserAction: authenticationHint != null,
+        userActionHint: authenticationHint,
+      );
     }
   }
 

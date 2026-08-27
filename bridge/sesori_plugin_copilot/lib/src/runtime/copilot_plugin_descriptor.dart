@@ -9,6 +9,7 @@ import "../copilot_binary.dart";
 import "../copilot_identity.dart";
 import "../copilot_plugin_impl.dart";
 import "copilot_runtime_manifest.dart";
+import "copilot_runtime_version_validator.dart";
 
 const int _setupProbeOutputLimit = 64 * 1024;
 
@@ -169,13 +170,12 @@ final class const CopilotPluginDescriptor({
     };
   }
 
-  RuntimeVersionValidator _versionValidator({required HostProcessService processes}) => RuntimeVersionValidator(
+  RuntimeVersionValidator _versionValidator({required HostProcessService processes}) => CopilotRuntimeVersionValidator(
     commandExecutor: HostProcessCommandExecutor(
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
     ),
-    manifest: const CopilotRuntimeManifest(),
     probeTimeout: _versionProbeTimeout,
   );
 

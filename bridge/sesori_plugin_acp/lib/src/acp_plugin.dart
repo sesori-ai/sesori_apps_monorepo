@@ -292,6 +292,9 @@ abstract class AcpPlugin({
 
   // --- Protected accessors for subclasses ---
 
+  /// Recovery guidance retained when the most recent connection failed authentication.
+  String? get authenticationFailureActionHint => _authenticationFailure?.actionHint;
+
   AcpStdioClient? get client => _client;
   AcpInitializeResult? get initializeResult => _initResult;
   Future<AcpStdioClient> requireConnectedClient() => _connectedClient();
