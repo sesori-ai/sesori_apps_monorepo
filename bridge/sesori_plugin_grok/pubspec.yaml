@@ -10,6 +10,8 @@ dependencies:
   acp_plugin:
     path: ../sesori_plugin_acp
   freezed_annotation: ^3.1.0
+  sesori_plugin_interface:
+    path: ../sesori_plugin_interface
   json_annotation: ^4.12.0
 
 dev_dependencies:

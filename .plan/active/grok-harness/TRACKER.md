@@ -3,13 +3,12 @@
 ## Current State
 
 - **Plan:** `.plan/active/grok-harness/PLAN.md`
-- **Status:** Step 1/9 merged; Step 2/9 in PR
-- **Current branch:** `grok-harness-step-2-scaffold`
+- **Status:** Steps 1-2/9 merged; Step 3/9 verified and ready for PR
+- **Current branch:** `grok-harness-step-3-models`
 - **Base:** `origin/main`
 - **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
-- **Merged predecessor:** #1152 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1152>
-- **Open PR:** #1156 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1156>
-- **Current step:** `grok-harness-step-2-scaffold`; scaffold implemented, verified, and under review
+- **Merged predecessor:** #1156 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1156>
+- **Current step:** `grok-harness-step-3-models`; model/effort collaborators verified and ready to publish
 
 ## Fixed Series
 
@@ -17,11 +16,13 @@
    - **State:** merged in #1152.
    - **Evidence:** architecture-approved plan; released-binary facts, titles, paths, and whitespace passed.
 2. `🌿 [grok-harness] feat(grok): scaffold the Grok plugin package [step 2/9]`
-   - **State:** in PR #1156.
+   - **State:** merged in #1156.
    - **Evidence:** workspace package, launch spec, typed model-state DTOs, synthetic protocol fixtures, generated output,
      package tests/analyzer, LSP diagnostics, and the 1,500-line budget pass.
 3. `⚙️ [grok-harness] feat(grok): expose models and reasoning effort [step 3/9]`
-   - **State:** not started.
+   - **State:** verified locally and ready to open.
+   - **Evidence:** initialize-only API, typed mapping, repositories, sole-owner tracker, options service, generated output,
+     18 package tests, fatal-info analysis, LSP diagnostics, architecture approval, and the 1,500-line budget pass.
 4. `⚙️ [grok-harness] feat(grok): compose ACP sessions and turns [step 4/9]`
    - **State:** not started.
 5. `⚙️ [grok-harness] feat(grok): add direct-CLI setup and lifecycle [step 5/9]`
@@ -63,6 +64,19 @@
 - [x] Run architecture implementation review for `origin/main...HEAD`; approved with no findings.
 - [x] Keep the measured change below the 1,500-line soft cap by leaving initialize/session envelope DTOs for Step 3.
 - [x] After #1152 merged, sync to `origin/main`, publish PR #1156, and start its monitor.
+
+## Step 3 Checklist
+
+- [x] Add typed initialize/session envelopes and regenerate source without hand edits.
+- [x] Add initialize-only catalog probing with headless-auth filtering and clean process disposal.
+- [x] Add exact `session/set_model` model/optional-effort writes with typed cause-preserving failures.
+- [x] Keep `GrokCatalogTracker` as the sole last-good catalog owner across initialize, new/load, and refresh capture.
+- [x] Expose one primary agent/provider with opaque model IDs and exact canonical effort strings.
+- [x] Cover malformed/empty/partial catalogs, default ordering, refresh retention, selection variants, and failed writes.
+- [x] Run 18 package tests, fatal-info analysis, Dart LSP diagnostics, line-width checks, and `git diff --check`.
+- [x] Keep the measured Step 3 change below the 1,500-line soft cap (currently 1,305 lines before tracker updates).
+- [x] Run architecture implementation review over the Step 3 branch against the Step 2 branch; approved.
+- [x] Commit the completed successor locally; do not publish before #1156 merges.
 
 ## Decisions And Evidence
 

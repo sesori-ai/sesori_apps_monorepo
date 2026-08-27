@@ -88,3 +88,28 @@ Map<String, dynamic> _$GrokSessionModelStateDtoToJson(
   'availableModels': instance.availableModels.map((e) => e.toJson()).toList(),
   'currentModelId': ?instance.currentModelId,
 };
+
+_GrokInitializeMetadataDto _$GrokInitializeMetadataDtoFromJson(Map json) =>
+    _GrokInitializeMetadataDto(
+      grokShell: json['grokShell'] as bool?,
+      agentVersion: json['agentVersion'] as String?,
+      modelState: json['modelState'] == null
+          ? null
+          : GrokSessionModelStateDto.fromJson(
+              Map<String, dynamic>.from(json['modelState'] as Map),
+            ),
+    );
+
+_GrokModelStateEnvelopeDto _$GrokModelStateEnvelopeDtoFromJson(Map json) =>
+    _GrokModelStateEnvelopeDto(
+      metadata: json['_meta'] == null
+          ? null
+          : GrokInitializeMetadataDto.fromJson(
+              Map<String, dynamic>.from(json['_meta'] as Map),
+            ),
+      models: json['models'] == null
+          ? null
+          : GrokSessionModelStateDto.fromJson(
+              Map<String, dynamic>.from(json['models'] as Map),
+            ),
+    );

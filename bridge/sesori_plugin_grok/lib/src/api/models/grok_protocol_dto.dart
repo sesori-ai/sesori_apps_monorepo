@@ -52,3 +52,26 @@ sealed class GrokSessionModelStateDto with _$GrokSessionModelStateDto {
 
   factory fromJson(Map<String, dynamic> json) => _$GrokSessionModelStateDtoFromJson(json);
 }
+
+/// Grok-specific portion of ACP initialize metadata.
+@Freezed(toJson: false)
+sealed class GrokInitializeMetadataDto with _$GrokInitializeMetadataDto {
+  const factory({
+    required bool? grokShell,
+    required String? agentVersion,
+    required GrokSessionModelStateDto? modelState,
+  }) = _GrokInitializeMetadataDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$GrokInitializeMetadataDtoFromJson(json);
+}
+
+/// Typed envelope for initialize and session activation model state.
+@Freezed(toJson: false)
+sealed class GrokModelStateEnvelopeDto with _$GrokModelStateEnvelopeDto {
+  const factory({
+    @JsonKey(name: "_meta") required GrokInitializeMetadataDto? metadata,
+    required GrokSessionModelStateDto? models,
+  }) = _GrokModelStateEnvelopeDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$GrokModelStateEnvelopeDtoFromJson(json);
+}
