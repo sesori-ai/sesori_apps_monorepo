@@ -6,17 +6,18 @@
 - **Status:** Step 1/9 in PR
 - **Current branch:** `grok-code-harness-inquiry`
 - **Base:** `origin/main`
-- **Architecture plan review:** completed 2026-08-27; rejected one ownership issue, corrected below without re-review
+- **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
 - **Open PR:** #1152 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1152>
-- **Local successor:** not started
+- **Local successor:** `grok-harness-step-2-scaffold`; released-binary research started and held locally
 
 ## Fixed Series
 
 1. `🌱 [grok-harness] docs: plan Grok Build harness support [step 1/9]`
    - **State:** in PR #1152.
-   - **Evidence:** plan/tracker drafted; architecture finding corrected; titles, paths, line width, and whitespace pass.
+   - **Evidence:** current revision architecture-approved; released-binary facts, titles, paths, and whitespace pass.
 2. `🌿 [grok-harness] feat(grok): scaffold the Grok plugin package [step 2/9]`
-   - **State:** not started.
+   - **State:** started locally; held until #1152 merges.
+   - **Evidence:** isolated released 1.0.5 binary/version/help/initialize contract captured; package files not started.
 3. `⚙️ [grok-harness] feat(grok): expose models and reasoning effort [step 3/9]`
    - **State:** not started.
 4. `⚙️ [grok-harness] feat(grok): compose ACP sessions and turns [step 4/9]`
@@ -41,10 +42,12 @@
 - [x] Draft fixed scope, ownership, complexity budget, cleanup assessment, PR titles, and retirement matrix.
 - [x] Run architecture plan review through a sub-agent.
 - [x] Apply valid in-scope review findings and record the result.
-- [x] Validate Markdown paths/titles and `git diff --check`.
+- [x] Validate the released 1.0.5 binary and correct the plan's auth/state assumptions.
+- [x] Re-run architecture plan review for the material shared auth-policy hook; current revision approved.
+- [x] Revalidate Markdown paths/titles and `git diff --check` after that correction.
 - [x] Commit, push, and open Step 1 PR (#1152).
 - [x] Start the PR monitor.
-- [ ] Create the Step 2 successor branch in this worktree and begin package scaffolding locally.
+- [x] Create the Step 2 successor branch in this worktree and begin released-binary research locally.
 
 ## Decisions And Evidence
 
@@ -55,10 +58,18 @@
   authority across Grok login, API key, enterprise, and custom-model credentials.
 - 2026-08-27: Grok's removed-from-stable-ACP model surface remains package-local rather than changing generic ACP.
 - 2026-08-27: No database, transport, managed-runtime, analytics, or Grok-specific coordination state is planned.
+- 2026-08-27: Isolated Grok 1.0.5 (`5115b46bc909`) accepts
+  `--no-auto-update agent --no-leader stdio`, advertises ACP v1 list/load/resume/close, image false, embedded context,
+  two structurally valid model entries, and the documented reasoning metadata. Initialize creates ordinary Grok-owned
+  home/config/log/session-directory state but no session row.
+- 2026-08-27: A logged-out isolated process advertises only interactive `grok.com`. The generic first-nonterminal rule
+  would invoke it and wait for login input. The plan now adds one optional advertised-auth allowlist hook and allows
+  only Grok's `xai.api_key` and `cached_token`; an interactive-only list fails as authentication-required before a call.
 - 2026-08-27: Architecture plan review passed its pre-review gate and rejected one A2 ownership issue: the options
   service also owned last-good catalog state. The plan now gives that state and its replace/retain invariant solely to
   `GrokCatalogTracker`; the service consumes the tracker and stores no duplicate. Per repository policy, the valid
-  finding was applied directly and was not re-reviewed.
+  finding was applied directly. A later material auth-policy change justified one fresh review of the complete revised
+  plan; that current revision was approved with no findings.
 
 ## Required Final Evidence
 

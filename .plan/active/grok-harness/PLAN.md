@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `grok-harness`
-- **Status:** active; Step 1/9 in progress
+- **Status:** active; Step 1/9 in PR #1152; current revision architecture-approved
 - **Plan date:** 2026-08-27
 - **Implementation base:** `origin/main`
 - **Delivery:** nine PRs with fixed titles and order below
@@ -29,9 +29,11 @@ Research baseline:
 - Official agent-mode documentation:
   <https://github.com/xai-org/grok-build/blob/main/crates/codegen/xai-grok-pager/docs/user-guide/15-agent-mode.md>.
 
-Facts verified in that documentation and source:
+Facts verified in that documentation/source and then confirmed against the isolated released `1.0.5` macOS arm64
+binary (build `5115b46bc909`):
 
-- The local ACP entry point is `grok agent stdio`; ACP is JSON-RPC 2.0 over newline-delimited stdio.
+- The accepted dedicated entry point is `grok --no-auto-update agent --no-leader stdio`; ACP is JSON-RPC 2.0 over
+  newline-delimited stdio.
 - `initialize` negotiates ACP protocol version 1 and advertises standard load plus session list, resume, and close.
 - Standard ACP owns session creation, load/replay, resume, prompt streaming, cancellation, tool updates, and permission
   requests.
@@ -39,14 +41,19 @@ Facts verified in that documentation and source:
 - `--no-leader` forces the spawned process to own its local agent rather than attaching to Grok's shared leader.
 - `--no-auto-update` suppresses update checks for an embedded/headless process.
 - Authentication is local to the bridge machine through `grok login`, `XAI_API_KEY`, enterprise auth, or a configured
-  custom model. ACP advertises usable auth methods and `authenticate` is the runtime authority.
+  custom model. ACP `authenticate` is the runtime authority.
+- An isolated logged-out 1.0.5 process advertises only `grok.com`, a non-terminal but interactive login flow. The
+  existing generic ACP rule would incorrectly select it and wait for browser/code input. Credential-backed headless
+  methods are `xai.api_key` and `cached_token`; Grok must select only those when the agent actually advertises them and
+  classify an interactive-only list as authentication-required without calling it.
 - Initialize metadata includes `grokShell`, `agentVersion`, and pre-session `modelState`. New/load responses also carry
   Grok's model state.
 - Grok 1.0.5 still exposes the older ACP `models` shape and `session/set_model`. Reasoning effort is carried in model
   metadata (`supportsReasoningEffort`, `reasoningEfforts`, and `reasoningEffort`) and selected through
   `_meta.reasoningEffort` on `session/set_model`.
-- The model surface is no longer part of current stable ACP. It is therefore a Grok-owned compatibility surface, not a
-  reason to widen generic `sesori_plugin_acp` contracts.
+- The model surface is no longer part of current stable ACP. It remains a Grok-owned compatibility surface. The only
+  shared ACP change is a narrow optional allowlist for advertised headless auth methods, demonstrated by the released
+  Grok login behavior; generic session/model contracts do not widen.
 - Prompt capability does not advertise images in the reviewed source. Initial Grok support is text/embedded-context
   only and must not claim image attachment support.
 - `session/close` releases a resident session but does not delete Grok persistence. Sesori deletion therefore keeps the
@@ -60,14 +67,15 @@ is corrected before production code relies on the mismatch.
 
 - Plugin ID is `grok`; display name is `Grok Build`.
 - Use the user's installed `grok` binary from PATH, or authoritative `--grok-bin <path>`.
-- Set the initial minimum and target versions to the released binary verified in Step 2. A lower floor is allowed only
-  with direct release evidence for every required capability.
+- Set the initial minimum and target versions to `1.0.5`, the released binary validated during Step 2 research. A lower
+  floor is allowed only with direct release evidence for every required capability.
 - Do not add a managed install. Grok already has an official six-target installer and self-update flow; Sesori will not
   duplicate it without a separate product request and immutable artifact-digest review.
 - Launch a dedicated process with auto-update and leader attachment disabled, but keep ask-mode permissions enabled.
 - Setup inspection is runtime-only. It never reads credential contents, invokes login, starts an ACP server, or treats
-  the mere presence of `auth.json` as proof. The live ACP initialize/authenticate handshake is authoritative and an auth
-  failure flips the existing plugin setup state with local-login guidance.
+  the mere presence of `auth.json` as proof. The live ACP handshake authenticates only through an advertised
+  `xai.api_key` or `cached_token` method. An interactive-only method list becomes authentication-required immediately
+  without launching login, and the existing plugin setup state carries local-login guidance.
 - Grok model IDs remain opaque. Expose them under one Grok-owned provider grouping and send the exact model ID back to
   `session/set_model`; never split or infer provider identity from punctuation.
 - Reasoning options use exact advertised values as variant IDs and advertised labels as presentation. Unknown or
@@ -84,6 +92,8 @@ is corrected before production code relies on the mismatch.
 ### Included
 
 - New pure-Dart `bridge/sesori_plugin_grok/` package over `sesori_plugin_acp`.
+- One optional generic ACP auth-method allowlist policy hook so a headless plugin can reject advertised interactive
+  methods before `authenticate`; every existing ACP plugin retains its current default behavior.
 - Typed Grok model-state and reasoning-option DTOs with generated JSON parsing.
 - Grok-local ACP API, catalog repository, session-options service, binary definition, plugin implementation, and
   descriptor.
@@ -120,7 +130,9 @@ client <-> relay <-> bridge app <-> sesori_plugin_grok <-> grok agent --no-leade
 
 - `sesori_plugin_interface` remains unchanged and backend-neutral.
 - `sesori_plugin_acp` continues to own standard ACP transport, handshake, process recovery, derived projects, session
-  enumeration/load, turn lanes, event mapping, replay, cancellation, commands, and permission mechanics.
+  enumeration/load, turn lanes, event mapping, replay, cancellation, commands, and permission mechanics. It gains one
+  optional advertised-auth allowlist policy; the default remains unrestricted except for existing terminal-method
+  rejection.
 - `sesori_plugin_grok` owns every Grok identifier, CLI argument, version/setup rule, initialize identity check,
   deprecated model-state shape, reasoning metadata, model selection call, and Grok-facing error guidance.
 - Bridge app imports Grok only at `plugin_registry.dart`, its supported composition point.
@@ -154,7 +166,8 @@ plugin start -> standard ACP initialize
              -> seed last-good options/defaults
 
 explicit option refresh -> short-lived dedicated grok ACP process
-                        -> initialize/authenticate only
+                        -> initialize
+                        -> authenticate only through an advertised allowed headless method
                         -> map modelState
                         -> dispose without session/new
                         -> replace last-good catalog only on success
@@ -166,9 +179,11 @@ create/send -> validate exact requested model + variant against catalog
 ```
 
 A short-lived refresh process is justified by a normal user flow: Grok model configuration can change while the bridge
-runs, while the reviewed public ACP surface has no stable model-list request. It creates no session or durable state.
-Concurrent refreshes may duplicate this bounded probe; no Grok-specific lock or in-flight registry is added because the
-impact is low and bridge-owned option caching already limits ordinary calls.
+runs, while the reviewed public ACP surface has no stable model-list request. It creates no session. Released Grok
+initialize may create or update ordinary Grok-owned config, logs, agent identity, and empty session directories under
+`GROK_HOME`; those remain upstream-owned state, not a Sesori store. Concurrent refreshes may duplicate this bounded
+probe; no Grok-specific lock or in-flight registry is added because the impact is low and bridge-owned option caching
+already limits ordinary calls.
 
 ### Setup And Authentication
 
@@ -177,10 +192,10 @@ runtime states with sanitized guidance. `ensureRuntime` repeats the same read-on
 An explicit path is authoritative and never falls through to PATH.
 
 The descriptor does not inspect `HOME`, `GROK_HOME`, `auth.json`, model config, or environment-key contents. Those are
-incomplete evidence because Grok supports several auth methods and custom model credentials. The live ACP handshake
-selects the first non-terminal method through existing generic behavior. A rejected/no-usable method remains a typed
-`PluginAuthenticationRequiredException`, allowing bridge lifecycle code to block only Grok and show local
-`grok login`/credential guidance.
+incomplete evidence because Grok supports several auth methods and custom model credentials. After initialize, the
+Grok plugin allows only advertised `xai.api_key` and `cached_token` methods. No allowed method becomes a typed
+`PluginAuthenticationRequiredException` before any interactive auth call; a rejected allowed method produces the same
+typed failure. Bridge lifecycle code then blocks only Grok and shows local `grok login`/credential guidance.
 
 ## Compatibility And Security
 
@@ -192,7 +207,8 @@ selects the first non-terminal method through existing generic behavior. A rejec
 - `--no-leader` keeps subprocess/session lifecycle within the plugin generation rather than attaching to an unrelated
   shared daemon. `--no-auto-update` prevents the owned child from mutating its executable during bridge operation.
 - Credentials, auth payloads, model configuration, raw initialize metadata, prompts, transcripts, paths, and tool
-  payloads are never logged or persisted by new Grok-specific code.
+  payloads are never logged or persisted by new Grok-specific code. Interactive `grok.com`/OIDC methods are never
+  invoked by the headless bridge.
 - Grok's own provider traffic, telemetry, retention, and enterprise policy remain governed by the user's Grok
   configuration; Sesori neither weakens nor silently overrides them.
 - Unknown model metadata is ignored at the typed boundary. Exact recognized values are retained without interpretation.
@@ -251,8 +267,8 @@ closed analytics privacy contract forbidding coding provider/model names.
    - Add the ACP API, catalog repository/tracker, options service, exact model/effort mapping, refresh/last-good
      behavior, selection calls, and tests.
 4. `⚙️ [grok-harness] feat(grok): compose ACP sessions and turns [step 4/9]`
-   - Add `GrokPlugin`, initialize identity/catalog capture, standard ACP lifecycle hooks, stop-and-send/fail-closed
-     behavior, history/permission/tool conformance tests, and idempotent disposal.
+   - Add the optional generic advertised-auth allowlist hook, `GrokPlugin`, initialize identity/catalog capture,
+     standard ACP lifecycle hooks, stop-and-send/fail-closed behavior, conformance tests, and idempotent disposal.
 5. `⚙️ [grok-harness] feat(grok): add direct-CLI setup and lifecycle [step 5/9]`
    - Add descriptor version/setup probes, explicit/PATH precedence, ensureRuntime revalidation, production composition,
      crash/reconnect/auth degradation tests, and local setup guidance.
@@ -287,8 +303,9 @@ exceed the cap and an independently valid boundary exists. The fixed nine-step t
 
 - Create `bridge/sesori_plugin_grok/` with workspace metadata, exports, build options, `GrokPluginIdentity`,
   `GrokBinary`, and typed model-state DTOs.
-- Validate Grok 1.0.5 `--version`, exact agent argument ordering, initialize identity/capabilities, auth-method shape,
-  model metadata, permission mode, and clean process exit without creating a session.
+- Record the released 1.0.5 output (`grok 1.0.5 (5115b46bc909)`), exact accepted agent argument ordering,
+  initialize identity/capabilities, interactive-only logged-out auth shape, model metadata, permission mode, ordinary
+  initialize-owned state effects, and clean process exit without creating a session.
 - Store privacy-safe deterministic fixtures derived from structure, never credentials or real model/account payloads.
 - Add package parsing and launch-spec tests; do not register the plugin yet.
 
@@ -306,6 +323,8 @@ exceed the cap and an independently valid boundary exists. The fixed nine-step t
 
 ### Step 4/9: ACP plugin core
 
+- Add an optional ACP allowlist that chooses only an advertised allowed auth method; preserve every existing plugin's
+  default behavior and cover both allowed-method success and interactive-only immediate rejection.
 - Compose the existing ACP trackers/mapper/process factory with Grok-specific options.
 - Validate Grok identity metadata before accepting the connection and capture refreshed model state after new/load.
 - Use standard per-session concurrency, cancellation, permission handling, command tracking, list/load/replay/close,
@@ -419,8 +438,8 @@ Release matrix:
   black-box released behavior before code relies on it.
 - **Unstable model surface:** Grok uses an ACP model API removed from current stable ACP. Keep it plugin-local, validate
   identity/version, parse tolerantly, and fail closed before prompting.
-- **Authentication diversity:** file/env presence cannot prove every supported auth mode. Keep setup runtime-only and
-  the live handshake authoritative.
+- **Authentication diversity:** file/env presence cannot prove every supported auth mode. Keep setup runtime-only,
+  allow only advertised credential-backed headless methods, and reject an interactive-only list without invoking it.
 - **Permission safety:** accidentally passing yolo/always-approve would bypass the core product interaction. Assert the
   exact launch arguments and observe a real permission request before retirement.
 - **Leader ownership:** attaching to a shared leader would break generation ownership and shutdown assumptions. Assert
