@@ -9,6 +9,7 @@ workspace:
   - sesori_bridge_foundation
   - sesori_plugin_opencode
   - sesori_plugin_codex
+  - sesori_plugin_copilot
   - sesori_plugin_runtime
   - sesori_plugin_interface
   - sesori_plugin_acp
