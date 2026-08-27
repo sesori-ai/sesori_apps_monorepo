@@ -484,8 +484,6 @@ class ChatHistoryRepository({
     required int updatedAt,
     required int archivedAt,
     required ArchivedSessionCompleteness completeness,
-    required String? lastAgent,
-    required String? lastAgentModel,
   }) async {
     final messageRows = await _chatHistoryDao.getMessages(sessionId: session.id);
     final partRows = await _chatHistoryDao.getParts(sessionId: session.id);
@@ -511,8 +509,6 @@ class ChatHistoryRepository({
         branchName: session.branchName,
         baseBranch: session.baseBranch,
         baseCommit: session.baseCommit,
-        lastAgent: lastAgent,
-        lastAgentModel: lastAgentModel,
         title: title,
         createdAt: createdAt,
         updatedAt: updatedAt,

@@ -332,8 +332,12 @@ void main() {
         branchName: null,
         baseBranch: null,
         baseCommit: null,
-        lastAgent: null,
-        lastAgentModel: null,
+        lastAgent: "build",
+        lastAgentModel: const AgentModel(
+          providerID: "provider",
+          modelID: "model",
+          variant: "high",
+        ),
         pluginId: "fake",
         preservePullRequestScope: false,
       );
@@ -354,9 +358,13 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(update.session.id, "root-session");
+      expect(update.session.promptDefaults, isNull);
       expect(update.changed, isTrue);
       expect(plugin.lastArchivedSessionId, "backend-session");
-      expect((await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt, isNotNull);
+      final stored = await db.sessionDao.getSession(sessionId: "root-session");
+      expect(stored?.archivedAt, isNotNull);
+      expect(stored?.lastAgent, isNull);
+      expect(stored?.lastAgentModel, isNull);
     });
 
     test("archived: false on an archived session is refused and keeps it archived", () async {

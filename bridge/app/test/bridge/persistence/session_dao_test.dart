@@ -1,5 +1,6 @@
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
@@ -156,7 +157,7 @@ void main() {
       );
     });
 
-    test("observed root upsert preserves bridge metadata and title", () async {
+    test("archive clears prompt defaults while observed upsert preserves other bridge metadata", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       await dao.insertSession(
         pluginId: "opencode",
@@ -171,7 +172,11 @@ void main() {
         baseBranch: "main",
         baseCommit: "abc123",
         lastAgent: "build",
-        lastAgentModel: null,
+        lastAgentModel: const AgentModel(
+          providerID: "provider",
+          modelID: "model",
+          variant: "high",
+        ),
       );
       await dao.setArchived(
         sessionId: "stable-root-id",
@@ -210,7 +215,8 @@ void main() {
       expect(dto?.branchName, equals("feature/root"));
       expect(dto?.baseBranch, equals("main"));
       expect(dto?.baseCommit, equals("abc123"));
-      expect(dto?.lastAgent, equals("build"));
+      expect(dto?.lastAgent, isNull);
+      expect(dto?.lastAgentModel, isNull);
       expect(dto?.archivedAt, equals(150));
       expect(dto?.directory, equals("/observed/repo"));
       expect(dto?.createdAt, equals(100));

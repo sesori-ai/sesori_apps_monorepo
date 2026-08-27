@@ -685,8 +685,6 @@ class ChatHistoryService({
   Future<void> exportSessionHistory({
     required StoredSession session,
     required String? title,
-    required String? lastAgent,
-    required String? lastAgentModel,
     required int createdAt,
     required int updatedAt,
     required int archivedAt,
@@ -726,8 +724,6 @@ class ChatHistoryService({
         await _chatHistoryRepository.exportSession(
           session: session,
           title: title,
-          lastAgent: lastAgent,
-          lastAgentModel: lastAgentModel,
           createdAt: createdAt,
           updatedAt: updatedAt,
           archivedAt: archivedAt,

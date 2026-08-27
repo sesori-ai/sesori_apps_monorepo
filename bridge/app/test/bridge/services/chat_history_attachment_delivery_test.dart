@@ -313,8 +313,6 @@ Future<void> _export({required TestChatHistory history}) {
       baseCommit: null,
     ),
     title: null,
-    lastAgent: null,
-    lastAgentModel: null,
     createdAt: 1,
     updatedAt: 1,
     archivedAt: 1,
