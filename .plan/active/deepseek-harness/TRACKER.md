@@ -260,7 +260,7 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
   and complete packaged-host evidence pending Step 16
 - [x] Markdown fences, local links, and all ten regression-document references valid
 - [x] `git diff --check`
-- [x] Final changed-line count: 173, below the 600 soft target and 1,500 hard cap
+- [x] Final changed-line count: 179, below the 600 soft target and 1,500 hard cap
 - [ ] PR evidence
 
 Later implementation and live evidence is appended here by step. Never mark a
