@@ -9,17 +9,18 @@ defaults and queued client sends coherent.
 ## Required Behavior
 
 - A prompt send targets one session with optional agent, model, and variant.
-  For plugins with acceptance-style sends, prompt and slash-command sends complete on acceptance — durably enqueued by
+  Prompt and slash-command sends complete on acceptance — durably enqueued by
   the plugin or taken by the backend — never on run completion, so no client
   request is held open for a running or queued agent turn. Acceptance while
   another turn runs therefore returns in sub-seconds, and session-lane
   operations queued behind a send (abort, permission and question replies)
   are never blocked for the duration of a turn.
-- DeepSeek is an explicit exception to acceptance-style settlement: its ACP
-  `session/prompt` response settles after owned work, projected output, and
-  durability quiesce. The plugin keeps only one prompt in flight per DeepSeek
-  session while allowing different sessions to run concurrently. Exact advertised
-  slash commands dispatch as commands; unknown slash prefixes remain prose.
+- DeepSeek preserves that bridge-facing acceptance contract: the shared ACP
+  plugin enqueues and returns while the adapter's `session/prompt` response
+  remains pending through owned work, projected output, and durability quiesce.
+  The plugin keeps only one prompt in flight per DeepSeek session while allowing
+  different sessions to run concurrently. Exact advertised slash commands
+  dispatch as commands; unknown slash prefixes remain prose.
 - Every send carries a client-generated prompt id, stable across retries. A
   queue-owning plugin refuses a duplicate id (already queued or within its
   bounded recently-dispatched window) as an idempotent success, so a retry of

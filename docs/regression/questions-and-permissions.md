@@ -89,11 +89,11 @@ different combination than the previous recorded run.
 
 ## Failure Signals
 
-- For an acceptance-style plugin, a permission or question reply stalls behind
-  a prompt sent to the same busy session instead of the accepted send releasing
-  its session lane immediately. DeepSeek keeps `session/prompt` pending through
-  turn settlement, but ACP server requests and replies continue concurrently on
-  the same transport.
+- A permission or question reply stalls behind a prompt sent to the same busy
+  session instead of the accepted bridge send releasing its session lane
+  immediately. For DeepSeek, the underlying `session/prompt` remains pending
+  through turn settlement, but ACP server requests and replies continue
+  concurrently on the same transport.
 - A request never appears, appears under the wrong session, or omits options the
   backend actually offered.
 - An answer does not reach the backend, arrives with a different scope than the
