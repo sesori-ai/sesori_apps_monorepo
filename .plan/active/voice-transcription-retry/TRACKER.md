@@ -154,8 +154,8 @@
 - **Step 1 architecture review:** initial draft rejected; all four findings applied as recorded above
 - **Step 1 documentation validation:** plan/tracker titles, five-step denominator, repositories, targets, async-only decision, #918 barrier, quota classification, Cubit/service ownership, same-PR regression update, and review record agree; whitespace check passed
 - **Step 1 changed lines:** 623 documentation-only additions (`PLAN.md` 459, `TRACKER.md` 164), within the 500-700 target
-- **Step 1 commits:** `620cb5c6c` (plan publication) plus the tracker-only delivery record
-- **Step 1 PR:** [#1144](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1144), open and monitored
+- **Step 1 commits:** `620cb5c6c` (plan publication), tracker-only delivery records, and `c55a0846b` (PR-review corrections)
+- **Step 1 PR:** [#1144](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1144), open and monitored; five Codex threads answered and resolved
 - **Step 2 server verification:** pending
 - **Step 3 ownership migration:** pending
 - **Step 4 client retry verification:** pending
