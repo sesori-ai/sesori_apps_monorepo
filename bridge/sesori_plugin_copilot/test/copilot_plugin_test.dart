@@ -35,35 +35,42 @@ const Map<String, dynamic> _copilotInitializeResult = {
 void main() {
   group("CopilotPlugin", () {
     late FakeAcpProcess fake;
+    late FakeAcpProcess catalogFake;
     late CopilotPlugin plugin;
-    late Set<Object?> handledFrameIds;
+    late Set<Map<String, dynamic>> handledFrames;
 
     setUp(() {
       fake = FakeAcpProcess();
-      handledFrameIds = {};
+      catalogFake = FakeAcpProcess();
+      handledFrames = {};
+      var spawnCount = 0;
       plugin = CopilotPlugin(
         binaryPath: "/opt/copilot",
         launchDirectory: "/repo",
         environment: const {"COPILOT_HOME": "/state/copilot"},
-        processFactory: (_) async => fake,
+        processFactory: (_) async => spawnCount++ == 0 ? fake : catalogFake,
       );
     });
 
     tearDown(() async {
       await plugin.dispose();
       await fake.close();
+      await catalogFake.close();
     });
 
     Future<void> pump() => Future<void>.delayed(Duration.zero);
 
-    Future<Map<String, dynamic>> waitForFrame({required String method}) async {
+    Future<Map<String, dynamic>> waitForFrame({
+      required FakeAcpProcess process,
+      required String method,
+    }) async {
       for (var i = 0; i < 50; i++) {
-        final matches = fake.written.where(
-          (frame) => frame["method"] == method && !handledFrameIds.contains(frame["id"]),
+        final matches = process.written.where(
+          (frame) => frame["method"] == method && !handledFrames.contains(frame),
         );
         if (matches.isNotEmpty) {
           final frame = matches.first;
-          handledFrameIds.add(frame["id"]);
+          handledFrames.add(frame);
           return frame;
         }
         await pump();
@@ -92,13 +99,13 @@ void main() {
 
     test("completes Copilot's standard ACP handshake", () async {
       final connecting = plugin.ensureConnected();
-      final initialize = await waitForFrame(method: "initialize");
+      final initialize = await waitForFrame(process: fake, method: "initialize");
       final initializeParams = (initialize["params"] as Map).cast<String, dynamic>();
       final clientCapabilities = (initializeParams["clientCapabilities"] as Map).cast<String, dynamic>();
       expect(clientCapabilities, isNot(contains("elicitation")));
       fake.emit({"jsonrpc": "2.0", "id": initialize["id"], "result": _copilotInitializeResult});
 
-      final authenticate = await waitForFrame(method: "authenticate");
+      final authenticate = await waitForFrame(process: fake, method: "authenticate");
       expect(
         (authenticate["params"] as Map).cast<String, dynamic>()["methodId"],
         CopilotBinary.acpAuthMethodId,
@@ -106,7 +113,47 @@ void main() {
       fake.emit({"jsonrpc": "2.0", "id": authenticate["id"], "result": <String, dynamic>{}});
 
       expect(await connecting, isTrue);
-      expect(await plugin.getAgents(projectId: "/repo"), hasLength(1));
+
+      final discovering = plugin.getAgents(projectId: "/repo");
+      final catalogInitialize = await waitForFrame(process: catalogFake, method: "initialize");
+      catalogFake.emit({"jsonrpc": "2.0", "id": catalogInitialize["id"], "result": _copilotInitializeResult});
+      final catalogAuthenticate = await waitForFrame(process: catalogFake, method: "authenticate");
+      catalogFake.emit({"jsonrpc": "2.0", "id": catalogAuthenticate["id"], "result": <String, dynamic>{}});
+      final newSession = await waitForFrame(process: catalogFake, method: "session/new");
+      catalogFake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "catalog-session",
+          "update": {
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": <Map<String, dynamic>>[],
+          },
+        },
+      });
+      catalogFake.emit({
+        "jsonrpc": "2.0",
+        "id": newSession["id"],
+        "result": {
+          "sessionId": "catalog-session",
+          "configOptions": [
+            {
+              "id": "mode",
+              "category": "mode",
+              "currentValue": "agent",
+              "options": [
+                {"value": "agent", "name": "Agent"},
+                {"value": "plan", "name": "Plan"},
+              ],
+            },
+          ],
+        },
+      });
+      final closeSession = await waitForFrame(process: catalogFake, method: "session/close");
+      catalogFake.emit({"jsonrpc": "2.0", "id": closeSession["id"], "result": <String, dynamic>{}});
+
+      expect((await discovering).map((agent) => agent.name), ["Agent", "Plan"]);
+      expect(fake.written.where((frame) => frame["method"] == "session/new"), isEmpty);
     });
   });
 }

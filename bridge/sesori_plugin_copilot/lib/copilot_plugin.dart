@@ -5,3 +5,5 @@
 export "src/copilot_binary.dart";
 export "src/copilot_identity.dart";
 export "src/copilot_plugin_impl.dart";
+export "src/runtime/copilot_plugin_descriptor.dart";
+export "src/runtime/copilot_runtime_manifest.dart";

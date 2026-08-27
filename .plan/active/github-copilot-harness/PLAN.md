@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `github-copilot-harness`
-- **Status:** active; Step 1/7 merged (#1154), Step 2/7 in review (#1155)
+- **Status:** active; Steps 1-2/7 merged (#1154, #1155), Step 3/7 implemented locally
 - **Plan date:** 2026-08-27
 - **Implementation base:** current `origin/main`
 - **Delivery:** seven PRs with the fixed titles below
@@ -154,7 +154,7 @@ client <-> relay <-> bridge <-> sesori_plugin_copilot <-> copilot --no-auto-upda
 |---|---|---|
 | 1/7 | `🌱 [github-copilot-harness] docs: plan GitHub Copilot harness support [step 1/7]` | Add this reviewed plan and tracker. No user-visible or database change. |
 | 2/7 | `⚙️ [github-copilot-harness] feat(copilot): add the ACP harness package [step 2/7]` | Add the workspace package, stable identity, `--no-auto-update --acp` launch spec, stock-ACP plugin composition, and focused protocol/factory tests. The package is not registered yet; no user-visible or database change. |
-| 3/7 | `⚙️ [github-copilot-harness] feat(copilot): add runtime setup and lifecycle [step 3/7]` | In `bridge/sesori_plugin_copilot`, add the descriptor, semantic version parsing (`GitHub Copilot CLI X.Y.Z.` included), explicit/PATH runtime selection, setup statuses, authentication guidance, and descriptor tests. The descriptor composes `hostProcessAcpFactory` and `AcpBridgePlugin.start`; `sesori_plugin_acp` remains the sole owner of ACP stdio startup/shutdown. The plugin remains unregistered; no user-visible or database change. |
+| 3/7 | `⚙️ [github-copilot-harness] feat(copilot): add runtime setup and lifecycle [step 3/7]` | In `bridge/sesori_plugin_copilot`, add the descriptor, semantic version parsing (`GitHub Copilot CLI X.Y.Z.` included), explicit/PATH runtime selection, setup statuses, authentication guidance, and descriptor tests. Complete the merged-package review follow-ups by adding the package to the bridge verification module list and mapping Copilot's standard model, mode, and thought-level options through an isolated discovery process plus `session/set_config_option`; Copilot's permission config remains backend-private. The descriptor composes `hostProcessAcpFactory` and `AcpBridgePlugin.start`; `sesori_plugin_acp` remains the sole owner of ACP stdio startup/shutdown. The plugin remains unregistered; no user-visible or database change. |
 | 4/7 | `⚙️ [github-copilot-harness] feat(copilot): install the managed Copilot CLI [step 4/7]` | Add the exact `1.0.80` six-platform manifest, direct official downloads, digest verification, install capability gating, cleanup, and manifest/install tests. No database change; still no user-visible harness until registration. |
 | 5/7 | `⚙️ [github-copilot-harness] feat(app): activate and brand GitHub Copilot [step 5/7]` | `bridge/app` adds the package dependency, registry entry, and exact registry fixtures; `shared/sesori_shared` adds only `Harness.copilot`; `client/module_prego` adds only Copilot display-name/artwork presentation and fallback-preserving tests. Root product documentation adds the support listing. No other client/shared package changes. Users can select, install, start, and use Copilot; no database migration. |
 | 6/7 | `🌱 [github-copilot-harness] docs: document Copilot regression coverage [step 6/7]` | Reconcile the affected feature documents under `docs/regression/`, including upstream limitations and exact boundaries/matrix. Documentation only. |
