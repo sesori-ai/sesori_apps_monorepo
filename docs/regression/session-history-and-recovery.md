@@ -3,21 +3,23 @@
 ## Capability
 
 The bridge supplies the durable transcript boundary. History is served from its
-own store or an owning plugin's bounded detached replay, paged on demand, kept
-honest against backend-side changes, and rejoined after reconnect or restart.
+own store, with an owning plugin's bounded replay used as the backfill source,
+paged on demand, kept honest against backend-side changes, and rejoined after
+reconnect or restart.
 
 ## Required Behavior
 
-- For bridge-cached history, reading an already-synced session serves from the bridge store and
+- Reading an already-synced session serves from the bridge store and
   never starts a stopped backend. Only a first backfill or a re-read after the
   backend advanced may reach it; backfill is lazy and per session, and a session
   advanced outside Sesori is detected as stale, re-read, and re-cached.
-- DeepSeek detached history instead calls `deepseek/session/history` through the
-  one long-lived adapter connection and reads its isolated persistence without
-  resuming an agent or starting a scratch process. It pages at complete message
-  boundaries, returns at most 100 messages per page, rejects non-progressing or
-  over-100-page traversal, and reuses the shared ACP replay collector. Direct
-  user message IDs remain exact; assistant IDs use the deterministic ACP projection.
+- When DeepSeek needs a first or stale backfill, its plugin calls
+  `deepseek/session/history` through the one long-lived adapter connection and
+  reads isolated persistence without resuming an agent or starting a scratch
+  process. It pages at complete message boundaries, returns at most 100 messages
+  per page, rejects non-progressing or over-100-page traversal, and reuses the
+  shared ACP replay collector. Direct user message IDs remain exact; assistant
+  IDs use the deterministic ACP projection.
 - Messages visible live but absent from the backend's replay remain visible
   after a stale re-read. They rejoin at their recorded creation time while
   preserving relative order, so a catalog re-import cannot move old rows to the
@@ -91,7 +93,7 @@ image parts converge by their own rules.
 
 ## Failure Signals
 
-- Opening bridge-cached synced history starts a stopped backend, or content visible live
+- Opening synced history starts a stopped backend, or content visible live
   disappears after a refresh or reopen.
 - Reasoning still says `Thinking...` after answer or tool output has started, or
   disappears after reopening because only its empty start snapshot was retained.

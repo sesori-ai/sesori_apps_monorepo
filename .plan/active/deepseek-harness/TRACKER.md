@@ -253,14 +253,14 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 ### Step 15/16
 
 - [x] Reconciled all ten affected regression documents with shipped DeepSeek behavior
-- [x] Corrected DeepSeek bridge-acceptance, adapter-settlement, and detached-history ownership distinctions
+- [x] Corrected DeepSeek bridge acceptance, adapter settlement, and cache-first detached-history backfill distinctions
 - [x] Recorded isolated state/config ownership, standard/extension boundaries,
   generic presentation, local setup, and retained adapter artifacts
 - [x] Kept real provider, relay/client, compatibility build-pair, deletion-residue,
   and complete packaged-host evidence pending Step 16
 - [x] Markdown fences, local links, and all ten regression-document references valid
 - [x] `git diff --check`
-- [x] Final changed-line count: 176, below the 600 soft target and 1,500 hard cap
+- [x] Final changed-line count: 178, below the 600 soft target and 1,500 hard cap
 - [x] PR #1129 opened against `main`
 
 ### Step 16/16

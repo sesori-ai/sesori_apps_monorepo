@@ -474,11 +474,13 @@ The runtime repository owns deterministic protocol fixtures for:
 - telemetry/state/config isolation and stdout/content-log privacy; and
 - archive relocation/launch on all six target artifacts.
 
-The monorepo vendors the runtime repository's synthetic wire corpus and schema
-in a test-only package workspace and Makefile inventory, with a manifest
-recording the source commit and SHA-256 values; it does not copy DeepSeek private
-session files or add production DTOs, APIs, or ACP hooks. Generated consumer DTO
-tests pass every fixture. Cross-repository conformance and all six matching-native
-package jobs passed before publication. Runtime and Dart protocol-changing PRs
-must update and run that corpus in source/consumer order. Step 16 still repeats
-the complete product boundary with the exact managed artifacts pinned by the bridge.
+Step 7 vendored the runtime repository's synthetic wire corpus and schema in a
+test-only package workspace and Makefile inventory, with a manifest recording
+the source commit and SHA-256 values. That fixture-vendoring change did not copy
+DeepSeek private session files or add production DTOs, APIs, or ACP hooks. Later
+plugin steps added the generated consumer DTOs and narrow ACP hooks; consumer
+tests pass every fixture. Cross-repository conformance and all six
+matching-native package jobs passed before publication. Runtime and Dart
+protocol-changing PRs must update and run that corpus in source/consumer order.
+Step 16 still repeats the complete product boundary with the exact managed
+artifacts pinned by the bridge.
