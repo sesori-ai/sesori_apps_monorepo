@@ -366,6 +366,50 @@ void main() {
       expect(plugin.lastCreateParts?.last, const PluginPromptPart.text(text: "Build it"));
     });
 
+    test("returns without waiting for defaults persistence", () async {
+      final gatedDefaultsRepository = _GatedNewSessionDefaultsRepository();
+      final localService = SessionCreationService(
+        sessionMetadataRepository: metadataRepository,
+        worktreeService: worktreeService,
+        sessionRepository: singlePluginSessionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+          pullRequestDao: db.pullRequestDao,
+          unseenCalculator: const SessionUnseenCalculator(),
+        ),
+        newSessionDefaultsRepository: gatedDefaultsRepository,
+        sessionMutationDispatcher: mutationDispatcher,
+      );
+      var creationCompleted = false;
+      final creation = localService.createSession(
+        request: const CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: false,
+          parts: [],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+      );
+      unawaited(creation.then((_) => creationCompleted = true));
+      addTearDown(() {
+        if (!gatedDefaultsRepository.writeGate.isCompleted) {
+          gatedDefaultsRepository.writeGate.complete();
+        }
+      });
+
+      await gatedDefaultsRepository.writeStarted.future;
+      await Future<void>.delayed(Duration.zero);
+
+      expect(creationCompleted, isTrue);
+      gatedDefaultsRepository.writeGate.complete();
+      await creation;
+      await localService.drain();
+    });
+
     test("a defaults write failure does not turn a durable creation into a retryable failure", () async {
       final localService = SessionCreationService(
         sessionMetadataRepository: metadataRepository,
@@ -395,6 +439,7 @@ void main() {
             command: null,
           ),
         );
+        await Future<void>.delayed(Duration.zero);
       });
 
       expect(await db.sessionDao.getSession(sessionId: created.id), isNotNull);
@@ -751,6 +796,20 @@ class _FakeWorktreeService({required super.worktreeRepository}) extends Worktree
   }) async {
     rollbackCalls++;
   }
+}
+
+class _GatedNewSessionDefaultsRepository() implements NewSessionDefaultsRepository {
+  final Completer<void> writeStarted = Completer<void>();
+  final Completer<void> writeGate = Completer<void>();
+
+  @override
+  Future<void> write({required String pluginId, required SessionPromptDefaults defaults}) async {
+    writeStarted.complete();
+    await writeGate.future;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _ThrowingNewSessionDefaultsRepository() implements NewSessionDefaultsRepository {

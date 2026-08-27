@@ -87,10 +87,12 @@ class SessionCreationService({
       agent: request.agent,
       model: request.model,
     );
-    await _recordNewSessionDefaults(
-      sessionId: created.id,
-      pluginId: request.pluginId,
-      defaults: promptDefaults,
+    unawaited(
+      _recordNewSessionDefaults(
+        sessionId: created.id,
+        pluginId: request.pluginId,
+        defaults: promptDefaults,
+      ),
     );
     _startLateMetadata(session: created, firstText: firstText);
     return created;
