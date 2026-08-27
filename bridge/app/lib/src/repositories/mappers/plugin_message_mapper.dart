@@ -65,3 +65,30 @@ extension PluginMessagePartsMapper on Iterable<PluginMessageWithParts> {
     return map((message) => message.toSharedMessageWithParts(sessionId: sessionId)).toList(growable: false);
   }
 }
+
+extension PluginMessagePromptDefaultsMapper on List<PluginMessageWithParts> {
+  SessionPromptDefaults? latestPromptDefaults() {
+    for (var index = length - 1; index >= 0; index--) {
+      final ({String? agent, String? modelID, String? providerID, String? variant})? selection =
+          switch (this[index].info) {
+            PluginMessageAssistant(:final agent, :final modelID, :final providerID, :final variant) ||
+            PluginMessageError(:final agent, :final modelID, :final providerID, :final variant) => (
+              agent: agent,
+              modelID: modelID,
+              providerID: providerID,
+              variant: variant,
+            ),
+            PluginMessageUser() => null,
+          };
+      if (selection == null) continue;
+      final (:agent, :modelID, :providerID, :variant) = selection;
+      return SessionPromptDefaults(
+        agent: agent,
+        model: modelID == null || providerID == null
+            ? null
+            : AgentModel(providerID: providerID, modelID: modelID, variant: variant),
+      );
+    }
+    return null;
+  }
+}

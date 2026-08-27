@@ -323,6 +323,7 @@ sealed class PluginMessage with _$PluginMessage {
     required String? agent,
     required String? modelID,
     required String? providerID,
+    required String? variant,
     required PluginMessageTime? time,
   }) = PluginMessageAssistant;
 
@@ -332,6 +333,7 @@ sealed class PluginMessage with _$PluginMessage {
     required String? agent,
     required String? modelID,
     required String? providerID,
+    required String? variant,
     required String errorName,
     required String errorMessage,
     required PluginMessageTime? time,

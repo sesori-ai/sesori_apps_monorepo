@@ -202,6 +202,7 @@ Map<String, dynamic> _$PluginMessageAssistantToJson(
   'agent': ?instance.agent,
   'modelID': ?instance.modelID,
   'providerID': ?instance.providerID,
+  'variant': ?instance.variant,
   'time': ?instance.time?.toJson(),
   'role': instance.$type,
 };
@@ -213,6 +214,7 @@ Map<String, dynamic> _$PluginMessageErrorToJson(PluginMessageError instance) =>
       'agent': ?instance.agent,
       'modelID': ?instance.modelID,
       'providerID': ?instance.providerID,
+      'variant': ?instance.variant,
       'errorName': instance.errorName,
       'errorMessage': instance.errorMessage,
       'time': ?instance.time?.toJson(),

@@ -41,6 +41,12 @@ final class const CapturedPartShapes({
 /// fallback is bounded to the released inline-wire budget.
 final class const CapturedPartUnavailable({required final MessagePart inlineFallbackPart}) extends CapturedPartDelivery;
 
+typedef SessionMessagesPage = ({
+  List<MessageWithParts> messages,
+  int? nextCursor,
+  SessionPromptDefaults? replayedPromptDefaults,
+});
+
 /// The single writer of the chat history store.
 ///
 /// Every mutation runs through a per-session queue so writes for one session
@@ -52,7 +58,7 @@ class ChatHistoryService({
   required final BridgeIdProvider _bridgeIdProvider,
 }) {
   final KeyedParallelLock<String> _writeLock = KeyedParallelLock<String>();
-  final Map<String, Future<void>> _inFlightBackfills = {};
+  final Map<String, Future<SessionPromptDefaults?>> _inFlightBackfills = {};
   final ParallelLock _thumbnailGenerationLock = ParallelLock(maxParallelOperations: 1);
 
   /// One page of the session's messages, served from the store whenever it is
@@ -64,7 +70,7 @@ class ChatHistoryService({
   /// The store is preferred only when a backfill has completed *and* no
   /// backend activity has been observed past the captured watermark, so a
   /// session advanced outside Sesori still reads correctly.
-  Future<ChatHistoryPage> getSessionMessages({
+  Future<SessionMessagesPage> getSessionMessages({
     required String sessionId,
     int? limit,
     int? before,
@@ -115,10 +121,14 @@ class ChatHistoryService({
       // the dead turn's open tool parts — no idle event ever fired and no
       // backfill will run. The page is already in memory, so detecting them is
       // free; only a page that actually contains one pays for a status read.
-      if (!_containsOpenToolPart(page: decided)) return decided;
-      if (!await _sweepUnlessTurnRunning(sessionId: sessionId)) return decided;
+      if (!_containsOpenToolPart(page: decided)) {
+        return _messagesPage(page: decided, replayedPromptDefaults: null);
+      }
+      if (!await _sweepUnlessTurnRunning(sessionId: sessionId)) {
+        return _messagesPage(page: decided, replayedPromptDefaults: null);
+      }
       final storageScope = await _requireStorageScope(sessionId: sessionId);
-      return await _enqueueRead(
+      final page = await _enqueueRead(
         sessionId: sessionId,
         read: () => _chatHistoryRepository.getSessionMessages(
           sessionId: sessionId,
@@ -128,16 +138,17 @@ class ChatHistoryService({
           attachmentProjection: attachmentProjection,
         ),
       );
+      return _messagesPage(page: page, replayedPromptDefaults: null);
     }
 
-    await backfillSession(sessionId: sessionId);
+    final replayedPromptDefaults = await _backfillSessionForRead(sessionId: sessionId);
     // A backend transcript reports no result for a tool whose turn died, so a
     // fresh backfill can import open tool parts that will never complete.
     await _sweepUnlessTurnRunning(sessionId: sessionId);
     final storageScope = await _requireStorageScope(sessionId: sessionId);
     // The backfill is itself queued, so this read lands after it and after
     // any capture that raced its fetch.
-    return await _enqueueRead(
+    final page = await _enqueueRead(
       sessionId: sessionId,
       read: () => _chatHistoryRepository.getSessionMessages(
         sessionId: sessionId,
@@ -147,7 +158,17 @@ class ChatHistoryService({
         attachmentProjection: attachmentProjection,
       ),
     );
+    return _messagesPage(page: page, replayedPromptDefaults: replayedPromptDefaults);
   }
+
+  SessionMessagesPage _messagesPage({
+    required ChatHistoryPage page,
+    required SessionPromptDefaults? replayedPromptDefaults,
+  }) => (
+    messages: page.messages,
+    nextCursor: page.nextCursor,
+    replayedPromptDefaults: replayedPromptDefaults,
+  );
 
   MessageAttachmentProjection _attachmentProjectionFor({required MessageAttachmentDelivery delivery}) =>
       switch (delivery) {
@@ -589,7 +610,11 @@ class ChatHistoryService({
   ///
   /// Concurrent callers for the same session await one fetch. Failures
   /// propagate so a cache miss never looks like an empty thread.
-  Future<void> backfillSession({required String sessionId}) {
+  Future<void> backfillSession({required String sessionId}) async {
+    await _backfillSessionForRead(sessionId: sessionId);
+  }
+
+  Future<SessionPromptDefaults?> _backfillSessionForRead({required String sessionId}) {
     final inFlight = _inFlightBackfills[sessionId];
     if (inFlight != null) return inFlight;
 
@@ -611,7 +636,7 @@ class ChatHistoryService({
   ///
   /// Captures for this session wait for the fetch, but they never block the
   /// event pipeline: the listener dispatches them without awaiting.
-  Future<void> _backfillSession({required String sessionId}) {
+  Future<SessionPromptDefaults?> _backfillSession({required String sessionId}) {
     return _enqueue(
       sessionId: sessionId,
       write: () async {
@@ -619,17 +644,31 @@ class ChatHistoryService({
         // between the read and the write.
         final observedBefore = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
         final backendActivityAt = observedBefore?.backendActivityAt ?? 0;
+        final shouldReconcilePromptDefaults =
+            observedBefore == null || observedBefore.syncedAt == null || observedBefore.watermark < backendActivityAt;
         final storageScope = await _requireStorageScope(sessionId: sessionId);
-        final messages = await _sessionRepository.getSessionMessages(sessionId: sessionId);
+        final snapshot = await _sessionRepository.getSessionMessages(sessionId: sessionId);
         await _chatHistoryRepository.replaceSessionMessages(
           sessionId: sessionId,
           storageScope: storageScope,
-          messages: messages,
+          messages: snapshot.messages,
           lastImportedAt: observedBefore?.syncedAt,
           watermark: backendActivityAt,
           backendActivityAt: backendActivityAt,
           syncedAt: DateTime.now().millisecondsSinceEpoch,
         );
+        final promptDefaults = shouldReconcilePromptDefaults ? snapshot.promptDefaults : null;
+        if (promptDefaults == null) return null;
+        try {
+          await _sessionRepository.updatePromptDefaults(
+            sessionId: sessionId,
+            agent: promptDefaults.agent,
+            agentModel: promptDefaults.model,
+          );
+        } on Object catch (error, stackTrace) {
+          Log.w("Failed to persist replayed prompt defaults for session $sessionId", error, stackTrace);
+        }
+        return promptDefaults;
       },
     );
   }
@@ -813,7 +852,7 @@ class ChatHistoryService({
     }
   }
 
-  Future<void> _enqueue({required String sessionId, required Future<void> Function() write}) =>
+  Future<T> _enqueue<T>({required String sessionId, required Future<T> Function() write}) =>
       _writeLock.use(key: sessionId, operation: write);
 
   /// Runs [read] after the session's pending writes and holds the queue for

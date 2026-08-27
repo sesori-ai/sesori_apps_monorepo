@@ -518,11 +518,11 @@ class _FakeSessionRepository({required final List<MessageWithParts> transcript})
       sessionIds.intersection(archivedSessionIds);
 
   @override
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
+  Future<SessionMessagesSnapshot> getSessionMessages({required String sessionId}) async {
     fetchCount++;
     final failure = error;
     if (failure != null) throw failure;
-    return transcript;
+    return (messages: transcript, promptDefaults: null);
   }
 
   @override

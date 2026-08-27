@@ -658,7 +658,7 @@ class _FakeSessionRepository({
   Future<void> Function()? onFetch;
 
   @override
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
+  Future<SessionMessagesSnapshot> getSessionMessages({required String sessionId}) async {
     fetchCount++;
     // Yield so a second caller can observe the in-flight fetch.
     await Future<void>.delayed(Duration.zero);
@@ -669,7 +669,7 @@ class _FakeSessionRepository({
     await Future<void>.delayed(Duration.zero);
     final failure = error;
     if (failure != null) throw failure;
-    return transcript;
+    return (messages: transcript, promptDefaults: null);
   }
 
   @override

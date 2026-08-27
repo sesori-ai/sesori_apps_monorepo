@@ -90,6 +90,7 @@ class CodexMessageRepository({
       agent: "codex",
       modelID: currentModel ?? config.model,
       providerID: sessionProvider ?? config.modelProvider ?? "openai",
+      variant: null,
       time: time,
     );
 
@@ -202,6 +203,7 @@ class CodexMessageRepository({
               agent: "codex",
               modelID: currentModel ?? config.model,
               providerID: sessionProvider ?? config.modelProvider ?? "openai",
+              variant: null,
               errorName: "CodexError",
               errorMessage: error.message,
               time: _messageTimeFrom(lineTimestamp),

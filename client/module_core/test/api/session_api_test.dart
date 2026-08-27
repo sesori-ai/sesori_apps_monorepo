@@ -476,8 +476,13 @@ void main() {
           body: any(named: "body"),
         ),
       ).thenAnswer(
-        (_) async =>
-            ApiResponse.success(const MessageWithPartsResponse(messages: <MessageWithParts>[], nextCursor: null)),
+        (_) async => ApiResponse.success(
+          const MessageWithPartsResponse(
+            messages: <MessageWithParts>[],
+            nextCursor: null,
+            replayedPromptDefaults: null,
+          ),
+        ),
       );
 
       await api.getMessages(sessionId: "session-1", limit: 50, before: 100);

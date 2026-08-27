@@ -27,6 +27,7 @@ class const AssistantMessageMapper() {
         agent: message.agent,
         modelID: message.modelID,
         providerID: message.providerID,
+        variant: message.variant,
         time: time,
       );
     }
@@ -44,6 +45,7 @@ class const AssistantMessageMapper() {
       agent: message.agent,
       modelID: message.modelID,
       providerID: message.providerID,
+      variant: message.variant,
       errorName: errorMap?["name"]?.toString() ?? "UnknownError",
       errorMessage: dataMap["message"]?.toString() ?? (errorMap == null ? error.toString() : "Unknown error"),
       time: time,

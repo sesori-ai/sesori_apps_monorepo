@@ -12,6 +12,11 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
   never starts a stopped backend. Only a first backfill or a re-read after the
   backend advanced may reach it; backfill is lazy and per session, and a session
   advanced outside Sesori is detected as stale, re-read, and re-cached.
+- A first or externally stale backend replay adopts the latest assistant/error
+  message's agent, provider, model, and available variant as the session's prompt
+  defaults. The bridge persists that selection and returns it with the replay so
+  the opening client cannot retain older session metadata fetched in parallel.
+  A replay with no assistant/error attribution leaves existing defaults intact.
 - Messages visible live but absent from the backend's replay remain visible
   after a stale re-read. They rejoin at their recorded creation time while
   preserving relative order, so a catalog re-import cannot move old rows to the
@@ -70,7 +75,7 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a previously synced session's transcript is served with every backend stopped. |
-| L2 Routine | Live plugin, representative: first backfill, live capture that becomes immediately queryable, stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated Pi coverage: active branches, v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, cumulative tool updates, and live/replay final parity. |
+| L2 Routine | Live plugin, representative: first backfill, replayed prompt-default persistence and response precedence, live capture that becomes immediately queryable, stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated OpenCode coverage preserves effort variants from assistant/error messages. Automated Pi coverage: active branches, v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, cumulative tool updates, and live/replay final parity. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: open a long session, page back, continue a live turn, reopen cold, and confirm live and replayed content converge including tool and image parts. |
 | L4 Extended | Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. |
 | L5 Full | Automated and headless bridge for unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |

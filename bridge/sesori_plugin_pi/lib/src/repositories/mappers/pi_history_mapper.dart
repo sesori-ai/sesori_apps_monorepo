@@ -640,6 +640,7 @@ final class PiHistoryMapper({
         agent: _pluginId,
         modelID: model,
         providerID: provider,
+        variant: null,
         errorName: "Pi response failed",
         errorMessage: "The Pi assistant response failed.",
         time: _time(timestamp),
@@ -650,6 +651,7 @@ final class PiHistoryMapper({
         agent: _pluginId,
         modelID: model,
         providerID: provider,
+        variant: null,
         errorName: "Pi response aborted",
         errorMessage: "The Pi assistant response was aborted.",
         time: _time(timestamp),
@@ -660,6 +662,7 @@ final class PiHistoryMapper({
         agent: _pluginId,
         modelID: model,
         providerID: provider,
+        variant: null,
         time: _time(timestamp),
       ),
     };
@@ -678,6 +681,7 @@ final class PiHistoryMapper({
         agent: _pluginId,
         modelID: null,
         providerID: null,
+        variant: null,
         time: _time(timestamp),
       ),
       parts: [
@@ -708,6 +712,7 @@ final class PiHistoryMapper({
         agent: _pluginId,
         modelID: null,
         providerID: null,
+        variant: null,
         time: _time(timestamp),
       ),
       parts: [

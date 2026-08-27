@@ -18,7 +18,7 @@ mixin _$MessageWithPartsResponse {
 
  List<MessageWithParts> get messages;/// Cursor for the next older page, to be sent back verbatim as the
 /// request's `before`. Null means the transcript is complete.
- int? get nextCursor;
+ int? get nextCursor; SessionPromptDefaults? get replayedPromptDefaults;
 /// Create a copy of MessageWithPartsResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -31,16 +31,16 @@ $MessageWithPartsResponseCopyWith<MessageWithPartsResponse> get copyWith => _$Me
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageWithPartsResponse&&const DeepCollectionEquality().equals(other.messages, messages)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageWithPartsResponse&&const DeepCollectionEquality().equals(other.messages, messages)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor)&&(identical(other.replayedPromptDefaults, replayedPromptDefaults) || other.replayedPromptDefaults == replayedPromptDefaults));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(messages),nextCursor);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(messages),nextCursor,replayedPromptDefaults);
 
 @override
 String toString() {
-  return 'MessageWithPartsResponse(messages: $messages, nextCursor: $nextCursor)';
+  return 'MessageWithPartsResponse(messages: $messages, nextCursor: $nextCursor, replayedPromptDefaults: $replayedPromptDefaults)';
 }
 
 
@@ -51,11 +51,11 @@ abstract mixin class $MessageWithPartsResponseCopyWith<$Res>  {
   factory $MessageWithPartsResponseCopyWith(MessageWithPartsResponse value, $Res Function(MessageWithPartsResponse) _then) = _$MessageWithPartsResponseCopyWithImpl;
 @useResult
 $Res call({
- List<MessageWithParts> messages, int? nextCursor
+ List<MessageWithParts> messages, int? nextCursor, SessionPromptDefaults? replayedPromptDefaults
 });
 
 
-
+$SessionPromptDefaultsCopyWith<$Res>? get replayedPromptDefaults;
 
 }
 /// @nodoc
@@ -68,14 +68,27 @@ class _$MessageWithPartsResponseCopyWithImpl<$Res>
 
 /// Create a copy of MessageWithPartsResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? messages = null,Object? nextCursor = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? messages = null,Object? nextCursor = freezed,Object? replayedPromptDefaults = freezed,}) {
   return _then(MessageWithPartsResponse(
 messages: null == messages ? _self.messages : messages // ignore: cast_nullable_to_non_nullable
 as List<MessageWithParts>,nextCursor: freezed == nextCursor ? _self.nextCursor : nextCursor // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,replayedPromptDefaults: freezed == replayedPromptDefaults ? _self.replayedPromptDefaults : replayedPromptDefaults // ignore: cast_nullable_to_non_nullable
+as SessionPromptDefaults?,
   ));
 }
+/// Create a copy of MessageWithPartsResponse
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionPromptDefaultsCopyWith<$Res>? get replayedPromptDefaults {
+    if (_self.replayedPromptDefaults == null) {
+    return null;
+  }
 
+  return $SessionPromptDefaultsCopyWith<$Res>(_self.replayedPromptDefaults!, (value) {
+    return _then(_self.copyWith(replayedPromptDefaults: value));
+  });
+}
 }
 
 
@@ -84,7 +97,7 @@ as int?,
 @JsonSerializable()
 
 class _MessageWithPartsResponse implements MessageWithPartsResponse {
-  const _MessageWithPartsResponse({required  List<MessageWithParts> messages, required this.nextCursor}): _messages = messages;
+  const _MessageWithPartsResponse({required  List<MessageWithParts> messages, required this.nextCursor, required this.replayedPromptDefaults}): _messages = messages;
   factory _MessageWithPartsResponse.fromJson(Map<String, dynamic> json) => _$MessageWithPartsResponseFromJson(json);
 
  final  List<MessageWithParts> _messages;
@@ -97,6 +110,7 @@ class _MessageWithPartsResponse implements MessageWithPartsResponse {
 /// Cursor for the next older page, to be sent back verbatim as the
 /// request's `before`. Null means the transcript is complete.
 @override final  int? nextCursor;
+@override final  SessionPromptDefaults? replayedPromptDefaults;
 
 /// Create a copy of MessageWithPartsResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -111,16 +125,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageWithPartsResponse&&const DeepCollectionEquality().equals(other._messages, _messages)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageWithPartsResponse&&const DeepCollectionEquality().equals(other._messages, _messages)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor)&&(identical(other.replayedPromptDefaults, replayedPromptDefaults) || other.replayedPromptDefaults == replayedPromptDefaults));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_messages),nextCursor);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_messages),nextCursor,replayedPromptDefaults);
 
 @override
 String toString() {
-  return 'MessageWithPartsResponse(messages: $messages, nextCursor: $nextCursor)';
+  return 'MessageWithPartsResponse(messages: $messages, nextCursor: $nextCursor, replayedPromptDefaults: $replayedPromptDefaults)';
 }
 
 
@@ -131,11 +145,11 @@ abstract mixin class _$MessageWithPartsResponseCopyWith<$Res> implements $Messag
   factory _$MessageWithPartsResponseCopyWith(_MessageWithPartsResponse value, $Res Function(_MessageWithPartsResponse) _then) = __$MessageWithPartsResponseCopyWithImpl;
 @override @useResult
 $Res call({
- List<MessageWithParts> messages, int? nextCursor
+ List<MessageWithParts> messages, int? nextCursor, SessionPromptDefaults? replayedPromptDefaults
 });
 
 
-
+@override $SessionPromptDefaultsCopyWith<$Res>? get replayedPromptDefaults;
 
 }
 /// @nodoc
@@ -148,15 +162,28 @@ class __$MessageWithPartsResponseCopyWithImpl<$Res>
 
 /// Create a copy of MessageWithPartsResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? messages = null,Object? nextCursor = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? messages = null,Object? nextCursor = freezed,Object? replayedPromptDefaults = freezed,}) {
   return _then(_MessageWithPartsResponse(
 messages: null == messages ? _self._messages : messages // ignore: cast_nullable_to_non_nullable
 as List<MessageWithParts>,nextCursor: freezed == nextCursor ? _self.nextCursor : nextCursor // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,replayedPromptDefaults: freezed == replayedPromptDefaults ? _self.replayedPromptDefaults : replayedPromptDefaults // ignore: cast_nullable_to_non_nullable
+as SessionPromptDefaults?,
   ));
 }
 
+/// Create a copy of MessageWithPartsResponse
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionPromptDefaultsCopyWith<$Res>? get replayedPromptDefaults {
+    if (_self.replayedPromptDefaults == null) {
+    return null;
+  }
 
+  return $SessionPromptDefaultsCopyWith<$Res>(_self.replayedPromptDefaults!, (value) {
+    return _then(_self.copyWith(replayedPromptDefaults: value));
+  });
+}
 }
 
 

@@ -132,6 +132,7 @@ final class const ClaudeHistoryMapper({
         agent: "claude",
         modelID: entry.model,
         providerID: "anthropic",
+        variant: null,
         time: _messageTime(entry.timestamp),
       ),
       parts: List.unmodifiable(parts),

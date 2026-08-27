@@ -965,7 +965,11 @@ void main() {
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
-            const MessageWithPartsResponse(messages: <MessageWithParts>[], nextCursor: null),
+            const MessageWithPartsResponse(
+              messages: <MessageWithParts>[],
+              nextCursor: null,
+              replayedPromptDefaults: null,
+            ),
           ),
         );
 
@@ -1336,12 +1340,24 @@ void main() {
         if (getMessagesCallCount == 2) {
           slowRefreshStarted.complete();
           return completeSlowRefresh.future.then(
-            (_) => ApiResponse.success(MessageWithPartsResponse(messages: [testMessageWithParts()], nextCursor: null)),
+            (_) => ApiResponse.success(
+              MessageWithPartsResponse(
+                messages: [testMessageWithParts()],
+                nextCursor: null,
+                replayedPromptDefaults: null,
+              ),
+            ),
           );
         }
 
         return Future<ApiResponse<MessageWithPartsResponse>>.value(
-          ApiResponse.success(MessageWithPartsResponse(messages: [testMessageWithParts()], nextCursor: null)),
+          ApiResponse.success(
+            MessageWithPartsResponse(
+              messages: [testMessageWithParts()],
+              nextCursor: null,
+              replayedPromptDefaults: null,
+            ),
+          ),
         );
       });
 
@@ -1921,12 +1937,24 @@ void main() {
         if (getMessagesCallCount == 2) {
           slowRefreshStarted.complete();
           return completeSlowRefresh.future.then(
-            (_) => ApiResponse.success(MessageWithPartsResponse(messages: [testMessageWithParts()], nextCursor: null)),
+            (_) => ApiResponse.success(
+              MessageWithPartsResponse(
+                messages: [testMessageWithParts()],
+                nextCursor: null,
+                replayedPromptDefaults: null,
+              ),
+            ),
           );
         }
 
         return Future<ApiResponse<MessageWithPartsResponse>>.value(
-          ApiResponse.success(MessageWithPartsResponse(messages: [testMessageWithParts()], nextCursor: null)),
+          ApiResponse.success(
+            MessageWithPartsResponse(
+              messages: [testMessageWithParts()],
+              nextCursor: null,
+              replayedPromptDefaults: null,
+            ),
+          ),
         );
       });
 
@@ -2652,7 +2680,13 @@ void _stubAllDefaults(
     ),
   ).thenAnswer(
     (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(
-      ApiResponse.success(MessageWithPartsResponse(messages: [testMessageWithParts()], nextCursor: null)),
+      ApiResponse.success(
+        MessageWithPartsResponse(
+          messages: [testMessageWithParts()],
+          nextCursor: null,
+          replayedPromptDefaults: null,
+        ),
+      ),
     ),
   );
   when(

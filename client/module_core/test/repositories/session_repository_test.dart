@@ -41,7 +41,13 @@ void main() {
 
     when(() => api.getMessages(sessionId: "session-1", limit: null, before: null)).thenAnswer(
       (_) async =>
-          ApiResponse.success(const MessageWithPartsResponse(messages: <MessageWithParts>[], nextCursor: null)),
+          ApiResponse.success(
+            const MessageWithPartsResponse(
+              messages: <MessageWithParts>[],
+              nextCursor: null,
+              replayedPromptDefaults: null,
+            ),
+          ),
     );
     when(() => api.getPendingQuestions(sessionId: "session-1")).thenAnswer(
       (_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])),

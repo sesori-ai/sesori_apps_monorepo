@@ -1602,8 +1602,8 @@ void main() {
       final statuses = await repository.getSessionStatuses();
 
       expect(plugin.lastGetMessagesSessionId, equals("backend-s1"));
-      expect(messages.single.info.sessionID, equals("stable-s1"));
-      expect(messages.single.parts.single.sessionID, equals("stable-s1"));
+      expect(messages.messages.single.info.sessionID, equals("stable-s1"));
+      expect(messages.messages.single.parts.single.sessionID, equals("stable-s1"));
       expect(statuses.statuses, equals({"stable-s1": const SessionStatus.busy()}));
     });
 

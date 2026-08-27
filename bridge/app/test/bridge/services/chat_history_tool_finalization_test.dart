@@ -273,7 +273,10 @@ class _FakeSessionRepository({
   int statusReads = 0;
 
   @override
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => transcript;
+  Future<SessionMessagesSnapshot> getSessionMessages({required String sessionId}) async => (
+    messages: transcript,
+    promptDefaults: null,
+  );
 
   @override
   Future<SessionStatus?> getSessionStatus({required String sessionId}) async {

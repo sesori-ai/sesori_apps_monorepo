@@ -35,6 +35,7 @@ void main() {
         agent: "build",
         modelID: "gpt",
         providerID: "openai",
+        variant: "high",
         time: PluginMessageTime(created: 1718400000000, completed: 1718400005000),
       );
 
@@ -51,6 +52,14 @@ void main() {
           ),
         ),
       );
+
+      expect(
+        [const PluginMessageWithParts(info: message, parts: [])].latestPromptDefaults(),
+        const SessionPromptDefaults(
+          agent: "build",
+          model: AgentModel(providerID: "openai", modelID: "gpt", variant: "high"),
+        ),
+      );
     });
 
     test("preserves time on an error message", () {
@@ -60,6 +69,7 @@ void main() {
         agent: null,
         modelID: "gpt",
         providerID: "openai",
+        variant: null,
         errorName: "ProviderError",
         errorMessage: "boom",
         time: PluginMessageTime(created: 1718400000000, completed: 1718400001000),
@@ -92,6 +102,69 @@ void main() {
       );
 
       expect(message.toSharedMessage(sessionId: "stable-session").time, isNull);
+    });
+
+    test("latestPromptDefaults uses the newest assistant or error attribution", () {
+      const messages = [
+        PluginMessageWithParts(
+          info: PluginMessage.assistant(
+            id: "m1",
+            sessionID: "s1",
+            agent: "build",
+            modelID: "gpt",
+            providerID: "openai",
+            variant: "low",
+            time: null,
+          ),
+          parts: [],
+        ),
+        PluginMessageWithParts(
+          info: PluginMessage.user(
+            promptId: null,
+            id: "m2",
+            sessionID: "s1",
+            agent: null,
+            time: null,
+          ),
+          parts: [],
+        ),
+        PluginMessageWithParts(
+          info: PluginMessage.error(
+            id: "m3",
+            sessionID: "s1",
+            agent: "review",
+            modelID: "gpt",
+            providerID: null,
+            variant: "high",
+            errorName: "ProviderError",
+            errorMessage: "boom",
+            time: null,
+          ),
+          parts: [],
+        ),
+      ];
+
+      expect(
+        messages.latestPromptDefaults(),
+        const SessionPromptDefaults(agent: "review", model: null),
+      );
+    });
+
+    test("latestPromptDefaults ignores transcripts without assistant or error messages", () {
+      const messages = [
+        PluginMessageWithParts(
+          info: PluginMessage.user(
+            promptId: null,
+            id: "m1",
+            sessionID: "s1",
+            agent: null,
+            time: null,
+          ),
+          parts: [],
+        ),
+      ];
+
+      expect(messages.latestPromptDefaults(), isNull);
     });
   });
 }

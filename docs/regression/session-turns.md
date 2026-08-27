@@ -138,11 +138,14 @@ defaults and queued client sends coherent.
   failure must not fail the send. Abort stops the turn with an observable
   outcome and no completion notification, and the next turn starts without
   recovery output from the interrupted backend process.
-- Opening an existing session selects valid persisted prompt defaults first and
-  otherwise continues with the latest assistant/error transcript model before
-  falling back to agent or catalog defaults. The transcript model remains
-  authoritative when a retained provider cache does not list it, so a terminal-
-  imported session cannot silently resume on a different provider.
+- Opening an existing session that required a first or externally stale history
+  replay adopts and persists the latest assistant/error transcript selection,
+  including an OpenCode effort variant. Other opens select valid persisted
+  prompt defaults first and otherwise continue with the latest assistant/error
+  transcript model before falling back to agent or catalog defaults. The
+  transcript model remains authoritative when a retained provider cache does
+  not list it, so a terminal-imported session cannot silently resume on a
+  different provider.
 - The bridge owns accepted-but-not-yet-visible prompts. An entry appears in the
   session snapshot and full-list `session.queued-prompts` events, survives
   leaving the screen, locking the phone, and reconnecting, and is visible to
@@ -213,7 +216,7 @@ defaults and queued client sends coherent.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Live plugin, representative: a prompt streams assistant output and returns the session to idle. |
-| L2 Routine | Live plugin, representative: slash command returns on acceptance; prompt defaults update; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. |
+| L2 Routine | Live plugin, representative: slash command returns on acceptance; prompt defaults update; first and stale transcript replay reconciles prompt defaults before the opening snapshot is applied; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. |
 | L3 Release | Client end to end (phone), every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming, composer, sending/queued feedback, and abort render; a stale selection refreshes, warns, and retries once without losing the queued prompt. |
 | L4 Extended | Relay integration, every supporting production plugin: a slow or unresponsive plugin leaves other sessions, plugins, and the relay responsive; archived sends and queued-prompt cancels are refused without racing archiving; disconnect and reconnect mid-turn resumes without lost or duplicated parts; bridge-owned prompts survive leaving and reopening in order and appear on a second client; a prompt waiting at a dispatch boundary can be cancelled; a permission reply lands while a command or selection-changing prompt waits behind the running turn; a second client observes the same turn and steering prompt. |
 | L5 Full | Client end to end, every supporting production plugin: retry status surfaces with attempt and timing; concurrent sends across sessions and plugins interleave without ordering damage; background and resume mid-turn recovers live state; an aborted turn triggers no completion notification. |

@@ -27,6 +27,7 @@ import "package:sesori_shared/sesori_shared.dart"
         PullRequestInfo,
         QueuedSessionPrompt,
         Session,
+        SessionPromptDefaults,
         SessionStatus,
         SessionStatusResponse,
         SessionVariant;
@@ -69,6 +70,11 @@ typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
 
 /// The deleted root as clients see it, plus every session id removed with it.
 typedef DeletedSessionSubtree = ({Session session, List<String> sessionIds});
+
+typedef SessionMessagesSnapshot = ({
+  List<MessageWithParts> messages,
+  SessionPromptDefaults? promptDefaults,
+});
 
 class SessionRepository({
     required final PluginRuntime _runtime,
@@ -384,13 +390,16 @@ class SessionRepository({
   /// directory is primed first: after a bridge restart, the history replay can
   /// be the FIRST plugin call for a stored worktree session, and a
   /// directory-scoped backend would otherwise replay in its launch directory.
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) => _useSessionPlugin(
+  Future<SessionMessagesSnapshot> getSessionMessages({required String sessionId}) => _useSessionPlugin(
     sessionId: sessionId,
     operation: SessionOperation.getSessionMessages,
-    body: (plugin, binding) async =>
-        (await plugin.getSessionMessages(binding.backendSessionId)).toSharedMessageWithParts(
-          sessionId: binding.sessionId,
-        ),
+    body: (plugin, binding) async {
+      final pluginMessages = await plugin.getSessionMessages(binding.backendSessionId);
+      return (
+        messages: pluginMessages.toSharedMessageWithParts(sessionId: binding.sessionId),
+        promptDefaults: pluginMessages.latestPromptDefaults(),
+      );
+    },
   );
 
   /// Persists the bridge-owned title override. Null removes the override so

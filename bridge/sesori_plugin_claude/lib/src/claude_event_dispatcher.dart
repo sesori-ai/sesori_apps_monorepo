@@ -404,6 +404,7 @@ final class ClaudeEventDispatcher({
           agent: "claude",
           modelID: _models[sessionId],
           providerID: "anthropic",
+          variant: null,
           errorName: error.name,
           errorMessage: error.message,
           time: null,
@@ -422,6 +423,7 @@ final class ClaudeEventDispatcher({
     agent: "claude",
     modelID: _models[sessionId],
     providerID: "anthropic",
+    variant: null,
     time: time,
   );
 

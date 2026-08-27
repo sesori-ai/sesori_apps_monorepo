@@ -211,6 +211,7 @@ class AcpReplayCollector({
             agent: agentId,
             modelID: modelId,
             providerID: providerId,
+            variant: null,
             errorName: halt.errorName,
             errorMessage: halt.message,
             time: null,
@@ -318,6 +319,7 @@ class AcpReplayCollector({
       agent: agentId,
       modelID: modelId,
       providerID: providerId,
+      variant: null,
       time: null,
     );
   }
