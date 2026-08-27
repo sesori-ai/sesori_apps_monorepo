@@ -152,7 +152,7 @@
 
 - **Step 1 architecture review:** initial draft rejected; all four findings applied as recorded above
 - **Step 1 documentation validation:** plan/tracker titles, six-step denominator, repositories, targets, async-only decision, #918 barrier, and review record agree; new-file whitespace check passed
-- **Step 1 changed lines:** 635 documentation-only additions (`PLAN.md` 473, `TRACKER.md` 162), within the 500-700 target
+- **Step 1 changed lines:** 636 documentation-only additions (`PLAN.md` 473, `TRACKER.md` 163), within the 500-700 target
 - **Step 1 commits:** `620cb5c6c` (plan publication) plus the tracker-only delivery record
 - **Step 1 PR:** [#1144](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1144), open and monitored
 - **Step 2 server verification:** pending
