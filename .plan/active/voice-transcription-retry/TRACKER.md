@@ -24,7 +24,7 @@
 - [x] Treat omitted/malformed retryability from an older server as terminal; definite local connection failures remain retryable.
 - [x] Model retained audio inside one sealed, per-composer service session and module_core `VoiceInputCubit` state.
 - [x] Put Retry/discard in the composer, not only in a dismissible popup.
-- [x] Delete on success, terminal rejection, cancel, discard, missing-artifact detection, and Cubit/session close; retain across repeated retryable failures.
+- [x] Delete on success, terminal rejection, initial cancel, discard, missing-artifact detection, and Cubit/session close; retain across repeated retryable failures and manual-retry cancellation.
 - [x] Keep the retry artifact memory-owned and composer-local; no cross-route or process-restart recovery.
 - [x] Accept possible duplicate provider work/quota after response loss; add no idempotency or automatic retry machinery.
 - [x] Add no analytics event; preserve one authoritative completion event after eventual success.
@@ -37,8 +37,8 @@
 - [x] Add Layer-2 `VoiceRepository` for transport/server failure mapping.
 - [x] Add module_core `VoiceCapture`/`VoiceCaptureSession` platform contracts and an app `core/platform` implementation for recorder/file/wake-lock mechanics.
 - [x] Do not add pass-through capture API/repository classes: scoped client rules explicitly allow module_core to consume platform interfaces directly.
-- [x] Register stateless Layer-3 `VoiceTranscriptionService` as `@lazySingleton`; it creates one unregistered `VoiceTranscriptionSession` per composer.
-- [x] Add factory-constructed module_core `VoiceInputCubit`; the app wires it with `BlocProvider`, and `PromptInput` only renders state/dispatches intents.
+- [x] Register Layer-3 `VoiceTranscriptionService` as a stateless `@lazySingleton` that owns every business operation/transition and operates on one unregistered state-only `VoiceTranscriptionSession` per composer.
+- [x] Add factory-constructed module_core `VoiceInputCubit`; the app wires it with `BlocProvider`, the Cubit invokes service operations with its session, and `PromptInput` only renders state/dispatches intents.
 - [x] Cubit close synchronously fences its session before asynchronous native/upload/artifact cleanup.
 - [x] Auth adapters classify detailed provider-neutral reasons, including terminal provider quota versus transient capacity.
 - [x] Auth composition injects `legacyOpenAiV1` or `detailedV1` public-error policy into `VoiceService`.
@@ -79,8 +79,8 @@
 - [x] Define fixed five-step titles, repositories, changed-line targets, and L4 matrix.
 - [x] Run `architecture-plan-review` through a sub-agent.
 - [x] Apply all four blocking architecture-plan findings directly; do not re-review routine corrections.
-- [x] Inspect all five Codex PR-review threads and its review summary.
-- [x] Apply Cubit ownership, service lifetime, provider-quota, and same-PR regression findings; clarify why platform capture has no pass-through API/repository.
+- [x] Inspect all seven Codex PR-review threads across both review rounds and both review summaries.
+- [x] Apply Cubit ownership, service lifetime, substantive service operations, retry-cancel retention, provider-quota, and same-PR regression findings; clarify why platform capture has no pass-through API/repository.
 - [x] Collapse the fixed series from six steps to five after moving regression documentation into Step 4.
 - [x] Run final plan consistency validation and `git diff --check`.
 - [x] Commit, push, open Step 1 PR, record URL/change count, and start PR monitor.
@@ -100,8 +100,8 @@
 
 - [ ] Add pure-Dart `VoiceCapture`/`VoiceCaptureSession` platform contracts and concrete app adapter.
 - [ ] Keep HTTP `VoiceApi` Layer 1; add `VoiceRepository` Layer 2.
-- [ ] Add stateless lazy-singleton `VoiceTranscriptionService` plus an unregistered session per composer.
-- [ ] Add module_core `VoiceInputCubit`/sealed state, wired only through `BlocProvider`.
+- [ ] Add stateless lazy-singleton `VoiceTranscriptionService` owning all operations/transitions plus an unregistered state-only session per composer.
+- [ ] Add module_core `VoiceInputCubit`/sealed state, wired only through `BlocProvider` and invoking the service with its owned session.
 - [ ] Make `PromptInput` render Cubit state and dispatch intents; fence/clean up through Cubit close.
 - [ ] Remove app-shell singleton/private business state/direct API ownership without adding retry behavior yet.
 - [ ] Prove permission/record/transcribe/cancel/cleanup behavior and per-composer isolation.
@@ -113,7 +113,7 @@
 - [ ] Add retry-pending to the sealed service-session/Cubit lifecycle and exact artifact disposition.
 - [ ] Add localized Retry/discard/saved/terminal/missing-artifact composer presentation.
 - [ ] Preserve cancellation generations, wake lock, amplitude, max duration, draft spans, focus, and one completion event.
-- [ ] Prove voice-first/text-first behavior and old-server omission fallback.
+- [ ] Prove voice-first/text-first behavior, old-server omission fallback, and manual-retry cancellation returning to retry-pending with the artifact retained.
 - [ ] Update `docs/regression/voice-input.md` in the same production PR; remove stale every-exit-deletes behavior.
 - [ ] Add no realtime dual-capture/retry behavior or unshipped realtime claims.
 - [ ] Run codegen/localization, focused/downstream tests, strict analysis, and architecture implementation review.
@@ -134,7 +134,7 @@
 - [ ] Exercise local network loss then successful retry without re-recording.
 - [ ] Exercise explicit async server retryable and unusable-audio non-retryable outcomes.
 - [ ] Exercise older-server omission and released-app/new-server fixture compatibility.
-- [ ] Verify cancellation/discard/disposal cleanup and privacy-safe logs/analytics.
+- [ ] Verify initial-cancel/discard/disposal cleanup, manual-retry cancel retention, and privacy-safe logs/analytics.
 - [ ] If realtime is in the build, prove post-audio failure has no false retained-file Retry claim.
 - [ ] Record mode/provider/platform/auth-build matrix and privacy-safe evidence.
 - [ ] Move plan to completed only when all required L4 rows pass or the user records an explicit reduction.
@@ -146,14 +146,15 @@
 - **Verdict:** rejected after pre-review gate passed
 - **Blocking findings:** singleton/composer ownership mismatch; missing OpenAI retryability-versus-HTTP compatibility owner; stale/unreconciled realtime PR #918 baseline; app-shell Service directly calling Layer-1 API without Repository
 - **Initial corrections applied:** composer-scoped factory service with synchronous disposal fence; Foundation/API/Repository/Service layering; composition-injected auth public-error policies and complete reason table; verified #918 head/overlap plus hard rebase-before-merge checkpoint; async-only realtime scope decision
-- **PR review follow-up:** accepted module_core Cubit ownership, lazy-singleton service plus per-composer session, provider-quota classification, and same-PR async regression documentation; declined a pass-through capture API/repository because scoped platform rules explicitly permit direct interface consumption, then clarified the two dependency paths
+- **PR review round 1:** accepted module_core Cubit ownership, lazy-singleton service plus per-composer session, provider-quota classification, and same-PR async regression documentation; declined a pass-through capture API/repository because scoped platform rules explicitly permit direct interface consumption, then clarified the two dependency paths
+- **PR review round 2:** made the lazy service substantively own every operation/transition with the session reduced to state only; split initial cancellation from manual-retry cancellation so Retry cancellation preserves the artifact
 - **Re-review:** architecture-plan review not rerun; repository policy says apply valid findings directly without routine approval re-review
 
 ## Verification Log
 
 - **Step 1 architecture review:** initial draft rejected; all four findings applied as recorded above
-- **Step 1 documentation validation:** plan/tracker titles, five-step denominator, repositories, targets, async-only decision, #918 barrier, quota classification, Cubit/service ownership, same-PR regression update, and review record agree; whitespace check passed
-- **Step 1 changed lines:** 623 documentation-only additions (`PLAN.md` 459, `TRACKER.md` 164), within the 500-700 target
+- **Step 1 documentation validation:** plan/tracker titles, five-step denominator, repositories, targets, async-only decision, #918 barrier, quota classification, substantive service/Cubit ownership, retry-cancel retention, same-PR regression update, and both review rounds agree; whitespace check passed
+- **Step 1 changed lines:** 625 documentation-only additions (`PLAN.md` 460, `TRACKER.md` 165), within the 500-700 target
 - **Step 1 commits:** `620cb5c6c` (plan publication), tracker-only delivery records, and `c55a0846b` (PR-review corrections)
 - **Step 1 PR:** [#1144](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1144), open and monitored; five Codex threads answered and resolved
 - **Step 2 server verification:** pending

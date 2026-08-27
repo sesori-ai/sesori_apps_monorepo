@@ -187,13 +187,13 @@ For a non-success HTTP body with omitted, malformed, or unknown retryability, th
 
 Move recording/transcription orchestration to `client/module_core/lib/src/services/voice_transcription_service.dart`. `VoiceTranscriptionService` depends only on `VoiceRepository` and `VoiceCapture`. It never imports Flutter or app-shell code and never calls `VoiceApi` directly.
 
-Register the service with the module_core-required `@lazySingleton` lifetime. It holds no composer-specific mutable state. `createSession()` returns an unregistered, uniquely owned `VoiceTranscriptionSession` for one composer. That service-layer session owns the generation fence, one `VoiceCaptureSession`, and at most one opaque recording artifact. Its private sealed lifecycle represents idle, starting, recording, transcribing, retry-pending, cancelling, and disposed. Prewarm remains independent and best-effort.
+Register the service with the module_core-required `@lazySingleton` lifetime. It holds no composer-specific mutable state, but it owns all voice business operations and transition policy: prewarm, start, stop-and-transcribe, retry, cancel, discard, invalidate, and cleanup. Each operation receives an unregistered, uniquely owned `VoiceTranscriptionSession` created for one composer. The session is only the mutable state carrier: generation fence, private sealed lifecycle, one `VoiceCaptureSession`, and at most one opaque recording artifact. It holds no injected dependencies and performs no orchestration. The service can therefore operate on concurrent composer sessions without a registry or shared mutable lifecycle.
 
 #### Layer 4 Cubit and composer ownership
 
 Add `VoiceInputCubit` and a sealed `VoiceInputState` under `client/module_core/lib/src/cubits/voice_input/`. The Cubit is not registered in DI. The app's session-detail owner constructs it in `BlocProvider(create:)` with the lazy-singleton service, and the Cubit creates/owns exactly one `VoiceTranscriptionSession` for that provider lifetime.
 
-The Cubit receives start, stop, retry, cancel, and discard intents; maps the service session lifecycle to renderable state; and keeps artifact/business policy out of Flutter. Its `close()` first invalidates the session synchronously before any asynchronous gap, then awaits best-effort session cleanup. Cleanup cancels native/upload work, releases wake lock, discards any retained artifact, closes streams, and logs contained failures.
+The Cubit receives start, stop, retry, cancel, and discard intents; invokes the substantive service operations with its session; maps returned lifecycle/outcomes to renderable state; and keeps artifact/business policy out of Flutter. Its `close()` first asks the service to invalidate the session synchronously before any asynchronous gap, then awaits best-effort service cleanup for that session. Cleanup cancels native/upload work, releases wake lock, discards any retained artifact, closes streams, and logs contained failures.
 
 `PromptInput` owns only Flutter presentation/controller concerns. It renders `context.watch<VoiceInputCubit>().state`, dispatches intents through `context.read<VoiceInputCubit>()`, and uses a listener for one-shot transcript/error effects. It neither resolves a service nor owns the voice business lifecycle. A late upload or platform callback checks the session generation and Cubit closure before any transition, so it cannot recreate retry-pending state after the provider is gone.
 
@@ -219,12 +219,13 @@ The exact disposition matrix is:
 | Server `retryable: false` | Delete best-effort | Idle | Explain re-record/type; no Retry |
 | Server omits/malforms retryability | Delete best-effort | Idle | Terminal compatibility copy; no Retry |
 | Authentication/quota rejection | Delete best-effort | Idle | Existing/specific terminal copy; no Retry |
-| User cancels an in-flight attempt | Delete best-effort | Idle | No transcript |
+| User cancels recording or the initial attempt | Delete best-effort | Idle | No transcript |
+| User cancels an in-flight manual retry | Retain | Retry pending | Saved-recording Retry + discard |
 | User discards pending recording | Delete best-effort | Idle | Normal composer |
 | Retry finds artifact missing/unreadable | Clear ownership | Idle | Recording unavailable; re-record/type |
 | Composer Cubit/session close | Delete best-effort | Disposed | No retained cross-route recording |
 
-Each upload attempt releases busy/native wake-lock ownership when it settles. Retry reuses the exact artifact and MIME type, re-enters transcribing, and remains cancellable through the generation fence. Repeated retryable failures keep the artifact; success or any terminal outcome clears it.
+Each upload attempt releases busy/native wake-lock ownership when it settles. Retry reuses the exact artifact and MIME type, re-enters transcribing, and remains cancellable through the generation fence. Cancelling that retry aborts/fences only the current request and restores retry-pending with the same artifact; only the separate discard action abandons it. Repeated retryable failures keep the artifact; success or any terminal outcome clears it.
 
 Deletion failure remains observable and best-effort: log the path/error locally, clear the in-memory owner, and retain the documented possibility of temporary-file residue. Do not add a deletion retry queue or directory sweep.
 
@@ -375,16 +376,16 @@ The existing PR #918 is an external merge-barrier action owned by the realtime p
 
 - Add the pure-Dart `VoiceCapture`/`VoiceCaptureSession` platform capability and concrete app adapter with one native recorder per session.
 - Keep HTTP `VoiceApi` Layer 1; add `VoiceRepository` Layer 2; add lazy-singleton `VoiceTranscriptionService` Layer 3.
-- Add an unregistered per-composer `VoiceTranscriptionSession` plus factory-constructed module_core `VoiceInputCubit`/sealed state.
-- Move current permission/capture/transcription/cancel/max-duration/amplitude/wake-lock orchestration through those seams without adding retry-pending behavior yet.
+- Add an unregistered per-composer `VoiceTranscriptionSession` state carrier plus factory-constructed module_core `VoiceInputCubit`/sealed state.
+- Keep all permission/capture/transcription/cancel/max-duration/amplitude/wake-lock orchestration and transition policy in the lazy service, parameterized by the owned session, without adding retry-pending behavior yet.
 - Wire the Cubit in the app owner; make `PromptInput` render state/dispatch intents only; synchronously fence session completion at Cubit close before asynchronous cleanup.
 - Remove the app-shell singleton service/private voice business state and update all consumers/tests/DI in lockstep.
 
 ### Verification
 
 - HTTP repository mapping tests, pure-Dart service/session/Cubit lifecycle tests with fake platform/API boundaries, concrete app platform-adapter tests, and existing composer widget tests.
-- Prove each Cubit gets one distinct service session/native recorder, two composers do not share state, close fences late completion, and behavior remains permission → record → transcribe → cleanup.
-- Prove the service is a stateless `@lazySingleton`, the Cubit is created only by `BlocProvider`, and no product shell calls service/API directly.
+- Prove each Cubit gets one distinct state session/native recorder, two composers do not share state, close fences late completion, and behavior remains permission → record → transcribe → cleanup.
+- Prove the stateless `@lazySingleton` service—not the session or Cubit—owns every business operation/transition, the Cubit is created only by `BlocProvider`, and no product shell calls service/API directly.
 - Run code generation only through build runner.
 - Strict analysis in module_core/app, focused/downstream mobile tests, architecture implementation review, and `git diff --check`.
 
@@ -402,7 +403,7 @@ The existing PR #918 is an external merge-barrier action owned by the realtime p
 ### Verification
 
 - `VoiceApi`/`VoiceRepository`: true, false, omitted, malformed, auth/quota, local transport, success, and privacy-safe mapping.
-- Service session/Cubit: retain on network/true, reuse exact artifact on retry, repeated failure, success/false/cancel/discard/close cleanup, missing artifact, deletion failure logging, stale completion fencing, wake lock, and one-artifact invariant.
+- Service session/Cubit: retain on network/true, reuse exact artifact on retry, cancel manual retry back to retry-pending, repeated failure, success/false/initial-cancel/discard/close cleanup, missing artifact, deletion failure logging, stale completion fencing, wake lock, and one-artifact invariant.
 - App widgets: voice-first/text-first Retry/discard rendering, no Retry for terminal rejection, retry success inserts once, second recording blocked until discard, typed draft preserved, cancel/close, and stale isolation.
 - Regression text matches the behavior in the same diff and removes the stale every-exit-deletes claim.
 - Codegen/localization generation, strict analysis, focused/downstream tests, architecture implementation review, and `git diff --check`.
@@ -430,7 +431,7 @@ If #918 is closed, superseded, or materially redesigned instead, update this pla
 - **Client:** one release-target physical mobile platform, voice-first and text-first layouts.
 - **Auth:** current server contract plus an older-server fixture with omitted `retryable`.
 - **Providers:** automated classification for every configured async provider adapter; one live configured production provider through staging/external verification.
-- **Failures:** offline/connection loss, explicit retryable async server failure, explicit unusable-audio/non-retryable response, authentication/quota rejection, cancel during retry, and deletion/disposal cleanup.
+- **Failures:** offline/connection loss, explicit retryable async server failure, explicit unusable-audio/non-retryable response, authentication/quota rejection, cancel during retry back to retry-pending, and deletion/disposal cleanup.
 - **Mode:** force/confirm async capability for the retained-file journey. If realtime code has merged, separately confirm post-audio failure does not falsely display the async Retry action.
 - **Plugins/bridge:** none.
 
@@ -439,7 +440,7 @@ If #918 is closed, superseded, or materially redesigned instead, update this pla
 1. Record once in async mode, fail transiently, restore connectivity, tap Retry, and receive editable transcript text without re-recording.
 2. A server-declared non-retryable audio failure shows no Retry and directs re-recording or typing.
 3. A current app against omitted metadata never guesses retryability; a current server remains compatible with released-app fixtures.
-4. Success, terminal failure, discard, cancellation, and disposal attempt deletion; retryable failure does not.
+4. Success, terminal failure, initial cancellation, explicit discard, and disposal attempt deletion; retryable failure and cancellation of a manual retry retain the artifact.
 5. Realtime post-audio failure, when present in the tested build, preserves its documented partial-text behavior and never claims a retained full recording.
 6. No audio/transcript content reaches logs or analytics, and completion analytics fires once after eventual async success.
 
