@@ -59,8 +59,9 @@ class CopilotSessionOptionsService({
       } on TimeoutException {
         // Commands are optional; the coherent config catalog remains usable.
       }
-      if (_commandTracker.revision == expectedCommandRevision && _repository.hasCommandSnapshot) {
-        _commandTracker.replaceSnapshot(commands: _repository.commands);
+      if (_commandTracker.revision == expectedCommandRevision) {
+        if (_repository.hasCommandSnapshot) _commandTracker.replaceSnapshot(commands: _repository.commands);
+        if (!_repository.hasCommandSnapshot) _commandTracker.clear();
       }
       observed = true;
     } on Object catch (error, stack) {
@@ -128,6 +129,8 @@ class CopilotSessionOptionsService({
   }) {
     final snapshot = _snapshot;
     final requestedModel = model?.modelID;
+    final modes = snapshot?.modes ?? const [];
+    final fallbackAgent = modes.isEmpty && agent == CopilotPluginIdentity.displayName;
     if (requestedModel != null &&
         requestedModel.isNotEmpty &&
         (model?.providerID != _providerId ||
@@ -137,8 +140,8 @@ class CopilotSessionOptionsService({
     }
     if (agent != null &&
         agent.isNotEmpty &&
-        (snapshot?.modeConfigId == null ||
-            _resolveOption(valueOrName: agent, options: snapshot?.modes ?? const []) == null)) {
+        !fallbackAgent &&
+        (snapshot?.modeConfigId == null || _resolveOption(valueOrName: agent, options: modes) == null)) {
       throw PluginStaleOptionsException(operation, message: "GitHub Copilot no longer offers the selected mode");
     }
     final requestedVariant = variant?.id;
@@ -309,7 +312,9 @@ class CopilotSessionOptionsService({
               PluginModel(
                 id: model.value,
                 name: model.name,
-                variants: [for (final thoughtLevel in thoughtLevels) thoughtLevel.value],
+                variants: model.value == _snapshot?.currentModelValue
+                    ? [for (final thoughtLevel in thoughtLevels) thoughtLevel.value]
+                    : const [],
                 family: null,
                 isAvailable: true,
                 releaseDate: null,

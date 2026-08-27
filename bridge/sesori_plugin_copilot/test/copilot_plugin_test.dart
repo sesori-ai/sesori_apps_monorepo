@@ -110,6 +110,7 @@ void main() {
       expect(plugin.launchSpec.args, ["--no-auto-update", "--acp"]);
       expect(plugin.launchSpec.cwd, "/repo");
       expect(plugin.launchSpec.environment, const {"COPILOT_HOME": "/state/copilot"});
+      plugin.validateTurnSelection(operation: "createSession", model: null, variant: null, agent: "GitHub Copilot");
     });
 
     test("completes Copilot's standard ACP handshake", () async {

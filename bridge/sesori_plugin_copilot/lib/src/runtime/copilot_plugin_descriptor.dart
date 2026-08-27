@@ -35,7 +35,6 @@ CopilotPlugin _buildCopilotPlugin({
   processFactory: processFactory,
 );
 
-/// Lifecycle descriptor for GitHub Copilot CLI.
 final class const CopilotPluginDescriptor({
   required final CopilotPluginFactory _buildPlugin,
   required final Duration _connectBudget,

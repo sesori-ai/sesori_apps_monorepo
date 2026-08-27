@@ -11,7 +11,7 @@ void main() {
   late CopilotSessionOptionsService service;
 
   setUp(() {
-    commands = AcpCommandTracker();
+    commands = AcpCommandTracker()..replaceSnapshot(commands: const []);
     configurations = AcpSessionConfigurationTracker();
     repository = _CatalogRepository(result: _sessionResult());
     service = CopilotSessionOptionsService(
@@ -23,18 +23,18 @@ void main() {
     );
   });
 
-  tearDown(() => service.dispose());
-
   test("discovers standard model, mode, and reasoning options", () async {
     final result = await service.getSessionOptions(
       discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
     );
 
     final options = (result as PluginSessionOptionsDiscoveryObserved).options;
+    expect(options.completeness, PluginSessionOptionsCompleteness.partial);
     expect(options.agents.map((agent) => agent.name), ["Agent", "Plan"]);
     final provider = options.providers.providers.single;
     expect(provider.models.map((model) => model.id), ["gpt-5.4", "claude-sonnet-4.5"]);
     expect(provider.models.first.variants, ["low", "high"]);
+    expect(provider.models.last.variants, isEmpty);
   });
 
   test("applies model, mode, and reasoning through standard config writes", () async {
