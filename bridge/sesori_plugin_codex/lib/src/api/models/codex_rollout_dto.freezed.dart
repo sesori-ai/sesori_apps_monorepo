@@ -1452,7 +1452,7 @@ as String?,
 /// @nodoc
 mixin _$CodexRolloutTurnContextPayloadDto {
 
- String? get model;
+ String? get model;@JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) String? get effort;
 /// Create a copy of CodexRolloutTurnContextPayloadDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1463,16 +1463,16 @@ $CodexRolloutTurnContextPayloadDtoCopyWith<CodexRolloutTurnContextPayloadDto> ge
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTurnContextPayloadDto&&(identical(other.model, model) || other.model == model));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTurnContextPayloadDto&&(identical(other.model, model) || other.model == model)&&(identical(other.effort, effort) || other.effort == effort));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,model);
+int get hashCode => Object.hash(runtimeType,model,effort);
 
 @override
 String toString() {
-  return 'CodexRolloutTurnContextPayloadDto(model: $model)';
+  return 'CodexRolloutTurnContextPayloadDto(model: $model, effort: $effort)';
 }
 
 
@@ -1483,7 +1483,7 @@ abstract mixin class $CodexRolloutTurnContextPayloadDtoCopyWith<$Res>  {
   factory $CodexRolloutTurnContextPayloadDtoCopyWith(CodexRolloutTurnContextPayloadDto value, $Res Function(CodexRolloutTurnContextPayloadDto) _then) = _$CodexRolloutTurnContextPayloadDtoCopyWithImpl;
 @useResult
 $Res call({
- String? model
+ String? model,@JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) String? effort
 });
 
 
@@ -1500,9 +1500,10 @@ class _$CodexRolloutTurnContextPayloadDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexRolloutTurnContextPayloadDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? model = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? model = freezed,Object? effort = freezed,}) {
   return _then(CodexRolloutTurnContextPayloadDto(
 model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
+as String?,effort: freezed == effort ? _self.effort : effort // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -1515,10 +1516,11 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class _CodexRolloutTurnContextPayloadDto implements CodexRolloutTurnContextPayloadDto {
-  const _CodexRolloutTurnContextPayloadDto({required this.model});
+  const _CodexRolloutTurnContextPayloadDto({required this.model, @JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) required this.effort});
   factory _CodexRolloutTurnContextPayloadDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutTurnContextPayloadDtoFromJson(json);
 
 @override final  String? model;
+@override@JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) final  String? effort;
 
 /// Create a copy of CodexRolloutTurnContextPayloadDto
 /// with the given fields replaced by the non-null parameter values.
@@ -1530,16 +1532,16 @@ _$CodexRolloutTurnContextPayloadDtoCopyWith<_CodexRolloutTurnContextPayloadDto> 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutTurnContextPayloadDto&&(identical(other.model, model) || other.model == model));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutTurnContextPayloadDto&&(identical(other.model, model) || other.model == model)&&(identical(other.effort, effort) || other.effort == effort));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,model);
+int get hashCode => Object.hash(runtimeType,model,effort);
 
 @override
 String toString() {
-  return 'CodexRolloutTurnContextPayloadDto(model: $model)';
+  return 'CodexRolloutTurnContextPayloadDto(model: $model, effort: $effort)';
 }
 
 
@@ -1550,7 +1552,7 @@ abstract mixin class _$CodexRolloutTurnContextPayloadDtoCopyWith<$Res> implement
   factory _$CodexRolloutTurnContextPayloadDtoCopyWith(_CodexRolloutTurnContextPayloadDto value, $Res Function(_CodexRolloutTurnContextPayloadDto) _then) = __$CodexRolloutTurnContextPayloadDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String? model
+ String? model,@JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) String? effort
 });
 
 
@@ -1567,9 +1569,10 @@ class __$CodexRolloutTurnContextPayloadDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexRolloutTurnContextPayloadDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? model = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? model = freezed,Object? effort = freezed,}) {
   return _then(_CodexRolloutTurnContextPayloadDto(
 model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
+as String?,effort: freezed == effort ? _self.effort : effort // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

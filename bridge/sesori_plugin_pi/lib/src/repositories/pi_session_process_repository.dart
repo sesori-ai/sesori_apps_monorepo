@@ -888,11 +888,13 @@ final class PiSessionProcessRepository({
       timestamp: timestamp,
       message: _normalizeFileMessage(message),
     ),
-    PiSessionFileThinkingLevelChangeEntryDto(:final timestamp) => PiSessionEntryDto.thinkingLevelChange(
-      id: id,
-      parentId: parentId,
-      timestamp: timestamp,
-    ),
+    PiSessionFileThinkingLevelChangeEntryDto(:final timestamp, :final thinkingLevel) =>
+      PiSessionEntryDto.thinkingLevelChange(
+        id: id,
+        parentId: parentId,
+        timestamp: timestamp,
+        thinkingLevel: thinkingLevel,
+      ),
     PiSessionFileModelChangeEntryDto(:final timestamp) => PiSessionEntryDto.modelChange(
       id: id,
       parentId: parentId,

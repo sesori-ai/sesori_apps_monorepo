@@ -80,6 +80,7 @@ class CodexMessageRepository({
     var messageCounter = 0;
     String? sessionProvider;
     String? currentModel;
+    String? currentVariant;
 
     PluginMessage assistantInfo({
       required String id,
@@ -90,7 +91,7 @@ class CodexMessageRepository({
       agent: "codex",
       modelID: currentModel ?? config.model,
       providerID: sessionProvider ?? config.modelProvider ?? "openai",
-      variant: null,
+      variant: currentVariant,
       time: time,
     );
 
@@ -203,7 +204,7 @@ class CodexMessageRepository({
               agent: "codex",
               modelID: currentModel ?? config.model,
               providerID: sessionProvider ?? config.modelProvider ?? "openai",
-              variant: null,
+              variant: currentVariant,
               errorName: "CodexError",
               errorMessage: error.message,
               time: _messageTimeFrom(lineTimestamp),
@@ -221,6 +222,8 @@ class CodexMessageRepository({
         case CodexRolloutTurnContextLineDto(payload: final context):
           final model = context.model;
           if (model != null && model.isNotEmpty) currentModel = model;
+          final effort = context.effort?.trim();
+          currentVariant = effort == null || effort.isEmpty ? null : effort;
           continue;
         case CodexRolloutCompactedLineDto(:final timestamp):
           messageCounter += 1;
@@ -321,7 +324,7 @@ class CodexMessageRepository({
             PluginMessageWithParts(
               info: assistantInfo(id: messageId, time: messageTime),
               parts: [
-PluginMessagePart.reasoning(
+                PluginMessagePart.reasoning(
                   id: "$messageId-reasoning",
                   sessionID: sessionId,
                   messageID: messageId,

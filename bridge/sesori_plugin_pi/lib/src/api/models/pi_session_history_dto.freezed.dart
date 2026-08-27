@@ -608,12 +608,13 @@ $PiAgentMessageDtoCopyWith<$Res> get message {
 @JsonSerializable(createToJson: false)
 
 class PiThinkingLevelChangeEntryDto implements PiSessionEntryDto {
-  const PiThinkingLevelChangeEntryDto({required this.id, required this.parentId, required this.timestamp,  String? $type}): $type = $type ?? 'thinking_level_change';
+  const PiThinkingLevelChangeEntryDto({required this.id, required this.parentId, required this.timestamp, @JsonKey(fromJson: _thinkingLevelOrNull) required this.thinkingLevel,  String? $type}): $type = $type ?? 'thinking_level_change';
   factory PiThinkingLevelChangeEntryDto.fromJson(Map<String, dynamic> json) => _$PiThinkingLevelChangeEntryDtoFromJson(json);
 
 @override final  String id;
 @override final  String? parentId;
 @override final  DateTime timestamp;
+@JsonKey(fromJson: _thinkingLevelOrNull) final  PiThinkingLevel? thinkingLevel;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -629,12 +630,12 @@ $PiThinkingLevelChangeEntryDtoCopyWith<PiThinkingLevelChangeEntryDto> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiThinkingLevelChangeEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiThinkingLevelChangeEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.thinkingLevel, thinkingLevel) || other.thinkingLevel == thinkingLevel));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp);
+int get hashCode => Object.hash(runtimeType,id,parentId,timestamp,thinkingLevel);
 
 
 
@@ -645,7 +646,7 @@ abstract mixin class $PiThinkingLevelChangeEntryDtoCopyWith<$Res> implements $Pi
   factory $PiThinkingLevelChangeEntryDtoCopyWith(PiThinkingLevelChangeEntryDto value, $Res Function(PiThinkingLevelChangeEntryDto) _then) = _$PiThinkingLevelChangeEntryDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String? parentId, DateTime timestamp
+ String id, String? parentId, DateTime timestamp,@JsonKey(fromJson: _thinkingLevelOrNull) PiThinkingLevel? thinkingLevel
 });
 
 
@@ -662,12 +663,13 @@ class _$PiThinkingLevelChangeEntryDtoCopyWithImpl<$Res>
 
 /// Create a copy of PiSessionEntryDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? parentId = freezed,Object? timestamp = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? parentId = freezed,Object? timestamp = null,Object? thinkingLevel = freezed,}) {
   return _then(PiThinkingLevelChangeEntryDto(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,parentId: freezed == parentId ? _self.parentId : parentId // ignore: cast_nullable_to_non_nullable
 as String?,timestamp: null == timestamp ? _self.timestamp : timestamp // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,thinkingLevel: freezed == thinkingLevel ? _self.thinkingLevel : thinkingLevel // ignore: cast_nullable_to_non_nullable
+as PiThinkingLevel?,
   ));
 }
 
@@ -1438,12 +1440,13 @@ $PiSessionFileAgentMessageDtoCopyWith<$Res> get message {
 @JsonSerializable(createToJson: false)
 
 class PiSessionFileThinkingLevelChangeEntryDto implements PiSessionFileEntryDto {
-  const PiSessionFileThinkingLevelChangeEntryDto({required this.id, required this.parentId, required this.timestamp,  String? $type}): $type = $type ?? 'thinking_level_change';
+  const PiSessionFileThinkingLevelChangeEntryDto({required this.id, required this.parentId, required this.timestamp, @JsonKey(fromJson: _thinkingLevelOrNull) required this.thinkingLevel,  String? $type}): $type = $type ?? 'thinking_level_change';
   factory PiSessionFileThinkingLevelChangeEntryDto.fromJson(Map<String, dynamic> json) => _$PiSessionFileThinkingLevelChangeEntryDtoFromJson(json);
 
 @override final  String? id;
 @override final  String? parentId;
 @override final  DateTime timestamp;
+@JsonKey(fromJson: _thinkingLevelOrNull) final  PiThinkingLevel? thinkingLevel;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -1459,12 +1462,12 @@ $PiSessionFileThinkingLevelChangeEntryDtoCopyWith<PiSessionFileThinkingLevelChan
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileThinkingLevelChangeEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileThinkingLevelChangeEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.thinkingLevel, thinkingLevel) || other.thinkingLevel == thinkingLevel));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp);
+int get hashCode => Object.hash(runtimeType,id,parentId,timestamp,thinkingLevel);
 
 
 
@@ -1475,7 +1478,7 @@ abstract mixin class $PiSessionFileThinkingLevelChangeEntryDtoCopyWith<$Res> imp
   factory $PiSessionFileThinkingLevelChangeEntryDtoCopyWith(PiSessionFileThinkingLevelChangeEntryDto value, $Res Function(PiSessionFileThinkingLevelChangeEntryDto) _then) = _$PiSessionFileThinkingLevelChangeEntryDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String? id, String? parentId, DateTime timestamp
+ String? id, String? parentId, DateTime timestamp,@JsonKey(fromJson: _thinkingLevelOrNull) PiThinkingLevel? thinkingLevel
 });
 
 
@@ -1492,12 +1495,13 @@ class _$PiSessionFileThinkingLevelChangeEntryDtoCopyWithImpl<$Res>
 
 /// Create a copy of PiSessionFileEntryDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? parentId = freezed,Object? timestamp = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? parentId = freezed,Object? timestamp = null,Object? thinkingLevel = freezed,}) {
   return _then(PiSessionFileThinkingLevelChangeEntryDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,parentId: freezed == parentId ? _self.parentId : parentId // ignore: cast_nullable_to_non_nullable
 as String?,timestamp: null == timestamp ? _self.timestamp : timestamp // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,thinkingLevel: freezed == thinkingLevel ? _self.thinkingLevel : thinkingLevel // ignore: cast_nullable_to_non_nullable
+as PiThinkingLevel?,
   ));
 }
 

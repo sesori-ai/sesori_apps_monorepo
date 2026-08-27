@@ -210,6 +210,48 @@ void main() {
       expect(warnings, isNot(contains("/private/home")));
     });
 
+    test("file fallback preserves thinking level for later assistant messages", () async {
+      final root = Directory.systemTemp.createTempSync("pi-history-repository-");
+      addTearDown(() => root.deleteSync(recursive: true));
+      final path = "${root.path}/session.jsonl";
+      File(path).writeAsStringSync(
+        [
+          {
+            "type": "session",
+            "version": 3,
+            "id": "session",
+            "timestamp": "2026-08-01T00:00:00Z",
+            "cwd": "/exact/header-cwd",
+          },
+          {
+            "type": "thinking_level_change",
+            "id": "level",
+            "parentId": null,
+            "timestamp": "2026-08-01T00:00:01Z",
+            "thinkingLevel": "high",
+          },
+          {
+            "type": "message",
+            "id": "assistant",
+            "parentId": "level",
+            "timestamp": "2026-08-01T00:00:02Z",
+            "message": {
+              "role": "assistant",
+              "content": "answer",
+              "provider": "anthropic",
+              "model": "claude-sonnet-4-5",
+              "stopReason": "stop",
+              "timestamp": 2,
+            },
+          },
+        ].map(jsonEncode).join("\n"),
+      );
+
+      final messages = await _loadFileFallback(storage: _ProcessStorage(path: path));
+
+      expect((messages.single.info as PluginMessageAssistant).variant, "high");
+    });
+
     test("does not fall back for arbitrary send failure", () async {
       final process = FakePiProcess(stdinWritesFail: true);
       final storage = _ProcessStorage();

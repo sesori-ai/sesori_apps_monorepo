@@ -657,6 +657,7 @@ void main() {
               ClaudeTranscriptAssistantRecord(
                 id: "msg-1",
                 model: "claude-opus-5",
+                effort: null,
                 content: content,
                 cwd: "/tmp/project",
                 timestamp: timestamp,

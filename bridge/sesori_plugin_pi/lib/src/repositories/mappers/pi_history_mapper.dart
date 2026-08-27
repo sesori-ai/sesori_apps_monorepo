@@ -87,6 +87,7 @@ final class PiHistoryMapper({
     sessionId: sessionId,
     messageId: messageId,
     message: message,
+    variant: null,
     warnings: <_PiHistoryWarning>{},
   );
 
@@ -137,6 +138,7 @@ final class PiHistoryMapper({
     required String sessionId,
     required String messageId,
     required PiAssistantMessageDto message,
+    required String? variant,
     required Set<_PiHistoryWarning> warnings,
   }) {
     if (message.stopReason == PiAssistantStopReason.error && message.errorMessage != null) {
@@ -191,6 +193,7 @@ final class PiHistoryMapper({
         messageId: messageId,
         provider: message.provider,
         model: message.model,
+        variant: variant,
         stopReason: message.stopReason,
         timestamp: message.timestamp,
       ),
@@ -333,6 +336,7 @@ final class PiHistoryMapper({
     final messages = <_MessageDraft>[];
     final toolLocations = <String, _ToolLocation>{};
     final terminalToolDrafts = <_MessageDraft>[];
+    String? currentVariant;
 
     for (final entry in branch) {
       switch (entry) {
@@ -359,6 +363,7 @@ final class PiHistoryMapper({
                 sessionId: sessionId,
                 messageId: messageId,
                 message: message,
+                variant: currentVariant,
                 warnings: warnings,
               );
               final draft = _MessageDraft(info: mapped.info, parts: mapped.parts.toList());
@@ -434,8 +439,10 @@ final class PiHistoryMapper({
           );
         case PiUnknownEntryDto():
           _warnOnce(reason: _PiHistoryWarning.unknownEntry, warnings: warnings);
-        case PiThinkingLevelChangeEntryDto() ||
-            PiModelChangeEntryDto() ||
+        case PiThinkingLevelChangeEntryDto(:final thinkingLevel):
+          currentVariant = thinkingLevel?.wireValue;
+          continue;
+        case PiModelChangeEntryDto() ||
             PiBranchSummaryEntryDto() ||
             PiCustomEntryDto() ||
             PiLabelEntryDto() ||
@@ -630,6 +637,7 @@ final class PiHistoryMapper({
     required String messageId,
     required String? provider,
     required String? model,
+    required String? variant,
     required PiAssistantStopReason? stopReason,
     required int? timestamp,
   }) {
@@ -640,7 +648,7 @@ final class PiHistoryMapper({
         agent: _pluginId,
         modelID: model,
         providerID: provider,
-        variant: null,
+        variant: variant,
         errorName: "Pi response failed",
         errorMessage: "The Pi assistant response failed.",
         time: _time(timestamp),
@@ -651,7 +659,7 @@ final class PiHistoryMapper({
         agent: _pluginId,
         modelID: model,
         providerID: provider,
-        variant: null,
+        variant: variant,
         errorName: "Pi response aborted",
         errorMessage: "The Pi assistant response was aborted.",
         time: _time(timestamp),
@@ -662,7 +670,7 @@ final class PiHistoryMapper({
         agent: _pluginId,
         modelID: model,
         providerID: provider,
-        variant: null,
+        variant: variant,
         time: _time(timestamp),
       ),
     };

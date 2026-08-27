@@ -4,6 +4,7 @@ import "dart:typed_data";
 
 import "package:pi_plugin/src/api/models/pi_session_history_dto.dart";
 import "package:pi_plugin/src/models/pi_assistant_stop_reason.dart";
+import "package:pi_plugin/src/models/pi_thinking_level.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_history_mapper.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_message_identity_builder.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_persisted_user_text_codec.dart";
@@ -130,6 +131,81 @@ void main() {
       expect(first.map((message) => message.info.id), second.map((message) => message.info.id));
       expect(first[0].info.id, "pi:session:user:10:1");
       expect(first[1].info.id, "pi:session:user:10:2");
+    });
+
+    test("applies thinking-level changes along only the active branch", () {
+      final messages = mapper.map(
+        sessionId: sessionId,
+        entries: [
+          PiSessionEntryDto.thinkingLevelChange(
+            id: "initial-level",
+            parentId: null,
+            timestamp: DateTime.fromMillisecondsSinceEpoch(1),
+            thinkingLevel: PiThinkingLevel.high,
+          ),
+          _message(
+            id: "first-assistant",
+            parentId: "initial-level",
+            message: _assistantText("first", timestamp: 2),
+          ),
+          PiSessionEntryDto.thinkingLevelChange(
+            id: "abandoned-level",
+            parentId: "first-assistant",
+            timestamp: DateTime.fromMillisecondsSinceEpoch(3),
+            thinkingLevel: PiThinkingLevel.low,
+          ),
+          _message(
+            id: "abandoned-assistant",
+            parentId: "abandoned-level",
+            message: _assistantText("abandoned", timestamp: 4),
+          ),
+          PiSessionEntryDto.thinkingLevelChange(
+            id: "active-level",
+            parentId: "first-assistant",
+            timestamp: DateTime.fromMillisecondsSinceEpoch(5),
+            thinkingLevel: PiThinkingLevel.xhigh,
+          ),
+          _message(
+            id: "active-assistant",
+            parentId: "active-level",
+            message: _assistantText("active", timestamp: 6),
+          ),
+          PiSessionEntryDto.thinkingLevelChange(
+            id: "unknown-level",
+            parentId: "active-assistant",
+            timestamp: DateTime.fromMillisecondsSinceEpoch(7),
+            thinkingLevel: null,
+          ),
+          _message(
+            id: "latest-assistant",
+            parentId: "unknown-level",
+            message: _assistantText("latest", timestamp: 8),
+          ),
+        ],
+        leafId: "latest-assistant",
+      );
+
+      expect(_texts(messages), ["first", "active", "latest"]);
+      expect(
+        messages.map((message) => message.info).whereType<PluginMessageAssistant>().map((message) => message.variant),
+        ["high", "xhigh", null],
+      );
+    });
+
+    test("parses persisted thinking levels tolerantly", () {
+      PiThinkingLevel? parse(String thinkingLevel) {
+        final entry = PiSessionEntryDto.fromJson({
+          "type": "thinking_level_change",
+          "id": "level",
+          "parentId": null,
+          "timestamp": "2026-08-01T00:00:00Z",
+          "thinkingLevel": thinkingLevel,
+        });
+        return (entry as PiThinkingLevelChangeEntryDto).thinkingLevel;
+      }
+
+      expect(parse("high"), PiThinkingLevel.high);
+      expect(parse("future-level"), isNull);
     });
 
     test("falls back only from a missing non-null leaf and bounds cycles", () async {

@@ -53,6 +53,7 @@ void main() {
             timestamp: "2026-08-09T10:00:01Z",
             messageId: "assistant-message-id",
             model: "claude-test-model",
+            effort: "high",
             content: [
               {"type": "thinking", "thinking": "reasoning", "signature": "opaque"},
             ],
@@ -63,6 +64,7 @@ void main() {
             timestamp: "2026-08-09T10:00:02Z",
             messageId: "assistant-message-id",
             model: "claude-test-model",
+            effort: "high",
             content: [
               {"type": "tool_use", "id": "toolu-1", "name": "Read", "input": <String, Object?>{}},
             ],
@@ -73,6 +75,7 @@ void main() {
             timestamp: "2026-08-09T10:00:03Z",
             messageId: "assistant-message-id",
             model: "claude-test-model",
+            effort: "high",
             content: [
               {"type": "text", "text": "answer"},
             ],
@@ -113,6 +116,7 @@ void main() {
       expect((assistant.info as PluginMessageAssistant).agent, "claude");
       expect((assistant.info as PluginMessageAssistant).modelID, "claude-test-model");
       expect((assistant.info as PluginMessageAssistant).providerID, "anthropic");
+      expect((assistant.info as PluginMessageAssistant).variant, "high");
       expect(assistant.info.time?.created, DateTime.parse("2026-08-09T10:00:01Z").millisecondsSinceEpoch);
       expect(assistant.info.time?.completed, isNull);
       expect(assistant.parts.map((part) => part.type), [
@@ -176,6 +180,29 @@ IMPORTANT: Do NOT create new worktrees.
       );
 
       expect(messages.map((message) => message.parts.single.text), ["visible prompt", "/review visible args"]);
+    });
+
+    test("ignores an unknown historical effort", () async {
+      _writeTranscript(
+        temp: temp,
+        records: [
+          _messageRecord(
+            type: "assistant",
+            uuid: "assistant-record",
+            messageId: "assistant-message-id",
+            model: "claude-test-model",
+            effort: "future-effort",
+            content: "answer",
+          ),
+        ],
+      );
+
+      final messages = mapper.map(
+        sessionId: _sessionId,
+        records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+      );
+
+      expect((messages.single.info as PluginMessageAssistant).variant, isNull);
     });
 
     test("skips sidechain, metadata, transcript-only, and unsupported records", () async {
@@ -261,6 +288,7 @@ Map<String, Object?> _messageRecord({
   String timestamp = "2026-08-09T10:00:00Z",
   String? messageId,
   String? model,
+  String? effort,
   bool? isSidechain,
   bool? isMeta,
   bool? isVisibleInTranscriptOnly,
@@ -272,6 +300,7 @@ Map<String, Object?> _messageRecord({
   "isSidechain": ?isSidechain,
   "isMeta": ?isMeta,
   "isVisibleInTranscriptOnly": ?isVisibleInTranscriptOnly,
+  "effort": ?effort,
   "message": {"id": ?messageId, "model": ?model, "content": content},
 };
 

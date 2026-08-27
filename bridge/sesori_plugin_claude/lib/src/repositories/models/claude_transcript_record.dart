@@ -1,3 +1,5 @@
+import "../../models/claude_effort_level.dart";
+
 /// One decoded line of a Claude Code transcript.
 ///
 /// Transcripts live at `$CLAUDE_CONFIG_DIR ?? ~/.claude` +
@@ -80,6 +82,7 @@ final class const ClaudeTranscriptUserRecord({
 final class const ClaudeTranscriptAssistantRecord({
   required final String id,
   required final String? model,
+  required final ClaudeEffortLevel? effort,
   required final Object? content,
   required super.cwd,
   required super.timestamp,

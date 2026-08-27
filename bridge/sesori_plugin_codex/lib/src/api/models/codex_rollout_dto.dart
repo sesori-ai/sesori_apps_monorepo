@@ -142,11 +142,14 @@ sealed class CodexRolloutSessionMetadataPayloadDto with _$CodexRolloutSessionMet
 sealed class CodexRolloutTurnContextPayloadDto with _$CodexRolloutTurnContextPayloadDto {
   const factory({
     required String? model,
+    @JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) required String? effort,
   }) = _CodexRolloutTurnContextPayloadDto;
 
   factory fromJson(Map<String, dynamic> json) =>
       _$CodexRolloutTurnContextPayloadDtoFromJson(json);
 }
+
+String? _stringOrNull(Object? value) => value is String ? value : null;
 
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexRolloutItemMetadataDto with _$CodexRolloutItemMetadataDto {
