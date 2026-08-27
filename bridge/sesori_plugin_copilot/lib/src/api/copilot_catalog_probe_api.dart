@@ -4,28 +4,22 @@ import "package:acp_plugin/acp_plugin.dart";
 
 import "../copilot_binary.dart";
 
-/// One isolated Copilot process lease used only for option discovery.
-class CopilotCatalogProbeApi({
-  required final AcpLaunchSpec _launchSpec,
-  required final AcpProcessFactory _processFactory,
-}) {
-  AcpStdioClient? _client;
+/// Layer-1 ACP operations used by Copilot's isolated catalog-probe process.
+class CopilotCatalogProbeApi({required final AcpStdioClient _client}) {
+  AcpInitializeResult? _initializeResult;
   bool _disposed = false;
 
-  Stream<AcpNotification> get notifications => _openClient().notifications;
+  Stream<AcpNotification> get notifications => _client.notifications;
 
   Future<AcpInitializeResult> open({required Duration timeout}) async {
     if (_disposed) throw StateError("CopilotCatalogProbeApi is disposed");
-    if (_client != null) throw StateError("GitHub Copilot catalog lease is already open");
     final stopwatch = Stopwatch()..start();
-    final client = AcpStdioClient(
-      launchSpec: _launchSpec,
-      processFactory: _processFactory,
-      logTag: "copilot-catalog",
-    );
-    _client = client;
-    await client.connect().timeout(_remaining(timeout: timeout, stopwatch: stopwatch));
-    return await AcpAgentApi(client: client).initialize(
+    if (!_client.isConnected) {
+      await _client.reset(gracefulTimeout: Duration.zero);
+      _initializeResult = null;
+      await _client.connect().timeout(_remaining(timeout: timeout, stopwatch: stopwatch));
+    }
+    return _initializeResult ??= await AcpAgentApi(client: _client).initialize(
       formElicitation: false,
       capabilityMeta: null,
       authMethodId: CopilotBinary.acpAuthMethodId,
@@ -40,28 +34,27 @@ class CopilotCatalogProbeApi({
       _api().closeSession(sessionId: sessionId, timeout: timeout);
 
   Future<void> settle() async {
-    final client = _client;
-    _client = null;
-    if (client != null) await client.dispose();
+    _initializeResult = null;
+    await _client.reset(gracefulTimeout: Duration.zero);
   }
 
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    await settle();
+    _initializeResult = null;
+    await _client.dispose();
   }
 
-  AcpAgentApi _api() => AcpAgentApi(client: _openClient());
-
-  AcpStdioClient _openClient() {
-    final client = _client;
-    if (client == null || !client.isConnected) throw StateError("GitHub Copilot catalog lease is not open");
-    return client;
+  AcpAgentApi _api() {
+    if (_initializeResult == null || !_client.isConnected) {
+      throw StateError("GitHub Copilot catalog probe is not initialized");
+    }
+    return AcpAgentApi(client: _client);
   }
 
   Duration _remaining({required Duration timeout, required Stopwatch stopwatch}) {
     final remaining = timeout - stopwatch.elapsed;
-    if (remaining <= Duration.zero) throw TimeoutException("GitHub Copilot catalog lease exceeded its deadline");
+    if (remaining <= Duration.zero) throw TimeoutException("GitHub Copilot catalog probe exceeded its deadline");
     return remaining;
   }
 }

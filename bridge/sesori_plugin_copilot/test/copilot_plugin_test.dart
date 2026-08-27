@@ -36,14 +36,14 @@ const Map<String, dynamic> _copilotInitializeResult = {
 void main() {
   group("CopilotPlugin", () {
     late FakeAcpProcess fake;
-    late FakeAcpProcess catalogFake;
+    late List<FakeAcpProcess> catalogFakes;
     late CopilotPlugin plugin;
     late List<Map<String, String>> launchEnvironments;
     late Set<Map<String, dynamic>> handledFrames;
 
     setUp(() {
       fake = FakeAcpProcess();
-      catalogFake = FakeAcpProcess();
+      catalogFakes = [FakeAcpProcess(), FakeAcpProcess()];
       handledFrames = {};
       launchEnvironments = [];
       var spawnCount = 0;
@@ -54,7 +54,8 @@ void main() {
         environment: const {"COPILOT_HOME": "/state/copilot"},
         processFactory: (spec) async {
           launchEnvironments.add(spec.environment);
-          return spawnCount++ == 0 ? fake : catalogFake;
+          final index = spawnCount++;
+          return index == 0 ? fake : catalogFakes[index - 1];
         },
       );
     });
@@ -62,7 +63,7 @@ void main() {
     tearDown(() async {
       await plugin.dispose();
       await fake.close();
-      await catalogFake.close();
+      await Future.wait(catalogFakes.map((catalogFake) => catalogFake.close()));
     });
 
     Future<void> pump() => Future<void>.delayed(Duration.zero);
@@ -110,8 +111,43 @@ void main() {
       expect(plugin.launchSpec.args, ["--no-auto-update", "--acp"]);
       expect(plugin.launchSpec.cwd, "/repo");
       expect(plugin.launchSpec.environment, const {"COPILOT_HOME": "/state/copilot"});
-      plugin.validateTurnSelection(operation: "createSession", model: null, variant: null, agent: "GitHub Copilot");
     });
+
+    Future<void> completeCatalogDiscovery({required FakeAcpProcess process}) async {
+      await completeHandshake(process: process);
+      final newSession = await waitForFrame(process: process, method: "session/new");
+      process.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "catalog-session",
+          "update": {
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": <Map<String, dynamic>>[],
+          },
+        },
+      });
+      process.emit({
+        "jsonrpc": "2.0",
+        "id": newSession["id"],
+        "result": {
+          "sessionId": "catalog-session",
+          "configOptions": [
+            {
+              "id": "mode",
+              "category": "mode",
+              "currentValue": "agent",
+              "options": [
+                {"value": "agent", "name": "Agent"},
+                {"value": "plan", "name": "Plan"},
+              ],
+            },
+          ],
+        },
+      });
+      final closeSession = await waitForFrame(process: process, method: "session/close");
+      process.emit({"jsonrpc": "2.0", "id": closeSession["id"], "result": <String, dynamic>{}});
+    }
 
     test("completes Copilot's standard ACP handshake", () async {
       final connecting = plugin.ensureConnected();
@@ -131,45 +167,20 @@ void main() {
       expect(await connecting, isTrue);
 
       final discovering = plugin.getAgents(projectId: "/repo");
-      await completeHandshake(process: catalogFake);
-      final newSession = await waitForFrame(process: catalogFake, method: "session/new");
-      catalogFake.emit({
-        "jsonrpc": "2.0",
-        "method": "session/update",
-        "params": {
-          "sessionId": "catalog-session",
-          "update": {
-            "sessionUpdate": "available_commands_update",
-            "availableCommands": <Map<String, dynamic>>[],
-          },
-        },
-      });
-      catalogFake.emit({
-        "jsonrpc": "2.0",
-        "id": newSession["id"],
-        "result": {
-          "sessionId": "catalog-session",
-          "configOptions": [
-            {
-              "id": "mode",
-              "category": "mode",
-              "currentValue": "agent",
-              "options": [
-                {"value": "agent", "name": "Agent"},
-                {"value": "plan", "name": "Plan"},
-              ],
-            },
-          ],
-        },
-      });
-      final closeSession = await waitForFrame(process: catalogFake, method: "session/close");
-      catalogFake.emit({"jsonrpc": "2.0", "id": closeSession["id"], "result": <String, dynamic>{}});
+      await completeCatalogDiscovery(process: catalogFakes.first);
 
       expect((await discovering).map((agent) => agent.name), ["Agent", "Plan"]);
       expect(launchEnvironments.last["COPILOT_HOME"], "/state/catalog");
       expect(fake.written.where((frame) => frame["method"] == "session/new"), isEmpty);
       plugin.onConnectionReset();
-      plugin.validateTurnSelection(operation: "sendPrompt", model: null, variant: null, agent: "Plan");
+      final refreshing = plugin.validateTurnSelection(
+        operation: "sendPrompt",
+        model: null,
+        variant: null,
+        agent: "Plan",
+      );
+      await completeCatalogDiscovery(process: catalogFakes.last);
+      await refreshing;
       await expectLater(
         plugin.sendPrompt(
           sessionId: "session",
@@ -198,7 +209,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final agents = plugin.getAgents(projectId: "/repo");
-      await completeHandshake(process: catalogFake, rejectAuthentication: true);
+      await completeHandshake(process: catalogFakes.first, rejectAuthentication: true);
       await expectLater(
         agents,
         throwsA(

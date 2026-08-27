@@ -22,6 +22,7 @@ class CopilotSessionOptionsService({
   Future<PluginSessionOptionsDiscoveryResult>? _inFlight;
   ({PluginOperationException error, StackTrace stack})? _lastDiscoveryFailure;
 
+  bool get hasSnapshot => _snapshot != null;
   ({PluginOperationException error, StackTrace stack})? get lastDiscoveryFailure => _lastDiscoveryFailure;
 
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
@@ -203,6 +204,9 @@ class CopilotSessionOptionsService({
   PluginProvidersResult get providers => _providers();
 
   void resetConnection() {
+    _snapshot = null;
+    _defaultModelValue = null;
+    _defaultModeValue = null;
     _configurationTracker.clear();
     _lastDiscoveryFailure = null;
   }

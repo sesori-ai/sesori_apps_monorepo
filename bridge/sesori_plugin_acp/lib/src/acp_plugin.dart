@@ -259,12 +259,12 @@ abstract class AcpPlugin({
   /// Rejects a stale selection before a prompt or command is accepted.
   /// Harnesses with mutable catalogs override this to throw
   /// [PluginStaleOptionsException]; stock ACP accepts the advertised values.
-  void validateTurnSelection({
+  Future<void> validateTurnSelection({
     required String operation,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
     required String? agent,
-  }) {}
+  }) async {}
 
   /// Applies the requested [model], [variant], and [agent] for a turn on
   /// [sessionId] before the prompt is dispatched. [configRepository] writes
@@ -773,7 +773,7 @@ abstract class AcpPlugin({
     // A session/new response is the authoritative source of the backend's
     // new-session default model/mode.
     captureSessionConfig(session, sessionId: session.sessionId, fromNewSession: true);
-    validateTurnSelection(operation: "createSession", model: model, variant: variant, agent: agent);
+    await validateTurnSelection(operation: "createSession", model: model, variant: variant, agent: agent);
     // session/new leaves the session resident in the agent process.
     _residentSessions.add(session.sessionId);
     _sessionStatuses[session.sessionId] = const PluginSessionStatus.idle();
@@ -876,10 +876,10 @@ abstract class AcpPlugin({
     required ({String providerID, String modelID})? model,
   }) async {
     if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
-    validateTurnSelection(operation: "sendPrompt", model: model, variant: variant, agent: agent);
     // Acceptance gate: an unreachable agent fails the send itself; the turn
     // re-resolves the client at dispatch time (see [_runTurn]).
     await _connectedClient();
+    await validateTurnSelection(operation: "sendPrompt", model: model, variant: variant, agent: agent);
     // Another matching send may have been admitted while connection awaited.
     if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
     _recordSessionActivity(sessionId);
@@ -926,15 +926,15 @@ abstract class AcpPlugin({
     required ({String providerID, String modelID})? model,
   }) async {
     if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
-    validateTurnSelection(operation: "sendCommand", model: model, variant: variant, agent: agent);
+    // Acceptance gate — see [sendPrompt].
+    await _connectedClient();
+    await validateTurnSelection(operation: "sendCommand", model: model, variant: variant, agent: agent);
     final backendCommand = commandForDispatch(command: command);
     final body = arguments.isEmpty ? "/$backendCommand" : "/$backendCommand $arguments";
     final visibleArguments = userVisibleArguments?.trim();
     final visibleBody = visibleArguments == null || visibleArguments.isEmpty
         ? "/$command"
         : "/$command $userVisibleArguments";
-    // Acceptance gate — see [sendPrompt].
-    await _connectedClient();
     // Another matching send may have been admitted while connection awaited.
     if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
     _recordSessionActivity(sessionId);

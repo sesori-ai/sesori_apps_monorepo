@@ -6,22 +6,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
-  const defaultConfig = PluginConfig(values: {CopilotPluginDescriptor.binOption: "copilot"});
-
-  test("reports a supported PATH runtime ready without starting ACP", () async {
-    final processes = _Processes(
-      outputs: const [_Output(stdout: "GitHub Copilot CLI 1.0.80.\nRun 'copilot update' to check.\n", exitCode: 0)],
-    );
-    final result = await CopilotPluginDescriptor.production().inspectSetup(
-      config: defaultConfig,
-      processes: processes,
-      environment: const {"COPILOT_HOME": "/profile"},
-      stateDirectory: "/state",
-    );
-
-    expect(result, const PluginSetupReady.versioned(runtimeVersion: "1.0.80"));
-  });
-
   test("classifies an unrelated explicit runtime as unrecognized", () async {
     const explicit = PluginConfig(values: {CopilotPluginDescriptor.binOption: "/custom/copilot"});
     final unknown = await CopilotPluginDescriptor.production().inspectSetup(

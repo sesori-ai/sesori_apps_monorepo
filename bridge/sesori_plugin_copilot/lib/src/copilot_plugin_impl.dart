@@ -45,8 +45,11 @@ class CopilotPlugin._({
       configurationTracker: configurationTracker,
       repository: CopilotCatalogRepository(
         api: CopilotCatalogProbeApi(
-          launchSpec: catalogLaunchSpec,
-          processFactory: processFactory,
+          client: AcpStdioClient(
+            launchSpec: catalogLaunchSpec,
+            processFactory: processFactory,
+            logTag: "copilot-catalog",
+          ),
         ),
       ),
       launchDirectory: launchDirectory,
@@ -103,17 +106,22 @@ class CopilotPlugin._({
   );
 
   @override
-  void validateTurnSelection({
+  Future<void> validateTurnSelection({
     required String operation,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
     required String? agent,
-  }) => _copilotSessionOptionsService.validateTurnSelection(
-    operation: operation,
-    model: model,
-    variant: variant,
-    agent: agent,
-  );
+  }) async {
+    if (!_copilotSessionOptionsService.hasSnapshot) {
+      await _requireOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.refresh);
+    }
+    _copilotSessionOptionsService.validateTurnSelection(
+      operation: operation,
+      model: model,
+      variant: variant,
+      agent: agent,
+    );
+  }
 
   @override
   Future<void> applyTurnSelection({
@@ -138,19 +146,19 @@ class CopilotPlugin._({
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async {
-    await _requireOptions();
+    await _requireOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
     return _copilotSessionOptionsService.agents;
   }
 
   @override
   Future<PluginProvidersResult> getProviders({required String projectId}) async {
-    await _requireOptions();
+    await _requireOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
     return _copilotSessionOptionsService.providers;
   }
 
   @override
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
-    await _requireOptions();
+    await _requireOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
     return _copilotSessionOptionsService.commands;
   }
 
@@ -161,8 +169,8 @@ class CopilotPlugin._({
     required PluginSessionOptionsDiscoveryMode discoveryMode,
   }) => _copilotSessionOptionsService.getSessionOptions(discoveryMode: discoveryMode);
 
-  Future<void> _requireOptions() async {
-    final result = await _discoverOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
+  Future<void> _requireOptions({required PluginSessionOptionsDiscoveryMode discoveryMode}) async {
+    final result = await _discoverOptions(discoveryMode: discoveryMode);
     if (result is PluginSessionOptionsDiscoveryFailed) {
       final failure = _copilotSessionOptionsService.lastDiscoveryFailure;
       if (failure == null) {
