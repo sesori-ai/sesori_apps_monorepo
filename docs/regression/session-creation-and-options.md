@@ -37,8 +37,9 @@ variant, and worktree mode, and creating the session with its first input.
   total provider failure is explicit so bridge-owned cache retention applies.
   The plugin writes `deepseek.model` and then `deepseek.reasoning_effort`
   before prompt dispatch, fails closed on either rejection, and records the
-  selected identity only after every requested write succeeds. Adapter rename
-  normalization remains authoritative.
+  selected identity only after every requested write succeeds. Catalog reads use
+  the connected adapter without creating a session or model request; selection
+  is session-local and never writes normal `DSH_HOME` settings.
 - Read intents stay distinct: a normal load may serve a valid cache or discover,
   a cache-only read never discovers and reports cache-unavailable, and an
   explicit refresh forces fresh discovery.
@@ -186,6 +187,9 @@ reconnect or option refresh while restoration is pending.
 - Client end-to-end coverage is phone-only; the desktop shell cannot create.
 - Prompt attachments are capability-gated, so absence is expected, not failure.
 - Only plugins registered in the build under test count.
+- DeepSeek catalog mapping and ordered fail-closed config writes are automated.
+  Real-provider discovery plus client picker, creation, command, and selection
+  behavior remain required Step 16 evidence.
 
 ## Sources
 
