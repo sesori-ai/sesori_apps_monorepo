@@ -2,7 +2,6 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
 import "copilot_runtime_manifest.dart";
 
-/// Requires Copilot's branded `--version` line before accepting a candidate.
 class CopilotRuntimeVersionValidator({
   required super.commandExecutor,
   required super.probeTimeout,

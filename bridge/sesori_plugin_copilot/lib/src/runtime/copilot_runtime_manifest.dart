@@ -35,9 +35,6 @@ class const CopilotRuntimeManifest() extends RuntimeManifest {
   @override
   RuntimeVersion get bundledVersion => _bundledVersion;
 
-  /// Copilot prints `GitHub Copilot CLI 1.0.80.`. The shared validator tries
-  /// each whitespace-delimited token, so this parser accepts both a bare
-  /// semantic version and Copilot's sentence-final version token.
   @override
   RuntimeVersion? parseVersion({required String value}) {
     final trimmed = value.trim();

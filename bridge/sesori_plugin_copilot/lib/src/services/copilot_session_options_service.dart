@@ -319,7 +319,8 @@ class CopilotSessionOptionsService({
                 id: model.value,
                 name: model.name,
                 variants: [
-                  for (final thoughtLevel in _reasoningByModel[model.value]?.options ?? const <CopilotCatalogOption>[]) thoughtLevel.value,
+                  for (final thoughtLevel in _reasoningByModel[model.value]?.options ?? const <CopilotCatalogOption>[])
+                    thoughtLevel.value,
                 ],
                 family: null,
                 isAvailable: true,

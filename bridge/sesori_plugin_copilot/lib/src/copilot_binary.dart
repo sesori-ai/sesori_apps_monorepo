@@ -18,7 +18,6 @@ abstract final class CopilotBinary() {
     command: liveSpec.command,
     args: liveSpec.args,
     cwd: liveSpec.cwd,
-    // Probe sessions must not enter the user's resumable Copilot history.
     environment: {...liveSpec.environment, "COPILOT_HOME": configDirectory},
   );
 

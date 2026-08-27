@@ -257,8 +257,6 @@ abstract class AcpPlugin({
   }) {}
 
   /// Rejects a stale selection before a prompt or command is accepted.
-  /// Harnesses with mutable catalogs override this to throw
-  /// [PluginStaleOptionsException]; stock ACP accepts the advertised values.
   Future<void> validateTurnSelection({
     required String operation,
     required ({String providerID, String modelID})? model,

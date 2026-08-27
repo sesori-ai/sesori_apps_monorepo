@@ -110,6 +110,7 @@ class CopilotPlugin._({
     required PluginSessionVariant? variant,
     required String? agent,
   }) async {
+    if (model == null && variant == null && agent == null) return;
     if (!_copilotSessionOptionsService.hasSnapshot) {
       await _requireOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.refresh);
     }

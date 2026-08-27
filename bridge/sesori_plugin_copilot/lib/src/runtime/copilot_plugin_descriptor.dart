@@ -190,7 +190,6 @@ final class const CopilotPluginDescriptor({
       binaryPath: binaryPath,
       launchDirectory: io.Directory.current.path,
       catalogConfigDirectory: "${host.stateDirectory}${io.Platform.pathSeparator}catalog",
-      // hostProcessAcpFactory contributes the host environment once at spawn.
       environment: const {},
       processFactory: hostProcessAcpFactory(
         processes: host.processes,

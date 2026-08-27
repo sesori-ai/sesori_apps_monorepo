@@ -64,7 +64,7 @@ class SessionCreationService({
         command: normalizedCommand,
       ),
       userVisibleText: normalizedCommand == null ? userVisibleText : null,
-      variant: request.variant,
+      variant: normalizedCommand == null || normalizedCommand.isEmpty ? request.variant : null,
       agent: normalizedCommand == null || normalizedCommand.isEmpty ? request.agent : null,
       model: normalizedCommand == null || normalizedCommand.isEmpty ? request.model : null,
       isDedicated: worktreeState.isDedicated,

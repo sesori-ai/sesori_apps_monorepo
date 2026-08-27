@@ -307,7 +307,7 @@ void main() {
             pluginId: "fake",
             dedicatedWorktree: false,
             parts: [PromptPart.text(text: "Review it")],
-            variant: null,
+            variant: SessionVariant(id: "high"),
             agent: null,
             model: PromptModel(providerID: "provider", modelID: "withdrawn"),
             command: "review",
@@ -845,6 +845,7 @@ class _FakePlugin() implements NativeProjectsPluginApi {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
+    if (userVisibleText == null && variant != null) throw StateError("command variant applied during creation");
     createCalls++;
     lastCreateDirectory = directory;
     lastCreateUserVisibleText = userVisibleText;
@@ -888,6 +889,7 @@ class _FakePlugin() implements NativeProjectsPluginApi {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
+    if (sendCommandError != null && variant?.id != "high") throw StateError("missing command variant");
     if (sendCommandError case final error?) throw error;
   }
 
