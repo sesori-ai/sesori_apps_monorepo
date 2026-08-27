@@ -13,8 +13,8 @@ Plan: [PLAN.md](PLAN.md)
   - PR: [#1155](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1155)
   - Evidence: package tests and analyzer pass; architecture implementation review passed
 - [ ] **Step 3/7** — `⚙️ [github-copilot-harness] feat(copilot): add runtime setup and lifecycle [step 3/7]`
-  - State: implemented and verified locally on `github-copilot-harness/step-3-runtime`
-  - PR: pending
+  - State: in review
+  - PR: [#1158](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1158)
   - Evidence: 14 package tests pass; analyzer reports no issues; Makefile verification includes the package; live `1.0.80` probes confirmed isolated discovery cleanup and `session/set_config_option`; architecture implementation review passed
 - [ ] **Step 4/7** — `⚙️ [github-copilot-harness] feat(copilot): install the managed Copilot CLI [step 4/7]`
   - State: not started
