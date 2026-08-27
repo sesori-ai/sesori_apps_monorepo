@@ -78,8 +78,9 @@ is corrected before production code relies on the mismatch.
   without launching login, and the existing plugin setup state carries local-login guidance.
 - Grok model IDs remain opaque. Expose them under one Grok-owned provider grouping and send the exact model ID back to
   `session/set_model`; never split or infer provider identity from punctuation.
-- Reasoning options use exact advertised values as variant IDs and advertised labels as presentation. Unknown or
-  malformed options are skipped without rejecting otherwise usable models.
+- Reasoning options use exact advertised canonical values as both variant IDs and visible strings. The current
+  bridge/client contract carries only `List<String>` variants, so Grok's separate labels/descriptions are not
+  transported in initial support. Unknown or malformed options are skipped without rejecting otherwise usable models.
 - A requested model/effort change must succeed before prompt dispatch. On failure, preserve the original error as the
   cause, fail the accepted turn visibly, and do not record a partially applied selection.
 - Only standard ACP permission requests are supported. No Grok-specific question protocol or automatic approval is
@@ -321,7 +322,8 @@ unchanged.
 - Implement typed initialize/new/load model-state mapping with exact opaque model IDs.
 - Add `GrokCatalogRepository`, `GrokSessionConfigRepository`, and `GrokCatalogTracker`; the tracker alone owns last-good
   catalog replacement and retention.
-- Expose one primary Grok agent and one Grok-owned provider group; map per-model reasoning options to variants.
+- Expose one primary Grok agent and one Grok-owned provider group; map each per-model reasoning option's exact canonical
+  value to the existing string variant contract without claiming separate label support.
 - Exercise initialize/new/load capture and explicit initialize-only refresh directly through the repository, tracker,
   and service; a failed refresh retains the prior catalog. Production `AcpPlugin` hook wiring waits for Step 4.
 - Send exact model plus optional `_meta.reasoningEffort` from service through the configuration repository before a

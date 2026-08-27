@@ -77,6 +77,9 @@
   scheduled final Git-scoped architecture implementation review. The plan retains built-in `Harness.grok` branding
   because identity/presentation is not backend behavior and the existing client contract intentionally maps built-ins;
   it also retains penultimate regression reconciliation because that is the repository's mandated durable-plan flow.
+- 2026-08-27: Follow-up #1152 feedback correctly identified that variants carry only strings. The plan now displays
+  exact canonical reasoning values and explicitly defers Grok's separate labels/descriptions instead of implying a
+  label-bearing transport/UI seam.
 
 ## Required Final Evidence
 
