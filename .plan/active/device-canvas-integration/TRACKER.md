@@ -8,11 +8,10 @@
 - **Series state:** Steps 1-9 implemented; an explicitly approved, default-off
   pre-Step-12 LAN video viewport is implemented for local Android validation;
   the Phase 2 product entry gate remains NO-GO
-- **Current step:** physical cross-device validation of the gated LAN viewport
-  and remaining Phase 2 evidence
-- **Next action:** run the flagged Sesori client on a physical phone on the same
-  LAN, verify first-frame/close/background/revocation behavior, then continue the
-  formal TURN, input, latency, resource, and reconnect work
+- **Current step:** remaining Phase 2 evidence after successful physical
+  cross-device validation of the gated LAN viewport
+- **Next action:** continue the formal TURN, input, latency, resource, reconnect,
+  dependency-acceptance, and iOS-containment work
 
 ## Locked Decisions
 
@@ -437,10 +436,12 @@
   `build/app/outputs/flutter-apk/app-debug.apk`, and a flagged no-codesign iOS
   device build produced `build/ios/iphoneos/Runner.app`.
 - Final independent architecture and adversarial re-reviews returned `APPROVE`.
-- These automated and build results do not complete cross-device validation. A
-  physical phone and bridge host on the same reachable LAN must still verify
-  first frame, explicit and modal close, background close, relay loss, and claim
-  revocation before this validation slice is considered complete.
+- Manual physical same-LAN validation passed on 2026-08-27 with the flagged
+  Sesori client on a physical phone and a local Android Studio emulator source in
+  Device Canvas. The client displayed the first frame and continuous emulator
+  updates. Explicit close, Back/swipe modal dismissal, app backgrounding,
+  Device Canvas/source loss, and claim release/reassignment all closed the
+  preview as expected without reconnecting or leaving a stale stream.
 
 ## Open Product Confirmations
 

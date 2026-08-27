@@ -5,7 +5,7 @@
 - **Plan slug:** `device-canvas-integration`
 - **Status:** Active - Steps 1-9 implemented; an approved default-off pre-Step-12
   LAN video validation viewport is implemented; the Phase 2 entry gate remains
-  NO-GO pending physical-LAN and remaining release evidence
+  NO-GO pending the remaining release evidence
 - **Plan date:** 2026-08-18
 - **Primary repository:** `sesori-ai/sesori_apps_monorepo`
 - **Companion repository:** `daniil-shumko/device-canvas`
@@ -790,8 +790,9 @@ The exception is deliberately narrower than Step 12:
 The local-address filter is a topology constraint, not the security boundary: a
 VPN can expose private routes. Current claim authorization, encrypted routed
 signaling, exact offer correlation, DTLS fingerprint validation, and SRTP remain
-authoritative. Physical same-LAN testing is still required; successful unit
-tests or app builds alone do not complete this exception's validation.
+authoritative. On 2026-08-27, physical same-LAN testing passed with a physical
+Sesori client and a local Android Studio emulator source; the exact evidence is
+recorded in `TRACKER.md`. This validation does not open the Phase 2 product gate.
 
 The component-level decisions are:
 
