@@ -3,12 +3,12 @@
 ## Current State
 
 - **Plan slug:** `voice-transcription-retry`
-- **Apps base:** `origin/main` at `10e9c8c4bb`
-- **Auth base:** `origin/master` at `93b4323dca`
-- **Current branch:** `voice-retry-behavior`
-- **Series state:** Step 1/5 PR [#1144](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1144) open
-- **Current step:** plan publication
-- **Next action:** drive Step 1 PR to ready for human review
+- **Apps base:** `origin/main` at `ac08fee06b`
+- **Auth base:** `origin/master` at `0cfca944e1`
+- **Current branch:** `plan/voice-transcription-retry/s03-core-voice-lifecycle`
+- **Series state:** Step 1 merged; Step 2 auth PR [#77](https://github.com/sesori-ai/sesori_auth_server/pull/77) open and ready; Step 3 implemented locally pending final review
+- **Current step:** 3/5 ownership migration, held local until Step 2 merges
+- **Next action:** finish Step 3 verification and architecture review while monitoring auth PR #77
 - **External merge barrier:** realtime apps PR [#918](https://github.com/sesori-ai/sesori_apps_monorepo/pull/918), current head `b3083b7ad3`, must rebase onto merged Step 4 before it may merge
 
 ## Locked Product Decisions
@@ -54,14 +54,15 @@
 - [x] No realtime recording retry in this series.
 - [x] Client architecture migration and retry behavior stay in separate PRs.
 - [x] Never merge retention without a reachable retry/discard owner.
+- [x] User approved one cohesive Step 3 after the candidate measured roughly 3,300 touched lines including about 977 causal legacy deletions; the final 2,800-3,700 budget includes the required session-safe wake-lock review fix without introducing a temporary duplicate lifecycle or compatibility wrapper.
 
 ## Delivery Steps
 
 | Done | Step | Repository | Exact PR title | Target | State |
 |---|---|---|---|---:|---|
-| [ ] | 1/5 | apps | `🌱 [voice-transcription-retry] Plan async voice transcription retries [step 1/5]` | 500-700 | [PR #1144](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1144) open |
-| [ ] | 2/5 | auth | `⚙️ [voice-transcription-retry] Mark async transcription failures retryable [step 2/5]` | 500-950 | Blocked on Step 1 merge |
-| [ ] | 3/5 | apps | `🚧 [voice-transcription-retry] Move voice lifecycle into client core [step 3/5]` | 1,150-1,500 | Blocked on Step 2 contract |
+| [x] | 1/5 | apps | `🌱 [voice-transcription-retry] Plan async voice transcription retries [step 1/5]` | 500-700 | [PR #1144](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1144) merged as `bd7ad4bc` |
+| [ ] | 2/5 | auth | `⚙️ [voice-transcription-retry] Mark async transcription failures retryable [step 2/5]` | 500-950 | [PR #77](https://github.com/sesori-ai/sesori_auth_server/pull/77) open, passing, mergeable, ready for human review |
+| [ ] | 3/5 | apps | `🚧 [voice-transcription-retry] Move voice lifecycle into client core [step 3/5]` | 2,800-3,700 | Implemented locally; architecture approved, final merge-forward/verification pending Step 2 merge |
 | [ ] | 4/5 | apps | `⚙️ [voice-transcription-retry] Retain and retry async voice recordings [step 4/5]` | 700-1,250 | Blocked on Step 3 |
 | [ ] | 5/5 | apps | `🌿 [voice-transcription-retry] Verify async voice retries and retire plan [step 5/5]` | 60-180 | Blocked on Step 4 and #918 rebase checkpoint |
 
@@ -87,25 +88,26 @@
 
 ## Step 2 Checklist
 
-- [ ] Add `UnusableAudio`/`QuotaExhausted` and detailed provider-neutral classification.
-- [ ] Detect provider quota code/type before generic 429 capacity in OpenAI and Soniox adapters.
-- [ ] Inject `legacyOpenAiV1`/`detailedV1` policy from composition into `VoiceService`.
-- [ ] Preserve every released async status/error value while adding fixed booleans, including false on the voice daily-quota response.
-- [ ] Test every reason, daily quota, unexpected error, and connected cancellation under both policies.
-- [ ] Keep raw provider details private and existing Retry-After semantics intact.
-- [ ] Update auth README plus realtime PLAN/TRACKER with async-only decision and #918 barrier.
-- [ ] Pass focused auth verification and architecture implementation review.
+- [x] Add `UnusableAudio`/`QuotaExhausted` and detailed provider-neutral classification.
+- [x] Detect provider quota code/type before generic 429 capacity in OpenAI and Soniox adapters.
+- [x] Inject `legacyOpenAiV1`/`detailedV1` policy from composition into `VoiceService`.
+- [x] Preserve every released async status/error value while adding fixed booleans, including false on the voice daily-quota response.
+- [x] Test every reason, daily quota, unexpected error, connected cancellation, authenticated validation/upload failures, and route rate limiting.
+- [x] Keep raw provider details private and existing Retry-After semantics intact.
+- [x] Update auth README plus realtime PLAN/TRACKER with async-only decision and #918 barrier.
+- [x] Pass focused auth verification and architecture implementation review.
 
 ## Step 3 Checklist
 
-- [ ] Add pure-Dart `VoiceCapture`/`VoiceCaptureSession` platform contracts and concrete app adapter.
-- [ ] Keep HTTP `VoiceApi` Layer 1; add `VoiceRepository` Layer 2.
-- [ ] Add stateless lazy-singleton `VoiceTranscriptionService` owning all operations/transitions plus an unregistered state-only session per composer.
-- [ ] Add module_core `VoiceInputCubit`/sealed state, wired only through `BlocProvider` and invoking the service with its owned session.
-- [ ] Make `PromptInput` render Cubit state and dispatch intents; fence/clean up through Cubit close.
-- [ ] Remove app-shell singleton/private business state/direct API ownership without adding retry behavior yet.
-- [ ] Prove permission/record/transcribe/cancel/cleanup behavior and per-composer isolation.
-- [ ] Run codegen, focused/downstream tests, strict analysis, and architecture implementation review.
+- [x] Add pure-Dart `VoiceCapture`/`VoiceCaptureSession` platform contracts and concrete app adapter.
+- [x] Keep HTTP `VoiceApi` Layer 1; add `VoiceRepository` Layer 2.
+- [x] Add stateless lazy-singleton `VoiceTranscriptionService` owning all operations/transitions plus an unregistered state-only session per composer.
+- [x] Add module_core `VoiceInputCubit`/sealed state, wired only through `BlocProvider` and invoking the service with its owned session.
+- [x] Make `PromptInput` render Cubit state and dispatch intents; fence/clean up through Cubit close.
+- [x] Remove app-shell singleton/private business state/direct API ownership without adding retry behavior yet.
+- [x] Prove permission/record/transcribe/cancel/cleanup behavior and per-composer isolation in focused tests.
+- [x] Complete codegen, focused/downstream tests, strict analysis, and two-pass architecture implementation review on the local candidate.
+- [ ] Merge current `origin/main` after Step 2 merges, resolve drift, and rerun affected verification before publication.
 
 ## Step 4 Checklist
 
@@ -156,9 +158,9 @@
 - **Step 1 documentation validation:** plan/tracker titles, five-step denominator, repositories, targets, async-only decision, #918 barrier, quota classification, substantive service/Cubit ownership, retry-cancel retention, same-PR regression update, and both review rounds agree; whitespace check passed
 - **Step 1 changed lines:** 625 documentation-only additions (`PLAN.md` 460, `TRACKER.md` 165), within the 500-700 target
 - **Step 1 commits:** `620cb5c6c` (plan), tracker records, `c55a0846b` (review round 1), and `830ba2e8d` (review round 2)
-- **Step 1 PR:** [#1144](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1144), open and monitored; seven Codex threads answered and resolved
-- **Step 2 server verification:** pending
-- **Step 3 ownership migration:** pending
+- **Step 1 PR:** [#1144](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1144), merged as `bd7ad4bc374d959309154d2a30697d698ec56970`
+- **Step 2 server verification:** PR #77; format/lint/build/circular-dependency checks pass, focused provider/policy suites pass, full Node suite passed 941 with one skipped before the route-level review follow-up, route/service follow-up passes 51/51, and architecture implementation review approved with no findings
+- **Step 3 ownership migration:** local candidate passes module_core/app strict analysis, 23 focused core tests, 9 wake-lock/platform-adapter tests, 85 composer tests, and 57 new-session/routing tests; first review's wake-lock isolation finding was fixed and the second architecture review approved with no findings; final merge-forward/diff pending
 - **Step 4 client retry verification:** pending
 - **Step 4 regression reconciliation:** pending with implementation
 - **Step 5 L4 evidence:** pending

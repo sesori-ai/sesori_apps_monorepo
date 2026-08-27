@@ -21,7 +21,6 @@ import 'package:get_it/get_it.dart' as _i174;
 import 'package:http/http.dart' as _i519;
 import 'package:image_picker/image_picker.dart' as _i183;
 import 'package:injectable/injectable.dart' as _i526;
-import 'package:record/record.dart' as _i1039;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
 import 'package:sesori_mobile/capabilities/media/composer_image_picker.dart'
     as _i140;
@@ -31,8 +30,6 @@ import 'package:sesori_mobile/capabilities/voice/recorder_prewarm_client.dart'
     as _i361;
 import 'package:sesori_mobile/capabilities/voice/recording_file_provider.dart'
     as _i62;
-import 'package:sesori_mobile/capabilities/voice/voice_transcription_service.dart'
-    as _i1038;
 import 'package:sesori_mobile/capabilities/voice/wake_lock_service.dart'
     as _i511;
 import 'package:sesori_mobile/core/di/firebase_register_module.dart' as _i677;
@@ -66,6 +63,8 @@ import 'package:sesori_mobile/core/platform/flutter_oauth_device_descriptor_prov
 import 'package:sesori_mobile/core/platform/flutter_secure_storage_adapter.dart'
     as _i816;
 import 'package:sesori_mobile/core/platform/flutter_url_launcher.dart' as _i10;
+import 'package:sesori_mobile/core/platform/flutter_voice_capture.dart'
+    as _i698;
 import 'package:sesori_mobile/core/platform/gal_client.dart' as _i227;
 import 'package:sesori_mobile/core/platform/go_router_route_dispatcher.dart'
     as _i610;
@@ -106,7 +105,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i553.RelayCryptoService>(
       () => registerModule.relayCryptoService,
     );
-    gh.lazySingleton<_i1039.AudioRecorder>(() => registerModule.audioRecorder);
     gh.lazySingleton<_i183.ImagePicker>(() => registerModule.imagePicker);
     gh.lazySingleton<_i163.FlutterLocalNotificationsPlugin>(
       () => registerModule.flutterLocalNotificationsPlugin,
@@ -247,21 +245,18 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i902.DeepLinkService(gh<_i948.DeepLinkSource>()),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i1038.VoiceTranscriptionService>(
-      () => _i1038.VoiceTranscriptionService(
-        voiceApi: gh<_i948.VoiceApi>(),
-        recorder: gh<_i1039.AudioRecorder>(),
-        recorderPrewarmClient: gh<_i361.RecorderPrewarmClient>(),
-        fileProvider: gh<_i62.RecordingFileProvider>(),
-        wakeLockService: gh<_i511.WakeLockService>(),
-        audioFormat: gh<_i430.AudioFormatConfig>(),
-      ),
-      dispose: (i) => i.dispose(),
-    );
     gh.lazySingleton<_i948.AttributionClient>(
       () => _i681.SingularAttributionClient(
         startup: gh<_i853.SingularAttributionStartup>(),
         singular: gh<_i776.SingularStaticAdapter>(),
+      ),
+    );
+    gh.lazySingleton<_i948.VoiceCapture>(
+      () => _i698.FlutterVoiceCapture(
+        recorderPrewarmClient: gh<_i361.RecorderPrewarmClient>(),
+        fileProvider: gh<_i62.RecordingFileProvider>(),
+        wakeLockService: gh<_i511.WakeLockService>(),
+        audioFormat: gh<_i430.AudioFormatConfig>(),
       ),
     );
     return this;

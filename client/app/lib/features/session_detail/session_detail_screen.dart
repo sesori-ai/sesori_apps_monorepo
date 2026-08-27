@@ -18,22 +18,30 @@ class const SessionDetailScreen({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => SessionDetailCubit(
-        getIt<ConnectionService>(),
-        loadService: getIt<SessionDetailLoadService>(),
-        promptDispatcher: getIt<SessionRepository>(),
-        permissionRepository: getIt<PermissionRepository>(),
-        sessionViewingService: getIt<SessionViewingService>(),
-        projectViewingService: getIt<ProjectViewingService>(),
-        lifecycleSource: getIt<LifecycleSource>(),
-        composerDraftRepository: getIt<ComposerDraftRepository>(),
-        productAnalyticsService: getIt<ProductAnalyticsService>(),
-        sessionId: sessionId,
-        projectId: projectId,
-        notificationCanceller: getIt<NotificationCanceller>(),
-        failureReporter: getIt<FailureReporter>(),
-      ),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) => SessionDetailCubit(
+            getIt<ConnectionService>(),
+            loadService: getIt<SessionDetailLoadService>(),
+            promptDispatcher: getIt<SessionRepository>(),
+            permissionRepository: getIt<PermissionRepository>(),
+            sessionViewingService: getIt<SessionViewingService>(),
+            projectViewingService: getIt<ProjectViewingService>(),
+            lifecycleSource: getIt<LifecycleSource>(),
+            composerDraftRepository: getIt<ComposerDraftRepository>(),
+            productAnalyticsService: getIt<ProductAnalyticsService>(),
+            sessionId: sessionId,
+            projectId: projectId,
+            notificationCanceller: getIt<NotificationCanceller>(),
+            failureReporter: getIt<FailureReporter>(),
+          ),
+        ),
+        if (!readOnly)
+          BlocProvider(
+            create: (_) => VoiceInputCubit(service: getIt<VoiceTranscriptionService>()),
+          ),
+      ],
       child: _SessionActivityAnalyticsOwner(
         child: SessionDetailBody(
           projectId: projectId,

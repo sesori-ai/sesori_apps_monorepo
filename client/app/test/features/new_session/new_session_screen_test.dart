@@ -17,7 +17,6 @@ import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapsh
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/plugin_preference_repository.dart";
 import "package:sesori_mobile/capabilities/media/composer_image_picker.dart";
-import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
 import "package:sesori_mobile/features/new_session/new_session_plugin_chooser.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_mobile/features/session_detail/widgets/prompt_input.dart";
@@ -27,8 +26,7 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
-
-class MockVoiceTranscriptionService() extends Mock implements VoiceTranscriptionService;
+import "../../helpers/voice_test_helpers.dart";
 
 class MockComposerImagePicker() extends Mock implements ComposerImagePicker;
 
@@ -244,6 +242,7 @@ void main() {
   late BehaviorSubject<ConnectionStatus> connectionStatus;
   late MockProjectRepository projectRepository;
   late MockVoiceTranscriptionService voiceTranscriptionService;
+  late MockVoiceTranscriptionSession voiceSession;
   late MockComposerImagePicker imagePicker;
   late MockImageClipboard imageClipboard;
   late ComposerDraftRepository composerDraftRepository;
@@ -416,8 +415,10 @@ void main() {
 
     final maxDurationReached = StreamController<void>.broadcast();
     addTearDown(maxDurationReached.close);
-    when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
-    when(() => voiceTranscriptionService.prewarmRecording()).thenAnswer((_) async {});
+    voiceSession = stubVoiceTranscriptionService(
+      service: voiceTranscriptionService,
+      maxDurationStream: maxDurationReached.stream,
+    );
 
     when(
       () => pluginPreferenceRepository.readPluginId(bridgeId: any(named: "bridgeId")),
@@ -550,9 +551,8 @@ void main() {
   });
 
   testWidgets("old bridge guidance keeps Create available and Refresh uses legacy routes", (tester) async {
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => "");
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         PluginDiscoverySnapshot(

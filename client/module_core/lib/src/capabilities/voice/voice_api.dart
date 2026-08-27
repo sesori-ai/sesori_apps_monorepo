@@ -20,7 +20,7 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
   ///
   /// [mimeType] is sent as the file's content-type so the server can forward
   /// it to the transcription model (e.g. `"audio/mp4"` for m4a/AAC).
-  Future<ApiResponse<String>> transcribe(String audioFilePath, {required String mimeType}) async {
+  Future<ApiResponse<String>> transcribe({required String audioFilePath, required String mimeType}) async {
     final uri = Uri.parse("$authBaseUrl/voice/transcribe");
 
     try {

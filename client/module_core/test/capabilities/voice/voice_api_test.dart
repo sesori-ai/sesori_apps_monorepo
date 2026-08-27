@@ -40,7 +40,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse.success("transcribed text"));
 
-      final result = await voiceApi.transcribe(audioPath, mimeType: "audio/mp4");
+      final result = await voiceApi.transcribe(audioFilePath: audioPath, mimeType: "audio/mp4");
 
       expect(result, ApiResponse.success("transcribed text"));
 
@@ -84,7 +84,7 @@ void main() {
         ),
       );
 
-      final result = await voiceApi.transcribe(audioPath, mimeType: "audio/mp4");
+      final result = await voiceApi.transcribe(audioFilePath: audioPath, mimeType: "audio/mp4");
 
       expect(
         result,
@@ -111,7 +111,7 @@ void main() {
         (_) => Future<ApiResponse<String>>.error(TimeoutException("Request timed out")),
       );
 
-      final result = await voiceApi.transcribe(audioPath, mimeType: "audio/mp4");
+      final result = await voiceApi.transcribe(audioFilePath: audioPath, mimeType: "audio/mp4");
 
       expect(result.toString(), contains("dartHttpClient"));
       expect(result.toString(), contains("TimeoutException"));
@@ -130,7 +130,7 @@ void main() {
         (_) => Future<ApiResponse<String>>.error(const SocketException("Network unreachable")),
       );
 
-      final result = await voiceApi.transcribe(audioPath, mimeType: "audio/mp4");
+      final result = await voiceApi.transcribe(audioFilePath: audioPath, mimeType: "audio/mp4");
 
       expect(result.toString(), contains("dartHttpClient"));
       expect(result.toString(), contains("SocketException"));
@@ -147,7 +147,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.jsonParsing("not json")));
 
-      final result = await voiceApi.transcribe(audioPath, mimeType: "audio/mp4");
+      final result = await voiceApi.transcribe(audioFilePath: audioPath, mimeType: "audio/mp4");
 
       expect(result, ApiResponse<String>.error(ApiError.jsonParsing("not json")));
     });
@@ -165,7 +165,7 @@ void main() {
         (_) => Future<ApiResponse<String>>.error(const HandshakeException("TLS failed")),
       );
 
-      final result = await voiceApi.transcribe(audioPath, mimeType: "audio/mp4");
+      final result = await voiceApi.transcribe(audioFilePath: audioPath, mimeType: "audio/mp4");
 
       expect(result.toString(), contains("dartHttpClient"));
       expect(result.toString(), contains("HandshakeException"));

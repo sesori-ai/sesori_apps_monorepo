@@ -25,11 +25,11 @@ See [`../AGENTS.md`](../AGENTS.md) for shared conventions (architecture layering
 
 ```
 lib/
-├── capabilities/     Voice recording subsystem (AudioRecorder, WakeLock, RecordingFileProvider)
+├── capabilities/     Voice platform helpers (format, prewarm, recording path, session-safe wake-lock leases)
 ├── core/
 │   ├── di/           Flutter DI — registers platform adapters, then calls core init
 │   ├── extensions/   BuildContext extensions (localization)
-│   ├── platform/     FlutterSecureStorageAdapter, FlutterUrlLauncher, AppLifecycleObserver
+│   ├── platform/     FlutterSecureStorageAdapter, FlutterVoiceCapture, FlutterUrlLauncher, AppLifecycleObserver
 │   ├── routing/      GoRouter routes, deep link handling (AppLinksDeepLinkSource)
 │   └── widgets/      Connection overlay, modal bottom sheets
 ├── features/         Screen widgets (login, project_list, session_list, session_detail)

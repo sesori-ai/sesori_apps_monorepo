@@ -27,18 +27,25 @@ class const NewSessionScreen({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => NewSessionCubit(
-        connectionService: getIt<ConnectionService>(),
-        sessionRepository: getIt<SessionRepository>(),
-        newSessionPluginService: getIt<NewSessionPluginService>(),
-        newSessionOptionsService: getIt<NewSessionOptionsService>(),
-        projectRepository: getIt<ProjectRepository>(),
-        selectionTracker: getIt<NewSessionSelectionTracker>(),
-        composerDraftRepository: getIt<ComposerDraftRepository>(),
-        productAnalyticsService: getIt<ProductAnalyticsService>(),
-        projectId: projectId,
-      ),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) => NewSessionCubit(
+            connectionService: getIt<ConnectionService>(),
+            sessionRepository: getIt<SessionRepository>(),
+            newSessionPluginService: getIt<NewSessionPluginService>(),
+            newSessionOptionsService: getIt<NewSessionOptionsService>(),
+            projectRepository: getIt<ProjectRepository>(),
+            selectionTracker: getIt<NewSessionSelectionTracker>(),
+            composerDraftRepository: getIt<ComposerDraftRepository>(),
+            productAnalyticsService: getIt<ProductAnalyticsService>(),
+            projectId: projectId,
+          ),
+        ),
+        BlocProvider(
+          create: (_) => VoiceInputCubit(service: getIt<VoiceTranscriptionService>()),
+        ),
+      ],
       child: _NewSessionBody(projectId: projectId, projectName: projectName),
     );
   }

@@ -41,7 +41,7 @@ Three-phase init in `configureDependencies()`:
 
 **Voice Features**
 
-`VoiceTranscriptionService` — records audio via the `record` package and submits to the voice API. `WakeLockService` — keeps the screen on during active sessions using `wakelock_plus`.
+`FlutterVoiceCapture` — adapts the `record` package into one native capture session per composer. Module-core `VoiceTranscriptionService` owns recording/transcription policy through `VoiceRepository`, while `VoiceInputCubit` exposes lifecycle state to the shell. `WakeLockService` coordinates session leases over the process-wide `wakelock_plus` capability.
 
 ## Running
 

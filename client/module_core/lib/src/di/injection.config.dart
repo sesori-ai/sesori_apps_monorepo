@@ -60,6 +60,7 @@ import 'package:sesori_dart_core/src/platform/push_messaging_source.dart'
     as _i330;
 import 'package:sesori_dart_core/src/platform/route_dispatcher.dart' as _i951;
 import 'package:sesori_dart_core/src/platform/route_source.dart' as _i366;
+import 'package:sesori_dart_core/src/platform/voice_capture.dart' as _i359;
 import 'package:sesori_dart_core/src/repositories/analytics_repository.dart'
     as _i274;
 import 'package:sesori_dart_core/src/repositories/appearance_store.dart'
@@ -83,7 +84,7 @@ import 'package:sesori_dart_core/src/repositories/notification_preferences_repos
 import 'package:sesori_dart_core/src/repositories/notification_repository.dart'
     as _i471;
 import 'package:sesori_dart_core/src/repositories/permission_repository.dart'
-    as _i679;
+    as _i680;
 import 'package:sesori_dart_core/src/repositories/plugin_preference_repository.dart'
     as _i594;
 import 'package:sesori_dart_core/src/repositories/plugin_repository.dart'
@@ -98,6 +99,8 @@ import 'package:sesori_dart_core/src/repositories/session_repository.dart'
     as _i7;
 import 'package:sesori_dart_core/src/repositories/view_declaration_repository.dart'
     as _i143;
+import 'package:sesori_dart_core/src/repositories/voice_repository.dart'
+    as _i107;
 import 'package:sesori_dart_core/src/routing/analytics_route_listener.dart'
     as _i888;
 import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
@@ -143,6 +146,8 @@ import 'package:sesori_dart_core/src/services/session_unseen_tracker.dart'
 import 'package:sesori_dart_core/src/services/session_viewing_service.dart'
     as _i18;
 import 'package:sesori_dart_core/src/services/sse_event_tracker.dart' as _i508;
+import 'package:sesori_dart_core/src/services/voice_transcription_service.dart'
+    as _i679;
 import 'package:sesori_dart_core/src/utils/model_filter/default_model_selector.dart'
     as _i895;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
@@ -189,6 +194,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i727.AnalyticsApi>(
       () => _i727.AnalyticsApi(client: gh<_i791.AnalyticsClient>()),
     );
+    gh.lazySingleton<_i107.VoiceRepository>(
+      () => _i107.VoiceRepository(api: gh<_i176.VoiceApi>()),
+    );
     gh.lazySingleton<_i198.ComposerDraftRepository>(
       () => _i198.ComposerDraftRepository(
         storage: gh<_i64.ComposerDraftStorage>(),
@@ -232,6 +240,12 @@ extension GetItInjectableX on _i174.GetIt {
         localNotificationClient: gh<_i1037.LocalNotificationClient>(),
         routeDispatcher: gh<_i951.RouteDispatcher>(),
         routeSource: gh<_i366.RouteSource>(),
+      ),
+    );
+    gh.lazySingleton<_i679.VoiceTranscriptionService>(
+      () => _i679.VoiceTranscriptionService(
+        repository: gh<_i107.VoiceRepository>(),
+        capture: gh<_i359.VoiceCapture>(),
       ),
     );
     gh.lazySingleton<_i896.RoomKeyStorage>(
@@ -421,8 +435,8 @@ extension GetItInjectableX on _i174.GetIt {
         attachmentThumbnailStorage: gh<_i894.AttachmentThumbnailStorage>(),
       ),
     );
-    gh.lazySingleton<_i679.PermissionRepository>(
-      () => _i679.PermissionRepository(api: gh<_i231.PermissionApi>()),
+    gh.lazySingleton<_i680.PermissionRepository>(
+      () => _i680.PermissionRepository(api: gh<_i231.PermissionApi>()),
     );
     gh.lazySingleton<_i80.ProjectRepository>(
       () => _i80.ProjectRepository(

@@ -1,0 +1,209 @@
+import "dart:async";
+import "dart:io";
+
+import "package:flutter_test/flutter_test.dart";
+import "package:mocktail/mocktail.dart";
+import "package:record/record.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
+import "package:sesori_mobile/capabilities/voice/recorder_prewarm_client.dart";
+import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
+import "package:sesori_mobile/capabilities/voice/wake_lock_service.dart";
+import "package:sesori_mobile/core/platform/flutter_voice_capture.dart";
+
+class MockAudioRecorder() extends Mock implements AudioRecorder;
+
+class MockRecorderPrewarmClient() extends Mock implements RecorderPrewarmClient;
+
+class MockRecordingFileProvider() extends Mock implements RecordingFileProvider;
+
+class MockWakeLockService() extends Mock implements WakeLockService;
+
+class MockWakeLockLease() extends Mock implements WakeLockLease;
+
+void main() {
+  late MockAudioRecorder recorder;
+  late MockRecorderPrewarmClient prewarmClient;
+  late MockRecordingFileProvider fileProvider;
+  late MockWakeLockService wakeLockService;
+  late MockWakeLockLease wakeLockLease;
+  late AudioFormatConfig audioFormat;
+  late FlutterVoiceCapture capture;
+  late Directory tempDirectory;
+  late String recordingPath;
+  late StreamController<Amplitude> amplitudeController;
+
+  setUpAll(() {
+    registerFallbackValue(const RecordConfig());
+    registerFallbackValue(Duration.zero);
+  });
+
+  setUp(() async {
+    recorder = MockAudioRecorder();
+    prewarmClient = MockRecorderPrewarmClient();
+    fileProvider = MockRecordingFileProvider();
+    wakeLockService = MockWakeLockService();
+    wakeLockLease = MockWakeLockLease();
+    audioFormat = AudioFormatConfig.forPlatform(isWeb: false);
+    tempDirectory = await Directory.systemTemp.createTemp("flutter_voice_capture_test_");
+    recordingPath = "${tempDirectory.path}/voice.m4a";
+    amplitudeController = StreamController<Amplitude>.broadcast();
+
+    when(() => recorder.hasPermission(request: false)).thenAnswer((_) async => true);
+    when(recorder.hasPermission).thenAnswer((_) async => true);
+    when(() => recorder.start(any(), path: any(named: "path"))).thenAnswer((_) async {});
+    when(recorder.stop).thenAnswer((_) async => recordingPath);
+    when(() => recorder.onAmplitudeChanged(any())).thenAnswer((_) => amplitudeController.stream);
+    when(recorder.dispose).thenAnswer((_) async {});
+    when(() => fileProvider.createRecordingPath()).thenAnswer((_) async => recordingPath);
+    when(
+      () => prewarmClient.prewarm(
+        sampleRate: any(named: "sampleRate"),
+        bitRate: any(named: "bitRate"),
+        numChannels: any(named: "numChannels"),
+      ),
+    ).thenAnswer((_) async {});
+    when(wakeLockService.acquire).thenReturn(wakeLockLease);
+    when(wakeLockLease.release).thenAnswer((_) async {});
+
+    capture = FlutterVoiceCapture(
+      recorderPrewarmClient: prewarmClient,
+      fileProvider: fileProvider,
+      wakeLockService: wakeLockService,
+      audioFormat: audioFormat,
+      recorderFactory: () => recorder,
+    );
+  });
+
+  tearDown(() async {
+    await amplitudeController.close();
+    await tempDirectory.delete(recursive: true);
+  });
+
+  test("prewarm checks permission without prompting and disposes its recorder", () async {
+    await capture.prewarm();
+
+    verify(() => recorder.hasPermission(request: false)).called(1);
+    verify(
+      () => prewarmClient.prewarm(
+        sampleRate: audioFormat.sampleRate,
+        bitRate: audioFormat.bitRate,
+        numChannels: audioFormat.numChannels,
+      ),
+    ).called(1);
+    verify(recorder.dispose).called(1);
+  });
+
+  test("records, normalizes amplitude, returns a typed artifact, and deletes it", () async {
+    await File(recordingPath).writeAsBytes([1, 2, 3]);
+    final session = capture.createSession();
+    final amplitudes = <double>[];
+    final subscription = session.amplitudeStream.listen(amplitudes.add);
+    addTearDown(subscription.cancel);
+
+    await session.start();
+    amplitudeController.add(Amplitude(current: -30, max: 0));
+    await Future<void>.delayed(Duration.zero);
+    final artifact = await session.stop();
+
+    expect(amplitudes, contains(closeTo(0.5, 0.001)));
+    expect(artifact.path, recordingPath);
+    expect(artifact.mimeType, "audio/mp4");
+    final config = verify(() => recorder.start(captureAny(), path: recordingPath)).captured.single as RecordConfig;
+    expect(config.encoder, AudioEncoder.aacLc);
+    expect(config.numChannels, 1);
+    verify(wakeLockService.acquire).called(1);
+
+    await session.releaseOperation();
+    await session.deleteArtifact(artifact: artifact);
+    expect(File(recordingPath).existsSync(), isFalse);
+    verify(wakeLockLease.release).called(1);
+    await session.close();
+  });
+
+  test("maps denied permission without starting native recording", () async {
+    when(recorder.hasPermission).thenAnswer((_) async => false);
+    final session = capture.createSession();
+
+    await expectLater(session.start(), throwsA(isA<VoiceCapturePermissionDenied>()));
+
+    verifyNever(() => recorder.start(any(), path: any(named: "path")));
+    await session.close();
+  });
+
+  test("cancel stops recording, releases wake lock, and removes the current file", () async {
+    await File(recordingPath).writeAsBytes([1, 2, 3]);
+    final session = capture.createSession();
+    await session.start();
+
+    await session.cancel();
+
+    verify(recorder.stop).called(1);
+    verify(wakeLockLease.release).called(1);
+    expect(File(recordingPath).existsSync(), isFalse);
+    await session.close();
+  });
+
+  test("overlapping capture sessions hold the wake lock until both release", () async {
+    final firstRecorder = MockAudioRecorder();
+    final secondRecorder = MockAudioRecorder();
+    for (final candidate in [firstRecorder, secondRecorder]) {
+      when(candidate.hasPermission).thenAnswer((_) async => true);
+      when(() => candidate.start(any(), path: any(named: "path"))).thenAnswer((_) async {});
+      when(() => candidate.onAmplitudeChanged(any())).thenAnswer((_) => const Stream<Amplitude>.empty());
+      when(candidate.stop).thenAnswer((_) async => recordingPath);
+      when(candidate.dispose).thenAnswer((_) async {});
+    }
+    var enableCalls = 0;
+    var disableCalls = 0;
+    final leaseCoordinator = WakeLockService(
+      enable: () async {
+        enableCalls++;
+      },
+      disable: () async {
+        disableCalls++;
+      },
+    );
+    var index = 0;
+    final multiCapture = FlutterVoiceCapture(
+      recorderPrewarmClient: prewarmClient,
+      fileProvider: fileProvider,
+      wakeLockService: leaseCoordinator,
+      audioFormat: audioFormat,
+      recorderFactory: () => [firstRecorder, secondRecorder][index++],
+    );
+    final first = multiCapture.createSession();
+    final second = multiCapture.createSession();
+
+    await first.start();
+    await second.start();
+    await Future<void>.delayed(Duration.zero);
+    expect(enableCalls, 1);
+
+    await first.releaseOperation();
+    expect(disableCalls, 0);
+    await second.releaseOperation();
+    expect(disableCalls, 1);
+
+    await first.close();
+    await second.close();
+  });
+
+  test("each composer capture session receives a distinct native recorder", () {
+    final recorders = [MockAudioRecorder(), MockAudioRecorder()];
+    var index = 0;
+    final multiCapture = FlutterVoiceCapture(
+      recorderPrewarmClient: prewarmClient,
+      fileProvider: fileProvider,
+      wakeLockService: wakeLockService,
+      audioFormat: audioFormat,
+      recorderFactory: () => recorders[index++],
+    );
+
+    final first = multiCapture.createSession();
+    final second = multiCapture.createSession();
+
+    expect(identical(first, second), isFalse);
+    expect(index, 2);
+  });
+}

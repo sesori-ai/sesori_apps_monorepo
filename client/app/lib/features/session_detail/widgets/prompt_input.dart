@@ -14,7 +14,6 @@ import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../capabilities/media/composer_image_picker.dart";
-import "../../../capabilities/voice/voice_transcription_service.dart";
 import "../../../core/di/injection.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/command_picker_sheet.dart";
@@ -27,9 +26,11 @@ enum _VoicePresentation() { idle, recording, transcribing }
 
 typedef _RecordingPointer = ({int id, Offset position});
 
-sealed class const _VoiceInteraction();
+/// Pointer/layout presentation only. [VoiceInputCubit] owns the authoritative
+/// recording, transcription, cancellation, and disposal lifecycle.
+sealed class const _VoiceGesturePresentation();
 
-final class const _VoiceIdle() extends _VoiceInteraction;
+final class const _VoiceIdle() extends _VoiceGesturePresentation;
 
 final class const _VoiceStarting({
     required final int id,
@@ -37,7 +38,7 @@ final class const _VoiceStarting({
     required final bool releaseRequested,
     required final _RecordingPointer? pointer,
     required final bool cancelTargetEngaged,
-  }) extends _VoiceInteraction;
+  }) extends _VoiceGesturePresentation;
 
 final class const _VoiceRecording({
     required final int id,
@@ -45,14 +46,14 @@ final class const _VoiceRecording({
     required final bool minimumDurationReached,
     required final _RecordingPointer? pointer,
     required final bool cancelTargetEngaged,
-  }) extends _VoiceInteraction;
+  }) extends _VoiceGesturePresentation;
 
 final class const _VoiceTranscribing({
     required final int id,
     required final ComposerSurfaceLayout? pinnedLayout,
-  }) extends _VoiceInteraction;
+  }) extends _VoiceGesturePresentation;
 
-final class const _VoiceCancelling() extends _VoiceInteraction;
+final class const _VoiceCancelling() extends _VoiceGesturePresentation;
 
 enum _PasteImageResult() { noImage, handled, stale }
 
@@ -145,8 +146,9 @@ class _PromptInputState() extends State<PromptInput> {
   late ComposerDraft _draft;
   late TextEditingValue _previousEditingValue;
   bool _isApplyingDraft = false;
-  _VoiceInteraction _voiceInteraction = const _VoiceIdle();
-  StreamSubscription<void>? _maxDurationSub;
+  _VoiceGesturePresentation _voiceInteraction = const _VoiceIdle();
+  VoiceInputState _renderedVoiceState = const VoiceInputState.idle();
+  StreamSubscription<VoiceInputState>? _voiceStateSub;
   StreamSubscription<ChatInputMode>? _chatInputModeSub;
   Timer? _minimumRecordingDurationTimer;
 
@@ -180,7 +182,7 @@ class _PromptInputState() extends State<PromptInput> {
   /// draft — they live and die with this composer.
   final List<ComposerAttachment> _attachments = [];
 
-  VoiceTranscriptionService get _voiceService => getIt<VoiceTranscriptionService>();
+  VoiceInputCubit get _voiceCubit => context.read<VoiceInputCubit>();
 
   ComposerImagePicker get _imagePicker => getIt<ComposerImagePicker>();
 
@@ -205,25 +207,14 @@ class _PromptInputState() extends State<PromptInput> {
     _hasText = _controller.text.trim().isNotEmpty;
     _controller.addListener(_handleTextChanged);
     _focusNode.addListener(_handleFocusChanged);
-    unawaited(_voiceService.prewarmRecording());
-    _maxDurationSub = _voiceService.onMaxDurationReached.listen((_) {
-      if (_voiceInteraction is _VoiceRecording && mounted) {
-        _showComposerNotice(context.loc.voiceRecordingLimitReached);
-        _stopAndTranscribe();
-      }
-    });
+    _voiceStateSub = _voiceCubit.stream.listen(_handleVoiceStateChanged);
   }
 
   @override
   void dispose() {
-    _maxDurationSub?.cancel();
+    _voiceStateSub?.cancel();
     _chatInputModeSub?.cancel();
     _minimumRecordingDurationTimer?.cancel();
-    // Starting cancels after its platform future settles; cancelling already
-    // owns cleanup. Only stable active service states need disposal cleanup.
-    if (_voiceInteraction is _VoiceRecording || _voiceInteraction is _VoiceTranscribing) {
-      _voiceService.cancelRecording();
-    }
     _cancelDragProgress.dispose();
     _controller.dispose();
     _textScrollController.dispose();
@@ -314,12 +305,23 @@ class _PromptInputState() extends State<PromptInput> {
     }
   }
 
+  bool get _releaseRequestedWhileStarting => switch (_voiceInteraction) {
+    _VoiceStarting(releaseRequested: true) => true,
+    _VoiceIdle() || _VoiceStarting() || _VoiceRecording() || _VoiceTranscribing() || _VoiceCancelling() => false,
+  };
+
   /// Acknowledges the hold immediately while the recorder starts without
   /// claiming that the underlying recording lifecycle has advanced yet.
-  _VoicePresentation get _voicePresentation => switch (_voiceInteraction) {
-    _VoiceStarting(releaseRequested: false) || _VoiceRecording() => _VoicePresentation.recording,
-    _VoiceTranscribing() => _VoicePresentation.transcribing,
-    _VoiceIdle() || _VoiceStarting() || _VoiceCancelling() => _VoicePresentation.idle,
+  _VoicePresentation get _voicePresentation => switch (_renderedVoiceState) {
+    VoiceInputStarting() when _releaseRequestedWhileStarting => _VoicePresentation.idle,
+    VoiceInputStarting() || VoiceInputRecording() => _VoicePresentation.recording,
+    VoiceInputTranscribing() => _VoicePresentation.transcribing,
+    VoiceInputIdle() ||
+    VoiceInputCompleted() ||
+    VoiceInputStartFailed() ||
+    VoiceInputTranscriptionFailed() ||
+    VoiceInputCancelling() =>
+      _VoicePresentation.idle,
   };
 
   bool get _hasSendableContent {
@@ -454,14 +456,11 @@ class _PromptInputState() extends State<PromptInput> {
     );
 
     final started = await _startRecording();
-    if (!mounted) {
-      if (started) unawaited(_voiceService.cancelRecording());
-      return;
-    }
+    if (!mounted) return;
 
     final interaction = _voiceInteraction;
     if (interaction is! _VoiceStarting || interaction.id != interactionId) {
-      if (started) unawaited(_voiceService.cancelRecording());
+      if (started) unawaited(_voiceCubit.cancel());
       return;
     }
     final starting = interaction;
@@ -718,103 +717,104 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   Future<bool> _startRecording() async {
-    try {
-      await _voiceService.startRecording();
-      return true;
-    } on MicrophonePermissionDeniedError {
-      if (mounted) _showComposerNotice(context.loc.voiceErrorPermission);
-    } catch (error) {
-      // Typed voice errors and anything else the recorder throws (platform /
-      // filesystem failures) both land here: an error escaping this method
-      // would leave the interaction stuck, silently killing voice input for
-      // the rest of the session.
-      loge("Failed to start recording", error);
-      if (mounted) {
-        _showComposerNotice(
-          context.loc.voiceErrorRecording,
-          variant: PregoPopupAlertsNotificationsVariant.error,
-        );
-      }
-    }
-    return false;
+    await _voiceCubit.startRecording();
+    return _voiceCubit.state is VoiceInputRecording;
   }
 
   Future<void> _stopAndTranscribe() async {
+    if (_voiceInteraction is! _VoiceRecording) return;
+    _showTranscribingPresentation(limitReached: false);
+    await _voiceCubit.stopAndTranscribe(limitReached: false);
+  }
+
+  void _handleVoiceStateChanged(VoiceInputState state) {
+    if (!mounted) return;
+
+    switch (state) {
+      case VoiceInputIdle():
+        if (_voiceInteraction is _VoiceCancelling) _resetVoicePresentation();
+      case VoiceInputStarting() || VoiceInputRecording() || VoiceInputCancelling():
+        return;
+      case VoiceInputTranscribing(:final limitReached):
+        _showTranscribingPresentation(limitReached: limitReached);
+      case VoiceInputCompleted(:final transcript):
+        _handleCompletedTranscription(transcript: transcript);
+        _voiceCubit.acknowledgeOutcome();
+      case VoiceInputStartFailed(:final error):
+        _handleVoiceStartFailure(error: error);
+        _voiceCubit.acknowledgeOutcome();
+      case VoiceInputTranscriptionFailed(:final error):
+        _handleVoiceTranscriptionFailure(error: error);
+        _voiceCubit.acknowledgeOutcome();
+    }
+  }
+
+  void _showTranscribingPresentation({required bool limitReached}) {
     final recording = _voiceInteraction;
     if (recording is! _VoiceRecording) return;
-    // The upload can outlive this interaction (a cancel settles the state
-    // long before a slow upload errors out); every continuation below is a
-    // no-op once a newer interaction owns the composer.
-    final interactionId = recording.id;
+
     _minimumRecordingDurationTimer?.cancel();
     _minimumRecordingDurationTimer = null;
+    if (limitReached) _showComposerNotice(context.loc.voiceRecordingLimitReached);
     _updateComposerState(
       update: () => _voiceInteraction = _VoiceTranscribing(
-        id: interactionId,
+        id: recording.id,
         pinnedLayout: recording.pinnedLayout,
       ),
     );
     _cancelDragProgress.value = 0;
+  }
 
-    bool stale() {
-      if (!mounted) return true;
-      return switch (_voiceInteraction) {
-        _VoiceTranscribing(:final id) => id != interactionId,
-        _VoiceIdle() || _VoiceStarting() || _VoiceRecording() || _VoiceCancelling() => true,
-      };
-    }
+  void _handleCompletedTranscription({required String transcript}) {
+    final transcribing = _voiceInteraction;
+    if (transcribing is! _VoiceTranscribing) return;
 
-    try {
-      final transcript = await _voiceService.stopAndTranscribe();
-      if (stale()) return;
-      if (transcript.trim().isEmpty) return;
-
+    final trimmed = transcript.trim();
+    if (trimmed.isNotEmpty) {
       final nextDraft = _draftCalculator.appendVoiceTranscript(
         draft: _draft,
         transcript: transcript,
       );
       _applyDraft(draft: nextDraft, notify: true);
-      // Reward the completed outcome, not release that merely starts transcription.
-      unawaited(_playSuccessFeedback(interactionId: interactionId));
+      unawaited(_playSuccessFeedback(interactionId: transcribing.id));
       _scrollToDraftEndAfterLayout();
       widget.onVoiceTranscriptionCompleted();
-      // Text-first raises the keyboard so the transcript can be extended
-      // right away. Voice-first rests the transcript in the typing container
-      // unfocused — the design's reviewed-before-send state — unless the
-      // field was already focused (e.g. typing was entered mid-transcription),
-      // which focus keeps on its own.
-      if (!_isVoiceFirst) {
-        _focusComposerField();
-      }
-    } on TranscriptionCancelledError {
-      // User cancelled — nothing to do, finally resets state.
-    } on NotAuthenticatedVoiceError {
-      if (!mounted || stale()) return;
-      _showComposerNotice(
-        context.loc.voiceErrorNotAuthenticated,
-        variant: PregoPopupAlertsNotificationsVariant.error,
-      );
-    } on NetworkVoiceError {
-      if (!mounted || stale()) return;
-      _showComposerNotice(
-        context.loc.voiceErrorNetwork,
-        variant: PregoPopupAlertsNotificationsVariant.error,
-      );
-    } on VoiceTranscriptionError catch (error) {
-      loge("Transcription failed", error);
-      if (!mounted || stale()) return;
-      _showComposerNotice(
-        context.loc.voiceErrorTranscription,
-        variant: PregoPopupAlertsNotificationsVariant.error,
-      );
-    } finally {
-      if (!stale()) {
-        _updateComposerState(
-          update: () => _voiceInteraction = const _VoiceIdle(),
-        );
-        _cancelDragProgress.value = 0;
-      }
+      if (!_isVoiceFirst) _focusComposerField();
     }
+    _resetVoicePresentation();
+  }
+
+  void _handleVoiceStartFailure({required VoiceTranscriptionError error}) {
+    if (error is MicrophonePermissionDeniedError) {
+      _showComposerNotice(context.loc.voiceErrorPermission);
+    } else {
+      _showComposerNotice(
+        context.loc.voiceErrorRecording,
+        variant: PregoPopupAlertsNotificationsVariant.error,
+      );
+    }
+    _resetVoicePresentation();
+  }
+
+  void _handleVoiceTranscriptionFailure({required VoiceTranscriptionError error}) {
+    final message = switch (error) {
+      NotAuthenticatedVoiceError() => context.loc.voiceErrorNotAuthenticated,
+      NetworkVoiceError() => context.loc.voiceErrorNetwork,
+      MicrophonePermissionDeniedError() ||
+      RecordingFailedError() ||
+      NotRecordingError() ||
+      ServerVoiceError() ||
+      EmptyTranscriptError() ||
+      TranscriptionCancelledError() => context.loc.voiceErrorTranscription,
+    };
+    _showComposerNotice(message, variant: PregoPopupAlertsNotificationsVariant.error);
+    _resetVoicePresentation();
+  }
+
+  void _resetVoicePresentation() {
+    if (!mounted || _voiceInteraction is _VoiceIdle) return;
+    _updateComposerState(update: () => _voiceInteraction = const _VoiceIdle());
+    _cancelDragProgress.value = 0;
   }
 
   void _applyDraft({required ComposerDraft draft, required bool notify}) {
@@ -878,16 +878,11 @@ class _PromptInputState() extends State<PromptInput> {
       update: () => _voiceInteraction = const _VoiceCancelling(),
     );
     _cancelDragProgress.value = 0;
-    try {
-      await _voiceService.cancelRecording();
-    } catch (error) {
-      loge("Failed to cancel the voice interaction", error);
-    } finally {
-      if (mounted && _voiceInteraction is _VoiceCancelling) {
-        _updateComposerState(
-          update: () => _voiceInteraction = const _VoiceIdle(),
-        );
-      }
+    await _voiceCubit.cancel();
+    if (mounted && _voiceInteraction is _VoiceCancelling) {
+      _updateComposerState(
+        update: () => _voiceInteraction = const _VoiceIdle(),
+      );
     }
   }
 
@@ -969,6 +964,7 @@ class _PromptInputState() extends State<PromptInput> {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    _renderedVoiceState = context.watch<VoiceInputCubit>().state;
 
     return DecoratedBox(
       // Floating composer: no bar surface, no separator line. The scaffold
@@ -1792,7 +1788,7 @@ class _PromptInputState() extends State<PromptInput> {
     final prego = context.prego;
 
     return PregoVoiceWaveform(
-      amplitudeStream: _voiceService.amplitudeStream,
+      amplitudeStream: _voiceCubit.amplitudeStream,
       // White-on-dark in the dark theme per the design; the light theme flips
       // to its own primary so the bars stay visible on the light pill.
       barColor: prego.colors.textPrimary,
