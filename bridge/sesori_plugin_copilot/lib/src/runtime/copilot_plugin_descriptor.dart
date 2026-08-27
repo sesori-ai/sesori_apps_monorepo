@@ -182,7 +182,13 @@ final class const CopilotPluginDescriptor({
   @override
   Future<BridgePlugin> start(PluginHost host) async {
     if (host.startAborted.isAborted) throw const PluginStartAbortedException();
-    final binaryPath = _explicitBin(config: host.config) ?? host.provisionedRuntimePath ?? CopilotBinary.defaultBinary;
+    final binaryPath = host.provisionedRuntimePath;
+    if (binaryPath == null) {
+      throw const PluginStartException(
+        "No supported GitHub Copilot CLI is available. Install or update Copilot CLI, then restart the bridge.",
+        cause: null,
+      );
+    }
     final copilot = _buildPlugin(
       binaryPath: binaryPath,
       launchDirectory: io.Directory.current.path,

@@ -98,6 +98,19 @@ class CopilotPlugin._({
   );
 
   @override
+  void validateTurnSelection({
+    required String operation,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+    required String? agent,
+  }) => _copilotSessionOptionsService.validateTurnSelection(
+    operation: operation,
+    model: model,
+    variant: variant,
+    agent: agent,
+  );
+
+  @override
   Future<void> applyTurnSelection({
     required AcpSessionConfigRepository configRepository,
     required String sessionId,

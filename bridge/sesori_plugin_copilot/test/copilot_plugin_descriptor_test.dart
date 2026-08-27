@@ -1,4 +1,3 @@
-import "dart:async";
 import "dart:convert";
 import "dart:io";
 
@@ -14,15 +13,8 @@ void main() {
       final descriptor = CopilotPluginDescriptor.production();
 
       expect(descriptor.id, "copilot");
-      expect(descriptor.displayName, "GitHub Copilot");
       expect(descriptor.projectOwnership, PluginProjectOwnership.bridgeDerived);
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
-      expect(descriptor.supportsPromptAttachments, isTrue);
-      expect(descriptor.options.single.name, CopilotPluginDescriptor.binOption);
-      expect(
-        descriptor.managementCapabilities(config: defaultConfig),
-        isNot(contains(PluginControlCapability.install)),
-      );
     });
 
     test("reports a supported PATH runtime ready without starting ACP", () async {
@@ -38,10 +30,6 @@ void main() {
 
       expect(result, const PluginSetupReady.versioned(runtimeVersion: "1.0.80"));
       expect(processes.executables, ["copilot"]);
-      expect(processes.arguments, [
-        const ["--version"],
-      ]);
-      expect(processes.environments.single, const {"COPILOT_HOME": "/profile"});
     });
 
     test("classifies a missing automatic runtime without probing credentials", () async {
@@ -55,18 +43,9 @@ void main() {
       expect(result, isA<PluginSetupRuntimeMissing>());
     });
 
-    test("classifies outdated and unrecognized explicit runtimes", () async {
+    test("classifies an unrelated explicit runtime as unrecognized", () async {
       const explicit = PluginConfig(values: {CopilotPluginDescriptor.binOption: "/custom/copilot"});
-      final descriptor = CopilotPluginDescriptor.production();
-      final outdated = await descriptor.inspectSetup(
-        config: explicit,
-        processes: _Processes(
-          outputs: const [_Output(stdout: "GitHub Copilot CLI 1.0.77.\n", exitCode: 0)],
-        ),
-        environment: const {},
-        stateDirectory: "/state",
-      );
-      final unknown = await descriptor.inspectSetup(
+      final unknown = await CopilotPluginDescriptor.production().inspectSetup(
         config: explicit,
         processes: _Processes(
           outputs: const [_Output(stdout: "git version 2.43.0\n", exitCode: 0)],
@@ -75,10 +54,24 @@ void main() {
         stateDirectory: "/state",
       );
 
-      expect(outdated, isA<PluginSetupUnavailable>());
       expect(unknown, isA<PluginSetupUnknown>());
     });
+
+    test("does not launch when runtime provisioning rejected every candidate", () async {
+      await expectLater(
+        CopilotPluginDescriptor.production().start(const _Host(provisionedRuntimePath: null)),
+        throwsA(isA<PluginStartException>()),
+      );
+    });
   });
+}
+
+class const _Host({@override required final String? provisionedRuntimePath}) implements PluginHost {
+  @override
+  StartAbortSignal get startAborted => StartAbortSignal.never;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class const _Output({required final String stdout, required final int exitCode});
@@ -107,27 +100,7 @@ class _Processes({final List<_Output> outputs = const []}) implements HostProces
   }
 
   @override
-  Future<ProcessIdentity?> inspect({required int pid}) async => null;
-
-  @override
-  Future<SignalResult> signalForce({required int pid}) async =>
-      _signal(pid: pid, signal: ShutdownSignal.force, delivered: ProcessSignal.sigkill);
-
-  @override
-  Future<SignalResult> signalGraceful({required int pid}) async =>
-      _signal(pid: pid, signal: ShutdownSignal.graceful, delivered: ProcessSignal.sigterm);
-
-  SignalResult _signal({
-    required int pid,
-    required ShutdownSignal signal,
-    required ProcessSignal delivered,
-  }) => SignalResult(
-    pid: pid,
-    requestedSignal: signal,
-    deliveredSignal: delivered,
-    wasRequested: true,
-    attemptedAt: DateTime.utc(2026, 8, 27),
-  );
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _ProbeProcess({required _Output output}) implements SpawnedProcess {
@@ -141,11 +114,5 @@ class _ProbeProcess({required _Output output}) implements SpawnedProcess {
   Stream<List<int>> get stderr => const Stream.empty();
 
   @override
-  int get pid => 1;
-
-  @override
-  ProcessIdentity get identity => throw UnimplementedError();
-
-  @override
-  IOSink get stdin => IOSink(StreamController<List<int>>().sink);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

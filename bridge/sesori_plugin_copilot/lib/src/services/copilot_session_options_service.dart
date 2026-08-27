@@ -108,6 +108,39 @@ class CopilotSessionOptionsService({
     }
   }
 
+  void validateTurnSelection({
+    required String operation,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+    required String? agent,
+  }) {
+    final snapshot = _snapshot;
+    final requestedModel = model?.modelID;
+    if (requestedModel != null &&
+        requestedModel.isNotEmpty &&
+        (model?.providerID != _providerId ||
+            snapshot?.modelConfigId == null ||
+            !(snapshot?.models.any((option) => option.value == requestedModel) ?? false))) {
+      throw PluginStaleOptionsException(operation, message: "GitHub Copilot no longer offers the selected model");
+    }
+    if (agent != null &&
+        agent.isNotEmpty &&
+        (snapshot?.modeConfigId == null ||
+            _resolveOption(valueOrName: agent, options: snapshot?.modes ?? const []) == null)) {
+      throw PluginStaleOptionsException(operation, message: "GitHub Copilot no longer offers the selected mode");
+    }
+    final requestedVariant = variant?.id;
+    if (requestedVariant != null &&
+        requestedVariant.isNotEmpty &&
+        (snapshot?.thoughtLevelConfigId == null ||
+            !(snapshot?.thoughtLevels.any((option) => option.value == requestedVariant) ?? false))) {
+      throw PluginStaleOptionsException(
+        operation,
+        message: "GitHub Copilot no longer offers the selected reasoning level",
+      );
+    }
+  }
+
   Future<void> applyTurnSelection({
     required AcpSessionConfigRepository configRepository,
     required String sessionId,
@@ -115,19 +148,16 @@ class CopilotSessionOptionsService({
     required PluginSessionVariant? variant,
     required String? agent,
   }) async {
+    validateTurnSelection(
+      operation: "session/set_config_option",
+      model: model,
+      variant: variant,
+      agent: agent,
+    );
     final snapshot = _snapshot;
     final requestedModel = model?.modelID;
-    if (requestedModel != null && requestedModel.isNotEmpty) {
-      final modelConfigId = snapshot?.modelConfigId;
-      final availableModels = snapshot?.models ?? const [];
-      if (model?.providerID != _providerId ||
-          modelConfigId == null ||
-          !availableModels.any((option) => option.value == requestedModel)) {
-        throw const PluginOperationException(
-          "session/set_config_option",
-          message: "Requested GitHub Copilot model is unavailable",
-        );
-      }
+    final modelConfigId = snapshot?.modelConfigId;
+    if (requestedModel != null && requestedModel.isNotEmpty && modelConfigId != null) {
       await _writeAndVerify(
         configRepository: configRepository,
         sessionId: sessionId,
@@ -136,39 +166,26 @@ class CopilotSessionOptionsService({
         kind: CopilotConfigOptionKind.model,
       );
     }
-
-    if (agent != null && agent.isNotEmpty) {
-      final mode = _resolveOption(valueOrName: agent, options: _snapshot?.modes ?? const []);
-      final configId = _snapshot?.modeConfigId;
-      if (mode == null || configId == null) {
-        throw const PluginOperationException(
-          "session/set_config_option",
-          message: "Requested GitHub Copilot mode is unavailable",
-        );
-      }
+    final requestedMode = agent == null
+        ? null
+        : _resolveOption(valueOrName: agent, options: snapshot?.modes ?? const []);
+    final modeConfigId = snapshot?.modeConfigId;
+    if (requestedMode != null && modeConfigId != null) {
       await _writeAndVerify(
         configRepository: configRepository,
         sessionId: sessionId,
-        configId: configId,
-        value: mode,
+        configId: modeConfigId,
+        value: requestedMode,
         kind: CopilotConfigOptionKind.mode,
       );
     }
-
     final requestedVariant = variant?.id;
-    if (requestedVariant != null && requestedVariant.isNotEmpty) {
-      final thoughtLevels = _snapshot?.thoughtLevels ?? const [];
-      final configId = _snapshot?.thoughtLevelConfigId;
-      if (configId == null || !thoughtLevels.any((option) => option.value == requestedVariant)) {
-        throw const PluginOperationException(
-          "session/set_config_option",
-          message: "Requested GitHub Copilot reasoning level is unavailable",
-        );
-      }
+    final thoughtLevelConfigId = snapshot?.thoughtLevelConfigId;
+    if (requestedVariant != null && requestedVariant.isNotEmpty && thoughtLevelConfigId != null) {
       await _writeAndVerify(
         configRepository: configRepository,
         sessionId: sessionId,
-        configId: configId,
+        configId: thoughtLevelConfigId,
         value: requestedVariant,
         kind: CopilotConfigOptionKind.thoughtLevel,
       );

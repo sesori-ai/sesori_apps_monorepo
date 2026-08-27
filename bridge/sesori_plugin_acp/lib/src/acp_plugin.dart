@@ -31,7 +31,7 @@ import "repositories/acp_session_config_repository.dart";
 /// [supportsFormElicitation], [serializesPromptsProcessWide],
 /// [cancelsActiveTurnForQueuedInput], [failsTurnOnSelectionError],
 /// [sessionCloseSettlementTimeout]) and behavior hooks ([buildApprovalRegistry],
-/// [captureSessionConfig], [applyTurnSelection], [mapPromptFailure],
+/// [captureSessionConfig], [validateTurnSelection], [applyTurnSelection], [mapPromptFailure],
 /// [onConnectionReset], [commandForDispatch]), plus the option/catalog surface
 /// ([getSessionOptions], [getAgents], [getProviders], [getCommands]) when the
 /// agent exposes a richer model catalog than the neutral process default.
@@ -252,6 +252,16 @@ abstract class AcpPlugin({
     AcpNewSessionResult result, {
     required String? sessionId,
     required bool fromNewSession,
+  }) {}
+
+  /// Rejects a stale selection before a prompt or command is accepted.
+  /// Harnesses with mutable catalogs override this to throw
+  /// [PluginStaleOptionsException]; stock ACP accepts the advertised values.
+  void validateTurnSelection({
+    required String operation,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+    required String? agent,
   }) {}
 
   /// Applies the requested [model], [variant], and [agent] for a turn on
@@ -862,6 +872,7 @@ abstract class AcpPlugin({
     required ({String providerID, String modelID})? model,
   }) async {
     if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
+    validateTurnSelection(operation: "sendPrompt", model: model, variant: variant, agent: agent);
     // Acceptance gate: an unreachable agent fails the send itself; the turn
     // re-resolves the client at dispatch time (see [_runTurn]).
     await _connectedClient();
@@ -911,6 +922,7 @@ abstract class AcpPlugin({
     required ({String providerID, String modelID})? model,
   }) async {
     if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
+    validateTurnSelection(operation: "sendCommand", model: model, variant: variant, agent: agent);
     final backendCommand = commandForDispatch(command: command);
     final body = arguments.isEmpty ? "/$backendCommand" : "/$backendCommand $arguments";
     final visibleArguments = userVisibleArguments?.trim();

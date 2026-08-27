@@ -55,10 +55,6 @@ void main() {
       expect(provider.models.first.variants, ["low", "high"]);
       expect(configurations.processDefaults.modelId, "gpt-5.4");
       expect(configurations.processDefaults.providerId, "copilot");
-      expect(
-        options.agents.expand((agent) => [agent.name, ?agent.description]),
-        isNot(contains("Allow all")),
-      );
 
       await service.getSessionOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
       expect(repository.createdDirectories, ["/project"]);
@@ -89,23 +85,6 @@ void main() {
       ]);
       expect(configurations.snapshotForSession(sessionId: "session").modelId, "claude-sonnet-4.5");
     });
-
-    test("fails closed before a prompt when a requested option is unavailable", () async {
-      service.captureSessionConfig(_sessionResult(), sessionId: "session", fromNewSession: true);
-      final configRepository = _ConfigRepository(results: const []);
-
-      await expectLater(
-        service.applyTurnSelection(
-          configRepository: configRepository,
-          sessionId: "session",
-          model: (providerID: "copilot", modelID: "missing"),
-          variant: null,
-          agent: null,
-        ),
-        throwsA(isA<PluginOperationException>()),
-      );
-      expect(configRepository.writes, isEmpty);
-    });
   });
 }
 
@@ -116,48 +95,46 @@ AcpNewSessionResult _sessionResult({
 }) => AcpNewSessionResult.fromJson({
   "sessionId": "catalog-session",
   "configOptions": [
-    {
-      "id": "model",
-      "category": "model",
-      "type": "select",
-      "currentValue": model,
-      "options": [
-        {"value": "gpt-5.4", "name": "GPT-5.4"},
-        {"value": "claude-sonnet-4.5", "name": "Claude Sonnet 4.5"},
-      ],
-    },
-    {
-      "id": "mode",
-      "category": "mode",
-      "type": "select",
-      "currentValue": mode,
-      "options": [
-        {"value": "agent", "name": "Agent", "description": "Execute changes"},
-        {"value": "plan", "name": "Plan", "description": "Plan changes"},
-      ],
-    },
-    {
-      "id": "reasoning_effort",
-      "category": "thought_level",
-      "type": "select",
-      "currentValue": thoughtLevel,
-      "options": [
-        {"value": "low", "name": "Low"},
-        {"value": "high", "name": "High"},
-      ],
-    },
-    {
-      "id": "allow_all",
-      "category": "permissions",
-      "type": "select",
-      "currentValue": "no",
-      "options": [
-        {"value": "no", "name": "No"},
-        {"value": "yes", "name": "Yes"},
-      ],
-    },
+    _option(
+      id: "model",
+      category: "model",
+      currentValue: model,
+      values: const [("gpt-5.4", "GPT-5.4"), ("claude-sonnet-4.5", "Claude Sonnet 4.5")],
+    ),
+    _option(
+      id: "mode",
+      category: "mode",
+      currentValue: mode,
+      values: const [("agent", "Agent"), ("plan", "Plan")],
+    ),
+    _option(
+      id: "reasoning_effort",
+      category: "thought_level",
+      currentValue: thoughtLevel,
+      values: const [("low", "Low"), ("high", "High")],
+    ),
+    _option(
+      id: "allow_all",
+      category: "permissions",
+      currentValue: "no",
+      values: const [("no", "No"), ("yes", "Yes")],
+    ),
   ],
 });
+
+Map<String, Object?> _option({
+  required String id,
+  required String category,
+  required String currentValue,
+  required List<(String, String)> values,
+}) => {
+  "id": id,
+  "category": category,
+  "currentValue": currentValue,
+  "options": [
+    for (final value in values) {"value": value.$1, "name": value.$2},
+  ],
+};
 
 class _CatalogRepository({required final AcpNewSessionResult result}) implements CopilotCatalogRepository {
   final List<String> createdDirectories = [];

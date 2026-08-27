@@ -169,6 +169,18 @@ void main() {
 
       expect((await discovering).map((agent) => agent.name), ["Agent", "Plan"]);
       expect(fake.written.where((frame) => frame["method"] == "session/new"), isEmpty);
+      await expectLater(
+        plugin.sendPrompt(
+          sessionId: "session",
+          promptId: "stale-selection",
+          parts: const [PluginPromptPart.text(text: "hello")],
+          variant: null,
+          agent: "Removed mode",
+          model: null,
+        ),
+        throwsA(isA<PluginStaleOptionsException>()),
+      );
+      expect(await plugin.getQueuedPrompts(sessionId: "session"), isEmpty);
     });
 
     test("retains local Copilot login guidance after authentication failure", () async {
