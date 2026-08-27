@@ -15,6 +15,7 @@ void main() {
 
   group("VoiceTranscriptionService", () {
     late MockVoiceApi mockVoiceApi;
+    late MockProjectVoiceGlossaryService mockProjectVoiceGlossaryService;
     late MockAudioRecorder mockRecorder;
     late MockRecorderPrewarmClient mockRecorderPrewarmClient;
     late MockRecordingFileProvider mockFileProvider;
@@ -29,6 +30,7 @@ void main() {
       recordingPath = "${tempDir.path}/recording.m4a";
 
       mockVoiceApi = MockVoiceApi();
+      mockProjectVoiceGlossaryService = MockProjectVoiceGlossaryService();
       mockRecorder = MockAudioRecorder();
       mockRecorderPrewarmClient = MockRecorderPrewarmClient();
       mockFileProvider = MockRecordingFileProvider();
@@ -49,6 +51,9 @@ void main() {
         ),
       ).thenAnswer((_) async {});
       when(() => mockFileProvider.createRecordingPath()).thenAnswer((_) async => recordingPath);
+      when(
+        () => mockProjectVoiceGlossaryService.requestPopulation(projectId: any(named: "projectId")),
+      ).thenAnswer((_) async {});
       when(mockWakeLockService.enable).thenAnswer((_) async {});
       when(mockWakeLockService.disable).thenAnswer((_) async {});
       when(() => mockAudioFormat.encoder).thenReturn(AudioEncoder.aacLc);
@@ -60,6 +65,7 @@ void main() {
 
       service = VoiceTranscriptionService(
         voiceApi: mockVoiceApi,
+        projectVoiceGlossaryService: mockProjectVoiceGlossaryService,
         recorder: mockRecorder,
         recorderPrewarmClient: mockRecorderPrewarmClient,
         fileProvider: mockFileProvider,
@@ -161,7 +167,7 @@ void main() {
 
         final prewarmFuture = service.prewarmRecording();
         await Future<void>.delayed(Duration.zero);
-        final startFuture = service.startRecording();
+        final startFuture = service.startRecording(projectId: "project-1");
         await Future<void>.delayed(Duration.zero);
         verifyNever(() => mockRecorder.start(any(), path: any(named: "path")));
 
@@ -187,10 +193,12 @@ void main() {
           unawaited(service.prewarmRecording());
           async.flushMicrotasks();
           unawaited(
-            service.startRecording().then<void>(
-              (_) {},
-              onError: (Object error) => startError = error,
-            ),
+            service
+                .startRecording(projectId: "project-1")
+                .then<void>(
+                  (_) {},
+                  onError: (Object error) => startError = error,
+                ),
           );
           async.flushMicrotasks();
           verifyNever(() => mockRecorder.start(any(), path: any(named: "path")));
@@ -206,7 +214,7 @@ void main() {
 
             nativePrewarm.complete();
             async.flushMicrotasks();
-            unawaited(service.startRecording());
+            unawaited(service.startRecording(projectId: "project-1"));
             async.flushMicrotasks();
 
             expect(service.isRecording, isTrue);
@@ -221,7 +229,7 @@ void main() {
 
     group("startRecording", () {
       test("success: checks permission, starts recorder, enables wake lock, sets flags", () async {
-        await service.startRecording();
+        await service.startRecording(projectId: "project-1");
 
         expect(service.isRecording, isTrue);
         expect(service.isBusy, isTrue);
@@ -237,11 +245,12 @@ void main() {
         expect(config.sampleRate, 44100);
         expect(config.numChannels, 1);
         verify(mockWakeLockService.enable).called(1);
+        verify(() => mockProjectVoiceGlossaryService.requestPopulation(projectId: "project-1")).called(1);
       });
 
       test("already busy: returns without new recorder call", () async {
-        await service.startRecording();
-        await service.startRecording();
+        await service.startRecording(projectId: "project-1");
+        await service.startRecording(projectId: "project-1");
 
         verify(() => mockRecorder.start(any(), path: recordingPath)).called(1);
       });
@@ -249,7 +258,10 @@ void main() {
       test("permission denied: throws MicrophonePermissionDeniedError and resets busy", () async {
         when(mockRecorder.hasPermission).thenAnswer((_) async => false);
 
-        await expectLater(service.startRecording, throwsA(isA<MicrophonePermissionDeniedError>()));
+        await expectLater(
+          () => service.startRecording(projectId: "project-1"),
+          throwsA(isA<MicrophonePermissionDeniedError>()),
+        );
 
         expect(service.isBusy, isFalse);
         expect(service.isRecording, isFalse);
@@ -263,7 +275,7 @@ void main() {
 
         when(() => mockRecorder.start(any(), path: any(named: "path"))).thenThrow(Exception("start failed"));
 
-        await expectLater(service.startRecording, throwsA(isA<RecordingFailedError>()));
+        await expectLater(() => service.startRecording(projectId: "project-1"), throwsA(isA<RecordingFailedError>()));
 
         expect(service.isBusy, isFalse);
         expect(service.isRecording, isFalse);
@@ -274,35 +286,48 @@ void main() {
 
     group("stopAndTranscribe", () {
       Future<void> startWithRecordedFile() async {
-        await service.startRecording();
+        await service.startRecording(projectId: "project-1");
         await File(recordingPath).writeAsBytes([1, 2, 3]);
       }
 
       test("success: stops recorder, transcribes, returns text, disables wake lock, resets busy", () async {
         await startWithRecordedFile();
         when(
-          () => mockVoiceApi.transcribe(recordingPath, mimeType: "audio/mp4"),
+          () => mockVoiceApi.transcribe(
+            audioFilePath: recordingPath,
+            mimeType: "audio/mp4",
+            projectId: "project-1",
+          ),
         ).thenAnswer((_) async => ApiResponse.success("hello world"));
 
-        final result = await service.stopAndTranscribe();
+        final result = await service.stopAndTranscribe(projectId: "project-1");
 
         expect(result, "hello world");
         expect(service.isRecording, isFalse);
         expect(service.isBusy, isFalse);
         verify(mockRecorder.stop).called(1);
-        verify(() => mockVoiceApi.transcribe(recordingPath, mimeType: "audio/mp4")).called(1);
+        verify(
+          () => mockVoiceApi.transcribe(
+            audioFilePath: recordingPath,
+            mimeType: "audio/mp4",
+            projectId: "project-1",
+          ),
+        ).called(1);
         verify(mockWakeLockService.disable).called(1);
       });
 
       test("not recording: throws NotRecordingError", () async {
-        await expectLater(service.stopAndTranscribe, throwsA(isA<NotRecordingError>()));
+        await expectLater(() => service.stopAndTranscribe(projectId: "project-1"), throwsA(isA<NotRecordingError>()));
       });
 
       test("recorder.stop throws: throws RecordingFailedError, disables wake lock", () async {
-        await service.startRecording();
+        await service.startRecording(projectId: "project-1");
         when(mockRecorder.stop).thenThrow(Exception("stop failed"));
 
-        await expectLater(service.stopAndTranscribe, throwsA(isA<RecordingFailedError>()));
+        await expectLater(
+          () => service.stopAndTranscribe(projectId: "project-1"),
+          throwsA(isA<RecordingFailedError>()),
+        );
 
         expect(service.isRecording, isFalse);
         expect(service.isBusy, isFalse);
@@ -310,10 +335,13 @@ void main() {
       });
 
       test("recorder.stop returns null: throws RecordingFailedError", () async {
-        await service.startRecording();
+        await service.startRecording(projectId: "project-1");
         when(mockRecorder.stop).thenAnswer((_) async => null);
 
-        await expectLater(service.stopAndTranscribe, throwsA(isA<RecordingFailedError>()));
+        await expectLater(
+          () => service.stopAndTranscribe(projectId: "project-1"),
+          throwsA(isA<RecordingFailedError>()),
+        );
 
         expect(service.isRecording, isFalse);
         expect(service.isBusy, isFalse);
@@ -322,34 +350,49 @@ void main() {
       test("API notAuthenticated error: throws NotAuthenticatedVoiceError", () async {
         await startWithRecordedFile();
         when(
-          () => mockVoiceApi.transcribe(recordingPath, mimeType: "audio/mp4"),
+          () => mockVoiceApi.transcribe(
+            audioFilePath: recordingPath,
+            mimeType: "audio/mp4",
+            projectId: "project-1",
+          ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.notAuthenticated()));
 
-        await expectLater(service.stopAndTranscribe, throwsA(isA<NotAuthenticatedVoiceError>()));
+        await expectLater(
+          () => service.stopAndTranscribe(projectId: "project-1"),
+          throwsA(isA<NotAuthenticatedVoiceError>()),
+        );
       });
 
       test("API nonSuccessCode error: throws ServerVoiceError", () async {
         await startWithRecordedFile();
         when(
-          () => mockVoiceApi.transcribe(recordingPath, mimeType: "audio/mp4"),
+          () => mockVoiceApi.transcribe(
+            audioFilePath: recordingPath,
+            mimeType: "audio/mp4",
+            projectId: "project-1",
+          ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: "down")));
 
-        await expectLater(service.stopAndTranscribe, throwsA(isA<ServerVoiceError>()));
+        await expectLater(() => service.stopAndTranscribe(projectId: "project-1"), throwsA(isA<ServerVoiceError>()));
       });
 
       test("API dartHttpClient error: throws NetworkVoiceError", () async {
         await startWithRecordedFile();
         when(
-          () => mockVoiceApi.transcribe(recordingPath, mimeType: "audio/mp4"),
+          () => mockVoiceApi.transcribe(
+            audioFilePath: recordingPath,
+            mimeType: "audio/mp4",
+            projectId: "project-1",
+          ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.dartHttpClient(Exception("network"))));
 
-        await expectLater(service.stopAndTranscribe, throwsA(isA<NetworkVoiceError>()));
+        await expectLater(() => service.stopAndTranscribe(projectId: "project-1"), throwsA(isA<NetworkVoiceError>()));
       });
     });
 
     group("cancelRecording", () {
       test("cancels active recording: stops recorder, disables wake lock, resets flags", () async {
-        await service.startRecording();
+        await service.startRecording(projectId: "project-1");
 
         await service.cancelRecording();
 
@@ -360,15 +403,19 @@ void main() {
       });
 
       test("cancels during transcription: throws TranscriptionCancelledError when HTTP completes", () async {
-        await service.startRecording();
+        await service.startRecording(projectId: "project-1");
         await File(recordingPath).writeAsBytes([1, 2, 3]);
 
         final transcribeCompleter = Completer<ApiResponse<String>>();
         when(
-          () => mockVoiceApi.transcribe(recordingPath, mimeType: "audio/mp4"),
+          () => mockVoiceApi.transcribe(
+            audioFilePath: recordingPath,
+            mimeType: "audio/mp4",
+            projectId: "project-1",
+          ),
         ).thenAnswer((_) => transcribeCompleter.future);
 
-        final stopFuture = service.stopAndTranscribe();
+        final stopFuture = service.stopAndTranscribe(projectId: "project-1");
         await Future<void>.delayed(Duration.zero);
 
         expect(service.isRecording, isFalse);
@@ -387,15 +434,19 @@ void main() {
       });
 
       test("cancels during transcription: HTTP error after cancel still throws TranscriptionCancelledError", () async {
-        await service.startRecording();
+        await service.startRecording(projectId: "project-1");
         await File(recordingPath).writeAsBytes([1, 2, 3]);
 
         final transcribeCompleter = Completer<ApiResponse<String>>();
         when(
-          () => mockVoiceApi.transcribe(recordingPath, mimeType: "audio/mp4"),
+          () => mockVoiceApi.transcribe(
+            audioFilePath: recordingPath,
+            mimeType: "audio/mp4",
+            projectId: "project-1",
+          ),
         ).thenAnswer((_) => transcribeCompleter.future);
 
-        final stopFuture = service.stopAndTranscribe();
+        final stopFuture = service.stopAndTranscribe(projectId: "project-1");
         await Future<void>.delayed(Duration.zero);
 
         await service.cancelRecording();
@@ -410,30 +461,38 @@ void main() {
 
       test("cancel then restart: stale transcript from first call is discarded", () async {
         // Start recording #1 and begin transcription.
-        await service.startRecording();
+        await service.startRecording(projectId: "project-1");
         await File(recordingPath).writeAsBytes([1, 2, 3]);
 
         final transcribeCompleter1 = Completer<ApiResponse<String>>();
         when(
-          () => mockVoiceApi.transcribe(recordingPath, mimeType: "audio/mp4"),
+          () => mockVoiceApi.transcribe(
+            audioFilePath: recordingPath,
+            mimeType: "audio/mp4",
+            projectId: "project-1",
+          ),
         ).thenAnswer((_) => transcribeCompleter1.future);
 
-        final stopFuture1 = service.stopAndTranscribe();
+        final stopFuture1 = service.stopAndTranscribe(projectId: "project-1");
         await Future<void>.delayed(Duration.zero);
 
         // Cancel transcription #1.
         await service.cancelRecording();
 
         // Start recording #2 immediately and begin transcription.
-        await service.startRecording();
+        await service.startRecording(projectId: "project-1");
         await File(recordingPath).writeAsBytes([4, 5, 6]);
 
         final transcribeCompleter2 = Completer<ApiResponse<String>>();
         when(
-          () => mockVoiceApi.transcribe(recordingPath, mimeType: "audio/mp4"),
+          () => mockVoiceApi.transcribe(
+            audioFilePath: recordingPath,
+            mimeType: "audio/mp4",
+            projectId: "project-1",
+          ),
         ).thenAnswer((_) => transcribeCompleter2.future);
 
-        final stopFuture2 = service.stopAndTranscribe();
+        final stopFuture2 = service.stopAndTranscribe(projectId: "project-1");
         await Future<void>.delayed(Duration.zero);
 
         // Transcription #1 returns — must be discarded despite #2 resetting state.
@@ -458,7 +517,7 @@ void main() {
         service.amplitudeStream.listen(emitted.add);
 
         // Start recording — will hang at _wakeLockService.enable()
-        final startFuture = service.startRecording();
+        final startFuture = service.startRecording(projectId: "project-1");
         await Future<void>.delayed(Duration.zero);
 
         // Cancel while enable() is still in flight
@@ -490,7 +549,7 @@ void main() {
     group("max duration timer", () {
       test("emits onMaxDurationReached after maxRecordingDuration", () {
         fakeAsync((async) {
-          service.startRecording();
+          service.startRecording(projectId: "project-1");
           async.flushMicrotasks();
           expect(service.isRecording, isTrue);
 
@@ -511,19 +570,23 @@ void main() {
 
       test("does not emit if stopAndTranscribe is called before limit", () {
         fakeAsync((async) {
-          service.startRecording();
+          service.startRecording(projectId: "project-1");
           async.flushMicrotasks();
 
           File(recordingPath).writeAsBytesSync([1, 2, 3]);
           when(
-            () => mockVoiceApi.transcribe(recordingPath, mimeType: "audio/mp4"),
+            () => mockVoiceApi.transcribe(
+              audioFilePath: recordingPath,
+              mimeType: "audio/mp4",
+              projectId: "project-1",
+            ),
           ).thenAnswer((_) async => ApiResponse.success("text"));
 
           bool eventReceived = false;
           service.onMaxDurationReached.listen((_) => eventReceived = true);
 
           async.elapse(const Duration(minutes: 7));
-          service.stopAndTranscribe();
+          service.stopAndTranscribe(projectId: "project-1");
           async.flushMicrotasks();
 
           // Past the original limit — timer was cancelled by stopAndTranscribe.
@@ -534,7 +597,7 @@ void main() {
 
       test("does not emit if cancelRecording is called before limit", () {
         fakeAsync((async) {
-          service.startRecording();
+          service.startRecording(projectId: "project-1");
           async.flushMicrotasks();
 
           bool eventReceived = false;
@@ -562,7 +625,7 @@ void main() {
         final sub = service.amplitudeStream.listen(emitted.add);
         addTearDown(sub.cancel);
 
-        await service.startRecording();
+        await service.startRecording(projectId: "project-1");
         amplitudeController.add(Amplitude(current: -30.0, max: 0.0));
         amplitudeController.add(Amplitude(current: 0.0, max: 0.0));
         await Future<void>.delayed(Duration.zero);
@@ -574,7 +637,7 @@ void main() {
       test("emits 0.0 when monitoring stops", () async {
         final zeroEmission = expectLater(service.amplitudeStream, emits(0.0));
 
-        await service.startRecording();
+        await service.startRecording(projectId: "project-1");
         await service.cancelRecording();
 
         await zeroEmission;

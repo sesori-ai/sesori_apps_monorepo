@@ -130,6 +130,8 @@ import 'package:sesori_dart_core/src/services/project_list_service.dart'
     as _i703;
 import 'package:sesori_dart_core/src/services/project_viewing_service.dart'
     as _i413;
+import 'package:sesori_dart_core/src/services/project_voice_glossary_service.dart'
+    as _i497;
 import 'package:sesori_dart_core/src/services/registered_bridges_service.dart'
     as _i699;
 import 'package:sesori_dart_core/src/services/session_activity_calculator.dart'
@@ -460,6 +462,11 @@ extension GetItInjectableX on _i174.GetIt {
         pluginRepository: gh<_i337.PluginRepository>(),
         connectionService: gh<_i369.ConnectionService>(),
         productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
+      ),
+    );
+    gh.lazySingleton<_i497.ProjectVoiceGlossaryService>(
+      () => _i497.ProjectVoiceGlossaryService(
+        projectRepository: gh<_i80.ProjectRepository>(),
       ),
     );
     gh.lazySingleton<_i709.SessionDetailLoadService>(

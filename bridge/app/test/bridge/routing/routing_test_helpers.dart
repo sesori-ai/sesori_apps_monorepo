@@ -26,6 +26,7 @@ import "package:sesori_bridge/src/routing/request_handler.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/services/pending_interaction_service.dart";
 import "package:sesori_bridge/src/services/pr_sync_service.dart";
+import "package:sesori_bridge/src/services/project_glossary_service.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/services/session_view_tracker.dart";
@@ -202,6 +203,18 @@ class FakeSessionDao() {
   Future<void> deleteSession({required String sessionId}) async {
     _sessions.remove(sessionId);
   }
+}
+
+class FakeProjectGlossaryService() implements ProjectGlossaryService {
+  final List<String> scheduledProjectIds = [];
+
+  @override
+  void schedule({required String projectId}) {
+    scheduledProjectIds.add(projectId);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class FakePrSyncService({

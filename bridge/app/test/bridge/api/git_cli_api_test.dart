@@ -46,6 +46,22 @@ void main() {
     expect(processRunner.arguments, ["rev-parse", "--is-inside-work-tree"]);
   });
 
+  test("listTrackedFiles parses the null-delimited tracked path list", () async {
+    final processRunner = _RecordingProcessRunner(
+      stdout: "README.md\u0000lib/src/SesoriClient.dart\u0000",
+    );
+    final api = GitCliApi(
+      processRunner: processRunner,
+      gitPathExists: ({required String gitPath}) => true,
+    );
+
+    final paths = await api.listTrackedFiles(projectPath: "/project");
+
+    expect(paths, ["README.md", "lib/src/SesoriClient.dart"]);
+    expect(processRunner.workingDirectory, "/project");
+    expect(processRunner.arguments, ["ls-files", "--cached", "-z", "--", "."]);
+  });
+
   test("getCurrentBranch removes one line ending without trimming the branch", () async {
     for (final testCase in [
       (stdout: "Feature/Current\n", expected: "Feature/Current"),
@@ -211,8 +227,7 @@ class _RecordingProcessRunner({
   final String stderr = "",
   final int exitCode = 0,
   final List<ProcessResult>? results,
-})
-    implements ProcessRunner {
+}) implements ProcessRunner {
   List<String>? arguments;
   final List<List<String>> invocations = [];
   String? workingDirectory;

@@ -2,13 +2,15 @@ import "dart:async";
 import "dart:convert";
 
 import "package:http/http.dart" as http;
-import "package:sesori_shared/sesori_shared.dart" show GenerateSessionMetadataRequest, jsonDecodeMap;
+import "package:sesori_shared/sesori_shared.dart"
+    show GenerateSessionMetadataRequest, ProjectGlossaryWordsRequest, isValidProjectGlossaryKey, jsonDecodeMap;
 
 import "../auth/token_refresher.dart";
 import "../foundation/abortable_request.dart";
 import "../foundation/auth_backend_url.dart";
 import "models/app_client_status_response.dart";
 import "models/generate_session_metadata_response.dart";
+import "models/project_glossary_response.dart";
 
 class SesoriServerApiException({
   required final String method,
@@ -88,6 +90,48 @@ class SesoriServerApi({
     return _parseSessionMetadata(uri: uri, response: retryResponse);
   }
 
+  Future<ProjectGlossaryWordsResponse> getProjectGlossary({
+    required String projectKey,
+    required AbortSignal abortSignal,
+  }) async {
+    _requireProjectGlossaryKey(projectKey: projectKey);
+    final uri = Uri.parse("$_authBackendUrl/voice/glossary").replace(
+      queryParameters: {"projectKey": projectKey},
+    );
+    final response = await _sendProjectGlossaryRequest(
+      method: "GET",
+      uri: uri,
+      body: null,
+      abortSignal: abortSignal,
+    );
+    return _parseProjectGlossaryResponse<ProjectGlossaryWordsResponse>(
+      method: "GET",
+      uri: uri,
+      response: response,
+      fromJson: ProjectGlossaryWordsResponse.fromJson,
+    );
+  }
+
+  Future<ProjectGlossaryAddedWordsResponse> addProjectGlossaryWords({
+    required ProjectGlossaryWordsRequest request,
+    required AbortSignal abortSignal,
+  }) async {
+    _requireProjectGlossaryKey(projectKey: request.projectKey);
+    final uri = Uri.parse("$_authBackendUrl/voice/glossary");
+    final response = await _sendProjectGlossaryRequest(
+      method: "POST",
+      uri: uri,
+      body: jsonEncode(request.toJson()),
+      abortSignal: abortSignal,
+    );
+    return _parseProjectGlossaryResponse<ProjectGlossaryAddedWordsResponse>(
+      method: "POST",
+      uri: uri,
+      response: response,
+      fromJson: ProjectGlossaryAddedWordsResponse.fromJson,
+    );
+  }
+
   Future<String> _getAccessTokenUnlessAborted({
     required Uri uri,
     required AbortSignal abortSignal,
@@ -146,6 +190,83 @@ class SesoriServerApi({
 
   void _throwIfAborted({required Uri uri, required AbortSignal abortSignal}) {
     if (abortSignal.isAborted) throw http.RequestAbortedException(uri);
+  }
+
+  Future<http.Response> _sendProjectGlossaryRequest({
+    required String method,
+    required Uri uri,
+    required String? body,
+    required AbortSignal abortSignal,
+  }) async {
+    final response = await _sendProjectGlossaryAttempt(
+      method: method,
+      uri: uri,
+      body: body,
+      forceRefresh: false,
+      abortSignal: abortSignal,
+    );
+    if (response.statusCode != 401) return response;
+
+    return await _sendProjectGlossaryAttempt(
+      method: method,
+      uri: uri,
+      body: body,
+      forceRefresh: true,
+      abortSignal: abortSignal,
+    );
+  }
+
+  Future<http.Response> _sendProjectGlossaryAttempt({
+    required String method,
+    required Uri uri,
+    required String? body,
+    required bool forceRefresh,
+    required AbortSignal abortSignal,
+  }) async {
+    final accessToken = await _getAccessTokenUnlessAborted(
+      uri: uri,
+      abortSignal: abortSignal,
+      forceRefresh: forceRefresh,
+    );
+    return await sendAbortableRequest(
+      client: _client,
+      method: method,
+      url: uri,
+      headers: {
+        "Authorization": "Bearer $accessToken",
+        if (body != null) "Content-Type": "application/json",
+      },
+      body: body,
+      deadline: _requestDeadline,
+      abortSignal: abortSignal,
+    );
+  }
+
+  void _requireProjectGlossaryKey({required String projectKey}) {
+    if (!isValidProjectGlossaryKey(value: projectKey)) {
+      throw ArgumentError.value(projectKey, "projectKey", "Expected opaque project glossary key");
+    }
+  }
+
+  T _parseProjectGlossaryResponse<T>({
+    required String method,
+    required Uri uri,
+    required http.Response response,
+    required T Function(Map<String, dynamic> json) fromJson,
+  }) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw SesoriServerApiException(method: method, statusCode: response.statusCode, uri: uri);
+    }
+    try {
+      return fromJson(jsonDecodeMap(response.body));
+    } on Object catch (error, stackTrace) {
+      throw SesoriServerApiResponseException(
+        method: method,
+        uri: uri,
+        innerError: error,
+        innerStackTrace: stackTrace,
+      );
+    }
   }
 
   GenerateSessionMetadataResponse _parseSessionMetadata({required Uri uri, required http.Response response}) {

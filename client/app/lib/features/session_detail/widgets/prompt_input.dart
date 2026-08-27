@@ -99,6 +99,7 @@ typedef PromptSubmitCallback = void Function({
 class const PromptInput({
     super.key,
     required final bool isBusy,
+    required final String? projectId,
     /// Whether the session already has (or has queued) messages. Drives the
   /// resting hint copy ("Ask anything..." vs "Follow up...") and, in
   /// text-first mode, which prompt the compact pill invites.
@@ -719,7 +720,7 @@ class _PromptInputState() extends State<PromptInput> {
 
   Future<bool> _startRecording() async {
     try {
-      await _voiceService.startRecording();
+      await _voiceService.startRecording(projectId: widget.projectId);
       return true;
     } on MicrophonePermissionDeniedError {
       if (mounted) _showComposerNotice(context.loc.voiceErrorPermission);
@@ -765,7 +766,7 @@ class _PromptInputState() extends State<PromptInput> {
     }
 
     try {
-      final transcript = await _voiceService.stopAndTranscribe();
+      final transcript = await _voiceService.stopAndTranscribe(projectId: widget.projectId);
       if (stale()) return;
       if (transcript.trim().isEmpty) return;
 

@@ -284,11 +284,7 @@ class GitCliApi({
     if (refsResult.exitCode != 0) {
       throw ProcessException("git", refArguments, refsResult.stderr.toString(), refsResult.exitCode);
     }
-    return refsResult.stdout
-        .toString()
-        .split("\n")
-        .map((ref) => ref.trim())
-        .any(matchingRefs.contains);
+    return refsResult.stdout.toString().split("\n").map((ref) => ref.trim()).any(matchingRefs.contains);
   }
 
   Future<void> renameBranch({
@@ -425,6 +421,15 @@ class GitCliApi({
         ".",
       ],
     );
+  }
+
+  Future<List<String>> listTrackedFiles({required String projectPath}) async {
+    const arguments = ["ls-files", "--cached", "-z", "--", "."];
+    final result = await runGit(projectPath: projectPath, arguments: arguments);
+    if (result.exitCode != 0) {
+      throw ProcessException("git", arguments, result.stderr.toString(), result.exitCode);
+    }
+    return result.stdout.toString().split("\u0000").where((path) => path.isNotEmpty).toList(growable: false);
   }
 
   Future<ProcessResult> listUntrackedFiles({required String projectPath}) {

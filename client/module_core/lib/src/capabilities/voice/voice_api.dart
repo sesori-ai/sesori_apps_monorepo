@@ -4,6 +4,7 @@ import "dart:io";
 import "package:http/http.dart" as http;
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_shared/sesori_shared.dart" show deriveProjectGlossaryKey;
 
 import "../../logging/logging.dart";
 
@@ -20,8 +21,15 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
   ///
   /// [mimeType] is sent as the file's content-type so the server can forward
   /// it to the transcription model (e.g. `"audio/mp4"` for m4a/AAC).
-  Future<ApiResponse<String>> transcribe(String audioFilePath, {required String mimeType}) async {
+  /// [projectId] is converted to an opaque glossary key before transmission;
+  /// null preserves unscoped transcription for flows without project context.
+  Future<ApiResponse<String>> transcribe({
+    required String audioFilePath,
+    required String mimeType,
+    required String? projectId,
+  }) async {
     final uri = Uri.parse("$authBaseUrl/voice/transcribe");
+    final fields = projectId == null ? null : {"projectKey": deriveProjectGlossaryKey(projectId: projectId)};
 
     try {
       // `await` is required here so async errors thrown inside the returned
@@ -31,6 +39,7 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
       return await _client.postMultipart(
         uri,
         fromJson: _parseTranscript,
+        fields: fields,
         createFiles: () async => [
           await http.MultipartFile.fromPath(
             "audio",

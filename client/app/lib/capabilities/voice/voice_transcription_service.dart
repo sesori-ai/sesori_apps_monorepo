@@ -27,6 +27,7 @@ const double _amplitudeFloor = -60.0;
 @lazySingleton
 class VoiceTranscriptionService({
   required final VoiceApi _voiceApi,
+  required final ProjectVoiceGlossaryService _projectVoiceGlossaryService,
   required final AudioRecorder _recorder,
   required final RecorderPrewarmClient _recorderPrewarmClient,
   required final RecordingFileProvider _fileProvider,
@@ -88,7 +89,7 @@ class VoiceTranscriptionService({
     }
   }
 
-  Future<void> startRecording() async {
+  Future<void> startRecording({required String? projectId}) async {
     if (_isBusy) {
       logw("Operation already in progress, ignoring startRecording call");
       return;
@@ -142,6 +143,9 @@ class VoiceTranscriptionService({
         _isRecording = true;
         _startAmplitudeMonitoring(_recorder);
         _startMaxDurationTimer();
+        if (projectId != null) {
+          unawaited(_projectVoiceGlossaryService.requestPopulation(projectId: projectId));
+        }
         unawaited(_wakeLockService.enable());
       } catch (error, stackTrace) {
         loge("Failed to start recording", error, stackTrace);
@@ -159,7 +163,7 @@ class VoiceTranscriptionService({
 
   /// Stops the current recording, uploads the audio to the server,
   /// and returns the transcribed text.
-  Future<String> stopAndTranscribe() async {
+  Future<String> stopAndTranscribe({required String? projectId}) async {
     if (!_isRecording) {
       throw VoiceTranscriptionError.notRecording();
     }
@@ -191,7 +195,11 @@ class VoiceTranscriptionService({
         throw VoiceTranscriptionError.recordingFailed();
       }
 
-      final response = await _voiceApi.transcribe(path, mimeType: _audioFormat.mimeType);
+      final response = await _voiceApi.transcribe(
+        audioFilePath: path,
+        mimeType: _audioFormat.mimeType,
+        projectId: projectId,
+      );
 
       // If cancelled (or a new call started) while awaiting the HTTP call,
       // discard the result.

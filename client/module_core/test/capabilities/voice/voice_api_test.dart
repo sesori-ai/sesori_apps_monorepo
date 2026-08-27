@@ -35,12 +35,17 @@ void main() {
         () => mockAuthenticatedHttpApiClient.postMultipart<String>(
           any(),
           fromJson: any(named: "fromJson"),
+          fields: any(named: "fields"),
           createFiles: any(named: "createFiles"),
           timeout: any(named: "timeout"),
         ),
       ).thenAnswer((_) async => ApiResponse.success("transcribed text"));
 
-      final result = await voiceApi.transcribe(audioPath, mimeType: "audio/mp4");
+      final result = await voiceApi.transcribe(
+        audioFilePath: audioPath,
+        mimeType: "audio/mp4",
+        projectId: null,
+      );
 
       expect(result, ApiResponse.success("transcribed text"));
 
@@ -48,6 +53,7 @@ void main() {
         () => mockAuthenticatedHttpApiClient.postMultipart<String>(
           captureAny(),
           fromJson: captureAny(named: "fromJson"),
+          fields: captureAny(named: "fields"),
           createFiles: captureAny(named: "createFiles"),
           timeout: captureAny(named: "timeout"),
         ),
@@ -56,6 +62,7 @@ void main() {
       expect(captured[0], Uri.parse("$authBaseUrl/voice/transcribe"));
       expect(captured[1], isA<String Function(dynamic)>());
       expect(captured[2], isA<Future<List<http.MultipartFile>> Function()>());
+      expect(captured[3], isNull);
 
       final createFiles = captured[2] as Future<List<http.MultipartFile>> Function();
       final files = await createFiles();
@@ -66,7 +73,41 @@ void main() {
       expect(multipartFile.field, "audio");
       expect(multipartFile.filename, "clip.m4a");
 
-      expect(captured[3], const Duration(seconds: 30));
+      expect(captured[4], const Duration(seconds: 30));
+    });
+
+    test("sends only the opaque project glossary key with scoped transcription", () async {
+      final audioPath = await createAudioPath();
+
+      when(
+        () => mockAuthenticatedHttpApiClient.postMultipart<String>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          fields: any(named: "fields"),
+          createFiles: any(named: "createFiles"),
+          timeout: any(named: "timeout"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success("transcribed text"));
+
+      await voiceApi.transcribe(
+        audioFilePath: audioPath,
+        mimeType: "audio/mp4",
+        projectId: "project-123",
+      );
+
+      final fields = verify(
+        () => mockAuthenticatedHttpApiClient.postMultipart<String>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          fields: captureAny(named: "fields"),
+          createFiles: any(named: "createFiles"),
+          timeout: any(named: "timeout"),
+        ),
+      ).captured.single;
+      expect(fields, {
+        "projectKey": "prj_v1_xgjNDm_yyduAKisFHr498ZgcjIU1FACdyEj68wSmbhc",
+      });
+      expect(fields.toString(), isNot(contains("project-123")));
     });
 
     test("API error: propagates error returned by postMultipart", () async {
@@ -75,6 +116,7 @@ void main() {
         () => mockAuthenticatedHttpApiClient.postMultipart<String>(
           any(),
           fromJson: any(named: "fromJson"),
+          fields: any(named: "fields"),
           createFiles: any(named: "createFiles"),
           timeout: any(named: "timeout"),
         ),
@@ -84,7 +126,11 @@ void main() {
         ),
       );
 
-      final result = await voiceApi.transcribe(audioPath, mimeType: "audio/mp4");
+      final result = await voiceApi.transcribe(
+        audioFilePath: audioPath,
+        mimeType: "audio/mp4",
+        projectId: null,
+      );
 
       expect(
         result,
@@ -104,6 +150,7 @@ void main() {
         () => mockAuthenticatedHttpApiClient.postMultipart<String>(
           any(),
           fromJson: any(named: "fromJson"),
+          fields: any(named: "fields"),
           createFiles: any(named: "createFiles"),
           timeout: any(named: "timeout"),
         ),
@@ -111,7 +158,11 @@ void main() {
         (_) => Future<ApiResponse<String>>.error(TimeoutException("Request timed out")),
       );
 
-      final result = await voiceApi.transcribe(audioPath, mimeType: "audio/mp4");
+      final result = await voiceApi.transcribe(
+        audioFilePath: audioPath,
+        mimeType: "audio/mp4",
+        projectId: null,
+      );
 
       expect(result.toString(), contains("dartHttpClient"));
       expect(result.toString(), contains("TimeoutException"));
@@ -123,6 +174,7 @@ void main() {
         () => mockAuthenticatedHttpApiClient.postMultipart<String>(
           any(),
           fromJson: any(named: "fromJson"),
+          fields: any(named: "fields"),
           createFiles: any(named: "createFiles"),
           timeout: any(named: "timeout"),
         ),
@@ -130,7 +182,11 @@ void main() {
         (_) => Future<ApiResponse<String>>.error(const SocketException("Network unreachable")),
       );
 
-      final result = await voiceApi.transcribe(audioPath, mimeType: "audio/mp4");
+      final result = await voiceApi.transcribe(
+        audioFilePath: audioPath,
+        mimeType: "audio/mp4",
+        projectId: null,
+      );
 
       expect(result.toString(), contains("dartHttpClient"));
       expect(result.toString(), contains("SocketException"));
@@ -142,12 +198,17 @@ void main() {
         () => mockAuthenticatedHttpApiClient.postMultipart<String>(
           any(),
           fromJson: any(named: "fromJson"),
+          fields: any(named: "fields"),
           createFiles: any(named: "createFiles"),
           timeout: any(named: "timeout"),
         ),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.jsonParsing("not json")));
 
-      final result = await voiceApi.transcribe(audioPath, mimeType: "audio/mp4");
+      final result = await voiceApi.transcribe(
+        audioFilePath: audioPath,
+        mimeType: "audio/mp4",
+        projectId: null,
+      );
 
       expect(result, ApiResponse<String>.error(ApiError.jsonParsing("not json")));
     });
@@ -158,6 +219,7 @@ void main() {
         () => mockAuthenticatedHttpApiClient.postMultipart<String>(
           any(),
           fromJson: any(named: "fromJson"),
+          fields: any(named: "fields"),
           createFiles: any(named: "createFiles"),
           timeout: any(named: "timeout"),
         ),
@@ -165,7 +227,11 @@ void main() {
         (_) => Future<ApiResponse<String>>.error(const HandshakeException("TLS failed")),
       );
 
-      final result = await voiceApi.transcribe(audioPath, mimeType: "audio/mp4");
+      final result = await voiceApi.transcribe(
+        audioFilePath: audioPath,
+        mimeType: "audio/mp4",
+        projectId: null,
+      );
 
       expect(result.toString(), contains("dartHttpClient"));
       expect(result.toString(), contains("HandshakeException"));

@@ -62,6 +62,7 @@ import "repositories/permission_repository.dart";
 import "repositories/pr_source_repository.dart";
 import "repositories/project_activity_repository.dart";
 import "repositories/project_catalog_identity_calculator.dart";
+import "repositories/project_glossary_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
 import "repositories/pull_request_repository.dart";
@@ -112,6 +113,7 @@ import "routing/open_project_handler.dart";
 import "routing/patch_bridge_settings_handler.dart";
 import "routing/patch_plugin_idle_timeout_handler.dart";
 import "routing/plugin_authentication_handlers.dart";
+import "routing/populate_project_glossary_handler.dart";
 import "routing/post_agents_handler.dart";
 import "routing/post_plugin_lifecycle_command_handler.dart";
 import "routing/post_session_options_handler.dart";
@@ -140,6 +142,8 @@ import "services/permission_auto_approval_service.dart";
 import "services/plugin_lifecycle_service.dart";
 import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
+import "services/project_glossary_service.dart";
+import "services/project_glossary_term_calculator.dart";
 import "services/project_initialization_service.dart";
 import "services/project_mutation_service.dart";
 import "services/project_view_tracker.dart";
@@ -372,15 +376,23 @@ class Orchestrator({
       dispatcher: sessionOperationDispatcher,
       archivedSessionValidator: archivedSessionValidator,
     );
-    final sessionCreationService = SessionCreationService(
-      sessionMetadataRepository: SessionMetadataRepository(
-        api: SesoriServerApi(
-          authBackendUrl: config.authBackendURL,
-          client: _httpClient,
-          requestDeadline: SesoriServerApi.defaultRequestDeadline,
-          tokenRefresher: _tokenRefresher,
-        ),
+    final sesoriServerApi = SesoriServerApi(
+      authBackendUrl: config.authBackendURL,
+      client: _httpClient,
+      requestDeadline: SesoriServerApi.defaultRequestDeadline,
+      tokenRefresher: _tokenRefresher,
+    );
+    final projectGlossaryService = ProjectGlossaryService(
+      projectRepository: projectRepository,
+      glossaryRepository: ProjectGlossaryRepository(
+        gitCliApi: gitCliApi,
+        filesystemApi: const FilesystemApi(),
+        serverApi: sesoriServerApi,
       ),
+      termCalculator: const ProjectGlossaryTermCalculator(),
+    );
+    final sessionCreationService = SessionCreationService(
+      sessionMetadataRepository: SessionMetadataRepository(api: sesoriServerApi),
       worktreeService: worktreeService,
       sessionRepository: sessionRepository,
       sessionMutationDispatcher: sessionMutationDispatcher,
@@ -583,6 +595,7 @@ class Orchestrator({
         RejectQuestionHandler(pendingInteractionService: pendingInteractionService),
         ReplyToPermissionHandler(pendingInteractionService: pendingInteractionService),
         RenameProjectHandler(projectRepository),
+        PopulateProjectGlossaryHandler(projectGlossaryService: projectGlossaryService),
         CreateProjectHandler(projectMutationService: projectMutationService),
         OpenProjectHandler(projectMutationService: projectMutationService),
         HideProjectHandler(projectMutationService: projectMutationService),
@@ -646,6 +659,7 @@ class Orchestrator({
       sessionOperationDispatcher: sessionOperationDispatcher,
       sessionMutationDispatcher: sessionMutationDispatcher,
       sessionCreationService: sessionCreationService,
+      projectGlossaryService: projectGlossaryService,
       restartDispatcher: restartDispatcher,
       statusNotifier: _statusNotifier,
       reconnectBackoff: _reconnectBackoff,
@@ -744,6 +758,7 @@ class OrchestratorSession._({
     required final SessionOperationDispatcher _sessionOperationDispatcher,
     required final SessionMutationDispatcher _sessionMutationDispatcher,
     required final SessionCreationService _sessionCreationService,
+    required final ProjectGlossaryService _projectGlossaryService,
     required final BridgeRestartDispatcher _restartDispatcher,
     required final ControlStatusNotifier? _statusNotifier,
     required final ReconnectBackoffPolicy _reconnectBackoff,
@@ -1035,6 +1050,7 @@ class OrchestratorSession._({
   Future<void> _teardown() async {
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
+    _projectGlossaryService.beginShutdown();
     _prSyncService.beginShutdown();
     final teardownSw = Stopwatch()..start();
     Object? firstTeardownError;
@@ -1071,8 +1087,11 @@ class OrchestratorSession._({
       "[shutdown] routed requests and relay completions drained "
       "(+${teardownSw.elapsedMilliseconds}ms)",
     );
-    await attempt(_sessionCreationService.drain);
-    Log.v("[shutdown] late session titles drained (+${teardownSw.elapsedMilliseconds}ms)");
+    await Future.wait([
+      attempt(_sessionCreationService.drain),
+      attempt(_projectGlossaryService.drain),
+    ]);
+    Log.v("[shutdown] late session titles and project glossary work drained (+${teardownSw.elapsedMilliseconds}ms)");
     _sessionOperationDispatcher.beginShutdown();
     await attempt(_sessionOperationDispatcher.dispose);
     Log.v("[shutdown] session operations drained (+${teardownSw.elapsedMilliseconds}ms)");
@@ -1250,6 +1269,7 @@ class OrchestratorSession._({
   void beginShutdown() {
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
+    _projectGlossaryService.beginShutdown();
     _prSyncService.beginShutdown();
     if (_cancelRequestedAt == null) {
       _cancelRequestedAt = DateTime.now();

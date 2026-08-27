@@ -46,6 +46,10 @@ class ProjectRepository({
     return _api.getProject(projectId: projectId);
   }
 
+  Future<ApiResponse<void>> populateVoiceGlossary({required String projectId}) {
+    return _api.populateVoiceGlossary(projectId: projectId);
+  }
+
   Future<ApiResponse<void>> hideProject({required String projectId}) {
     return _api.hideProject(projectId: projectId);
   }

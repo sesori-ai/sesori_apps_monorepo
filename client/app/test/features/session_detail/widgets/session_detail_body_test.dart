@@ -278,6 +278,7 @@ void main() {
           home: Scaffold(
             body: PromptInput(
               isBusy: false,
+              projectId: "project-1",
               hasMessages: false,
               onSend: ({required draft, required command, required attachments}) {
                 submittedDraft = draft;
@@ -1350,9 +1351,10 @@ void main() {
 
   testWidgets("voice hold acknowledges touch-down and stays silent for an empty transcript", (tester) async {
     final feedback = _captureHapticFeedback(throwsPlatformException: false);
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
+    when(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")))
+        .thenAnswer((_) async => "");
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1370,9 +1372,10 @@ void main() {
   testWidgets("a successful transcript gives feedback when its text is inserted", (tester) async {
     final feedback = _captureHapticFeedback(throwsPlatformException: false);
     final stopCompleter = Completer<String>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+    when(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")))
+        .thenAnswer((_) => stopCompleter.future);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1402,9 +1405,10 @@ void main() {
 
   testWidgets("crossing into and out of the cancel target gives one tick at each boundary", (tester) async {
     final feedback = _captureHapticFeedback(throwsPlatformException: false);
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
+    when(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")))
+        .thenAnswer((_) async => "");
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1434,7 +1438,7 @@ void main() {
 
     await gesture.up();
     await tester.pumpAndSettle();
-    verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
+    verify(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId"))).called(1);
     expect(feedback, [
       "HapticFeedbackType.lightImpact",
       "HapticFeedbackType.selectionClick",
@@ -1444,9 +1448,10 @@ void main() {
 
   testWidgets("haptic platform failures do not interrupt voice recording", (tester) async {
     _captureHapticFeedback(throwsPlatformException: true);
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "dictated words");
+    when(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")))
+        .thenAnswer((_) async => "dictated words");
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1457,16 +1462,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
+    verify(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId"))).called(1);
     expect(find.text("dictated words"), findsOneWidget);
   });
 
   testWidgets("transcription cancel after a recovered drag gives a fresh dismiss tick", (tester) async {
     final feedback = _captureHapticFeedback(throwsPlatformException: false);
     final stopCompleter = Completer<String>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+    when(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")))
+        .thenAnswer((_) => stopCompleter.future);
     when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -1503,7 +1509,7 @@ void main() {
 
   testWidgets("a very short tap starts recording immediately but never transcribes", (tester) async {
     final feedback = _captureHapticFeedback(throwsPlatformException: false);
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
 
@@ -1511,19 +1517,19 @@ void main() {
     await tester.pumpAndSettle();
 
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
-    verify(() => voiceTranscriptionService.startRecording()).called(1);
+    verify(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).called(1);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     await gesture.up();
     await tester.pumpAndSettle();
 
     verify(() => voiceTranscriptionService.cancelRecording()).called(1);
-    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")));
     expect(feedback, ["HapticFeedbackType.lightImpact"]);
   });
 
   testWidgets("a secondary pointer button does not start recording", (tester) async {
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
 
@@ -1539,14 +1545,14 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
 
-    verifyNever(() => voiceTranscriptionService.startRecording());
+    verifyNever(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId")));
     verifyNever(() => voiceTranscriptionService.cancelRecording());
-    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")));
   });
 
   testWidgets("the recording morph starts while the recorder is still starting", (tester) async {
     final startCompleter = Completer<void>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) => startCompleter.future);
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) => startCompleter.future);
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
 
@@ -1586,13 +1592,14 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
     verify(() => voiceTranscriptionService.cancelRecording()).called(1);
-    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")));
   });
 
   testWidgets("a short one-word recording still transcribes", (tester) async {
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "yes");
+    when(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")))
+        .thenAnswer((_) async => "yes");
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1603,15 +1610,16 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
 
-    verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
+    verify(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId"))).called(1);
     verifyNever(() => voiceTranscriptionService.cancelRecording());
     expect(find.text("yes"), findsOneWidget);
   });
 
   testWidgets("the recording limit stops and transcribes the active hold", (tester) async {
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "limit words");
+    when(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")))
+        .thenAnswer((_) async => "limit words");
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1622,7 +1630,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
+    verify(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId"))).called(1);
     expect(find.text("Recording limit reached (15 minutes)"), findsOneWidget);
     expect(find.text("limit words"), findsOneWidget);
 
@@ -1631,7 +1639,7 @@ void main() {
 
   testWidgets("release during recorder startup discards the incomplete recording", (tester) async {
     final startCompleter = Completer<void>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) => startCompleter.future);
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) => startCompleter.future);
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
 
@@ -1641,11 +1649,11 @@ void main() {
     // Recording is requested on touch-down, then the finger lifts before the
     // recorder finishes starting up.
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
-    verify(() => voiceTranscriptionService.startRecording()).called(1);
+    verify(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).called(1);
     await tester.pump(const Duration(milliseconds: 100));
     await gesture.up();
     await tester.pump();
-    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")));
 
     // The recorder finishes starting after the finger already lifted, so the
     // incomplete local recording is discarded instead of uploaded.
@@ -1653,7 +1661,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
     verify(() => voiceTranscriptionService.cancelRecording()).called(1);
-    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")));
   });
 
   testWidgets("restored mixed draft keeps voice-assisted input mode when sent", (tester) async {
@@ -1760,7 +1768,7 @@ void main() {
 
   testWidgets("a second hold during recorder startup does not start a second recording", (tester) async {
     final startCompleter = Completer<void>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) => startCompleter.future);
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) => startCompleter.future);
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
 
@@ -1787,7 +1795,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     await second.up();
     await tester.pump();
-    verify(() => voiceTranscriptionService.startRecording()).called(1);
+    verify(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).called(1);
 
     // Both holds released before startup finished, so the incomplete
     // recording is discarded as soon as startup settles.
@@ -1802,12 +1810,13 @@ void main() {
   ) async {
     final firstStartCompleter = Completer<void>();
     var startCalls = 0;
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) {
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) {
       startCalls++;
       return startCalls == 1 ? firstStartCompleter.future : Future<void>.value();
     });
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
+    when(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")))
+        .thenAnswer((_) async => "");
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1908,9 +1917,10 @@ void main() {
 
   testWidgets("recording swaps the pill chrome for the cancel target and waveform", (tester) async {
     final stopCompleter = Completer<String>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+    when(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")))
+        .thenAnswer((_) => stopCompleter.future);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1940,7 +1950,7 @@ void main() {
   });
 
   testWidgets("dragging the hold onto the cancel target discards the recording", (tester) async {
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
 
@@ -1957,7 +1967,7 @@ void main() {
     await gesture.up();
     await tester.pump();
     verify(() => voiceTranscriptionService.cancelRecording()).called(1);
-    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")));
 
     // The pill rests again with nothing transcribed.
     await tester.pumpAndSettle();
@@ -1967,9 +1977,10 @@ void main() {
 
   testWidgets("dragging toward cancel during recorder startup is preserved", (tester) async {
     final startCompleter = Completer<void>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) => startCompleter.future);
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) => startCompleter.future);
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
+    when(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")))
+        .thenAnswer((_) async => "");
     when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -1992,12 +2003,12 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
     verify(() => voiceTranscriptionService.cancelRecording()).called(1);
-    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")));
   });
 
   testWidgets("a hold during an in-flight cancel does not present a phantom recording", (tester) async {
     final cancelCompleter = Completer<void>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) => cancelCompleter.future);
 
@@ -2011,7 +2022,7 @@ void main() {
     await tester.pump();
     await gesture.up();
     await tester.pump();
-    verify(() => voiceTranscriptionService.startRecording()).called(1);
+    verify(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).called(1);
 
     // The platform cancel is still in flight: the service would silently
     // ignore a start, so the composer must not enter a recording that never
@@ -2020,24 +2031,26 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await second.up();
     await tester.pump();
-    verifyNever(() => voiceTranscriptionService.startRecording());
+    verifyNever(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId")));
 
     // Once the cancel settles, recording works again.
     cancelCompleter.complete();
     await tester.pumpAndSettle();
     final third = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump(const Duration(milliseconds: 600));
-    verify(() => voiceTranscriptionService.startRecording()).called(1);
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
+    verify(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).called(1);
+    when(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")))
+        .thenAnswer((_) async => "");
     await third.up();
     await tester.pumpAndSettle();
   });
 
   testWidgets("transcribing shows the shimmer and its X discards the transcription", (tester) async {
     final stopCompleter = Completer<String>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+    when(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")))
+        .thenAnswer((_) => stopCompleter.future);
     when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -2067,9 +2080,9 @@ void main() {
 
   testWidgets("a cancelled transcription settling late cannot corrupt the next recording", (tester) async {
     final stopCompleters = <Completer<String>>[];
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) {
+    when(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId"))).thenAnswer((_) {
       final completer = Completer<String>();
       stopCompleters.add(completer);
       return completer.future;
@@ -2111,9 +2124,10 @@ void main() {
 
   testWidgets("the keyboard button enters typing while transcription continues", (tester) async {
     final stopCompleter = Completer<String>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+    when(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")))
+        .thenAnswer((_) => stopCompleter.future);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -2163,9 +2177,10 @@ void main() {
 
   testWidgets("holding the typing container's voice pill records while the text stays", (tester) async {
     final stopCompleter = Completer<String>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+    when(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")))
+        .thenAnswer((_) => stopCompleter.future);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -2196,9 +2211,10 @@ void main() {
 
   testWidgets("voice-first transcript rests unfocused for review before sending", (tester) async {
     final stopCompleter = Completer<String>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+    when(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")))
+        .thenAnswer((_) => stopCompleter.future);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -2222,9 +2238,10 @@ void main() {
 
   testWidgets("long voice-first transcript rests scrolled to its end without focus", (tester) async {
     final transcript = List.generate(80, (index) => "dictated phrase $index").join(" ");
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.startRecording(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => transcript);
+    when(() => voiceTranscriptionService.stopAndTranscribe(projectId: any(named: "projectId")))
+        .thenAnswer((_) async => transcript);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();

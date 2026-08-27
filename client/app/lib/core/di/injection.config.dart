@@ -247,9 +247,16 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i902.DeepLinkService(gh<_i948.DeepLinkSource>()),
       dispose: (i) => i.dispose(),
     );
+    gh.lazySingleton<_i948.AttributionClient>(
+      () => _i681.SingularAttributionClient(
+        startup: gh<_i853.SingularAttributionStartup>(),
+        singular: gh<_i776.SingularStaticAdapter>(),
+      ),
+    );
     gh.lazySingleton<_i1038.VoiceTranscriptionService>(
       () => _i1038.VoiceTranscriptionService(
         voiceApi: gh<_i948.VoiceApi>(),
+        projectVoiceGlossaryService: gh<_i948.ProjectVoiceGlossaryService>(),
         recorder: gh<_i1039.AudioRecorder>(),
         recorderPrewarmClient: gh<_i361.RecorderPrewarmClient>(),
         fileProvider: gh<_i62.RecordingFileProvider>(),
@@ -257,12 +264,6 @@ extension GetItInjectableX on _i174.GetIt {
         audioFormat: gh<_i430.AudioFormatConfig>(),
       ),
       dispose: (i) => i.dispose(),
-    );
-    gh.lazySingleton<_i948.AttributionClient>(
-      () => _i681.SingularAttributionClient(
-        startup: gh<_i853.SingularAttributionStartup>(),
-        singular: gh<_i776.SingularStaticAdapter>(),
-      ),
     );
     return this;
   }

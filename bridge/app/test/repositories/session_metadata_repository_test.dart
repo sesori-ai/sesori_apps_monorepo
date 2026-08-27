@@ -119,4 +119,7 @@ class _FakeSesoriServerApi({final Object? failure}) implements SesoriServerApi {
 
   @override
   Future<AppClientStatusResponse> getAppClientStatus({required String accessToken}) => throw UnimplementedError();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
