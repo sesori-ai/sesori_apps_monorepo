@@ -71,6 +71,7 @@ import "../repositories/app_onboarding_state_repository.dart";
 import "../repositories/bridge_settings.dart";
 import "../repositories/bridge_settings_repository.dart";
 import "../repositories/plugin_lifecycle_repository.dart";
+import "../repositories/project_glossary_key_material_repository.dart";
 import "../server/api/process_id_lookup_api.dart";
 import "../server/api/runtime_file_api.dart";
 import "../server/api/system_process_api.dart";
@@ -834,9 +835,11 @@ class const BridgeRuntimeRunner._() {
         accessTokenProvider: accessTokenProvider,
         tokenRefresher: tokenRefresher,
         bridgeRegistrationService: bridgeRegistrationService,
-        projectGlossarySecretStorage: FileProjectGlossarySecretStorage(
-          dataDirectory: options.dataDirectory,
-          writeRestrictedFile: writeRestrictedFile,
+        projectGlossaryKeyMaterialRepository: ProjectGlossaryKeyMaterialRepository(
+          storage: FileProjectGlossarySecretStorage(
+            dataDirectory: options.dataDirectory,
+            writeRestrictedFile: writeRestrictedFile,
+          ),
         ),
         failureReporter: failureReporter,
         restartService: restartService,

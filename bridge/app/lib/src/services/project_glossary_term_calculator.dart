@@ -16,7 +16,8 @@ class const ProjectGlossaryTermCalculator() {
     "[A-Za-z0-9][A-Za-z0-9_./+=#-]{15,}",
   );
   static final RegExp _credentialAssignmentPattern = RegExp(
-    r"(?:password|passwd|pwd|secret|api[_-]?key|token|credential)\s*[:=]\s*[^\s,;]+",
+    r'''["']?(?:password|passwd|pwd|secret|api[_-]?key|token|credential)["']?\s*[:=]\s*'''
+    r'''["']?[^"'\s,;}\]]+["']?''',
     caseSensitive: false,
   );
   static final RegExp _credentialPrefixedSpanPattern = RegExp(

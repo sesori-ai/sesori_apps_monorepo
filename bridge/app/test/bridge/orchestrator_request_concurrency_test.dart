@@ -303,7 +303,7 @@ class _ConcurrencyHarness._({
       accessTokenProvider: FakeAccessTokenProvider(),
       tokenRefresher: FakeTokenRefresher(),
       bridgeRegistrationService: registrationService,
-      projectGlossarySecretStorage: const FakeProjectGlossarySecretStorage(),
+      projectGlossaryKeyMaterialRepository: FakeProjectGlossaryKeyMaterialRepository(),
       failureReporter: failureReporter,
       restartService: restartService,
       filesystemAccessOk: true,

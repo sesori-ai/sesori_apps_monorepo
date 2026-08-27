@@ -558,7 +558,7 @@ class _RegistrationHarness._({
       accessTokenProvider: FakeAccessTokenProvider(),
       tokenRefresher: FakeTokenRefresher(),
       bridgeRegistrationService: registrationService,
-      projectGlossarySecretStorage: const FakeProjectGlossarySecretStorage(),
+      projectGlossaryKeyMaterialRepository: FakeProjectGlossaryKeyMaterialRepository(),
       failureReporter: FakeFailureReporter(),
       restartService: restartService,
       filesystemAccessOk: true,

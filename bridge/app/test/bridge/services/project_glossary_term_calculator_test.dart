@@ -44,6 +44,7 @@ void main() {
         metadataDocuments: const [
           "AcmeCompiler uses AKIAIOSFODNN7EXAMPLE, q7Vn2Lp9Rk4Tz8Mw6Hx3, and $secretAccessKey for examples.",
           "password=SuperSecretProductionPassword token=aBcDeFgHiJkLmNoPqRsTuVwXyZ",
+          '''{"api_key":"abcdEfghijklmnopqrstuvwxyz"}''',
           "AcmeCompiler appears again without exposing credentials.",
         ],
       ),
@@ -59,6 +60,7 @@ void main() {
     expect(terms, isNot(contains("abcdefghijklmnopqrstuvwxyz")));
     expect(terms, isNot(contains("privatehostedcredentialvalue")));
     expect(terms, isNot(contains("aBcDeFgHiJkLmNoPqRsTuVwXyZ")));
+    expect(terms, isNot(contains("abcdEfghijklmnopqrstuvwxyz")));
   });
 
   test("requires repeated metadata evidence for ordinary lowercase prose", () {

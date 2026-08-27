@@ -13,6 +13,7 @@ import "package:sesori_bridge/src/auth/bridge_registration_service.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_bridge/src/orchestrator.dart";
+import "package:sesori_bridge/src/repositories/project_glossary_key_material_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 class FakeAccessTokenProvider([String token = "test-token"]) implements AccessTokenProvider {
@@ -36,6 +37,10 @@ class const FakeProjectGlossarySecretStorage() implements FileProjectGlossarySec
 
   @override
   Future<void> write({required String encodedSecret}) async {}
+}
+
+class FakeProjectGlossaryKeyMaterialRepository() extends ProjectGlossaryKeyMaterialRepository {
+  this : super(storage: const FakeProjectGlossarySecretStorage());
 }
 
 class FakeTokenRefresher({String token = "test-token", String? refreshedToken}) implements TokenRefresher {
