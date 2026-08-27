@@ -23,10 +23,12 @@ void main() {
     late VoiceTranscriptionService service;
     late Directory tempDir;
     late String recordingPath;
+    late int hostedVoiceRecordingGeneration;
 
     setUp(() async {
       tempDir = await Directory.systemTemp.createTemp("voice_service_test");
       recordingPath = "${tempDir.path}/recording.m4a";
+      hostedVoiceRecordingGeneration = 0;
 
       mockHostedVoiceInputService = MockHostedVoiceInputService();
       mockRecorder = MockAudioRecorder();
@@ -57,6 +59,9 @@ void main() {
       when(() => mockAudioFormat.numChannels).thenReturn(1);
       when(() => mockAudioFormat.mimeType).thenReturn("audio/mp4");
       when(() => mockAudioFormat.fileExtension).thenReturn("m4a");
+      when(
+        () => mockHostedVoiceInputService.recordingStarted(projectId: any(named: "projectId")),
+      ).thenAnswer((_) => ++hostedVoiceRecordingGeneration);
 
       service = VoiceTranscriptionService(
         hostedVoiceInputService: mockHostedVoiceInputService,
@@ -308,7 +313,9 @@ void main() {
           ),
         ).called(1);
         verify(mockWakeLockService.disable).called(1);
-        verify(mockHostedVoiceInputService.recordingFinished).called(1);
+        verify(
+          () => mockHostedVoiceInputService.recordingFinished(recordingGeneration: 1),
+        ).called(1);
       });
 
       test("not recording: throws NotRecordingError", () async {
@@ -497,11 +504,18 @@ void main() {
         // Transcription #1 returns — must be discarded despite #2 resetting state.
         transcribeCompleter1.complete(ApiResponse.success("stale transcript"));
         await expectLater(stopFuture1, throwsA(isA<TranscriptionCancelledError>()));
+        verifyNever(
+          () => mockHostedVoiceInputService.recordingFinished(recordingGeneration: 2),
+        );
 
-        // Transcription #2 returns — should succeed normally.
+        // Transcription #2 returns — should succeed normally and remains the
+        // owner of core recording state until its own cleanup.
         transcribeCompleter2.complete(ApiResponse.success("fresh transcript"));
         final result = await stopFuture2;
         expect(result, "fresh transcript");
+        verify(
+          () => mockHostedVoiceInputService.recordingFinished(recordingGeneration: 2),
+        ).called(1);
       });
 
       test("cancel during wake lock enable async gap: no stale amplitude monitoring", () async {

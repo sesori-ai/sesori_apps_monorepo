@@ -33,16 +33,18 @@ directly from the client to the transcription endpoint.
 - A scoped transcription sends only the versioned opaque glossary key derived by the bridge using a private persisted
   HMAC secret over its stable registration id and the stable project id. The client reuses that exact returned key; the
   secret and identifiers never reach auth, and equal local paths on different bridges cannot share a glossary.
-- Pure-Dart core logic owns the recording-to-population/key/transcription coordination. The Flutter service only adapts
-  native recording lifecycle and delegates after capture starts, so another product shell can reuse the same policy.
+- Pure-Dart core logic owns recording-to-population/key/transcription coordination and routes hosted transcription
+  through its repository layer. Flutter only adapts native recording lifecycle; generation-scoped cleanup from a stale
+  upload cannot invalidate a successor recording.
 - Glossary population starts only from explicit hosted-voice use and is best effort; it never delays recording or
   transcription. A transcription remains unscoped when the local route has not answered yet or is unsupported. The
   bridge attempts a project once per process, serializes different projects, reads existing server words before local
   inference, and skips local scanning once the project already has 50 terms.
-- Git inference streams at most 50,000 tracked path names and never inspects ignored/untracked root metadata. Non-Git
-  root enumeration is also streamed and bounded. README/package-manifest reads are capped, and credential assignments,
-  secret-shaped spans, ignored vendor/build/generated paths, hashes, and generic terms are excluded before ranking.
-  At most enough terms to reach 50 are uploaded; source contents and paths never leave the bridge.
+- Git inference streams at most 50,000 tracked path names and never inspects ignored/untracked root metadata. A Git
+  operational failure aborts inference rather than falling back to root enumeration; definite non-Git enumeration is
+  also streamed and bounded. README/package-manifest reads are capped, and credential assignments, prefixed/secret-
+  shaped spans, ignored vendor/build/generated paths, hashes, and generic terms are excluded before ranking. At most
+  enough terms to reach 50 are uploaded; source contents and paths never leave the bridge.
 - The preference defaults to voice-first, persists, and falls back to voice-first on a corrupt or unknown stored
   value.
 
@@ -51,7 +53,7 @@ directly from the client to the transcription endpoint.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because microphone and transcription setup is too expensive for a heartbeat. |
-| L2 Routine | Automated, mobile client and bridge, no plugin: fake recorder and HTTP client cover permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, error mapping, max-duration signalling, file cleanup, draft voice-span/input-mode derivation, core-owned bridge-namespaced opaque-key handoff, pending/old-bridge unscoped degradation, lazy secret persistence, bounded Git/non-Git enumeration, tracked-only metadata, credential-assignment/span rejection, ranked term selection, serialized/coalesced population, authenticated glossary reads/additions, and shutdown drain. |
+| L2 Routine | Automated, mobile client and bridge, no plugin: fake recorder and HTTP client cover permission denial, concurrent-start rejection, zero-byte rejection, generation-scoped stale cleanup, cancellation, error mapping, duration signalling, file cleanup, draft voice-span/input-mode derivation, repository-routed opaque-key handoff, pending/old-bridge unscoped degradation, layered lazy secret persistence, bounded/fail-closed Git detection, tracked-only metadata, credential-assignment/prefixed-span rejection, ranked term selection, serialized/coalesced population, authenticated glossary reads/additions, and shutdown drain. |
 | L3 Release | Client end to end on the release-target client platform: hold to record, release to transcribe, transcript inserted and editable, drag-to-cancel, layout stability, and the voice-first/text-first preference changing which control leads. |
 | L4 Extended | Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, transcription failure and retry, offline upload failure, disposal while recording, wake lock released on every path. |
 | L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording. |
@@ -76,6 +78,8 @@ interruptions such as a call.
   filtered inferred terms and the opaque bridge/project key may reach the glossary endpoint.
 - Starting voice waits for glossary population, starts multiple glossary scans for that project, or lets several
   project scans run concurrently.
+- A Git operational failure falls back to root enumeration, or stale completion/cleanup from one recording clears the
+  glossary scope owned by its successor.
 
 ## Known Limitations
 
@@ -97,6 +101,6 @@ interruptions such as a call.
 `client/app/test/capabilities/voice/`, `client/module_core/test/capabilities/voice/`,
 `bridge/app/test/bridge/{repositories,services,routing}/`, `bridge/app/test/api/sesori_server_api_test.dart`, and
 `client/module_prego/test/components/`; production code under `client/app/lib/capabilities/voice/`,
-`client/module_core/lib/src/{capabilities/voice,services}/`,
-`bridge/app/lib/src/{api,repositories,services,routing}/`, and
-`shared/sesori_shared/lib/src/models/{auth,sesori}/`.
+`client/module_core/lib/src/{capabilities/voice,repositories,services}/`,
+`bridge/app/lib/src/{api,foundation,repositories,services,routing}/`, and
+`shared/sesori_shared/lib/src/{crypto,models/auth,models/sesori}/`.

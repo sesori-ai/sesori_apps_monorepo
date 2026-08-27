@@ -33,6 +33,7 @@ import "../repositories/plugin_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/registered_bridges_store.dart";
 import "../repositories/session_repository.dart";
+import "../repositories/voice_repository.dart";
 import "../routing/app_routes.dart";
 import "../services/catalog_rescan_service.dart";
 import "../services/hosted_voice_input_service.dart";
@@ -227,6 +228,8 @@ class MockRelayCryptoService() extends Mock implements RelayCryptoService;
 class MockRelayClient() extends Mock implements RelayClient;
 
 class MockVoiceApi() extends Mock implements VoiceApi;
+
+class MockVoiceRepository() extends Mock implements VoiceRepository;
 
 class MockSecureStorage() extends Mock implements SecureStorage;
 

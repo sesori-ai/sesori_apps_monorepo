@@ -9,15 +9,15 @@ import "package:test/test.dart";
 void main() {
   setUpAll(registerCoreFallbackValues);
 
-  late MockVoiceApi voiceApi;
+  late MockVoiceRepository voiceRepository;
   late MockProjectVoiceGlossaryService glossaryService;
   late HostedVoiceInputService service;
 
   setUp(() {
-    voiceApi = MockVoiceApi();
+    voiceRepository = MockVoiceRepository();
     glossaryService = MockProjectVoiceGlossaryService();
     service = HostedVoiceInputService(
-      voiceApi: voiceApi,
+      voiceRepository: voiceRepository,
       projectVoiceGlossaryService: glossaryService,
     );
   });
@@ -26,7 +26,7 @@ void main() {
     const projectKey = "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
     when(() => glossaryService.requestPopulation(projectId: "project-1")).thenAnswer((_) async => projectKey);
     when(
-      () => voiceApi.transcribe(
+      () => voiceRepository.transcribe(
         audioFilePath: "/tmp/voice.m4a",
         mimeType: "audio/mp4",
         projectKey: projectKey,
@@ -46,7 +46,7 @@ void main() {
 
   test("a recording without project context stays unscoped without a bridge request", () async {
     when(
-      () => voiceApi.transcribe(
+      () => voiceRepository.transcribe(
         audioFilePath: "/tmp/voice.m4a",
         mimeType: "audio/mp4",
         projectKey: null,
@@ -67,7 +67,7 @@ void main() {
     final population = Completer<String?>();
     when(() => glossaryService.requestPopulation(projectId: "project-1")).thenAnswer((_) => population.future);
     when(
-      () => voiceApi.transcribe(
+      () => voiceRepository.transcribe(
         audioFilePath: "/tmp/voice.m4a",
         mimeType: "audio/mp4",
         projectKey: null,
@@ -86,23 +86,28 @@ void main() {
     await Future<void>.delayed(Duration.zero);
   });
 
-  test("late keys cannot cross recording generations or project scopes", () async {
+  test("late keys and stale cleanup cannot cross recording generations", () async {
     const projectKey = "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
     final firstPopulation = Completer<String?>();
     final secondPopulation = Completer<String?>();
     when(() => glossaryService.requestPopulation(projectId: "project-1")).thenAnswer((_) => firstPopulation.future);
     when(() => glossaryService.requestPopulation(projectId: "project-2")).thenAnswer((_) => secondPopulation.future);
     when(
-      () => voiceApi.transcribe(
+      () => voiceRepository.transcribe(
         audioFilePath: "/tmp/voice.m4a",
         mimeType: "audio/mp4",
-        projectKey: null,
+        projectKey: projectKey,
       ),
     ).thenAnswer((_) async => ApiResponse.success("transcript"));
 
-    service.recordingStarted(projectId: "project-1");
-    service.recordingFinished();
+    final firstGeneration = service.recordingStarted(projectId: "project-1");
+    service.recordingFinished(recordingGeneration: firstGeneration);
     service.recordingStarted(projectId: "project-2");
+    secondPopulation.complete(projectKey);
+    await Future<void>.delayed(Duration.zero);
+
+    // A delayed finally block from recording one must not invalidate recording two.
+    service.recordingFinished(recordingGeneration: firstGeneration);
     firstPopulation.complete(projectKey);
     await Future<void>.delayed(Duration.zero);
     await service.transcribe(
@@ -112,13 +117,11 @@ void main() {
     );
 
     verify(
-      () => voiceApi.transcribe(
+      () => voiceRepository.transcribe(
         audioFilePath: "/tmp/voice.m4a",
         mimeType: "audio/mp4",
-        projectKey: null,
+        projectKey: projectKey,
       ),
     ).called(1);
-    secondPopulation.complete(null);
-    await Future<void>.delayed(Duration.zero);
   });
 }

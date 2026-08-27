@@ -98,6 +98,8 @@ import 'package:sesori_dart_core/src/repositories/session_repository.dart'
     as _i7;
 import 'package:sesori_dart_core/src/repositories/view_declaration_repository.dart'
     as _i143;
+import 'package:sesori_dart_core/src/repositories/voice_repository.dart'
+    as _i107;
 import 'package:sesori_dart_core/src/routing/analytics_route_listener.dart'
     as _i888;
 import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
@@ -192,6 +194,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i727.AnalyticsApi>(
       () => _i727.AnalyticsApi(client: gh<_i791.AnalyticsClient>()),
+    );
+    gh.lazySingleton<_i107.VoiceRepository>(
+      () => _i107.VoiceRepository(api: gh<_i176.VoiceApi>()),
     );
     gh.lazySingleton<_i198.ComposerDraftRepository>(
       () => _i198.ComposerDraftRepository(
@@ -495,7 +500,7 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i193.HostedVoiceInputService>(
       () => _i193.HostedVoiceInputService(
-        voiceApi: gh<_i176.VoiceApi>(),
+        voiceRepository: gh<_i107.VoiceRepository>(),
         projectVoiceGlossaryService: gh<_i497.ProjectVoiceGlossaryService>(),
       ),
     );

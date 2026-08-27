@@ -37,6 +37,7 @@ class VoiceTranscriptionService({
   bool _isBusy = false;
   Future<void>? _prewarmFuture;
   int _transcriptionGeneration = 0;
+  int? _hostedVoiceRecordingGeneration;
   String? _currentRecordingPath;
   StreamSubscription<Amplitude>? _amplitudeSub;
   Timer? _maxDurationTimer;
@@ -142,7 +143,7 @@ class VoiceTranscriptionService({
         _isRecording = true;
         _startAmplitudeMonitoring(_recorder);
         _startMaxDurationTimer();
-        _hostedVoiceInputService.recordingStarted(projectId: projectId);
+        _hostedVoiceRecordingGeneration = _hostedVoiceInputService.recordingStarted(projectId: projectId);
         unawaited(_wakeLockService.enable());
       } catch (error, stackTrace) {
         loge("Failed to start recording", error, stackTrace);
@@ -209,9 +210,16 @@ class VoiceTranscriptionService({
           throw _mapApiError(error);
       }
     } finally {
-      _isBusy = false;
-      await _wakeLockService.disable();
-      await _cleanup();
+      // Cancellation may already have admitted a successor recording. Only the
+      // invocation that still owns this generation may release shared state.
+      if (generation == _transcriptionGeneration) {
+        try {
+          await _wakeLockService.disable();
+          await _cleanup();
+        } finally {
+          _isBusy = false;
+        }
+      }
     }
   }
 
@@ -240,9 +248,12 @@ class VoiceTranscriptionService({
     }
 
     _isRecording = false;
-    _isBusy = false;
-    await _wakeLockService.disable();
-    await _cleanup();
+    try {
+      await _wakeLockService.disable();
+      await _cleanup();
+    } finally {
+      _isBusy = false;
+    }
   }
 
   /// Maps [ApiError] to the appropriate [VoiceTranscriptionError].
@@ -302,8 +313,12 @@ class VoiceTranscriptionService({
 
   Future<void> _cleanup() async {
     final path = _currentRecordingPath;
+    final hostedVoiceRecordingGeneration = _hostedVoiceRecordingGeneration;
     _currentRecordingPath = null;
-    _hostedVoiceInputService.recordingFinished();
+    _hostedVoiceRecordingGeneration = null;
+    if (hostedVoiceRecordingGeneration != null) {
+      _hostedVoiceInputService.recordingFinished(recordingGeneration: hostedVoiceRecordingGeneration);
+    }
 
     if (path != null) {
       await _cleanupFile(path);

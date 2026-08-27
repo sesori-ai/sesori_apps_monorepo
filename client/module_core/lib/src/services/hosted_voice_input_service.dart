@@ -3,14 +3,14 @@ import "dart:async";
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart" show ApiResponse;
 
-import "../capabilities/voice/voice_api.dart";
+import "../repositories/voice_repository.dart";
 import "project_voice_glossary_service.dart";
 
 /// Coordinates project glossary context with hosted transcription independently
 /// of any Flutter recorder or product shell.
 @lazySingleton
 class HostedVoiceInputService({
-  required final VoiceApi _voiceApi,
+  required final VoiceRepository _voiceRepository,
   required final ProjectVoiceGlossaryService _projectVoiceGlossaryService,
 }) {
   int _recordingGeneration = 0;
@@ -19,11 +19,11 @@ class HostedVoiceInputService({
 
   /// Starts best-effort glossary preparation after the platform recorder has
   /// started. The detached request never delays capture.
-  void recordingStarted({required String? projectId}) {
+  int recordingStarted({required String? projectId}) {
     final generation = ++_recordingGeneration;
     _recordingProjectId = projectId;
     _recordingProjectKey = null;
-    if (projectId == null) return;
+    if (projectId == null) return generation;
 
     unawaited(
       _projectVoiceGlossaryService.requestPopulation(projectId: projectId).then((projectKey) {
@@ -31,6 +31,7 @@ class HostedVoiceInputService({
         _recordingProjectKey = projectKey;
       }),
     );
+    return generation;
   }
 
   /// Uploads the recorded file with the key resolved for this exact recording.
@@ -40,7 +41,7 @@ class HostedVoiceInputService({
     required String mimeType,
     required String? projectId,
   }) {
-    return _voiceApi.transcribe(
+    return _voiceRepository.transcribe(
       audioFilePath: audioFilePath,
       mimeType: mimeType,
       projectKey: projectId == _recordingProjectId ? _recordingProjectKey : null,
@@ -49,7 +50,8 @@ class HostedVoiceInputService({
 
   /// Invalidates late glossary responses when capture/transcription finishes or
   /// is cancelled.
-  void recordingFinished() {
+  void recordingFinished({required int recordingGeneration}) {
+    if (recordingGeneration != _recordingGeneration) return;
     _recordingGeneration++;
     _recordingProjectId = null;
     _recordingProjectKey = null;
