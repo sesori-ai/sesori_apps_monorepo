@@ -3,11 +3,11 @@
 ## Current State
 
 - **Plan slug:** `deepseek-harness`
-- **Plan status:** Steps 1-14 merged; Step 15/16 open for review
+- **Plan status:** Steps 1-14 merged; Step 15/16 open for review; Step 16/16 verification in progress locally
 - **Current repository:** `sesori-ai/sesori_apps_monorepo`
-- **Current branch:** `deepseek-harness/step-15-regression-docs`
+- **Current branch:** `deepseek-harness/step-16-verify-retire`
 - **Current open PR:** [PR #1129](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1129)
-- **Next action:** review and merge Step 15, then run the Step 16 verification matrix
+- **Next action:** continue Step 16 locally while Step 15 is reviewed
 - **Implementation started:** yes
 - **Retirement:** blocked until every required row in `PLAN.md` passes
 
@@ -262,6 +262,24 @@ renumber every unopened title consistently. Do not silently exceed 1,500 lines.
 - [x] `git diff --check`
 - [x] Final changed-line count: 176, below the 600 soft target and 1,500 hard cap
 - [x] PR #1129 opened against `main`
+
+### Step 16/16
+
+- [x] Published adapter `v0.1.1` is stable and resolves to exact commit
+  `4ae635d1c3a6a0829722e8363dd564cc582c1f6e`
+- [x] Exact-tag local `npm ci` reports zero vulnerabilities; `npm run check`
+  passes lint, typecheck, 106 runtime tests, 4 release tests, and build
+- [x] Current DeepSeek Dart consumer analysis and all 35 tests pass
+- [x] Fresh managed-runtime workflow [run 33055699941](https://github.com/sesori-ai/sesori-deepseek-acp/actions/runs/33055699941)
+  passes cross-repository conformance, all six matching-native package/lifecycle
+  smoke jobs, and aggregate checksum verification at the published commit
+- [x] All six downloaded release archives match `checksums.txt` and the bridge
+  manifest's exact digests
+- [x] All six archives contain the launcher, pinned Node runtime, package lock,
+  build metadata, SBOM, notices, and licenses with no unsafe paths or symlinks
+- [ ] Headless bridge and live plugin matrix
+- [ ] Client E2E and compatibility build-pair matrix
+- [ ] Cleanup, final evidence, and plan retirement
 
 Later implementation and live evidence is appended here by step. Never mark a
 regression row passed without the boundary and matrix required by `PLAN.md`.
