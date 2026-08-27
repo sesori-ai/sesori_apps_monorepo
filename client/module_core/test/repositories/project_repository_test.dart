@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/repositories/models/project_voice_glossary_population_result.dart";
 import "package:sesori_dart_core/src/repositories/models/repo_provider.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -84,6 +85,69 @@ void main() {
     verify(() => filesystemApi.getSuggestions(prefix: "/projects")).called(1);
     verify(() => api.listSessions(projectId: "project-1", waitForPrData: false)).called(1);
     verify(() => api.renameProject(projectId: "project-1", name: "Renamed")).called(1);
+  });
+
+  group("populateVoiceGlossary", () {
+    ProjectRepository createRepository({required MockProjectApi api}) => ProjectRepository(
+      api: api,
+      filesystemApi: MockFilesystemApi(),
+      sessionApi: MockSessionApi(),
+    );
+
+    test("maps a valid wire key to the domain result", () async {
+      final api = MockProjectApi();
+      const projectKey = "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+      when(
+        () => api.populateVoiceGlossary(projectId: "project-1"),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const PopulateProjectVoiceGlossaryResponse(projectKey: projectKey),
+        ),
+      );
+
+      final result = await createRepository(api: api).populateVoiceGlossary(projectId: "project-1");
+
+      expect(
+        result,
+        isA<ProjectVoiceGlossaryPopulationAvailable>().having(
+          (available) => available.projectKey,
+          "projectKey",
+          projectKey,
+        ),
+      );
+    });
+
+    test("maps invalid wire data to a privacy-safe unavailable result", () async {
+      final api = MockProjectApi();
+      const rawProjectId = "/Users/developer/private-project";
+      when(
+        () => api.populateVoiceGlossary(projectId: "project-1"),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const PopulateProjectVoiceGlossaryResponse(projectKey: rawProjectId),
+        ),
+      );
+
+      final result = await createRepository(api: api).populateVoiceGlossary(projectId: "project-1");
+
+      expect(result, isA<ProjectVoiceGlossaryPopulationUnavailable>());
+      final error = (result as ProjectVoiceGlossaryPopulationUnavailable).error;
+      expect(error, isA<FormatException>());
+      expect(error.toString(), isNot(contains(rawProjectId)));
+    });
+
+    test("maps API failures without discarding their diagnostic value", () async {
+      final api = MockProjectApi();
+      final error = ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "route not found");
+      when(
+        () => api.populateVoiceGlossary(projectId: "project-1"),
+      ).thenAnswer((_) async => ApiResponse.error(error));
+
+      final result = await createRepository(api: api).populateVoiceGlossary(projectId: "project-1");
+
+      expect(result, isA<ProjectVoiceGlossaryPopulationUnavailable>());
+      expect((result as ProjectVoiceGlossaryPopulationUnavailable).error, same(error));
+    });
   });
 
   group("host paths", () {

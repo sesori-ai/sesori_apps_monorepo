@@ -10,6 +10,7 @@ import "../api/filesystem_api.dart";
 import "../api/project_api.dart";
 import "../api/session_api.dart";
 import "../logging/logging.dart";
+import "models/project_voice_glossary_population_result.dart";
 import "models/repo_provider.dart";
 
 @lazySingleton
@@ -18,6 +19,8 @@ class ProjectRepository({
   required final FilesystemApi _filesystemApi,
   required final SessionApi _sessionApi,
 }) {
+  static final RegExp _projectGlossaryKeyPattern = RegExp(r"^prj_v1_[A-Za-z0-9_-]{43}$");
+
   Future<ApiResponse<Projects>> listProjects() {
     return _api.listProjects();
   }
@@ -46,8 +49,15 @@ class ProjectRepository({
     return _api.getProject(projectId: projectId);
   }
 
-  Future<ApiResponse<PopulateProjectVoiceGlossaryResponse>> populateVoiceGlossary({required String projectId}) {
-    return _api.populateVoiceGlossary(projectId: projectId);
+  Future<ProjectVoiceGlossaryPopulationResult> populateVoiceGlossary({required String projectId}) async {
+    return switch (await _api.populateVoiceGlossary(projectId: projectId)) {
+      SuccessResponse(:final data) when _projectGlossaryKeyPattern.hasMatch(data.projectKey) =>
+        ProjectVoiceGlossaryPopulationAvailable(projectKey: data.projectKey),
+      SuccessResponse() => const ProjectVoiceGlossaryPopulationUnavailable(
+        error: FormatException("Bridge returned an invalid project glossary key"),
+      ),
+      ErrorResponse(:final error) => ProjectVoiceGlossaryPopulationUnavailable(error: error),
+    };
   }
 
   Future<ApiResponse<void>> hideProject({required String projectId}) {

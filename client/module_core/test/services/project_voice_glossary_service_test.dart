@@ -1,8 +1,8 @@
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/repositories/models/project_voice_glossary_population_result.dart";
 import "package:sesori_dart_core/src/services/project_voice_glossary_service.dart";
 import "package:sesori_dart_core/testing.dart";
-import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -18,10 +18,8 @@ void main() {
     when(
       () => projectRepository.populateVoiceGlossary(projectId: "project-1"),
     ).thenAnswer(
-      (_) async => ApiResponse.success(
-        const PopulateProjectVoiceGlossaryResponse(
-          projectKey: "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-        ),
+      (_) async => const ProjectVoiceGlossaryPopulationAvailable(
+        projectKey: "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
       ),
     );
 
@@ -36,8 +34,8 @@ void main() {
     when(
       () => projectRepository.populateVoiceGlossary(projectId: "project-1"),
     ).thenAnswer(
-      (_) async => ApiResponse.success(
-        const PopulateProjectVoiceGlossaryResponse(projectKey: "/Users/developer/private-project"),
+      (_) async => const ProjectVoiceGlossaryPopulationUnavailable(
+        error: FormatException("Bridge returned an invalid project glossary key"),
       ),
     );
 
@@ -48,8 +46,8 @@ void main() {
     when(
       () => projectRepository.populateVoiceGlossary(projectId: "project-1"),
     ).thenAnswer(
-      (_) async => ApiResponse.error(
-        ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "route not found"),
+      (_) async => ProjectVoiceGlossaryPopulationUnavailable(
+        error: ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "route not found"),
       ),
     );
 
