@@ -490,7 +490,12 @@ final class _ProcessFixture({required final FakePiExtensionSessionStorageApi sto
 
   Future<void> start({required String sessionId, required String directory}) async {
     final process = processes.last;
-    final connecting = repository.ensureResident(sessionId: sessionId, knownDirectories: {directory});
+    final connecting = repository.ensureResident(
+      sessionId: sessionId,
+      knownDirectories: {directory},
+      model: null,
+      variant: null,
+    );
     final command = await _waitForCommand(process: process, type: "get_entries");
     process.emitResponse(
       id: command["id"]! as String,

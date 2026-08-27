@@ -450,6 +450,8 @@ final class PiSessionService({
       final connection = await _processes.ensureResident(
         sessionId: sessionId,
         knownDirectories: {state.directory},
+        model: turn.model,
+        variant: turn.variant,
       );
       if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) {
         throw PiTurnCancelledException(sessionId: sessionId);

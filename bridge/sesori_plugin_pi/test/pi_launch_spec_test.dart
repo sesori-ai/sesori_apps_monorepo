@@ -10,10 +10,37 @@ void main() {
         binaryPath: "pi",
         workingDirectory: "/tmp/project",
         launch: PiNewSession(sessionId: "sesori.session-1"),
+        model: null,
+        thinkingLevel: null,
         environment: const {},
       );
 
       expect(spec.arguments, ["--mode", "rpc", "--approve", "--session-id", "sesori.session-1"]);
+    });
+
+    test("starts a session with the requested model and thinking level", () {
+      final spec = PiLaunchSpec(
+        binaryPath: "pi",
+        workingDirectory: "/tmp/project",
+        launch: PiNewSession(sessionId: "selected-session"),
+        model: (providerID: "openai-codex", modelID: "gpt-5.6-sol"),
+        thinkingLevel: "max",
+        environment: const {},
+      );
+
+      expect(spec.arguments, [
+        "--mode",
+        "rpc",
+        "--approve",
+        "--session-id",
+        "selected-session",
+        "--provider",
+        "openai-codex",
+        "--model",
+        "gpt-5.6-sol",
+        "--thinking",
+        "max",
+      ]);
     });
 
     test("builds the exact parent-fork RPC argument vector", () {
@@ -22,6 +49,8 @@ void main() {
         binaryPath: "pi",
         workingDirectory: "/tmp/project",
         launch: PiForkedSession(sessionId: "child", parentSessionPath: parentPath),
+        model: null,
+        thinkingLevel: null,
         environment: const {},
       );
 
@@ -45,6 +74,8 @@ void main() {
         binaryPath: "pi",
         workingDirectory: "/tmp/project",
         launch: const PiNoSession(),
+        model: null,
+        thinkingLevel: null,
         environment: const {},
       );
 
@@ -57,6 +88,8 @@ void main() {
         binaryPath: "pi",
         workingDirectory: "/tmp/project",
         launch: PiResumedSession(sessionPath: absolutePath),
+        model: null,
+        thinkingLevel: null,
         environment: const {},
       );
 
@@ -69,6 +102,8 @@ void main() {
         binaryPath: r"C:\managed-pi\pi.exe",
         workingDirectory: r"C:\project",
         launch: PiNewSession(sessionId: "session-1"),
+        model: null,
+        thinkingLevel: null,
         environment: const {},
       );
 
@@ -81,6 +116,8 @@ void main() {
         binaryPath: "pi",
         workingDirectory: "/tmp/project",
         launch: PiNewSession(sessionId: "session-1"),
+        model: null,
+        thinkingLevel: null,
         environment: environment,
       );
 
@@ -96,6 +133,8 @@ void main() {
           binaryPath: "pi",
           workingDirectory: "/tmp/project",
           launch: PiNewSession(sessionId: "session-1"),
+          model: null,
+          thinkingLevel: null,
           environment: const {"HOME": "/tmp/isolated", "ANTHROPIC_API_KEY": secret},
         ),
         throwsA(

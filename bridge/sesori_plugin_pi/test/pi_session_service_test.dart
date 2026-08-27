@@ -83,8 +83,18 @@ void main() {
     final frames = <PiSessionProcessFrame>[];
     fixture.repository.frames.listen(frames.add);
 
-    final first = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
-    final second = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
+    final first = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
+    final second = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
     process.emit(frame: {"type": "agent_start"});
     await pump();
     expect(frames, isEmpty);
@@ -105,7 +115,12 @@ void main() {
     final fixture = _Fixture(processes: [process], storageOverride: storage);
     addTearDown(fixture.dispose);
 
-    final resident = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
+    final resident = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
     await waitForCommand(process: process, type: "get_entries");
     expect(storage.pending, isNull);
     expect(storage.clearedDirectories, containsAll({"/project"}));
@@ -126,6 +141,8 @@ void main() {
       final connection = failedCleanupFixture.repository.ensureResident(
         sessionId: "other",
         knownDirectories: const {"/project"},
+        model: null,
+        variant: null,
       );
       await _answerEntries(failedCleanupProcess);
       await connection;
@@ -145,7 +162,12 @@ void main() {
     final fixture = _Fixture(processes: [resumed, created], storageOverride: storage);
     addTearDown(fixture.dispose);
 
-    final resident = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
+    final resident = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
     await _answerEntries(resumed);
     await resident;
     expect(fixture.spawned.single.launch, isA<PiResumedSession>());
@@ -154,7 +176,12 @@ void main() {
     storage
       ..resolved = null
       ..pending = const PiPendingNewSession(id: "session", cwd: "/pending", parentSessionPath: null);
-    final pending = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/pending"});
+    final pending = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/pending"},
+      model: null,
+      variant: null,
+    );
     await _answerEntries(created);
     await pending;
     expect(fixture.spawned.last.launch, isA<PiNewSession>());
@@ -222,6 +249,8 @@ void main() {
     final connecting = fixture.repository.ensureResident(
       sessionId: "session",
       knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
     );
     await waitForCommand(process: process, type: "get_entries");
 
@@ -250,7 +279,12 @@ void main() {
     );
     addTearDown(repository.dispose);
 
-    final connecting = repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
+    final connecting = repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
     await pump();
     await repository.teardown(sessionId: "session");
     spawn.complete(process);
@@ -269,6 +303,8 @@ void main() {
     final firstConnection = fixture.repository.ensureResident(
       sessionId: "session",
       knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
     );
     await _answerEntries(first);
     final firstGeneration = (await firstConnection).generation;
@@ -277,6 +313,8 @@ void main() {
     final secondConnection = fixture.repository.ensureResident(
       sessionId: "session",
       knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
     );
     await _answerEntries(second);
     expect((await secondConnection).generation, greaterThan(firstGeneration));
@@ -288,7 +326,12 @@ void main() {
     final fixture = _Fixture(processes: [resident, transient]);
     addTearDown(fixture.dispose);
 
-    final connecting = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
+    final connecting = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
     final history = fixture.repository.loadHistory(sessionId: "session", knownDirectories: const {"/project"});
     final rename = fixture.repository.renameSession(
       sessionId: "session",
@@ -343,6 +386,8 @@ void main() {
       final connecting = fixture.repository.ensureResident(
         sessionId: "session",
         knownDirectories: const {"/project"},
+        model: null,
+        variant: null,
       );
       gate.complete();
 
@@ -362,7 +407,7 @@ void main() {
     });
   }
 
-  test("selection completes before prompt dispatch", () async {
+  test("selection is present at process startup and completes before prompt dispatch", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
     addTearDown(fixture.dispose);
@@ -378,6 +423,19 @@ void main() {
       model: (providerID: "provider", modelID: "model"),
     );
     await _answerEntries(process);
+    expect(fixture.spawned.single.arguments, [
+      "--mode",
+      "rpc",
+      "--approve",
+      "--session",
+      "/sessions/session.jsonl",
+      "--provider",
+      "provider",
+      "--model",
+      "model",
+      "--thinking",
+      "high",
+    ]);
     final model = await waitForCommand(process: process, type: "set_model");
     expect(process.written.where((frame) => frame["type"] == "prompt"), isEmpty);
     process.emitResponse(id: model["id"]! as String, command: "set_model");
@@ -1835,7 +1893,12 @@ void main() {
     await pump();
     expect(first.killed, isTrue);
 
-    final resident = fixture.repository.ensureResident(sessionId: "two", knownDirectories: const {"/project"});
+    final resident = fixture.repository.ensureResident(
+      sessionId: "two",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
     await _answerEntries(second);
     await resident;
     await service.dispose();

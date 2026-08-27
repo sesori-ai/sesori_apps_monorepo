@@ -57,7 +57,12 @@ void main() {
         identityTracker: identities,
       );
       addTearDown(repository.dispose);
-      final connecting = repository.ensureResident(sessionId: "session", knownDirectories: const {});
+      final connecting = repository.ensureResident(
+        sessionId: "session",
+        knownDirectories: const {},
+        model: null,
+        variant: null,
+      );
       final initial = await waitForCommand(process: process, type: "get_entries");
       process.emitResponse(
         id: initial["id"]! as String,

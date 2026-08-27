@@ -189,14 +189,23 @@ final class PiSessionProcessRepository({
   Future<PiSessionConnection> ensureResident({
     required String sessionId,
     required Set<String> knownDirectories,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
   }) => _withSessionOperation(
     sessionId: sessionId,
-    operation: () => _ensureResident(sessionId: sessionId, knownDirectories: knownDirectories),
+    operation: () => _ensureResident(
+      sessionId: sessionId,
+      knownDirectories: knownDirectories,
+      model: model,
+      variant: variant,
+    ),
   );
 
   Future<PiSessionConnection> _ensureResident({
     required String sessionId,
     required Set<String> knownDirectories,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
   }) async {
     if (_disposed) throw const PiRpcDisposedException();
     final resident = _residents[sessionId];
@@ -205,7 +214,12 @@ final class PiSessionProcessRepository({
     }
     final connecting = _connecting[sessionId];
     if (connecting != null) return await connecting;
-    final future = _connect(sessionId: sessionId, knownDirectories: knownDirectories);
+    final future = _connect(
+      sessionId: sessionId,
+      knownDirectories: knownDirectories,
+      model: model,
+      variant: variant,
+    );
     _connecting[sessionId] = future;
     try {
       return await future;
@@ -217,6 +231,8 @@ final class PiSessionProcessRepository({
   Future<PiSessionConnection> _connect({
     required String sessionId,
     required Set<String> knownDirectories,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
   }) async {
     final generation = ++_nextConnectionGeneration;
     _generations[sessionId] = generation;
@@ -258,6 +274,8 @@ final class PiSessionProcessRepository({
         binaryPath: _binaryPath,
         workingDirectory: cwd,
         launch: launch,
+        model: model,
+        thinkingLevel: variant?.id,
         environment: _environment,
       ),
       processFactory: _processFactory,
@@ -582,6 +600,8 @@ final class PiSessionProcessRepository({
         binaryPath: _binaryPath,
         workingDirectory: resolved.metadata.cwd,
         launch: PiResumedSession(sessionPath: resolved.path),
+        model: null,
+        thinkingLevel: null,
         environment: _environment,
       ),
       processFactory: _processFactory,
@@ -828,6 +848,8 @@ final class PiSessionProcessRepository({
         binaryPath: _binaryPath,
         workingDirectory: resolved.metadata.cwd,
         launch: PiResumedSession(sessionPath: resolved.path),
+        model: null,
+        thinkingLevel: null,
         environment: _environment,
       ),
       processFactory: _processFactory,

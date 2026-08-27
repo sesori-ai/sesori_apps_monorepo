@@ -66,8 +66,11 @@ defaults and queued client sends coherent.
   and model, effort, or permission-mode changes wait for a turn boundary
   instead of changing the active turn.
 - Pi keeps at most one lazy resident RPC process per active session and allows
-  different sessions to run concurrently. Startup replays and hydrates message
-  identity before live frames attach or a turn dispatches. Same-session prompts
+  different sessions to run concurrently. A cold resident starts with the
+  turn's requested model and thinking level on Pi's command line so
+  `session_start` extensions observe the same selection that the turn will use.
+  Startup replays and hydrates message identity before live frames attach or a
+  turn dispatches. Same-session prompts
   remain FIFO, and same-selection ordinary follow-ups dispatch with Pi's
   `steer` streaming behavior as soon as the preceding prompt is accepted, so Pi
   injects them at the next tool boundary instead of waiting for the run to
@@ -280,8 +283,10 @@ replay, and abort after output has started.
   staged prompt, changes FIFO order or prompt identity, refreshes and retries
   without a bound, or leaves a corrected selection on a variant the picker does
   not display.
-- A cold Pi follow-up wakes the process but times out in pre-prompt automatic
-  compaction before reaching the agent; an initial or later viewer exposes only
+- A cold Pi process exposes a stale default model or thinking level to startup
+  extensions instead of the pending turn's selection, or a cold follow-up wakes
+  the process but times out in pre-prompt automatic compaction before reaching
+  the agent; an initial or later viewer exposes only
   the queued prompt while compaction is underway; the running card is replaced
   instead of updated when compaction ends, or survives an abort or process
   exit.
