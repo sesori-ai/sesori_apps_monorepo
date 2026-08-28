@@ -15,9 +15,10 @@ independently prepares optional project-scoped vocabulary from bounded local evi
   incomplete recording.
 - Starting, recording, transcribing, and cancelling are mutually exclusive composer interactions; input from a stale
   interaction cannot reset or append text into a newer one.
-- Each composer requests current-project context in the background and snapshots only a validated, bridge-issued opaque
-  glossary key when an interaction starts. Missing, pending, invalid, unsupported, or failed context remains unscoped
-  without delaying capture. Retry preserves the original snapshot, and raw project identity never reaches auth.
+- Each composer requests current-project context in the background, refreshes missing context for later interactions,
+  and snapshots only a validated, bridge-issued opaque glossary key when an interaction starts. Missing, pending,
+  invalid, unsupported, or failed context remains unscoped without delaying capture. Retry preserves the original
+  snapshot, and raw project identity never reaches auth.
 - While recording the composer shows live amplitude, holds a stable layout, keeps the screen awake, and offers
   drag-to-cancel; recording reaches a maximum duration and signals auto-stop instead of running indefinitely.
 - Initial cancel stops the recorder, releases the wake lock, attempts audio-file deletion, and invalidates any
@@ -39,8 +40,8 @@ independently prepares optional project-scoped vocabulary from bounded local evi
 - Successful transcription reports one content-free analytics event. No audio, transcript, or prompt text reaches logs
   or analytics.
 - A successful current-project load or a project entering the active-view set starts best-effort bridge glossary
-  population. Both triggers delegate to one serialized coordinator and never delay the route response, recording, or
-  transcription.
+  population. Both triggers delegate to one serialized coordinator that coalesces concurrent work for the same project
+  and never delays the route response, recording, or transcription.
 - Glossary population derives an exact opaque repository or bridge-local scope, caches the validated key for later
   current-project responses, scans bounded local Git/filesystem evidence, filters credential-shaped content before
   tokenization, and reconciles at most 50 deterministic terms. Only the opaque scope and filtered terms leave the

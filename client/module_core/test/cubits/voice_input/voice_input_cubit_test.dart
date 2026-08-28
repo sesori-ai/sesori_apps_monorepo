@@ -18,9 +18,6 @@ void main() {
     service = MockVoiceTranscriptionService();
     session = MockVoiceTranscriptionSession();
     maxDurationController = StreamController<void>.broadcast();
-    when(
-      () => service.createSession(projectId: any(named: "projectId")),
-    ).thenReturn(session);
     when(() => service.amplitudeStream(session: session)).thenAnswer((_) => const Stream<double>.empty());
     when(() => service.maxDurationReachedStream(session: session)).thenAnswer((_) => maxDurationController.stream);
     when(() => service.prewarm(session: session)).thenAnswer((_) async {});
@@ -37,16 +34,16 @@ void main() {
     await maxDurationController.close();
   });
 
-  test("passes nullable project context into the composer-owned service session", () async {
-    final cubit = VoiceInputCubit(service: service, projectId: "project-1");
+  test("uses the composer-owned session injected at composition", () async {
+    final cubit = VoiceInputCubit(service: service, session: session);
 
-    verify(() => service.createSession(projectId: "project-1")).called(1);
+    expect(cubit.amplitudeStream, isA<Stream<double>>());
     await cubit.close();
   });
 
   blocTest<VoiceInputCubit, VoiceInputState>(
     "starts, transcribes, acknowledges, and keeps orchestration behind the service",
-    build: () => VoiceInputCubit(service: service, projectId: null),
+    build: () => VoiceInputCubit(service: service, session: session),
     act: (cubit) async {
       await cubit.startRecording();
       await cubit.stopAndTranscribe(limitReached: false);
@@ -74,7 +71,7 @@ void main() {
         ),
       );
     },
-    build: () => VoiceInputCubit(service: service, projectId: null),
+    build: () => VoiceInputCubit(service: service, session: session),
     act: (cubit) => cubit.startRecording(),
     expect: () => [
       const VoiceInputState.starting(),
@@ -91,7 +88,7 @@ void main() {
     setUp: () {
       when(() => service.stopAndTranscribe(session: session)).thenThrow(VoiceTranscriptionError.networkError());
     },
-    build: () => VoiceInputCubit(service: service, projectId: null),
+    build: () => VoiceInputCubit(service: service, session: session),
     act: (cubit) async {
       await cubit.startRecording();
       await cubit.stopAndTranscribe(limitReached: false);
@@ -115,7 +112,7 @@ void main() {
         VoiceTranscriptionError.retryableServerError(statusCode: 503),
       );
     },
-    build: () => VoiceInputCubit(service: service, projectId: null),
+    build: () => VoiceInputCubit(service: service, session: session),
     act: (cubit) async {
       await cubit.startRecording();
       await cubit.stopAndTranscribe(limitReached: false);
@@ -139,7 +136,7 @@ void main() {
         VoiceTranscriptionError.serverError(statusCode: 400),
       );
     },
-    build: () => VoiceInputCubit(service: service, projectId: null),
+    build: () => VoiceInputCubit(service: service, session: session),
     act: (cubit) async {
       await cubit.startRecording();
       await cubit.stopAndTranscribe(limitReached: false);
@@ -158,7 +155,7 @@ void main() {
       VoiceTranscriptionError.networkError(),
     );
     when(() => service.retry(session: session)).thenAnswer((_) => retryCompleter.future);
-    final cubit = VoiceInputCubit(service: service, projectId: null);
+    final cubit = VoiceInputCubit(service: service, session: session);
     addTearDown(cubit.close);
     await cubit.startRecording();
     await cubit.stopAndTranscribe(limitReached: false);
@@ -180,7 +177,7 @@ void main() {
       VoiceTranscriptionError.networkError(),
     );
     when(() => service.retry(session: session)).thenAnswer((_) => retryCompleter.future);
-    final cubit = VoiceInputCubit(service: service, projectId: null);
+    final cubit = VoiceInputCubit(service: service, session: session);
     addTearDown(cubit.close);
     await cubit.startRecording();
     await cubit.stopAndTranscribe(limitReached: false);
@@ -203,14 +200,14 @@ void main() {
   blocTest<VoiceInputCubit, VoiceInputState>(
     "discards a retained recording and returns to idle",
     seed: () => VoiceInputState.retryPending(error: VoiceTranscriptionError.networkError()),
-    build: () => VoiceInputCubit(service: service, projectId: null),
+    build: () => VoiceInputCubit(service: service, session: session),
     act: (cubit) => cubit.discard(),
     expect: () => const [VoiceInputState.discarding(), VoiceInputState.idle()],
     verify: (_) => verify(() => service.discard(session: session)).called(1),
   );
 
   test("maximum duration auto-stops through the Cubit with its reason preserved", () async {
-    final cubit = VoiceInputCubit(service: service, projectId: null);
+    final cubit = VoiceInputCubit(service: service, session: session);
     addTearDown(cubit.close);
     await cubit.startRecording();
 
@@ -224,7 +221,7 @@ void main() {
 
   blocTest<VoiceInputCubit, VoiceInputState>(
     "cancels active work and returns to idle",
-    build: () => VoiceInputCubit(service: service, projectId: null),
+    build: () => VoiceInputCubit(service: service, session: session),
     act: (cubit) async {
       await cubit.startRecording();
       await cubit.cancel();
@@ -239,7 +236,7 @@ void main() {
   );
 
   test("close synchronously invalidates before asynchronous cleanup", () async {
-    final cubit = VoiceInputCubit(service: service, projectId: null);
+    final cubit = VoiceInputCubit(service: service, session: session);
 
     await cubit.close();
 

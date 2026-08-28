@@ -8,9 +8,8 @@ import "voice_input_state.dart";
 
 class VoiceInputCubit({
   required final VoiceTranscriptionService _service,
-  required final String? projectId,
+  required final VoiceTranscriptionSession _session,
 }) extends Cubit<VoiceInputState> {
-  late final VoiceTranscriptionSession _session = _service.createSession(projectId: projectId);
   late final StreamSubscription<void> _maxDurationSubscription;
 
   this : super(const VoiceInputState.idle()) {

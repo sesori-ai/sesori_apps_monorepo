@@ -274,7 +274,7 @@ void main() {
           BlocProvider<VoiceInputCubit>(
             create: (_) => VoiceInputCubit(
               service: voiceTranscriptionService,
-              projectId: "/project",
+              session: voiceSession,
             ),
           ),
         ],

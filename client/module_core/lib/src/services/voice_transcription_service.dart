@@ -21,16 +21,29 @@ class VoiceTranscriptionService({
   VoiceTranscriptionSession createSession({required String? projectId}) {
     final session = VoiceTranscriptionSession._(
       captureSession: _capture.createSession(),
+      projectId: projectId == null || projectId.trim().isEmpty ? null : projectId,
     );
-    if (projectId != null && projectId.trim().isNotEmpty) {
-      unawaited(
-        _loadProjectGlossaryKey(
-          session: session,
-          projectId: projectId,
-        ),
-      );
-    }
+    _refreshProjectGlossaryKey(session: session);
     return session;
+  }
+
+  void _refreshProjectGlossaryKey({required VoiceTranscriptionSession session}) {
+    final projectId = session._projectId;
+    if (projectId == null ||
+        session._availableProjectGlossaryKey != null ||
+        session._projectGlossaryKeyLoad != null ||
+        session._state is _VoiceSessionClosing ||
+        session._state is _VoiceSessionDisposed) {
+      return;
+    }
+
+    late final Future<void> tracked;
+    tracked = _loadProjectGlossaryKey(session: session, projectId: projectId).whenComplete(() {
+      if (identical(session._projectGlossaryKeyLoad, tracked)) {
+        session._projectGlossaryKeyLoad = null;
+      }
+    });
+    session._projectGlossaryKeyLoad = tracked;
   }
 
   Future<void> _loadProjectGlossaryKey({
@@ -98,6 +111,7 @@ class VoiceTranscriptionService({
     final generation = ++session._generation;
     session._state = const _VoiceSessionStarting();
     session._interactionProjectGlossaryKey = session._availableProjectGlossaryKey;
+    _refreshProjectGlossaryKey(session: session);
 
     try {
       final prewarmFuture = session._prewarmFuture;
@@ -437,7 +451,10 @@ class VoiceTranscriptionService({
   }
 }
 
-class VoiceTranscriptionSession._({required final VoiceCaptureSession _captureSession}) {
+class VoiceTranscriptionSession._({
+  required final VoiceCaptureSession _captureSession,
+  required final String? _projectId,
+}) {
   final StreamController<void> _maxDurationReachedController = StreamController<void>.broadcast();
 
   _VoiceSessionState _state = const _VoiceSessionIdle();
@@ -445,6 +462,7 @@ class VoiceTranscriptionSession._({required final VoiceCaptureSession _captureSe
   Future<void>? _startFuture;
   Future<VoiceRecordingArtifact>? _stopFuture;
   Future<void>? _cancelFuture;
+  Future<void>? _projectGlossaryKeyLoad;
   Timer? _maxDurationTimer;
   ProjectGlossaryKey? _availableProjectGlossaryKey;
   ProjectGlossaryKey? _interactionProjectGlossaryKey;

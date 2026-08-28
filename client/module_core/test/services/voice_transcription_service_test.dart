@@ -165,6 +165,67 @@ void main() {
     expect(forwardedKeys, [null, glossaryKey]);
   });
 
+  test("refreshes missing context for a later interaction without delaying capture", () async {
+    final glossaryKey = ProjectGlossaryKey.parse(
+      value: "prj_v1_1yuLLmK3NKRJfpiX26q507WHb9ZxINRCpBKCBTgnGlQ",
+    );
+    final refreshRequested = Completer<void>();
+    final refreshResponse = Completer<ApiResponse<Project>>();
+    var requestCount = 0;
+    when(
+      () => projectRepository.getProject(projectId: "project-1"),
+    ).thenAnswer((_) {
+      requestCount++;
+      if (requestCount == 1) {
+        return Future.value(
+          ApiResponse.success(
+            const Project(
+              id: "project-1",
+              name: "Project",
+              path: "/project",
+              time: null,
+              voiceGlossaryKey: null,
+            ),
+          ),
+        );
+      }
+      refreshRequested.complete();
+      return refreshResponse.future;
+    });
+    final scopedSession = service.createSession(projectId: "project-1");
+    await untilCalled(() => projectRepository.getProject(projectId: "project-1"));
+    await Future<void>.delayed(Duration.zero);
+
+    await service.start(session: scopedSession);
+    await refreshRequested.future;
+    await service.stopAndTranscribe(session: scopedSession);
+    refreshResponse.complete(
+      ApiResponse.success(
+        Project(
+          id: "project-1",
+          name: "Project",
+          path: "/project",
+          time: null,
+          voiceGlossaryKey: glossaryKey,
+        ),
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    await service.start(session: scopedSession);
+    await service.stopAndTranscribe(session: scopedSession);
+
+    final forwardedKeys = verify(
+      () => repository.transcribe(
+        audioFilePath: artifact.path,
+        mimeType: artifact.mimeType,
+        projectGlossaryKey: captureAny(named: "projectGlossaryKey"),
+      ),
+    ).captured;
+    expect(forwardedKeys, [null, glossaryKey]);
+    expect(requestCount, 2);
+  });
+
   test("shares one in-flight prewarm attempt per composer session", () async {
     final completer = Completer<void>();
     when(capture.prewarm).thenAnswer((_) => completer.future);

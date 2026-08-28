@@ -20,49 +20,62 @@ class ProjectGlossaryPopulationService({
   static const int _maximumMutationWords = 100;
 
   final ParallelLock _populationLock = ParallelLock(maxParallelOperations: 1);
+  final Map<String, Future<void>> _populationByProjectId = {};
   Future<void>? _disposeFuture;
   bool _accepting = true;
 
   Future<void> populate({required String projectId}) {
     if (!_accepting) return Future<void>.value();
 
-    return _populationLock.use(
-      operation: () async {
-        if (!_accepting) return;
+    final existing = _populationByProjectId[projectId];
+    if (existing != null) return existing;
 
-        final project = await _projectRepository.getProject(projectId: projectId);
-        if (!_accepting) return;
+    late final Future<void> tracked;
+    tracked = _populationLock
+        .use(
+          operation: () async {
+            if (!_accepting) return;
 
-        final scope = await _scopeService.resolve(projectPath: project.path);
-        if (scope == null || !_accepting) return;
+            final project = await _projectRepository.getProject(projectId: projectId);
+            if (!_accepting) return;
 
-        final source = await _glossaryRepository.loadSource(projectPath: project.path);
-        final desiredWords = _termCalculator.calculate(source: source);
-        if (!_accepting) return;
+            final scope = await _scopeService.resolve(projectPath: project.path);
+            if (scope == null || !_accepting) return;
 
-        final existingWords = await _publicationRepository.getWords(projectKey: scope.projectKey);
-        if (!_accepting) return;
+            final source = await _glossaryRepository.loadSource(projectPath: project.path);
+            final desiredWords = _termCalculator.calculate(source: source);
+            if (!_accepting) return;
 
-        // The read is project-wide and deduplicated across exact owners. Add
-        // every desired word idempotently so this scope retains independent
-        // ownership even when another scope already contributed the same word.
-        if (desiredWords.isNotEmpty) {
-          await _publicationRepository.addWords(scope: scope, words: desiredWords);
-        }
-        if (!_accepting) return;
+            final existingWords = await _publicationRepository.getWords(projectKey: scope.projectKey);
+            if (!_accepting) return;
 
-        final desiredWordSet = desiredWords.toSet();
-        final staleWords = existingWords.where((word) => !desiredWordSet.contains(word)).toList(growable: false);
-        for (var start = 0; start < staleWords.length; start += _maximumMutationWords) {
-          if (!_accepting) return;
-          final end = min(start + _maximumMutationWords, staleWords.length);
-          await _publicationRepository.removeWords(
-            scope: scope,
-            words: staleWords.sublist(start, end),
-          );
-        }
-      },
-    );
+            // The read is project-wide and deduplicated across exact owners. Add
+            // every desired word idempotently so this scope retains independent
+            // ownership even when another scope already contributed the same word.
+            if (desiredWords.isNotEmpty) {
+              await _publicationRepository.addWords(scope: scope, words: desiredWords);
+            }
+            if (!_accepting) return;
+
+            final desiredWordSet = desiredWords.toSet();
+            final staleWords = existingWords.where((word) => !desiredWordSet.contains(word)).toList(growable: false);
+            for (var start = 0; start < staleWords.length; start += _maximumMutationWords) {
+              if (!_accepting) return;
+              final end = min(start + _maximumMutationWords, staleWords.length);
+              await _publicationRepository.removeWords(
+                scope: scope,
+                words: staleWords.sublist(start, end),
+              );
+            }
+          },
+        )
+        .whenComplete(() {
+          if (identical(_populationByProjectId[projectId], tracked)) {
+            _populationByProjectId.remove(projectId);
+          }
+        });
+    _populationByProjectId[projectId] = tracked;
+    return tracked;
   }
 
   void beginShutdown() {

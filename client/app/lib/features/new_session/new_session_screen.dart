@@ -507,10 +507,13 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: BlocProvider(
-                              create: (_) => VoiceInputCubit(
-                                service: getIt<VoiceTranscriptionService>(),
-                                projectId: widget.projectId,
-                              ),
+                              create: (_) {
+                                final service = getIt<VoiceTranscriptionService>();
+                                return VoiceInputCubit(
+                                  service: service,
+                                  session: service.createSession(projectId: widget.projectId),
+                                );
+                              },
                               child: Semantics(
                                 enabled: isComposerEnabled,
                                 child: ExcludeFocus(
