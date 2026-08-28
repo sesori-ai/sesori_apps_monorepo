@@ -169,7 +169,12 @@ fallback that preserves the marker — a helper that hangs in teardown can
 never block Off/Quit or leave an orphan). The graceful half is the
 control-channel `shutdown` command (step 5) — Windows has no catchable
 SIGTERM, so a signal cannot be the primary mechanism; a POSIX signal remains
-the secondary path when the channel is down. The grace deadline strictly exceeds
+the secondary path when the channel is down. The **whole atomic operation
+lives in the repository**, which sends the `shutdown` frame itself over the
+injected control seam (the same blessed direct-seam pattern the delivered
+dispatcher and bridge-side services use): mark, send, bounded wait, kill-tree
+fallback — one Layer-2 owner, so no upward or same-layer dependency is needed
+(`ControlCommandService` owns only conversational sends; see step 4). The grace deadline strictly exceeds
 the bridge's own bounded shutdown (phase budgets + backstop slack + emergency
 disposal cap) so the fallback never preempts the helper's plugin disposal,
 and the kill terminates the helper's process tree/group, not just its PID —
@@ -219,10 +224,13 @@ cannot observe phone-triggered restart intent before exit 86, and the bridge
 already guarantees the sentinel (the 86 latch at handoff plus the shutdown
 coordinator's budgeted backstop with emergency plugin disposal — verified for
 the restart path in step 5); exit 86 stays the single restart contract. Adds **`ControlCommandService`** (Layer 3): the
-single owner of GUI→helper sends (`prompt_response` here;
+owner of **conversational** GUI→helper sends (`prompt_response` here;
 `unregister_and_exit` in step 11) over `ControlChannelServer`, clearing
 answered prompts from `BridgePromptTracker` — cubits never touch the Layer-4
-dispatcher, and the dispatcher stays inbound-only. Includes hidden-boot render
+dispatcher, and the dispatcher stays inbound-only. The expected-stop
+`shutdown` frame is deliberately NOT here: it belongs to the process
+repository's atomic stop operation (step 2), keeping that operation in one
+owner. Includes hidden-boot render
 policy: contention during a silent autostart surfaces as state, never a modal.
 
 ### M2 — Control surface
@@ -337,7 +345,7 @@ without re-creating the cubit's fence.
 `deleteBridge(id)` to `module_core` `BridgeApi`/`BridgeRepository`
 (`DELETE /auth/bridges/:bridgeId`; 404 = success) — mobile-shared, mobile
 stays green. **Establish GUI-side `bridgeId` persistence (C8):** a Layer-1
-desktop-owned `BridgeIdStore` (step-2 storage pattern) written by
+desktop-owned `BridgeIdStorage` (step-2 storage pattern) written by
 `BridgeStatusTracker` on the `registered` event down the existing
 dispatcher→tracker path, seeded from disk at startup so a GUI relaunch with a
 dead helper still knows what to delete. **`DesktopLogoutOrchestrator`**
@@ -511,7 +519,7 @@ essence); expected-exit marker (`BridgeProcessRepository` — distinguishes
 intended stops from crashes); log ring buffer + rotating file (crash
 diagnosis; pipe-drain necessity); single-instance lock + persisted
 autostart/last-on prefs (daily-driver behavior); GUI-persisted `bridgeId`
-copy (offline unregister, C8 — `BridgeIdStore` + tracker write, step 11);
+copy (offline unregister, C8 — `BridgeIdStorage` + tracker write, step 11);
 `module_auth` logout generation (R1 — closes a real race). Deliberately
 **not** added: per-plugin control DTOs, a loopback data transport, a
 GUI-crash watchdog (C6 trade), a second reconnect driver, any token-push path
