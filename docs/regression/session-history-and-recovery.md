@@ -133,6 +133,8 @@ rules where supported.
 - Reasoning still says `Thinking...` after answer or tool output has started, or
   disappears after reopening because only its empty start snapshot was retained.
 - A page boundary duplicates, drops, or reorders messages, or history ends early.
+- An id-less ACP reply reuses a pre-restart fallback identity and overwrites an
+  earlier answer instead of remaining distinct.
 - Loading an older page shifts the reader's viewport, remains hidden until
   reattachment, or triggers repeated requests while one page is in flight.
 - A session advanced outside Sesori keeps serving the old transcript, or stored
@@ -177,6 +179,6 @@ rules where supported.
 Bridge chat-history service, repository, reconcile service, history listeners,
 SSE replay window, and routed request dispatch; database and audit compatibility
 tests under `bridge/app/test/bridge/services/`; Pi session process repository,
-storage API, and history mapper; shared ACP session loader plus Copilot and Grok
-plugins and package tests; shared pagination cursor; client detail load service
-and cubit.
+storage API, and history mapper; shared ACP event mapper, turn serialization,
+and session loader plus Copilot and Grok plugins and package tests; shared
+pagination cursor; client detail load service and cubit.

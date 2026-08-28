@@ -3,9 +3,9 @@
 ## Status
 
 - **Plan slug:** `grok-harness`
-- **Status:** active; Step 1/9 in PR #1152; current revision architecture-approved
+- **Status:** completed and retired on 2026-08-28; Steps 1-8 merged and the full Step 9 retirement matrix passed
 - **Plan date:** 2026-08-27
-- **Implementation base:** `origin/main`
+- **Implementation base:** `origin/main` at `cb9baa91dd` before the final retirement commit
 - **Delivery:** nine PRs with fixed titles and order below
 - **Initial product scope:** user-installed Grok Build CLI; no bridge-managed runtime installation
 
