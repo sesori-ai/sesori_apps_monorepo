@@ -3,13 +3,13 @@
 ## Current State
 
 - **Plan:** `.plan/active/grok-harness/PLAN.md`
-- **Status:** Steps 1-3/9 merged; Step 4/9 in PR; Step 5/9 implemented locally
+- **Status:** Steps 1-4/9 merged; Step 5/9 in PR
 - **Current branch:** `grok-harness-step-5-lifecycle`
-- **Base:** `grok-harness-step-4-core` (PR #1169)
+- **Base:** `origin/main` after merged PR #1169
 - **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
-- **Merged predecessor:** #1160 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1160>
-- **Open PR:** #1169 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1169>
-- **Local successor:** `grok-harness-step-5-lifecycle`; descriptor/setup implementation under verification
+- **Merged predecessor:** #1169 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1169>
+- **Open PR:** #1175 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1175>
+- **Local successor:** Step 6 starts after Step 5 publication
 
 ## Fixed Series
 
@@ -22,11 +22,11 @@
 3. `⚙️ [grok-harness] feat(grok): expose models and reasoning effort [step 3/9]`
    - **State:** merged in #1160.
 4. `⚙️ [grok-harness] feat(grok): compose ACP sessions and turns [step 4/9]`
-   - **State:** in PR #1169.
+   - **State:** merged in #1169.
    - **Evidence:** generic auth allowlist, Grok plugin composition, 270 ACP tests, 42 Grok tests, affected-package
      analyzers, LSP diagnostics, two architecture approvals, and the 1,500-line budget pass.
 5. `⚙️ [grok-harness] feat(grok): add direct-CLI setup and lifecycle [step 5/9]`
-   - **State:** implemented locally; held until #1169 merges.
+   - **State:** in PR #1175.
 6. `⚙️ [grok-harness] feat(bridge): activate Grok Build [step 6/9]`
    - **State:** not started.
 7. `🌿 [grok-harness] feat(client): brand Grok Build [step 7/9]`
@@ -100,9 +100,10 @@
 - [x] Surface local `grok login`/headless-credential guidance while isolating auth/start/crash degradation to Grok.
 - [x] Cover setup, provisioning, abort, auth rejection, crash/reconnect, reported version, and owned shutdown.
 - [x] Pass 52 Grok tests, fatal-info analysis, LSP diagnostics, whitespace, and authored line-width checks.
-- [x] Keep the measured Step 5 change below the 1,500-line soft cap (currently 844 lines).
+- [x] Keep the measured Step 5 change below the 1,500-line soft cap (currently 845 lines).
 - [x] Run architecture implementation review over Step 5 against Step 4; approved with no findings.
 - [x] Commit the completed successor locally; do not publish before #1169 merges.
+- [x] Rebase onto merged #1169, reverify, publish PR #1175, and start its monitor.
 
 ## Decisions And Evidence
 
