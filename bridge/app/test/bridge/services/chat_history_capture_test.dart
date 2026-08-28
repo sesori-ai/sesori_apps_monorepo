@@ -576,6 +576,29 @@ void main() {
       );
     });
 
+    test("equal-sized shifted replay aligns repeated rows by creation time", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [
+          _messageWithText(id: "replay-2", text: "continue", createdAt: 200, promptId: null),
+          _messageWithText(id: "replay-3", text: "continue", createdAt: 300, promptId: null),
+        ],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      for (final message in [
+        _messageWithText(id: "live-1", text: "continue", createdAt: 100, promptId: "prompt-1"),
+        _messageWithText(id: "live-2", text: "continue", createdAt: 200, promptId: "prompt-2"),
+      ]) {
+        await _captureMessageWithParts(history: history, message: message);
+      }
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["live-1", "replay-2", "replay-3"],
+      );
+    });
+
     test("partial replay keeps repeated rows when creation times are absent", () async {
       final repository = _FakeSessionRepository(
         transcript: [

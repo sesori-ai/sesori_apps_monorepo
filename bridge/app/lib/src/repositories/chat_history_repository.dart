@@ -368,7 +368,7 @@ class ChatHistoryRepository({
   /// to the imported multiplicity while preserving truly live-only rows and
   /// additional identical messages. Exact identities consume replay capacity
   /// first, stale rows due for removal do not shape semantic context, and a
-  /// partial repeated run matches only occurrences with equal creation times.
+  /// repeated run matches only occurrences with equal creation times.
   /// The imported row remains authoritative for replay metadata.
   ///
   /// Retained rows rejoin the imported transcript at their recorded message
@@ -478,16 +478,15 @@ class ChatHistoryRepository({
     for (final entry in storedIndexesByContext.entries) {
       final importedIndexes = importedIndexesByContext[entry.key] ?? const [];
       final storedIndexes = entry.value;
-      if (importedIndexes.length >= storedIndexes.length) {
-        semanticallyImportedStoredIds.addAll({
-          for (final index in storedIndexes) storedContextRows[index].messageId,
-        });
+      if (importedIndexes.length == 1 && storedIndexes.length == 1) {
+        semanticallyImportedStoredIds.add(storedContextRows[storedIndexes.single].messageId);
         continue;
       }
 
-      // A partial repeated run is ambiguous by content and order alone. Match
-      // only equal creation times; null or differing times stay retained rather
-      // than risking deletion of a separate live-only occurrence.
+      // A repeated run is ambiguous by content and order alone, even when both
+      // sides have the same count. Match only equal creation times; null or
+      // differing times stay retained rather than risking deletion of a
+      // separate live-only occurrence.
       final storedIndexesByCreatedAt = <int, List<int>>{};
       for (final index in storedIndexes) {
         final createdAt = storedSemanticFingerprints[index]?.createdAt;
